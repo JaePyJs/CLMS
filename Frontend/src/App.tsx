@@ -128,13 +128,13 @@ export default function App() {
               <div className="flex-shrink-0">
                 <img
                   src="/src/assets/School_logo.png"
-                  alt="Sacred Heart of Jesus Catholic School Logo"
+                  alt="Educational Library Management System Logo"
                   className="w-14 h-14 object-contain opacity-100 dark:opacity-90"
                 />
               </div>
               <div>
                 <h1 className="text-2xl text-black dark:text-foreground">
-                  Sacred Heart Library
+                  CLMS Library System
                 </h1>
                 <p className="text-sm text-black dark:text-muted-foreground font-normal">
                   Welcome, {user?.username || 'Librarian'} 👋
@@ -317,10 +317,10 @@ export default function App() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              © 2024 Sacred Heart of Jesus Catholic School Library
+              © 2025 Educational Library Management System
             </p>
             <p className="text-sm text-muted-foreground">
-              CLMS v1.0.0 - Built with React & Google Sheets
+              CLMS v1.0.0 (2025) - Built with React & Google Sheets
             </p>
           </div>
         </div>

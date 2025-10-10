@@ -39,10 +39,10 @@
     "typescript",
     "prisma"
   ],
-  "author": "Sacred Heart of Jesus Catholic School",
+  "author": "Educational Library Management System",
   "license": "MIT",
   "dependencies": {
-    "@prisma/client": "^5.7.1",
+    "@prisma/client": "^5.22.0",
     "@zxing/library": "^0.20.0",
     "bcryptjs": "^2.4.3",
     "bull": "^4.12.2",
@@ -64,6 +64,7 @@
     "joi": "^17.11.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.15.2",
     "node-cron": "^3.0.3",
     "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4",
@@ -96,11 +97,11 @@
     "prisma": "^5.7.1",
     "supertest": "^6.3.3",
     "tsx": "^4.6.2",
-    "typescript": "^5.3.3",
+    "typescript": "^5.6.3",
     "vitest": "^1.0.4"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "lint-staged": {
     "*.{ts,js}": [

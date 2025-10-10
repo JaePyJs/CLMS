@@ -1,6 +1,6 @@
 # CLMS Frontend
 
-Comprehensive Library Management System frontend for Sacred Heart of Jesus Catholic School Library.
+Professional Comprehensive Library Management System frontend for educational library operations.
 
 ## Features
 
@@ -259,4 +259,4 @@ Build files are output to `dist/` directory.
 
 ## License
 
-Private use for Sacred Heart of Jesus Catholic School Library.
+MIT License - See LICENSE file for details.

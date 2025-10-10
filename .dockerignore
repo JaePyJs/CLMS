@@ -1,0 +1,75 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+
+# Database
+*.sqlite
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+docs/
+
+# Development files
+Dockerfile.dev
+docker-compose.dev.yml
+
+# Cache
+.cache/
+.npm/
+.eslintcache
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+
+# Application specific
+uploads/
+barcodes/
+qr-codes/
+generated/
+backups/
+
+# Sensitive data
+google-credentials.json
+*.pem
+*.key
+
+# Development tools
+.vscode/
+*.tgz
+*.tar.gz
