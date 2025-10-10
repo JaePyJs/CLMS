@@ -1,209 +1,190 @@
 # CLMS (Comprehensive Library Management System)
 
-A local web application for Sacred Heart of Jesus Catholic School Library with integrated n8n workflow automation for background tasks.
+CLMS is a professional full-stack platform that digitizes educational library operations. It covers student activity tracking, inventory, barcode and QR generation, and background automation while running entirely on local infrastructure.
 
 ## Project Overview
 
-**CLMS** serves Sophia, a 22-year-old librarian, as a single-administrator interface running entirely on localhost with integrated n8n workflow automation for background tasks.
+This repository contains both the backend API (Express + Prisma) and the React dashboard. The system targets library staff operations with support for multi-user expansion via role-based access control.
 
 ### Key Features
-- **Student Activity Tracking** with barcode scanning and grade-based permissions
-- **Equipment Management** for computer stations, gaming rooms, and AVR equipment
-- **n8n Automation** for daily backups, notifications, and analytics
-- **Real-time Dashboard** showing library activity and system status
-- **Offline-First Design** with cloud sync when internet available
+
+- Student, book, and equipment management with unified history and audit trails
+- Production-ready barcode and QR code pipelines (batch generation, printable sheets, Google Sheets sync)
+- USB barcode scanner workflows for fast check-in/out with offline queueing
+- Automation layer using Bull + Redis for scheduled jobs, imports, and backups
+- Real-time dashboard with TanStack Query caching, analytics, and notifications
+- Docker-based infrastructure for MySQL, Redis, Koha mirror, backend, and frontend
+
+### Architecture Diagram (Conceptual)
+
+- **Frontend:** Vite + React SPA served on port 3000
+- **Backend:** Express API with Prisma ORM served on port 3001
+- **Database:** MySQL (primary) with optional Koha read replica for legacy data
+- **Cache & Queues:** Redis for Bull job queues and rate limiting
+- **Integrations:** Google Sheets service account; optional external automation via scripts
 
 ## Technology Stack
 
 ### Frontend
-- **React 18.3.1** with TypeScript
-- **Vite 6.3.5** as build tool
-- **shadcn/ui** component library (30+ Radix UI components)
-- **Tailwind CSS** for styling
-- **Framer Motion** for animations
-- **Lucide React** for icons
+
+- React 18 with TypeScript and Vite
+- shadcn/ui (Radix primitives), Tailwind CSS, Framer Motion, Sonner toasts
+- State/query management via TanStack Query and Zustand
+- ZXing (browser) for barcode/QR scanning with keyboard wedge support
 
 ### Backend
-- **Node.js** with Express.js framework
-- **MySQL** database (dual integration with Koha and CLMS databases)
-- **n8n** workflow automation (localhost:5678)
-- **Google Sheets** integration for cloud backup
 
-## Local Development Setup
+- Node.js 18+, Express, Prisma ORM, and TypeScript
+- Bull queues backed by Redis for automation and scheduled jobs
+- Google Sheets API, ExcelJS, CSV parsers, PDF-Lib for data exchange
+- Winston logging, Helmet, compression, and express-rate-limit for resilience
+
+### DevOps & Tooling
+
+- Docker Compose for local orchestration (MySQL, Redis, Adminer, Koha, backend, frontend)
+- Vitest + Testing Library for unit/integration tests
+- ESLint, Prettier, Husky, and lint-staged for code quality
+- GitHub Actions CI/CD (see `.github/workflows/ci-cd.yml`)
+
+## Quick Start
 
 ### Prerequisites
-- Node.js (v18 or higher)
-- MySQL Server
-- n8n (self-hosted at localhost:5678)
+
+- Node.js v18+
+- Docker Desktop (or native Docker + Compose)
 - Git
 
-### Installation
+### Clone
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/JaePyJs/CLMS.git
-   cd CLMS
-   ```
+```powershell
+git clone https://github.com/JaePyJs/CLMS.git
+cd CLMS
+```
 
-2. **Frontend Setup** (from `Frontend/` directory)
-   ```bash
-   cd Frontend
-   npm install
-   npm run dev  # Starts on localhost:3000
-   ```
+### Install Dependencies
 
-3. **Backend Setup** (from `Backend/` directory)
-   ```bash
-   cd Backend
-   npm install
-   npm run dev  # Starts on localhost:3001
-   ```
+```powershell
+cd Backend
+npm install
+cd ..\Frontend
+npm install
+```
 
-4. **Database Setup**
-   - Create MySQL database for CLMS
-   - Configure read-only access to existing Koha database
-   - Run database migrations (provided in Backend/scripts)
+### Environment Setup
 
-5. **n8n Setup**
-   - Install n8n locally: `npm install n8n -g`
-   - Start n8n: `n8n start` (runs on localhost:5678)
-   - Import workflow templates from `Docs/n8n-workflows/`
+- Copy `Backend/.env.example` to `Backend/.env` and configure database, JWT secrets, Google credentials paths, and rate limit settings.
+- (Optional) Copy `Frontend/.env.example` to `Frontend/.env` if customizing API origins.
+
+### Start Supporting Services
+
+```powershell
+cd ..
+docker-compose up -d mysql redis koha-mysql adminer
+```
+
+### Run the Stack (Dev Mode)
+
+```powershell
+# Backend API
+cd Backend
+npm run dev
+
+# Frontend
+cd ..\Frontend
+npm run dev
+```
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:3001`
+- Adminer: `http://localhost:8080`
+
+### Seed & Test (Optional)
+
+```powershell
+cd ..\Backend
+npm run db:push
+npm run db:seed
+npm test
+
+cd ..\Frontend
+npm test
+```
+
+## Key Scripts
+
+(Run from `Backend/` unless noted.)
+
+- `npm run generate:barcodes` – Batch-generate student barcodes + HTML sheets
+- `npm run generate:qr` – Batch-generate QR codes
+- `npm run sync:qr` – Push barcode/QR metadata to Google Sheets
+- `npm run import:data` – Bulk import students/books/equipment
+- `npm run db:reset` – Recreate schema and reseed
+- `Frontend/: npm run build` – Production bundle
 
 ## Project Structure
 
-```
+```text
 CLMS/
-├── Frontend/                    # React frontend application
-│   ├── src/
-│   │   ├── components/         # React components
-│   │   │   ├── ui/            # shadcn/ui components
-│   │   │   └── dashboard/     # Dashboard-specific components
-│   │   ├── lib/               # Utilities and mock data
-│   │   └── assets/            # Static assets
-│   ├── package.json
-│   └── vite.config.ts
-├── Backend/                     # Node.js backend API
-│   ├── src/
-│   │   ├── config/            # Database configuration
-│   │   ├── routes/            # API endpoints
-│   │   ├── models/            # Data models
-│   │   ├── middleware/        # Auth and validation
-│   │   └── utils/             # Integration utilities
-│   ├── package.json
-│   └── .env.example
-├── Docs/                        # Documentation
-│   ├── api/                   # API documentation
-│   ├── n8n-workflows/         # Workflow templates
-│   └── deployment/            # Deployment guides
-├── CLAUDE.md                   # Claude AI development guide
-└── README.md                   # This file
+├── Backend/                # Express API, Prisma, scripts, uploads, dist
+├── Frontend/               # React dashboard, assets, tests
+├── Docs/                   # Guides (barcode, QR, database setup, overview)
+├── docker/                 # MySQL, Redis, Koha configuration
+├── scripts/                # Standalone JS utilities
+├── docker-compose.yml      # Local infrastructure stack
+├── Current_Students.json   # Sample data / import template
+└── README.md
 ```
 
-## Usage
+### Backend Highlights
 
-### Starting the Application
+- `src/app.ts` – Express bootstrap, middleware, routing, health checks
+- `src/routes/*` – REST endpoints grouped by domain (students, utilities, automation, etc.)
+- `src/services/*` – Business logic: barcode/QR generation, Google Sheets, automation
+- `src/utils/*` – Logger, Prisma client, error handling, scheduler wrappers
+- `scripts/` – TS entrypoints executed with `tsx` (seed, import, barcode generation)
+- `barcodes/` & `qr-codes/` – Generated assets with JSON reports and printable HTML
 
-1. **Start Backend Server**
-   ```bash
-   cd Backend
-   npm run dev
-   ```
+### Frontend Highlights
 
-2. **Start Frontend Application**
-   ```bash
-   cd Frontend
-   npm run dev
-   ```
+- `src/App.tsx` – Top-level layout with tabbed navigation & keyboard shortcuts
+- `src/components/dashboard/*` – Feature-focused dashboards (scan workspace, analytics, barcode/QR manager)
+- `src/hooks/api-hooks.ts` – TanStack Query hooks for backend endpoints
+- `src/lib/*` – Axios client, offline queue, scanner utilities
+- `src/contexts/AuthContext.tsx` – Auth state and route guards
+- `src/test/*` – Vitest + Testing Library setup
 
-3. **Start n8n Automation** (optional but recommended)
-   ```bash
-   n8n start
-   ```
+## Documentation
 
-4. **Access the Application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001
-   - n8n Interface: http://localhost:5678
+- `Docs/codebase-overview.md` – Architectural summary and onboarding checklist
+- `BARCODE_GUIDE.md` & `BARCODE_IMPLEMENTATION_SUMMARY.md` – Deep dives into barcode workflow
+- `QR_CODE_GUIDE.md` – QR generation and distribution
+- `USB_SCANNER_SETUP.md` – Hardware setup for USB scanners
+- `Docs/database-setup.md` – Database provisioning details
 
-### Daily Workflow
+## Deployment Notes
 
-1. **Morning Dashboard Check** - Review overnight automation results
-2. **Student Activity Tracking** - Scan student IDs and log activities
-3. **Equipment Management** - Monitor computer and gaming station usage
-4. **Analytics Review** - Check usage patterns and generate reports
-
-## Configuration
-
-### Environment Variables
-
-Backend `.env` file:
-```env
-# Database Configuration
-DB_HOST=localhost
-DB_USER=clms_user
-DB_PASSWORD=your_password
-DB_NAME=clms_database
-
-# Koha Integration (Read-only)
-KOHA_DB_HOST=localhost
-KOHA_DB_USER=koha_user
-KOHA_DB_PASSWORD=koha_password
-KOHA_DB_NAME=koha_database
-
-# n8n Integration
-N8N_WEBHOOK_URL=http://localhost:5678/webhook
-N8N_API_KEY=your_n8n_api_key
-
-# Google Sheets Integration
-GOOGLE_SHEETS_API_KEY=your_google_sheets_api_key
-```
-
-### Database Setup
-
-Run the database setup script:
-```bash
-cd Backend/scripts
-mysql -u root -p < setup-databases.sql
-```
-
-## Architecture
-
-### Component-Based Design
-- **Modular React components** with TypeScript interfaces
-- **shadcn/ui design system** for consistent UI
-- **Dashboard-centric design** with multi-tab interface
-
-### Key Application Tabs
-1. **Dashboard** - Live stats, primary actions, active students, n8n status
-2. **Equipment** - Computer and gaming station management
-3. **n8n Automation** - Workflow monitoring and control
-4. **Analytics** - Usage reports and insights
-
-### Grade-Based Access Control
-- **Primary (K-3)**: Limited time, supervised activities only
-- **Grade School (4-6)**: Extended computer time, basic gaming access
-- **Junior High (7-10)**: Full computer access, gaming sessions, AVR equipment
-- **Senior High (11-12)**: Premium access, extended sessions, research equipment
+- Dockerfile `Backend/Dockerfile` builds a production-ready API image (uses `dist/` output).
+- Frontend build output served by Vite preview or any static host (`npm run build` → `dist/`).
+- Ensure `google-credentials.json` is mounted or copied for production environments needing Google Sheets.
+- Consider enabling HTTPS termination via reverse proxy when exposing beyond localhost.
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch (`git checkout -b feature/name`)
+3. Commit changes (`git commit -m "feat: add ..."`)
+4. Push and open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Licensed under the MIT License – see [LICENSE](LICENSE) for details.
 
 ## Support
 
-For support and questions:
 - Create an issue in this repository
-- Review the documentation in the `Docs/` folder
-- Check the `CLAUDE.md` file for development guidance
+- Review docs inside `Docs/`
+- Contact the maintainers via GitHub issues
 
 ---
 
-**Built with ❤️ for Sacred Heart of Jesus Catholic School Library**
+Built with ❤️ for educational library management professionals.

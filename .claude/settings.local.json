@@ -25,7 +25,11 @@
       "Bash(npm test:*)",
       "Bash(npm run lint:*)",
       "Bash(npm run format:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(docker ps:*)",
+      "Bash(npm run db:generate)",
+      "mcp__ide__executeCode"
     ]
   },
   "enableAllProjectMcpServers": true,
