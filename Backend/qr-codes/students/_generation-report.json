@@ -1,0 +1,338 @@
+{
+  "generatedAt": "2025-10-09T21:22:18.773Z",
+  "totalStudents": 55,
+  "successCount": 55,
+  "errorCount": 0,
+  "results": [
+    {
+      "studentId": "20230178",
+      "name": "Marcus Arevalo",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20230178.png",
+      "success": true
+    },
+    {
+      "studentId": "20230182",
+      "name": "Francis Te",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20230182.png",
+      "success": true
+    },
+    {
+      "studentId": "20230184",
+      "name": "Zaylee Javate",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20230184.png",
+      "success": true
+    },
+    {
+      "studentId": "20230187",
+      "name": "Yasmin Mallillin",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20230187.png",
+      "success": true
+    },
+    {
+      "studentId": "20230188",
+      "name": "Celinabelle Nilles",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20230188.png",
+      "success": true
+    },
+    {
+      "studentId": "20230190",
+      "name": "Czar De Lara",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20230190.png",
+      "success": true
+    },
+    {
+      "studentId": "20230192",
+      "name": "Josiah Fabroquez",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20230192.png",
+      "success": true
+    },
+    {
+      "studentId": "20230195",
+      "name": "Marcus Mangahas",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20230195.png",
+      "success": true
+    },
+    {
+      "studentId": "20230196",
+      "name": "John Ortiz",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20230196.png",
+      "success": true
+    },
+    {
+      "studentId": "20230197",
+      "name": "Dion Pino",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20230197.png",
+      "success": true
+    },
+    {
+      "studentId": "20230200",
+      "name": "Natalie Butardo",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20230200.png",
+      "success": true
+    },
+    {
+      "studentId": "20240220",
+      "name": "John Montiero",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240220.png",
+      "success": true
+    },
+    {
+      "studentId": "20240221",
+      "name": "Zafiro Luzano",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240221.png",
+      "success": true
+    },
+    {
+      "studentId": "20240223",
+      "name": "Rakim Ortilla",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240223.png",
+      "success": true
+    },
+    {
+      "studentId": "20240226",
+      "name": "Keiko Lagan",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240226.png",
+      "success": true
+    },
+    {
+      "studentId": "20240227",
+      "name": "Koryn Madriaga",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240227.png",
+      "success": true
+    },
+    {
+      "studentId": "20240228",
+      "name": "Cirilla Nohay",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240228.png",
+      "success": true
+    },
+    {
+      "studentId": "20240229",
+      "name": "Erza Reyes",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240229.png",
+      "success": true
+    },
+    {
+      "studentId": "20240230",
+      "name": "Ayah Rivera",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240230.png",
+      "success": true
+    },
+    {
+      "studentId": "20240231",
+      "name": "Vhinella Valencia",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240231.png",
+      "success": true
+    },
+    {
+      "studentId": "20240233",
+      "name": "Cali Agustin",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240233.png",
+      "success": true
+    },
+    {
+      "studentId": "20240235",
+      "name": "Shane Paraiso",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240235.png",
+      "success": true
+    },
+    {
+      "studentId": "20240243",
+      "name": "Brianne Buyao",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240243.png",
+      "success": true
+    },
+    {
+      "studentId": "20240253",
+      "name": "Liam Sarmiento",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240253.png",
+      "success": true
+    },
+    {
+      "studentId": "20240254",
+      "name": "Forrest Rimando",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240254.png",
+      "success": true
+    },
+    {
+      "studentId": "20240255",
+      "name": "Keone Abustan",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240255.png",
+      "success": true
+    },
+    {
+      "studentId": "20240260",
+      "name": "Juan Bayanin",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240260.png",
+      "success": true
+    },
+    {
+      "studentId": "20240263",
+      "name": "Angelo Gaña",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240263.png",
+      "success": true
+    },
+    {
+      "studentId": "20240268",
+      "name": "Jim Salazar",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20240268.png",
+      "success": true
+    },
+    {
+      "studentId": "20250045",
+      "name": "Juri Tablada",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250045.png",
+      "success": true
+    },
+    {
+      "studentId": "20250047",
+      "name": "Janea Bolaños",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250047.png",
+      "success": true
+    },
+    {
+      "studentId": "20250049",
+      "name": "Ethalia Gonzales",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250049.png",
+      "success": true
+    },
+    {
+      "studentId": "20250164",
+      "name": "Aoife Empreso",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250164.png",
+      "success": true
+    },
+    {
+      "studentId": "20250165",
+      "name": "James Balagtas",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250165.png",
+      "success": true
+    },
+    {
+      "studentId": "20250166",
+      "name": "Reesha Paje",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250166.png",
+      "success": true
+    },
+    {
+      "studentId": "20250167",
+      "name": "Tuesday Nguyen",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250167.png",
+      "success": true
+    },
+    {
+      "studentId": "20250168",
+      "name": "Travis Quisumbing",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250168.png",
+      "success": true
+    },
+    {
+      "studentId": "20250169",
+      "name": "Stefanie Pinpin",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250169.png",
+      "success": true
+    },
+    {
+      "studentId": "20250170",
+      "name": "Daniel Hormillosa",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250170.png",
+      "success": true
+    },
+    {
+      "studentId": "20250171",
+      "name": "Charles Formentera",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250171.png",
+      "success": true
+    },
+    {
+      "studentId": "20250172",
+      "name": "Ellie Agustin",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250172.png",
+      "success": true
+    },
+    {
+      "studentId": "20250173",
+      "name": "Margaux Jusayan",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250173.png",
+      "success": true
+    },
+    {
+      "studentId": "20250174",
+      "name": "Solara Baluyot",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250174.png",
+      "success": true
+    },
+    {
+      "studentId": "20250175",
+      "name": "Jose Sena",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250175.png",
+      "success": true
+    },
+    {
+      "studentId": "20250176",
+      "name": "Margaux Eclarinal",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250176.png",
+      "success": true
+    },
+    {
+      "studentId": "20250177",
+      "name": "Kendra San Jose",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250177.png",
+      "success": true
+    },
+    {
+      "studentId": "20250178",
+      "name": "Gio Relova",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250178.png",
+      "success": true
+    },
+    {
+      "studentId": "20250179",
+      "name": "Zach Refe",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250179.png",
+      "success": true
+    },
+    {
+      "studentId": "20250180",
+      "name": "Daken Martin",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250180.png",
+      "success": true
+    },
+    {
+      "studentId": "20250181",
+      "name": "Kieffer Santos",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250181.png",
+      "success": true
+    },
+    {
+      "studentId": "20250182",
+      "name": "Isaiah Latigo",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250182.png",
+      "success": true
+    },
+    {
+      "studentId": "20250183",
+      "name": "Niña Ocenar",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250183.png",
+      "success": true
+    },
+    {
+      "studentId": "20250184",
+      "name": "Cedrick Magundayao",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250184.png",
+      "success": true
+    },
+    {
+      "studentId": "20250185",
+      "name": "Adela Moral",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250185.png",
+      "success": true
+    },
+    {
+      "studentId": "20250187",
+      "name": "Aria San Pedro",
+      "qrPath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\qr-codes\\students\\20250187.png",
+      "success": true
+    }
+  ]
+}

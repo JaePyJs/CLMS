@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Barcodes - Sacred Heart Library</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .header h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .controls {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 0 5px;
+    }
+
+    .btn:hover {
+      background: #45a049;
+    }
+
+    .btn-secondary {
+      background: #2196F3;
+    }
+
+    .btn-secondary:hover {
+      background: #0b7dda;
+    }
+
+    .barcode-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .barcode-card {
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    .barcode-card h3 {
+      color: #333;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .barcode-card p {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+
+    .barcode-card img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      padding: 10px;
+      background: white;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 20px;
+      background: white;
+      border-radius: 8px;
+      margin-top: 30px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    /* Print styles */
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+
+      .header, .controls, .footer {
+        display: none;
+      }
+
+      .barcode-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+      }
+
+      .barcode-card {
+        box-shadow: none;
+        border: 1px solid #333;
+        margin-bottom: 0;
+      }
+    }
+
+    /* Compressed print mode */
+    @media print {
+      @page {
+        size: A4;
+        margin: 15mm;
+      }
+
+      .barcode-grid.compressed {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+      }
+
+      .barcode-grid.compressed .barcode-card {
+        padding: 10px;
+      }
+
+      .barcode-grid.compressed .barcode-card h3 {
+        font-size: 12px;
+      }
+
+      .barcode-grid.compressed .barcode-card p {
+        font-size: 10px;
+        margin-bottom: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📊 Student Barcodes</h1>
+    <p>Sacred Heart of Jesus Catholic School Library</p>
+    <p>Generated: 10/10/2025, 5:58:13 AM</p>
+    <p>Total Students: 3</p>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="window.print()">🖨️ Print All Barcodes</button>
+    <button class="btn btn-secondary" onclick="toggleCompressed()">📐 Toggle Compressed Mode</button>
+  </div>
+
+  <div class="barcode-grid" id="barcodeGrid">
+    
+    <div class="barcode-card">
+      <h3>Test Student</h3>
+      <p>Student ID: 20250123</p>
+      <img src="20250123.png" alt="Barcode for 20250123" />
+    </div>
+    
+    <div class="barcode-card">
+      <h3>Test Student</h3>
+      <p>Student ID: TEST1760047056027</p>
+      <img src="TEST1760047056027.png" alt="Barcode for TEST1760047056027" />
+    </div>
+    
+    <div class="barcode-card">
+      <h3>Test Student</h3>
+      <p>Student ID: TEST1760047080312</p>
+      <img src="TEST1760047080312.png" alt="Barcode for TEST1760047080312" />
+    </div>
+    
+  </div>
+
+  <div class="footer">
+    <p>© 2024 Sacred Heart of Jesus Catholic School Library</p>
+    <p>CLMS v1.0.0 - Barcode Generation System</p>
+  </div>
+
+  <script>
+    function toggleCompressed() {
+      const grid = document.getElementById('barcodeGrid');
+      grid.classList.toggle('compressed');
+      const isCompressed = grid.classList.contains('compressed');
+      alert(isCompressed ? 'Compressed mode enabled - 4 per row' : 'Normal mode - 3 per row');
+    }
+  </script>
+</body>
+</html>
