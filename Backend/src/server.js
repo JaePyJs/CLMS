@@ -8,7 +8,7 @@ require('dotenv').config()
 const studentRoutes = require('./routes/students')
 const equipmentRoutes = require('./routes/equipment')
 const analyticsRoutes = require('./routes/analytics')
-const n8nRoutes = require('./routes/n8n')
+const automationRoutes = require('./routes/automation')
 const authRoutes = require('./routes/auth')
 
 // Import middleware
@@ -17,6 +17,9 @@ const { requestLogger } = require('./middleware/logger')
 
 // Import database connection
 const { connectDatabases } = require('./config/database')
+
+// Import scheduler service
+const scheduler = require('./utils/scheduler')
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -63,7 +66,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/students', studentRoutes)
 app.use('/api/equipment', equipmentRoutes)
 app.use('/api/analytics', analyticsRoutes)
-app.use('/api/n8n', n8nRoutes)
+app.use('/api/automation', automationRoutes)
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -84,12 +87,17 @@ async function startServer() {
     await connectDatabases()
     console.log('✅ Database connections established')
 
+    // Start scheduler for automated tasks
+    scheduler.start()
+    console.log('✅ Automated tasks scheduler started')
+
     // Start server
     app.listen(PORT, () => {
       console.log(`🚀 CLMS Backend Server running on port ${PORT}`)
       console.log(`📝 Environment: ${process.env.NODE_ENV}`)
       console.log(`🔗 Health check: http://localhost:${PORT}/health`)
       console.log(`📚 Library: ${process.env.LIBRARY_NAME}`)
+      console.log(`⏰ Automated tasks enabled`)
     })
   } catch (error) {
     console.error('❌ Failed to start server:', error)
@@ -100,11 +108,13 @@ async function startServer() {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received, shutting down gracefully')
+  scheduler.stop()
   process.exit(0)
 })
 
 process.on('SIGINT', () => {
   console.log('🛑 SIGINT received, shutting down gracefully')
+  scheduler.stop()
   process.exit(0)
 })
 

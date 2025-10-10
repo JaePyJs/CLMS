@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**CLMS (Comprehensive Library Management System)** is a local web application for Sacred Heart of Jesus Catholic School Library. This system serves Sophia, a 22-year-old librarian, as a single-administrator interface running entirely on localhost with integrated n8n workflow automation for background tasks.
+**CLMS (Comprehensive Library Management System)** is a local web application for Sacred Heart of Jesus Catholic School Library. This system serves Sophia, a 22-year-old librarian, as a single-administrator interface running entirely on localhost with built-in automated tasks and Google Sheets integration.
 
 ### Key Context
 - **Target User**: Sophia (22-year-old librarian, single administrator)
 - **Deployment**: Local library PC (localhost:3000) - no internet hosting required
-- **Integration**: n8n automation engine (localhost:5678) + existing Koha library system
-- **Focus**: Student activity tracking, equipment management, and automated workflows
+- **Integration**: Koha library system + Google Sheets for cloud backup and reporting
+- **Focus**: Student activity tracking, equipment management, and automated tasks
 
 ## Technology Stack
 
@@ -20,8 +20,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Database:** MySQL with dual integration:
   - **Koha Database:** Read-only access to existing library system
   - **CLMS Database:** Activity tracking, sessions, analytics
-- **Automation Engine:** n8n self-hosted (localhost:5678)
-- **Google Sheets** integration for cloud backup
+- **Built-in Automation:** Scheduled tasks and real-time Google Sheets sync
+- **Google Sheets** integration for cloud backup and reporting
 
 ### Frontend Stack
 - **React 18.3.1** with TypeScript
@@ -40,8 +40,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Backend & Automation
 - **Node.js with Express.js**
 - **MySQL** database (dual integration with Koha and CLMS databases)
-- **n8n** workflow automation (localhost:5678)
-- **Google Sheets** integration for cloud backup
+- **Built-in scheduled tasks** using node-cron
+- **Google Sheets** integration for cloud backup and reporting
 
 ## Development Commands
 
@@ -111,7 +111,7 @@ CLMS/
 │   │   │   └── validation.js         # Input validation middleware
 │   │   └── utils/
 │   │       ├── kohaIntegration.js    # Koha database integration
-│   │       └── n8nWebhooks.js        # n8n workflow triggers
+│   │       └── googleSheets.js        # Google Sheets integration
 │   ├── package.json
 │   └── .env.example
 ├── CLAUDE.md
@@ -119,9 +119,9 @@ CLMS/
 ```
 
 ### Main Application Tabs
-1. **Dashboard** - Live stats, primary actions, active students, n8n status
+1. **Dashboard** - Live stats, primary actions, active students, system status
 2. **Equipment** - Computer and gaming station management
-3. **n8n Automation** - Workflow monitoring and control
+3. **Automation** - Task monitoring and control
 4. **Analytics** - Usage reports and insights
 
 ## Key Features
@@ -129,8 +129,8 @@ CLMS/
 ### Student Activity Tracking with Automation
 - **Barcode Scanning**: React component with ZXing barcode scanner
 - **Koha Integration**: Query Koha database for student information
-- **Activity Logging**: Log to CLMS database + trigger n8n workflow
-- **Real-time Updates**: n8n syncs to Google Sheets immediately
+- **Activity Logging**: Log to CLMS database + sync to Google Sheets
+- **Real-time Updates**: Automatic sync to Google Sheets immediately
 
 ### Grade-Based Access Control
 - **Primary (K-3)**: Limited time, supervised activities only
@@ -144,19 +144,19 @@ CLMS/
 - **AVR equipment** for VR sessions with supervision alerts
 - **Real-time availability monitoring**
 
-### Critical n8n Workflow Integration
+### Built-in Automation Tasks
 
-#### Daily Backup Workflow
-- **Trigger**: Daily at 11:00 PM
-- **Tasks**: Export CLMS data, create backup files, upload to Google Drive
+#### Daily Backup Task
+- **Schedule**: Daily at 11:00 PM
+- **Tasks**: Export CLMS data, create backup files, sync to Google Sheets
 - **Value**: Never worry about data loss - fully automated
 
-#### Teacher Notifications Workflow
-- **Trigger**: Daily at 7:00 AM
+#### Teacher Notifications Task
+- **Schedule**: Daily at 7:00 AM
 - **Tasks**: Query overdue books, generate class-specific teacher lists
 - **Value**: Teacher lists ready every morning without manual work
 
-#### Real-time Sync Workflow
+#### Real-time Sync Task
 - **Trigger**: After each student activity
 - **Tasks**: Log activity, update Google Sheets, check time limits
 - **Value**: Real-time transparency and immediate problem detection
@@ -166,7 +166,7 @@ CLMS/
 ### Always Follow These Rules:
 1. **Local-First Development**: Always assume offline capability is required
 2. **Sophia-Centric Design**: Every feature should serve the 22-year-old librarian's workflow
-3. **n8n Integration**: Plan for webhook triggers and automation integration from the start
+3. **Google Sheets Integration**: Plan for real-time sync and automated tasks from the start
 4. **Grade-Based Logic**: Implement proper access controls and time limits by grade level
 5. **Real-Time Updates**: Use WebSocket connections for live equipment and student status
 6. **Database Performance**: Optimize queries with proper indexing for local MySQL deployment
@@ -194,7 +194,7 @@ CREATE TABLE student_activities (
     duration_minutes INT,
     time_limit_minutes INT,
     status ENUM('active','completed','expired','cancelled'),
-    n8n_synced BOOLEAN DEFAULT FALSE,
+    google_synced BOOLEAN DEFAULT FALSE,
     processed_by VARCHAR(50) DEFAULT 'Sophia'
 );
 
@@ -210,11 +210,11 @@ CREATE TABLE equipment_sessions (
     status ENUM('active','completed','expired','extended')
 );
 
--- n8n workflow execution tracking
-CREATE TABLE n8n_workflow_logs (
+-- Automation task execution tracking
+CREATE TABLE automation_logs (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    workflow_name VARCHAR(100) NOT NULL,
-    execution_id VARCHAR(100),
+    task_name VARCHAR(100) NOT NULL,
+    task_type ENUM('backup','notification','sync','cleanup'),
     status ENUM('running','completed','failed','queued'),
     start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     end_time TIMESTAMP NULL,
@@ -226,7 +226,7 @@ CREATE TABLE n8n_workflow_logs (
 
 This project demonstrates comprehensive modern library technology management:
 - **Full-Stack Development**: Local web application with professional interfaces
-- **Workflow Automation**: n8n integration for intelligent library operations
+- **Built-in Automation**: Scheduled tasks and Google Sheets integration
 - **System Integration**: Seamless connection with existing library infrastructure
 - **Data Analytics**: Professional reporting and insights generation
 - **User Experience**: Modern interface design for efficient daily operations

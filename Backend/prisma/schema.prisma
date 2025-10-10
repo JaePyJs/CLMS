@@ -1,0 +1,393 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Authentication model
+model User {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  password    String
+  role        String   @default("USER")
+  isActive    Boolean  @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("users")
+}
+
+// Core entities
+model Student {
+  id            String        @id @default(cuid())
+  studentId     String        @unique // School ID/barcode
+  firstName     String
+  lastName      String
+  gradeLevel    String
+  gradeCategory GradeCategory
+  section       String?
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  // Relations
+  activities   Activity[]
+  sessions     EquipmentSession[]
+  checkouts    BookCheckout[]
+  barcodeImage String? // Path to generated barcode image
+
+  @@index([studentId])
+  @@index([gradeCategory])
+  @@index([isActive])
+  @@map("students")
+}
+
+model Book {
+  id              String   @id @default(cuid())
+  isbn            String?  @unique
+  accessionNo     String   @unique // Library-specific ID
+  title           String
+  author          String
+  publisher       String?
+  category        String
+  subcategory     String?
+  location        String? // Physical location in library
+  totalCopies     Int      @default(1)
+  availableCopies Int      @default(1)
+  isActive        Boolean  @default(true)
+  barcodeImage    String? // Path to generated barcode image
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  checkouts      BookCheckout[]
+  barcodeHistory BarcodeHistory[]
+
+  @@index([accessionNo])
+  @@index([category])
+  @@index([isActive])
+  @@map("books")
+}
+
+model Equipment {
+  id                  String          @id @default(cuid())
+  equipmentId         String          @unique // Like COMP-01, GAME-01
+  name                String
+  type                EquipmentType
+  location            String
+  status              EquipmentStatus @default(AVAILABLE)
+  maxTimeMinutes      Int // Time limit per session
+  requiresSupervision Boolean         @default(false)
+  description         String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  // Relations
+  sessions   EquipmentSession[]
+  activities Activity[]
+
+  @@index([equipmentId])
+  @@index([type])
+  @@index([status])
+  @@map("equipment")
+}
+
+// Activity tracking
+model Activity {
+  id           String       @id @default(cuid())
+  studentId    String
+  student      Student      @relation(fields: [studentId], references: [id])
+  activityType ActivityType
+  equipmentId  String?
+  equipment    Equipment?   @relation(fields: [equipmentId], references: [id])
+  checkoutId   String? // For book activities
+
+  // Timing
+  startTime        DateTime  @default(now())
+  endTime          DateTime?
+  durationMinutes  Int?
+  timeLimitMinutes Int?
+
+  // Status and metadata
+  status       ActivityStatus @default(ACTIVE)
+  notes        String?
+  processedBy  String         @default("Sophia")
+  googleSynced Boolean        @default(false)
+  syncAttempts Int            @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([activityType])
+  @@index([status])
+  @@index([startTime])
+  @@index([googleSynced])
+  @@map("activities")
+}
+
+model EquipmentSession {
+  id          String    @id @default(cuid())
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+  studentId   String
+  student     Student   @relation(fields: [studentId], references: [id])
+
+  // Timing
+  sessionStart   DateTime  @default(now())
+  sessionEnd     DateTime?
+  plannedEnd     DateTime? // When session should end
+  actualDuration Int?
+
+  // Status
+  status     SessionStatus @default(ACTIVE)
+  extensions Int           @default(0) // Number of times extended
+
+  // Metadata
+  notes       String?
+  processedBy String  @default("Sophia")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([equipmentId])
+  @@index([studentId])
+  @@index([status])
+  @@index([sessionStart])
+  @@map("equipment_sessions")
+}
+
+model BookCheckout {
+  id        String  @id @default(cuid())
+  bookId    String
+  book      Book    @relation(fields: [bookId], references: [id])
+  studentId String
+  student   Student @relation(fields: [studentId], references: [id])
+
+  // Timing
+  checkoutDate DateTime  @default(now())
+  dueDate      DateTime
+  returnDate   DateTime?
+
+  // Status
+  status CheckoutStatus @default(ACTIVE)
+
+  // Fine tracking
+  overdueDays Int     @default(0)
+  fineAmount  Decimal @default(0.00) @db.Decimal(10, 2)
+  finePaid    Boolean @default(false)
+
+  // Metadata
+  notes       String?
+  processedBy String  @default("Sophia")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookId])
+  @@index([studentId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([overdueDays])
+  @@map("book_checkouts")
+}
+
+// System and automation
+model AutomationJob {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  type        JobType
+  schedule    String // Cron expression
+  description String?
+  isEnabled   Boolean   @default(true)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+  status      JobStatus @default(IDLE)
+
+  // Statistics
+  totalRuns         Int  @default(0)
+  successCount      Int  @default(0)
+  failureCount      Int  @default(0)
+  averageDurationMs Int?
+
+  // Configuration
+  config Json? // Job-specific configuration
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  AutomationLog AutomationLog[]
+
+  @@index([type])
+  @@index([isEnabled])
+  @@index([status])
+  @@index([nextRunAt])
+  @@map("automation_jobs")
+}
+
+model AutomationLog {
+  id    String         @id @default(cuid())
+  jobId String
+  job   AutomationJob? @relation(fields: [jobId], references: [id])
+
+  // Execution details
+  executionId String    @unique
+  status      JobStatus
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  durationMs  Int?
+
+  // Results
+  success          Boolean
+  recordsProcessed Int?
+  errorMessage     String?
+  errorDetails     Json?
+
+  // Metadata
+  triggeredBy String @default("SCHEDULED") // SCHEDULED, MANUAL, API
+
+  @@index([jobId])
+  @@index([status])
+  @@index([startedAt])
+  @@index([success])
+  @@map("automation_logs")
+}
+
+model SystemConfig {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  value       String
+  description String?
+  isSecret    Boolean @default(false) // For sensitive values
+  category    String // GENERAL, GOOGLE_SHEETS, EMAIL, etc.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@map("system_config")
+}
+
+model AuditLog {
+  id          String @id @default(cuid())
+  entity      String // Student, Book, Equipment, etc.
+  entityId    String
+  action      String // CREATE, UPDATE, DELETE, CHECKOUT, etc.
+  oldValues   Json?
+  newValues   Json?
+  performedBy String @default("Sophia")
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([entity])
+  @@index([entityId])
+  @@index([action])
+  @@index([performedBy])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model BarcodeHistory {
+  id          String   @id @default(cuid())
+  entityId    String // Student or Book ID
+  entityType  String // Student or Book
+  barcodeData String // The actual barcode content
+  format      String // CODE128, QR_CODE, etc.
+  generatedAt DateTime @default(now())
+  generatedBy String   @default("Sophia")
+  Book        Book?    @relation(fields: [bookId], references: [id])
+  bookId      String?
+
+  @@index([entityId])
+  @@index([entityType])
+  @@map("barcode_history")
+}
+
+// Enums
+enum GradeCategory {
+  PRIMARY // K-3
+  GRADE_SCHOOL // 4-6
+  JUNIOR_HIGH // 7-10
+  SENIOR_HIGH // 11-12
+}
+
+enum EquipmentType {
+  COMPUTER
+  GAMING
+  AVR // Audio/Visual Room
+  PRINTER
+  SCANNER
+  OTHER
+}
+
+enum EquipmentStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  OUT_OF_ORDER
+}
+
+enum ActivityType {
+  COMPUTER_USE
+  GAMING_SESSION
+  AVR_SESSION
+  BOOK_CHECKOUT
+  BOOK_RETURN
+  GENERAL_VISIT
+  RECREATION
+  STUDY
+  OTHER
+}
+
+enum ActivityStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+  EXTENDED
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  EXTENDED
+  TERMINATED
+}
+
+enum CheckoutStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+  LOST
+  DAMAGED
+}
+
+enum JobType {
+  DAILY_BACKUP
+  TEACHER_NOTIFICATIONS
+  GOOGLE_SHEETS_SYNC
+  SESSION_EXPIRY_CHECK
+  OVERDUE_NOTIFICATIONS
+  WEEKLY_CLEANUP
+  MONTHLY_REPORT
+  INTEGRITY_AUDIT
+}
+
+enum JobStatus {
+  IDLE
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  RETRYING
+}

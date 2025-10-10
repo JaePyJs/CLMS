@@ -1,0 +1,44 @@
+export declare class AutomationService {
+    private prisma;
+    private scheduledJobs;
+    private redis;
+    private queues;
+    private isInitialized;
+    constructor();
+    initialize(): Promise<void>;
+    private initializeQueues;
+    private setupJobProcessors;
+    private setupQueueEventListeners;
+    private loadScheduledJobs;
+    scheduleJob(job: any): Promise<void>;
+    private executeJob;
+    private executeDailyBackup;
+    private executeTeacherNotifications;
+    private executeGoogleSheetsSync;
+    private executeSessionExpiryCheck;
+    private processDailyBackup;
+    private processGoogleSheetsSync;
+    private processTeacherNotifications;
+    private processSessionExpiryCheck;
+    private processOverdueNotifications;
+    private processWeeklyCleanup;
+    private processIntegrityAudit;
+    private processDatabaseBackup;
+    private processActivitySync;
+    private executeOverdueNotifications;
+    private executeWeeklyCleanup;
+    private executeMonthlyReport;
+    private executeIntegrityAudit;
+    private logJobExecution;
+    private getNextRunTime;
+    private setupCleanupInterval;
+    triggerJob(jobId: string, userId?: string): Promise<void>;
+    getJobStatus(jobId: string): Promise<any>;
+    getAllJobs(): Promise<any[]>;
+    getQueueStatus(): Promise<any>;
+    shutdown(): Promise<void>;
+    getSystemHealth(): any;
+}
+export declare const automationService: AutomationService;
+export default automationService;
+//# sourceMappingURL=automation.d.ts.map

@@ -1,0 +1,164 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: clms-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: clms_root_password
+      MYSQL_DATABASE: clms_database
+      MYSQL_USER: clms_user
+      MYSQL_PASSWORD: clms_password
+      MYSQL_CHARACTER_SET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d
+      - ./docker/mysql/conf:/etc/mysql/conf.d
+    networks:
+      - clms-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 30s
+      start_period: 40s
+
+  # Redis for Job Queues
+  redis:
+    image: redis:7-alpine
+    container_name: clms-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - clms-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 10s
+      retries: 5
+      interval: 30s
+
+  # Adminer (Database Management)
+  adminer:
+    image: adminer:latest
+    container_name: clms-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    networks:
+      - clms-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # Koha Database (Read-only for CLMS)
+  koha-mysql:
+    image: mysql:8.0
+    container_name: clms-koha-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: koha_root_password
+      MYSQL_DATABASE: koha_database
+      MYSQL_USER: koha_user
+      MYSQL_PASSWORD: koha_password
+      MYSQL_CHARACTER_SET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3309:3306"
+    volumes:
+      - koha_mysql_data:/var/lib/mysql
+      - ./docker/koha-mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - clms-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 30s
+      start_period: 40s
+
+  # Backend API
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: clms-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: mysql://clms_user:clms_password@mysql:3306/clms_database
+      KOHA_DATABASE_URL: mysql://koha_user:koha_password@koha-mysql:3306/koha_database
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CORS_ORIGIN: http://localhost:3000
+    volumes:
+      - ./Backend:/app
+      - /app/node_modules
+      - ./Backend/logs:/app/logs
+      - ./Backend/uploads:/app/uploads
+      - ./Backend/generated:/app/generated
+      - ./google-credentials.json:/app/google-credentials.json:ro
+    networks:
+      - clms-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      koha-mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      timeout: 30s
+      retries: 3
+      interval: 60s
+      start_period: 120s
+
+  # Frontend
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: clms-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:3001
+      VITE_WS_URL: ws://localhost:3001
+    volumes:
+      - ./Frontend:/app
+      - /app/node_modules
+    networks:
+      - clms-network
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
+    driver: local
+  koha_mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  clms-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
