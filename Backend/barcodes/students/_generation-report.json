@@ -1,30 +1,8 @@
 {
-  "totalStudents": 3,
-  "successCount": 3,
+  "totalStudents": 0,
+  "successCount": 0,
   "errorCount": 0,
   "outputDir": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\barcodes\\students",
-  "results": [
-    {
-      "studentId": "20250123",
-      "name": "Test Student",
-      "barcodePath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\barcodes\\students\\20250123.png",
-      "barcodeUrl": "/api/utilities/barcode/20250123",
-      "success": true
-    },
-    {
-      "studentId": "TEST1760047056027",
-      "name": "Test Student",
-      "barcodePath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\barcodes\\students\\TEST1760047056027.png",
-      "barcodeUrl": "/api/utilities/barcode/TEST1760047056027",
-      "success": true
-    },
-    {
-      "studentId": "TEST1760047080312",
-      "name": "Test Student",
-      "barcodePath": "C:\\Users\\jmbar\\Desktop\\ALL REPOS\\Pia_REPOS\\CLMS\\Backend\\barcodes\\students\\TEST1760047080312.png",
-      "barcodeUrl": "/api/utilities/barcode/TEST1760047080312",
-      "success": true
-    }
-  ],
-  "generatedAt": "2025-10-09T21:58:13.615Z"
+  "results": [],
+  "generatedAt": "2025-10-11T10:59:08.610Z"
 }

@@ -28,6 +28,7 @@ import {
 import { useStudentActivity } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { offlineActions } from '@/lib/offline-queue';
+import { toast } from 'sonner';
 import {
   Camera,
   CameraOff,
@@ -43,6 +44,22 @@ import {
   Play,
   Square,
   RefreshCw,
+  Plus,
+  Timer,
+  UserPlus,
+  FileText,
+  Download,
+  Settings,
+  Eye,
+  MoreHorizontal,
+  AlertTriangle,
+  Filter,
+  Download as ExportIcon,
+  Printer,
+  ExternalLink,
+  Calendar,
+  BarChart3,
+  Activity
 } from 'lucide-react';
 
 interface Student {
@@ -67,6 +84,15 @@ export function ScanWorkspace() {
   const [selectedAction, setSelectedAction] = useState<string>('');
   const [timeLimit, setTimeLimit] = useState<number>(30);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Enhanced state for activity management
+  const [showActiveSessions, setShowActiveSessions] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [isExporting, setIsExporting] = useState(false);
+  const [isPrintingSessions, setIsPrintingSessions] = useState(false);
+  const [selectedTimeExtension, setSelectedTimeExtension] = useState<number>(15);
 
   const { isOnline, lastScanResult } = useAppStore();
   const {
@@ -186,6 +212,111 @@ export function ScanWorkspace() {
     setTimeLimit(30);
   };
 
+  // Enhanced Activity Management Handlers
+  const handleBulkCheckout = async () => {
+    try {
+      // Mock bulk checkout functionality
+      toast.success(`Bulk checkout initiated for ${selectedSessions.length} sessions`);
+      setSelectedSessions([]);
+      setShowBulkActions(false);
+    } catch (error) {
+      toast.error('Failed to perform bulk checkout');
+    }
+  };
+
+  const handleBulkExtendTime = async (additionalMinutes: number) => {
+    try {
+      // Mock bulk time extension
+      toast.success(`Extended time by ${additionalMinutes} minutes for ${selectedSessions.length} sessions`);
+      setSelectedSessions([]);
+      setShowBulkActions(false);
+    } catch (error) {
+      toast.error('Failed to extend session times');
+    }
+  };
+
+  const handleBulkNotify = async () => {
+    try {
+      // Mock bulk notification
+      toast.success(`Notifications sent to ${selectedSessions.length} students`);
+      setSelectedSessions([]);
+      setShowBulkActions(false);
+    } catch (error) {
+      toast.error('Failed to send notifications');
+    }
+  };
+
+  const handleExportSessions = async () => {
+    try {
+      setIsExporting(true);
+      // Mock export functionality
+      const csvContent = `Session ID,Student Name,Activity,Start Time,Status\n${selectedSessions.map(id => `${id},Student Name,Activity,Time,Active`).join('\n')}`;
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sessions-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Sessions exported successfully!');
+    } catch (error) {
+      toast.error('Failed to export sessions');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handlePrintSessions = () => {
+    try {
+      setIsPrintingSessions(true);
+      window.print();
+      toast.success('Print dialog opened for sessions');
+    } catch (error) {
+      toast.error('Failed to open print dialog');
+    } finally {
+      setIsPrintingSessions(false);
+    }
+  };
+
+  const handleTransferEquipment = (sessionId: string) => {
+    toast.info(`Equipment transfer for session ${sessionId} - would open transfer dialog`);
+  };
+
+  const handleAddSessionNotes = (sessionId: string) => {
+    toast.info(`Add notes for session ${sessionId} - would open notes dialog`);
+  };
+
+  const handleViewStudentHistory = (studentId: string) => {
+    toast.info(`View history for student ${studentId} - would open history dialog`);
+  };
+
+  const handlePrintHallPass = (sessionId: string) => {
+    toast.info(`Print hall pass for session ${sessionId} - would generate pass`);
+  };
+
+  const toggleSessionSelection = (sessionId: string) => {
+    setSelectedSessions(prev =>
+      prev.includes(sessionId)
+        ? prev.filter(id => id !== sessionId)
+        : [...prev, sessionId]
+    );
+  };
+
+  // Mock active sessions data
+  const mockActiveSessions = [
+    { id: '1', studentName: 'Juan Dela Cruz', activity: 'Computer Session', startTime: '10:30 AM', status: 'active', equipment: 'PC Station 1' },
+    { id: '2', studentName: 'Maria Santos', activity: 'Gaming Session', startTime: '11:15 AM', status: 'active', equipment: 'Recreational Room' },
+    { id: '3', studentName: 'Jose Reyes', activity: 'AVR Room', startTime: '09:45 AM', status: 'overdue', equipment: 'AVR Room' },
+  ];
+
+  const filteredSessions = filterStatus === 'all'
+    ? mockActiveSessions
+    : mockActiveSessions.filter(session => session.status === filterStatus);
+
   // Get time limit based on grade category
   const getDefaultTimeLimit = (gradeCategory?: string) => {
     switch (gradeCategory) {
@@ -210,14 +341,59 @@ export function ScanWorkspace() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight text-black dark:text-foreground">
-          Scan Workspace
-        </h2>
-        <p className="text-black dark:text-muted-foreground">
-          Scan student IDs, books, or equipment for library activities.
-        </p>
+      {/* Enhanced Header with Action Buttons */}
+      <div className="relative">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-black dark:text-foreground">
+            Activity Management
+          </h2>
+          <p className="text-black dark:text-muted-foreground">
+            Scan student IDs, books, or equipment for library activities.
+          </p>
+        </div>
+
+        {/* Header Action Buttons */}
+        <div className="absolute top-0 right-0 flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowActiveSessions(!showActiveSessions)}
+            className="bg-white/90 hover:bg-white shadow-sm"
+          >
+            <Eye className="h-4 w-4 mr-1" />
+            {showActiveSessions ? 'Hide' : 'Show'} Sessions
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBulkActions(!showBulkActions)}
+            disabled={selectedSessions.length === 0}
+            className="bg-white/90 hover:bg-white shadow-sm"
+          >
+            <Users className="h-4 w-4 mr-1" />
+            Bulk Actions ({selectedSessions.length})
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportSessions}
+            disabled={isExporting || selectedSessions.length === 0}
+            className="bg-white/90 hover:bg-white shadow-sm"
+          >
+            <ExportIcon className="h-4 w-4 mr-1" />
+            Export
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrintSessions}
+            disabled={isPrintingSessions}
+            className="bg-white/90 hover:bg-white shadow-sm"
+          >
+            <Printer className="h-4 w-4 mr-1" />
+            Print
+          </Button>
+        </div>
       </div>
 
       {/* Connection Status */}
@@ -229,6 +405,259 @@ export function ScanWorkspace() {
             : 'Offline mode - Activities will be queued and synced when connection is restored.'}
         </AlertDescription>
       </Alert>
+
+      {/* Enhanced Filter Buttons */}
+      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Filter Sessions:</span>
+          <div className="flex gap-1">
+            <Button
+              variant={filterStatus === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterStatus('all')}
+            >
+              All ({mockActiveSessions.length})
+            </Button>
+            <Button
+              variant={filterStatus === 'active' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterStatus('active')}
+            >
+              Active ({mockActiveSessions.filter(s => s.status === 'active').length})
+            </Button>
+            <Button
+              variant={filterStatus === 'overdue' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterStatus('overdue')}
+            >
+              Overdue ({mockActiveSessions.filter(s => s.status === 'overdue').length})
+            </Button>
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => toast.info('Manual session entry - would open entry form')}
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            Manual Entry
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => toast.info('End all active sessions - would confirm action')}
+          >
+            <Square className="h-3 w-3 mr-1" />
+            End All
+          </Button>
+        </div>
+      </div>
+
+      {/* Bulk Actions Panel */}
+      {showBulkActions && selectedSessions.length > 0 && (
+        <Card className="border-2 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center justify-between">
+              <span>Bulk Actions - {selectedSessions.length} Sessions Selected</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowBulkActions(false);
+                  setSelectedSessions([]);
+                }}
+              >
+                ×
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Time Extension Actions */}
+              <div>
+                <p className="text-sm font-medium mb-2">Extend Time:</p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkExtendTime(15)}
+                  >
+                    <Timer className="h-3 w-3 mr-1" />
+                    +15 min
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkExtendTime(30)}
+                  >
+                    <Timer className="h-3 w-3 mr-1" />
+                    +30 min
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkExtendTime(60)}
+                  >
+                    <Timer className="h-3 w-3 mr-1" />
+                    +60 min
+                  </Button>
+                </div>
+              </div>
+
+              {/* Other Bulk Actions */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkCheckout}
+                >
+                  <Square className="h-3 w-3 mr-1" />
+                  End Sessions
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkNotify}
+                >
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  Send Notices
+                </Button>
+              </div>
+
+              {/* Selected Sessions Summary */}
+              <div className="text-xs text-muted-foreground bg-white/50 dark:bg-gray-800/50 p-2 rounded">
+                Selected Sessions: {selectedSessions.join(', ')}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active Sessions Panel */}
+      {showActiveSessions && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Active Sessions ({filteredSessions.length})</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowActiveSessions(false)}
+              >
+                ×
+              </Button>
+            </CardTitle>
+            <CardDescription>
+              Manage current library sessions and student activities
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {filteredSessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`p-4 rounded-lg border ${
+                    session.status === 'overdue'
+                      ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800'
+                      : 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedSessions.includes(session.id)}
+                        onChange={() => toggleSessionSelection(session.id)}
+                        className="rounded"
+                      />
+                      <div>
+                        <div className="font-medium">{session.studentName}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {session.activity} • {session.equipment} • {session.startTime}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={session.status === 'overdue' ? 'destructive' : 'default'}
+                        className="text-xs"
+                      >
+                        {session.status.toUpperCase()}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewStudentHistory(session.id)}
+                      >
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleTransferEquipment(session.id)}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleAddSessionNotes(session.id)}
+                      >
+                        <FileText className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handlePrintHallPass(session.id)}
+                      >
+                        <Printer className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Session Action Buttons */}
+                  <div className="flex gap-1 mt-3 pt-3 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBulkExtendTime(15)}
+                    >
+                      <Timer className="h-3 w-3 mr-1" />
+                      +15
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBulkExtendTime(30)}
+                    >
+                      <Timer className="h-3 w-3 mr-1" />
+                      +30
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBulkExtendTime(60)}
+                    >
+                      <Timer className="h-3 w-3 mr-1" />
+                      +60
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleBulkCheckout()}
+                    >
+                      <Square className="h-3 w-3 mr-1" />
+                      End
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Scanner Section */}
@@ -566,25 +995,103 @@ export function ScanWorkspace() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
+      {/* Enhanced Quick Actions */}
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>Common tasks without scanning</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Button variant="outline" className="h-16 flex-col">
-              <Users className="h-6 w-6 mb-2" />
-              <span>Register New Student</span>
+          <div className="grid gap-4 md:grid-cols-4">
+            <Button
+              variant="outline"
+              className="h-16 flex-col hover:bg-blue-50 hover:border-blue-300 transition-colors"
+              onClick={() => toast.info('Register New Student - would open registration form')}
+            >
+              <UserPlus className="h-6 w-6 mb-2 text-blue-600" />
+              <span className="text-sm">Register Student</span>
             </Button>
-            <Button variant="outline" className="h-16 flex-col">
-              <Clock className="h-6 w-6 mb-2" />
-              <span>View Active Sessions</span>
+            <Button
+              variant="outline"
+              className="h-16 flex-col hover:bg-green-50 hover:border-green-300 transition-colors"
+              onClick={() => setShowActiveSessions(!showActiveSessions)}
+            >
+              <Activity className="h-6 w-6 mb-2 text-green-600" />
+              <span className="text-sm">Active Sessions</span>
             </Button>
-            <Button variant="outline" className="h-16 flex-col">
-              <RefreshCw className="h-6 w-6 mb-2" />
-              <span>Sync Offline Data</span>
+            <Button
+              variant="outline"
+              className="h-16 flex-col hover:bg-purple-50 hover:border-purple-300 transition-colors"
+              onClick={() => toast.info('Generate Reports - would open report builder')}
+            >
+              <BarChart3 className="h-6 w-6 mb-2 text-purple-600" />
+              <span className="text-sm">Reports</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-16 flex-col hover:bg-orange-50 hover:border-orange-300 transition-colors"
+              onClick={() => toast.info('Sync Offline Data - would sync queued activities')}
+            >
+              <RefreshCw className="h-6 w-6 mb-2 text-orange-600" />
+              <span className="text-sm">Sync Data</span>
+            </Button>
+          </div>
+
+          {/* Additional Quick Actions Row */}
+          <div className="grid gap-4 md:grid-cols-6 mt-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toast.info('Emergency Alert - would notify administrators')}
+              className="text-red-600 hover:bg-red-50"
+            >
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              Emergency
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toast.info('Maintenance Mode - would schedule maintenance')}
+              className="text-gray-600 hover:bg-gray-50"
+            >
+              <Settings className="h-3 w-3 mr-1" />
+              Maintenance
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toast.info('System Health - would run diagnostics')}
+              className="text-blue-600 hover:bg-blue-50"
+            >
+              <Shield className="h-3 w-3 mr-1" />
+              Health
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toast.info('Daily Summary - would generate summary')}
+              className="text-green-600 hover:bg-green-50"
+            >
+              <Calendar className="h-3 w-3 mr-1" />
+              Summary
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toast.info('Export Data - would export current data')}
+              className="text-purple-600 hover:bg-purple-50"
+            >
+              <ExportIcon className="h-3 w-3 mr-1" />
+              Export
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toast.info('Print Reports - would open print dialog')}
+              className="text-orange-600 hover:bg-orange-50"
+            >
+              <Printer className="h-3 w-3 mr-1" />
+              Print
             </Button>
           </div>
         </CardContent>

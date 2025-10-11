@@ -1,1 +1,1 @@
-{"version":3,"file":"books.d.ts","sourceRoot":"","sources":["../../../src/routes/books.ts"],"names":[],"mappings":"AAkBA,QAAA,MAAM,MAAM,4CAAW,CAAA;AAubvB,eAAe,MAAM,CAAA"}
+{"version":3,"file":"books.d.ts","sourceRoot":"","sources":["../../../src/routes/books.ts"],"names":[],"mappings":"AAoBA,QAAA,MAAM,MAAM,4CAAW,CAAC;AAgdxB,eAAe,MAAM,CAAC"}

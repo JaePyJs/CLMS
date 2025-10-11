@@ -9,8 +9,25 @@ export interface BarcodeResult {
     barcodePath?: string;
     error?: string;
 }
+export interface BarcodeGenerationResult {
+    studentId: string;
+    name: string;
+    barcodePath: string;
+    barcodeUrl: string;
+    success: boolean;
+    error?: string;
+}
+export interface BarcodeGenerationSummary {
+    totalStudents: number;
+    successCount: number;
+    errorCount: number;
+    outputDir: string;
+    results: BarcodeGenerationResult[];
+    generatedAt: string;
+}
 export declare class BarcodeService {
     private outputDir;
+    private studentBarcodeDir;
     constructor();
     generateStudentBarcode(studentId: string, options?: BarcodeOptions): Promise<BarcodeResult>;
     generateBookBarcode(bookId: string, options?: BarcodeOptions): Promise<BarcodeResult>;
@@ -30,13 +47,22 @@ export declare class BarcodeService {
         count: number;
         error?: string;
     }>;
+    generateBarcodesForAllStudents(): Promise<BarcodeGenerationSummary>;
+    generateBarcodeForStudent(studentId: string): Promise<string>;
+    regenerateBarcodeForStudent(studentId: string): Promise<string>;
+    deleteBarcodeForStudent(studentId: string): Promise<void>;
+    barcodeExists(studentId: string): boolean;
+    getBarcodePath(studentId: string): string | null;
+    getGenerationReport(): Promise<BarcodeGenerationSummary | null>;
+    private generatePrintableSheet;
     private generateBarcodeImage;
     private saveBarcodeHistory;
     getBarcodeHistory(entityId: string, entityType: string): Promise<{
         format: string;
+        entityId: string;
+        studentId: string | null;
         id: string;
         bookId: string | null;
-        entityId: string;
         entityType: string;
         barcodeData: string;
         generatedAt: Date;

@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const commander_1 = require("commander");
+const logger_1 = require("@/utils/logger");
 const importService_1 = require("@/services/importService");
 const barcodeService_1 = require("@/services/barcodeService");
 const fs_1 = require("fs");
@@ -52,14 +53,14 @@ program
     .action(async (options) => {
     try {
         if (!options.file) {
-            console.error('Error: File path is required');
+            logger_1.logger.error('File path is required');
             process.exit(1);
         }
         if (!(0, fs_1.existsSync)(options.file)) {
-            console.error(`Error: File not found: ${options.file}`);
+            logger_1.logger.error(`File not found: ${options.file}`);
             process.exit(1);
         }
-        console.log(`Importing ${options.type} from ${options.file}...`);
+        logger_1.logger.info(`Importing ${options.type} from ${options.file}...`);
         let result;
         switch (options.type) {
             case 'students':
@@ -72,29 +73,29 @@ program
                 result = await importService_1.importService.importEquipment(options.file);
                 break;
             default:
-                console.error(`Error: Unknown import type: ${options.type}`);
+                logger_1.logger.error(`Unknown import type: ${options.type}`);
                 process.exit(1);
         }
-        console.log('\nImport Results:');
-        console.log(`Total Records: ${result.totalRecords}`);
-        console.log(`Imported: ${result.importedRecords}`);
-        console.log(`Skipped: ${result.skippedRecords}`);
-        console.log(`Errors: ${result.errorRecords}`);
+        logger_1.logger.info('\nImport Results:');
+        logger_1.logger.info(`Total Records: ${result.totalRecords}`);
+        logger_1.logger.info(`Imported: ${result.importedRecords}`);
+        logger_1.logger.info(`Skipped: ${result.skippedRecords}`);
+        logger_1.logger.info(`Errors: ${result.errorRecords}`);
         if (result.errors.length > 0) {
-            console.log('\nErrors:');
-            result.errors.forEach(error => console.log(`- ${error}`));
+            logger_1.logger.info('\nErrors:');
+            result.errors.forEach(error => logger_1.logger.info(`- ${error}`));
         }
         if (result.success) {
-            console.log('\nImport completed successfully!');
+            logger_1.logger.info('\nImport completed successfully!');
             process.exit(0);
         }
         else {
-            console.log('\nImport completed with errors!');
+            logger_1.logger.warn('\nImport completed with errors!');
             process.exit(1);
         }
     }
     catch (error) {
-        console.error(`Error: ${error.message}`);
+        logger_1.logger.error(`Error: ${error.message}`);
         process.exit(1);
     }
 });
@@ -108,41 +109,44 @@ program
     .action(async (options) => {
     try {
         if (!options.all && !options.id) {
-            console.error('Error: Either --id or --all is required');
+            logger_1.logger.error('Either --id or --all is required');
             process.exit(1);
         }
         const barcodeOptions = {
-            format: options.format
+            format: options.format,
         };
         if (options.all) {
-            console.log(`Generating barcodes for all ${options.type}s...`);
+            logger_1.logger.info(`Generating barcodes for all ${options.type}s...`);
             let result;
             switch (options.type) {
                 case 'student':
-                    result = await barcodeService_1.barcodeService.generateAllStudentBarcodes(barcodeOptions);
+                    result =
+                        await barcodeService_1.barcodeService.generateAllStudentBarcodes(barcodeOptions);
                     break;
                 case 'book':
-                    result = await barcodeService_1.barcodeService.generateAllBookBarcodes(barcodeOptions);
+                    result =
+                        await barcodeService_1.barcodeService.generateAllBookBarcodes(barcodeOptions);
                     break;
                 case 'equipment':
-                    result = await barcodeService_1.barcodeService.generateAllEquipmentBarcodes(barcodeOptions);
+                    result =
+                        await barcodeService_1.barcodeService.generateAllEquipmentBarcodes(barcodeOptions);
                     break;
                 default:
-                    console.error(`Error: Unknown barcode type: ${options.type}`);
+                    logger_1.logger.error(`Unknown barcode type: ${options.type}`);
                     process.exit(1);
             }
             if (result.success) {
-                console.log(`Generated ${result.count} barcodes successfully!`);
-                console.log(`Output directory: ${barcodeService_1.barcodeService.getOutputDir()}`);
+                logger_1.logger.info(`Generated ${result.count} barcodes successfully!`);
+                logger_1.logger.info(`Output directory: ${barcodeService_1.barcodeService.getOutputDir()}`);
                 process.exit(0);
             }
             else {
-                console.error(`Error: ${result.error}`);
+                logger_1.logger.error(`Error: ${result.error}`);
                 process.exit(1);
             }
         }
         else {
-            console.log(`Generating barcode for ${options.type} with ID: ${options.id}`);
+            logger_1.logger.info(`Generating barcode for ${options.type} with ID: ${options.id}`);
             let result;
             switch (options.type) {
                 case 'student':
@@ -155,22 +159,22 @@ program
                     result = await barcodeService_1.barcodeService.generateEquipmentBarcode(options.id, barcodeOptions);
                     break;
                 default:
-                    console.error(`Error: Unknown barcode type: ${options.type}`);
+                    logger_1.logger.error(`Unknown barcode type: ${options.type}`);
                     process.exit(1);
             }
             if (result.success) {
-                console.log(`Barcode generated successfully!`);
-                console.log(`Output file: ${result.barcodePath}`);
+                logger_1.logger.info(`Barcode generated successfully!`);
+                logger_1.logger.info(`Output file: ${result.barcodePath}`);
                 process.exit(0);
             }
             else {
-                console.error(`Error: ${result.error}`);
+                logger_1.logger.error(`Error: ${result.error}`);
                 process.exit(1);
             }
         }
     }
     catch (error) {
-        console.error(`Error: ${error.message}`);
+        logger_1.logger.error(`Error: ${error.message}`);
         process.exit(1);
     }
 });
@@ -197,18 +201,18 @@ program
                 defaultFilename = 'equipment_template.csv';
                 break;
             default:
-                console.error(`Error: Unknown template type: ${options.type}`);
+                logger_1.logger.error(`Unknown template type: ${options.type}`);
                 process.exit(1);
         }
         const outputPath = options.output || (0, path_1.join)(process.cwd(), defaultFilename);
         const fs = await Promise.resolve().then(() => __importStar(require('fs')));
         fs.writeFileSync(outputPath, template);
-        console.log(`Template generated successfully!`);
-        console.log(`Output file: ${outputPath}`);
+        logger_1.logger.info(`Template generated successfully!`);
+        logger_1.logger.info(`Output file: ${outputPath}`);
         process.exit(0);
     }
     catch (error) {
-        console.error(`Error: ${error.message}`);
+        logger_1.logger.error(`Error: ${error.message}`);
         process.exit(1);
     }
 });

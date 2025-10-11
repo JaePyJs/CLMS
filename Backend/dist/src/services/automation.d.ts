@@ -1,3 +1,16 @@
+import { AutomationJob, AutomationLog } from '@prisma/client';
+interface QueueSnapshot {
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+}
+interface AutomationSystemHealth {
+    initialized: boolean;
+    scheduledJobs: number;
+    activeQueues: number;
+    redisConnected: boolean;
+}
 export declare class AutomationService {
     private prisma;
     private scheduledJobs;
@@ -5,12 +18,14 @@ export declare class AutomationService {
     private queues;
     private isInitialized;
     constructor();
+    private resolveJobConfig;
+    private ensureJobConfigObject;
     initialize(): Promise<void>;
     private initializeQueues;
     private setupJobProcessors;
     private setupQueueEventListeners;
     private loadScheduledJobs;
-    scheduleJob(job: any): Promise<void>;
+    scheduleJob(job: AutomationJob): Promise<void>;
     private executeJob;
     private executeDailyBackup;
     private executeTeacherNotifications;
@@ -33,11 +48,13 @@ export declare class AutomationService {
     private getNextRunTime;
     private setupCleanupInterval;
     triggerJob(jobId: string, userId?: string): Promise<void>;
-    getJobStatus(jobId: string): Promise<any>;
-    getAllJobs(): Promise<any[]>;
-    getQueueStatus(): Promise<any>;
+    getJobStatus(jobId: string): Promise<(AutomationJob & {
+        AutomationLog: AutomationLog[];
+    }) | null>;
+    getAllJobs(): Promise<AutomationJob[]>;
+    getQueueStatus(): Promise<Record<string, QueueSnapshot>>;
     shutdown(): Promise<void>;
-    getSystemHealth(): any;
+    getSystemHealth(): AutomationSystemHealth;
 }
 export declare const automationService: AutomationService;
 export default automationService;

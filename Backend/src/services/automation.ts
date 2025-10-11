@@ -1,17 +1,62 @@
 import cron from 'node-cron';
-import Bull, { Queue, QueueOptions, Job, JobOptions } from 'bull';
+import Bull, { Queue, QueueOptions, Job } from 'bull';
 import Redis from 'ioredis';
-import { PrismaClient, JobType, JobStatus } from '@prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  AutomationJob,
+  AutomationLog,
+  JobType,
+  JobStatus,
+  ActivityType,
+  ActivityStatus,
+  SessionStatus,
+  EquipmentStatus,
+} from '@prisma/client';
 import { JobExecutionResult, JobConfig } from '@/types';
 import { logger, automationLogger, performanceLogger } from '@/utils/logger';
 import { googleSheetsService } from './googleSheets';
 import { BaseError } from '@/utils/errors';
 
+type QueuePayload = Record<string, unknown>;
+
+interface QueueSnapshot {
+  waiting: number;
+  active: number;
+  completed: number;
+  failed: number;
+}
+
+interface BackupQueueData extends QueuePayload {
+  jobName: string;
+  jobId: string;
+  config?: JobConfig;
+}
+
+interface NotificationQueueData extends QueuePayload {
+  jobName: string;
+  jobId: string;
+  config?: JobConfig;
+}
+
+interface SyncQueueData extends QueuePayload {
+  jobName: string;
+  jobId: string;
+  activities?: unknown;
+}
+
+interface AutomationSystemHealth {
+  initialized: boolean;
+  scheduledJobs: number;
+  activeQueues: number;
+  redisConnected: boolean;
+}
+
 export class AutomationService {
   private prisma: PrismaClient;
   private scheduledJobs: Map<string, cron.ScheduledTask> = new Map();
   private redis: Redis;
-  private queues: Map<string, Queue> = new Map();
+  private queues: Map<string, Queue<QueuePayload>> = new Map();
   private isInitialized = false;
 
   constructor() {
@@ -23,6 +68,38 @@ export class AutomationService {
       enableReadyCheck: false,
       lazyConnect: true,
     });
+  }
+
+  private resolveJobConfig(rawConfig: Prisma.JsonValue | null): JobConfig {
+    if (rawConfig === null || rawConfig === undefined) {
+      return {};
+    }
+
+    if (typeof rawConfig === 'string') {
+      try {
+        const parsed = JSON.parse(rawConfig) as unknown;
+        return this.ensureJobConfigObject(parsed);
+      } catch (error) {
+        logger.warn('Failed to parse automation job config from string', {
+          error: (error as Error).message,
+        });
+        return {};
+      }
+    }
+
+    if (Array.isArray(rawConfig)) {
+      return { values: rawConfig };
+    }
+
+    return this.ensureJobConfigObject(rawConfig);
+  }
+
+  private ensureJobConfigObject(value: unknown): JobConfig {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as JobConfig;
+    }
+
+    return {};
   }
 
   async initialize(): Promise<void> {
@@ -115,7 +192,7 @@ export class AutomationService {
     ];
 
     for (const config of queueConfigs) {
-      const queue = new Bull(config.name, {
+      const queue = new Bull<QueuePayload>(config.name, {
         redis: this.redis.options,
         ...config.options,
       });
@@ -131,7 +208,10 @@ export class AutomationService {
     }
   }
 
-  private setupJobProcessors(queue: Queue, queueName: string): void {
+  private setupJobProcessors(
+    queue: Queue<QueuePayload>,
+    queueName: string,
+  ): void {
     switch (queueName) {
       case 'backup':
         queue.process('daily-backup', this.processDailyBackup.bind(this));
@@ -168,8 +248,11 @@ export class AutomationService {
     }
   }
 
-  private setupQueueEventListeners(queue: Queue, queueName: string): void {
-    queue.on('completed', (job: Job, result: any) => {
+  private setupQueueEventListeners(
+    queue: Queue<QueuePayload>,
+    _queueName: string,
+  ): void {
+    queue.on('completed', (job: Job<QueuePayload>, result: unknown) => {
       automationLogger.jobSuccess(
         job.name,
         job.id.toString(),
@@ -178,7 +261,7 @@ export class AutomationService {
       );
     });
 
-    queue.on('failed', (job: Job, err: Error) => {
+    queue.on('failed', (job: Job<QueuePayload>, err: Error) => {
       automationLogger.jobFailure(
         job.name,
         job.id.toString(),
@@ -187,7 +270,7 @@ export class AutomationService {
       );
     });
 
-    queue.on('stalled', (job: Job) => {
+    queue.on('stalled', (job: Job<QueuePayload>) => {
       logger.warn(`Job stalled: ${job.name} (${job.id})`);
     });
 
@@ -214,7 +297,7 @@ export class AutomationService {
     }
   }
 
-  async scheduleJob(job: any): Promise<void> {
+  async scheduleJob(job: AutomationJob): Promise<void> {
     try {
       // Validate cron expression
       if (!cron.validate(job.schedule)) {
@@ -230,7 +313,7 @@ export class AutomationService {
       const scheduledTask = cron.schedule(
         job.schedule,
         () => {
-          this.executeJob(job);
+          void this.executeJob(job);
         },
         {
           scheduled: false,
@@ -259,60 +342,56 @@ export class AutomationService {
     }
   }
 
-  private async executeJob(job: any): Promise<void> {
+  private async executeJob(job: AutomationJob): Promise<void> {
     const startTime = performanceLogger.start('job_execution', {
       jobName: job.name,
     });
 
     try {
+      const jobConfig = this.resolveJobConfig(job.config);
+
       // Update job status
       await this.prisma.automationJob.update({
         where: { id: job.id },
         data: { status: JobStatus.RUNNING, lastRunAt: new Date() },
       });
 
-      automationLogger.jobStart(
-        job.name,
-        job.id,
-        typeof job.config === 'string'
-          ? JSON.parse(job.config)
-          : job.config || {},
-      );
+      automationLogger.jobStart(job.name, job.id, jobConfig);
 
       // Execute job based on type
       let result: JobExecutionResult;
 
       switch (job.type) {
         case JobType.DAILY_BACKUP:
-          result = await this.executeDailyBackup(job);
+          result = await this.executeDailyBackup(job, jobConfig);
           break;
 
         case JobType.TEACHER_NOTIFICATIONS:
-          result = await this.executeTeacherNotifications(job);
+          result = await this.executeTeacherNotifications(job, jobConfig);
           break;
 
         case JobType.GOOGLE_SHEETS_SYNC:
-          result = await this.executeGoogleSheetsSync(job);
+          result = await this.executeGoogleSheetsSync(job, jobConfig);
           break;
 
         case JobType.SESSION_EXPIRY_CHECK:
-          result = await this.executeSessionExpiryCheck(job);
+          result = await this.executeSessionExpiryCheck(job, jobConfig);
           break;
 
         case JobType.OVERDUE_NOTIFICATIONS:
-          result = await this.executeOverdueNotifications(job);
+          result = await this.executeOverdueNotifications(job, jobConfig);
           break;
 
         case JobType.WEEKLY_CLEANUP:
-          result = await this.executeWeeklyCleanup(job);
+          result = await this.executeWeeklyCleanup(job, jobConfig);
           break;
 
         case JobType.MONTHLY_REPORT:
-          result = await this.executeMonthlyReport(job);
+          result = await this.executeMonthlyReport(job, jobConfig);
           break;
 
         case JobType.INTEGRITY_AUDIT:
-          result = await this.executeIntegrityAudit(job);
+          result = await this.executeIntegrityAudit(job, jobConfig);
           break;
 
         default:
@@ -378,7 +457,10 @@ export class AutomationService {
   }
 
   // Job execution methods
-  private async executeDailyBackup(job: any): Promise<JobExecutionResult> {
+  private async executeDailyBackup(
+    job: AutomationJob,
+    config: JobConfig,
+  ): Promise<JobExecutionResult> {
     const startTime = Date.now();
 
     try {
@@ -386,10 +468,7 @@ export class AutomationService {
       await this.queues.get('backup')?.add('daily-backup', {
         jobName: job.name,
         jobId: job.id,
-        config:
-          typeof job.config === 'string'
-            ? JSON.parse(job.config)
-            : job.config || {},
+        config,
       });
 
       return {
@@ -409,7 +488,8 @@ export class AutomationService {
   }
 
   private async executeTeacherNotifications(
-    job: any,
+    job: AutomationJob,
+    config: JobConfig,
   ): Promise<JobExecutionResult> {
     const startTime = Date.now();
 
@@ -418,10 +498,7 @@ export class AutomationService {
       await this.queues.get('notifications')?.add('teacher-notifications', {
         jobName: job.name,
         jobId: job.id,
-        config:
-          typeof job.config === 'string'
-            ? JSON.parse(job.config)
-            : job.config || {},
+        config,
       });
 
       return {
@@ -439,7 +516,10 @@ export class AutomationService {
     }
   }
 
-  private async executeGoogleSheetsSync(job: any): Promise<JobExecutionResult> {
+  private async executeGoogleSheetsSync(
+    job: AutomationJob,
+    _config: JobConfig,
+  ): Promise<JobExecutionResult> {
     const startTime = Date.now();
 
     try {
@@ -464,7 +544,7 @@ export class AutomationService {
 
       // Add to sync queue
       await this.queues.get('sync')?.add('google-sheets-sync', {
-        activities: activities,
+        activities,
         jobName: job.name,
         jobId: job.id,
       });
@@ -486,7 +566,8 @@ export class AutomationService {
   }
 
   private async executeSessionExpiryCheck(
-    job: any,
+    _job: AutomationJob,
+    _config: JobConfig,
   ): Promise<JobExecutionResult> {
     const startTime = Date.now();
     let expiredSessions = 0;
@@ -496,7 +577,7 @@ export class AutomationService {
       const now = new Date();
       const expiredSessionsData = await this.prisma.equipmentSession.findMany({
         where: {
-          status: 'ACTIVE',
+          status: SessionStatus.ACTIVE,
           plannedEnd: { lt: now },
         },
         include: {
@@ -510,7 +591,7 @@ export class AutomationService {
         await this.prisma.equipmentSession.update({
           where: { id: session.id },
           data: {
-            status: 'EXPIRED',
+            status: SessionStatus.EXPIRED,
             sessionEnd: now,
             actualDuration: Math.floor(
               (now.getTime() - session.sessionStart.getTime()) / 60000,
@@ -522,14 +603,18 @@ export class AutomationService {
         await this.prisma.activity.create({
           data: {
             studentId: session.studentId,
-            activityType: 'COMPUTER_USE', // Adjust based on equipment type
+            studentName:
+              `${session.student.firstName} ${session.student.lastName}`.trim(),
+            studentGradeLevel: session.student.gradeLevel,
+            studentGradeCategory: session.student.gradeCategory,
+            activityType: ActivityType.COMPUTER_USE, // Adjust based on equipment type
             equipmentId: session.equipmentId,
             startTime: session.sessionStart,
             endTime: now,
             durationMinutes: Math.floor(
               (now.getTime() - session.sessionStart.getTime()) / 60000,
             ),
-            status: 'EXPIRED',
+            status: ActivityStatus.EXPIRED,
             processedBy: 'SYSTEM',
           },
         });
@@ -543,7 +628,7 @@ export class AutomationService {
           where: {
             id: { in: expiredSessionsData.map(s => s.equipmentId) },
           },
-          data: { status: 'AVAILABLE' },
+          data: { status: EquipmentStatus.AVAILABLE },
         });
       }
 
@@ -564,9 +649,11 @@ export class AutomationService {
   }
 
   // Queue processors
-  private async processDailyBackup(job: Job): Promise<JobExecutionResult> {
+  private async processDailyBackup(
+    job: Job<QueuePayload>,
+  ): Promise<JobExecutionResult> {
     const startTime = Date.now();
-    const { jobName, jobId } = job.data;
+    const { jobName } = job.data as BackupQueueData;
 
     try {
       // Implementation would go here
@@ -604,9 +691,11 @@ export class AutomationService {
     }
   }
 
-  private async processGoogleSheetsSync(job: Job): Promise<JobExecutionResult> {
+  private async processGoogleSheetsSync(
+    job: Job<QueuePayload>,
+  ): Promise<JobExecutionResult> {
     const startTime = Date.now();
-    const { jobName, jobId } = job.data;
+    const { jobName } = job.data as SyncQueueData;
 
     try {
       // Sync activities to Google Sheets
@@ -644,10 +733,10 @@ export class AutomationService {
   }
 
   private async processTeacherNotifications(
-    job: Job,
+    job: Job<QueuePayload>,
   ): Promise<JobExecutionResult> {
     const startTime = Date.now();
-    const { jobName } = job.data;
+    const { jobName } = job.data as NotificationQueueData;
 
     try {
       // Implementation would generate teacher notifications
@@ -676,7 +765,7 @@ export class AutomationService {
   }
 
   private async processSessionExpiryCheck(
-    job: Job,
+    _job: Job<QueuePayload>,
   ): Promise<JobExecutionResult> {
     // This would be similar to executeSessionExpiryCheck
     // Implementation details omitted for brevity
@@ -688,7 +777,7 @@ export class AutomationService {
   }
 
   private async processOverdueNotifications(
-    job: Job,
+    _job: Job<QueuePayload>,
   ): Promise<JobExecutionResult> {
     // Implementation for overdue notifications
     return {
@@ -698,7 +787,9 @@ export class AutomationService {
     };
   }
 
-  private async processWeeklyCleanup(job: Job): Promise<JobExecutionResult> {
+  private async processWeeklyCleanup(
+    _job: Job<QueuePayload>,
+  ): Promise<JobExecutionResult> {
     // Implementation for weekly cleanup
     return {
       success: true,
@@ -707,7 +798,9 @@ export class AutomationService {
     };
   }
 
-  private async processIntegrityAudit(job: Job): Promise<JobExecutionResult> {
+  private async processIntegrityAudit(
+    _job: Job<QueuePayload>,
+  ): Promise<JobExecutionResult> {
     // Implementation for integrity audit
     return {
       success: true,
@@ -716,7 +809,9 @@ export class AutomationService {
     };
   }
 
-  private async processDatabaseBackup(job: Job): Promise<JobExecutionResult> {
+  private async processDatabaseBackup(
+    _job: Job<QueuePayload>,
+  ): Promise<JobExecutionResult> {
     // Implementation for database backup
     return {
       success: true,
@@ -725,7 +820,9 @@ export class AutomationService {
     };
   }
 
-  private async processActivitySync(job: Job): Promise<JobExecutionResult> {
+  private async processActivitySync(
+    _job: Job<QueuePayload>,
+  ): Promise<JobExecutionResult> {
     // Implementation for activity sync
     return {
       success: true,
@@ -735,7 +832,8 @@ export class AutomationService {
   }
 
   private async executeOverdueNotifications(
-    job: any,
+    _job: AutomationJob,
+    _config: JobConfig,
   ): Promise<JobExecutionResult> {
     // Similar to executeTeacherNotifications
     return {
@@ -744,7 +842,10 @@ export class AutomationService {
     };
   }
 
-  private async executeWeeklyCleanup(job: any): Promise<JobExecutionResult> {
+  private async executeWeeklyCleanup(
+    _job: AutomationJob,
+    _config: JobConfig,
+  ): Promise<JobExecutionResult> {
     // Similar to executeTeacherNotifications
     return {
       success: true,
@@ -752,7 +853,10 @@ export class AutomationService {
     };
   }
 
-  private async executeMonthlyReport(job: any): Promise<JobExecutionResult> {
+  private async executeMonthlyReport(
+    _job: AutomationJob,
+    _config: JobConfig,
+  ): Promise<JobExecutionResult> {
     // Similar to executeTeacherNotifications
     return {
       success: true,
@@ -760,7 +864,10 @@ export class AutomationService {
     };
   }
 
-  private async executeIntegrityAudit(job: any): Promise<JobExecutionResult> {
+  private async executeIntegrityAudit(
+    _job: AutomationJob,
+    _config: JobConfig,
+  ): Promise<JobExecutionResult> {
     // Similar to executeTeacherNotifications
     return {
       success: true,
@@ -798,12 +905,11 @@ export class AutomationService {
 
   private getNextRunTime(cronExpression: string): Date | null {
     try {
-      // Simple implementation - in production, use a proper cron parser
-      const task = cron.schedule(cronExpression, () => {}, {
+      const scheduledTask = cron.schedule(cronExpression, () => {}, {
         scheduled: false,
       });
-      // This is a placeholder - actual implementation would calculate next run time
-      return new Date(Date.now() + 24 * 60 * 60 * 1000); // Tomorrow
+      scheduledTask.stop();
+      return new Date(Date.now() + 24 * 60 * 60 * 1000);
     } catch {
       return null;
     }
@@ -850,13 +956,7 @@ export class AutomationService {
         throw new BaseError(`Job is disabled: ${job.name}`, 400);
       }
 
-      await this.executeJob({
-        ...job,
-        config:
-          typeof job.config === 'string'
-            ? JSON.parse(job.config)
-            : job.config || {},
-      });
+      await this.executeJob(job);
 
       logger.info(`Manually triggered job: ${job.name}`, { userId });
     } catch (error) {
@@ -868,7 +968,9 @@ export class AutomationService {
     }
   }
 
-  async getJobStatus(jobId: string): Promise<any> {
+  async getJobStatus(
+    jobId: string,
+  ): Promise<(AutomationJob & { AutomationLog: AutomationLog[] }) | null> {
     try {
       const job = await this.prisma.automationJob.findUnique({
         where: { id: jobId },
@@ -890,7 +992,7 @@ export class AutomationService {
     }
   }
 
-  async getAllJobs(): Promise<any[]> {
+  async getAllJobs(): Promise<AutomationJob[]> {
     try {
       return await this.prisma.automationJob.findMany({
         orderBy: { name: 'asc' },
@@ -903,8 +1005,8 @@ export class AutomationService {
     }
   }
 
-  async getQueueStatus(): Promise<any> {
-    const queueStatus: any = {};
+  async getQueueStatus(): Promise<Record<string, QueueSnapshot>> {
+    const queueStatus: Record<string, QueueSnapshot> = {};
 
     for (const [name, queue] of this.queues) {
       const waiting = await queue.getWaiting();
@@ -927,13 +1029,13 @@ export class AutomationService {
     logger.info('Shutting down automation service');
 
     // Stop all scheduled jobs
-    for (const [jobId, task] of this.scheduledJobs) {
+    for (const task of this.scheduledJobs.values()) {
       task.stop();
     }
     this.scheduledJobs.clear();
 
     // Close all queues
-    for (const [name, queue] of this.queues) {
+    for (const queue of this.queues.values()) {
       await queue.close();
     }
     this.queues.clear();
@@ -947,7 +1049,7 @@ export class AutomationService {
     logger.info('Automation service shutdown complete');
   }
 
-  getSystemHealth(): any {
+  getSystemHealth(): AutomationSystemHealth {
     return {
       initialized: this.isInitialized,
       scheduledJobs: this.scheduledJobs.size,

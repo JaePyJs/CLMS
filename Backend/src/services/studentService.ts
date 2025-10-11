@@ -1,6 +1,28 @@
 import { prisma } from '@/utils/prisma';
 import { logger } from '@/utils/logger';
-import { GradeCategory, ActivityType, ActivityStatus } from '@prisma/client';
+import {
+  GradeCategory,
+  ActivityType,
+  ActivityStatus,
+  Prisma,
+} from '@prisma/client';
+
+export interface GetStudentsOptions {
+  gradeCategory?: GradeCategory;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+export interface GetStudentActivitiesOptions {
+  studentId?: string;
+  startDate?: Date;
+  endDate?: Date;
+  activityType?: ActivityType;
+  status?: ActivityStatus;
+  page?: number;
+  limit?: number;
+}
 
 // Get default time limit based on grade category
 export function getDefaultTimeLimit(gradeCategory: GradeCategory): number {
@@ -49,20 +71,48 @@ export async function getStudentByBarcode(barcode: string) {
   }
 }
 
+// Get student by ID
+export async function getStudentById(id: string) {
+  try {
+    const student = await prisma.student.findUnique({
+      where: { id },
+      include: {
+        activities: {
+          where: { status: ActivityStatus.ACTIVE },
+          orderBy: { startTime: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!student) {
+      return null;
+    }
+
+    // Get default time limit based on grade category
+    const defaultTimeLimit = getDefaultTimeLimit(student.gradeCategory);
+
+    return {
+      ...student,
+      defaultTimeLimit,
+      hasActiveSession: student.activities.length > 0,
+    };
+  } catch (error) {
+    logger.error('Error fetching student by ID', {
+      error: (error as Error).message,
+      id,
+    });
+    throw error;
+  }
+}
+
 // Get all students with optional filtering
-export async function getStudents(
-  options: {
-    gradeCategory?: GradeCategory;
-    isActive?: boolean;
-    page?: number;
-    limit?: number;
-  } = {},
-) {
+export async function getStudents(options: GetStudentsOptions = {}) {
   try {
     const { gradeCategory, isActive, page = 1, limit = 50 } = options;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.StudentWhereInput = {};
 
     if (gradeCategory) {
       where.gradeCategory = gradeCategory;
@@ -84,6 +134,7 @@ export async function getStudents(
 
     return {
       students,
+      total, // Add total directly for backward compatibility with tests
       pagination: {
         page,
         limit,
@@ -110,6 +161,17 @@ export async function createStudent(data: {
   section?: string;
 }) {
   try {
+    const existing = await prisma.student.findUnique({
+      where: { studentId: data.studentId },
+    });
+
+    if (existing) {
+      logger.warn('Attempted to create duplicate student', {
+        studentId: data.studentId,
+      });
+      throw new Error('Student ID already exists');
+    }
+
     const student = await prisma.student.create({
       data,
     });
@@ -119,6 +181,9 @@ export async function createStudent(data: {
     });
     return student;
   } catch (error) {
+    if ((error as Error).message === 'Student ID already exists') {
+      throw error;
+    }
     logger.error('Error creating student', {
       error: (error as Error).message,
       data,
@@ -129,7 +194,7 @@ export async function createStudent(data: {
 
 // Update student
 export async function updateStudent(
-  studentId: string,
+  identifier: string,
   data: {
     firstName?: string;
     lastName?: string;
@@ -140,17 +205,42 @@ export async function updateStudent(
   },
 ) {
   try {
+    // Check if identifier looks like a database ID (cuid) or studentId
+    // Prisma cuIDs are typically 25 characters long and start with 'c'
+    const isDatabaseId =
+      identifier.length >= 25 && /^[a-z0-9]{25}$/.test(identifier);
+
+    const whereClause = isDatabaseId
+      ? { id: identifier }
+      : { studentId: identifier };
+
+    const existing = await prisma.student.findUnique({
+      where: whereClause,
+    });
+
+    if (!existing) {
+      logger.warn('Attempted to update non-existent student', { identifier });
+      return null;
+    }
+
     const student = await prisma.student.update({
-      where: { studentId },
+      where: whereClause,
       data,
     });
 
-    logger.info('Student updated successfully', { studentId });
+    logger.info('Student updated successfully', { identifier });
     return student;
   } catch (error) {
+    // If record not found, return null instead of throwing
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      return null;
+    }
     logger.error('Error updating student', {
       error: (error as Error).message,
-      studentId,
+      identifier,
       data,
     });
     throw error;
@@ -158,18 +248,43 @@ export async function updateStudent(
 }
 
 // Delete student
-export async function deleteStudent(studentId: string) {
+export async function deleteStudent(identifier: string) {
   try {
-    await prisma.student.delete({
-      where: { studentId },
+    // Check if identifier looks like a database ID (cuid) or studentId
+    // Prisma cuIDs are typically 25 characters long and start with 'c'
+    const isDatabaseId =
+      identifier.length >= 25 && /^[a-z0-9]{25}$/.test(identifier);
+
+    const whereClause = isDatabaseId
+      ? { id: identifier }
+      : { studentId: identifier };
+
+    const existing = await prisma.student.findUnique({
+      where: whereClause,
     });
 
-    logger.info('Student deleted successfully', { studentId });
-    return true;
+    if (!existing) {
+      logger.warn('Attempted to delete non-existent student', { identifier });
+      return null;
+    }
+
+    const student = await prisma.student.delete({
+      where: whereClause,
+    });
+
+    logger.info('Student deleted successfully', { identifier });
+    return student;
   } catch (error) {
+    // If record not found, return null instead of throwing
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      return null;
+    }
     logger.error('Error deleting student', {
       error: (error as Error).message,
-      studentId,
+      identifier,
     });
     throw error;
   }
@@ -177,15 +292,7 @@ export async function deleteStudent(studentId: string) {
 
 // Get student activities
 export async function getStudentActivities(
-  options: {
-    studentId?: string;
-    startDate?: Date;
-    endDate?: Date;
-    activityType?: ActivityType;
-    status?: ActivityStatus;
-    page?: number;
-    limit?: number;
-  } = {},
+  options: GetStudentActivitiesOptions = {},
 ) {
   try {
     const {
@@ -199,16 +306,21 @@ export async function getStudentActivities(
     } = options;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.ActivityWhereInput = {};
 
     if (studentId) {
       where.studentId = studentId;
     }
 
     if (startDate || endDate) {
-      where.startTime = {};
-      if (startDate) where.startTime.gte = startDate;
-      if (endDate) where.startTime.lte = endDate;
+      const startTimeFilter: Prisma.DateTimeFilter = {};
+      if (startDate) {
+        startTimeFilter.gte = startDate;
+      }
+      if (endDate) {
+        startTimeFilter.lte = endDate;
+      }
+      where.startTime = startTimeFilter;
     }
 
     if (activityType) {
@@ -329,6 +441,9 @@ export async function createStudentActivity(data: {
     const activity = await prisma.activity.create({
       data: {
         studentId: student.id,
+        studentName: `${student.firstName} ${student.lastName}`.trim(),
+        studentGradeLevel: student.gradeLevel,
+        studentGradeCategory: student.gradeCategory,
         activityType: data.activityType,
         equipmentId: data.equipmentId || null,
         startTime,

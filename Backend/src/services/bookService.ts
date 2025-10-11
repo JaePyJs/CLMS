@@ -1,18 +1,28 @@
 import { prisma } from '@/utils/prisma';
 import { logger } from '@/utils/logger';
-import { CheckoutStatus } from '@prisma/client';
+import { CheckoutStatus, Prisma } from '@prisma/client';
+
+export interface GetBooksOptions {
+  category?: string;
+  subcategory?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface GetBookCheckoutsOptions {
+  bookId?: string;
+  studentId?: string;
+  status?: CheckoutStatus;
+  startDate?: Date;
+  endDate?: Date;
+  page?: number;
+  limit?: number;
+}
 
 // Get all books with optional filtering
-export async function getBooks(
-  options: {
-    category?: string;
-    subcategory?: string;
-    isActive?: boolean;
-    page?: number;
-    limit?: number;
-    search?: string;
-  } = {},
-) {
+export async function getBooks(options: GetBooksOptions = {}) {
   try {
     const {
       category,
@@ -24,7 +34,7 @@ export async function getBooks(
     } = options;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.BookWhereInput = {};
 
     if (category) {
       where.category = category;
@@ -40,10 +50,10 @@ export async function getBooks(
 
     if (search) {
       where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { author: { contains: search, mode: 'insensitive' } },
-        { accessionNo: { contains: search, mode: 'insensitive' } },
-        { isbn: { contains: search, mode: 'insensitive' } },
+        { title: { contains: search } },
+        { author: { contains: search } },
+        { accessionNo: { contains: search } },
+        { isbn: { contains: search } },
       ];
     }
 
@@ -404,17 +414,7 @@ export async function returnBook(checkoutId: string) {
 }
 
 // Get book checkouts
-export async function getBookCheckouts(
-  options: {
-    bookId?: string;
-    studentId?: string;
-    status?: CheckoutStatus;
-    startDate?: Date;
-    endDate?: Date;
-    page?: number;
-    limit?: number;
-  } = {},
-) {
+export async function getBookCheckouts(options: GetBookCheckoutsOptions = {}) {
   try {
     const {
       bookId,
@@ -427,7 +427,7 @@ export async function getBookCheckouts(
     } = options;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.BookCheckoutWhereInput = {};
 
     if (bookId) {
       where.bookId = bookId;
@@ -442,9 +442,10 @@ export async function getBookCheckouts(
     }
 
     if (startDate || endDate) {
-      where.checkoutDate = {};
-      if (startDate) where.checkoutDate.gte = startDate;
-      if (endDate) where.checkoutDate.lte = endDate;
+      where.checkoutDate = {
+        ...(startDate ? { gte: startDate } : {}),
+        ...(endDate ? { lte: endDate } : {}),
+      };
     }
 
     const [checkouts, total] = await Promise.all([

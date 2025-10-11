@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const scanService_1 = require("@/services/scanService");
+const client_1 = require("@prisma/client");
 const logger_1 = require("@/utils/logger");
 const router = (0, express_1.Router)();
 router.post('/', async (req, res) => {
@@ -282,6 +283,180 @@ router.get('/status/equipment/:id', async (req, res) => {
     }
     catch (error) {
         logger_1.logger.error('Error getting equipment status', { error: error.message, id: req.params.id });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+router.post('/student/register', async (req, res) => {
+    try {
+        const { studentId, firstName, lastName, gradeLevel, gradeCategory, section } = req.body;
+        if (!studentId || !firstName || !lastName || !gradeLevel || !gradeCategory) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: studentId, firstName, lastName, gradeLevel, gradeCategory',
+                timestamp: new Date().toISOString()
+            });
+        }
+        const student = await (0, scanService_1.registerStudent)({
+            studentId,
+            firstName,
+            lastName,
+            gradeLevel,
+            gradeCategory,
+            section
+        });
+        const response = {
+            success: true,
+            data: student,
+            message: 'Student registered successfully',
+            timestamp: new Date().toISOString()
+        };
+        res.status(201).json(response);
+    }
+    catch (error) {
+        logger_1.logger.error('Error registering student', { error: error.message, body: req.body });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+router.post('/student/scan', async (req, res) => {
+    try {
+        const { studentId } = req.body;
+        if (!studentId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required field: studentId',
+                timestamp: new Date().toISOString()
+            });
+        }
+        const result = await (0, scanService_1.scanStudentBarcode)(studentId);
+        const response = {
+            success: true,
+            data: result,
+            timestamp: new Date().toISOString()
+        };
+        res.json(response);
+    }
+    catch (error) {
+        logger_1.logger.error('Error scanning student barcode', { error: error.message, body: req.body });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+router.get('/student/:studentId/duplicate-check', async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        if (!studentId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required field: studentId',
+                timestamp: new Date().toISOString()
+            });
+        }
+        const isDuplicate = await (0, scanService_1.checkDuplicateScan)(studentId);
+        const response = {
+            success: true,
+            data: { isDuplicate },
+            timestamp: new Date().toISOString()
+        };
+        res.json(response);
+    }
+    catch (error) {
+        logger_1.logger.error('Error checking duplicate scan', { error: error.message, studentId: req.params.studentId });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+router.post('/student/self-checkin', async (req, res) => {
+    try {
+        const { studentId, firstName, lastName, gradeLevel, gradeCategory, section } = req.body;
+        if (!studentId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required field: studentId',
+                timestamp: new Date().toISOString()
+            });
+        }
+        const scanResult = await (0, scanService_1.scanStudentBarcode)(studentId);
+        if (scanResult.data.requiresRegistration) {
+            if (!firstName || !lastName || !gradeLevel || !gradeCategory) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Student not found and missing registration data. Please provide: firstName, lastName, gradeLevel, gradeCategory',
+                    timestamp: new Date().toISOString()
+                });
+            }
+            await (0, scanService_1.registerStudent)({
+                studentId,
+                firstName,
+                lastName,
+                gradeLevel,
+                gradeCategory,
+                section
+            });
+        }
+        const activity = await (0, scanService_1.processStudentCheckIn)(studentId, client_1.ActivityType.GENERAL_VISIT);
+        const response = {
+            success: true,
+            data: {
+                activity,
+                wasRegistered: scanResult.data.requiresRegistration,
+                isDuplicate: scanResult.data.isDuplicate
+            },
+            message: scanResult.data.requiresRegistration
+                ? 'Student registered and checked in successfully'
+                : 'Student checked in successfully',
+            timestamp: new Date().toISOString()
+        };
+        res.status(201).json(response);
+    }
+    catch (error) {
+        logger_1.logger.error('Error in self-service check-in', { error: error.message, body: req.body });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+router.post('/student/self-checkout', async (req, res) => {
+    try {
+        const { studentId } = req.body;
+        if (!studentId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required field: studentId',
+                timestamp: new Date().toISOString()
+            });
+        }
+        const activity = await (0, scanService_1.processStudentCheckOut)(studentId);
+        const response = {
+            success: true,
+            data: activity,
+            message: 'Student checked out successfully',
+            timestamp: new Date().toISOString()
+        };
+        res.json(response);
+    }
+    catch (error) {
+        logger_1.logger.error('Error in self-service check-out', { error: error.message, body: req.body });
         res.status(500).json({
             success: false,
             error: 'Internal server error',

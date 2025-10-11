@@ -53,7 +53,7 @@ class OfflineQueue {
   }
 
   // Add item to queue
-  async addToQueue(item: Omit<QueueItem, 'id' | 'timestamp' | 'retries'>) {
+  async addToQueue(item: Omit<QueueItem, 'id' | 'timestamp' | 'retries' | 'maxRetries'>) {
     const db = await this.init()
     const queueItem: QueueItem = {
       ...item,
@@ -213,12 +213,12 @@ export const initializeOfflineQueue = () => {
 
   // Listen for online/offline events
   window.addEventListener('online', () => {
-    console.log('App is online, processing queue...')
+    // App is online, processing queue...
     offlineQueue.processQueue()
   })
 
   window.addEventListener('offline', () => {
-    console.log('App is offline, queueing actions...')
+    // App is offline, queueing actions...
   })
 
   // Process queue on app start if online

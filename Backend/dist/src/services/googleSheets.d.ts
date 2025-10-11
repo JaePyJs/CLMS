@@ -1,3 +1,12 @@
+import { GoogleSheetCellValue } from '@/types';
+interface DailyReportData {
+    date: string;
+    totalActivities: number;
+    activitiesByType: Record<string, number>;
+    activitiesByGrade: Record<string, number>;
+    equipmentUsage: number;
+    uniqueStudents: number;
+}
 export declare class GoogleSheetsService {
     private auth;
     private sheets;
@@ -40,17 +49,19 @@ export declare class GoogleSheetsService {
         error?: string;
     }>;
     private updateSheet;
-    getSheetData(sheetName: string, range?: string): Promise<any[][]>;
+    getSheetData(sheetName: string, range?: string): Promise<GoogleSheetCellValue[][]>;
     getSpreadsheetInfo(): Promise<{
         title: string;
         sheets: string[];
     }>;
     generateDailyReport(date?: Date): Promise<{
         success: boolean;
-        data?: any;
+        data?: DailyReportData;
         error?: string;
     }>;
-    logAutomationTask(taskType: string, status: 'success' | 'error' | 'info' | 'warning' | 'BACKUP' | 'SYNC' | 'NOTIFICATION', message: string, data?: any): Promise<void>;
+    private ensureSheetHeaders;
+    private appendDailyReport;
+    logAutomationTask(taskType: string, status: 'success' | 'error' | 'info' | 'warning' | 'BACKUP' | 'SYNC' | 'NOTIFICATION', message: string, data?: unknown): Promise<void>;
     syncStudentActivities(): Promise<{
         success: boolean;
         recordsProcessed?: number;

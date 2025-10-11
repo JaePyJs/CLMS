@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
         const { gradeCategory, isActive, page = '1', limit = '50' } = req.query;
         const options = {
             page: parseInt(page),
-            limit: parseInt(limit)
+            limit: parseInt(limit),
         };
         if (gradeCategory) {
             options.gradeCategory = gradeCategory;
@@ -21,17 +21,19 @@ router.get('/', async (req, res) => {
         const response = {
             success: true,
             data: result,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error fetching students', { error: error.message });
+        logger_1.logger.error('Error fetching students', {
+            error: error.message,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -42,7 +44,7 @@ router.get('/:id', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Student ID is required',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const student = await (0, studentService_1.getStudentByBarcode)(id);
@@ -50,34 +52,41 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: 'Student not found',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const response = {
             success: true,
             data: student,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error fetching student', { error: error.message, id: req.params.id });
+        logger_1.logger.error('Error fetching student', {
+            error: error.message,
+            id: req.params.id,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
 router.post('/', async (req, res) => {
     try {
-        const { studentId, firstName, lastName, gradeLevel, gradeCategory, section } = req.body;
-        if (!studentId || !firstName || !lastName || !gradeLevel || !gradeCategory) {
+        const { studentId, firstName, lastName, gradeLevel, gradeCategory, section, } = req.body;
+        if (!studentId ||
+            !firstName ||
+            !lastName ||
+            !gradeLevel ||
+            !gradeCategory) {
             return res.status(400).json({
                 success: false,
                 error: 'Missing required fields',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const student = await (0, studentService_1.createStudent)({
@@ -86,23 +95,26 @@ router.post('/', async (req, res) => {
             lastName,
             gradeLevel,
             gradeCategory,
-            section
+            section,
         });
         const response = {
             success: true,
             data: student,
             message: 'Student created successfully',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.status(201).json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error creating student', { error: error.message, body: req.body });
+        logger_1.logger.error('Error creating student', {
+            error: error.message,
+            body: req.body,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -113,33 +125,37 @@ router.put('/:id', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Student ID is required',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
-        const { firstName, lastName, gradeLevel, gradeCategory, section, isActive } = req.body;
+        const { firstName, lastName, gradeLevel, gradeCategory, section, isActive, } = req.body;
         const student = await (0, studentService_1.updateStudent)(id, {
             firstName,
             lastName,
             gradeLevel,
             gradeCategory,
             section,
-            isActive
+            isActive,
         });
         const response = {
             success: true,
             data: student,
             message: 'Student updated successfully',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error updating student', { error: error.message, id: req.params.id, body: req.body });
+        logger_1.logger.error('Error updating student', {
+            error: error.message,
+            id: req.params.id,
+            body: req.body,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -150,33 +166,36 @@ router.delete('/:id', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Student ID is required',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         await (0, studentService_1.deleteStudent)(id);
         const response = {
             success: true,
             message: 'Student deleted successfully',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error deleting student', { error: error.message, id: req.params.id });
+        logger_1.logger.error('Error deleting student', {
+            error: error.message,
+            id: req.params.id,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
 router.get('/activities/all', async (req, res) => {
     try {
-        const { studentId, startDate, endDate, activityType, status, page = '1', limit = '50' } = req.query;
+        const { studentId, startDate, endDate, activityType, status, page = '1', limit = '50', } = req.query;
         const options = {
             page: parseInt(page),
-            limit: parseInt(limit)
+            limit: parseInt(limit),
         };
         if (studentId) {
             options.studentId = studentId;
@@ -197,17 +216,20 @@ router.get('/activities/all', async (req, res) => {
         const response = {
             success: true,
             data: result,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error fetching student activities', { error: error.message, query: req.query });
+        logger_1.logger.error('Error fetching student activities', {
+            error: error.message,
+            query: req.query,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -217,17 +239,19 @@ router.get('/activities/active', async (req, res) => {
         const response = {
             success: true,
             data: activities,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error fetching active sessions', { error: error.message });
+        logger_1.logger.error('Error fetching active sessions', {
+            error: error.message,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -238,7 +262,7 @@ router.post('/activities', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Missing required fields: studentId, activityType',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const activity = await (0, studentService_1.createStudentActivity)({
@@ -246,23 +270,26 @@ router.post('/activities', async (req, res) => {
             activityType,
             equipmentId,
             timeLimitMinutes,
-            notes
+            notes,
         });
         const response = {
             success: true,
             data: activity,
             message: 'Student activity created successfully',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.status(201).json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error creating student activity', { error: error.message, body: req.body });
+        logger_1.logger.error('Error creating student activity', {
+            error: error.message,
+            body: req.body,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -273,7 +300,7 @@ router.patch('/activities/:id/end', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Activity ID is required',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const activity = await (0, studentService_1.endStudentActivity)(id);
@@ -281,17 +308,20 @@ router.patch('/activities/:id/end', async (req, res) => {
             success: true,
             data: activity,
             message: 'Student activity ended successfully',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error ending student activity', { error: error.message, id: req.params.id });
+        logger_1.logger.error('Error ending student activity', {
+            error: error.message,
+            id: req.params.id,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -302,7 +332,7 @@ router.post('/scan', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Barcode is required',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const student = await (0, studentService_1.getStudentByBarcode)(barcode);
@@ -310,24 +340,27 @@ router.post('/scan', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: 'Student not found',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const response = {
             success: true,
             message: 'Student found successfully',
             data: student,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error scanning student barcode', { error: error.message, body: req.body });
+        logger_1.logger.error('Error scanning student barcode', {
+            error: error.message,
+            body: req.body,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });

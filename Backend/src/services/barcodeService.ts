@@ -10,7 +10,6 @@ import { join } from 'path';
 import { logger } from '@/utils/logger';
 import { prisma } from '@/utils/prisma';
 import bwipjs from 'bwip-js';
-import { promisify } from 'util';
 
 // Barcode image options
 export interface BarcodeOptions {

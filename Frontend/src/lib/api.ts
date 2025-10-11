@@ -25,7 +25,7 @@ class ApiClient {
   private client: AxiosInstance;
   private baseURL: string;
 
-  constructor(baseURL: string = 'http://localhost:3001') {
+  constructor(baseURL: string = 'http://localhost:3003') {
     this.baseURL = baseURL;
     this.client = axios.create({
       baseURL,
@@ -241,6 +241,16 @@ export const analyticsApi = {
 };
 
 export const utilitiesApi = {
+  // Documentation Methods
+  // Get comprehensive documentation information
+  getDocumentation: () => apiClient.get('/api/utilities/documentation'),
+
+  // Refresh documentation cache
+  refreshDocumentation: () => apiClient.post('/api/utilities/documentation/refresh'),
+
+  // Get documentation health status
+  getDocumentationHealth: () => apiClient.get('/api/utilities/documentation/health'),
+
   // QR Code Methods
   // Generate QR codes for all students
   generateQRCodes: () => apiClient.post('/api/utilities/generate-qr-codes'),
@@ -291,6 +301,23 @@ export const utilitiesApi = {
 
   // Get printable barcodes sheet URL
   getBarcodesSheetUrl: () => '/api/utilities/barcodes-sheet',
+
+  // Quick Actions Methods
+  // Quick add student
+  quickAddStudent: (studentData: any) =>
+    apiClient.post('/api/utilities/quick-add-student', studentData),
+
+  // Quick start session
+  quickStartSession: (sessionData: any) =>
+    apiClient.post('/api/utilities/quick-start-session', sessionData),
+
+  // Get quick report
+  getQuickReport: () =>
+    apiClient.get('/api/utilities/quick-report'),
+
+  // Quick backup
+  quickBackup: () =>
+    apiClient.post('/api/utilities/quick-backup'),
 };
 
 export default apiClient;

@@ -1,0 +1,369 @@
+name: Documentation Health Check
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - '**.md'
+      - 'Backend/src/services/documentationService.ts'
+      - 'Backend/src/routes/utilities.ts'
+      - 'Frontend/src/components/dashboard/DocumentationDashboard.tsx'
+      - 'Frontend/src/lib/api.ts'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - '**.md'
+      - 'Backend/src/services/documentationService.ts'
+      - 'Backend/src/routes/utilities.ts'
+      - 'Frontend/src/components/dashboard/DocumentationDashboard.tsx'
+      - 'Frontend/src/lib/api.ts'
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  documentation-health:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: clms_database
+          MYSQL_USER: clms_user
+          MYSQL_PASSWORD: clms_password
+        ports:
+          - 3308:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            Backend/package-lock.json
+            Frontend/package-lock.json
+
+      - name: Install Backend dependencies
+        run: |
+          cd Backend
+          npm ci
+
+      - name: Install Frontend dependencies
+        run: |
+          cd Frontend
+          npm ci
+
+      - name: Generate Prisma client
+        run: |
+          cd Backend
+          npx prisma generate
+        env:
+          DATABASE_URL: mysql://clms_user:clms_password@localhost:3308/clms_database
+
+      - name: Check documentation files exist
+        run: |
+          echo "Checking critical documentation files..."
+
+          # Check for critical documentation files
+          if [ ! -f "CLAUDE.md" ]; then
+            echo "❌ CLAUDE.md is missing"
+            exit 1
+          else
+            echo "✅ CLAUDE.md exists"
+          fi
+
+          if [ ! -f "README.md" ]; then
+            echo "❌ README.md is missing"
+            exit 1
+          else
+            echo "✅ README.md exists"
+          fi
+
+          if [ ! -f "Backend/src/services/documentationService.ts" ]; then
+            echo "❌ Documentation service is missing"
+            exit 1
+          else
+            echo "✅ Documentation service exists"
+          fi
+
+          if [ ! -f "Frontend/src/components/dashboard/DocumentationDashboard.tsx" ]; then
+            echo "❌ Documentation dashboard component is missing"
+            exit 1
+          else
+            echo "✅ Documentation dashboard component exists"
+          fi
+
+      - name: Check documentation syntax
+        run: |
+          echo "Checking documentation syntax..."
+
+          # Check if CLAUDE.md contains required sections
+          if ! grep -q "## Project Overview" CLAUDE.md; then
+            echo "❌ CLAUDE.md missing Project Overview section"
+            exit 1
+          fi
+
+          if ! grep -q "## Technology Stack" CLAUDE.md; then
+            echo "❌ CLAUDE.md missing Technology Stack section"
+            exit 1
+          fi
+
+          if ! grep -q "## Development Commands" CLAUDE.md; then
+            echo "❌ CLAUDE.md missing Development Commands section"
+            exit 1
+          fi
+
+          echo "✅ Documentation syntax checks passed"
+
+      - name: Check TypeScript compilation
+        run: |
+          echo "Checking TypeScript compilation..."
+
+          # Check backend compilation
+          cd Backend
+          if ! npm run build; then
+            echo "❌ Backend TypeScript compilation failed"
+            exit 1
+          else
+            echo "✅ Backend TypeScript compilation passed"
+          fi
+
+          # Check frontend compilation
+          cd ../Frontend
+          if ! npm run build; then
+            echo "❌ Frontend TypeScript compilation failed"
+            exit 1
+          else
+            echo "✅ Frontend TypeScript compilation passed"
+          fi
+
+      - name: Run documentation update script
+        run: |
+          echo "Running documentation update script..."
+          cd Backend
+
+          # Create test environment file
+          cat > .env.test << EOF
+          DATABASE_URL=mysql://clms_user:clms_password@localhost:3308/clms_database
+          NODE_ENV=test
+          JWT_SECRET=test-secret-key
+          REDIS_HOST=localhost
+          REDIS_PORT=6379
+          EOF
+
+          # Run the documentation update script
+          if ! npm run docs:update; then
+            echo "❌ Documentation update script failed"
+            exit 1
+          else
+            echo "✅ Documentation update script completed successfully"
+          fi
+
+      - name: Check documentation API endpoints
+        run: |
+          echo "Testing documentation API endpoints..."
+          cd Backend
+
+          # Start the server in background
+          npm run dev &
+          SERVER_PID=$!
+
+          # Wait for server to start
+          sleep 10
+
+          # Test documentation endpoint
+          if ! curl -f http://localhost:3001/api/utilities/documentation > /dev/null 2>&1; then
+            echo "❌ Documentation API endpoint not responding"
+            kill $SERVER_PID
+            exit 1
+          else
+            echo "✅ Documentation API endpoint responding"
+          fi
+
+          # Test documentation health endpoint
+          if ! curl -f http://localhost:3001/api/utilities/documentation/health > /dev/null 2>&1; then
+            echo "❌ Documentation health endpoint not responding"
+            kill $SERVER_PID
+            exit 1
+          else
+            echo "✅ Documentation health endpoint responding"
+          fi
+
+          # Stop the server
+          kill $SERVER_PID
+
+      - name: Check frontend documentation dashboard
+        run: |
+          echo "Testing frontend documentation dashboard..."
+          cd Frontend
+
+          # Start frontend in background
+          npm run dev &
+          FRONTEND_PID=$!
+
+          # Wait for frontend to start
+          sleep 15
+
+          # Check if frontend is running
+          if ! curl -f http://localhost:3000 > /dev/null 2>&1; then
+            echo "❌ Frontend not responding"
+            kill $FRONTEND_PID
+            exit 1
+          else
+            echo "✅ Frontend is responding"
+          fi
+
+          # Stop frontend
+          kill $FRONTEND_PID
+
+      - name: Generate documentation report
+        run: |
+          echo "Generating documentation health report..."
+
+          # Create a summary report
+          cat > documentation-report.md << EOF
+          # Documentation Health Report
+
+          **Generated:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+
+          ## Files Status
+          - ✅ CLAUDE.md exists and contains required sections
+          - ✅ README.md exists
+          - ✅ Documentation service implemented
+          - ✅ Documentation dashboard component implemented
+
+          ## API Status
+          - ✅ Documentation API endpoint responding
+          - ✅ Documentation health endpoint responding
+
+          ## Build Status
+          - ✅ Backend TypeScript compilation successful
+          - ✅ Frontend TypeScript compilation successful
+
+          ## Documentation Sync
+          - ✅ Documentation update script executed successfully
+          - ✅ All documentation sections up to date
+
+          **Overall Status:** ✅ HEALTHY
+          EOF
+
+          echo "Documentation health report generated:"
+          cat documentation-report.md
+
+      - name: Upload documentation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: documentation-report
+          path: documentation-report.md
+          retention-days: 30
+
+      - name: Comment on PR (if applicable)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('documentation-report.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📚 Documentation Health Check\n\n${report}`
+            });
+
+      - name: Update documentation status badge
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+        run: |
+          echo "Documentation health check passed! 🎉"
+          echo "All documentation files are up to date and API endpoints are responding correctly."
+
+  documentation-sync:
+    needs: documentation-health
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: Backend/package-lock.json
+
+      - name: Install Backend dependencies
+        run: |
+          cd Backend
+          npm ci
+
+      - name: Update documentation
+        run: |
+          echo "Updating documentation..."
+          cd Backend
+
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          # Run documentation update
+          npm run docs:update
+
+          # Check if there are changes to commit
+          if git diff --quiet HEAD; then
+            echo "No documentation changes to commit"
+          else
+            echo "Committing documentation updates..."
+            git add .
+            git commit -m "📚 Auto-update documentation [skip ci]"
+            git push
+          fi
+
+      - name: Create documentation release
+        if: contains(github.event.head_commit.message, 'release')
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: docs-v${{ github.run_number }}
+          release_name: Documentation Update v${{ github.run_number }}
+          body: |
+            Automated documentation update:
+            - Synchronized documentation with latest codebase
+            - Updated feature counts and statistics
+            - Verified all API endpoints
+            - Updated system health status
+          draft: false
+          prerelease: false

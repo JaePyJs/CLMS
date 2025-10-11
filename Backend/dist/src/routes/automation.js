@@ -10,15 +10,15 @@ router.get('/jobs', async (req, res) => {
         const response = {
             success: true,
             data: jobs,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
-    catch (error) {
+    catch (_error) {
         res.status(500).json({
             success: false,
             error: 'Failed to fetch automation jobs',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -30,21 +30,21 @@ router.get('/jobs/:id', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: 'Job not found',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const response = {
             success: true,
             data: job,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         return res.json(response);
     }
-    catch (error) {
+    catch (_error) {
         return res.status(500).json({
             success: false,
             error: 'Failed to fetch job status',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -55,15 +55,15 @@ router.post('/jobs/:id/trigger', async (req, res) => {
         const response = {
             success: true,
             message: 'Job triggered successfully',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         return res.json(response);
     }
-    catch (error) {
+    catch (_error) {
         return res.status(500).json({
             success: false,
             error: 'Failed to trigger job',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -73,15 +73,15 @@ router.get('/queues/status', async (req, res) => {
         const response = {
             success: true,
             data: queueStatus,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
-    catch (error) {
+    catch (_error) {
         res.status(500).json({
             success: false,
             error: 'Failed to fetch queue status',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -92,36 +92,38 @@ router.get('/google-sheets/test', async (req, res) => {
             success: isConnected,
             data: {
                 connected: isConnected,
-                spreadsheetInfo: googleSheets_1.googleSheetsService.getSpreadsheetInfo()
+                spreadsheetInfo: googleSheets_1.googleSheetsService.getSpreadsheetInfo(),
             },
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
-    catch (error) {
+    catch (_error) {
         res.status(500).json({
             success: false,
             error: 'Google Sheets connection test failed',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
 router.get('/reports/daily', async (req, res) => {
     try {
-        const date = req.query.date ? new Date(req.query.date) : new Date();
+        const date = req.query.date
+            ? new Date(req.query.date)
+            : new Date();
         const report = await googleSheets_1.googleSheetsService.generateDailyReport(date);
         const response = {
             success: true,
             data: report,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
-    catch (error) {
+    catch (_error) {
         res.status(500).json({
             success: false,
             error: 'Failed to generate daily report',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });

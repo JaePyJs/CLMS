@@ -1,37 +1,4 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -41,7 +8,6 @@ const exceljs_1 = __importDefault(require("exceljs"));
 const fs_1 = require("fs");
 const path_1 = require("path");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
-const logger_1 = require("@/utils/logger");
 const prisma = new client_1.PrismaClient();
 function mapGradeCategory(gradeLevel) {
     const level = gradeLevel.toLowerCase();
@@ -132,7 +98,7 @@ async function importStudentsFromJSON() {
                 }
             }
             catch (error) {
-                logger_1.logger.error('Failed to import student', {
+                console.error('Failed to import student:', {
                     error: error.message,
                     student,
                 });
@@ -214,7 +180,7 @@ async function importBooksFromExcel() {
                 }
             }
             catch (error) {
-                logger_1.logger.error('Failed to import book', {
+                console.error('Failed to import book:', {
                     error: error.message,
                     rowNumber,
                 });
@@ -236,7 +202,7 @@ async function createDefaultEquipment() {
         const equipment = [
             {
                 equipmentId: 'COMP-01',
-                name: 'Computer Station 1',
+                name: 'Student Computer 1',
                 type: client_1.EquipmentType.COMPUTER,
                 location: 'Main Floor',
                 status: client_1.EquipmentStatus.AVAILABLE,
@@ -244,7 +210,7 @@ async function createDefaultEquipment() {
             },
             {
                 equipmentId: 'COMP-02',
-                name: 'Computer Station 2',
+                name: 'Student Computer 2',
                 type: client_1.EquipmentType.COMPUTER,
                 location: 'Main Floor',
                 status: client_1.EquipmentStatus.AVAILABLE,
@@ -252,123 +218,25 @@ async function createDefaultEquipment() {
             },
             {
                 equipmentId: 'COMP-03',
-                name: 'Computer Station 3',
+                name: 'Student Computer 3',
                 type: client_1.EquipmentType.COMPUTER,
                 location: 'Main Floor',
                 status: client_1.EquipmentStatus.AVAILABLE,
                 maxTimeMinutes: 60,
-            },
-            {
-                equipmentId: 'COMP-04',
-                name: 'Computer Station 4',
-                type: client_1.EquipmentType.COMPUTER,
-                location: 'Main Floor',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 60,
-            },
-            {
-                equipmentId: 'COMP-05',
-                name: 'Computer Station 5',
-                type: client_1.EquipmentType.COMPUTER,
-                location: 'Main Floor',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 60,
-            },
-            {
-                equipmentId: 'COMP-06',
-                name: 'Computer Station 6',
-                type: client_1.EquipmentType.COMPUTER,
-                location: 'Main Floor',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 60,
-            },
-            {
-                equipmentId: 'COMP-07',
-                name: 'Computer Station 7',
-                type: client_1.EquipmentType.COMPUTER,
-                location: 'Main Floor',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 60,
-            },
-            {
-                equipmentId: 'COMP-08',
-                name: 'Computer Station 8',
-                type: client_1.EquipmentType.COMPUTER,
-                location: 'Main Floor',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 60,
-            },
-            {
-                equipmentId: 'GAME-01',
-                name: 'Gaming Station 1',
-                type: client_1.EquipmentType.GAMING,
-                location: 'Recreation Area',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 45,
-            },
-            {
-                equipmentId: 'GAME-02',
-                name: 'Gaming Station 2',
-                type: client_1.EquipmentType.GAMING,
-                location: 'Recreation Area',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 45,
-            },
-            {
-                equipmentId: 'GAME-03',
-                name: 'Gaming Station 3',
-                type: client_1.EquipmentType.GAMING,
-                location: 'Recreation Area',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 45,
-            },
-            {
-                equipmentId: 'GAME-04',
-                name: 'Gaming Station 4',
-                type: client_1.EquipmentType.GAMING,
-                location: 'Recreation Area',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 45,
-            },
-            {
-                equipmentId: 'AVR-01',
-                name: 'Audio-Visual Room 1',
-                type: client_1.EquipmentType.AVR,
-                location: '2nd Floor',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 120,
-                requiresSupervision: true,
-            },
-            {
-                equipmentId: 'AVR-02',
-                name: 'Audio-Visual Room 2',
-                type: client_1.EquipmentType.AVR,
-                location: '2nd Floor',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 120,
-                requiresSupervision: true,
             },
             {
                 equipmentId: 'PRINT-01',
-                name: 'Printer Station 1',
+                name: 'Library Printer',
                 type: client_1.EquipmentType.PRINTER,
-                location: 'Staff Area',
+                location: 'Main Floor',
                 status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 30,
+                maxTimeMinutes: 15,
             },
             {
-                equipmentId: 'PRINT-02',
-                name: 'Printer Station 2',
-                type: client_1.EquipmentType.PRINTER,
-                location: 'Staff Area',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 30,
-            },
-            {
-                equipmentId: 'SCAN-01',
-                name: 'Scanner Station',
-                type: client_1.EquipmentType.SCANNER,
-                location: 'Staff Area',
+                equipmentId: 'REC-01',
+                name: 'Recreational Station',
+                type: client_1.EquipmentType.GAMING,
+                location: 'Recreation Area',
                 status: client_1.EquipmentStatus.AVAILABLE,
                 maxTimeMinutes: 30,
             },
@@ -415,16 +283,8 @@ async function createAdminUser() {
 }
 async function syncToGoogleSheets() {
     try {
-        console.log('☁️  Syncing to Google Sheets...');
-        const { googleSheetsService } = await Promise.resolve().then(() => __importStar(require('@/services/googleSheets')));
-        await googleSheetsService.initialize();
-        const studentsResult = await googleSheetsService.syncStudents();
-        console.log(`  ✓ Students synced: ${studentsResult.recordsProcessed || 0}`);
-        const booksResult = await googleSheetsService.syncBooks();
-        console.log(`  ✓ Books synced: ${booksResult.recordsProcessed || 0}`);
-        const equipmentResult = await googleSheetsService.syncEquipment();
-        console.log(`  ✓ Equipment synced: ${equipmentResult.recordsProcessed || 0}`);
-        console.log('✅ Google Sheets sync completed');
+        console.log('☁️  Google Sheets sync skipped (service not yet implemented)');
+        console.log('⚠️  Google Sheets sync will be available when the service is implemented');
     }
     catch (error) {
         console.error('⚠️  Google Sheets sync failed (this is optional):', error.message);

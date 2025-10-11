@@ -1,6 +1,8 @@
-import { Router, Request, Response } from 'express'
-import { ApiResponse } from '@/types'
+import { Router, Request, Response } from 'express';
+import { ApiResponse } from '@/types';
 import {
+  type GetStudentActivitiesOptions,
+  type GetStudentsOptions,
   getStudentByBarcode,
   getStudents,
   createStudent,
@@ -9,93 +11,93 @@ import {
   getStudentActivities,
   getActiveSessions,
   createStudentActivity,
-  endStudentActivity
-} from '@/services/studentService'
-import { GradeCategory, ActivityType, ActivityStatus } from '@prisma/client'
-import { logger } from '@/utils/logger'
+  endStudentActivity,
+} from '@/services/studentService';
+import { GradeCategory, ActivityType, ActivityStatus } from '@prisma/client';
+import { logger } from '@/utils/logger';
 
-const router = Router()
+const router = Router();
 
 // Get all students
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const {
-      gradeCategory,
-      isActive,
-      page = '1',
-      limit = '50'
-    } = req.query
+    const { gradeCategory, isActive, page = '1', limit = '50' } = req.query;
 
-    const options: any = {
+    const options: GetStudentsOptions = {
       page: parseInt(page as string),
-      limit: parseInt(limit as string)
-    }
-    
+      limit: parseInt(limit as string),
+    };
+
     if (gradeCategory) {
-      options.gradeCategory = gradeCategory as GradeCategory
-    }
-    
-    if (isActive !== undefined) {
-      options.isActive = isActive === 'true'
+      options.gradeCategory = gradeCategory as GradeCategory;
     }
 
-    const result = await getStudents(options)
+    if (isActive !== undefined) {
+      options.isActive = isActive === 'true';
+    }
+
+    const result = await getStudents(options);
 
     const response: ApiResponse = {
       success: true,
       data: result,
-      timestamp: new Date().toISOString()
-    }
-    res.json(response)
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
   } catch (error) {
-    logger.error('Error fetching students', { error: (error as Error).message })
+    logger.error('Error fetching students', {
+      error: (error as Error).message,
+    });
     res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: (error as Error).message,
-      timestamp: new Date().toISOString()
-    })
+      timestamp: new Date().toISOString(),
+    });
   }
-})
+});
 
 // Get student by ID
 router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
     if (!id) {
       return res.status(400).json({
         success: false,
         error: 'Student ID is required',
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      });
     }
-    
-    const student = await getStudentByBarcode(id)
+
+    const student = await getStudentByBarcode(id);
 
     if (!student) {
       return res.status(404).json({
         success: false,
         error: 'Student not found',
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      });
     }
 
     const response: ApiResponse = {
       success: true,
       data: student,
-      timestamp: new Date().toISOString()
-    }
-    res.json(response)
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
   } catch (error) {
-    logger.error('Error fetching student', { error: (error as Error).message, id: req.params.id })
+    logger.error('Error fetching student', {
+      error: (error as Error).message,
+      id: req.params.id,
+    });
     res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: (error as Error).message,
-      timestamp: new Date().toISOString()
-    })
+      timestamp: new Date().toISOString(),
+    });
   }
-})
+});
 
 // Create new student
 router.post('/', async (req: Request, res: Response) => {
@@ -106,15 +108,21 @@ router.post('/', async (req: Request, res: Response) => {
       lastName,
       gradeLevel,
       gradeCategory,
-      section
-    } = req.body
+      section,
+    } = req.body;
 
-    if (!studentId || !firstName || !lastName || !gradeLevel || !gradeCategory) {
+    if (
+      !studentId ||
+      !firstName ||
+      !lastName ||
+      !gradeLevel ||
+      !gradeCategory
+    ) {
       return res.status(400).json({
         success: false,
         error: 'Missing required fields',
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      });
     }
 
     const student = await createStudent({
@@ -123,47 +131,50 @@ router.post('/', async (req: Request, res: Response) => {
       lastName,
       gradeLevel,
       gradeCategory,
-      section
-    })
+      section,
+    });
 
     const response: ApiResponse = {
       success: true,
       data: student,
       message: 'Student created successfully',
-      timestamp: new Date().toISOString()
-    }
-    res.status(201).json(response)
+      timestamp: new Date().toISOString(),
+    };
+    res.status(201).json(response);
   } catch (error) {
-    logger.error('Error creating student', { error: (error as Error).message, body: req.body })
+    logger.error('Error creating student', {
+      error: (error as Error).message,
+      body: req.body,
+    });
     res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: (error as Error).message,
-      timestamp: new Date().toISOString()
-    })
+      timestamp: new Date().toISOString(),
+    });
   }
-})
+});
 
 // Update student
 router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
     if (!id) {
       return res.status(400).json({
         success: false,
         error: 'Student ID is required',
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      });
     }
-    
+
     const {
       firstName,
       lastName,
       gradeLevel,
       gradeCategory,
       section,
-      isActive
-    } = req.body
+      isActive,
+    } = req.body;
 
     const student = await updateStudent(id, {
       firstName,
@@ -171,57 +182,64 @@ router.put('/:id', async (req: Request, res: Response) => {
       gradeLevel,
       gradeCategory,
       section,
-      isActive
-    })
+      isActive,
+    });
 
     const response: ApiResponse = {
       success: true,
       data: student,
       message: 'Student updated successfully',
-      timestamp: new Date().toISOString()
-    }
-    res.json(response)
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
   } catch (error) {
-    logger.error('Error updating student', { error: (error as Error).message, id: req.params.id, body: req.body })
+    logger.error('Error updating student', {
+      error: (error as Error).message,
+      id: req.params.id,
+      body: req.body,
+    });
     res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: (error as Error).message,
-      timestamp: new Date().toISOString()
-    })
+      timestamp: new Date().toISOString(),
+    });
   }
-})
+});
 
 // Delete student
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
     if (!id) {
       return res.status(400).json({
         success: false,
         error: 'Student ID is required',
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      });
     }
-    
-    await deleteStudent(id)
+
+    await deleteStudent(id);
 
     const response: ApiResponse = {
       success: true,
       message: 'Student deleted successfully',
-      timestamp: new Date().toISOString()
-    }
-    res.json(response)
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
   } catch (error) {
-    logger.error('Error deleting student', { error: (error as Error).message, id: req.params.id })
+    logger.error('Error deleting student', {
+      error: (error as Error).message,
+      id: req.params.id,
+    });
     res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: (error as Error).message,
-      timestamp: new Date().toISOString()
-    })
+      timestamp: new Date().toISOString(),
+    });
   }
-})
+});
 
 // Get student activities
 router.get('/activities/all', async (req: Request, res: Response) => {
@@ -233,92 +251,92 @@ router.get('/activities/all', async (req: Request, res: Response) => {
       activityType,
       status,
       page = '1',
-      limit = '50'
-    } = req.query
+      limit = '50',
+    } = req.query;
 
-    const options: any = {
+    const options: GetStudentActivitiesOptions = {
       page: parseInt(page as string),
-      limit: parseInt(limit as string)
-    }
-    
+      limit: parseInt(limit as string),
+    };
+
     if (studentId) {
-      options.studentId = studentId as string
-    }
-    
-    if (startDate) {
-      options.startDate = new Date(startDate as string)
-    }
-    
-    if (endDate) {
-      options.endDate = new Date(endDate as string)
-    }
-    
-    if (activityType) {
-      options.activityType = activityType as ActivityType
-    }
-    
-    if (status) {
-      options.status = status as ActivityStatus
+      options.studentId = studentId as string;
     }
 
-    const result = await getStudentActivities(options)
+    if (startDate) {
+      options.startDate = new Date(startDate as string);
+    }
+
+    if (endDate) {
+      options.endDate = new Date(endDate as string);
+    }
+
+    if (activityType) {
+      options.activityType = activityType as ActivityType;
+    }
+
+    if (status) {
+      options.status = status as ActivityStatus;
+    }
+
+    const result = await getStudentActivities(options);
 
     const response: ApiResponse = {
       success: true,
       data: result,
-      timestamp: new Date().toISOString()
-    }
-    res.json(response)
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
   } catch (error) {
-    logger.error('Error fetching student activities', { error: (error as Error).message, query: req.query })
+    logger.error('Error fetching student activities', {
+      error: (error as Error).message,
+      query: req.query,
+    });
     res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: (error as Error).message,
-      timestamp: new Date().toISOString()
-    })
+      timestamp: new Date().toISOString(),
+    });
   }
-})
+});
 
 // Get active sessions
 router.get('/activities/active', async (req: Request, res: Response) => {
   try {
-    const activities = await getActiveSessions()
+    const activities = await getActiveSessions();
 
     const response: ApiResponse = {
       success: true,
       data: activities,
-      timestamp: new Date().toISOString()
-    }
-    res.json(response)
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
   } catch (error) {
-    logger.error('Error fetching active sessions', { error: (error as Error).message })
+    logger.error('Error fetching active sessions', {
+      error: (error as Error).message,
+    });
     res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: (error as Error).message,
-      timestamp: new Date().toISOString()
-    })
+      timestamp: new Date().toISOString(),
+    });
   }
-})
+});
 
 // Create student activity
 router.post('/activities', async (req: Request, res: Response) => {
   try {
-    const {
-      studentId,
-      activityType,
-      equipmentId,
-      timeLimitMinutes,
-      notes
-    } = req.body
+    const { studentId, activityType, equipmentId, timeLimitMinutes, notes } =
+      req.body;
 
     if (!studentId || !activityType) {
       return res.status(400).json({
         success: false,
         error: 'Missing required fields: studentId, activityType',
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      });
     }
 
     const activity = await createStudentActivity({
@@ -326,98 +344,107 @@ router.post('/activities', async (req: Request, res: Response) => {
       activityType,
       equipmentId,
       timeLimitMinutes,
-      notes
-    })
+      notes,
+    });
 
     const response: ApiResponse = {
       success: true,
       data: activity,
       message: 'Student activity created successfully',
-      timestamp: new Date().toISOString()
-    }
-    res.status(201).json(response)
+      timestamp: new Date().toISOString(),
+    };
+    res.status(201).json(response);
   } catch (error) {
-    logger.error('Error creating student activity', { error: (error as Error).message, body: req.body })
+    logger.error('Error creating student activity', {
+      error: (error as Error).message,
+      body: req.body,
+    });
     res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: (error as Error).message,
-      timestamp: new Date().toISOString()
-    })
+      timestamp: new Date().toISOString(),
+    });
   }
-})
+});
 
 // End student activity
 router.patch('/activities/:id/end', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params
+    const { id } = req.params;
     if (!id) {
       return res.status(400).json({
         success: false,
         error: 'Activity ID is required',
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      });
     }
-    
-    const activity = await endStudentActivity(id)
+
+    const activity = await endStudentActivity(id);
 
     const response: ApiResponse = {
       success: true,
       data: activity,
       message: 'Student activity ended successfully',
-      timestamp: new Date().toISOString()
-    }
-    res.json(response)
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
   } catch (error) {
-    logger.error('Error ending student activity', { error: (error as Error).message, id: req.params.id })
+    logger.error('Error ending student activity', {
+      error: (error as Error).message,
+      id: req.params.id,
+    });
     res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: (error as Error).message,
-      timestamp: new Date().toISOString()
-    })
+      timestamp: new Date().toISOString(),
+    });
   }
-})
+});
 
 // Scan student barcode
 router.post('/scan', async (req: Request, res: Response) => {
   try {
-    const { barcode } = req.body
+    const { barcode } = req.body;
 
     if (!barcode) {
       return res.status(400).json({
         success: false,
         error: 'Barcode is required',
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      });
     }
 
-    const student = await getStudentByBarcode(barcode)
+    const student = await getStudentByBarcode(barcode);
 
     if (!student) {
       return res.status(404).json({
         success: false,
         error: 'Student not found',
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      });
     }
 
     const response: ApiResponse = {
       success: true,
       message: 'Student found successfully',
       data: student,
-      timestamp: new Date().toISOString()
-    }
-    res.json(response)
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
   } catch (error) {
-    logger.error('Error scanning student barcode', { error: (error as Error).message, body: req.body })
+    logger.error('Error scanning student barcode', {
+      error: (error as Error).message,
+      body: req.body,
+    });
     res.status(500).json({
       success: false,
       error: 'Internal server error',
       message: (error as Error).message,
-      timestamp: new Date().toISOString()
-    })
+      timestamp: new Date().toISOString(),
+    });
   }
-})
+});
 
-export default router
+export default router;

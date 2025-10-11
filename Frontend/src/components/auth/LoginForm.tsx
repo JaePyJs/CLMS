@@ -79,7 +79,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
               className="w-16 h-16 object-contain"
             />
           </div>
-          <CardTitle className="text-2xl">Librarian Login</CardTitle>
+          <CardTitle className="text-2xl">Administrator Login</CardTitle>
           <CardDescription>
             Sacred Heart of Jesus Catholic School Library
           </CardDescription>

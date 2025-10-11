@@ -1,6 +1,6 @@
 import { Request } from 'express';
 export * from '@prisma/client';
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
     success: boolean;
     data?: T;
     error?: string;
@@ -97,9 +97,9 @@ export interface GoogleSheetsConfig {
     clientEmail: string;
     privateKeyPath: string;
 }
-export interface GoogleSheetRow {
+export type GoogleSheetCellValue = string | number | boolean | null | undefined;
+export interface GoogleSheetRow extends Record<string, GoogleSheetCellValue> {
     timestamp: string;
-    [key: string]: any;
 }
 export interface SyncResult {
     success: boolean;
@@ -107,15 +107,13 @@ export interface SyncResult {
     errors: string[];
     duration: number;
 }
-export interface JobConfig {
-    [key: string]: any;
-}
+export type JobConfig = Record<string, unknown>;
 export interface JobExecutionResult {
     success: boolean;
     recordsProcessed?: number;
     errorMessage?: string;
     duration: number;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
 }
 export interface ImportResult {
     success: boolean;
@@ -129,7 +127,7 @@ export interface ImportError {
     row: number;
     field?: string;
     message: string;
-    value?: any;
+    value?: unknown;
 }
 export interface BarcodeGenerationOptions {
     format: 'CODE128' | 'CODE39' | 'QR_CODE' | 'EAN13';
@@ -179,16 +177,16 @@ export interface SystemSettings {
         email?: string;
     };
 }
-export interface ValidationError {
+export interface ValidationErrorDetail {
     field: string;
     message: string;
-    value?: any;
+    value?: unknown;
 }
 export interface AppError extends Error {
     statusCode: number;
     isOperational: boolean;
     code?: string;
-    details?: any;
+    details?: unknown;
 }
 export interface DailyStatistics {
     date: string;
@@ -224,7 +222,7 @@ export interface SystemHealth {
 export interface QueueJob {
     id: string;
     type: string;
-    data: any;
+    data: unknown;
     options: {
         attempts?: number;
         delay?: number;
@@ -249,6 +247,6 @@ export interface Notification {
     timestamp: Date;
     isRead: boolean;
     actionUrl?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
 }
 //# sourceMappingURL=index.d.ts.map

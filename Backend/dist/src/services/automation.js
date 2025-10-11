@@ -27,6 +27,33 @@ class AutomationService {
             lazyConnect: true,
         });
     }
+    resolveJobConfig(rawConfig) {
+        if (rawConfig === null || rawConfig === undefined) {
+            return {};
+        }
+        if (typeof rawConfig === 'string') {
+            try {
+                const parsed = JSON.parse(rawConfig);
+                return this.ensureJobConfigObject(parsed);
+            }
+            catch (error) {
+                logger_1.logger.warn('Failed to parse automation job config from string', {
+                    error: error.message,
+                });
+                return {};
+            }
+        }
+        if (Array.isArray(rawConfig)) {
+            return { values: rawConfig };
+        }
+        return this.ensureJobConfigObject(rawConfig);
+    }
+    ensureJobConfigObject(value) {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+            return value;
+        }
+        return {};
+    }
     async initialize() {
         if (this.isInitialized) {
             return;
@@ -138,7 +165,7 @@ class AutomationService {
                 break;
         }
     }
-    setupQueueEventListeners(queue, queueName) {
+    setupQueueEventListeners(queue, _queueName) {
         queue.on('completed', (job, result) => {
             logger_1.automationLogger.jobSuccess(job.name, job.id.toString(), job.finishedOn - job.timestamp, result);
         });
@@ -177,7 +204,7 @@ class AutomationService {
                 this.scheduledJobs.get(job.id)?.stop();
             }
             const scheduledTask = node_cron_1.default.schedule(job.schedule, () => {
-                this.executeJob(job);
+                void this.executeJob(job);
             }, {
                 scheduled: false,
                 timezone: process.env.LIBRARY_TIMEZONE || 'Asia/Manila',
@@ -205,38 +232,37 @@ class AutomationService {
             jobName: job.name,
         });
         try {
+            const jobConfig = this.resolveJobConfig(job.config);
             await this.prisma.automationJob.update({
                 where: { id: job.id },
                 data: { status: client_1.JobStatus.RUNNING, lastRunAt: new Date() },
             });
-            logger_1.automationLogger.jobStart(job.name, job.id, typeof job.config === 'string'
-                ? JSON.parse(job.config)
-                : job.config || {});
+            logger_1.automationLogger.jobStart(job.name, job.id, jobConfig);
             let result;
             switch (job.type) {
                 case client_1.JobType.DAILY_BACKUP:
-                    result = await this.executeDailyBackup(job);
+                    result = await this.executeDailyBackup(job, jobConfig);
                     break;
                 case client_1.JobType.TEACHER_NOTIFICATIONS:
-                    result = await this.executeTeacherNotifications(job);
+                    result = await this.executeTeacherNotifications(job, jobConfig);
                     break;
                 case client_1.JobType.GOOGLE_SHEETS_SYNC:
-                    result = await this.executeGoogleSheetsSync(job);
+                    result = await this.executeGoogleSheetsSync(job, jobConfig);
                     break;
                 case client_1.JobType.SESSION_EXPIRY_CHECK:
-                    result = await this.executeSessionExpiryCheck(job);
+                    result = await this.executeSessionExpiryCheck(job, jobConfig);
                     break;
                 case client_1.JobType.OVERDUE_NOTIFICATIONS:
-                    result = await this.executeOverdueNotifications(job);
+                    result = await this.executeOverdueNotifications(job, jobConfig);
                     break;
                 case client_1.JobType.WEEKLY_CLEANUP:
-                    result = await this.executeWeeklyCleanup(job);
+                    result = await this.executeWeeklyCleanup(job, jobConfig);
                     break;
                 case client_1.JobType.MONTHLY_REPORT:
-                    result = await this.executeMonthlyReport(job);
+                    result = await this.executeMonthlyReport(job, jobConfig);
                     break;
                 case client_1.JobType.INTEGRITY_AUDIT:
-                    result = await this.executeIntegrityAudit(job);
+                    result = await this.executeIntegrityAudit(job, jobConfig);
                     break;
                 default:
                     throw new Error(`Unknown job type: ${job.type}`);
@@ -287,15 +313,13 @@ class AutomationService {
             logger_1.automationLogger.jobFailure(job.name, job.id, duration, error);
         }
     }
-    async executeDailyBackup(job) {
+    async executeDailyBackup(job, config) {
         const startTime = Date.now();
         try {
             await this.queues.get('backup')?.add('daily-backup', {
                 jobName: job.name,
                 jobId: job.id,
-                config: typeof job.config === 'string'
-                    ? JSON.parse(job.config)
-                    : job.config || {},
+                config,
             });
             return {
                 success: true,
@@ -313,15 +337,13 @@ class AutomationService {
             };
         }
     }
-    async executeTeacherNotifications(job) {
+    async executeTeacherNotifications(job, config) {
         const startTime = Date.now();
         try {
             await this.queues.get('notifications')?.add('teacher-notifications', {
                 jobName: job.name,
                 jobId: job.id,
-                config: typeof job.config === 'string'
-                    ? JSON.parse(job.config)
-                    : job.config || {},
+                config,
             });
             return {
                 success: true,
@@ -338,7 +360,7 @@ class AutomationService {
             };
         }
     }
-    async executeGoogleSheetsSync(job) {
+    async executeGoogleSheetsSync(job, _config) {
         const startTime = Date.now();
         try {
             const activities = await this.prisma.activity.findMany({
@@ -358,7 +380,7 @@ class AutomationService {
                 };
             }
             await this.queues.get('sync')?.add('google-sheets-sync', {
-                activities: activities,
+                activities,
                 jobName: job.name,
                 jobId: job.id,
             });
@@ -378,14 +400,14 @@ class AutomationService {
             };
         }
     }
-    async executeSessionExpiryCheck(job) {
+    async executeSessionExpiryCheck(_job, _config) {
         const startTime = Date.now();
         let expiredSessions = 0;
         try {
             const now = new Date();
             const expiredSessionsData = await this.prisma.equipmentSession.findMany({
                 where: {
-                    status: 'ACTIVE',
+                    status: client_1.SessionStatus.ACTIVE,
                     plannedEnd: { lt: now },
                 },
                 include: {
@@ -397,7 +419,7 @@ class AutomationService {
                 await this.prisma.equipmentSession.update({
                     where: { id: session.id },
                     data: {
-                        status: 'EXPIRED',
+                        status: client_1.SessionStatus.EXPIRED,
                         sessionEnd: now,
                         actualDuration: Math.floor((now.getTime() - session.sessionStart.getTime()) / 60000),
                     },
@@ -405,12 +427,15 @@ class AutomationService {
                 await this.prisma.activity.create({
                     data: {
                         studentId: session.studentId,
-                        activityType: 'COMPUTER_USE',
+                        studentName: `${session.student.firstName} ${session.student.lastName}`.trim(),
+                        studentGradeLevel: session.student.gradeLevel,
+                        studentGradeCategory: session.student.gradeCategory,
+                        activityType: client_1.ActivityType.COMPUTER_USE,
                         equipmentId: session.equipmentId,
                         startTime: session.sessionStart,
                         endTime: now,
                         durationMinutes: Math.floor((now.getTime() - session.sessionStart.getTime()) / 60000),
-                        status: 'EXPIRED',
+                        status: client_1.ActivityStatus.EXPIRED,
                         processedBy: 'SYSTEM',
                     },
                 });
@@ -421,7 +446,7 @@ class AutomationService {
                     where: {
                         id: { in: expiredSessionsData.map(s => s.equipmentId) },
                     },
-                    data: { status: 'AVAILABLE' },
+                    data: { status: client_1.EquipmentStatus.AVAILABLE },
                 });
             }
             return {
@@ -442,7 +467,7 @@ class AutomationService {
     }
     async processDailyBackup(job) {
         const startTime = Date.now();
-        const { jobName, jobId } = job.data;
+        const { jobName } = job.data;
         try {
             await googleSheets_1.googleSheetsService.logAutomationTask(jobName, 'BACKUP', 'RUNNING', {
                 startTime: new Date().toISOString(),
@@ -467,7 +492,7 @@ class AutomationService {
     }
     async processGoogleSheetsSync(job) {
         const startTime = Date.now();
-        const { jobName, jobId } = job.data;
+        const { jobName } = job.data;
         try {
             const result = await googleSheets_1.googleSheetsService.syncStudentActivities();
             await googleSheets_1.googleSheetsService.logAutomationTask(jobName, 'SYNC', result.success ? 'COMPLETED' : 'FAILED', {
@@ -513,67 +538,67 @@ class AutomationService {
             throw error;
         }
     }
-    async processSessionExpiryCheck(job) {
+    async processSessionExpiryCheck(_job) {
         return {
             success: true,
             recordsProcessed: 0,
             duration: 0,
         };
     }
-    async processOverdueNotifications(job) {
+    async processOverdueNotifications(_job) {
         return {
             success: true,
             recordsProcessed: 0,
             duration: 0,
         };
     }
-    async processWeeklyCleanup(job) {
+    async processWeeklyCleanup(_job) {
         return {
             success: true,
             recordsProcessed: 0,
             duration: 0,
         };
     }
-    async processIntegrityAudit(job) {
+    async processIntegrityAudit(_job) {
         return {
             success: true,
             recordsProcessed: 0,
             duration: 0,
         };
     }
-    async processDatabaseBackup(job) {
+    async processDatabaseBackup(_job) {
         return {
             success: true,
             recordsProcessed: 0,
             duration: 0,
         };
     }
-    async processActivitySync(job) {
+    async processActivitySync(_job) {
         return {
             success: true,
             recordsProcessed: 0,
             duration: 0,
         };
     }
-    async executeOverdueNotifications(job) {
+    async executeOverdueNotifications(_job, _config) {
         return {
             success: true,
             duration: 0,
         };
     }
-    async executeWeeklyCleanup(job) {
+    async executeWeeklyCleanup(_job, _config) {
         return {
             success: true,
             duration: 0,
         };
     }
-    async executeMonthlyReport(job) {
+    async executeMonthlyReport(_job, _config) {
         return {
             success: true,
             duration: 0,
         };
     }
-    async executeIntegrityAudit(job) {
+    async executeIntegrityAudit(_job, _config) {
         return {
             success: true,
             duration: 0,
@@ -605,9 +630,10 @@ class AutomationService {
     }
     getNextRunTime(cronExpression) {
         try {
-            const task = node_cron_1.default.schedule(cronExpression, () => { }, {
+            const scheduledTask = node_cron_1.default.schedule(cronExpression, () => { }, {
                 scheduled: false,
             });
+            scheduledTask.stop();
             return new Date(Date.now() + 24 * 60 * 60 * 1000);
         }
         catch {
@@ -644,12 +670,7 @@ class AutomationService {
             if (!job.isEnabled) {
                 throw new errors_1.BaseError(`Job is disabled: ${job.name}`, 400);
             }
-            await this.executeJob({
-                ...job,
-                config: typeof job.config === 'string'
-                    ? JSON.parse(job.config)
-                    : job.config || {},
-            });
+            await this.executeJob(job);
             logger_1.logger.info(`Manually triggered job: ${job.name}`, { userId });
         }
         catch (error) {
@@ -712,11 +733,11 @@ class AutomationService {
     }
     async shutdown() {
         logger_1.logger.info('Shutting down automation service');
-        for (const [jobId, task] of this.scheduledJobs) {
+        for (const task of this.scheduledJobs.values()) {
             task.stop();
         }
         this.scheduledJobs.clear();
-        for (const [name, queue] of this.queues) {
+        for (const queue of this.queues.values()) {
             await queue.close();
         }
         this.queues.clear();

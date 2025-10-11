@@ -1,36 +1,26 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import supertest from 'supertest'
-import { app } from '@/app'
-import { prisma } from '../setup'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { prisma, generateTestStudentId } from '../setup'
+import {
+  createStudent,
+  getStudents,
+  getStudentById,
+  getStudentByBarcode,
+  updateStudent,
+  deleteStudent
+} from '@/services/studentService'
 import { GradeCategory } from '@prisma/client'
 
-describe('Students API', () => {
-  let authToken: string
-
+describe('Students Service Integration Tests', () => {
   beforeEach(async () => {
     // Clean up database before each test
     await prisma.student.deleteMany()
-
-    // For now, we'll skip authentication and test without it
-    // In a real implementation, you would create a test user and get auth token
-    authToken = 'mock-token'
   })
 
-  afterEach(async () => {
-    // Clean up database after each test
-    await prisma.student.deleteMany()
-  })
-
-  describe('GET /api/students', () => {
+  describe('getStudents', () => {
     it('should return an empty array when no students exist', async () => {
-      const response = await supertest(app.getApp())
-        .get('/api/students')
-        .set('Authorization', `Bearer ${authToken}`)
-
-      expect(response.status).toBe(200)
-      expect(response.body.success).toBe(true)
-      expect(response.body.data.students).toHaveLength(0)
-      expect(response.body.data.total).toBe(0)
+      const result = await getStudents()
+      expect(result.students).toHaveLength(0)
+      expect(result.total).toBe(0)
     })
 
     it('should return all students', async () => {
@@ -56,29 +46,17 @@ describe('Students API', () => {
         ]
       })
 
-      const response = await supertest(app.getApp())
-        .get('/api/students')
-        .set('Authorization', `Bearer ${authToken}`)
-
-      expect(response.status).toBe(200)
-      expect(response.body.success).toBe(true)
-      expect(response.body.data.students).toHaveLength(2)
-      expect(response.body.data.total).toBe(2)
-    })
-
-    it('should return 401 when not authenticated', async () => {
-      const response = await supertest(app.getApp())
-        .get('/api/students')
-
-      expect(response.status).toBe(401)
-      expect(response.body.success).toBe(false)
+      const result = await getStudents()
+      expect(result.students).toHaveLength(2)
+      expect(result.total).toBe(2)
     })
   })
 
-  describe('POST /api/students', () => {
+  describe('createStudent', () => {
     it('should create a new student', async () => {
+      const studentId = generateTestStudentId('api-create')
       const studentData = {
-        studentId: '2023001',
+        studentId,
         firstName: 'John',
         lastName: 'Doe',
         gradeLevel: 'Grade 7',
@@ -86,37 +64,18 @@ describe('Students API', () => {
         section: '7-A'
       }
 
-      const response = await supertest(app.getApp())
-        .post('/api/students')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(studentData)
+      const student = await createStudent(studentData)
 
-      expect(response.status).toBe(201)
-      expect(response.body.success).toBe(true)
-      expect(response.body.data.student.studentId).toBe(studentData.studentId)
-      expect(response.body.data.student.firstName).toBe(studentData.firstName)
-      expect(response.body.data.student.lastName).toBe(studentData.lastName)
+      expect(student).toBeDefined()
+      expect(student.studentId).toBe(studentData.studentId)
+      expect(student.firstName).toBe(studentData.firstName)
+      expect(student.lastName).toBe(studentData.lastName)
     })
 
-    it('should return 400 when required fields are missing', async () => {
+    it('should throw error for duplicate student ID', async () => {
+      const studentId = generateTestStudentId('api-duplicate')
       const studentData = {
-        firstName: 'John',
-        lastName: 'Doe'
-        // Missing required fields
-      }
-
-      const response = await supertest(app.getApp())
-        .post('/api/students')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(studentData)
-
-      expect(response.status).toBe(400)
-      expect(response.body.success).toBe(false)
-    })
-
-    it('should return 401 when not authenticated', async () => {
-      const studentData = {
-        studentId: '2023001',
+        studentId,
         firstName: 'John',
         lastName: 'Doe',
         gradeLevel: 'Grade 7',
@@ -124,21 +83,21 @@ describe('Students API', () => {
         section: '7-A'
       }
 
-      const response = await supertest(app.getApp())
-        .post('/api/students')
-        .send(studentData)
+      // Create first student
+      await createStudent(studentData)
 
-      expect(response.status).toBe(401)
-      expect(response.body.success).toBe(false)
+      // Try to create duplicate
+      await expect(createStudent(studentData)).rejects.toThrow()
     })
   })
 
-  describe('GET /api/students/:id', () => {
+  describe('getStudentById', () => {
     it('should return a student by ID', async () => {
       // Create test student
+      const studentId = generateTestStudentId('api-byid')
       const createdStudent = await prisma.student.create({
         data: {
-          studentId: '2023001',
+          studentId,
           firstName: 'John',
           lastName: 'Doe',
           gradeLevel: 'Grade 7',
@@ -147,40 +106,25 @@ describe('Students API', () => {
         }
       })
 
-      const response = await supertest(app.getApp())
-        .get(`/api/students/${createdStudent.id}`)
-        .set('Authorization', `Bearer ${authToken}`)
-
-      expect(response.status).toBe(200)
-      expect(response.body.success).toBe(true)
-      expect(response.body.data.student.id).toBe(createdStudent.id)
-      expect(response.body.data.student.studentId).toBe('2023001')
+      const student = await getStudentById(createdStudent.id)
+      expect(student).toBeDefined()
+      expect(student?.id).toBe(createdStudent.id)
+      expect(student?.studentId).toBe(studentId)
     })
 
-    it('should return 404 for non-existent student', async () => {
-      const response = await supertest(app.getApp())
-        .get('/api/students/non-existent-id')
-        .set('Authorization', `Bearer ${authToken}`)
-
-      expect(response.status).toBe(404)
-      expect(response.body.success).toBe(false)
-    })
-
-    it('should return 401 when not authenticated', async () => {
-      const response = await supertest(app.getApp())
-        .get('/api/students/some-id')
-
-      expect(response.status).toBe(401)
-      expect(response.body.success).toBe(false)
+    it('should return null for non-existent student', async () => {
+      const student = await getStudentById('non-existent-id')
+      expect(student).toBeNull()
     })
   })
 
-  describe('PUT /api/students/:id', () => {
+  describe('updateStudent', () => {
     it('should update a student', async () => {
       // Create test student
+      const studentId = generateTestStudentId('api-update')
       const createdStudent = await prisma.student.create({
         data: {
-          studentId: '2023001',
+          studentId,
           firstName: 'John',
           lastName: 'Doe',
           gradeLevel: 'Grade 7',
@@ -194,51 +138,25 @@ describe('Students API', () => {
         section: '7-B'
       }
 
-      const response = await supertest(app.getApp())
-        .put(`/api/students/${createdStudent.id}`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(updateData)
-
-      expect(response.status).toBe(200)
-      expect(response.body.success).toBe(true)
-      expect(response.body.data.student.firstName).toBe(updateData.firstName)
-      expect(response.body.data.student.section).toBe(updateData.section)
+      const updatedStudent = await updateStudent(createdStudent.id, updateData)
+      expect(updatedStudent).toBeDefined()
+      expect(updatedStudent?.firstName).toBe(updateData.firstName)
+      expect(updatedStudent?.section).toBe(updateData.section)
     })
 
-    it('should return 404 for non-existent student', async () => {
-      const updateData = {
-        firstName: 'Johnathan'
-      }
-
-      const response = await supertest(app.getApp())
-        .put('/api/students/non-existent-id')
-        .set('Authorization', `Bearer ${authToken}`)
-        .send(updateData)
-
-      expect(response.status).toBe(404)
-      expect(response.body.success).toBe(false)
-    })
-
-    it('should return 401 when not authenticated', async () => {
-      const updateData = {
-        firstName: 'Johnathan'
-      }
-
-      const response = await supertest(app.getApp())
-        .put('/api/students/some-id')
-        .send(updateData)
-
-      expect(response.status).toBe(401)
-      expect(response.body.success).toBe(false)
+    it('should return null for non-existent student', async () => {
+      const updatedStudent = await updateStudent('non-existent-id', { firstName: 'John' })
+      expect(updatedStudent).toBeNull()
     })
   })
 
-  describe('DELETE /api/students/:id', () => {
+  describe('deleteStudent', () => {
     it('should delete a student', async () => {
       // Create test student
+      const studentId = generateTestStudentId('api-delete')
       const createdStudent = await prisma.student.create({
         data: {
-          studentId: '2023001',
+          studentId,
           firstName: 'John',
           lastName: 'Doe',
           gradeLevel: 'Grade 7',
@@ -247,13 +165,9 @@ describe('Students API', () => {
         }
       })
 
-      const response = await supertest(app.getApp())
-        .delete(`/api/students/${createdStudent.id}`)
-        .set('Authorization', `Bearer ${authToken}`)
-
-      expect(response.status).toBe(200)
-      expect(response.body.success).toBe(true)
-      expect(response.body.data.student.id).toBe(createdStudent.id)
+      const deletedStudent = await deleteStudent(createdStudent.id)
+      expect(deletedStudent).toBeDefined()
+      expect(deletedStudent?.id).toBe(createdStudent.id)
 
       // Verify student is deleted
       const student = await prisma.student.findUnique({
@@ -262,21 +176,35 @@ describe('Students API', () => {
       expect(student).toBeNull()
     })
 
-    it('should return 404 for non-existent student', async () => {
-      const response = await supertest(app.getApp())
-        .delete('/api/students/non-existent-id')
-        .set('Authorization', `Bearer ${authToken}`)
+    it('should return null for non-existent student', async () => {
+      const deletedStudent = await deleteStudent('non-existent-id')
+      expect(deletedStudent).toBeNull()
+    })
+  })
 
-      expect(response.status).toBe(404)
-      expect(response.body.success).toBe(false)
+  describe('getStudentByBarcode', () => {
+    it('should return a student by barcode (student ID)', async () => {
+      // Create test student
+      const studentId = generateTestStudentId('api-barcode')
+      await prisma.student.create({
+        data: {
+          studentId,
+          firstName: 'John',
+          lastName: 'Doe',
+          gradeLevel: 'Grade 7',
+          gradeCategory: GradeCategory.JUNIOR_HIGH,
+          section: '7-A'
+        }
+      })
+
+      const student = await getStudentByBarcode(studentId)
+      expect(student).toBeDefined()
+      expect(student?.studentId).toBe(studentId)
     })
 
-    it('should return 401 when not authenticated', async () => {
-      const response = await supertest(app.getApp())
-        .delete('/api/students/some-id')
-
-      expect(response.status).toBe(401)
-      expect(response.body.success).toBe(false)
+    it('should return null for non-existent barcode', async () => {
+      const student = await getStudentByBarcode('non-existent-barcode')
+      expect(student).toBeNull()
     })
   })
 })

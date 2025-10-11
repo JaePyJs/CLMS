@@ -14,7 +14,7 @@ class ImportService {
             importedRecords: 0,
             skippedRecords: 0,
             errorRecords: 0,
-            errors: []
+            errors: [],
         };
         try {
             logger_1.logger.info(`Starting student import from ${filePath}`);
@@ -22,8 +22,11 @@ class ImportService {
             result.totalRecords = records.length;
             for (const record of records) {
                 try {
-                    if (!record.studentId || !record.firstName || !record.lastName ||
-                        !record.gradeLevel || !record.gradeCategory) {
+                    if (!record.studentId ||
+                        !record.firstName ||
+                        !record.lastName ||
+                        !record.gradeLevel ||
+                        !record.gradeCategory) {
                         result.errors.push(`Missing required fields for student: ${JSON.stringify(record)}`);
                         result.errorRecords++;
                         continue;
@@ -34,7 +37,7 @@ class ImportService {
                         continue;
                     }
                     const existingStudent = await prisma_1.prisma.student.findUnique({
-                        where: { studentId: record.studentId }
+                        where: { studentId: record.studentId },
                     });
                     if (existingStudent) {
                         logger_1.logger.info(`Student already exists, skipping: ${record.studentId}`);
@@ -48,8 +51,8 @@ class ImportService {
                             lastName: record.lastName,
                             gradeLevel: record.gradeLevel,
                             gradeCategory: record.gradeCategory,
-                            section: record.section || null
-                        }
+                            section: record.section || null,
+                        },
                     });
                     result.importedRecords++;
                     logger_1.logger.info(`Imported student: ${record.studentId}`);
@@ -65,12 +68,14 @@ class ImportService {
                 totalRecords: result.totalRecords,
                 importedRecords: result.importedRecords,
                 skippedRecords: result.skippedRecords,
-                errorRecords: result.errorRecords
+                errorRecords: result.errorRecords,
             });
             return result;
         }
         catch (error) {
-            logger_1.logger.error('Failed to import students', { error: error.message });
+            logger_1.logger.error('Failed to import students', {
+                error: error.message,
+            });
             result.success = false;
             result.errors.push(error.message);
             return result;
@@ -83,7 +88,7 @@ class ImportService {
             importedRecords: 0,
             skippedRecords: 0,
             errorRecords: 0,
-            errors: []
+            errors: [],
         };
         try {
             logger_1.logger.info(`Starting book import from ${filePath}`);
@@ -91,14 +96,17 @@ class ImportService {
             result.totalRecords = records.length;
             for (const record of records) {
                 try {
-                    if (!record.accessionNo || !record.title || !record.author ||
-                        !record.category || !record.totalCopies) {
+                    if (!record.accessionNo ||
+                        !record.title ||
+                        !record.author ||
+                        !record.category ||
+                        !record.totalCopies) {
                         result.errors.push(`Missing required fields for book: ${JSON.stringify(record)}`);
                         result.errorRecords++;
                         continue;
                     }
                     const existingBook = await prisma_1.prisma.book.findUnique({
-                        where: { accessionNo: record.accessionNo }
+                        where: { accessionNo: record.accessionNo },
                     });
                     if (existingBook) {
                         logger_1.logger.info(`Book already exists, skipping: ${record.accessionNo}`);
@@ -116,8 +124,8 @@ class ImportService {
                             subcategory: record.subcategory || null,
                             location: record.location || null,
                             totalCopies: record.totalCopies,
-                            availableCopies: record.totalCopies
-                        }
+                            availableCopies: record.totalCopies,
+                        },
                     });
                     result.importedRecords++;
                     logger_1.logger.info(`Imported book: ${record.accessionNo}`);
@@ -133,12 +141,14 @@ class ImportService {
                 totalRecords: result.totalRecords,
                 importedRecords: result.importedRecords,
                 skippedRecords: result.skippedRecords,
-                errorRecords: result.errorRecords
+                errorRecords: result.errorRecords,
             });
             return result;
         }
         catch (error) {
-            logger_1.logger.error('Failed to import books', { error: error.message });
+            logger_1.logger.error('Failed to import books', {
+                error: error.message,
+            });
             result.success = false;
             result.errors.push(error.message);
             return result;
@@ -151,7 +161,7 @@ class ImportService {
             importedRecords: 0,
             skippedRecords: 0,
             errorRecords: 0,
-            errors: []
+            errors: [],
         };
         try {
             logger_1.logger.info(`Starting equipment import from ${filePath}`);
@@ -159,8 +169,11 @@ class ImportService {
             result.totalRecords = records.length;
             for (const record of records) {
                 try {
-                    if (!record.equipmentId || !record.name || !record.type ||
-                        !record.location || !record.maxTimeMinutes) {
+                    if (!record.equipmentId ||
+                        !record.name ||
+                        !record.type ||
+                        !record.location ||
+                        !record.maxTimeMinutes) {
                         result.errors.push(`Missing required fields for equipment: ${JSON.stringify(record)}`);
                         result.errorRecords++;
                         continue;
@@ -173,7 +186,7 @@ class ImportService {
                     const requiresSupervision = record.requiresSupervision?.toLowerCase() === 'yes' ||
                         record.requiresSupervision?.toLowerCase() === 'true';
                     const existingEquipment = await prisma_1.prisma.equipment.findUnique({
-                        where: { equipmentId: record.equipmentId }
+                        where: { equipmentId: record.equipmentId },
                     });
                     if (existingEquipment) {
                         logger_1.logger.info(`Equipment already exists, skipping: ${record.equipmentId}`);
@@ -189,8 +202,8 @@ class ImportService {
                             maxTimeMinutes: record.maxTimeMinutes,
                             requiresSupervision,
                             description: record.description || null,
-                            status: client_1.EquipmentStatus.AVAILABLE
-                        }
+                            status: client_1.EquipmentStatus.AVAILABLE,
+                        },
                     });
                     result.importedRecords++;
                     logger_1.logger.info(`Imported equipment: ${record.equipmentId}`);
@@ -206,12 +219,14 @@ class ImportService {
                 totalRecords: result.totalRecords,
                 importedRecords: result.importedRecords,
                 skippedRecords: result.skippedRecords,
-                errorRecords: result.errorRecords
+                errorRecords: result.errorRecords,
             });
             return result;
         }
         catch (error) {
-            logger_1.logger.error('Failed to import equipment', { error: error.message });
+            logger_1.logger.error('Failed to import equipment', {
+                error: error.message,
+            });
             result.success = false;
             result.errors.push(error.message);
             return result;
@@ -224,7 +239,7 @@ class ImportService {
                 .pipe((0, csv_parse_1.parse)({
                 columns: true,
                 skip_empty_lines: true,
-                trim: true
+                trim: true,
             }))
                 .on('data', (record) => {
                 records.push(record);

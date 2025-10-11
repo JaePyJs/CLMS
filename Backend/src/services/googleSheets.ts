@@ -1,57 +1,70 @@
-import { GoogleAuth } from 'google-auth-library'
-import { google } from 'googleapis'
-import { logger } from '@/utils/logger'
-import { readFileSync } from 'fs'
-import { join } from 'path'
-import { prisma } from '@/utils/prisma'
-import { Student, Book, Equipment, Activity, BookCheckout } from '@prisma/client'
+import { GoogleAuth } from 'google-auth-library';
+import { google, type sheets_v4 } from 'googleapis';
+import { logger } from '@/utils/logger';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { prisma } from '@/utils/prisma';
+import { GoogleSheetCellValue } from '@/types';
+
+interface DailyReportData {
+  date: string;
+  totalActivities: number;
+  activitiesByType: Record<string, number>;
+  activitiesByGrade: Record<string, number>;
+  equipmentUsage: number;
+  uniqueStudents: number;
+}
 
 // Google Sheets API scopes
-const SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 
 // Google Sheets service class
 export class GoogleSheetsService {
-  private auth: GoogleAuth | null = null
-  private sheets: any = null
-  private spreadsheetId: string | null = null
-  private isInitialized = false
+  private auth: GoogleAuth | null = null;
+  private sheets: sheets_v4.Sheets | null = null;
+  private spreadsheetId: string | null = null;
+  private isInitialized = false;
 
   // Initialize the Google Sheets service
   async initialize(): Promise<void> {
     if (this.isInitialized) {
-      return
+      return;
     }
 
     try {
-      logger.info('Initializing Google Sheets service...')
+      logger.info('Initializing Google Sheets service...');
 
       // Get credentials path from environment
-      const credentialsPath = process.env.GOOGLE_CREDENTIALS_PATH || join(process.cwd(), 'google-credentials.json')
-      
+      const credentialsPath =
+        process.env.GOOGLE_CREDENTIALS_PATH ||
+        join(process.cwd(), 'google-credentials.json');
+
       // Get spreadsheet ID from environment
-      this.spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID || null
-      
+      this.spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID || null;
+
       if (!this.spreadsheetId) {
-        throw new Error('Google Spreadsheet ID is required')
+        throw new Error('Google Spreadsheet ID is required');
       }
 
       // Load credentials
-      const credentials = JSON.parse(readFileSync(credentialsPath, 'utf8'))
-      
+      const credentials = JSON.parse(readFileSync(credentialsPath, 'utf8'));
+
       // Create auth client
       this.auth = new GoogleAuth({
         credentials,
-        scopes: SCOPES
-      })
+        scopes: SCOPES,
+      });
 
       // Create sheets client
-      this.sheets = google.sheets({ version: 'v4', auth: this.auth })
+      this.sheets = google.sheets({ version: 'v4', auth: this.auth });
 
-      this.isInitialized = true
-      logger.info('Google Sheets service initialized successfully')
+      this.isInitialized = true;
+      logger.info('Google Sheets service initialized successfully');
     } catch (error) {
-      logger.error('Failed to initialize Google Sheets service', { error: (error as Error).message })
-      throw error
+      logger.error('Failed to initialize Google Sheets service', {
+        error: (error as Error).message,
+      });
+      throw error;
     }
   }
 
@@ -59,117 +72,129 @@ export class GoogleSheetsService {
   async testConnection(): Promise<boolean> {
     try {
       if (!this.isInitialized) {
-        await this.initialize()
+        await this.initialize();
       }
 
       if (!this.sheets || !this.spreadsheetId) {
-        throw new Error('Google Sheets service is not properly initialized')
+        throw new Error('Google Sheets service is not properly initialized');
       }
 
       // Get spreadsheet metadata
       const response = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId
-      })
+        spreadsheetId: this.spreadsheetId,
+      });
 
-      logger.info('Google Sheets connection test successful', { 
-        spreadsheetTitle: response.data.properties?.title 
-      })
+      logger.info('Google Sheets connection test successful', {
+        spreadsheetTitle: response.data.properties?.title,
+      });
 
-      return true
+      return true;
     } catch (error) {
-      logger.error('Google Sheets connection test failed', { error: (error as Error).message })
-      return false
+      logger.error('Google Sheets connection test failed', {
+        error: (error as Error).message,
+      });
+      return false;
     }
   }
 
   // Health check for the service
   async healthCheck(): Promise<{ connected: boolean; error?: string }> {
     try {
-      const connected = await this.testConnection()
-      return { connected }
+      const connected = await this.testConnection();
+      return { connected };
     } catch (error) {
       return {
         connected: false,
-        error: (error as Error).message
-      }
+        error: (error as Error).message,
+      };
     }
   }
 
   // Sync all data to Google Sheets
-  async syncAllData(): Promise<{ success: boolean; recordsProcessed?: number; error?: string }> {
+  async syncAllData(): Promise<{
+    success: boolean;
+    recordsProcessed?: number;
+    error?: string;
+  }> {
     try {
       if (!this.isInitialized) {
-        await this.initialize()
+        await this.initialize();
       }
 
       if (!this.sheets || !this.spreadsheetId) {
-        throw new Error('Google Sheets service is not properly initialized')
+        throw new Error('Google Sheets service is not properly initialized');
       }
 
-      logger.info('Starting Google Sheets sync for all data')
-      const startTime = Date.now()
-      let totalRecordsProcessed = 0
+      logger.info('Starting Google Sheets sync for all data');
+      const startTime = Date.now();
+      let totalRecordsProcessed = 0;
 
       // Sync students
-      const studentsResult = await this.syncStudents()
+      const studentsResult = await this.syncStudents();
       if (studentsResult.success) {
-        totalRecordsProcessed += studentsResult.recordsProcessed || 0
+        totalRecordsProcessed += studentsResult.recordsProcessed || 0;
       }
 
       // Sync books
-      const booksResult = await this.syncBooks()
+      const booksResult = await this.syncBooks();
       if (booksResult.success) {
-        totalRecordsProcessed += booksResult.recordsProcessed || 0
+        totalRecordsProcessed += booksResult.recordsProcessed || 0;
       }
 
       // Sync equipment
-      const equipmentResult = await this.syncEquipment()
+      const equipmentResult = await this.syncEquipment();
       if (equipmentResult.success) {
-        totalRecordsProcessed += equipmentResult.recordsProcessed || 0
+        totalRecordsProcessed += equipmentResult.recordsProcessed || 0;
       }
 
       // Sync activities
-      const activitiesResult = await this.syncActivities()
+      const activitiesResult = await this.syncActivities();
       if (activitiesResult.success) {
-        totalRecordsProcessed += activitiesResult.recordsProcessed || 0
+        totalRecordsProcessed += activitiesResult.recordsProcessed || 0;
       }
 
       // Sync book checkouts
-      const checkoutsResult = await this.syncBookCheckouts()
+      const checkoutsResult = await this.syncBookCheckouts();
       if (checkoutsResult.success) {
-        totalRecordsProcessed += checkoutsResult.recordsProcessed || 0
+        totalRecordsProcessed += checkoutsResult.recordsProcessed || 0;
       }
 
-      const duration = Date.now() - startTime
-      logger.info(`Google Sheets sync completed in ${duration}ms`, { 
-        totalRecordsProcessed 
-      })
+      const duration = Date.now() - startTime;
+      logger.info(`Google Sheets sync completed in ${duration}ms`, {
+        totalRecordsProcessed,
+      });
 
       return {
         success: true,
-        recordsProcessed: totalRecordsProcessed
-      }
+        recordsProcessed: totalRecordsProcessed,
+      };
     } catch (error) {
-      logger.error('Google Sheets sync failed', { error: (error as Error).message })
+      logger.error('Google Sheets sync failed', {
+        error: (error as Error).message,
+      });
       return {
         success: false,
-        error: (error as Error).message
-      }
+        error: (error as Error).message,
+      };
     }
   }
 
   // Sync students to Google Sheets
-  async syncStudents(): Promise<{ success: boolean; recordsProcessed?: number; error?: string }> {
+  async syncStudents(): Promise<{
+    success: boolean;
+    recordsProcessed?: number;
+    error?: string;
+  }> {
     try {
       if (!this.sheets || !this.spreadsheetId) {
-        throw new Error('Google Sheets service is not properly initialized')
+        throw new Error('Google Sheets service is not properly initialized');
       }
 
       // Get all students from database
       const students = await prisma.student.findMany({
         where: { isActive: true },
-        orderBy: { studentId: 'asc' }
-      })
+        orderBy: { studentId: 'asc' },
+      });
 
       // Prepare data for Google Sheets
       const headers = [
@@ -180,10 +205,10 @@ export class GoogleSheetsService {
         'Grade Category',
         'Section',
         'Created At',
-        'Updated At'
-      ]
+        'Updated At',
+      ];
 
-      const rows = students.map((student: Student) => [
+      const rows = students.map(student => [
         student.studentId,
         student.firstName,
         student.lastName,
@@ -191,39 +216,45 @@ export class GoogleSheetsService {
         student.gradeCategory,
         student.section || '',
         student.createdAt.toISOString(),
-        student.updatedAt.toISOString()
-      ])
+        student.updatedAt.toISOString(),
+      ]);
 
       // Update Google Sheets
-      await this.updateSheet('Students', headers, rows)
+      await this.updateSheet('Students', headers, rows);
 
-      logger.info(`Synced ${students.length} students to Google Sheets`)
+      logger.info(`Synced ${students.length} students to Google Sheets`);
 
       return {
         success: true,
-        recordsProcessed: students.length
-      }
+        recordsProcessed: students.length,
+      };
     } catch (error) {
-      logger.error('Failed to sync students to Google Sheets', { error: (error as Error).message })
+      logger.error('Failed to sync students to Google Sheets', {
+        error: (error as Error).message,
+      });
       return {
         success: false,
-        error: (error as Error).message
-      }
+        error: (error as Error).message,
+      };
     }
   }
 
   // Sync books to Google Sheets
-  async syncBooks(): Promise<{ success: boolean; recordsProcessed?: number; error?: string }> {
+  async syncBooks(): Promise<{
+    success: boolean;
+    recordsProcessed?: number;
+    error?: string;
+  }> {
     try {
       if (!this.sheets || !this.spreadsheetId) {
-        throw new Error('Google Sheets service is not properly initialized')
+        throw new Error('Google Sheets service is not properly initialized');
       }
 
       // Get all books from database
       const books = await prisma.book.findMany({
         where: { isActive: true },
-        orderBy: { accessionNo: 'asc' }
-      })
+        orderBy: { accessionNo: 'asc' },
+      });
 
       // Prepare data for Google Sheets
       const headers = [
@@ -238,10 +269,10 @@ export class GoogleSheetsService {
         'Total Copies',
         'Available Copies',
         'Created At',
-        'Updated At'
-      ]
+        'Updated At',
+      ];
 
-      const rows = books.map((book: Book) => [
+      const rows = books.map(book => [
         book.accessionNo,
         book.isbn || '',
         book.title,
@@ -253,38 +284,44 @@ export class GoogleSheetsService {
         book.totalCopies.toString(),
         book.availableCopies.toString(),
         book.createdAt.toISOString(),
-        book.updatedAt.toISOString()
-      ])
+        book.updatedAt.toISOString(),
+      ]);
 
       // Update Google Sheets
-      await this.updateSheet('Books', headers, rows)
+      await this.updateSheet('Books', headers, rows);
 
-      logger.info(`Synced ${books.length} books to Google Sheets`)
+      logger.info(`Synced ${books.length} books to Google Sheets`);
 
       return {
         success: true,
-        recordsProcessed: books.length
-      }
+        recordsProcessed: books.length,
+      };
     } catch (error) {
-      logger.error('Failed to sync books to Google Sheets', { error: (error as Error).message })
+      logger.error('Failed to sync books to Google Sheets', {
+        error: (error as Error).message,
+      });
       return {
         success: false,
-        error: (error as Error).message
-      }
+        error: (error as Error).message,
+      };
     }
   }
 
   // Sync equipment to Google Sheets
-  async syncEquipment(): Promise<{ success: boolean; recordsProcessed?: number; error?: string }> {
+  async syncEquipment(): Promise<{
+    success: boolean;
+    recordsProcessed?: number;
+    error?: string;
+  }> {
     try {
       if (!this.sheets || !this.spreadsheetId) {
-        throw new Error('Google Sheets service is not properly initialized')
+        throw new Error('Google Sheets service is not properly initialized');
       }
 
       // Get all equipment from database
       const equipment = await prisma.equipment.findMany({
-        orderBy: { equipmentId: 'asc' }
-      })
+        orderBy: { equipmentId: 'asc' },
+      });
 
       // Prepare data for Google Sheets
       const headers = [
@@ -297,10 +334,10 @@ export class GoogleSheetsService {
         'Requires Supervision',
         'Description',
         'Created At',
-        'Updated At'
-      ]
+        'Updated At',
+      ];
 
-      const rows = equipment.map((item: Equipment) => [
+      const rows = equipment.map(item => [
         item.equipmentId,
         item.name,
         item.type,
@@ -310,59 +347,67 @@ export class GoogleSheetsService {
         item.requiresSupervision ? 'Yes' : 'No',
         item.description || '',
         item.createdAt.toISOString(),
-        item.updatedAt.toISOString()
-      ])
+        item.updatedAt.toISOString(),
+      ]);
 
       // Update Google Sheets
-      await this.updateSheet('Equipment', headers, rows)
+      await this.updateSheet('Equipment', headers, rows);
 
-      logger.info(`Synced ${equipment.length} equipment items to Google Sheets`)
+      logger.info(
+        `Synced ${equipment.length} equipment items to Google Sheets`,
+      );
 
       return {
         success: true,
-        recordsProcessed: equipment.length
-      }
+        recordsProcessed: equipment.length,
+      };
     } catch (error) {
-      logger.error('Failed to sync equipment to Google Sheets', { error: (error as Error).message })
+      logger.error('Failed to sync equipment to Google Sheets', {
+        error: (error as Error).message,
+      });
       return {
         success: false,
-        error: (error as Error).message
-      }
+        error: (error as Error).message,
+      };
     }
   }
 
   // Sync activities to Google Sheets
-  async syncActivities(): Promise<{ success: boolean; recordsProcessed?: number; error?: string }> {
+  async syncActivities(): Promise<{
+    success: boolean;
+    recordsProcessed?: number;
+    error?: string;
+  }> {
     try {
       if (!this.sheets || !this.spreadsheetId) {
-        throw new Error('Google Sheets service is not properly initialized')
+        throw new Error('Google Sheets service is not properly initialized');
       }
 
       // Get activities from the last 30 days
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const activities = await prisma.activity.findMany({
         where: {
-          startTime: { gte: thirtyDaysAgo }
+          startTime: { gte: thirtyDaysAgo },
         },
         include: {
           student: {
             select: {
               studentId: true,
               firstName: true,
-              lastName: true
-            }
+              lastName: true,
+            },
           },
           equipment: {
             select: {
               equipmentId: true,
-              name: true
-            }
-          }
+              name: true,
+            },
+          },
         },
-        orderBy: { startTime: 'desc' }
-      })
+        orderBy: { startTime: 'desc' },
+      });
 
       // Prepare data for Google Sheets
       const headers = [
@@ -379,77 +424,85 @@ export class GoogleSheetsService {
         'Status',
         'Notes',
         'Processed By',
-        'Created At'
-      ]
+        'Created At',
+      ];
 
-      const rows = activities.map((activity: any) => [
+      const rows = activities.map(activity => [
         activity.id,
-        activity.student.studentId,
-        `${activity.student.firstName} ${activity.student.lastName}`,
+        activity.student?.studentId ?? '',
+        activity.student
+          ? `${activity.student.firstName} ${activity.student.lastName}`
+          : '',
         activity.activityType,
-        activity.equipment?.equipmentId || '',
-        activity.equipment?.name || '',
+        activity.equipment?.equipmentId ?? '',
+        activity.equipment?.name ?? '',
         activity.startTime.toISOString(),
-        activity.endTime?.toISOString() || '',
-        activity.durationMinutes?.toString() || '',
-        activity.timeLimitMinutes?.toString() || '',
+        activity.endTime?.toISOString() ?? '',
+        activity.durationMinutes?.toString() ?? '',
+        activity.timeLimitMinutes?.toString() ?? '',
         activity.status,
-        activity.notes || '',
+        activity.notes ?? '',
         activity.processedBy,
-        activity.createdAt.toISOString()
-      ])
+        activity.createdAt.toISOString(),
+      ]);
 
       // Update Google Sheets
-      await this.updateSheet('Activities', headers, rows)
+      await this.updateSheet('Activities', headers, rows);
 
-      logger.info(`Synced ${activities.length} activities to Google Sheets`)
+      logger.info(`Synced ${activities.length} activities to Google Sheets`);
 
       return {
         success: true,
-        recordsProcessed: activities.length
-      }
+        recordsProcessed: activities.length,
+      };
     } catch (error) {
-      logger.error('Failed to sync activities to Google Sheets', { error: (error as Error).message })
+      logger.error('Failed to sync activities to Google Sheets', {
+        error: (error as Error).message,
+      });
       return {
         success: false,
-        error: (error as Error).message
-      }
+        error: (error as Error).message,
+      };
     }
   }
 
   // Sync book checkouts to Google Sheets
-  async syncBookCheckouts(): Promise<{ success: boolean; recordsProcessed?: number; error?: string }> {
+  async syncBookCheckouts(): Promise<{
+    success: boolean;
+    recordsProcessed?: number;
+    error?: string;
+  }> {
     try {
       if (!this.sheets || !this.spreadsheetId) {
-        throw new Error('Google Sheets service is not properly initialized')
+        throw new Error('Google Sheets service is not properly initialized');
       }
 
       // Get checkouts from the last 30 days
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const checkouts = await prisma.bookCheckout.findMany({
         where: {
-          checkoutDate: { gte: thirtyDaysAgo }
+          checkoutDate: { gte: thirtyDaysAgo },
         },
         include: {
           student: {
             select: {
               studentId: true,
               firstName: true,
-              lastName: true
-            }
+              lastName: true,
+            },
           },
           book: {
             select: {
               accessionNo: true,
               title: true,
-              author: true
-            }
-          }
+              author: true,
+            },
+          },
         },
-        orderBy: { checkoutDate: 'desc' }
-      })
+        orderBy: { checkoutDate: 'desc' },
+      });
 
       // Prepare data for Google Sheets
       const headers = [
@@ -468,62 +521,70 @@ export class GoogleSheetsService {
         'Fine Paid',
         'Notes',
         'Processed By',
-        'Created At'
-      ]
+        'Created At',
+      ];
 
-      const rows = checkouts.map((checkout: any) => [
+      const rows = checkouts.map(checkout => [
         checkout.id,
-        checkout.student.studentId,
-        `${checkout.student.firstName} ${checkout.student.lastName}`,
-        checkout.book.accessionNo,
-        checkout.book.title,
-        checkout.book.author,
+        checkout.student?.studentId ?? '',
+        checkout.student
+          ? `${checkout.student.firstName} ${checkout.student.lastName}`
+          : '',
+        checkout.book?.accessionNo ?? '',
+        checkout.book?.title ?? '',
+        checkout.book?.author ?? '',
         checkout.checkoutDate.toISOString(),
         checkout.dueDate.toISOString(),
-        checkout.returnDate?.toISOString() || '',
+        checkout.returnDate?.toISOString() ?? '',
         checkout.status,
         checkout.overdueDays.toString(),
         checkout.fineAmount.toString(),
         checkout.finePaid ? 'Yes' : 'No',
-        checkout.notes || '',
+        checkout.notes ?? '',
         checkout.processedBy,
-        checkout.createdAt.toISOString()
-      ])
+        checkout.createdAt.toISOString(),
+      ]);
 
       // Update Google Sheets
-      await this.updateSheet('Book Checkouts', headers, rows)
+      await this.updateSheet('Book Checkouts', headers, rows);
 
-      logger.info(`Synced ${checkouts.length} book checkouts to Google Sheets`)
+      logger.info(`Synced ${checkouts.length} book checkouts to Google Sheets`);
 
       return {
         success: true,
-        recordsProcessed: checkouts.length
-      }
+        recordsProcessed: checkouts.length,
+      };
     } catch (error) {
-      logger.error('Failed to sync book checkouts to Google Sheets', { error: (error as Error).message })
+      logger.error('Failed to sync book checkouts to Google Sheets', {
+        error: (error as Error).message,
+      });
       return {
         success: false,
-        error: (error as Error).message
-      }
+        error: (error as Error).message,
+      };
     }
   }
 
   // Update a specific sheet in Google Sheets
-  private async updateSheet(sheetName: string, headers: string[], rows: string[][]): Promise<void> {
+  private async updateSheet(
+    sheetName: string,
+    headers: string[],
+    rows: string[][],
+  ): Promise<void> {
     try {
       if (!this.sheets || !this.spreadsheetId) {
-        throw new Error('Google Sheets service is not properly initialized')
+        throw new Error('Google Sheets service is not properly initialized');
       }
 
       // Get all sheets to find the target sheet
       const spreadsheet = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId
-      })
+        spreadsheetId: this.spreadsheetId,
+      });
 
       // Find the sheet by name
-      const sheet = spreadsheet.data.sheets?.find((s: any) =>
-        s.properties?.title === sheetName
-      )
+      const sheet = spreadsheet.data.sheets?.find(
+        sheet => sheet.properties?.title === sheetName,
+      );
 
       // If sheet doesn't exist, create it
       if (!sheet) {
@@ -534,55 +595,63 @@ export class GoogleSheetsService {
               {
                 addSheet: {
                   properties: {
-                    title: sheetName
-                  }
-                }
-              }
-            ]
-          }
-        })
+                    title: sheetName,
+                  },
+                },
+              },
+            ],
+          },
+        });
       }
-
       // Clear existing data
       await this.sheets.spreadsheets.values.clear({
         spreadsheetId: this.spreadsheetId,
-        range: `${sheetName}!A:Z`
-      })
+        range: `${sheetName}!A:Z`,
+      });
 
       // Write headers and data
-      const data = [headers, ...rows]
+      const data = [headers, ...rows];
       await this.sheets.spreadsheets.values.update({
         spreadsheetId: this.spreadsheetId,
         range: `${sheetName}!A1`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: data
-        }
-      })
+          values: data,
+        },
+      });
 
-      logger.info(`Updated Google Sheets: ${sheetName} with ${rows.length} rows`)
+      logger.info(
+        `Updated Google Sheets: ${sheetName} with ${rows.length} rows`,
+      );
     } catch (error) {
-      logger.error(`Failed to update Google Sheets: ${sheetName}`, { error: (error as Error).message })
-      throw error
+      logger.error(`Failed to update Google Sheets: ${sheetName}`, {
+        error: (error as Error).message,
+      });
+      throw error;
     }
   }
 
   // Get data from Google Sheets
-  async getSheetData(sheetName: string, range?: string): Promise<any[][]> {
+  async getSheetData(
+    sheetName: string,
+    range?: string,
+  ): Promise<GoogleSheetCellValue[][]> {
     try {
       if (!this.sheets || !this.spreadsheetId) {
-        throw new Error('Google Sheets service is not properly initialized')
+        throw new Error('Google Sheets service is not properly initialized');
       }
 
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
-        range: range || `${sheetName}!A:Z`
-      })
+        range: range || `${sheetName}!A:Z`,
+      });
 
-      return response.data.values || []
+      return (response.data.values as GoogleSheetCellValue[][]) || [];
     } catch (error) {
-      logger.error(`Failed to get data from Google Sheets: ${sheetName}`, { error: (error as Error).message })
-      throw error
+      logger.error(`Failed to get data from Google Sheets: ${sheetName}`, {
+        error: (error as Error).message,
+      });
+      throw error;
     }
   }
 
@@ -590,42 +659,57 @@ export class GoogleSheetsService {
   async getSpreadsheetInfo(): Promise<{ title: string; sheets: string[] }> {
     try {
       if (!this.sheets || !this.spreadsheetId) {
-        throw new Error('Google Sheets service is not properly initialized')
+        throw new Error('Google Sheets service is not properly initialized');
       }
 
       const response = await this.sheets.spreadsheets.get({
-        spreadsheetId: this.spreadsheetId
-      })
+        spreadsheetId: this.spreadsheetId,
+      });
 
-      const title = response.data.properties?.title || 'Unknown'
-      const sheets = response.data.sheets?.map((sheet: any) => sheet.properties?.title) || []
+      const title = response.data.properties?.title || 'Unknown';
+      const sheets =
+        response.data.sheets?.map(
+          sheet => sheet.properties?.title || 'Untitled',
+        ) || [];
 
-      return { title, sheets }
+      return { title, sheets };
     } catch (error) {
-      logger.error('Failed to get spreadsheet info', { error: (error as Error).message })
-      throw error
+      logger.error('Failed to get spreadsheet info', {
+        error: (error as Error).message,
+      });
+      throw error;
     }
   }
 
   // Generate daily report
-  async generateDailyReport(date?: Date): Promise<{ success: boolean; data?: any; error?: string }> {
+  async generateDailyReport(
+    date?: Date,
+  ): Promise<{ success: boolean; data?: DailyReportData; error?: string }> {
     try {
       if (!this.sheets || !this.spreadsheetId) {
-        throw new Error('Google Sheets service is not properly initialized')
+        throw new Error('Google Sheets service is not properly initialized');
       }
 
-      const targetDate = date || new Date()
-      const dateString = targetDate.toISOString().split('T')[0]
+      const targetDate = date || new Date();
+      const isoString = targetDate.toISOString();
+      const dateString = isoString.split('T')[0] ?? isoString;
 
-      logger.info(`Generating daily report for ${dateString}`)
+      logger.info(`Generating daily report for ${dateString}`);
+
+      // Create proper date boundaries
+      const startOfDay = new Date(dateString);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(dateString);
+      endOfDay.setHours(23, 59, 59, 999);
 
       // Get activities for the specified date
       const activities = await prisma.activity.findMany({
         where: {
           startTime: {
-            gte: new Date(`${dateString}T00:00:00.000Z`),
-            lt: new Date(`${dateString}T23:59:59.999Z`)
-          }
+            gte: startOfDay,
+            lte: endOfDay,
+          },
         },
         include: {
           student: {
@@ -633,108 +717,253 @@ export class GoogleSheetsService {
               studentId: true,
               firstName: true,
               lastName: true,
-              gradeLevel: true
-            }
+              gradeLevel: true,
+            },
           },
           equipment: {
             select: {
               equipmentId: true,
               name: true,
-              type: true
-            }
-          }
+              type: true,
+            },
+          },
         },
-        orderBy: { startTime: 'desc' }
-      })
+        orderBy: { startTime: 'desc' },
+      });
 
       // Prepare report data
-      const reportData = {
+      const reportData: DailyReportData = {
         date: dateString,
         totalActivities: activities.length,
-        activitiesByType: activities.reduce((acc, activity) => {
-          acc[activity.activityType] = (acc[activity.activityType] || 0) + 1
-          return acc
-        }, {} as Record<string, number>),
-        activitiesByGrade: activities.reduce((acc, activity) => {
-          acc[activity.student.gradeLevel] = (acc[activity.student.gradeLevel] || 0) + 1
-          return acc
-        }, {} as Record<string, number>),
+        activitiesByType: activities.reduce(
+          (acc, activity) => {
+            acc[activity.activityType] = (acc[activity.activityType] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
+        activitiesByGrade: activities.reduce(
+          (acc, activity) => {
+            const gradeLevel = activity.student?.gradeLevel ?? 'Unknown';
+            acc[gradeLevel] = (acc[gradeLevel] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>,
+        ),
         equipmentUsage: activities.filter(a => a.equipment).length,
-        uniqueStudents: new Set(activities.map(a => a.student.studentId)).size
-      }
+        uniqueStudents: new Set(
+          activities
+            .map(activity => activity.student?.studentId)
+            .filter((id): id is string => Boolean(id)),
+        ).size,
+      };
+
+      await this.appendDailyReport(reportData);
 
       // Log the report generation
-      await this.logAutomationTask('daily_report', 'success', `Generated daily report for ${dateString}`, reportData)
+      await this.logAutomationTask(
+        'daily_report',
+        'success',
+        `Generated daily report for ${dateString}`,
+        reportData,
+      );
 
-      logger.info(`Daily report generated for ${dateString}`, reportData)
+      logger.info(`Daily report generated for ${dateString}`, reportData);
 
       return {
         success: true,
-        data: reportData
-      }
+        data: reportData,
+      };
     } catch (error) {
-      logger.error('Failed to generate daily report', { error: (error as Error).message })
-      await this.logAutomationTask('daily_report', 'error', `Failed to generate daily report: ${(error as Error).message}`)
+      logger.error('Failed to generate daily report', {
+        error: (error as Error).message,
+      });
+      await this.logAutomationTask(
+        'daily_report',
+        'error',
+        `Failed to generate daily report: ${(error as Error).message}`,
+      );
       return {
         success: false,
-        error: (error as Error).message
-      }
+        error: (error as Error).message,
+      };
     }
   }
 
+  private async ensureSheetHeaders(
+    sheetName: string,
+    headers: string[],
+  ): Promise<void> {
+    if (!this.sheets || !this.spreadsheetId) {
+      throw new Error('Google Sheets service is not properly initialized');
+    }
+
+    const spreadsheet = await this.sheets.spreadsheets.get({
+      spreadsheetId: this.spreadsheetId,
+    });
+
+    const sheetExists = spreadsheet.data.sheets?.some(
+      sheet => sheet.properties?.title === sheetName,
+    );
+
+    if (!sheetExists) {
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.spreadsheetId,
+        requestBody: {
+          requests: [
+            {
+              addSheet: {
+                properties: {
+                  title: sheetName,
+                },
+              },
+            },
+          ],
+        },
+      });
+    }
+    const existingHeader = await this.sheets.spreadsheets.values.get({
+      spreadsheetId: this.spreadsheetId,
+      range: `${sheetName}!1:1`,
+    });
+
+    if (
+      !existingHeader.data.values ||
+      existingHeader.data.values.length === 0
+    ) {
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId: this.spreadsheetId,
+        range: `${sheetName}!A1`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [headers],
+        },
+      });
+    }
+  }
+
+  private async appendDailyReport(report: DailyReportData): Promise<void> {
+    if (!this.sheets || !this.spreadsheetId) {
+      throw new Error('Google Sheets service is not properly initialized');
+    }
+
+    const sheetName = 'Daily Reports';
+    const headers = [
+      'Date',
+      'Total Activities',
+      'Equipment Usage',
+      'Unique Students',
+      'Activities By Type',
+      'Activities By Grade',
+    ];
+
+    await this.ensureSheetHeaders(sheetName, headers);
+
+    const row: GoogleSheetCellValue[] = [
+      report.date,
+      report.totalActivities,
+      report.equipmentUsage,
+      report.uniqueStudents,
+      JSON.stringify(report.activitiesByType),
+      JSON.stringify(report.activitiesByGrade),
+    ];
+
+    await this.sheets.spreadsheets.values.append({
+      spreadsheetId: this.spreadsheetId,
+      range: `${sheetName}!A:F`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [row],
+      },
+    });
+  }
+
   // Log automation task
-  async logAutomationTask(taskType: string, status: 'success' | 'error' | 'info' | 'warning' | 'BACKUP' | 'SYNC' | 'NOTIFICATION', message: string, data?: any): Promise<void> {
+  async logAutomationTask(
+    taskType: string,
+    status:
+      | 'success'
+      | 'error'
+      | 'info'
+      | 'warning'
+      | 'BACKUP'
+      | 'SYNC'
+      | 'NOTIFICATION',
+    message: string,
+    data?: unknown,
+  ): Promise<void> {
     try {
       if (!this.sheets || !this.spreadsheetId) {
-        logger.warn('Google Sheets service not initialized, skipping automation task logging')
-        return
+        logger.warn(
+          'Google Sheets service not initialized, skipping automation task logging',
+        );
+        return;
       }
 
-      const headers = ['Timestamp', 'Task Type', 'Status', 'Message', 'Data', 'Processed By']
-      const rows = [[
-        new Date().toISOString(),
-        taskType,
-        status,
-        message,
-        data ? JSON.stringify(data) : '',
-        'System'
-      ]]
+      const sheetName = 'Automation Log';
+      const headers = [
+        'Timestamp',
+        'Task Type',
+        'Status',
+        'Message',
+        'Data',
+        'Source',
+      ];
+
+      await this.ensureSheetHeaders(sheetName, headers);
+
+      const rows = [
+        [
+          new Date().toISOString(),
+          taskType,
+          status,
+          message,
+          data ? JSON.stringify(data) : '',
+          'System',
+        ],
+      ];
 
       // Append to automation log sheet
       await this.sheets.spreadsheets.values.append({
         spreadsheetId: this.spreadsheetId,
-        range: 'Automation Log!A:E',
+        range: `${sheetName}!A:F`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: rows
-        }
-      })
+          values: rows,
+        },
+      });
 
-      logger.info(`Logged automation task: ${taskType} - ${status}`)
+      logger.info(`Logged automation task: ${taskType} - ${status}`);
     } catch (error) {
-      logger.error('Failed to log automation task', { error: (error as Error).message })
+      logger.error('Failed to log automation task', {
+        error: (error as Error).message,
+      });
       // Don't throw - logging failure shouldn't stop the main task
     }
   }
 
   // Sync student activities (alias for syncActivities for compatibility)
-  async syncStudentActivities(): Promise<{ success: boolean; recordsProcessed?: number; error?: string }> {
-    return this.syncActivities()
+  async syncStudentActivities(): Promise<{
+    success: boolean;
+    recordsProcessed?: number;
+    error?: string;
+  }> {
+    return this.syncActivities();
   }
 
   // Shutdown the service
   async shutdown(): Promise<void> {
-    logger.info('Shutting down Google Sheets service...')
+    logger.info('Shutting down Google Sheets service...');
 
-    this.auth = null
-    this.sheets = null
-    this.spreadsheetId = null
-    this.isInitialized = false
+    this.auth = null;
+    this.sheets = null;
+    this.spreadsheetId = null;
+    this.isInitialized = false;
 
-    logger.info('Google Sheets service shutdown complete')
+    logger.info('Google Sheets service shutdown complete');
   }
 }
 
 // Create and export singleton instance
-export const googleSheetsService = new GoogleSheetsService()
-export default googleSheetsService
+export const googleSheetsService = new GoogleSheetsService();
+export default googleSheetsService;

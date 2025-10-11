@@ -1,30 +1,83 @@
-import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
+import { beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import { PrismaClient } from '@prisma/client'
-import { execSync } from 'child_process'
 
-// Test database setup
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL || 'file:./test.db'
+// Load test environment variables
+process.env.NODE_ENV = 'test'
+
+// Mock the logger to avoid undefined errors in tests
+vi.mock('@/utils/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }
+}))
+
+// Suppress console.error for expected Prisma constraint errors in test environment
+const originalConsoleError = console.error
+beforeAll(() => {
+  console.error = (...args: any[]) => {
+    const message = args.join(' ')
+    // Filter out expected Prisma errors from test scenarios
+    const expectedErrors = [
+      'Unique constraint failed',
+      'Record to update not found',
+      'Record to delete does not exist',
+      'Invalid `prisma.student.create()`',
+      'Invalid `prisma.student.update()`',
+      'Invalid `prisma.student.delete()`'
+    ]
+
+    const isExpectedPrismaError = expectedErrors.some(error =>
+      message.includes(error)
+    )
+
+    if (!isExpectedPrismaError) {
+      originalConsoleError(...args)
     }
   }
 })
 
+afterAll(() => {
+  console.error = originalConsoleError
+})
+
+// Test database setup with MySQL
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL || 'mysql://clms_user:clms_password@localhost:3308/clms_test_database'
+    }
+  },
+  log: ['error'], // Only show errors, suppress query logs
+  errorFormat: 'minimal' // Minimal error format for cleaner test output
+})
+
 // Global test setup
 beforeAll(async () => {
-  // Reset database
-  execSync('npx prisma migrate reset --force --skip-seed', {
-    env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || 'file:./test.db' }
-  })
-  
-  // Run migrations
-  execSync('npx prisma migrate deploy', {
-    env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || 'file:./test.db' }
-  })
-  
-  // Connect to test database
-  await prisma.$connect()
+  // Ensure test database exists
+  try {
+    // Connect to test database
+    await prisma.$connect()
+
+    // Create a test user to bypass authentication
+    await prisma.user.upsert({
+      where: { username: 'test-user' },
+      update: {},
+      create: {
+        username: 'test-user',
+        password: 'test-password',
+        role: 'ADMIN',
+        isActive: true
+      }
+    })
+
+    console.log('Test database setup completed')
+  } catch (error) {
+    console.error('Test database setup failed:', error)
+    throw error
+  }
 })
 
 // Global test teardown
@@ -35,15 +88,58 @@ afterAll(async () => {
 
 // Clean up database before each test
 beforeEach(async () => {
-  // Clean up all tables
-  const tablenames = await prisma.$queryRaw`SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_prisma_migrations';`
-  
-  for (const { name } of tablenames as { name: string }[]) {
-    if (name !== '_prisma_migrations') {
-      await prisma.$executeRawUnsafe(`DELETE FROM "${name}";`)
-    }
+  try {
+    // Clean up all tables in correct order (respecting foreign key constraints)
+    await prisma.automationLog.deleteMany()
+    await prisma.barcodeHistory.deleteMany()
+    await prisma.activity.deleteMany()
+    await prisma.equipmentSession.deleteMany()
+    await prisma.bookCheckout.deleteMany()
+    await prisma.automationJob.deleteMany()
+    await prisma.auditLog.deleteMany()
+    await prisma.systemConfig.deleteMany()
+    await prisma.equipment.deleteMany()
+    await prisma.book.deleteMany()
+    await prisma.student.deleteMany()
+
+    // Don't delete users - keep test user
+
+    console.log('Database cleanup completed')
+  } catch (error) {
+    console.error('Database cleanup failed:', error)
+    // Continue with test even if cleanup fails
   }
 })
+
+// Also clean up after each test to ensure proper isolation
+afterEach(async () => {
+  try {
+    // Clean up all tables in correct order (respecting foreign key constraints)
+    await prisma.automationLog.deleteMany()
+    await prisma.barcodeHistory.deleteMany()
+    await prisma.activity.deleteMany()
+    await prisma.equipmentSession.deleteMany()
+    await prisma.bookCheckout.deleteMany()
+    await prisma.automationJob.deleteMany()
+    await prisma.auditLog.deleteMany()
+    await prisma.systemConfig.deleteMany()
+    await prisma.equipment.deleteMany()
+    await prisma.book.deleteMany()
+    await prisma.student.deleteMany()
+
+    console.log('Database after-test cleanup completed')
+  } catch (error) {
+    console.error('Database after-test cleanup failed:', error)
+    // Continue with test even if cleanup fails
+  }
+})
+
+// Helper function to generate unique test student ID
+export function generateTestStudentId(testName: string): string {
+  const timestamp = Date.now().toString(36)
+  const random = Math.random().toString(36).substring(2, 5)
+  return `TEST-${testName}-${timestamp}-${random}`
+}
 
 // Export prisma client for use in tests
 export { prisma }
