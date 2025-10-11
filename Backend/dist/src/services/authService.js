@@ -18,20 +18,20 @@ class AuthService {
     async login(username, password) {
         try {
             const user = await prisma_1.prisma.user.findUnique({
-                where: { username }
+                where: { username },
             });
             if (!user) {
                 logger_1.logger.warn(`Login attempt with non-existent username: ${username}`);
                 return {
                     success: false,
-                    error: 'Invalid username or password'
+                    error: 'Invalid username or password',
                 };
             }
             if (!user.isActive) {
                 logger_1.logger.warn(`Login attempt with inactive user: ${username}`);
                 return {
                     success: false,
-                    error: 'Account is disabled'
+                    error: 'Account is disabled',
                 };
             }
             const isPasswordValid = await bcryptjs_1.default.compare(password, user.password);
@@ -39,20 +39,20 @@ class AuthService {
                 logger_1.logger.warn(`Login attempt with invalid password for user: ${username}`);
                 return {
                     success: false,
-                    error: 'Invalid username or password'
+                    error: 'Invalid username or password',
                 };
             }
             const payload = {
                 userId: user.id,
                 username: user.username,
-                role: user.role
+                role: user.role,
             };
             const token = jsonwebtoken_1.default.sign(payload, this.jwtSecret, {
-                expiresIn: this.jwtExpiration
+                expiresIn: this.jwtExpiration,
             });
             await prisma_1.prisma.user.update({
                 where: { id: user.id },
-                data: { lastLoginAt: new Date() }
+                data: { lastLoginAt: new Date() },
             });
             logger_1.logger.info(`User logged in successfully: ${username}`);
             return {
@@ -61,15 +61,18 @@ class AuthService {
                 user: {
                     id: user.id,
                     username: user.username,
-                    role: user.role
-                }
+                    role: user.role,
+                },
             };
         }
         catch (error) {
-            logger_1.logger.error('Login error', { error: error.message, username });
+            logger_1.logger.error('Login error', {
+                error: error.message,
+                username,
+            });
             return {
                 success: false,
-                error: 'An error occurred during login'
+                error: 'An error occurred during login',
             };
         }
     }
@@ -90,12 +93,12 @@ class AuthService {
     async createUser(userData) {
         try {
             const existingUser = await prisma_1.prisma.user.findUnique({
-                where: { username: userData.username }
+                where: { username: userData.username },
             });
             if (existingUser) {
                 return {
                     success: false,
-                    error: 'Username already exists'
+                    error: 'Username already exists',
                 };
             }
             const hashedPassword = await this.hashPassword(userData.password);
@@ -104,8 +107,8 @@ class AuthService {
                     username: userData.username,
                     password: hashedPassword,
                     role: userData.role,
-                    isActive: userData.isActive !== undefined ? userData.isActive : true
-                }
+                    isActive: userData.isActive !== undefined ? userData.isActive : true,
+                },
             });
             logger_1.logger.info(`New user created: ${userData.username}`);
             return {
@@ -115,80 +118,90 @@ class AuthService {
                     username: user.username,
                     role: user.role,
                     isActive: user.isActive,
-                    createdAt: user.createdAt
-                }
+                    lastLoginAt: user.lastLoginAt,
+                    createdAt: user.createdAt,
+                },
             };
         }
         catch (error) {
-            logger_1.logger.error('Create user error', { error: error.message, username: userData.username });
+            logger_1.logger.error('Create user error', {
+                error: error.message,
+                username: userData.username,
+            });
             return {
                 success: false,
-                error: 'An error occurred while creating the user'
+                error: 'An error occurred while creating the user',
             };
         }
     }
     async updatePassword(userId, currentPassword, newPassword) {
         try {
             const user = await prisma_1.prisma.user.findUnique({
-                where: { id: userId }
+                where: { id: userId },
             });
             if (!user) {
                 return {
                     success: false,
-                    error: 'User not found'
+                    error: 'User not found',
                 };
             }
             const isPasswordValid = await bcryptjs_1.default.compare(currentPassword, user.password);
             if (!isPasswordValid) {
                 return {
                     success: false,
-                    error: 'Current password is incorrect'
+                    error: 'Current password is incorrect',
                 };
             }
             const hashedPassword = await this.hashPassword(newPassword);
             await prisma_1.prisma.user.update({
                 where: { id: userId },
-                data: { password: hashedPassword }
+                data: { password: hashedPassword },
             });
             logger_1.logger.info(`Password updated for user: ${user.username}`);
             return {
-                success: true
+                success: true,
             };
         }
         catch (error) {
-            logger_1.logger.error('Update password error', { error: error.message, userId });
+            logger_1.logger.error('Update password error', {
+                error: error.message,
+                userId,
+            });
             return {
                 success: false,
-                error: 'An error occurred while updating the password'
+                error: 'An error occurred while updating the password',
             };
         }
     }
     async resetPassword(userId, newPassword) {
         try {
             const user = await prisma_1.prisma.user.findUnique({
-                where: { id: userId }
+                where: { id: userId },
             });
             if (!user) {
                 return {
                     success: false,
-                    error: 'User not found'
+                    error: 'User not found',
                 };
             }
             const hashedPassword = await this.hashPassword(newPassword);
             await prisma_1.prisma.user.update({
                 where: { id: userId },
-                data: { password: hashedPassword }
+                data: { password: hashedPassword },
             });
             logger_1.logger.info(`Password reset for user: ${user.username}`);
             return {
-                success: true
+                success: true,
             };
         }
         catch (error) {
-            logger_1.logger.error('Reset password error', { error: error.message, userId });
+            logger_1.logger.error('Reset password error', {
+                error: error.message,
+                userId,
+            });
             return {
                 success: false,
-                error: 'An error occurred while resetting the password'
+                error: 'An error occurred while resetting the password',
             };
         }
     }
@@ -201,11 +214,18 @@ class AuthService {
                     role: true,
                     isActive: true,
                     lastLoginAt: true,
-                    createdAt: true
+                    createdAt: true,
                 },
-                orderBy: { createdAt: 'desc' }
+                orderBy: { createdAt: 'desc' },
             });
-            return users;
+            return users.map(user => ({
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                isActive: user.isActive,
+                lastLoginAt: user.lastLoginAt,
+                createdAt: user.createdAt,
+            }));
         }
         catch (error) {
             logger_1.logger.error('Get users error', { error: error.message });
@@ -222,13 +242,26 @@ class AuthService {
                     role: true,
                     isActive: true,
                     lastLoginAt: true,
-                    createdAt: true
-                }
+                    createdAt: true,
+                },
             });
-            return user;
+            if (!user) {
+                return null;
+            }
+            return {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                isActive: user.isActive,
+                lastLoginAt: user.lastLoginAt,
+                createdAt: user.createdAt,
+            };
         }
         catch (error) {
-            logger_1.logger.error('Get user by ID error', { error: error.message, userId });
+            logger_1.logger.error('Get user by ID error', {
+                error: error.message,
+                userId,
+            });
             throw error;
         }
     }
@@ -238,17 +271,17 @@ class AuthService {
                 const existingUser = await prisma_1.prisma.user.findFirst({
                     where: {
                         username: updateData.username,
-                        id: { not: userId }
-                    }
+                        id: { not: userId },
+                    },
                 });
                 if (existingUser) {
                     return {
                         success: false,
-                        error: 'Username already exists'
+                        error: 'Username already exists',
                     };
                 }
             }
-            const user = await prisma_1.prisma.user.update({
+            const updatedUser = await prisma_1.prisma.user.update({
                 where: { id: userId },
                 data: updateData,
                 select: {
@@ -257,47 +290,60 @@ class AuthService {
                     role: true,
                     isActive: true,
                     lastLoginAt: true,
-                    createdAt: true
-                }
+                    createdAt: true,
+                },
             });
-            logger_1.logger.info(`User updated: ${user.username}`);
+            logger_1.logger.info(`User updated: ${updatedUser.username}`);
             return {
                 success: true,
-                user
+                user: {
+                    id: updatedUser.id,
+                    username: updatedUser.username,
+                    role: updatedUser.role,
+                    isActive: updatedUser.isActive,
+                    lastLoginAt: updatedUser.lastLoginAt,
+                    createdAt: updatedUser.createdAt,
+                },
             };
         }
         catch (error) {
-            logger_1.logger.error('Update user error', { error: error.message, userId });
+            logger_1.logger.error('Update user error', {
+                error: error.message,
+                userId,
+            });
             return {
                 success: false,
-                error: 'An error occurred while updating the user'
+                error: 'An error occurred while updating the user',
             };
         }
     }
     async deleteUser(userId) {
         try {
             const user = await prisma_1.prisma.user.findUnique({
-                where: { id: userId }
+                where: { id: userId },
             });
             if (!user) {
                 return {
                     success: false,
-                    error: 'User not found'
+                    error: 'User not found',
                 };
             }
             await prisma_1.prisma.user.delete({
-                where: { id: userId }
+                where: { id: userId },
             });
             logger_1.logger.info(`User deleted: ${user.username}`);
             return {
-                success: true
+                success: true,
             };
         }
         catch (error) {
-            logger_1.logger.error('Delete user error', { error: error.message, userId });
+            logger_1.logger.error('Delete user error', {
+                error: error.message,
+                userId,
+            });
             return {
                 success: false,
-                error: 'An error occurred while deleting the user'
+                error: 'An error occurred while deleting the user',
             };
         }
     }

@@ -27,7 +27,7 @@ class BaseError extends Error {
                 statusCode: this.statusCode,
                 code: this.code,
                 details: this.details,
-                stack: this.stack
+                stack: this.stack,
             });
         }
         else {
@@ -36,7 +36,7 @@ class BaseError extends Error {
                 statusCode: this.statusCode,
                 code: this.code,
                 details: this.details,
-                stack: this.stack
+                stack: this.stack,
             });
         }
     }
@@ -45,7 +45,7 @@ class BaseError extends Error {
             name: this.constructor.name,
             message: this.message,
             statusCode: this.statusCode,
-            isOperational: this.isOperational
+            isOperational: this.isOperational,
         };
         if (this.code !== undefined) {
             result.code = this.code;
@@ -70,7 +70,9 @@ class ValidationError extends BaseError {
 exports.ValidationError = ValidationError;
 class NotFoundError extends BaseError {
     constructor(resource, identifier) {
-        const message = identifier ? `${resource} with identifier '${identifier}' not found` : `${resource} not found`;
+        const message = identifier
+            ? `${resource} with identifier '${identifier}' not found`
+            : `${resource} not found`;
         super(message, 404, true, 'NOT_FOUND', { resource, identifier });
     }
 }
@@ -103,7 +105,7 @@ class DatabaseError extends BaseError {
     constructor(message, originalError, query) {
         super(message, 500, false, 'DATABASE_ERROR', {
             originalError: originalError?.message,
-            query
+            query,
         });
     }
 }
@@ -226,7 +228,7 @@ const asyncErrorHandler = (fn) => {
     };
 };
 exports.asyncErrorHandler = asyncErrorHandler;
-const errorHandler = (error, req, res, next) => {
+const errorHandler = (error, req, res, _next) => {
     if (!(error instanceof BaseError)) {
         logger_1.logger.error('UNHANDLED_ERROR', {
             message: error.message,
@@ -234,7 +236,7 @@ const errorHandler = (error, req, res, next) => {
             url: req.url,
             method: req.method,
             ip: req.ip,
-            userAgent: req.get('User-Agent')
+            userAgent: req.get('User-Agent'),
         });
     }
     const statusCode = (0, exports.getErrorStatusCode)(error);
@@ -242,7 +244,7 @@ const errorHandler = (error, req, res, next) => {
     const errorResponse = {
         success: false,
         error: message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
     };
     if (error instanceof ValidationError) {
         errorResponse.validationErrors = error.validationErrors;
@@ -265,7 +267,7 @@ const notFoundHandler = (req, res) => {
         success: false,
         error: error.message,
         code: error.code,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
     });
 };
 exports.notFoundHandler = notFoundHandler;
@@ -273,17 +275,19 @@ const setupGlobalErrorHandlers = () => {
     process.on('uncaughtException', (error) => {
         logger_1.logger.error('UNCAUGHT_EXCEPTION', {
             message: error.message,
-            stack: error.stack
+            stack: error.stack,
         });
         setTimeout(() => {
             process.exit(1);
         }, 1000);
     });
     process.on('unhandledRejection', (reason, promise) => {
+        const reasonMessage = reason instanceof Error ? reason.message : String(reason);
+        const reasonStack = reason instanceof Error ? reason.stack : undefined;
         logger_1.logger.error('UNHANDLED_REJECTION', {
-            reason: reason?.message || reason,
-            stack: reason?.stack,
-            promise: promise.toString()
+            reason: reasonMessage,
+            stack: reasonStack,
+            promise: promise.toString(),
         });
         setTimeout(() => {
             process.exit(1);
@@ -293,7 +297,7 @@ const setupGlobalErrorHandlers = () => {
         logger_1.logger.warn('PROCESS_WARNING', {
             name: warning.name,
             message: warning.message,
-            stack: warning.stack
+            stack: warning.stack,
         });
     });
 };

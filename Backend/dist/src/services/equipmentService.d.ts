@@ -1,20 +1,30 @@
 import { EquipmentStatus, ActivityType, EquipmentType } from '@prisma/client';
-export declare function getEquipment(options?: {
+export interface GetEquipmentOptions {
     type?: EquipmentType;
     status?: EquipmentStatus;
     page?: number;
     limit?: number;
     search?: string;
-}): Promise<{
+}
+export interface GetEquipmentUsageHistoryOptions {
+    equipmentId?: string;
+    studentId?: string;
+    activityType?: ActivityType;
+    startDate?: Date;
+    endDate?: Date;
+    page?: number;
+    limit?: number;
+}
+export declare function getEquipment(options?: GetEquipmentOptions): Promise<{
     equipment: {
-        id: string;
         type: import(".prisma/client").$Enums.EquipmentType;
+        status: import(".prisma/client").$Enums.EquipmentStatus;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
         location: string;
         equipmentId: string;
-        status: import(".prisma/client").$Enums.EquipmentStatus;
         maxTimeMinutes: number;
         requiresSupervision: boolean;
         description: string | null;
@@ -34,12 +44,15 @@ export declare function getEquipmentById(id: string): Promise<({
             lastName: string;
         };
     } & {
-        id: string;
         studentId: string;
+        status: import(".prisma/client").$Enums.ActivityStatus;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         equipmentId: string | null;
-        status: import(".prisma/client").$Enums.ActivityStatus;
+        studentName: string | null;
+        studentGradeLevel: string | null;
+        studentGradeCategory: import(".prisma/client").$Enums.GradeCategory | null;
         activityType: import(".prisma/client").$Enums.ActivityType;
         checkoutId: string | null;
         startTime: Date;
@@ -52,14 +65,14 @@ export declare function getEquipmentById(id: string): Promise<({
         syncAttempts: number;
     })[];
 } & {
-    id: string;
     type: import(".prisma/client").$Enums.EquipmentType;
+    status: import(".prisma/client").$Enums.EquipmentStatus;
+    id: string;
     createdAt: Date;
     updatedAt: Date;
     name: string;
     location: string;
     equipmentId: string;
-    status: import(".prisma/client").$Enums.EquipmentStatus;
     maxTimeMinutes: number;
     requiresSupervision: boolean;
     description: string | null;
@@ -72,12 +85,15 @@ export declare function getEquipmentByEquipmentId(equipmentId: string): Promise<
             lastName: string;
         };
     } & {
-        id: string;
         studentId: string;
+        status: import(".prisma/client").$Enums.ActivityStatus;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         equipmentId: string | null;
-        status: import(".prisma/client").$Enums.ActivityStatus;
+        studentName: string | null;
+        studentGradeLevel: string | null;
+        studentGradeCategory: import(".prisma/client").$Enums.GradeCategory | null;
         activityType: import(".prisma/client").$Enums.ActivityType;
         checkoutId: string | null;
         startTime: Date;
@@ -90,14 +106,14 @@ export declare function getEquipmentByEquipmentId(equipmentId: string): Promise<
         syncAttempts: number;
     })[];
 } & {
-    id: string;
     type: import(".prisma/client").$Enums.EquipmentType;
+    status: import(".prisma/client").$Enums.EquipmentStatus;
+    id: string;
     createdAt: Date;
     updatedAt: Date;
     name: string;
     location: string;
     equipmentId: string;
-    status: import(".prisma/client").$Enums.EquipmentStatus;
     maxTimeMinutes: number;
     requiresSupervision: boolean;
     description: string | null;
@@ -111,14 +127,14 @@ export declare function createEquipment(data: {
     requiresSupervision?: boolean;
     description?: string;
 }): Promise<{
-    id: string;
     type: import(".prisma/client").$Enums.EquipmentType;
+    status: import(".prisma/client").$Enums.EquipmentStatus;
+    id: string;
     createdAt: Date;
     updatedAt: Date;
     name: string;
     location: string;
     equipmentId: string;
-    status: import(".prisma/client").$Enums.EquipmentStatus;
     maxTimeMinutes: number;
     requiresSupervision: boolean;
     description: string | null;
@@ -133,14 +149,14 @@ export declare function updateEquipment(id: string, data: {
     description?: string;
     status?: EquipmentStatus;
 }): Promise<{
-    id: string;
     type: import(".prisma/client").$Enums.EquipmentType;
+    status: import(".prisma/client").$Enums.EquipmentStatus;
+    id: string;
     createdAt: Date;
     updatedAt: Date;
     name: string;
     location: string;
     equipmentId: string;
-    status: import(".prisma/client").$Enums.EquipmentStatus;
     maxTimeMinutes: number;
     requiresSupervision: boolean;
     description: string | null;
@@ -166,12 +182,15 @@ export declare function useEquipment(data: {
         equipmentId: string;
     } | null;
 } & {
-    id: string;
     studentId: string;
+    status: import(".prisma/client").$Enums.ActivityStatus;
+    id: string;
     createdAt: Date;
     updatedAt: Date;
     equipmentId: string | null;
-    status: import(".prisma/client").$Enums.ActivityStatus;
+    studentName: string | null;
+    studentGradeLevel: string | null;
+    studentGradeCategory: import(".prisma/client").$Enums.GradeCategory | null;
     activityType: import(".prisma/client").$Enums.ActivityType;
     checkoutId: string | null;
     startTime: Date;
@@ -195,12 +214,15 @@ export declare function releaseEquipment(activityId: string): Promise<{
         equipmentId: string;
     } | null;
 } & {
-    id: string;
     studentId: string;
+    status: import(".prisma/client").$Enums.ActivityStatus;
+    id: string;
     createdAt: Date;
     updatedAt: Date;
     equipmentId: string | null;
-    status: import(".prisma/client").$Enums.ActivityStatus;
+    studentName: string | null;
+    studentGradeLevel: string | null;
+    studentGradeCategory: import(".prisma/client").$Enums.GradeCategory | null;
     activityType: import(".prisma/client").$Enums.ActivityType;
     checkoutId: string | null;
     startTime: Date;
@@ -212,15 +234,7 @@ export declare function releaseEquipment(activityId: string): Promise<{
     googleSynced: boolean;
     syncAttempts: number;
 }>;
-export declare function getEquipmentUsageHistory(options?: {
-    equipmentId?: string;
-    studentId?: string;
-    activityType?: ActivityType;
-    startDate?: Date;
-    endDate?: Date;
-    page?: number;
-    limit?: number;
-}): Promise<{
+export declare function getEquipmentUsageHistory(options?: GetEquipmentUsageHistoryOptions): Promise<{
     activities: ({
         student: {
             studentId: string;
@@ -236,12 +250,15 @@ export declare function getEquipmentUsageHistory(options?: {
             equipmentId: string;
         } | null;
     } & {
-        id: string;
         studentId: string;
+        status: import(".prisma/client").$Enums.ActivityStatus;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         equipmentId: string | null;
-        status: import(".prisma/client").$Enums.ActivityStatus;
+        studentName: string | null;
+        studentGradeLevel: string | null;
+        studentGradeCategory: import(".prisma/client").$Enums.GradeCategory | null;
         activityType: import(".prisma/client").$Enums.ActivityType;
         checkoutId: string | null;
         startTime: Date;

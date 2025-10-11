@@ -30,10 +30,10 @@ async function getBooks(options = {}) {
         }
         if (search) {
             where.OR = [
-                { title: { contains: search, mode: 'insensitive' } },
-                { author: { contains: search, mode: 'insensitive' } },
-                { accessionNo: { contains: search, mode: 'insensitive' } },
-                { isbn: { contains: search, mode: 'insensitive' } },
+                { title: { contains: search } },
+                { author: { contains: search } },
+                { accessionNo: { contains: search } },
+                { isbn: { contains: search } },
             ];
         }
         const [books, total] = await Promise.all([
@@ -337,11 +337,10 @@ async function getBookCheckouts(options = {}) {
             where.status = status;
         }
         if (startDate || endDate) {
-            where.checkoutDate = {};
-            if (startDate)
-                where.checkoutDate.gte = startDate;
-            if (endDate)
-                where.checkoutDate.lte = endDate;
+            where.checkoutDate = {
+                ...(startDate ? { gte: startDate } : {}),
+                ...(endDate ? { lte: endDate } : {}),
+            };
         }
         const [checkouts, total] = await Promise.all([
             prisma_1.prisma.bookCheckout.findMany({

@@ -1,4 +1,4 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -26,10 +26,10 @@ import automationRoutes from '@/routes/automation';
 import adminRoutes from '@/routes/admin';
 import reportsRoutes from '@/routes/reports';
 import utilitiesRoutes from '@/routes/utilities';
+import analyticsRoutes from '@/routes/analytics';
 
 // Import middleware
 import { authMiddleware } from '@/middleware/auth';
-import { validationMiddleware } from '@/middleware/validation';
 
 export class CLMSApplication {
   private app: Application;
@@ -145,8 +145,9 @@ export class CLMSApplication {
     this.app.use('/api', limiter);
 
     // Stricter rate limiting for auth endpoints (if enabled)
-    const authRateLimitEnabled = process.env.RATE_LIMIT_AUTH_ENABLED !== 'false';
-    
+    const authRateLimitEnabled =
+      process.env.RATE_LIMIT_AUTH_ENABLED !== 'false';
+
     if (authRateLimitEnabled) {
       const authLimiter = rateLimit({
         windowMs: 15 * 60 * 1000, // 15 minutes
@@ -201,6 +202,7 @@ export class CLMSApplication {
     this.app.use('/api/admin', authMiddleware, adminRoutes);
     this.app.use('/api/reports', authMiddleware, reportsRoutes);
     this.app.use('/api/utilities', authMiddleware, utilitiesRoutes);
+    this.app.use('/api/analytics', authMiddleware, analyticsRoutes);
 
     // Root endpoint
     this.app.get('/', (req: Request, res: Response) => {
@@ -229,6 +231,7 @@ export class CLMSApplication {
           admin: '/api/admin',
           reports: '/api/reports',
           utilities: '/api/utilities',
+          analytics: '/api/analytics',
         },
         timestamp: new Date().toISOString(),
       });

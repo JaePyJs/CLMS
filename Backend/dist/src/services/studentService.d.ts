@@ -1,15 +1,33 @@
 import { GradeCategory, ActivityType, ActivityStatus } from '@prisma/client';
+export interface GetStudentsOptions {
+    gradeCategory?: GradeCategory;
+    isActive?: boolean;
+    page?: number;
+    limit?: number;
+}
+export interface GetStudentActivitiesOptions {
+    studentId?: string;
+    startDate?: Date;
+    endDate?: Date;
+    activityType?: ActivityType;
+    status?: ActivityStatus;
+    page?: number;
+    limit?: number;
+}
 export declare function getDefaultTimeLimit(gradeCategory: GradeCategory): number;
 export declare function getStudentByBarcode(barcode: string): Promise<{
     defaultTimeLimit: number;
     hasActiveSession: boolean;
     activities: {
-        id: string;
         studentId: string;
+        status: import(".prisma/client").$Enums.ActivityStatus;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         equipmentId: string | null;
-        status: import(".prisma/client").$Enums.ActivityStatus;
+        studentName: string | null;
+        studentGradeLevel: string | null;
+        studentGradeCategory: import(".prisma/client").$Enums.GradeCategory | null;
         activityType: import(".prisma/client").$Enums.ActivityType;
         checkoutId: string | null;
         startTime: Date;
@@ -21,37 +39,69 @@ export declare function getStudentByBarcode(barcode: string): Promise<{
         googleSynced: boolean;
         syncAttempts: number;
     }[];
-    id: string;
     studentId: string;
+    id: string;
     firstName: string;
     lastName: string;
     gradeLevel: string;
     gradeCategory: import(".prisma/client").$Enums.GradeCategory;
     section: string | null;
+    barcodeImage: string | null;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
-    barcodeImage: string | null;
 } | null>;
-export declare function getStudents(options?: {
-    gradeCategory?: GradeCategory;
-    isActive?: boolean;
-    page?: number;
-    limit?: number;
-}): Promise<{
-    students: {
-        id: string;
+export declare function getStudentById(id: string): Promise<{
+    defaultTimeLimit: number;
+    hasActiveSession: boolean;
+    activities: {
         studentId: string;
+        status: import(".prisma/client").$Enums.ActivityStatus;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        equipmentId: string | null;
+        studentName: string | null;
+        studentGradeLevel: string | null;
+        studentGradeCategory: import(".prisma/client").$Enums.GradeCategory | null;
+        activityType: import(".prisma/client").$Enums.ActivityType;
+        checkoutId: string | null;
+        startTime: Date;
+        endTime: Date | null;
+        durationMinutes: number | null;
+        timeLimitMinutes: number | null;
+        notes: string | null;
+        processedBy: string;
+        googleSynced: boolean;
+        syncAttempts: number;
+    }[];
+    studentId: string;
+    id: string;
+    firstName: string;
+    lastName: string;
+    gradeLevel: string;
+    gradeCategory: import(".prisma/client").$Enums.GradeCategory;
+    section: string | null;
+    barcodeImage: string | null;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+} | null>;
+export declare function getStudents(options?: GetStudentsOptions): Promise<{
+    students: {
+        studentId: string;
+        id: string;
         firstName: string;
         lastName: string;
         gradeLevel: string;
         gradeCategory: import(".prisma/client").$Enums.GradeCategory;
         section: string | null;
+        barcodeImage: string | null;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
-        barcodeImage: string | null;
     }[];
+    total: number;
     pagination: {
         page: number;
         limit: number;
@@ -67,19 +117,19 @@ export declare function createStudent(data: {
     gradeCategory: GradeCategory;
     section?: string;
 }): Promise<{
-    id: string;
     studentId: string;
+    id: string;
     firstName: string;
     lastName: string;
     gradeLevel: string;
     gradeCategory: import(".prisma/client").$Enums.GradeCategory;
     section: string | null;
+    barcodeImage: string | null;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
-    barcodeImage: string | null;
 }>;
-export declare function updateStudent(studentId: string, data: {
+export declare function updateStudent(identifier: string, data: {
     firstName?: string;
     lastName?: string;
     gradeLevel?: string;
@@ -87,28 +137,32 @@ export declare function updateStudent(studentId: string, data: {
     section?: string;
     isActive?: boolean;
 }): Promise<{
-    id: string;
     studentId: string;
+    id: string;
     firstName: string;
     lastName: string;
     gradeLevel: string;
     gradeCategory: import(".prisma/client").$Enums.GradeCategory;
     section: string | null;
+    barcodeImage: string | null;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
+} | null>;
+export declare function deleteStudent(identifier: string): Promise<{
+    studentId: string;
+    id: string;
+    firstName: string;
+    lastName: string;
+    gradeLevel: string;
+    gradeCategory: import(".prisma/client").$Enums.GradeCategory;
+    section: string | null;
     barcodeImage: string | null;
-}>;
-export declare function deleteStudent(studentId: string): Promise<boolean>;
-export declare function getStudentActivities(options?: {
-    studentId?: string;
-    startDate?: Date;
-    endDate?: Date;
-    activityType?: ActivityType;
-    status?: ActivityStatus;
-    page?: number;
-    limit?: number;
-}): Promise<{
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+} | null>;
+export declare function getStudentActivities(options?: GetStudentActivitiesOptions): Promise<{
     activities: ({
         student: {
             studentId: string;
@@ -123,12 +177,15 @@ export declare function getStudentActivities(options?: {
             equipmentId: string;
         } | null;
     } & {
-        id: string;
         studentId: string;
+        status: import(".prisma/client").$Enums.ActivityStatus;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         equipmentId: string | null;
-        status: import(".prisma/client").$Enums.ActivityStatus;
+        studentName: string | null;
+        studentGradeLevel: string | null;
+        studentGradeCategory: import(".prisma/client").$Enums.GradeCategory | null;
         activityType: import(".prisma/client").$Enums.ActivityType;
         checkoutId: string | null;
         startTime: Date;
@@ -161,12 +218,15 @@ export declare function getActiveSessions(): Promise<({
         equipmentId: string;
     } | null;
 } & {
-    id: string;
     studentId: string;
+    status: import(".prisma/client").$Enums.ActivityStatus;
+    id: string;
     createdAt: Date;
     updatedAt: Date;
     equipmentId: string | null;
-    status: import(".prisma/client").$Enums.ActivityStatus;
+    studentName: string | null;
+    studentGradeLevel: string | null;
+    studentGradeCategory: import(".prisma/client").$Enums.GradeCategory | null;
     activityType: import(".prisma/client").$Enums.ActivityType;
     checkoutId: string | null;
     startTime: Date;
@@ -198,12 +258,15 @@ export declare function createStudentActivity(data: {
         equipmentId: string;
     } | null;
 } & {
-    id: string;
     studentId: string;
+    status: import(".prisma/client").$Enums.ActivityStatus;
+    id: string;
     createdAt: Date;
     updatedAt: Date;
     equipmentId: string | null;
-    status: import(".prisma/client").$Enums.ActivityStatus;
+    studentName: string | null;
+    studentGradeLevel: string | null;
+    studentGradeCategory: import(".prisma/client").$Enums.GradeCategory | null;
     activityType: import(".prisma/client").$Enums.ActivityType;
     checkoutId: string | null;
     startTime: Date;
@@ -222,12 +285,15 @@ export declare function endStudentActivity(activityId: string): Promise<{
         lastName: string;
     };
 } & {
-    id: string;
     studentId: string;
+    status: import(".prisma/client").$Enums.ActivityStatus;
+    id: string;
     createdAt: Date;
     updatedAt: Date;
     equipmentId: string | null;
-    status: import(".prisma/client").$Enums.ActivityStatus;
+    studentName: string | null;
+    studentGradeLevel: string | null;
+    studentGradeCategory: import(".prisma/client").$Enums.GradeCategory | null;
     activityType: import(".prisma/client").$Enums.ActivityType;
     checkoutId: string | null;
     startTime: Date;

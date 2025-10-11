@@ -10,14 +10,19 @@ const gracefulShutdown = async (signal) => {
         process.exit(0);
     }
     catch (error) {
-        logger_1.logger.error('Error during graceful shutdown', { error: error.message });
+        logger_1.logger.error('Error during graceful shutdown', {
+            error: error.message,
+        });
         process.exit(1);
     }
 };
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-process.on('uncaughtException', (error) => {
-    logger_1.logger.error('Uncaught Exception', { error: error.message, stack: error.stack });
+process.on('uncaughtException', error => {
+    logger_1.logger.error('Uncaught Exception', {
+        error: error.message,
+        stack: error.stack,
+    });
     process.exit(1);
 });
 process.on('unhandledRejection', (reason, promise) => {

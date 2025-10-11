@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD031 -->
 # CLMS Backend
 
 This is the backend API for the Computer Laboratory Management System (CLMS). It provides a comprehensive solution for managing students, books, equipment, activities, and more in a computer laboratory setting.
@@ -121,17 +122,27 @@ Fix code formatting:
 npm run format:fix
 ```
 
+### Admin & Librarian Management
+
+An interactive script is available to list, add, or remove admin and librarian accounts:
+
+```bash
+npx tsx scripts/manage-admins.ts
+```
+
 ## API Documentation
 
 The API provides the following endpoints:
 
 ### Authentication
+
 - `POST /api/auth/login` - User login
 - `POST /api/auth/users` - Create a new user (admin only)
 - `PUT /api/auth/password` - Update password
 - `GET /api/auth/users` - Get all users (admin only)
 
 ### Students
+
 - `GET /api/students` - Get all students
 - `POST /api/students` - Create a new student
 - `GET /api/students/:id` - Get a student by ID
@@ -139,6 +150,7 @@ The API provides the following endpoints:
 - `DELETE /api/students/:id` - Delete a student
 
 ### Books
+
 - `GET /api/books` - Get all books
 - `POST /api/books` - Create a new book
 - `GET /api/books/:id` - Get a book by ID
@@ -146,6 +158,7 @@ The API provides the following endpoints:
 - `DELETE /api/books/:id` - Delete a book
 
 ### Equipment
+
 - `GET /api/equipment` - Get all equipment
 - `POST /api/equipment` - Create new equipment
 - `GET /api/equipment/:id` - Get equipment by ID
@@ -153,6 +166,7 @@ The API provides the following endpoints:
 - `DELETE /api/equipment/:id` - Delete equipment
 
 ### Activities
+
 - `GET /api/activities` - Get all activities
 - `POST /api/activities` - Create a new activity
 - `GET /api/activities/:id` - Get an activity by ID
@@ -160,16 +174,19 @@ The API provides the following endpoints:
 - `DELETE /api/activities/:id` - Delete an activity
 
 ### Scan
+
 - `POST /api/scan/student` - Scan a student barcode
 - `POST /api/scan/book` - Scan a book barcode
 - `POST /api/scan/equipment` - Scan an equipment barcode
 
 ### Reports
+
 - `GET /api/reports/activities` - Get activity reports
 - `GET /api/reports/checkouts` - Get checkout reports
 - `GET /api/reports/sessions` - Get session reports
 
 ### Utilities
+
 - `POST /api/utilities/import/students` - Import students from CSV
 - `POST /api/utilities/import/books` - Import books from CSV
 - `POST /api/utilities/barcode/student/:id` - Generate student barcode

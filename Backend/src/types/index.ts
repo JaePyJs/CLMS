@@ -1,299 +1,298 @@
-import { Request } from 'express'
+import { Request } from 'express';
 
 // Database types from Prisma
-export * from '@prisma/client'
+export * from '@prisma/client';
 
 // Application-specific types
-export interface ApiResponse<T = any> {
-  success: boolean
-  data?: T
-  error?: string
-  message?: string
-  timestamp: string
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+  timestamp: string;
 }
 
 export interface PaginationParams {
-  page: number
-  limit: number
-  sortBy?: string
-  sortOrder?: 'asc' | 'desc'
+  page: number;
+  limit: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface PaginatedResponse<T> {
-  items: T[]
+  items: T[];
   pagination: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-    hasNext: boolean
-    hasPrev: boolean
-  }
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
 }
 
 export interface AuthenticatedRequest extends Request {
   user?: {
-    id: string
-    userId: string
-    username: string
-    role: string
-  }
+    id: string;
+    userId: string;
+    username: string;
+    role: string;
+  };
 }
 
 // Student management types
 export interface StudentCreateInput {
-  studentId: string
-  firstName: string
-  lastName: string
-  gradeLevel: string
-  gradeCategory: string
-  section?: string
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  gradeLevel: string;
+  gradeCategory: string;
+  section?: string;
 }
 
 export interface StudentUpdateInput {
-  firstName?: string
-  lastName?: string
-  gradeLevel?: string
-  gradeCategory?: string
-  section?: string
-  isActive?: boolean
+  firstName?: string;
+  lastName?: string;
+  gradeLevel?: string;
+  gradeCategory?: string;
+  section?: string;
+  isActive?: boolean;
 }
 
 // Book management types
 export interface BookCreateInput {
-  isbn?: string
-  accessionNo: string
-  title: string
-  author: string
-  publisher?: string
-  category: string
-  subcategory?: string
-  location?: string
-  totalCopies?: number
+  isbn?: string;
+  accessionNo: string;
+  title: string;
+  author: string;
+  publisher?: string;
+  category: string;
+  subcategory?: string;
+  location?: string;
+  totalCopies?: number;
 }
 
 export interface BookUpdateInput {
-  isbn?: string
-  title?: string
-  author?: string
-  publisher?: string
-  category?: string
-  subcategory?: string
-  location?: string
-  totalCopies?: number
-  isActive?: boolean
+  isbn?: string;
+  title?: string;
+  author?: string;
+  publisher?: string;
+  category?: string;
+  subcategory?: string;
+  location?: string;
+  totalCopies?: number;
+  isActive?: boolean;
 }
 
 // Equipment management types
 export interface EquipmentSessionInput {
-  equipmentId: string
-  studentId: string
-  plannedDurationMinutes?: number
+  equipmentId: string;
+  studentId: string;
+  plannedDurationMinutes?: number;
 }
 
 export interface EquipmentSessionExtension {
-  additionalMinutes: number
-  reason?: string
+  additionalMinutes: number;
+  reason?: string;
 }
 
 // Activity types
 export interface ActivityCreateInput {
-  studentId: string
-  activityType: string
-  equipmentId?: string
-  timeLimitMinutes?: number
-  notes?: string
+  studentId: string;
+  activityType: string;
+  equipmentId?: string;
+  timeLimitMinutes?: number;
+  notes?: string;
 }
 
 export interface ActivityUpdateInput {
-  endTime?: Date
-  durationMinutes?: number
-  status?: string
-  notes?: string
+  endTime?: Date;
+  durationMinutes?: number;
+  status?: string;
+  notes?: string;
 }
 
 // Google Sheets integration types
 export interface GoogleSheetsConfig {
-  spreadsheetId: string
-  clientEmail: string
-  privateKeyPath: string
+  spreadsheetId: string;
+  clientEmail: string;
+  privateKeyPath: string;
 }
 
-export interface GoogleSheetRow {
-  timestamp: string
-  [key: string]: any
+export type GoogleSheetCellValue = string | number | boolean | null | undefined;
+
+export interface GoogleSheetRow extends Record<string, GoogleSheetCellValue> {
+  timestamp: string;
 }
 
 export interface SyncResult {
-  success: boolean
-  rowsSynced: number
-  errors: string[]
-  duration: number
+  success: boolean;
+  rowsSynced: number;
+  errors: string[];
+  duration: number;
 }
 
 // Automation types
-export interface JobConfig {
-  [key: string]: any
-}
+export type JobConfig = Record<string, unknown>;
 
 export interface JobExecutionResult {
-  success: boolean
-  recordsProcessed?: number
-  errorMessage?: string
-  duration: number
-  metadata?: Record<string, any>
+  success: boolean;
+  recordsProcessed?: number;
+  errorMessage?: string;
+  duration: number;
+  metadata?: Record<string, unknown>;
 }
 
 // Import/Export types
 export interface ImportResult {
-  success: boolean
-  totalRows: number
-  importedRows: number
-  skippedRows: number
-  errorRows: number
-  errors: ImportError[]
+  success: boolean;
+  totalRows: number;
+  importedRows: number;
+  skippedRows: number;
+  errorRows: number;
+  errors: ImportError[];
 }
 
 export interface ImportError {
-  row: number
-  field?: string
-  message: string
-  value?: any
+  row: number;
+  field?: string;
+  message: string;
+  value?: unknown;
 }
 
 export interface BarcodeGenerationOptions {
-  format: 'CODE128' | 'CODE39' | 'QR_CODE' | 'EAN13'
-  width: number
-  height: number
-  includeText: boolean
-  fontSize?: number
+  format: 'CODE128' | 'CODE39' | 'QR_CODE' | 'EAN13';
+  width: number;
+  height: number;
+  includeText: boolean;
+  fontSize?: number;
 }
 
 export interface BarcodeInfo {
-  id: string
-  barcodeData: string
-  format: string
-  imageData: string // Base64 encoded
-  filename: string
+  id: string;
+  barcodeData: string;
+  format: string;
+  imageData: string; // Base64 encoded
+  filename: string;
 }
 
 // System configuration types
 export interface SystemSettings {
   library: {
-    name: string
-    timezone: string
-    hoursStart: string
-    hoursEnd: string
-  }
+    name: string;
+    timezone: string;
+    hoursStart: string;
+    hoursEnd: string;
+  };
   timeLimits: {
-    primary: number
-    gradeSchool: number
-    juniorHigh: number
-    seniorHigh: number
-  }
+    primary: number;
+    gradeSchool: number;
+    juniorHigh: number;
+    seniorHigh: number;
+  };
   equipment: {
-    computerStations: number
-    gamingStations: number
-    avrRooms: number
-  }
+    computerStations: number;
+    gamingStations: number;
+    avrRooms: number;
+  };
   backup: {
-    enabled: boolean
-    schedule: string
-    retentionDays: number
-  }
+    enabled: boolean;
+    schedule: string;
+    retentionDays: number;
+  };
   googleSheets: {
-    enabled: boolean
-    spreadsheetId: string
-    syncInterval: number
-  }
+    enabled: boolean;
+    spreadsheetId: string;
+    syncInterval: number;
+  };
   notifications: {
-    enabled: boolean
-    schedule: string
-    email?: string
-  }
+    enabled: boolean;
+    schedule: string;
+    email?: string;
+  };
 }
 
 // Error types
-export interface ValidationError {
-  field: string
-  message: string
-  value?: any
+export interface ValidationErrorDetail {
+  field: string;
+  message: string;
+  value?: unknown;
 }
 
 export interface AppError extends Error {
-  statusCode: number
-  isOperational: boolean
-  code?: string
-  details?: any
+  statusCode: number;
+  isOperational: boolean;
+  code?: string;
+  details?: unknown;
 }
 
 // Statistics and reporting types
 export interface DailyStatistics {
-  date: string
-  totalStudents: number
-  totalActivities: number
-  totalSessions: number
-  totalCheckouts: number
-  averageSessionDuration: number
-  equipmentUtilization: Record<string, number>
-  gradeCategoryBreakdown: Record<string, number>
-  activityTypeBreakdown: Record<string, number>
+  date: string;
+  totalStudents: number;
+  totalActivities: number;
+  totalSessions: number;
+  totalCheckouts: number;
+  averageSessionDuration: number;
+  equipmentUtilization: Record<string, number>;
+  gradeCategoryBreakdown: Record<string, number>;
+  activityTypeBreakdown: Record<string, number>;
 }
 
 export interface SystemHealth {
   database: {
-    connected: boolean
-    responseTime: number
-  }
+    connected: boolean;
+    responseTime: number;
+  };
   googleSheets: {
-    connected: boolean
-    lastSync: string
-  }
+    connected: boolean;
+    lastSync: string;
+  };
   automation: {
-    running: number
-    failed: number
-    lastRun: string
-  }
+    running: number;
+    failed: number;
+    lastRun: string;
+  };
   memory: {
-    used: number
-    total: number
-  }
-  uptime: number
+    used: number;
+    total: number;
+  };
+  uptime: number;
 }
 
 // Queue and job processing types
 export interface QueueJob {
-  id: string
-  type: string
-  data: any
+  id: string;
+  type: string;
+  data: unknown;
   options: {
-    attempts?: number
-    delay?: number
-    priority?: number
-  }
+    attempts?: number;
+    delay?: number;
+    priority?: number;
+  };
 }
 
 // Barcode scanner types
 export interface ScanResult {
-  format: string
-  text: string
-  timestamp: Date
+  format: string;
+  text: string;
+  timestamp: Date;
 }
 
 export interface ScannerConfig {
-  enabledFormats: string[]
-  scanInterval: number
-  autoSubmit: boolean
+  enabledFormats: string[];
+  scanInterval: number;
+  autoSubmit: boolean;
 }
 
 // Notification types
 export interface Notification {
-  id: string
-  type: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS'
-  title: string
-  message: string
-  timestamp: Date
-  isRead: boolean
-  actionUrl?: string
-  metadata?: Record<string, any>
+  id: string;
+  type: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS';
+  title: string;
+  message: string;
+  timestamp: Date;
+  isRead: boolean;
+  actionUrl?: string;
+  metadata?: Record<string, unknown>;
 }

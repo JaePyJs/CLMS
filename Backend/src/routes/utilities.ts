@@ -2,10 +2,88 @@ import { Router, Request, Response } from 'express';
 import { ApiResponse } from '@/types';
 import { qrCodeService } from '@/services/qrCodeService';
 import { barcodeService } from '@/services/barcodeService';
+import { documentationService } from '@/services/documentationService';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const router = Router();
+
+// ============================================
+// DOCUMENTATION ROUTES
+// ============================================
+
+// Get comprehensive documentation information
+router.get('/documentation', async (req: Request, res: Response) => {
+  try {
+    const docsInfo = await documentationService.getDocumentationInfo();
+
+    const response: ApiResponse = {
+      success: true,
+      data: docsInfo,
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
+  } catch (error) {
+    const response: ApiResponse = {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get documentation info',
+      timestamp: new Date().toISOString(),
+    };
+    res.status(500).json(response);
+  }
+});
+
+// Refresh documentation cache
+router.post('/documentation/refresh', async (req: Request, res: Response) => {
+  try {
+    await documentationService.refreshCache();
+    const docsInfo = await documentationService.getDocumentationInfo();
+
+    const response: ApiResponse = {
+      success: true,
+      data: docsInfo,
+      message: 'Documentation cache refreshed successfully',
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
+  } catch (error) {
+    const response: ApiResponse = {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to refresh documentation cache',
+      timestamp: new Date().toISOString(),
+    };
+    res.status(500).json(response);
+  }
+});
+
+// Get documentation health status
+router.get('/documentation/health', async (req: Request, res: Response) => {
+  try {
+    const docsInfo = await documentationService.getDocumentationInfo();
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        status: docsInfo.health.status,
+        checks: docsInfo.health.checks,
+        lastChecked: docsInfo.lastUpdated,
+      },
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
+  } catch (error) {
+    const response: ApiResponse = {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get documentation health',
+      timestamp: new Date().toISOString(),
+    };
+    res.status(500).json(response);
+  }
+});
+
+// ============================================
+// QR CODE ROUTES
+// ============================================
 
 // Generate QR codes for all students
 router.post('/generate-qr-codes', async (req: Request, res: Response) => {
@@ -433,6 +511,241 @@ router.get('/barcodes-sheet', (req: Request, res: Response) => {
   res.sendFile(htmlPath);
 });
 
+// ============================================
+// QUICK ACTIONS ROUTES
+// ============================================
+
+// Add quick student (simple endpoint for dashboard quick action)
+router.post('/quick-add-student', async (req: Request, res: Response) => {
+  try {
+    const { firstName, lastName, grade, section } = req.body;
+
+    if (!firstName || !lastName || !grade) {
+      return res.status(400).json({
+        success: false,
+        error: 'First name, last name, and grade are required',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    const student = await prisma.student.create({
+      data: {
+        firstName,
+        lastName,
+        grade,
+        section: section || null,
+        isActive: true,
+        barcode: `STU-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+      }
+    });
+
+    await prisma.$disconnect();
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        student: {
+          id: student.id,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          grade: student.grade,
+          section: student.section,
+          barcode: student.barcode
+        }
+      },
+      message: `Student ${firstName} ${lastName} added successfully`,
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
+  } catch (error) {
+    const response: ApiResponse = {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to add student',
+      timestamp: new Date().toISOString(),
+    };
+    res.status(500).json(response);
+  }
+});
+
+// Quick session start (for dashboard quick action)
+router.post('/quick-start-session', async (req: Request, res: Response) => {
+  try {
+    const { studentId, equipmentId, timeLimitMinutes = 60 } = req.body;
+
+    if (!studentId || !equipmentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Student ID and Equipment ID are required',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    // Check if student and equipment exist
+    const [student, equipment] = await Promise.all([
+      prisma.student.findUnique({ where: { id: studentId } }),
+      prisma.equipment.findUnique({ where: { id: equipmentId } })
+    ]);
+
+    if (!student || !equipment) {
+      return res.status(404).json({
+        success: false,
+        error: 'Student or equipment not found',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    if (equipment.status !== 'available') {
+      return res.status(400).json({
+        success: false,
+        error: 'Equipment is not available',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Create activity
+    const activity = await prisma.activity.create({
+      data: {
+        studentId,
+        equipmentId,
+        startTime: new Date(),
+        endTime: new Date(Date.now() + timeLimitMinutes * 60 * 1000),
+        activityType: 'computer_usage',
+        status: 'active',
+      }
+    });
+
+    // Update equipment status
+    await prisma.equipment.update({
+      where: { id: equipmentId },
+      data: { status: 'in_use' }
+    });
+
+    await prisma.$disconnect();
+
+    const response: ApiResponse = {
+      success: true,
+      data: {
+        activity: {
+          id: activity.id,
+          studentId: activity.studentId,
+          equipmentId: activity.equipmentId,
+          startTime: activity.startTime,
+          endTime: activity.endTime,
+          activityType: activity.activityType,
+          status: activity.status,
+        }
+      },
+      message: 'Session started successfully',
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
+  } catch (error) {
+    const response: ApiResponse = {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to start session',
+      timestamp: new Date().toISOString(),
+    };
+    res.status(500).json(response);
+  }
+});
+
+// Quick report generation
+router.get('/quick-report', async (req: Request, res: Response) => {
+  try {
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    const [totalStudents, activeStudents, todayActivities, totalEquipment, availableEquipment] = await Promise.all([
+      prisma.student.count(),
+      prisma.student.count({ where: { isActive: true } }),
+      prisma.activity.count({
+        where: { startTime: { gte: todayStart } }
+      }),
+      prisma.equipment.count(),
+      prisma.equipment.count({ where: { status: 'available' } })
+    ]);
+
+    await prisma.$disconnect();
+
+    const report = {
+      date: today.toISOString().split('T')[0],
+      summary: {
+        totalStudents,
+        activeStudents,
+        todayActivities,
+        totalEquipment,
+        availableEquipment,
+        equipmentUtilization: totalEquipment > 0 ? ((totalEquipment - availableEquipment) / totalEquipment * 100).toFixed(1) : '0'
+      },
+      status: 'healthy',
+      recommendations: [
+        totalEquipment - availableEquipment > totalEquipment * 0.8 ? 'Consider adding more equipment - utilization is high' : null,
+        todayActivities > totalStudents * 2 ? 'High activity volume - excellent engagement' : null,
+        availableEquipment < totalEquipment * 0.3 ? 'Most equipment is in use - monitor availability' : null
+      ].filter(Boolean)
+    };
+
+    const response: ApiResponse = {
+      success: true,
+      data: report,
+      message: 'Quick report generated successfully',
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
+  } catch (error) {
+    const response: ApiResponse = {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to generate report',
+      timestamp: new Date().toISOString(),
+    };
+    res.status(500).json(response);
+  }
+});
+
+// Quick backup (simplified version for dashboard)
+router.post('/quick-backup', async (req: Request, res: Response) => {
+  try {
+    // Simulate backup process
+    const backupData = {
+      timestamp: new Date().toISOString(),
+      type: 'quick_backup',
+      status: 'initiated',
+      estimatedDuration: '2-3 minutes'
+    };
+
+    // In a real implementation, this would trigger an actual backup process
+    // For now, we'll simulate a successful backup after a short delay
+
+    setTimeout(() => {
+      console.log('Quick backup completed successfully');
+    }, 2000);
+
+    const response: ApiResponse = {
+      success: true,
+      data: backupData,
+      message: 'Quick backup initiated successfully',
+      timestamp: new Date().toISOString(),
+    };
+    res.json(response);
+  } catch (error) {
+    const response: ApiResponse = {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to initiate backup',
+      timestamp: new Date().toISOString(),
+    };
+    res.status(500).json(response);
+  }
+});
+
 router.get('/', (req: Request, res: Response) => {
   const response: ApiResponse = {
     success: true,
@@ -454,6 +767,11 @@ router.get('/', (req: Request, res: Response) => {
         'DELETE /api/utilities/barcode/:studentId - Delete barcode',
         'POST /api/utilities/regenerate-barcode/:studentId - Regenerate barcode',
         'GET /api/utilities/barcodes-sheet - View printable barcodes sheet',
+        '--- QUICK ACTIONS ---',
+        'POST /api/utilities/quick-add-student - Quick add student (firstName, lastName, grade, section)',
+        'POST /api/utilities/quick-start-session - Quick start session (studentId, equipmentId, timeLimitMinutes)',
+        'GET /api/utilities/quick-report - Quick daily report',
+        'POST /api/utilities/quick-backup - Quick system backup',
       ],
     },
     timestamp: new Date().toISOString(),

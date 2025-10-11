@@ -34,7 +34,7 @@ This repository contains both the backend API (Express + Prisma) and the React d
 
 ### Backend
 
-- Node.js 18+, Express, Prisma ORM, and TypeScript
+- Node.js 20+, Express, Prisma ORM, and TypeScript
 - Bull queues backed by Redis for automation and scheduled jobs
 - Google Sheets API, ExcelJS, CSV parsers, PDF-Lib for data exchange
 - Winston logging, Helmet, compression, and express-rate-limit for resilience
@@ -44,13 +44,13 @@ This repository contains both the backend API (Express + Prisma) and the React d
 - Docker Compose for local orchestration (MySQL, Redis, Adminer, Koha, backend, frontend)
 - Vitest + Testing Library for unit/integration tests
 - ESLint, Prettier, Husky, and lint-staged for code quality
-- GitHub Actions CI/CD (see `.github/workflows/ci-cd.yml`)
+- GitHub Actions CI/CD (see `.github/workflows/ci.yml`)
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js v18+
+- Node.js v20+ (Required - matches CI/CD environment)
 - Docker Desktop (or native Docker + Compose)
 - Git
 
@@ -73,7 +73,7 @@ npm install
 ### Environment Setup
 
 - Copy `Backend/.env.example` to `Backend/.env` and configure database, JWT secrets, Google credentials paths, and rate limit settings.
-- (Optional) Copy `Frontend/.env.example` to `Frontend/.env` if customizing API origins.
+- Copy `Frontend/.env.example` to `Frontend/.env` to configure API endpoints and feature flags.
 
 ### Start Supporting Services
 
@@ -155,10 +155,12 @@ CLMS/
 
 ## Documentation
 
-- `Docs/codebase-overview.md` – Architectural summary and onboarding checklist
+- `CLAUDE.md` – Platform architecture guidance and development principles
+- `CONTRIBUTING.md` – Contribution guidelines and development workflow
 - `BARCODE_GUIDE.md` & `BARCODE_IMPLEMENTATION_SUMMARY.md` – Deep dives into barcode workflow
 - `QR_CODE_GUIDE.md` – QR generation and distribution
 - `USB_SCANNER_SETUP.md` – Hardware setup for USB scanners
+- `Docs/codebase-overview.md` – Architectural summary and onboarding checklist
 - `Docs/database-setup.md` – Database provisioning details
 
 ## Deployment Notes
@@ -178,6 +180,94 @@ CLMS/
 ## License
 
 Licensed under the MIT License – see [LICENSE](LICENSE) for details.
+
+## Troubleshooting
+
+### Common Issues
+
+**Database Connection Issues**
+```bash
+# Check Docker containers are running
+docker-compose ps
+
+# Check MySQL logs
+docker-compose logs mysql
+
+# Restart database services
+docker-compose restart mysql redis
+```
+
+**Backend Won't Start**
+```bash
+# Check Node.js version (requires v20+)
+node --version
+
+# Clear node_modules and reinstall
+cd Backend
+rm -rf node_modules package-lock.json
+npm install
+
+# Check environment variables
+cat .env | grep DATABASE_URL
+```
+
+**Frontend Build Issues**
+```bash
+# Clear cache and reinstall
+cd Frontend
+rm -rf node_modules package-lock.json dist
+npm install
+npm run build
+```
+
+**Authentication Issues**
+- Verify JWT_SECRET is set in Backend/.env
+- Check that CORS_ORIGIN matches frontend URL
+- Ensure user exists in database (run npm run cli)
+
+**Google Sheets Integration Issues**
+- Verify google-credentials.json exists and has correct permissions
+- Check GOOGLE_SPREADSHEET_ID is correct
+- Test connection: `curl http://localhost:3001/api/health`
+
+**Barcode Scanner Not Working**
+- Check VITE_BARCODE_SCANNER_MODE in Frontend/.env
+- Ensure scanner is in keyboard wedge mode
+- Test with manual input first
+
+**Tests Failing**
+```bash
+# Run tests with verbose output
+cd Backend && npm test -- --verbose
+cd Frontend && npm test -- --verbose
+
+# Reset test database
+cd Backend && npm run db:reset
+```
+
+### Performance Issues
+
+**Slow API Response**
+- Check Redis connection: `docker-compose logs redis`
+- Monitor database performance: use Adminer at http://localhost:8080
+- Check automation job queue status in backend logs
+
+**Frontend Loading Slow**
+- Disable TanStack Query dev tools in production
+- Check network tab for API response times
+- Verify asset compression in build output
+
+### Environment-Specific Issues
+
+**Windows Development**
+- Use PowerShell commands as shown in README
+- Ensure Windows long paths are enabled
+- Use Git Bash or WSL for better compatibility
+
+**Mac Development**
+- Install Docker Desktop for Mac
+- Use `./scripts/start-dev.sh` if available
+- Check for port conflicts with system services
 
 ## Support
 

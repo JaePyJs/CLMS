@@ -25,6 +25,7 @@ const automation_2 = __importDefault(require("@/routes/automation"));
 const admin_1 = __importDefault(require("@/routes/admin"));
 const reports_1 = __importDefault(require("@/routes/reports"));
 const utilities_1 = __importDefault(require("@/routes/utilities"));
+const analytics_1 = __importDefault(require("@/routes/analytics"));
 const auth_2 = require("@/middleware/auth");
 class CLMSApplication {
     app;
@@ -97,17 +98,20 @@ class CLMSApplication {
             legacyHeaders: false,
         });
         this.app.use('/api', limiter);
-        const authLimiter = (0, express_rate_limit_1.default)({
-            windowMs: 15 * 60 * 1000,
-            max: 5,
-            message: {
-                success: false,
-                error: 'Too many authentication attempts, please try again later.',
-                timestamp: new Date().toISOString(),
-            },
-            skipSuccessfulRequests: true,
-        });
-        this.app.use('/api/auth/login', authLimiter);
+        const authRateLimitEnabled = process.env.RATE_LIMIT_AUTH_ENABLED !== 'false';
+        if (authRateLimitEnabled) {
+            const authLimiter = (0, express_rate_limit_1.default)({
+                windowMs: 15 * 60 * 1000,
+                max: 5,
+                message: {
+                    success: false,
+                    error: 'Too many authentication attempts, please try again later.',
+                    timestamp: new Date().toISOString(),
+                },
+                skipSuccessfulRequests: true,
+            });
+            this.app.use('/api/auth/login', authLimiter);
+        }
         logger_1.logger.debug('Rate limiting middleware configured');
     }
     setupCORS() {
@@ -139,6 +143,7 @@ class CLMSApplication {
         this.app.use('/api/admin', auth_2.authMiddleware, admin_1.default);
         this.app.use('/api/reports', auth_2.authMiddleware, reports_1.default);
         this.app.use('/api/utilities', auth_2.authMiddleware, utilities_1.default);
+        this.app.use('/api/analytics', auth_2.authMiddleware, analytics_1.default);
         this.app.get('/', (req, res) => {
             res.json({
                 success: true,
@@ -163,6 +168,7 @@ class CLMSApplication {
                     admin: '/api/admin',
                     reports: '/api/reports',
                     utilities: '/api/utilities',
+                    analytics: '/api/analytics',
                 },
                 timestamp: new Date().toISOString(),
             });

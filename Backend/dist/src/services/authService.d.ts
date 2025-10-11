@@ -13,6 +13,14 @@ export interface LoginResult {
     };
     error?: string;
 }
+export interface UserSummary {
+    id: string;
+    username: string;
+    role: string;
+    isActive: boolean;
+    lastLoginAt: Date | null;
+    createdAt: Date;
+}
 export declare class AuthService {
     private jwtSecret;
     private jwtExpiration;
@@ -27,7 +35,7 @@ export declare class AuthService {
         isActive?: boolean;
     }): Promise<{
         success: boolean;
-        user?: any;
+        user?: UserSummary;
         error?: string;
     }>;
     updatePassword(userId: string, currentPassword: string, newPassword: string): Promise<{
@@ -38,15 +46,15 @@ export declare class AuthService {
         success: boolean;
         error?: string;
     }>;
-    getUsers(): Promise<any[]>;
-    getUserById(userId: string): Promise<any | null>;
+    getUsers(): Promise<UserSummary[]>;
+    getUserById(userId: string): Promise<UserSummary | null>;
     updateUser(userId: string, updateData: {
         username?: string;
         role?: string;
         isActive?: boolean;
     }): Promise<{
         success: boolean;
-        user?: any;
+        user?: UserSummary;
         error?: string;
     }>;
     deleteUser(userId: string): Promise<{

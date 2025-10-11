@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { prisma } from '../setup'
-import { 
-  createStudent, 
-  getStudents, 
-  getStudentById, 
-  getStudentByBarcode, 
-  updateStudent, 
+import { prisma, generateTestStudentId } from '../setup'
+import {
+  createStudent,
+  getStudents,
+  getStudentById,
+  getStudentByBarcode,
+  updateStudent,
   deleteStudent,
   getActiveSessions,
   createStudentActivity,
@@ -22,8 +22,9 @@ describe('Student Service', () => {
 
   describe('createStudent', () => {
     it('should create a new student', async () => {
+      const studentId = generateTestStudentId('create')
       const studentData = {
-        studentId: '2023001',
+        studentId,
         firstName: 'John',
         lastName: 'Doe',
         gradeLevel: 'Grade 7',
@@ -44,8 +45,9 @@ describe('Student Service', () => {
     })
 
     it('should throw an error if student ID already exists', async () => {
+      const studentId = generateTestStudentId('duplicate')
       const studentData = {
-        studentId: '2023001',
+        studentId,
         firstName: 'John',
         lastName: 'Doe',
         gradeLevel: 'Grade 7',
@@ -73,7 +75,7 @@ describe('Student Service', () => {
       await prisma.student.createMany({
         data: [
           {
-            studentId: '2023001',
+            studentId: generateTestStudentId('all1'),
             firstName: 'John',
             lastName: 'Doe',
             gradeLevel: 'Grade 7',
@@ -81,7 +83,7 @@ describe('Student Service', () => {
             section: '7-A'
           },
           {
-            studentId: '2023002',
+            studentId: generateTestStudentId('all2'),
             firstName: 'Jane',
             lastName: 'Smith',
             gradeLevel: 'Grade 8',
@@ -101,7 +103,7 @@ describe('Student Service', () => {
       await prisma.student.createMany({
         data: [
           {
-            studentId: '2023001',
+            studentId: generateTestStudentId('filter1'),
             firstName: 'John',
             lastName: 'Doe',
             gradeLevel: 'Grade 7',
@@ -109,7 +111,7 @@ describe('Student Service', () => {
             section: '7-A'
           },
           {
-            studentId: '2023002',
+            studentId: generateTestStudentId('filter2'),
             firstName: 'Jane',
             lastName: 'Smith',
             gradeLevel: 'Grade 1',
@@ -128,9 +130,10 @@ describe('Student Service', () => {
   describe('getStudentById', () => {
     it('should return a student by ID', async () => {
       // Create test student
+      const studentId = generateTestStudentId('byid')
       const createdStudent = await prisma.student.create({
         data: {
-          studentId: '2023001',
+          studentId,
           firstName: 'John',
           lastName: 'Doe',
           gradeLevel: 'Grade 7',
@@ -142,7 +145,7 @@ describe('Student Service', () => {
       const student = await getStudentById(createdStudent.id)
       expect(student).toBeDefined()
       expect(student?.id).toBe(createdStudent.id)
-      expect(student?.studentId).toBe('2023001')
+      expect(student?.studentId).toBe(studentId)
     })
 
     it('should return null for non-existent student', async () => {
@@ -154,9 +157,10 @@ describe('Student Service', () => {
   describe('getStudentByBarcode', () => {
     it('should return a student by barcode (student ID)', async () => {
       // Create test student
+      const studentId = generateTestStudentId('barcode')
       await prisma.student.create({
         data: {
-          studentId: '2023001',
+          studentId,
           firstName: 'John',
           lastName: 'Doe',
           gradeLevel: 'Grade 7',
@@ -165,9 +169,9 @@ describe('Student Service', () => {
         }
       })
 
-      const student = await getStudentByBarcode('2023001')
+      const student = await getStudentByBarcode(studentId)
       expect(student).toBeDefined()
-      expect(student?.studentId).toBe('2023001')
+      expect(student?.studentId).toBe(studentId)
     })
 
     it('should return null for non-existent barcode', async () => {
@@ -179,9 +183,10 @@ describe('Student Service', () => {
   describe('updateStudent', () => {
     it('should update a student', async () => {
       // Create test student
+      const studentId = generateTestStudentId('update')
       const createdStudent = await prisma.student.create({
         data: {
-          studentId: '2023001',
+          studentId,
           firstName: 'John',
           lastName: 'Doe',
           gradeLevel: 'Grade 7',
@@ -210,9 +215,10 @@ describe('Student Service', () => {
   describe('deleteStudent', () => {
     it('should delete a student', async () => {
       // Create test student
+      const studentId = generateTestStudentId('delete')
       const createdStudent = await prisma.student.create({
         data: {
-          studentId: '2023001',
+          studentId,
           firstName: 'John',
           lastName: 'Doe',
           gradeLevel: 'Grade 7',
@@ -241,9 +247,10 @@ describe('Student Service', () => {
   describe('Student Activities', () => {
     it('should create a student activity', async () => {
       // Create test student
+      const studentId = generateTestStudentId('activity')
       const student = await prisma.student.create({
         data: {
-          studentId: '2023001',
+          studentId,
           firstName: 'John',
           lastName: 'Doe',
           gradeLevel: 'Grade 7',
@@ -260,16 +267,17 @@ describe('Student Service', () => {
 
       const activity = await createStudentActivity(activityData)
       expect(activity).toBeDefined()
-      expect(activity.studentId).toBe(student.studentId)
+      expect(activity.studentId).toBe(student.id) // Activity stores student's database ID
       expect(activity.activityType).toBe(activityData.activityType)
       expect(activity.status).toBe(ActivityStatus.ACTIVE)
     })
 
     it('should get active sessions', async () => {
       // Create test student
+      const studentId = generateTestStudentId('sessions')
       const student = await prisma.student.create({
         data: {
-          studentId: '2023001',
+          studentId,
           firstName: 'John',
           lastName: 'Doe',
           gradeLevel: 'Grade 7',
@@ -292,9 +300,10 @@ describe('Student Service', () => {
 
     it('should end a student activity', async () => {
       // Create test student
+      const studentId = generateTestStudentId('end')
       const student = await prisma.student.create({
         data: {
-          studentId: '2023001',
+          studentId,
           firstName: 'John',
           lastName: 'Doe',
           gradeLevel: 'Grade 7',

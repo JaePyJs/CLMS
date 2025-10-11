@@ -6,10 +6,10 @@ const logger_1 = require("@/utils/logger");
 const router = (0, express_1.Router)();
 router.get('/', async (req, res) => {
     try {
-        const { category, subcategory, isActive, page = '1', limit = '50', search } = req.query;
+        const { category, subcategory, isActive, page = '1', limit = '50', search, } = req.query;
         const options = {
             page: parseInt(page),
-            limit: parseInt(limit)
+            limit: parseInt(limit),
         };
         if (category) {
             options.category = category;
@@ -27,17 +27,20 @@ router.get('/', async (req, res) => {
         const response = {
             success: true,
             data: result,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error fetching books', { error: error.message, query: req.query });
+        logger_1.logger.error('Error fetching books', {
+            error: error.message,
+            query: req.query,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -48,7 +51,7 @@ router.get('/:id', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Book ID is required',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const book = await (0, bookService_1.getBookById)(id);
@@ -56,34 +59,37 @@ router.get('/:id', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: 'Book not found',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const response = {
             success: true,
             data: book,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error fetching book', { error: error.message, id: req.params.id });
+        logger_1.logger.error('Error fetching book', {
+            error: error.message,
+            id: req.params.id,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
 router.post('/', async (req, res) => {
     try {
-        const { isbn, accessionNo, title, author, publisher, category, subcategory, location, totalCopies, availableCopies } = req.body;
+        const { isbn, accessionNo, title, author, publisher, category, subcategory, location, totalCopies, availableCopies, } = req.body;
         if (!accessionNo || !title || !author || !category) {
             return res.status(400).json({
                 success: false,
                 error: 'Missing required fields: accessionNo, title, author, category',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const book = await (0, bookService_1.createBook)({
@@ -96,23 +102,26 @@ router.post('/', async (req, res) => {
             subcategory,
             location,
             totalCopies,
-            availableCopies
+            availableCopies,
         });
         const response = {
             success: true,
             data: book,
             message: 'Book created successfully',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.status(201).json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error creating book', { error: error.message, body: req.body });
+        logger_1.logger.error('Error creating book', {
+            error: error.message,
+            body: req.body,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -123,10 +132,10 @@ router.put('/:id', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Book ID is required',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
-        const { isbn, accessionNo, title, author, publisher, category, subcategory, location, totalCopies, availableCopies, isActive } = req.body;
+        const { isbn, accessionNo, title, author, publisher, category, subcategory, location, totalCopies, availableCopies, isActive, } = req.body;
         const book = await (0, bookService_1.updateBook)(id, {
             isbn,
             accessionNo,
@@ -138,23 +147,27 @@ router.put('/:id', async (req, res) => {
             location,
             totalCopies,
             availableCopies,
-            isActive
+            isActive,
         });
         const response = {
             success: true,
             data: book,
             message: 'Book updated successfully',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error updating book', { error: error.message, id: req.params.id, body: req.body });
+        logger_1.logger.error('Error updating book', {
+            error: error.message,
+            id: req.params.id,
+            body: req.body,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -165,24 +178,27 @@ router.delete('/:id', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Book ID is required',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         await (0, bookService_1.deleteBook)(id);
         const response = {
             success: true,
             message: 'Book deleted successfully',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error deleting book', { error: error.message, id: req.params.id });
+        logger_1.logger.error('Error deleting book', {
+            error: error.message,
+            id: req.params.id,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -193,7 +209,7 @@ router.post('/scan', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Barcode is required',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         let book = await (0, bookService_1.getBookByAccessionNo)(barcode);
@@ -204,24 +220,27 @@ router.post('/scan', async (req, res) => {
             return res.status(404).json({
                 success: false,
                 error: 'Book not found',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const response = {
             success: true,
             message: 'Book found successfully',
             data: book,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error scanning book barcode', { error: error.message, body: req.body });
+        logger_1.logger.error('Error scanning book barcode', {
+            error: error.message,
+            body: req.body,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -232,30 +251,33 @@ router.post('/checkout', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Missing required fields: bookId, studentId, dueDate',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const checkout = await (0, bookService_1.checkoutBook)({
             bookId,
             studentId,
             dueDate: new Date(dueDate),
-            notes
+            notes,
         });
         const response = {
             success: true,
             data: checkout,
             message: 'Book checked out successfully',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.status(201).json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error checking out book', { error: error.message, body: req.body });
+        logger_1.logger.error('Error checking out book', {
+            error: error.message,
+            body: req.body,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -266,7 +288,7 @@ router.post('/return', async (req, res) => {
             return res.status(400).json({
                 success: false,
                 error: 'Checkout ID is required',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
             });
         }
         const checkout = await (0, bookService_1.returnBook)(checkoutId);
@@ -274,26 +296,29 @@ router.post('/return', async (req, res) => {
             success: true,
             data: checkout,
             message: 'Book returned successfully',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error returning book', { error: error.message, body: req.body });
+        logger_1.logger.error('Error returning book', {
+            error: error.message,
+            body: req.body,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
 router.get('/checkouts/all', async (req, res) => {
     try {
-        const { bookId, studentId, status, startDate, endDate, page = '1', limit = '50' } = req.query;
+        const { bookId, studentId, status, startDate, endDate, page = '1', limit = '50', } = req.query;
         const options = {
             page: parseInt(page),
-            limit: parseInt(limit)
+            limit: parseInt(limit),
         };
         if (bookId) {
             options.bookId = bookId;
@@ -314,17 +339,20 @@ router.get('/checkouts/all', async (req, res) => {
         const response = {
             success: true,
             data: result,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error fetching book checkouts', { error: error.message, query: req.query });
+        logger_1.logger.error('Error fetching book checkouts', {
+            error: error.message,
+            query: req.query,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });
@@ -334,17 +362,19 @@ router.get('/checkouts/overdue', async (req, res) => {
         const response = {
             success: true,
             data: overdueBooks,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         };
         res.json(response);
     }
     catch (error) {
-        logger_1.logger.error('Error fetching overdue books', { error: error.message });
+        logger_1.logger.error('Error fetching overdue books', {
+            error: error.message,
+        });
         res.status(500).json({
             success: false,
             error: 'Internal server error',
             message: error.message,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
         });
     }
 });

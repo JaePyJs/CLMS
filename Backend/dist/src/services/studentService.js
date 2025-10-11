@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getDefaultTimeLimit = getDefaultTimeLimit;
 exports.getStudentByBarcode = getStudentByBarcode;
+exports.getStudentById = getStudentById;
 exports.getStudents = getStudents;
 exports.createStudent = createStudent;
 exports.updateStudent = updateStudent;
@@ -52,6 +53,36 @@ async function getStudentByBarcode(barcode) {
         throw error;
     }
 }
+async function getStudentById(id) {
+    try {
+        const student = await prisma_1.prisma.student.findUnique({
+            where: { id },
+            include: {
+                activities: {
+                    where: { status: client_1.ActivityStatus.ACTIVE },
+                    orderBy: { startTime: 'desc' },
+                    take: 1,
+                },
+            },
+        });
+        if (!student) {
+            return null;
+        }
+        const defaultTimeLimit = getDefaultTimeLimit(student.gradeCategory);
+        return {
+            ...student,
+            defaultTimeLimit,
+            hasActiveSession: student.activities.length > 0,
+        };
+    }
+    catch (error) {
+        logger_1.logger.error('Error fetching student by ID', {
+            error: error.message,
+            id,
+        });
+        throw error;
+    }
+}
 async function getStudents(options = {}) {
     try {
         const { gradeCategory, isActive, page = 1, limit = 50 } = options;
@@ -74,6 +105,7 @@ async function getStudents(options = {}) {
         ]);
         return {
             students,
+            total,
             pagination: {
                 page,
                 limit,
@@ -92,6 +124,15 @@ async function getStudents(options = {}) {
 }
 async function createStudent(data) {
     try {
+        const existing = await prisma_1.prisma.student.findUnique({
+            where: { studentId: data.studentId },
+        });
+        if (existing) {
+            logger_1.logger.warn('Attempted to create duplicate student', {
+                studentId: data.studentId,
+            });
+            throw new Error('Student ID already exists');
+        }
         const student = await prisma_1.prisma.student.create({
             data,
         });
@@ -101,6 +142,9 @@ async function createStudent(data) {
         return student;
     }
     catch (error) {
+        if (error.message === 'Student ID already exists') {
+            throw error;
+        }
         logger_1.logger.error('Error creating student', {
             error: error.message,
             data,
@@ -108,36 +152,66 @@ async function createStudent(data) {
         throw error;
     }
 }
-async function updateStudent(studentId, data) {
+async function updateStudent(identifier, data) {
     try {
+        const isDatabaseId = identifier.length >= 25 && /^[a-z0-9]{25}$/.test(identifier);
+        const whereClause = isDatabaseId
+            ? { id: identifier }
+            : { studentId: identifier };
+        const existing = await prisma_1.prisma.student.findUnique({
+            where: whereClause,
+        });
+        if (!existing) {
+            logger_1.logger.warn('Attempted to update non-existent student', { identifier });
+            return null;
+        }
         const student = await prisma_1.prisma.student.update({
-            where: { studentId },
+            where: whereClause,
             data,
         });
-        logger_1.logger.info('Student updated successfully', { studentId });
+        logger_1.logger.info('Student updated successfully', { identifier });
         return student;
     }
     catch (error) {
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError &&
+            error.code === 'P2025') {
+            return null;
+        }
         logger_1.logger.error('Error updating student', {
             error: error.message,
-            studentId,
+            identifier,
             data,
         });
         throw error;
     }
 }
-async function deleteStudent(studentId) {
+async function deleteStudent(identifier) {
     try {
-        await prisma_1.prisma.student.delete({
-            where: { studentId },
+        const isDatabaseId = identifier.length >= 25 && /^[a-z0-9]{25}$/.test(identifier);
+        const whereClause = isDatabaseId
+            ? { id: identifier }
+            : { studentId: identifier };
+        const existing = await prisma_1.prisma.student.findUnique({
+            where: whereClause,
         });
-        logger_1.logger.info('Student deleted successfully', { studentId });
-        return true;
+        if (!existing) {
+            logger_1.logger.warn('Attempted to delete non-existent student', { identifier });
+            return null;
+        }
+        const student = await prisma_1.prisma.student.delete({
+            where: whereClause,
+        });
+        logger_1.logger.info('Student deleted successfully', { identifier });
+        return student;
     }
     catch (error) {
+        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError &&
+            error.code === 'P2025') {
+            return null;
+        }
         logger_1.logger.error('Error deleting student', {
             error: error.message,
-            studentId,
+            identifier,
         });
         throw error;
     }
@@ -151,11 +225,14 @@ async function getStudentActivities(options = {}) {
             where.studentId = studentId;
         }
         if (startDate || endDate) {
-            where.startTime = {};
-            if (startDate)
-                where.startTime.gte = startDate;
-            if (endDate)
-                where.startTime.lte = endDate;
+            const startTimeFilter = {};
+            if (startDate) {
+                startTimeFilter.gte = startDate;
+            }
+            if (endDate) {
+                startTimeFilter.lte = endDate;
+            }
+            where.startTime = startTimeFilter;
         }
         if (activityType) {
             where.activityType = activityType;
@@ -244,7 +321,7 @@ async function getActiveSessions() {
 async function createStudentActivity(data) {
     try {
         const student = await prisma_1.prisma.student.findUnique({
-            where: { id: data.studentId },
+            where: { studentId: data.studentId },
         });
         if (!student) {
             throw new Error('Student not found');
@@ -254,7 +331,10 @@ async function createStudentActivity(data) {
         const endTime = new Date(startTime.getTime() + timeLimitMinutes * 60000);
         const activity = await prisma_1.prisma.activity.create({
             data: {
-                studentId: data.studentId,
+                studentId: student.id,
+                studentName: `${student.firstName} ${student.lastName}`.trim(),
+                studentGradeLevel: student.gradeLevel,
+                studentGradeCategory: student.gradeCategory,
                 activityType: data.activityType,
                 equipmentId: data.equipmentId || null,
                 startTime,

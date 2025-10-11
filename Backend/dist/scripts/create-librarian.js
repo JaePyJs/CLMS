@@ -1,0 +1,63 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const client_1 = require("@prisma/client");
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const prisma = new client_1.PrismaClient();
+async function createLibrarianAccount() {
+    try {
+        console.log('Creating default librarian account...');
+        const existingLibrarian = await prisma.user.findFirst({
+            where: { role: 'LIBRARIAN' }
+        });
+        if (existingLibrarian) {
+            console.log('Librarian account already exists:', existingLibrarian.username);
+            return;
+        }
+        const saltRounds = 10;
+        const hashedPassword = await bcryptjs_1.default.hash('library123', saltRounds);
+        const librarian = await prisma.user.create({
+            data: {
+                username: 'librarian',
+                password: hashedPassword,
+                role: 'LIBRARIAN',
+                isActive: true
+            }
+        });
+        console.log('✅ Librarian account created successfully!');
+        console.log('Username: librarian');
+        console.log('Password: library123');
+        console.log('⚠️  Please change the default password after first login!');
+        const existingAdmin = await prisma.user.findFirst({
+            where: { role: 'ADMIN' }
+        });
+        if (!existingAdmin) {
+            const adminHashedPassword = await bcryptjs_1.default.hash('admin123', saltRounds);
+            const admin = await prisma.user.create({
+                data: {
+                    username: 'admin',
+                    password: adminHashedPassword,
+                    role: 'ADMIN',
+                    isActive: true
+                }
+            });
+            console.log('✅ Admin account created successfully!');
+            console.log('Username: admin');
+            console.log('Password: admin123');
+            console.log('⚠️  Please change the default password after first login!');
+        }
+    }
+    catch (error) {
+        console.error('Error creating accounts:', error);
+    }
+    finally {
+        await prisma.$disconnect();
+    }
+}
+if (require.main === module) {
+    createLibrarianAccount();
+}
+exports.default = createLibrarianAccount;
+//# sourceMappingURL=create-librarian.js.map

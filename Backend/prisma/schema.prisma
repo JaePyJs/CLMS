@@ -16,299 +16,306 @@ model User {
   username    String   @unique
   password    String
   role        String   @default("USER")
-  isActive    Boolean  @default(true)
-  lastLoginAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean  @default(true) @map("is_active")
+  lastLoginAt DateTime? @map("last_login_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("users")
 }
 
 // Core entities
 model Student {
-  id            String        @id @default(cuid())
-  studentId     String        @unique // School ID/barcode
-  firstName     String
-  lastName      String
-  gradeLevel    String
-  gradeCategory GradeCategory
-  section       String?
-  isActive      Boolean       @default(true)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                   String             @id @default(cuid())
+  studentId            String             @unique @map("student_id")
+  firstName            String             @map("first_name")
+  lastName             String             @map("last_name")
+  gradeLevel           String             @map("grade_level")
+  gradeCategory        GradeCategory      @map("grade_category")
+  section              String?            @map("section")
+  barcodeImage         String?            @map("barcode_image")
+  isActive             Boolean            @default(true) @map("is_active")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
 
   // Relations
-  activities   Activity[]
-  sessions     EquipmentSession[]
-  checkouts    BookCheckout[]
-  barcodeImage String? // Path to generated barcode image
+  activities           Activity[]         @relation("StudentActivities")
+  sessions             EquipmentSession[] @relation("StudentSessions")
+  checkouts            BookCheckout[]     @relation("StudentCheckouts")
+  barcodeHistory       BarcodeHistory[]   @relation("StudentBarcodeHistory")
 
-  @@index([studentId])
-  @@index([gradeCategory])
-  @@index([isActive])
+  @@index([studentId], map: "idx_students_student_id")
+  @@index([gradeCategory], map: "idx_students_grade_category")
+  @@index([isActive], map: "idx_students_is_active")
   @@map("students")
 }
 
 model Book {
   id              String   @id @default(cuid())
-  isbn            String?  @unique
-  accessionNo     String   @unique // Library-specific ID
-  title           String
-  author          String
-  publisher       String?
-  category        String
-  subcategory     String?
-  location        String? // Physical location in library
-  totalCopies     Int      @default(1)
-  availableCopies Int      @default(1)
-  isActive        Boolean  @default(true)
-  barcodeImage    String? // Path to generated barcode image
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  isbn            String?  @unique @map("isbn")
+  accessionNo     String   @unique @map("accession_no")
+  title           String   @map("title")
+  author          String   @map("author")
+  publisher       String?  @map("publisher")
+  category        String   @map("category")
+  subcategory     String?  @map("subcategory")
+  location        String?  @map("location")
+  totalCopies     Int      @default(1) @map("total_copies")
+  availableCopies Int      @default(1) @map("available_copies")
+  isActive        Boolean  @default(true) @map("is_active")
+  barcodeImage    String?  @map("barcode_image")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   // Relations
-  checkouts      BookCheckout[]
-  barcodeHistory BarcodeHistory[]
+  checkouts      BookCheckout[]   @relation("BookCheckouts")
+  barcodeHistory BarcodeHistory[] @relation("BookBarcodeHistory")
 
-  @@index([accessionNo])
-  @@index([category])
-  @@index([isActive])
+  @@index([accessionNo], map: "idx_books_accession_no")
+  @@index([category], map: "idx_books_category")
+  @@index([isActive], map: "idx_books_is_active")
   @@map("books")
 }
 
 model Equipment {
   id                  String          @id @default(cuid())
-  equipmentId         String          @unique // Like COMP-01, GAME-01
-  name                String
-  type                EquipmentType
-  location            String
-  status              EquipmentStatus @default(AVAILABLE)
-  maxTimeMinutes      Int // Time limit per session
-  requiresSupervision Boolean         @default(false)
-  description         String?
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  equipmentId         String          @unique @map("equipment_id")
+  name                String          @map("name")
+  type                EquipmentType   @map("type")
+  location            String          @map("location")
+  status              EquipmentStatus @default(AVAILABLE) @map("status")
+  maxTimeMinutes      Int             @map("max_time_minutes")
+  requiresSupervision Boolean         @default(false) @map("requires_supervision")
+  description         String?         @map("description")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
 
   // Relations
-  sessions   EquipmentSession[]
-  activities Activity[]
+  sessions   EquipmentSession[] @relation("EquipmentSessions")
+  activities Activity[]         @relation("EquipmentActivities")
 
-  @@index([equipmentId])
-  @@index([type])
-  @@index([status])
+  @@index([equipmentId], map: "idx_equipment_equipment_id")
+  @@index([type], map: "idx_equipment_type")
+  @@index([status], map: "idx_equipment_status")
   @@map("equipment")
 }
 
 // Activity tracking
 model Activity {
-  id           String       @id @default(cuid())
-  studentId    String
-  student      Student      @relation(fields: [studentId], references: [id])
-  activityType ActivityType
-  equipmentId  String?
-  equipment    Equipment?   @relation(fields: [equipmentId], references: [id])
-  checkoutId   String? // For book activities
+  id                     String         @id @default(cuid())
+  studentId              String         @map("student_id")
+  student                Student        @relation("StudentActivities", fields: [studentId], references: [id])
+  studentName            String?        @map("student_name")
+  studentGradeLevel      String?        @map("grade_level")
+  studentGradeCategory   GradeCategory? @map("grade_category")
+  activityType           ActivityType   @map("activity_type")
+  equipmentId            String?        @map("equipment_id")
+  equipment              Equipment?     @relation("EquipmentActivities", fields: [equipmentId], references: [id])
+  checkoutId             String?        @map("checkout_id")
 
   // Timing
-  startTime        DateTime  @default(now())
-  endTime          DateTime?
-  durationMinutes  Int?
-  timeLimitMinutes Int?
+  startTime        DateTime  @default(now()) @map("start_time")
+  endTime          DateTime? @map("end_time")
+  durationMinutes  Int?      @map("duration_minutes")
+  timeLimitMinutes Int?      @map("time_limit_minutes")
 
   // Status and metadata
-  status       ActivityStatus @default(ACTIVE)
-  notes        String?
-  processedBy  String         @default("Sophia")
-  googleSynced Boolean        @default(false)
-  syncAttempts Int            @default(0)
+  status       ActivityStatus @default(ACTIVE) @map("status")
+  notes        String?        @map("notes")
+  processedBy  String         @default("Sophia") @map("processed_by")
+  googleSynced Boolean        @default(false) @map("google_synced")
+  syncAttempts Int            @default(0) @map("sync_attempts")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@index([studentId])
-  @@index([activityType])
-  @@index([status])
-  @@index([startTime])
-  @@index([googleSynced])
-  @@map("activities")
+  @@index([studentId], map: "idx_student_activities_student_id")
+  @@index([activityType], map: "idx_student_activities_activity_type")
+  @@index([status], map: "idx_student_activities_status")
+  @@index([startTime], map: "idx_student_activities_start_time")
+  @@index([googleSynced], map: "idx_student_activities_google_synced")
+  @@index([studentGradeCategory], map: "idx_student_activities_grade_category")
+  @@map("student_activities")
 }
 
 model EquipmentSession {
-  id          String    @id @default(cuid())
-  equipmentId String
-  equipment   Equipment @relation(fields: [equipmentId], references: [id])
-  studentId   String
-  student     Student   @relation(fields: [studentId], references: [id])
+  id             String         @id @default(cuid())
+  equipmentId    String         @map("equipment_id")
+  equipment      Equipment      @relation("EquipmentSessions", fields: [equipmentId], references: [id])
+  studentId      String         @map("student_id")
+  student        Student        @relation("StudentSessions", fields: [studentId], references: [id])
 
   // Timing
-  sessionStart   DateTime  @default(now())
-  sessionEnd     DateTime?
-  plannedEnd     DateTime? // When session should end
-  actualDuration Int?
+  sessionStart   DateTime  @default(now()) @map("session_start")
+  sessionEnd     DateTime? @map("session_end")
+  plannedEnd     DateTime? @map("planned_end")
+  actualDuration Int?      @map("actual_duration")
 
   // Status
-  status     SessionStatus @default(ACTIVE)
-  extensions Int           @default(0) // Number of times extended
+  status     SessionStatus @default(ACTIVE) @map("status")
+  extensions Int           @default(0) @map("extensions")
 
   // Metadata
-  notes       String?
-  processedBy String  @default("Sophia")
+  notes       String? @map("notes")
+  processedBy String  @default("Sophia") @map("processed_by")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@index([equipmentId])
-  @@index([studentId])
-  @@index([status])
-  @@index([sessionStart])
+  @@index([equipmentId], map: "idx_equipment_sessions_equipment_id")
+  @@index([studentId], map: "idx_equipment_sessions_student_id")
+  @@index([status], map: "idx_equipment_sessions_status")
+  @@index([sessionStart], map: "idx_equipment_sessions_start")
   @@map("equipment_sessions")
 }
 
 model BookCheckout {
   id        String  @id @default(cuid())
-  bookId    String
-  book      Book    @relation(fields: [bookId], references: [id])
-  studentId String
-  student   Student @relation(fields: [studentId], references: [id])
+  bookId    String  @map("book_id")
+  book      Book    @relation("BookCheckouts", fields: [bookId], references: [id])
+  studentId String  @map("student_id")
+  student   Student @relation("StudentCheckouts", fields: [studentId], references: [id])
 
   // Timing
-  checkoutDate DateTime  @default(now())
-  dueDate      DateTime
-  returnDate   DateTime?
+  checkoutDate DateTime  @default(now()) @map("checkout_date")
+  dueDate      DateTime  @map("due_date")
+  returnDate   DateTime? @map("return_date")
 
   // Status
-  status CheckoutStatus @default(ACTIVE)
+  status CheckoutStatus @default(ACTIVE) @map("status")
 
   // Fine tracking
-  overdueDays Int     @default(0)
-  fineAmount  Decimal @default(0.00) @db.Decimal(10, 2)
-  finePaid    Boolean @default(false)
+  overdueDays Int     @default(0) @map("overdue_days")
+  fineAmount  Decimal @default(0.00) @db.Decimal(10, 2) @map("fine_amount")
+  finePaid    Boolean @default(false) @map("fine_paid")
 
   // Metadata
-  notes       String?
-  processedBy String  @default("Sophia")
+  notes       String? @map("notes")
+  processedBy String  @default("Sophia") @map("processed_by")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@index([bookId])
-  @@index([studentId])
-  @@index([status])
-  @@index([dueDate])
-  @@index([overdueDays])
+  @@index([bookId], map: "idx_book_checkouts_book_id")
+  @@index([studentId], map: "idx_book_checkouts_student_id")
+  @@index([status], map: "idx_book_checkouts_status")
+  @@index([dueDate], map: "idx_book_checkouts_due_date")
+  @@index([overdueDays], map: "idx_book_checkouts_overdue_days")
   @@map("book_checkouts")
 }
 
 // System and automation
 model AutomationJob {
   id          String    @id @default(cuid())
-  name        String    @unique
-  type        JobType
-  schedule    String // Cron expression
-  description String?
-  isEnabled   Boolean   @default(true)
-  lastRunAt   DateTime?
-  nextRunAt   DateTime?
-  status      JobStatus @default(IDLE)
+  name        String    @unique @map("name")
+  type        JobType   @map("type")
+  schedule    String    @map("schedule")
+  description String?   @map("description")
+  isEnabled   Boolean   @default(true) @map("is_enabled")
+  lastRunAt   DateTime? @map("last_run_at")
+  nextRunAt   DateTime? @map("next_run_at")
+  status      JobStatus @default(IDLE) @map("status")
 
   // Statistics
-  totalRuns         Int  @default(0)
-  successCount      Int  @default(0)
-  failureCount      Int  @default(0)
-  averageDurationMs Int?
+  totalRuns         Int  @default(0) @map("total_runs")
+  successCount      Int  @default(0) @map("success_count")
+  failureCount      Int  @default(0) @map("failure_count")
+  averageDurationMs Int? @map("average_duration_ms")
 
   // Configuration
-  config Json? // Job-specific configuration
+  config Json? @map("config")
 
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
   AutomationLog AutomationLog[]
 
-  @@index([type])
-  @@index([isEnabled])
-  @@index([status])
-  @@index([nextRunAt])
+  @@index([type], map: "idx_automation_jobs_type")
+  @@index([isEnabled], map: "idx_automation_jobs_is_enabled")
+  @@index([status], map: "idx_automation_jobs_status")
+  @@index([nextRunAt], map: "idx_automation_jobs_next_run")
   @@map("automation_jobs")
 }
 
 model AutomationLog {
   id    String         @id @default(cuid())
-  jobId String
+  jobId String         @map("job_id")
   job   AutomationJob? @relation(fields: [jobId], references: [id])
 
   // Execution details
-  executionId String    @unique
-  status      JobStatus
-  startedAt   DateTime  @default(now())
-  completedAt DateTime?
-  durationMs  Int?
+  executionId String    @unique @map("execution_id")
+  status      JobStatus @map("status")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  durationMs  Int?      @map("duration_ms")
 
   // Results
-  success          Boolean
-  recordsProcessed Int?
-  errorMessage     String?
-  errorDetails     Json?
+  success          Boolean @map("success")
+  recordsProcessed Int?    @map("records_processed")
+  errorMessage     String? @map("error_message")
+  errorDetails     Json?   @map("error_details")
 
   // Metadata
-  triggeredBy String @default("SCHEDULED") // SCHEDULED, MANUAL, API
+  triggeredBy String @default("SCHEDULED") @map("triggered_by")
 
-  @@index([jobId])
-  @@index([status])
-  @@index([startedAt])
-  @@index([success])
+  @@index([jobId], map: "idx_automation_logs_job_id")
+  @@index([status], map: "idx_automation_logs_status")
+  @@index([startedAt], map: "idx_automation_logs_started_at")
+  @@index([success], map: "idx_automation_logs_success")
   @@map("automation_logs")
 }
 
 model SystemConfig {
   id          String  @id @default(cuid())
-  key         String  @unique
-  value       String
-  description String?
-  isSecret    Boolean @default(false) // For sensitive values
-  category    String // GENERAL, GOOGLE_SHEETS, EMAIL, etc.
+  key         String  @unique @map("key")
+  value       String  @map("value")
+  description String? @map("description")
+  isSecret    Boolean @default(false) @map("is_secret")
+  category    String  @map("category")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@index([category])
+  @@index([category], map: "idx_system_config_category")
   @@map("system_config")
 }
 
 model AuditLog {
   id          String @id @default(cuid())
-  entity      String // Student, Book, Equipment, etc.
-  entityId    String
-  action      String // CREATE, UPDATE, DELETE, CHECKOUT, etc.
-  oldValues   Json?
-  newValues   Json?
-  performedBy String @default("Sophia")
+  entity      String @map("entity")
+  entityId    String @map("entity_id")
+  action      String @map("action")
+  oldValues   Json?  @map("old_values")
+  newValues   Json?  @map("new_values")
+  performedBy String @default("Sophia") @map("performed_by")
 
-  ipAddress String?
-  userAgent String?
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent")
 
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
-  @@index([entity])
-  @@index([entityId])
-  @@index([action])
-  @@index([performedBy])
-  @@index([createdAt])
+  @@index([entity], map: "idx_audit_logs_entity")
+  @@index([entityId], map: "idx_audit_logs_entity_id")
+  @@index([action], map: "idx_audit_logs_action")
+  @@index([performedBy], map: "idx_audit_logs_performed_by")
+  @@index([createdAt], map: "idx_audit_logs_created_at")
   @@map("audit_logs")
 }
 
 model BarcodeHistory {
   id          String   @id @default(cuid())
-  entityId    String // Student or Book ID
-  entityType  String // Student or Book
-  barcodeData String // The actual barcode content
-  format      String // CODE128, QR_CODE, etc.
-  generatedAt DateTime @default(now())
-  generatedBy String   @default("Sophia")
-  Book        Book?    @relation(fields: [bookId], references: [id])
-  bookId      String?
+  entityId    String   @map("entity_id")
+  entityType  String   @map("entity_type")
+  barcodeData String   @map("barcode_data")
+  format      String   @map("format")
+  generatedAt DateTime @default(now()) @map("generated_at")
+  generatedBy String   @default("Sophia") @map("generated_by")
+  Book        Book?    @relation("BookBarcodeHistory", fields: [bookId], references: [id])
+  bookId      String?  @map("book_id")
+  Student     Student? @relation("StudentBarcodeHistory", fields: [studentId], references: [id])
+  studentId   String?  @map("student_id")
 
-  @@index([entityId])
-  @@index([entityType])
+  @@index([entityId], map: "idx_barcode_history_entity_id")
+  @@index([entityType], map: "idx_barcode_history_entity_type")
   @@map("barcode_history")
 }
 

@@ -122,6 +122,15 @@ async function getEquipmentByEquipmentId(equipmentId) {
 }
 async function createEquipment(data) {
     try {
+        const existing = await prisma_1.prisma.equipment.findUnique({
+            where: { equipmentId: data.equipmentId },
+        });
+        if (existing) {
+            logger_1.logger.warn('Attempted to create duplicate equipment', {
+                equipmentId: data.equipmentId,
+            });
+            throw new Error('Equipment ID already exists');
+        }
         const equipment = await prisma_1.prisma.equipment.create({
             data: {
                 equipmentId: data.equipmentId,
@@ -140,6 +149,9 @@ async function createEquipment(data) {
         return equipment;
     }
     catch (error) {
+        if (error.message === 'Equipment ID already exists') {
+            throw error;
+        }
         logger_1.logger.error('Error creating equipment', {
             error: error.message,
             data,
@@ -149,6 +161,11 @@ async function createEquipment(data) {
 }
 async function updateEquipment(id, data) {
     try {
+        const existing = await prisma_1.prisma.equipment.findUnique({ where: { id } });
+        if (!existing) {
+            logger_1.logger.warn('Attempted to update non-existent equipment', { id });
+            throw new Error('Equipment not found');
+        }
         const equipment = await prisma_1.prisma.equipment.update({
             where: { id },
             data,
@@ -157,6 +174,9 @@ async function updateEquipment(id, data) {
         return equipment;
     }
     catch (error) {
+        if (error.message === 'Equipment not found') {
+            throw error;
+        }
         logger_1.logger.error('Error updating equipment', {
             error: error.message,
             id,
@@ -167,6 +187,11 @@ async function updateEquipment(id, data) {
 }
 async function deleteEquipment(id) {
     try {
+        const existing = await prisma_1.prisma.equipment.findUnique({ where: { id } });
+        if (!existing) {
+            logger_1.logger.warn('Attempted to delete non-existent equipment', { id });
+            throw new Error('Equipment not found');
+        }
         await prisma_1.prisma.equipment.delete({
             where: { id },
         });
@@ -174,6 +199,9 @@ async function deleteEquipment(id) {
         return true;
     }
     catch (error) {
+        if (error.message === 'Equipment not found') {
+            throw error;
+        }
         logger_1.logger.error('Error deleting equipment', {
             error: error.message,
             id,
@@ -192,12 +220,21 @@ async function useEquipment(data) {
         if (equipment.status !== client_1.EquipmentStatus.AVAILABLE) {
             throw new Error('Equipment is not available for use');
         }
+        const student = await prisma_1.prisma.student.findUnique({
+            where: { id: data.studentId },
+        });
+        if (!student) {
+            throw new Error('Student not found');
+        }
         const startTime = new Date();
         const endTime = new Date(startTime.getTime() +
             (data.timeLimitMinutes || equipment.maxTimeMinutes) * 60000);
         const activity = await prisma_1.prisma.activity.create({
             data: {
                 studentId: data.studentId,
+                studentName: `${student.firstName} ${student.lastName}`.trim(),
+                studentGradeLevel: student.gradeLevel,
+                studentGradeCategory: student.gradeCategory,
                 activityType: data.activityType,
                 equipmentId: data.equipmentId,
                 startTime,
@@ -329,11 +366,14 @@ async function getEquipmentUsageHistory(options = {}) {
             where.activityType = activityType;
         }
         if (startDate || endDate) {
-            where.startTime = {};
-            if (startDate)
-                where.startTime.gte = startDate;
-            if (endDate)
-                where.startTime.lte = endDate;
+            const startTimeFilter = {};
+            if (startDate) {
+                startTimeFilter.gte = startDate;
+            }
+            if (endDate) {
+                startTimeFilter.lte = endDate;
+            }
+            where.startTime = startTimeFilter;
         }
         const [activities, total] = await Promise.all([
             prisma_1.prisma.activity.findMany({
