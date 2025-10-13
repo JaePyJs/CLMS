@@ -6,12 +6,12 @@ import {
   Prisma,
   AutomationJob,
   AutomationLog,
-  JobType,
-  JobStatus,
-  ActivityType,
-  ActivityStatus,
+  automation_jobs_type,
+  automation_jobs_status,
+  student_activities_activity_type,
+  student_activities_status,
   SessionStatus,
-  EquipmentStatus,
+  equipment_status,
 } from '@prisma/client';
 import { JobExecutionResult, JobConfig } from '@/types';
 import { logger, automationLogger, performanceLogger } from '@/utils/logger';
@@ -281,8 +281,8 @@ export class AutomationService {
 
   private async loadScheduledJobs(): Promise<void> {
     try {
-      const jobs = await this.prisma.automationJob.findMany({
-        where: { isEnabled: true },
+      const jobs = await this.prisma.automation_jobs.findMany({
+        where: { is_enabled: true },
       });
 
       for (const job of jobs) {
@@ -326,9 +326,9 @@ export class AutomationService {
 
       // Update next run time
       const nextRun = this.getNextRunTime(job.schedule);
-      await this.prisma.automationJob.update({
+      await this.prisma.automation_jobs.update({
         where: { id: job.id },
-        data: { nextRunAt: nextRun },
+        data: { id: crypto.randomUUID(), updated_at: new Date(),  next_run_at: nextRun },
       });
 
       logger.info(`Scheduled job: ${job.name}`, {
@@ -351,9 +351,9 @@ export class AutomationService {
       const jobConfig = this.resolveJobConfig(job.config);
 
       // Update job status
-      await this.prisma.automationJob.update({
+      await this.prisma.automation_jobs.update({
         where: { id: job.id },
-        data: { status: JobStatus.RUNNING, lastRunAt: new Date() },
+        data: { id: crypto.randomUUID(), updated_at: new Date(),  status: automation_jobs_status.RUNNING, last_run_at: new Date() },
       });
 
       automationLogger.jobStart(job.name, job.id, jobConfig);
@@ -362,35 +362,35 @@ export class AutomationService {
       let result: JobExecutionResult;
 
       switch (job.type) {
-        case JobType.DAILY_BACKUP:
+        case automation_jobs_type.DAILY_BACKUP:
           result = await this.executeDailyBackup(job, jobConfig);
           break;
 
-        case JobType.TEACHER_NOTIFICATIONS:
+        case automation_jobs_type.TEACHER_NOTIFICATIONS:
           result = await this.executeTeacherNotifications(job, jobConfig);
           break;
 
-        case JobType.GOOGLE_SHEETS_SYNC:
+        case automation_jobs_type.GOOGLE_SHEETS_SYNC:
           result = await this.executeGoogleSheetsSync(job, jobConfig);
           break;
 
-        case JobType.SESSION_EXPIRY_CHECK:
+        case automation_jobs_type.SESSION_EXPIRY_CHECK:
           result = await this.executeSessionExpiryCheck(job, jobConfig);
           break;
 
-        case JobType.OVERDUE_NOTIFICATIONS:
+        case automation_jobs_type.OVERDUE_NOTIFICATIONS:
           result = await this.executeOverdueNotifications(job, jobConfig);
           break;
 
-        case JobType.WEEKLY_CLEANUP:
+        case automation_jobs_type.WEEKLY_CLEANUP:
           result = await this.executeWeeklyCleanup(job, jobConfig);
           break;
 
-        case JobType.MONTHLY_REPORT:
+        case automation_jobs_type.MONTHLY_REPORT:
           result = await this.executeMonthlyReport(job, jobConfig);
           break;
 
-        case JobType.INTEGRITY_AUDIT:
+        case automation_jobs_type.INTEGRITY_AUDIT:
           result = await this.executeIntegrityAudit(job, jobConfig);
           break;
 
@@ -399,28 +399,28 @@ export class AutomationService {
       }
 
       // Update job statistics
-      await this.prisma.automationJob.update({
+      await this.prisma.automation_jobs.update({
         where: { id: job.id },
-        data: {
-          status: JobStatus.IDLE,
-          totalRuns: { increment: 1 },
-          successCount: { increment: result.success ? 1 : 0 },
-          failureCount: { increment: result.success ? 0 : 1 },
-          averageDurationMs: result.duration,
+        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+          status: automation_jobs_status.IDLE,
+          total_runs: { increment: 1 },
+          success_count: { increment: result.success ? 1 : 0 },
+          failure_count: { increment: result.success ? 0 : 1 },
+          average_duration_ms: result.duration,
         },
       });
 
       // Log completion
-      await this.logJobExecution(job.id, JobStatus.COMPLETED, result);
+      await this.logJobExecution(job.id, automation_jobs_status.COMPLETED, result);
 
       // Update next run time
       const nextRun = this.getNextRunTime(job.schedule);
-      await this.prisma.automationJob.update({
+      await this.prisma.automation_jobs.update({
         where: { id: job.id },
-        data: { nextRunAt: nextRun },
+        data: { id: crypto.randomUUID(), updated_at: new Date(),  next_run_at: nextRun },
       });
 
-      performanceLogger.end('job_execution', startTime, {
+      performanceLogger.end('job_execution', start_time, {
         jobName: job.name,
         success: result.success,
       });
@@ -429,26 +429,26 @@ export class AutomationService {
       const duration = Date.now() - startTime;
 
       // Update job statistics
-      await this.prisma.automationJob.update({
+      await this.prisma.automation_jobs.update({
         where: { id: job.id },
-        data: {
-          status: JobStatus.IDLE,
-          totalRuns: { increment: 1 },
-          failureCount: { increment: 1 },
-          averageDurationMs: duration,
+        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+          status: automation_jobs_status.IDLE,
+          total_runs: { increment: 1 },
+          failure_count: { increment: 1 },
+          average_duration_ms: duration,
         },
       });
 
       // Log failure
       const result: JobExecutionResult = {
         success: false,
-        errorMessage: (error as Error).message,
+        error_message: (error as Error).message,
         duration,
       };
 
-      await this.logJobExecution(job.id, JobStatus.FAILED, result);
+      await this.logJobExecution(job.id, automation_jobs_status.FAILED, result);
 
-      performanceLogger.end('job_execution', startTime, {
+      performanceLogger.end('job_execution', start_time, {
         jobName: job.name,
         success: false,
       });
@@ -473,16 +473,16 @@ export class AutomationService {
 
       return {
         success: true,
-        recordsProcessed: 0,
-        duration: Date.now() - startTime,
-        metadata: { queued: true },
+        records_processed: 0,
+        duration: Date.now() - start_time,
+        metadata: { id: crypto.randomUUID(), updated_at: new Date(),  queued: true },
       };
     } catch (error) {
       return {
         success: false,
-        errorMessage: (error as Error).message,
-        recordsProcessed: 0,
-        duration: Date.now() - startTime,
+        error_message: (error as Error).message,
+        records_processed: 0,
+        duration: Date.now() - start_time,
       };
     }
   }
@@ -503,15 +503,15 @@ export class AutomationService {
 
       return {
         success: true,
-        duration: Date.now() - startTime,
-        metadata: { queued: true },
+        duration: Date.now() - start_time,
+        metadata: { id: crypto.randomUUID(), updated_at: new Date(),  queued: true },
       };
     } catch (error) {
       return {
         success: false,
-        errorMessage: (error as Error).message,
-        recordsProcessed: 0,
-        duration: Date.now() - startTime,
+        error_message: (error as Error).message,
+        records_processed: 0,
+        duration: Date.now() - start_time,
       };
     }
   }
@@ -524,8 +524,8 @@ export class AutomationService {
 
     try {
       // Get unsynced activities
-      const activities = await this.prisma.activity.findMany({
-        where: { googleSynced: false },
+      const activities = await this.prisma.student_activities.findMany({
+        where: { google_synced: false },
         include: {
           student: true,
           equipment: true,
@@ -536,9 +536,9 @@ export class AutomationService {
       if (activities.length === 0) {
         return {
           success: true,
-          recordsProcessed: 0,
-          duration: Date.now() - startTime,
-          metadata: { message: 'No records to sync' },
+          records_processed: 0,
+          duration: Date.now() - start_time,
+          metadata: { id: crypto.randomUUID(), updated_at: new Date(),  message: 'No records to sync' },
         };
       }
 
@@ -551,16 +551,16 @@ export class AutomationService {
 
       return {
         success: true,
-        recordsProcessed: activities.length,
-        duration: Date.now() - startTime,
-        metadata: { queued: true },
+        records_processed: activities.length,
+        duration: Date.now() - start_time,
+        metadata: { id: crypto.randomUUID(), updated_at: new Date(),  queued: true },
       };
     } catch (error) {
       return {
         success: false,
-        errorMessage: (error as Error).message,
-        recordsProcessed: 0,
-        duration: Date.now() - startTime,
+        error_message: (error as Error).message,
+        records_processed: 0,
+        duration: Date.now() - start_time,
       };
     }
   }
@@ -575,10 +575,10 @@ export class AutomationService {
     try {
       // Find expired sessions
       const now = new Date();
-      const expiredSessionsData = await this.prisma.equipmentSession.findMany({
+      const expiredSessionsData = await this.prisma.equipment_sessions.findMany({
         where: {
           status: SessionStatus.ACTIVE,
-          plannedEnd: { lt: now },
+          planned_end: { lt: now },
         },
         include: {
           student: true,
@@ -588,34 +588,34 @@ export class AutomationService {
 
       // Mark sessions as expired
       for (const session of expiredSessionsData) {
-        await this.prisma.equipmentSession.update({
+        await this.prisma.equipment_sessions.update({
           where: { id: session.id },
-          data: {
+          data: { id: crypto.randomUUID(), updated_at: new Date(), 
             status: SessionStatus.EXPIRED,
-            sessionEnd: now,
-            actualDuration: Math.floor(
-              (now.getTime() - session.sessionStart.getTime()) / 60000,
+            session_end: now,
+            actual_duration: Math.floor(
+              (now.getTime() - session.session_start.getTime()) / 60000,
             ),
           },
         });
 
         // Create activity record
-        await this.prisma.activity.create({
-          data: {
-            studentId: session.studentId,
-            studentName:
-              `${session.student.firstName} ${session.student.lastName}`.trim(),
-            studentGradeLevel: session.student.gradeLevel,
-            studentGradeCategory: session.student.gradeCategory,
-            activityType: ActivityType.COMPUTER_USE, // Adjust based on equipment type
-            equipmentId: session.equipmentId,
-            startTime: session.sessionStart,
-            endTime: now,
-            durationMinutes: Math.floor(
-              (now.getTime() - session.sessionStart.getTime()) / 60000,
+        await this.prisma.student_activities.create({
+          data: { id: crypto.randomUUID(), updated_at: new Date(), 
+            student_id: session.student_id,
+            student_name:
+              `${session.student.first_name} ${session.student.last_name}`.trim(),
+            studentGradeLevel: session.student.grade_level,
+            studentGradeCategory: session.student.grade_category,
+            activity_type: student_activities_activity_type.COMPUTER_USE, // Adjust based on equipment type
+            equipment_id: session.equipment_id,
+            start_time: session.session_start,
+            end_time: now,
+            duration_minutes: Math.floor(
+              (now.getTime() - session.session_start.getTime()) / 60000,
             ),
-            status: ActivityStatus.EXPIRED,
-            processedBy: 'SYSTEM',
+            status: student_activities_status.EXPIRED,
+            processed_by: 'SYSTEM',
           },
         });
 
@@ -626,24 +626,24 @@ export class AutomationService {
       if (expiredSessions > 0) {
         await this.prisma.equipment.updateMany({
           where: {
-            id: { in: expiredSessionsData.map(s => s.equipmentId) },
+            id: { in: expiredSessionsData.map(s => s.equipment_id) },
           },
-          data: { status: EquipmentStatus.AVAILABLE },
+          data: { id: crypto.randomUUID(), updated_at: new Date(),  status: equipment_status.AVAILABLE },
         });
       }
 
       return {
         success: true,
-        recordsProcessed: expiredSessions,
-        duration: Date.now() - startTime,
-        metadata: { expiredSessions },
+        records_processed: expiredSessions,
+        duration: Date.now() - start_time,
+        metadata: { id: crypto.randomUUID(), updated_at: new Date(),  expiredSessions },
       };
     } catch (error) {
       return {
         success: false,
-        errorMessage: (error as Error).message,
-        recordsProcessed: 0,
-        duration: Date.now() - startTime,
+        error_message: (error as Error).message,
+        records_processed: 0,
+        duration: Date.now() - start_time,
       };
     }
   }
@@ -663,8 +663,8 @@ export class AutomationService {
         'BACKUP',
         'RUNNING',
         {
-          startTime: new Date().toISOString(),
-          triggeredBy: 'SCHEDULED',
+          start_time: new Date().toISOString(),
+          triggered_by: 'SCHEDULED',
         },
       );
 
@@ -673,18 +673,18 @@ export class AutomationService {
         'BACKUP',
         'COMPLETED',
         {
-          startTime: new Date().toISOString(),
-          endTime: new Date().toISOString(),
-          duration: Date.now() - startTime,
-          recordsProcessed: 0,
-          triggeredBy: 'SCHEDULED',
+          start_time: new Date().toISOString(),
+          end_time: new Date().toISOString(),
+          duration: Date.now() - start_time,
+          records_processed: 0,
+          triggered_by: 'SCHEDULED',
         },
       );
 
       return {
         success: true,
-        recordsProcessed: 0,
-        duration: Date.now() - startTime,
+        records_processed: 0,
+        duration: Date.now() - start_time,
       };
     } catch (error) {
       throw error;
@@ -707,23 +707,23 @@ export class AutomationService {
         'SYNC',
         result.success ? 'COMPLETED' : 'FAILED',
         {
-          startTime: new Date().toISOString(),
-          endTime: new Date().toISOString(),
-          duration: Date.now() - startTime,
-          recordsProcessed: result.recordsProcessed || 0,
-          triggeredBy: 'SCHEDULED',
-          metadata: { error: result.error },
+          start_time: new Date().toISOString(),
+          end_time: new Date().toISOString(),
+          duration: Date.now() - start_time,
+          records_processed: result.records_processed || 0,
+          triggered_by: 'SCHEDULED',
+          metadata: { id: crypto.randomUUID(), updated_at: new Date(),  error: result.error },
         },
       );
 
       const jobResult: JobExecutionResult = {
         success: result.success,
-        recordsProcessed: result.recordsProcessed || 0,
-        duration: Date.now() - startTime,
+        records_processed: result.records_processed || 0,
+        duration: Date.now() - start_time,
       };
 
       if (result.error) {
-        jobResult.errorMessage = result.error;
+        jobResult.error_message = result.error;
       }
 
       return jobResult;
@@ -746,18 +746,18 @@ export class AutomationService {
         'NOTIFICATION',
         'COMPLETED',
         {
-          startTime: new Date().toISOString(),
-          endTime: new Date().toISOString(),
-          duration: Date.now() - startTime,
-          recordsProcessed: 0,
-          triggeredBy: 'SCHEDULED',
+          start_time: new Date().toISOString(),
+          end_time: new Date().toISOString(),
+          duration: Date.now() - start_time,
+          records_processed: 0,
+          triggered_by: 'SCHEDULED',
         },
       );
 
       return {
         success: true,
-        recordsProcessed: 0,
-        duration: Date.now() - startTime,
+        records_processed: 0,
+        duration: Date.now() - start_time,
       };
     } catch (error) {
       throw error;
@@ -771,7 +771,7 @@ export class AutomationService {
     // Implementation details omitted for brevity
     return {
       success: true,
-      recordsProcessed: 0,
+      records_processed: 0,
       duration: 0,
     };
   }
@@ -782,7 +782,7 @@ export class AutomationService {
     // Implementation for overdue notifications
     return {
       success: true,
-      recordsProcessed: 0,
+      records_processed: 0,
       duration: 0,
     };
   }
@@ -793,7 +793,7 @@ export class AutomationService {
     // Implementation for weekly cleanup
     return {
       success: true,
-      recordsProcessed: 0,
+      records_processed: 0,
       duration: 0,
     };
   }
@@ -804,7 +804,7 @@ export class AutomationService {
     // Implementation for integrity audit
     return {
       success: true,
-      recordsProcessed: 0,
+      records_processed: 0,
       duration: 0,
     };
   }
@@ -815,7 +815,7 @@ export class AutomationService {
     // Implementation for database backup
     return {
       success: true,
-      recordsProcessed: 0,
+      records_processed: 0,
       duration: 0,
     };
   }
@@ -826,7 +826,7 @@ export class AutomationService {
     // Implementation for activity sync
     return {
       success: true,
-      recordsProcessed: 0,
+      records_processed: 0,
       duration: 0,
     };
   }
@@ -877,21 +877,21 @@ export class AutomationService {
 
   private async logJobExecution(
     jobId: string,
-    status: JobStatus,
+    status: automation_jobs_status,
     result: JobExecutionResult,
   ): Promise<void> {
     try {
-      await this.prisma.automationLog.create({
-        data: {
+      await this.prisma.automation_logs.create({
+        data: { id: crypto.randomUUID(), updated_at: new Date(), 
           jobId,
-          executionId: `${jobId}-${Date.now()}`,
+          execution_id: `${jobId}-${Date.now()}`,
           status,
-          startedAt: new Date(Date.now() - result.duration),
-          completedAt: new Date(),
-          durationMs: result.duration,
+          started_at: new Date(Date.now() - result.duration),
+          completed_at: new Date(),
+          duration_ms: result.duration,
           success: result.success,
-          recordsProcessed: result.recordsProcessed || 0,
-          errorMessage: result.errorMessage || null,
+          records_processed: result.records_processed || 0,
+          error_message: result.error_message || null,
         },
       });
     } catch (error) {
@@ -924,9 +924,9 @@ export class AutomationService {
           const thirtyDaysAgo = new Date();
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-          await this.prisma.automationLog.deleteMany({
+          await this.prisma.automation_logs.deleteMany({
             where: {
-              startedAt: { lt: thirtyDaysAgo },
+              started_at: { lt: thirtyDaysAgo },
             },
           });
 
@@ -942,9 +942,9 @@ export class AutomationService {
   }
 
   // Public API methods
-  async triggerJob(jobId: string, userId: string = 'MANUAL'): Promise<void> {
+  async triggerJob(jobId: string, id: string = 'MANUAL'): Promise<void> {
     try {
-      const job = await this.prisma.automationJob.findUnique({
+      const job = await this.prisma.automation_jobs.findUnique({
         where: { id: jobId },
       });
 
@@ -952,13 +952,13 @@ export class AutomationService {
         throw new BaseError(`Job not found: ${jobId}`, 404);
       }
 
-      if (!job.isEnabled) {
+      if (!job.is_enabled) {
         throw new BaseError(`Job is disabled: ${job.name}`, 400);
       }
 
       await this.executeJob(job);
 
-      logger.info(`Manually triggered job: ${job.name}`, { userId });
+      logger.info(`Manually triggered job: ${job.name}`, { id });
     } catch (error) {
       logger.error('Failed to trigger job', {
         jobId,
@@ -972,12 +972,12 @@ export class AutomationService {
     jobId: string,
   ): Promise<(AutomationJob & { AutomationLog: AutomationLog[] }) | null> {
     try {
-      const job = await this.prisma.automationJob.findUnique({
+      const job = await this.prisma.automation_jobs.findUnique({
         where: { id: jobId },
         include: {
           AutomationLog: {
             take: 10,
-            orderBy: { startedAt: 'desc' },
+            orderBy: { started_at: 'desc' },
           },
         },
       });
@@ -994,7 +994,7 @@ export class AutomationService {
 
   async getAllJobs(): Promise<AutomationJob[]> {
     try {
-      return await this.prisma.automationJob.findMany({
+      return await this.prisma.automation_jobs.findMany({
         orderBy: { name: 'asc' },
       });
     } catch (error) {

@@ -17,11 +17,14 @@ import {
 } from '@/services/bookService';
 import { CheckoutStatus } from '@prisma/client';
 import { logger } from '@/utils/logger';
+import { requirePermission } from '@/middleware/authorization.middleware';
+import { Permission } from '@/config/permissions';
+import { auditMiddleware } from '@/middleware/ferpa.middleware';
 
 const router = Router();
 
 // Get all books
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requirePermission(Permission.BOOKS_VIEW), async (req: Request, res: Response) => {
   try {
     const {
       category,
@@ -322,7 +325,9 @@ router.post('/scan', async (req: Request, res: Response) => {
 });
 
 // Check out book
-router.post('/checkout', async (req: Request, res: Response) => {
+router.post('/checkout', 
+  auditMiddleware('BOOK_CHECKOUT'),
+  async (req: Request, res: Response) => {
   try {
     const { bookId, studentId, dueDate, notes } = req.body;
 
@@ -363,7 +368,9 @@ router.post('/checkout', async (req: Request, res: Response) => {
 });
 
 // Return book
-router.post('/return', async (req: Request, res: Response) => {
+router.post('/return', 
+  auditMiddleware('BOOK_RETURN'),
+  async (req: Request, res: Response) => {
   try {
     const { checkoutId } = req.body;
 
@@ -399,7 +406,9 @@ router.post('/return', async (req: Request, res: Response) => {
 });
 
 // Get book checkouts
-router.get('/checkouts/all', async (req: Request, res: Response) => {
+router.get('/checkouts/all', 
+  auditMiddleware('LIST_BOOK_CHECKOUTS'),
+  async (req: Request, res: Response) => {
   try {
     const {
       bookId,
@@ -459,7 +468,9 @@ router.get('/checkouts/all', async (req: Request, res: Response) => {
 });
 
 // Get overdue books
-router.get('/checkouts/overdue', async (req: Request, res: Response) => {
+router.get('/checkouts/overdue', 
+  auditMiddleware('LIST_OVERDUE_BOOKS'),
+  async (req: Request, res: Response) => {
   try {
     const overdueBooks = await getOverdueBooks();
 

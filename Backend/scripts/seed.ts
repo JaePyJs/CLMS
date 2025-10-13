@@ -1,8 +1,8 @@
 import {
   PrismaClient,
-  GradeCategory,
-  EquipmentType,
-  EquipmentStatus,
+  students_grade_category,
+  equipment_type,
+  equipment_status,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -13,13 +13,13 @@ async function main() {
 
   // Clear existing data
   console.log('Clearing existing data...');
-  await prisma.activity.deleteMany();
-  await prisma.equipmentSession.deleteMany();
-  await prisma.bookCheckout.deleteMany();
-  await prisma.student.deleteMany();
-  await prisma.book.deleteMany();
+  await prisma.student_activities.deleteMany();
+  await prisma.equipment_sessions.deleteMany();
+  await prisma.book_checkouts.deleteMany();
+  await prisma.students.deleteMany();
+  await prisma.books.deleteMany();
   await prisma.equipment.deleteMany();
-  await prisma.user.deleteMany();
+  await prisma.users.deleteMany();
 
   // Create admin user
   console.log('Creating admin user...');
@@ -27,8 +27,8 @@ async function main() {
     process.env.ADMIN_PASSWORD || 'librarian123',
     12,
   );
-  await prisma.user.create({
-    data: {
+  await prisma.users.create({
+    data: { id: crypto.randomUUID(), updated_at: new Date(), 
       username: process.env.ADMIN_USERNAME || 'admin',
       password: hashedPassword,
       role: 'ADMIN',
@@ -39,216 +39,216 @@ async function main() {
   console.log('Creating sample students...');
   const students = [
     {
-      studentId: '2024-0001',
-      firstName: 'Juan',
-      lastName: 'Dela Cruz',
-      gradeLevel: 'Grade 1',
-      gradeCategory: GradeCategory.PRIMARY,
+      student_id: '2024-0001',
+      first_name: 'Juan',
+      last_name: 'Dela Cruz',
+      grade_level: 'Grade 1',
+      grade_category: students_grade_category.PRIMARY,
     },
     {
-      studentId: '2024-0002',
-      firstName: 'Maria',
-      lastName: 'Santos',
-      gradeLevel: 'Grade 2',
-      gradeCategory: GradeCategory.PRIMARY,
+      student_id: '2024-0002',
+      first_name: 'Maria',
+      last_name: 'Santos',
+      grade_level: 'Grade 2',
+      grade_category: students_grade_category.PRIMARY,
     },
     {
-      studentId: '2024-0003',
-      firstName: 'Pedro',
-      lastName: 'Reyes',
-      gradeLevel: 'Grade 3',
-      gradeCategory: GradeCategory.PRIMARY,
+      student_id: '2024-0003',
+      first_name: 'Pedro',
+      last_name: 'Reyes',
+      grade_level: 'Grade 3',
+      grade_category: students_grade_category.PRIMARY,
     },
     {
-      studentId: '2024-0004',
-      firstName: 'Ana',
-      lastName: 'Garcia',
-      gradeLevel: 'Grade 4',
-      gradeCategory: GradeCategory.GRADE_SCHOOL,
+      student_id: '2024-0004',
+      first_name: 'Ana',
+      last_name: 'Garcia',
+      grade_level: 'Grade 4',
+      grade_category: students_grade_category.GRADE_SCHOOL,
     },
     {
-      studentId: '2024-0005',
-      firstName: 'Carlos',
-      lastName: 'Torres',
-      gradeLevel: 'Grade 5',
-      gradeCategory: GradeCategory.GRADE_SCHOOL,
+      student_id: '2024-0005',
+      first_name: 'Carlos',
+      last_name: 'Torres',
+      grade_level: 'Grade 5',
+      grade_category: students_grade_category.GRADE_SCHOOL,
     },
     {
-      studentId: '2024-0006',
-      firstName: 'Sofia',
-      lastName: 'Martinez',
-      gradeLevel: 'Grade 6',
-      gradeCategory: GradeCategory.GRADE_SCHOOL,
+      student_id: '2024-0006',
+      first_name: 'Sofia',
+      last_name: 'Martinez',
+      grade_level: 'Grade 6',
+      grade_category: students_grade_category.GRADE_SCHOOL,
     },
     {
-      studentId: '2024-0007',
-      firstName: 'Miguel',
-      lastName: 'Ramos',
-      gradeLevel: 'Grade 7',
-      gradeCategory: GradeCategory.JUNIOR_HIGH,
+      student_id: '2024-0007',
+      first_name: 'Miguel',
+      last_name: 'Ramos',
+      grade_level: 'Grade 7',
+      grade_category: students_grade_category.JUNIOR_HIGH,
     },
     {
-      studentId: '2024-0008',
-      firstName: 'Isabel',
-      lastName: 'Cruz',
-      gradeLevel: 'Grade 8',
-      gradeCategory: GradeCategory.JUNIOR_HIGH,
+      student_id: '2024-0008',
+      first_name: 'Isabel',
+      last_name: 'Cruz',
+      grade_level: 'Grade 8',
+      grade_category: students_grade_category.JUNIOR_HIGH,
     },
     {
-      studentId: '2024-0009',
-      firstName: 'Diego',
-      lastName: 'Flores',
-      gradeLevel: 'Grade 9',
-      gradeCategory: GradeCategory.JUNIOR_HIGH,
+      student_id: '2024-0009',
+      first_name: 'Diego',
+      last_name: 'Flores',
+      grade_level: 'Grade 9',
+      grade_category: students_grade_category.JUNIOR_HIGH,
     },
     {
-      studentId: '2024-0010',
-      firstName: 'Lucia',
-      lastName: 'Mendoza',
-      gradeLevel: 'Grade 10',
-      gradeCategory: GradeCategory.JUNIOR_HIGH,
+      student_id: '2024-0010',
+      first_name: 'Lucia',
+      last_name: 'Mendoza',
+      grade_level: 'Grade 10',
+      grade_category: students_grade_category.JUNIOR_HIGH,
     },
     {
-      studentId: '2024-0011',
-      firstName: 'Rafael',
-      lastName: 'Navarro',
-      gradeLevel: 'Grade 11',
-      gradeCategory: GradeCategory.SENIOR_HIGH,
+      student_id: '2024-0011',
+      first_name: 'Rafael',
+      last_name: 'Navarro',
+      grade_level: 'Grade 11',
+      grade_category: students_grade_category.SENIOR_HIGH,
     },
     {
-      studentId: '2024-0012',
-      firstName: 'Carmen',
-      lastName: 'Morales',
-      gradeLevel: 'Grade 12',
-      gradeCategory: GradeCategory.SENIOR_HIGH,
+      student_id: '2024-0012',
+      first_name: 'Carmen',
+      last_name: 'Morales',
+      grade_level: 'Grade 12',
+      grade_category: students_grade_category.SENIOR_HIGH,
     },
   ];
 
   for (const student of students) {
-    await prisma.student.create({ data: student });
+    await prisma.students.create({ data: student });
   }
 
   // Create sample books
   console.log('Creating sample books...');
   const books = [
     {
-      accessionNo: 'BK-2024-001',
+      accession_no: 'BK-2024-001',
       title: 'Introduction to Science',
       author: 'Dr. John Smith',
       publisher: 'Educational Press',
       category: 'Science',
-      totalCopies: 5,
-      availableCopies: 5,
+      total_copies: 5,
+      available_copies: 5,
     },
     {
-      accessionNo: 'BK-2024-002',
+      accession_no: 'BK-2024-002',
       title: 'World History',
       author: 'Prof. Jane Doe',
       publisher: 'History Books Inc',
       category: 'History',
-      totalCopies: 3,
-      availableCopies: 3,
+      total_copies: 3,
+      available_copies: 3,
     },
     {
-      accessionNo: 'BK-2024-003',
+      accession_no: 'BK-2024-003',
       title: 'English Grammar',
       author: 'Mary Johnson',
       publisher: 'Language Arts Co',
       category: 'English',
-      totalCopies: 10,
-      availableCopies: 10,
+      total_copies: 10,
+      available_copies: 10,
     },
     {
-      accessionNo: 'BK-2024-004',
+      accession_no: 'BK-2024-004',
       title: 'Mathematics Fundamentals',
       author: 'Robert Brown',
       publisher: 'Math Publishers',
       category: 'Mathematics',
-      totalCopies: 8,
-      availableCopies: 8,
+      total_copies: 8,
+      available_copies: 8,
     },
     {
-      accessionNo: 'BK-2024-005',
+      accession_no: 'BK-2024-005',
       title: 'Filipino Literature',
       author: 'Jose Rizal',
       publisher: 'National Book Store',
       category: 'Filipino',
-      totalCopies: 6,
-      availableCopies: 6,
+      total_copies: 6,
+      available_copies: 6,
     },
   ];
 
   for (const book of books) {
-    await prisma.book.create({ data: book });
+    await prisma.books.create({ data: book });
   }
 
   // Create sample equipment
   console.log('Creating sample equipment...');
   const equipment = [
     {
-      equipmentId: 'COMP-01',
+      equipment_id: 'COMP-01',
       name: 'Computer Station 1',
-      type: EquipmentType.COMPUTER,
+      type: equipment_type.COMPUTER,
       location: 'Main Floor',
-      status: EquipmentStatus.AVAILABLE,
-      maxTimeMinutes: 60,
+      status: equipment_status.AVAILABLE,
+      max_time_minutes: 60,
     },
     {
-      equipmentId: 'COMP-02',
+      equipment_id: 'COMP-02',
       name: 'Computer Station 2',
-      type: EquipmentType.COMPUTER,
+      type: equipment_type.COMPUTER,
       location: 'Main Floor',
-      status: EquipmentStatus.AVAILABLE,
-      maxTimeMinutes: 60,
+      status: equipment_status.AVAILABLE,
+      max_time_minutes: 60,
     },
     {
-      equipmentId: 'COMP-03',
+      equipment_id: 'COMP-03',
       name: 'Computer Station 3',
-      type: EquipmentType.COMPUTER,
+      type: equipment_type.COMPUTER,
       location: 'Main Floor',
-      status: EquipmentStatus.AVAILABLE,
-      maxTimeMinutes: 60,
+      status: equipment_status.AVAILABLE,
+      max_time_minutes: 60,
     },
     {
-      equipmentId: 'COMP-04',
+      equipment_id: 'COMP-04',
       name: 'Computer Station 4',
-      type: EquipmentType.COMPUTER,
+      type: equipment_type.COMPUTER,
       location: 'Main Floor',
-      status: EquipmentStatus.AVAILABLE,
-      maxTimeMinutes: 60,
+      status: equipment_status.AVAILABLE,
+      max_time_minutes: 60,
     },
     {
-      equipmentId: 'GAME-01',
+      equipment_id: 'GAME-01',
       name: 'Gaming Station 1',
-      type: EquipmentType.GAMING,
+      type: equipment_type.GAMING,
       location: 'Recreation Area',
-      status: EquipmentStatus.AVAILABLE,
-      maxTimeMinutes: 45,
+      status: equipment_status.AVAILABLE,
+      max_time_minutes: 45,
     },
     {
-      equipmentId: 'GAME-02',
+      equipment_id: 'GAME-02',
       name: 'Gaming Station 2',
-      type: EquipmentType.GAMING,
+      type: equipment_type.GAMING,
       location: 'Recreation Area',
-      status: EquipmentStatus.AVAILABLE,
-      maxTimeMinutes: 45,
+      status: equipment_status.AVAILABLE,
+      max_time_minutes: 45,
     },
     {
-      equipmentId: 'AVR-01',
+      equipment_id: 'AVR-01',
       name: 'Audio-Visual Room',
-      type: EquipmentType.AVR,
+      type: equipment_type.AVR,
       location: '2nd Floor',
-      status: EquipmentStatus.AVAILABLE,
-      maxTimeMinutes: 120,
-      requiresSupervision: true,
+      status: equipment_status.AVAILABLE,
+      max_time_minutes: 120,
+      requires_supervision: true,
     },
     {
-      equipmentId: 'PRINT-01',
+      equipment_id: 'PRINT-01',
       name: 'Printer Station',
-      type: EquipmentType.PRINTER,
+      type: equipment_type.PRINTER,
       location: 'Staff Area',
-      status: EquipmentStatus.AVAILABLE,
-      maxTimeMinutes: 30,
+      status: equipment_status.AVAILABLE,
+      max_time_minutes: 30,
     },
   ];
 

@@ -275,7 +275,7 @@ class DocumentationService {
         }
     }
     getProjectRoot() {
-        return (0, path_1.join)(__dirname, '..', '..');
+        return (0, path_1.join)(__dirname, '..', '..', '..');
     }
     async refreshCache() {
         this.cache = null;

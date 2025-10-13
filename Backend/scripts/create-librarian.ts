@@ -8,7 +8,7 @@ async function createLibrarianAccount() {
     console.log('Creating default librarian account...')
 
     // Check if librarian already exists
-    const existingLibrarian = await prisma.user.findFirst({
+    const existingLibrarian = await prisma.users.findFirst({
       where: { role: 'LIBRARIAN' }
     })
 
@@ -18,16 +18,16 @@ async function createLibrarianAccount() {
     }
 
     // Hash password
-    const saltRounds = 10
+    const saltRounds = parseInt(process.env.BCRYPT_ROUNDS || '12')
     const hashedPassword = await bcrypt.hash('library123', saltRounds)
 
     // Create default librarian account
-    const librarian = await prisma.user.create({
-      data: {
+    const librarian = await prisma.users.create({
+      data: { id: crypto.randomUUID(), updated_at: new Date(), 
         username: 'librarian',
         password: hashedPassword,
         role: 'LIBRARIAN',
-        isActive: true
+        is_active: true
       }
     })
 
@@ -37,19 +37,19 @@ async function createLibrarianAccount() {
     console.log('⚠️  Please change the default password after first login!')
 
     // Also create an admin account
-    const existingAdmin = await prisma.user.findFirst({
+    const existingAdmin = await prisma.users.findFirst({
       where: { role: 'ADMIN' }
     })
 
     if (!existingAdmin) {
-      const adminHashedPassword = await bcrypt.hash('admin123', saltRounds)
+      const adminHashedPassword = await bcrypt.hash('admin123', parseInt(process.env.BCRYPT_ROUNDS || '12'))
       
-      const admin = await prisma.user.create({
-        data: {
+      const admin = await prisma.users.create({
+        data: { id: crypto.randomUUID(), updated_at: new Date(), 
           username: 'admin',
           password: adminHashedPassword,
           role: 'ADMIN',
-          isActive: true
+          is_active: true
         }
       })
 

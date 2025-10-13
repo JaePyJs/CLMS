@@ -1,0 +1,6 @@
+accessionNo,isbn,title,author,edition,volume,pages,sourceOfFund,costPrice,publisher,year,remarks
+ACC-001,978-0-13-468599-1,Effective Java,Joshua Bloch,3rd Edition,1,416,School Budget,1200.00,Addison-Wesley,2018,Good condition
+ACC-002,978-1-4919-0409-0,Design Patterns,Erich Gamma,1st Edition,1,395,Donation,0,Addison-Wesley,1994,Classic book
+ACC-003,978-0-13-235088-4,Clean Code,Robert C. Martin,1st Edition,1,464,School Budget,1500.00,Prentice Hall,2008,Essential reading
+ACC-004,978-0-13-489890-9,The Pragmatic Programmer,Andrew Hunt,2nd Edition,1,352,School Budget,1400.00,Addison-Wesley,2019,Developer guide
+ACC-005,978-0-13-468599-7,Introduction to Algorithms,Thomas H. Cormen,3rd Edition,1,1292,Library Fund,2500.00,MIT Press,2009,Computer Science textbook

@@ -1,6 +1,6 @@
 import { prisma } from '@/utils/prisma';
 import { logger } from '@/utils/logger';
-import { CheckoutStatus, Prisma } from '@prisma/client';
+import { Prisma, book_checkouts_status } from '@prisma/client';
 
 export interface GetBooksOptions {
   category?: string;
@@ -12,9 +12,9 @@ export interface GetBooksOptions {
 }
 
 export interface GetBookCheckoutsOptions {
-  bookId?: string;
-  studentId?: string;
-  status?: CheckoutStatus;
+  book_id?: string;
+  student_id?: string;
+  status?: typeof book_checkouts_status;
   startDate?: Date;
   endDate?: Date;
   page?: number;
@@ -27,14 +27,14 @@ export async function getBooks(options: GetBooksOptions = {}) {
     const {
       category,
       subcategory,
-      isActive,
+      is_active,
       page = 1,
       limit = 50,
       search,
     } = options;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.BookWhereInput = {};
+    const where: Prisma.booksWhereInput = {};
 
     if (category) {
       where.category = category;
@@ -45,26 +45,26 @@ export async function getBooks(options: GetBooksOptions = {}) {
     }
 
     if (isActive !== undefined) {
-      where.isActive = isActive;
+      where.is_active = isActive;
     }
 
     if (search) {
       where.OR = [
         { title: { contains: search } },
         { author: { contains: search } },
-        { accessionNo: { contains: search } },
+        { accession_no: { contains: search } },
         { isbn: { contains: search } },
       ];
     }
 
     const [books, total] = await Promise.all([
-      prisma.book.findMany({
+      prisma.books.findMany({
         where,
         skip,
         take: limit,
         orderBy: { title: 'asc' },
       }),
-      prisma.book.count({ where }),
+      prisma.books.count({ where }),
     ]);
 
     return {
@@ -88,12 +88,12 @@ export async function getBooks(options: GetBooksOptions = {}) {
 // Get book by ID
 export async function getBookById(id: string) {
   try {
-    const book = await prisma.book.findUnique({
+    const book = await prisma.books.findUnique({
       where: { id },
       include: {
-        checkouts: {
-          where: { status: CheckoutStatus.ACTIVE },
-          orderBy: { checkoutDate: 'desc' },
+        book_checkouts: {
+          where: { status: 'ACTIVE' },
+          orderBy: { checkout_date: 'desc' },
           take: 1,
         },
       },
@@ -110,14 +110,14 @@ export async function getBookById(id: string) {
 }
 
 // Get book by accession number
-export async function getBookByAccessionNo(accessionNo: string) {
+export async function getBookByAccessionNo(accession_no: string) {
   try {
-    const book = await prisma.book.findUnique({
-      where: { accessionNo },
+    const book = await prisma.books.findUnique({
+      where: { accession_no: accession_no },
       include: {
-        checkouts: {
-          where: { status: CheckoutStatus.ACTIVE },
-          orderBy: { checkoutDate: 'desc' },
+        book_checkouts: {
+          where: { status: 'ACTIVE' },
+          orderBy: { checkout_date: 'desc' },
           take: 1,
         },
       },
@@ -127,21 +127,21 @@ export async function getBookByAccessionNo(accessionNo: string) {
   } catch (error) {
     logger.error('Error fetching book by accession number', {
       error: (error as Error).message,
-      accessionNo,
+      accession_no,
     });
     throw error;
   }
 }
 
-// Get book by ISBN
+// Get book by ISBN (returns first match since ISBN is not unique)
 export async function getBookByIsbn(isbn: string) {
   try {
-    const book = await prisma.book.findUnique({
+    const book = await prisma.books.findFirst({
       where: { isbn },
       include: {
-        checkouts: {
-          where: { status: CheckoutStatus.ACTIVE },
-          orderBy: { checkoutDate: 'desc' },
+        book_checkouts: {
+          where: { status: 'ACTIVE' },
+          orderBy: { checkout_date: 'desc' },
           take: 1,
         },
       },
@@ -158,9 +158,9 @@ export async function getBookByIsbn(isbn: string) {
 }
 
 // Create new book
-export async function createBook(data: {
+export async function createBook(data: { 
   isbn?: string;
-  accessionNo: string;
+  accession_no: string;
   title: string;
   author: string;
   publisher?: string;
@@ -171,22 +171,24 @@ export async function createBook(data: {
   availableCopies?: number;
 }) {
   try {
-    const book = await prisma.book.create({
-      data: {
+    const book = await prisma.books.create({
+      data: { 
+        id: `book-${Date.now()}`,
+        updated_at: new Date(),
         isbn: data.isbn || null,
-        accessionNo: data.accessionNo,
+        accession_no: data.accession_no,
         title: data.title,
         author: data.author,
         publisher: data.publisher || null,
         category: data.category,
         subcategory: data.subcategory || null,
         location: data.location || null,
-        totalCopies: data.totalCopies || 1,
-        availableCopies: data.availableCopies || data.totalCopies || 1,
+        total_copies: data.total_copies || 1,
+        available_copies: data.available_copies || data.total_copies || 1,
       },
     });
 
-    logger.info('Book created successfully', { accessionNo: book.accessionNo });
+    logger.info('Book created successfully', { accession_no: book.accession_no });
     return book;
   } catch (error) {
     logger.error('Error creating book', {
@@ -200,7 +202,7 @@ export async function createBook(data: {
 // Update book
 export async function updateBook(
   id: string,
-  data: {
+  data: { 
     isbn?: string;
     accessionNo?: string;
     title?: string;
@@ -215,12 +217,12 @@ export async function updateBook(
   },
 ) {
   try {
-    const book = await prisma.book.update({
+    const book = await prisma.books.update({
       where: { id },
       data,
     });
 
-    logger.info('Book updated successfully', { bookId: id });
+    logger.info('Book updated successfully', { book_id: id });
     return book;
   } catch (error) {
     logger.error('Error updating book', {
@@ -235,11 +237,11 @@ export async function updateBook(
 // Delete book
 export async function deleteBook(id: string) {
   try {
-    await prisma.book.delete({
+    await prisma.books.delete({
       where: { id },
     });
 
-    logger.info('Book deleted successfully', { bookId: id });
+    logger.info('Book deleted successfully', { book_id: id });
     return true;
   } catch (error) {
     logger.error('Error deleting book', {
@@ -251,69 +253,71 @@ export async function deleteBook(id: string) {
 }
 
 // Check out book
-export async function checkoutBook(data: {
-  bookId: string;
-  studentId: string;
-  dueDate: Date;
+export async function checkoutBook(data: { 
+  book_id: string;
+  student_id: string;
+  due_date: Date;
   notes?: string;
 }) {
   try {
     // Check if book is available
-    const book = await prisma.book.findUnique({
-      where: { id: data.bookId },
+    const book = await prisma.books.findUnique({
+      where: { id: data.book_id },
     });
 
     if (!book) {
       throw new Error('Book not found');
     }
 
-    if (book.availableCopies <= 0) {
+    if (book.available_copies <= 0) {
       throw new Error('No copies available for checkout');
     }
 
     // Create checkout record
-    const checkout = await prisma.bookCheckout.create({
-      data: {
-        bookId: data.bookId,
-        studentId: data.studentId,
-        checkoutDate: new Date(),
-        dueDate: data.dueDate,
+    const checkout = await prisma.book_checkouts.create({
+      data: { 
+        id: `checkout-${Date.now()}`,
+        updated_at: new Date(),
+        book_id: data.book_id,
+        student_id: data.student_id,
+        checkout_date: new Date(),
+        due_date: data.due_date,
         notes: data.notes || null,
-        status: CheckoutStatus.ACTIVE,
-        processedBy: 'System',
+        status: 'ACTIVE',
+        processed_by: 'System',
       },
       include: {
-        book: {
+        books: {
           select: {
-            accessionNo: true,
+            accession_no: true,
             title: true,
             author: true,
           },
         },
-        student: {
+        students: {
           select: {
-            studentId: true,
-            firstName: true,
-            lastName: true,
+            student_id: true,
+            first_name: true,
+            last_name: true,
           },
         },
       },
     });
 
     // Update available copies
-    await prisma.book.update({
-      where: { id: data.bookId },
-      data: {
-        availableCopies: {
+    await prisma.books.update({
+      where: { id: data.book_id },
+      data: { 
+        available_copies: {
           decrement: 1,
         },
       },
     });
 
     logger.info('Book checked out successfully', {
-      checkoutId: checkout.id,
-      bookId: data.bookId,
-      studentId: data.studentId,
+      checkout_id: checkout.id,
+      book_id: data.book_id,
+      student_id: data.student_id,
     });
 
     return checkout;
@@ -327,12 +331,12 @@ export async function checkoutBook(data: {
 }
 
 // Return book
-export async function returnBook(checkoutId: string) {
+export async function returnBook(checkout_id: string) {
   try {
-    const checkout = await prisma.bookCheckout.findUnique({
-      where: { id: checkoutId },
+    const checkout = await prisma.book_checkouts.findUnique({
+      where: { id: checkout_id },
       include: {
-        book: true,
+        books: true,
       },
     });
 
@@ -340,7 +344,7 @@ export async function returnBook(checkoutId: string) {
       throw new Error('Checkout record not found');
     }
 
-    if (checkout.status !== CheckoutStatus.ACTIVE) {
+    if (checkout.status !== 'ACTIVE') {
       throw new Error('Book is already returned');
     }
 
@@ -350,9 +354,9 @@ export async function returnBook(checkoutId: string) {
     let overdueDays = 0;
     let fineAmount = 0;
 
-    if (returnDate > checkout.dueDate) {
+    if (returnDate > checkout.due_date) {
       overdueDays = Math.ceil(
-        (returnDate.getTime() - checkout.dueDate.getTime()) /
+        (returnDate.getTime() - checkout.due_date.getTime()) /
           (1000 * 60 * 60 * 24),
       );
       // Calculate fine (1 peso per day, configurable)
@@ -360,54 +364,54 @@ export async function returnBook(checkoutId: string) {
     }
 
     // Update checkout record
-    const updatedCheckout = await prisma.bookCheckout.update({
-      where: { id: checkoutId },
-      data: {
-        returnDate,
-        status: CheckoutStatus.RETURNED,
-        overdueDays,
-        fineAmount,
+    const updatedCheckout = await prisma.book_checkouts.update({
+      where: { id: checkout_id },
+      data: { 
+        return_date: return_date,
+        status: 'RETURNED',
+        overdue_days: overdue_days,
+        fine_amount: fine_amount,
       },
       include: {
-        book: {
+        books: {
           select: {
-            accessionNo: true,
+            accession_no: true,
             title: true,
             author: true,
           },
         },
-        student: {
+        students: {
           select: {
-            studentId: true,
-            firstName: true,
-            lastName: true,
+            student_id: true,
+            first_name: true,
+            last_name: true,
           },
         },
       },
     });
 
     // Update available copies
-    await prisma.book.update({
-      where: { id: checkout.bookId },
-      data: {
-        availableCopies: {
+    await prisma.books.update({
+      where: { id: checkout.book_id },
+      data: { 
+        available_copies: {
           increment: 1,
         },
       },
     });
 
     logger.info('Book returned successfully', {
-      checkoutId,
-      bookId: checkout.bookId,
-      overdueDays,
-      fineAmount,
+      checkout_id,
+      book_id: checkout.book_id,
+      overdue_days,
+      fine_amount,
     });
 
     return updatedCheckout;
   } catch (error) {
     logger.error('Error returning book', {
       error: (error as Error).message,
-      checkoutId,
+      checkout_id,
     });
     throw error;
   }
@@ -417,8 +421,8 @@ export async function returnBook(checkoutId: string) {
 export async function getBookCheckouts(options: GetBookCheckoutsOptions = {}) {
   try {
     const {
-      bookId,
-      studentId,
+      book_id,
+      student_id,
       status,
       startDate,
       endDate,
@@ -427,54 +431,54 @@ export async function getBookCheckouts(options: GetBookCheckoutsOptions = {}) {
     } = options;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.BookCheckoutWhereInput = {};
+    const where: Prisma.book_checkoutsWhereInput = {};
 
-    if (bookId) {
-      where.bookId = bookId;
+    if (book_id) {
+      where.book_id = book_id;
     }
 
-    if (studentId) {
-      where.studentId = studentId;
+    if (student_id) {
+      where.student_id = student_id;
     }
 
     if (status) {
-      where.status = status;
+      where.status = status as any;
     }
 
     if (startDate || endDate) {
-      where.checkoutDate = {
+      where.checkout_date = {
         ...(startDate ? { gte: startDate } : {}),
         ...(endDate ? { lte: endDate } : {}),
       };
     }
 
     const [checkouts, total] = await Promise.all([
-      prisma.bookCheckout.findMany({
+      prisma.book_checkouts.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { checkoutDate: 'desc' },
+        orderBy: { checkout_date: 'desc' },
         include: {
-          book: {
+          books: {
             select: {
-              accessionNo: true,
+              accession_no: true,
               title: true,
               author: true,
               category: true,
             },
           },
-          student: {
+          students: {
             select: {
-              studentId: true,
-              firstName: true,
-              lastName: true,
-              gradeLevel: true,
-              gradeCategory: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+              grade_level: true,
+              grade_category: true,
             },
           },
         },
       }),
-      prisma.bookCheckout.count({ where }),
+      prisma.book_checkouts.count({ where }),
     ]);
 
     return {
@@ -498,30 +502,30 @@ export async function getBookCheckouts(options: GetBookCheckoutsOptions = {}) {
 // Get overdue books
 export async function getOverdueBooks() {
   try {
-    const overdueCheckouts = await prisma.bookCheckout.findMany({
+    const overdueCheckouts = await prisma.book_checkouts.findMany({
       where: {
-        status: CheckoutStatus.ACTIVE,
-        dueDate: {
+        status: 'ACTIVE',
+        due_date: {
           lt: new Date(),
         },
       },
-      orderBy: { dueDate: 'asc' },
+      orderBy: { due_date: 'asc' },
       include: {
-        book: {
+        books: {
           select: {
-            accessionNo: true,
+            accession_no: true,
             title: true,
             author: true,
             category: true,
           },
         },
-        student: {
+        students: {
           select: {
-            studentId: true,
-            firstName: true,
-            lastName: true,
-            gradeLevel: true,
-            gradeCategory: true,
+            student_id: true,
+            first_name: true,
+            last_name: true,
+            grade_level: true,
+            grade_category: true,
           },
         },
       },
@@ -531,12 +535,12 @@ export async function getOverdueBooks() {
     const today = new Date();
     const overdueBooks = overdueCheckouts.map(checkout => {
       const overdueDays = Math.ceil(
-        (today.getTime() - checkout.dueDate.getTime()) / (1000 * 60 * 60 * 24),
+        (today.getTime() - checkout.due_date.getTime()) / (1000 * 60 * 60 * 24),
       );
       return {
         ...checkout,
-        overdueDays,
-        fineAmount: overdueDays * 1.0,
+        overdue_days,
+        fine_amount: overdueDays * 1.0,
       };
     });
 

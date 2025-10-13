@@ -1,7 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+console.log('[DEBUG server.ts] Loading app module...');
 const app_1 = require("./app");
+console.log('[DEBUG server.ts] App module loaded');
 const logger_1 = require("@/utils/logger");
+console.log('[DEBUG server.ts] Logger loaded');
 const gracefulShutdown = async (signal) => {
     logger_1.logger.info(`Received ${signal}, starting graceful shutdown...`);
     try {
@@ -30,5 +33,20 @@ process.on('unhandledRejection', (reason, promise) => {
     process.exit(1);
 });
 const port = parseInt(process.env.PORT || '3001', 10);
-app_1.app.start(port);
+console.log('[DEBUG server.ts] About to call app.start() with port:', port);
+(async () => {
+    try {
+        console.log('[DEBUG server.ts] Inside async IIFE');
+        await app_1.app.start(port);
+        console.log('[DEBUG server.ts] app.start() completed');
+    }
+    catch (error) {
+        console.log('[DEBUG server.ts] Error caught:', error);
+        logger_1.logger.error('Failed to start server', {
+            error: error.message,
+        });
+        process.exit(1);
+    }
+})();
+console.log('[DEBUG server.ts] After IIFE definition');
 //# sourceMappingURL=server.js.map

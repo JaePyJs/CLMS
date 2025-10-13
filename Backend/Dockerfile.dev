@@ -1,0 +1,49 @@
+# ============================================================================
+# CLMS Backend Development Dockerfile
+# ============================================================================
+# Purpose: Hot-reload development environment with TypeScript and debugging
+# Features: Volume mounting, tsx watch mode, Node.js debugger support
+# ============================================================================
+
+FROM node:20-alpine AS development
+
+# Install system dependencies for native modules
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    curl \
+    bash
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install all dependencies (including devDependencies)
+RUN npm ci
+
+# Generate Prisma client (will be regenerated on volume mount if schema changes)
+COPY prisma ./prisma
+RUN npx prisma generate
+
+# Copy application source (overridden by volume mount in development)
+COPY . .
+
+# Create necessary directories with proper permissions
+RUN mkdir -p logs uploads generated && \
+    chown -R node:node /app
+
+# Switch to non-root user
+USER node
+
+# Expose application port and debugger port
+EXPOSE 3001 9229
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
+
+# Development command with hot-reload and debugging
+CMD ["npm", "run", "dev"]

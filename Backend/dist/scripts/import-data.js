@@ -9,30 +9,30 @@ const fs_1 = require("fs");
 const path_1 = require("path");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const prisma = new client_1.PrismaClient();
-function mapGradeCategory(gradeLevel) {
+function mapGradeCategory(grade_level) {
     const level = gradeLevel.toLowerCase();
     if (level.includes('k-') ||
         level.includes('kindergarten') ||
         level.includes('grade 1') ||
         level.includes('grade 2') ||
         level.includes('grade 3')) {
-        return client_1.GradeCategory.PRIMARY;
+        return client_1.students_grade_category.PRIMARY;
     }
     else if (level.includes('grade 4') ||
         level.includes('grade 5') ||
         level.includes('grade 6')) {
-        return client_1.GradeCategory.GRADE_SCHOOL;
+        return client_1.students_grade_category.GRADE_SCHOOL;
     }
     else if (level.includes('grade 7') ||
         level.includes('grade 8') ||
         level.includes('grade 9') ||
         level.includes('grade 10')) {
-        return client_1.GradeCategory.JUNIOR_HIGH;
+        return client_1.students_grade_category.JUNIOR_HIGH;
     }
     else if (level.includes('grade 11') || level.includes('grade 12')) {
-        return client_1.GradeCategory.SENIOR_HIGH;
+        return client_1.students_grade_category.SENIOR_HIGH;
     }
-    return client_1.GradeCategory.GRADE_SCHOOL;
+    return client_1.students_grade_category.GRADE_SCHOOL;
 }
 async function importStudentsFromJSON() {
     try {
@@ -47,7 +47,7 @@ async function importStudentsFromJSON() {
                     skipped++;
                     continue;
                 }
-                const studentId = String(student['User id']);
+                const student_id = String(student['User id']);
                 const fullName = student.Full_Name || 'Unknown Unknown';
                 const nameParts = fullName.split(',').map((s) => s.trim());
                 const lastName = nameParts[0] || 'Unknown';
@@ -55,41 +55,41 @@ async function importStudentsFromJSON() {
                 const firstName = firstNameParts[0] || 'Unknown';
                 const gradeLevel = student.Grade_Level || 'Unknown';
                 const schoolLevel = student.School_Level || 'Unknown';
-                let gradeCategory = client_1.GradeCategory.GRADE_SCHOOL;
+                let grade_category = client_1.students_grade_category.GRADE_SCHOOL;
                 if (schoolLevel.includes('Senior High')) {
-                    gradeCategory = client_1.GradeCategory.SENIOR_HIGH;
+                    gradeCategory = client_1.students_grade_category.SENIOR_HIGH;
                 }
                 else if (schoolLevel.includes('Junior') ||
                     schoolLevel.includes('High School (Junior)')) {
-                    gradeCategory = client_1.GradeCategory.JUNIOR_HIGH;
+                    gradeCategory = client_1.students_grade_category.JUNIOR_HIGH;
                 }
                 else if (gradeLevel.includes('Grade 4') ||
                     gradeLevel.includes('Grade 5') ||
                     gradeLevel.includes('Grade 6')) {
-                    gradeCategory = client_1.GradeCategory.GRADE_SCHOOL;
+                    gradeCategory = client_1.students_grade_category.GRADE_SCHOOL;
                 }
                 else if (gradeLevel.includes('Grade 1') ||
                     gradeLevel.includes('Grade 2') ||
                     gradeLevel.includes('Grade 3') ||
                     gradeLevel.includes('K-')) {
-                    gradeCategory = client_1.GradeCategory.PRIMARY;
+                    gradeCategory = client_1.students_grade_category.PRIMARY;
                 }
-                await prisma.student.upsert({
-                    where: { studentId },
+                await prisma.students.upsert({
+                    where: { student_id },
                     update: {
-                        firstName,
-                        lastName,
-                        gradeLevel,
-                        gradeCategory,
-                        isActive: true,
+                        first_name,
+                        last_name,
+                        grade_level,
+                        grade_category,
+                        is_active: true,
                     },
                     create: {
-                        studentId,
-                        firstName,
-                        lastName,
-                        gradeLevel,
-                        gradeCategory,
-                        isActive: true,
+                        student_id,
+                        first_name,
+                        last_name,
+                        grade_level,
+                        grade_category,
+                        is_active: true,
                     },
                 });
                 imported++;
@@ -146,8 +146,8 @@ async function importBooksFromExcel() {
                     skipped++;
                     return;
                 }
-                await prisma.book.upsert({
-                    where: { accessionNo },
+                await prisma.books.upsert({
+                    where: { accession_no },
                     update: {
                         isbn,
                         title,
@@ -156,12 +156,12 @@ async function importBooksFromExcel() {
                         category,
                         subcategory,
                         location,
-                        totalCopies,
-                        availableCopies: totalCopies,
-                        isActive: true,
+                        total_copies,
+                        available_copies: total_copies,
+                        is_active: true,
                     },
                     create: {
-                        accessionNo,
+                        accession_no,
                         isbn,
                         title,
                         author,
@@ -169,9 +169,9 @@ async function importBooksFromExcel() {
                         category,
                         subcategory,
                         location,
-                        totalCopies,
-                        availableCopies: totalCopies,
-                        isActive: true,
+                        total_copies,
+                        available_copies: total_copies,
+                        is_active: true,
                     },
                 });
                 imported++;
@@ -201,49 +201,49 @@ async function createDefaultEquipment() {
         console.log('🖥️  Creating default equipment...');
         const equipment = [
             {
-                equipmentId: 'COMP-01',
+                equipment_id: 'COMP-01',
                 name: 'Student Computer 1',
-                type: client_1.EquipmentType.COMPUTER,
+                type: client_1.equipment_type.COMPUTER,
                 location: 'Main Floor',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 60,
+                status: client_1.equipment_status.AVAILABLE,
+                max_time_minutes: 60,
             },
             {
-                equipmentId: 'COMP-02',
+                equipment_id: 'COMP-02',
                 name: 'Student Computer 2',
-                type: client_1.EquipmentType.COMPUTER,
+                type: client_1.equipment_type.COMPUTER,
                 location: 'Main Floor',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 60,
+                status: client_1.equipment_status.AVAILABLE,
+                max_time_minutes: 60,
             },
             {
-                equipmentId: 'COMP-03',
+                equipment_id: 'COMP-03',
                 name: 'Student Computer 3',
-                type: client_1.EquipmentType.COMPUTER,
+                type: client_1.equipment_type.COMPUTER,
                 location: 'Main Floor',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 60,
+                status: client_1.equipment_status.AVAILABLE,
+                max_time_minutes: 60,
             },
             {
-                equipmentId: 'PRINT-01',
+                equipment_id: 'PRINT-01',
                 name: 'Library Printer',
-                type: client_1.EquipmentType.PRINTER,
+                type: client_1.equipment_type.PRINTER,
                 location: 'Main Floor',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 15,
+                status: client_1.equipment_status.AVAILABLE,
+                max_time_minutes: 15,
             },
             {
-                equipmentId: 'REC-01',
+                equipment_id: 'REC-01',
                 name: 'Recreational Station',
-                type: client_1.EquipmentType.GAMING,
+                type: client_1.equipment_type.GAMING,
                 location: 'Recreation Area',
-                status: client_1.EquipmentStatus.AVAILABLE,
-                maxTimeMinutes: 30,
+                status: client_1.equipment_status.AVAILABLE,
+                max_time_minutes: 30,
             },
         ];
         for (const item of equipment) {
             await prisma.equipment.upsert({
-                where: { equipmentId: item.equipmentId },
+                where: { equipment_id: item.equipment_id },
                 update: item,
                 create: item,
             });
@@ -260,18 +260,18 @@ async function createAdminUser() {
     try {
         console.log('👤 Creating admin user...');
         const hashedPassword = await bcryptjs_1.default.hash(process.env.ADMIN_PASSWORD || 'librarian123', 12);
-        await prisma.user.upsert({
+        await prisma.users.upsert({
             where: { username: process.env.ADMIN_USERNAME || 'admin' },
             update: {
                 password: hashedPassword,
                 role: 'ADMIN',
-                isActive: true,
+                is_active: true,
             },
             create: {
                 username: process.env.ADMIN_USERNAME || 'admin',
                 password: hashedPassword,
                 role: 'ADMIN',
-                isActive: true,
+                is_active: true,
             },
         });
         console.log(`✅ Admin user created: ${process.env.ADMIN_USERNAME || 'admin'}`);
@@ -294,13 +294,13 @@ async function main() {
     console.log('🌱 Starting comprehensive data import...\n');
     try {
         console.log('🗑️  Clearing existing data...');
-        await prisma.activity.deleteMany();
-        await prisma.equipmentSession.deleteMany();
-        await prisma.bookCheckout.deleteMany();
-        await prisma.student.deleteMany();
-        await prisma.book.deleteMany();
+        await prisma.student_activities.deleteMany();
+        await prisma.equipment_sessions.deleteMany();
+        await prisma.book_checkouts.deleteMany();
+        await prisma.students.deleteMany();
+        await prisma.books.deleteMany();
         await prisma.equipment.deleteMany();
-        await prisma.user.deleteMany();
+        await prisma.users.deleteMany();
         console.log('✅ Existing data cleared\n');
         const studentsResult = await importStudentsFromJSON();
         const booksResult = await importBooksFromExcel();

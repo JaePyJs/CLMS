@@ -14,7 +14,7 @@ exports.endStudentActivity = endStudentActivity;
 const prisma_1 = require("@/utils/prisma");
 const logger_1 = require("@/utils/logger");
 const client_1 = require("@prisma/client");
-function getDefaultTimeLimit(gradeCategory) {
+function getDefaultTimeLimit(grade_category) {
     const timeLimits = {
         PRIMARY: parseInt(process.env.PRIMARY_TIME_LIMIT || '30'),
         GRADE_SCHOOL: parseInt(process.env.GRADE_SCHOOL_TIME_LIMIT || '60'),
@@ -25,12 +25,12 @@ function getDefaultTimeLimit(gradeCategory) {
 }
 async function getStudentByBarcode(barcode) {
     try {
-        const student = await prisma_1.prisma.student.findUnique({
-            where: { studentId: barcode },
+        const student = await prisma_1.prisma.students.findUnique({
+            where: { student_id: barcode },
             include: {
                 activities: {
-                    where: { status: client_1.ActivityStatus.ACTIVE },
-                    orderBy: { startTime: 'desc' },
+                    where: { status: client_1.student_activities_status.ACTIVE },
+                    orderBy: { start_time: 'desc' },
                     take: 1,
                 },
             },
@@ -38,7 +38,7 @@ async function getStudentByBarcode(barcode) {
         if (!student) {
             return null;
         }
-        const defaultTimeLimit = getDefaultTimeLimit(student.gradeCategory);
+        const defaultTimeLimit = getDefaultTimeLimit(student.grade_category);
         return {
             ...student,
             defaultTimeLimit,
@@ -55,12 +55,12 @@ async function getStudentByBarcode(barcode) {
 }
 async function getStudentById(id) {
     try {
-        const student = await prisma_1.prisma.student.findUnique({
+        const student = await prisma_1.prisma.students.findUnique({
             where: { id },
             include: {
                 activities: {
-                    where: { status: client_1.ActivityStatus.ACTIVE },
-                    orderBy: { startTime: 'desc' },
+                    where: { status: client_1.student_activities_status.ACTIVE },
+                    orderBy: { start_time: 'desc' },
                     take: 1,
                 },
             },
@@ -68,7 +68,7 @@ async function getStudentById(id) {
         if (!student) {
             return null;
         }
-        const defaultTimeLimit = getDefaultTimeLimit(student.gradeCategory);
+        const defaultTimeLimit = getDefaultTimeLimit(student.grade_category);
         return {
             ...student,
             defaultTimeLimit,
@@ -85,23 +85,23 @@ async function getStudentById(id) {
 }
 async function getStudents(options = {}) {
     try {
-        const { gradeCategory, isActive, page = 1, limit = 50 } = options;
+        const { grade_category, is_active, page = 1, limit = 50 } = options;
         const skip = (page - 1) * limit;
         const where = {};
         if (gradeCategory) {
-            where.gradeCategory = gradeCategory;
+            where.grade_category = gradeCategory;
         }
         if (isActive !== undefined) {
-            where.isActive = isActive;
+            where.is_active = isActive;
         }
         const [students, total] = await Promise.all([
-            prisma_1.prisma.student.findMany({
+            prisma_1.prisma.students.findMany({
                 where,
                 skip,
                 take: limit,
-                orderBy: { lastName: 'asc' },
+                orderBy: { last_name: 'asc' },
             }),
-            prisma_1.prisma.student.count({ where }),
+            prisma_1.prisma.students.count({ where }),
         ]);
         return {
             students,
@@ -124,20 +124,20 @@ async function getStudents(options = {}) {
 }
 async function createStudent(data) {
     try {
-        const existing = await prisma_1.prisma.student.findUnique({
-            where: { studentId: data.studentId },
+        const existing = await prisma_1.prisma.students.findUnique({
+            where: { student_id: data.student_id },
         });
         if (existing) {
             logger_1.logger.warn('Attempted to create duplicate student', {
-                studentId: data.studentId,
+                student_id: data.student_id,
             });
             throw new Error('Student ID already exists');
         }
-        const student = await prisma_1.prisma.student.create({
+        const student = await prisma_1.prisma.students.create({
             data,
         });
         logger_1.logger.info('Student created successfully', {
-            studentId: student.studentId,
+            student_id: student.student_id,
         });
         return student;
     }
@@ -157,15 +157,15 @@ async function updateStudent(identifier, data) {
         const isDatabaseId = identifier.length >= 25 && /^[a-z0-9]{25}$/.test(identifier);
         const whereClause = isDatabaseId
             ? { id: identifier }
-            : { studentId: identifier };
-        const existing = await prisma_1.prisma.student.findUnique({
+            : { student_id: identifier };
+        const existing = await prisma_1.prisma.students.findUnique({
             where: whereClause,
         });
         if (!existing) {
             logger_1.logger.warn('Attempted to update non-existent student', { identifier });
             return null;
         }
-        const student = await prisma_1.prisma.student.update({
+        const student = await prisma_1.prisma.students.update({
             where: whereClause,
             data,
         });
@@ -190,15 +190,15 @@ async function deleteStudent(identifier) {
         const isDatabaseId = identifier.length >= 25 && /^[a-z0-9]{25}$/.test(identifier);
         const whereClause = isDatabaseId
             ? { id: identifier }
-            : { studentId: identifier };
-        const existing = await prisma_1.prisma.student.findUnique({
+            : { student_id: identifier };
+        const existing = await prisma_1.prisma.students.findUnique({
             where: whereClause,
         });
         if (!existing) {
             logger_1.logger.warn('Attempted to delete non-existent student', { identifier });
             return null;
         }
-        const student = await prisma_1.prisma.student.delete({
+        const student = await prisma_1.prisma.students.delete({
             where: whereClause,
         });
         logger_1.logger.info('Student deleted successfully', { identifier });
@@ -218,11 +218,11 @@ async function deleteStudent(identifier) {
 }
 async function getStudentActivities(options = {}) {
     try {
-        const { studentId, startDate, endDate, activityType, status, page = 1, limit = 50, } = options;
+        const { student_id, startDate, endDate, activity_type, status, page = 1, limit = 50, } = options;
         const skip = (page - 1) * limit;
         const where = {};
-        if (studentId) {
-            where.studentId = studentId;
+        if (student_id) {
+            where.student_id = student_id;
         }
         if (startDate || endDate) {
             const startTimeFilter = {};
@@ -232,40 +232,40 @@ async function getStudentActivities(options = {}) {
             if (endDate) {
                 startTimeFilter.lte = endDate;
             }
-            where.startTime = startTimeFilter;
+            where.start_time = startTimeFilter;
         }
         if (activityType) {
-            where.activityType = activityType;
+            where.activity_type = activityType;
         }
         if (status) {
             where.status = status;
         }
         const [activities, total] = await Promise.all([
-            prisma_1.prisma.activity.findMany({
+            prisma_1.prisma.student_activities.findMany({
                 where,
                 skip,
                 take: limit,
-                orderBy: { startTime: 'desc' },
+                orderBy: { start_time: 'desc' },
                 include: {
                     student: {
                         select: {
-                            studentId: true,
-                            firstName: true,
-                            lastName: true,
-                            gradeLevel: true,
-                            gradeCategory: true,
+                            student_id: true,
+                            first_name: true,
+                            last_name: true,
+                            grade_level: true,
+                            grade_category: true,
                         },
                     },
                     equipment: {
                         select: {
-                            equipmentId: true,
+                            equipment_id: true,
                             name: true,
                             type: true,
                         },
                     },
                 },
             }),
-            prisma_1.prisma.activity.count({ where }),
+            prisma_1.prisma.student_activities.count({ where }),
         ]);
         return {
             activities,
@@ -287,22 +287,22 @@ async function getStudentActivities(options = {}) {
 }
 async function getActiveSessions() {
     try {
-        const activities = await prisma_1.prisma.activity.findMany({
-            where: { status: client_1.ActivityStatus.ACTIVE },
-            orderBy: { startTime: 'desc' },
+        const activities = await prisma_1.prisma.student_activities.findMany({
+            where: { status: client_1.student_activities_status.ACTIVE },
+            orderBy: { start_time: 'desc' },
             include: {
                 student: {
                     select: {
-                        studentId: true,
-                        firstName: true,
-                        lastName: true,
-                        gradeLevel: true,
-                        gradeCategory: true,
+                        student_id: true,
+                        first_name: true,
+                        last_name: true,
+                        grade_level: true,
+                        grade_category: true,
                     },
                 },
                 equipment: {
                     select: {
-                        equipmentId: true,
+                        equipment_id: true,
                         name: true,
                         type: true,
                     },
@@ -320,43 +320,43 @@ async function getActiveSessions() {
 }
 async function createStudentActivity(data) {
     try {
-        const student = await prisma_1.prisma.student.findUnique({
-            where: { studentId: data.studentId },
+        const student = await prisma_1.prisma.students.findUnique({
+            where: { student_id: data.student_id },
         });
         if (!student) {
             throw new Error('Student not found');
         }
-        const timeLimitMinutes = data.timeLimitMinutes || getDefaultTimeLimit(student.gradeCategory);
+        const timeLimitMinutes = data.time_limit_minutes || getDefaultTimeLimit(student.grade_category);
         const startTime = new Date();
         const endTime = new Date(startTime.getTime() + timeLimitMinutes * 60000);
-        const activity = await prisma_1.prisma.activity.create({
+        const activity = await prisma_1.prisma.student_activities.create({
             data: {
-                studentId: student.id,
-                studentName: `${student.firstName} ${student.lastName}`.trim(),
-                studentGradeLevel: student.gradeLevel,
-                studentGradeCategory: student.gradeCategory,
-                activityType: data.activityType,
-                equipmentId: data.equipmentId || null,
-                startTime,
-                endTime,
-                timeLimitMinutes,
+                student_id: student.id,
+                student_name: `${student.first_name} ${student.last_name}`.trim(),
+                studentGradeLevel: student.grade_level,
+                studentGradeCategory: student.grade_category,
+                activity_type: data.activity_type,
+                equipment_id: data.equipment_id || null,
+                start_time,
+                end_time,
+                time_limit_minutes,
                 notes: data.notes || null,
-                status: client_1.ActivityStatus.ACTIVE,
-                processedBy: 'System',
+                status: client_1.student_activities_status.ACTIVE,
+                processed_by: 'System',
             },
             include: {
                 student: {
                     select: {
-                        studentId: true,
-                        firstName: true,
-                        lastName: true,
-                        gradeLevel: true,
-                        gradeCategory: true,
+                        student_id: true,
+                        first_name: true,
+                        last_name: true,
+                        grade_level: true,
+                        grade_category: true,
                     },
                 },
                 equipment: {
                     select: {
-                        equipmentId: true,
+                        equipment_id: true,
                         name: true,
                         type: true,
                     },
@@ -365,8 +365,8 @@ async function createStudentActivity(data) {
         });
         logger_1.logger.info('Student activity created successfully', {
             activityId: activity.id,
-            studentId: student.studentId,
-            activityType: data.activityType,
+            student_id: student.student_id,
+            activity_type: data.activity_type,
         });
         return activity;
     }
@@ -381,32 +381,32 @@ async function createStudentActivity(data) {
 async function endStudentActivity(activityId) {
     try {
         const now = new Date();
-        const activity = await prisma_1.prisma.activity.update({
+        const activity = await prisma_1.prisma.student_activities.update({
             where: { id: activityId },
             data: {
-                endTime: now,
-                status: client_1.ActivityStatus.COMPLETED,
+                end_time: now,
+                status: client_1.student_activities_status.COMPLETED,
             },
             include: {
                 student: {
                     select: {
-                        studentId: true,
-                        firstName: true,
-                        lastName: true,
+                        student_id: true,
+                        first_name: true,
+                        last_name: true,
                     },
                 },
             },
         });
-        if (activity.startTime) {
-            const duration = Math.floor((now.getTime() - activity.startTime.getTime()) / 60000);
-            await prisma_1.prisma.activity.update({
+        if (activity.start_time) {
+            const duration = Math.floor((now.getTime() - activity.start_time.getTime()) / 60000);
+            await prisma_1.prisma.student_activities.update({
                 where: { id: activityId },
-                data: { durationMinutes: duration },
+                data: { duration_minutes: duration },
             });
         }
         logger_1.logger.info('Student activity ended successfully', {
             activityId,
-            studentId: activity.student.studentId,
+            student_id: activity.student.student_id,
         });
         return activity;
     }

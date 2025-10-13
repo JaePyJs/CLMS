@@ -22,6 +22,7 @@ export const useHealthCheck = () => {
         setBackendConnection(true);
         return result;
       } catch (error) {
+        console.log(error);
         setBackendConnection(false);
         // Return a safe fallback instead of throwing
         return { timestamp: new Date().toISOString(), connected: false };
@@ -212,7 +213,12 @@ export const useActivityTimeline = (limit?: number) => {
     queryFn: async () => {
       try {
         const response = await analyticsApi.getTimeline(limit);
-        const activities = (response.data || []) as any[];
+        const rawTimeline = response.data as any;
+        const activities = Array.isArray(rawTimeline?.timeline)
+          ? rawTimeline.timeline
+          : Array.isArray(rawTimeline)
+          ? rawTimeline
+          : [];
         setActivities(activities);
         return activities;
       } catch (error) {

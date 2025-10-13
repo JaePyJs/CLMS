@@ -1,5 +1,6 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import { toast } from 'sonner';
+import axios, { AxiosInstance } from 'axios';
+
+import { setupInterceptors } from './api/interceptors';
 
 // API response interface
 export interface ApiResponse<T = any> {
@@ -24,8 +25,9 @@ export interface LoginResponse {
 class ApiClient {
   private client: AxiosInstance;
   private baseURL: string;
+  private DEFAULT_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-  constructor(baseURL: string = 'http://localhost:3003') {
+  constructor(baseURL: string = this.DEFAULT_API_URL) {
     this.baseURL = baseURL;
     this.client = axios.create({
       baseURL,
@@ -35,58 +37,7 @@ class ApiClient {
       },
     });
 
-    // Request interceptor
-    this.client.interceptors.request.use(
-      (config) => {
-        // Add auth token if available
-        const token = localStorage.getItem('clms_token');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
-
-    // Response interceptor
-    this.client.interceptors.response.use(
-      (response: AxiosResponse<ApiResponse>) => {
-        return response;
-      },
-      (error) => {
-        // Handle network errors
-        if (!error.response) {
-          toast.error('Network error. Please check your connection.');
-          return Promise.reject(error);
-        }
-
-        // Handle API errors
-        const { status, data } = error.response;
-        const errorMessage = data?.error || 'An unexpected error occurred';
-
-        switch (status) {
-          case 401:
-            toast.error('Authentication required');
-            // Redirect to login or handle auth
-            break;
-          case 403:
-            toast.error('Access denied');
-            break;
-          case 404:
-            toast.error('Resource not found');
-            break;
-          case 500:
-            toast.error('Server error. Please try again later.');
-            break;
-          default:
-            toast.error(errorMessage);
-        }
-
-        return Promise.reject(error);
-      }
-    );
+    setupInterceptors(this.client);
   }
 
   // Generic GET request
@@ -131,6 +82,8 @@ class ApiClient {
 
 // Create and export the API client instance
 export const apiClient = new ApiClient();
+
+export { setAccessTokenProvider, setUnauthorizedHandler } from './api/interceptors';
 
 // Specific API services
 export const automationApi = {
@@ -318,6 +271,96 @@ export const utilitiesApi = {
   // Quick backup
   quickBackup: () =>
     apiClient.post('/api/utilities/quick-backup'),
+};
+
+// Reports API
+export const reportsApi = {
+  // Get daily report
+  getDailyReport: (date?: string) => {
+    const params = date ? { date } : undefined;
+    return apiClient.get('/api/reports/daily', params);
+  },
+
+  // Get weekly report
+  getWeeklyReport: (date?: string) => {
+    const params = date ? { date } : undefined;
+    return apiClient.get('/api/reports/weekly', params);
+  },
+
+  // Get monthly report
+  getMonthlyReport: (month?: number, year?: number) => {
+    const params: any = {};
+    if (month) params.month = month;
+    if (year) params.year = year;
+    return apiClient.get('/api/reports/monthly', params);
+  },
+
+  // Get custom report
+  getCustomReport: (startDate: string, endDate: string) => {
+    return apiClient.get('/api/reports/custom', { start: startDate, end: endDate });
+  },
+};
+
+// Fines API
+export const finesApi = {
+  // Get all fines
+  getFines: (status?: 'outstanding' | 'paid', studentId?: string) => {
+    const params: any = {};
+    if (status) params.status = status;
+    if (studentId) params.studentId = studentId;
+    return apiClient.get('/api/fines', params);
+  },
+
+  // Get fines for a specific student
+  getStudentFines: (studentId: string) => {
+    return apiClient.get(`/api/fines/student/${studentId}`);
+  },
+
+  // Record fine payment
+  recordPayment: (checkoutId: string, paymentData: { amountPaid: number; paymentMethod?: string; notes?: string }) => {
+    return apiClient.post(`/api/fines/${checkoutId}/payment`, paymentData);
+  },
+
+  // Waive fine
+  waiveFine: (checkoutId: string, reason: string) => {
+    return apiClient.post(`/api/fines/${checkoutId}/waive`, { reason });
+  },
+
+  // Update fine amount
+  updateFineAmount: (checkoutId: string, amount: number) => {
+    return apiClient.put(`/api/fines/${checkoutId}/amount`, { amount });
+  },
+};
+
+// Settings API
+export const settingsApi = {
+  // System settings
+  getSystemSettings: () => apiClient.get('/api/settings/system'),
+  updateSystemSettings: (settings: any) => apiClient.put('/api/settings/system', settings),
+  resetSystemSettings: () => apiClient.post('/api/settings/system/reset'),
+
+  // Google Sheets configuration
+  getGoogleSheetsConfig: () => apiClient.get('/api/settings/google-sheets'),
+  updateGoogleSheetsSchedule: (config: any) => apiClient.put('/api/settings/google-sheets/schedule', config),
+  testGoogleSheetsConnection: (spreadsheetId: string) => apiClient.post('/api/settings/google-sheets/test', { spreadsheetId }),
+  syncGoogleSheets: () => apiClient.post('/api/settings/google-sheets/sync'),
+
+  // Backups
+  getBackups: () => apiClient.get('/api/settings/backups'),
+  createBackup: () => apiClient.post('/api/settings/backups/create'),
+  deleteBackup: (id: string) => apiClient.delete(`/api/settings/backups/${id}`),
+
+  // System logs
+  getLogs: (params?: { page?: number; pageSize?: number; level?: string; search?: string }) =>
+    apiClient.get('/api/settings/logs', params),
+
+  // User management
+  getUsers: () => apiClient.get('/api/settings/users'),
+  createUser: (userData: any) => apiClient.post('/api/settings/users', userData),
+  updateUser: (id: string, userData: any) => apiClient.put(`/api/settings/users/${id}`, userData),
+  deleteUser: (id: string) => apiClient.delete(`/api/settings/users/${id}`),
+  changePassword: (id: string, password: string) =>
+    apiClient.post(`/api/settings/users/${id}/change-password`, { newPassword: password }),
 };
 
 export default apiClient;

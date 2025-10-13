@@ -1,13 +1,5 @@
 {
   "mcpServers": {
-    "filesystem": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/Users/jmbar/Documents"
-      ]
-    },
     "sequentialthinking": {
       "command": "docker",
       "args": [
@@ -15,7 +7,20 @@
         "--rm",
         "-i",
         "mcp/sequentialthinking"
+      ],
+      "alwaysAllow": [
+        "sequentialthinking"
       ]
+    },
+    "exa": {
+      "command": "cmd",
+      "args": [
+        "-y",
+        "exa-mcp-server"
+      ],
+      "env": {
+        "EXA_API_KEY": "15297d03-a18e-4531-9871-8a81f06626f2"
+      }
     }
   }
 }

@@ -1,24 +1,24 @@
 import { prisma } from '@/utils/prisma';
 import { logger } from '@/utils/logger';
-import { EquipmentType, EquipmentStatus } from '@prisma/client';
+import { equipment_type, equipment_status } from '@prisma/client';
 
 async function clearAllData() {
   logger.info('Starting database cleanup...');
 
   try {
     // Delete in order to respect foreign key constraints
-    await prisma.automationLog.deleteMany({});
-    await prisma.barcodeHistory.deleteMany({});
-    await prisma.auditLog.deleteMany({});
-    await prisma.bookCheckout.deleteMany({});
-    await prisma.equipmentSession.deleteMany({});
-    await prisma.activity.deleteMany({});
+    await prisma.automation_logs.deleteMany({});
+    await prisma.barcode_history.deleteMany({});
+    await prisma.audit_logs.deleteMany({});
+    await prisma.book_checkouts.deleteMany({});
+    await prisma.equipment_sessions.deleteMany({});
+    await prisma.student_activities.deleteMany({});
     await prisma.equipment.deleteMany({});
-    await prisma.book.deleteMany({});
-    await prisma.student.deleteMany({});
-    await prisma.user.deleteMany({});
-    await prisma.automationJob.deleteMany({});
-    await prisma.systemConfig.deleteMany({});
+    await prisma.books.deleteMany({});
+    await prisma.students.deleteMany({});
+    await prisma.users.deleteMany({});
+    await prisma.automation_jobs.deleteMany({});
+    await prisma.system_config.deleteMany({});
 
     logger.info('All existing data cleared successfully');
   } catch (error) {
@@ -33,101 +33,101 @@ async function createStations() {
   try {
     // Create books station (general access)
     await prisma.equipment.create({
-      data: {
-        equipmentId: 'BOOKS-01',
+      data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        equipment_id: 'BOOKS-01',
         name: 'General Books Access',
-        type: EquipmentType.OTHER,
+        type: equipment_type.OTHER,
         location: 'Main Library Area',
-        maxTimeMinutes: 120, // 2 hours for book browsing
-        requiresSupervision: false,
+        max_time_minutes: 120, // 2 hours for book browsing
+        requires_supervision: false,
         description: 'General access to book collection for browsing and reading',
-        status: EquipmentStatus.AVAILABLE,
+        status: equipment_status.AVAILABLE,
       },
     });
 
     // Create 3 student computers
     for (let i = 1; i <= 3; i++) {
       await prisma.equipment.create({
-        data: {
-          equipmentId: `COMP-${i.toString().padStart(2, '0')}`,
+        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+          equipment_id: `COMP-${i.toString().padStart(2, '0')}`,
           name: `Student Computer ${i}`,
-          type: EquipmentType.COMPUTER,
+          type: equipment_type.COMPUTER,
           location: 'Computer Lab',
-          maxTimeMinutes: 60, // 1 hour time limit
-          requiresSupervision: false,
+          max_time_minutes: 60, // 1 hour time limit
+          requires_supervision: false,
           description: `Student computer workstation ${i} for research and study`,
-          status: EquipmentStatus.AVAILABLE,
+          status: equipment_status.AVAILABLE,
         },
       });
     }
 
     // Create AVR (Audio-Visual Room)
     await prisma.equipment.create({
-      data: {
-        equipmentId: 'AVR-01',
+      data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        equipment_id: 'AVR-01',
         name: 'Audio-Visual Room',
-        type: EquipmentType.AVR,
+        type: equipment_type.AVR,
         location: 'AVR Room',
-        maxTimeMinutes: 90, // 1.5 hours for AVR sessions
-        requiresSupervision: true,
+        max_time_minutes: 90, // 1.5 hours for AVR sessions
+        requires_supervision: true,
         description: 'Audio-Visual Room for presentations and media viewing',
-        status: EquipmentStatus.AVAILABLE,
+        status: equipment_status.AVAILABLE,
       },
     });
 
     // Create Recreational Room with PlayStation
     await prisma.equipment.create({
-      data: {
-        equipmentId: 'GAME-01',
+      data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        equipment_id: 'GAME-01',
         name: 'Recreational Room (PlayStation)',
-        type: EquipmentType.GAMING,
+        type: equipment_type.GAMING,
         location: 'Recreational Area',
-        maxTimeMinutes: 45, // 45 minutes for gaming sessions
-        requiresSupervision: false,
+        max_time_minutes: 45, // 45 minutes for gaming sessions
+        requires_supervision: false,
         description: 'Recreational room equipped with PlayStation for student entertainment',
-        status: EquipmentStatus.AVAILABLE,
+        status: equipment_status.AVAILABLE,
       },
     });
 
     // Create 2 librarian computers (don't track usage)
     await prisma.equipment.create({
-      data: {
-        equipmentId: 'LIB-COMP-01',
+      data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        equipment_id: 'LIB-COMP-01',
         name: 'Librarian Workstation',
-        type: EquipmentType.COMPUTER,
+        type: equipment_type.COMPUTER,
         location: 'Librarian Desk',
-        maxTimeMinutes: 480, // 8 hours for librarian use
-        requiresSupervision: false,
+        max_time_minutes: 480, // 8 hours for librarian use
+        requires_supervision: false,
         description: 'Librarian workstation for administrative tasks',
-        status: EquipmentStatus.AVAILABLE,
+        status: equipment_status.AVAILABLE,
       },
     });
 
     await prisma.equipment.create({
-      data: {
-        equipmentId: 'SERVER-01',
+      data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        equipment_id: 'SERVER-01',
         name: 'Server Computer',
-        type: EquipmentType.COMPUTER,
+        type: equipment_type.COMPUTER,
         location: 'Server Room',
-        maxTimeMinutes: 480, // 8 hours for server operations
-        requiresSupervision: true,
+        max_time_minutes: 480, // 8 hours for server operations
+        requires_supervision: true,
         description: 'Server computer for system administration and maintenance',
-        status: EquipmentStatus.AVAILABLE,
+        status: equipment_status.AVAILABLE,
       },
     });
 
     // Create student printers
     for (let i = 1; i <= 2; i++) {
       await prisma.equipment.create({
-        data: {
-          equipmentId: `PRINTER-${i.toString().padStart(2, '0')}`,
+        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+          equipment_id: `PRINTER-${i.toString().padStart(2, '0')}`,
           name: `Student Printer ${i}`,
-          type: EquipmentType.PRINTER,
+          type: equipment_type.PRINTER,
           location: 'Printing Station',
-          maxTimeMinutes: 30, // 30 minutes for printing tasks
-          requiresSupervision: false,
+          max_time_minutes: 30, // 30 minutes for printing tasks
+          requires_supervision: false,
           description: `Student printer ${i} for academic printing needs`,
-          status: EquipmentStatus.AVAILABLE,
+          status: equipment_status.AVAILABLE,
         },
       });
     }

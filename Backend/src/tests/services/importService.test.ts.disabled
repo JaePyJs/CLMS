@@ -1,0 +1,416 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { prisma } from '../setup-minimal'
+import {
+  importStudentsFromCSV,
+  importBooksFromCSV,
+  validateStudentCSV,
+  validateBookCSV,
+  getImportPreview,
+  processImportBatch
+} from '@/services/importService'
+import { students_grade_category } from '@prisma/client'
+
+// Mock file system operations
+vi.mock('fs', () => ({
+  default: {
+    createReadStream: vi.fn()
+  }
+}))
+
+describe('Import Service', () => {
+  beforeEach(async () => {
+    // Clean up database before each test
+    await prisma.student.deleteMany()
+    await prisma.book.deleteMany()
+    vi.clearAllMocks()
+  })
+
+  describe('validateStudentCSV', () => {
+    it('should validate correct student CSV format', async () => {
+      const validCSV = `Student ID,First Name,Last Name,Grade Level,Section
+2023001,John,Doe,Grade 7,7-A
+2023002,Jane,Smith,Grade 8,8-B`
+
+      // Mock CSV parsing
+      const { createReadStream } = await import('fs')
+      const mockStream = vi.mocked(createReadStream)
+      mockStream.mockReturnValue({
+        pipe: vi.fn().mockReturnThis(),
+        on: vi.fn().mockImplementation((event, callback) => {
+          if (event === 'data') {
+            callback({ toString: () => validCSV })
+          }
+          if (event === 'end') {
+            callback()
+          }
+        })
+      } as any)
+
+      const result = await validateStudentCSV(validCSV)
+      expect(result.isValid).toBe(true)
+      expect(result.errors).toHaveLength(0)
+      expect(result.rowCount).toBe(2)
+    })
+
+    it('should detect missing required columns', async () => {
+      const invalidCSV = `First Name,Last Name,Grade Level
+John,Doe,Grade 7
+Jane,Smith,Grade 8`
+
+      const result = await validateStudentCSV(invalidCSV)
+      expect(result.isValid).toBe(false)
+      expect(result.errors).toContain('Missing required columns: Student ID, Section')
+    })
+
+    it('should detect invalid grade levels', async () => {
+      const invalidCSV = `Student ID,First Name,Last Name,Grade Level,Section
+2023001,John,Doe,Invalid Grade,7-A`
+
+      const result = await validateStudentCSV(invalidCSV)
+      expect(result.isValid).toBe(false)
+      expect(result.errors.some(e => e.includes('Invalid grade level'))).toBe(true)
+    })
+
+    it('should detect duplicate student IDs', async () => {
+      const duplicateCSV = `Student ID,First Name,Last Name,Grade Level,Section
+2023001,John,Doe,Grade 7,7-A
+2023001,Jane,Smith,Grade 8,8-B`
+
+      const result = await validateStudentCSV(duplicateCSV)
+      expect(result.isValid).toBe(false)
+      expect(result.errors.some(e => e.includes('Duplicate Student ID'))).toBe(true)
+    })
+  })
+
+  describe('validateBookCSV', () => {
+    it('should validate correct book CSV format', async () => {
+      const validCSV = `Accession Number,Title,Author,Publisher,Category,Location
+ACC001,Test Book,Test Author,Test Publisher,Fiction,Main Library
+ACC002,Another Book,Another Writer,Another Pub,Non-Fiction,Reference`
+
+      const result = await validateBookCSV(validCSV)
+      expect(result.isValid).toBe(true)
+      expect(result.errors).toHaveLength(0)
+      expect(result.rowCount).toBe(2)
+    })
+
+    it('should detect missing required columns', async () => {
+      const invalidCSV = `Title,Author,Publisher
+Test Book,Test Author,Test Publisher`
+
+      const result = await validateBookCSV(invalidCSV)
+      expect(result.isValid).toBe(false)
+      expect(result.errors).toContain('Missing required columns: Accession Number')
+    })
+
+    it('should detect duplicate accession numbers', async () => {
+      const duplicateCSV = `Accession Number,Title,Author,Publisher,Category,Location
+ACC001,Test Book,Test Author,Test Publisher,Fiction,Main Library
+ACC001,Another Book,Another Writer,Another Pub,Non-Fiction,Reference`
+
+      const result = await validateBookCSV(duplicateCSV)
+      expect(result.isValid).toBe(false)
+      expect(result.errors.some(e => e.includes('Duplicate Accession Number'))).toBe(true)
+    })
+  })
+
+  describe('getImportPreview', () => {
+    it('should return preview of student import data', async () => {
+      const csvData = `Student ID,First Name,Last Name,Grade Level,Section
+2023001,John,Doe,Grade 7,7-A
+2023002,Jane,Smith,Grade 8,8-B
+2023003,Bob,Johnson,Grade 9,9-C`
+
+      const preview = await getImportPreview(csvData, 'students')
+      expect(preview.totalRecords).toBe(3)
+      expect(preview.validRecords).toBe(3)
+      expect(preview.previewData).toHaveLength(Math.min(5, 3)) // Max 5 preview records
+      expect(preview.previewData[0]).toHaveProperty('studentId')
+      expect(preview.previewData[0]).toHaveProperty('firstName')
+    })
+
+    it('should return preview of book import data', async () => {
+      const csvData = `Accession Number,Title,Author,Publisher,Category,Location
+ACC001,Test Book,Test Author,Test Publisher,Fiction,Main Library
+ACC002,Another Book,Another Writer,Another Pub,Non-Fiction,Reference`
+
+      const preview = await getImportPreview(csvData, 'books')
+      expect(preview.totalRecords).toBe(2)
+      expect(preview.validRecords).toBe(2)
+      expect(preview.previewData).toHaveLength(2)
+      expect(preview.previewData[0]).toHaveProperty('accessionNumber')
+      expect(preview.previewData[0]).toHaveProperty('title')
+    })
+
+    it('should handle invalid data in preview', async () => {
+      const invalidCSV = `Student ID,First Name,Last Name,Grade Level,Section
+2023001,John,Doe,Grade 7,7-A
+INVALID_DATA,Jane,Smith,Grade 8,8-B`
+
+      const preview = await getImportPreview(invalidCSV, 'students')
+      expect(preview.totalRecords).toBe(2)
+      expect(preview.validRecords).toBe(1)
+      expect(preview.invalidRecords).toBe(1)
+    })
+  })
+
+  describe('importStudentsFromCSV', () => {
+    it('should import valid students from CSV', async () => {
+      const csvData = `Student ID,First Name,Last Name,Grade Level,Section
+2023001,John,Doe,Grade 7,7-A
+2023002,Jane,Smith,Grade 8,8-B`
+
+      const result = await importStudentsFromCSV(csvData, {
+        skipValidation: false,
+        updateExisting: false
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.importedCount).toBe(2)
+      expect(result.errors).toHaveLength(0)
+
+      // Verify students were created
+      const students = await prisma.student.findMany()
+      expect(students).toHaveLength(2)
+      expect(students[0].studentId).toBe('2023001')
+      expect(students[0].firstName).toBe('John')
+      expect(students[0].gradeCategory).toBe(GradeCategory.JUNIOR_HIGH)
+    })
+
+    it('should skip existing students when updateExisting is false', async () => {
+      // Create existing student
+      await prisma.student.create({
+        data: {
+          studentId: '2023001',
+          firstName: 'John',
+          lastName: 'Doe',
+          gradeLevel: 'Grade 7',
+          gradeCategory: GradeCategory.JUNIOR_HIGH,
+          section: '7-A'
+        }
+      })
+
+      const csvData = `Student ID,First Name,Last Name,Grade Level,Section
+2023001,John,Updated,Grade 7,7-B
+2023002,Jane,Smith,Grade 8,8-B`
+
+      const result = await importStudentsFromCSV(csvData, {
+        skipValidation: false,
+        updateExisting: false
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.importedCount).toBe(1) // Only new student
+      expect(result.skippedCount).toBe(1) // Existing student skipped
+
+      // Verify existing student was not updated
+      const existingStudent = await prisma.student.findUnique({
+        where: { studentId: '2023001' }
+      })
+      expect(existingStudent?.firstName).toBe('John')
+      expect(existingStudent?.section).toBe('7-A')
+    })
+
+    it('should update existing students when updateExisting is true', async () => {
+      // Create existing student
+      await prisma.student.create({
+        data: {
+          studentId: '2023001',
+          firstName: 'John',
+          lastName: 'Doe',
+          gradeLevel: 'Grade 7',
+          gradeCategory: GradeCategory.JUNIOR_HIGH,
+          section: '7-A'
+        }
+      })
+
+      const csvData = `Student ID,First Name,Last Name,Grade Level,Section
+2023001,Johnny,Updated,Grade 7,7-B`
+
+      const result = await importStudentsFromCSV(csvData, {
+        skipValidation: false,
+        updateExisting: true
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.updatedCount).toBe(1)
+
+      // Verify existing student was updated
+      const updatedStudent = await prisma.student.findUnique({
+        where: { studentId: '2023001' }
+      })
+      expect(updatedStudent?.firstName).toBe('Johnny')
+      expect(updatedStudent?.section).toBe('7-B')
+    })
+
+    it('should handle validation errors', async () => {
+      const invalidCSV = `Student ID,First Name,Last Name,Grade Level,Section
+INVALID_DATA,John,Doe,Grade 7,7-A`
+
+      const result = await importStudentsFromCSV(invalidCSV, {
+        skipValidation: false,
+        updateExisting: false
+      })
+
+      expect(result.success).toBe(false)
+      expect(result.importedCount).toBe(0)
+      expect(result.errors.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('importBooksFromCSV', () => {
+    it('should import valid books from CSV', async () => {
+      const csvData = `Accession Number,Title,Author,Publisher,Category,Location
+ACC001,Test Book,Test Author,Test Publisher,Fiction,Main Library
+ACC002,Another Book,Another Writer,Another Pub,Non-Fiction,Reference`
+
+      const result = await importBooksFromCSV(csvData, {
+        skipValidation: false,
+        updateExisting: false
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.importedCount).toBe(2)
+      expect(result.errors).toHaveLength(0)
+
+      // Verify books were created
+      const books = await prisma.book.findMany()
+      expect(books).toHaveLength(2)
+      expect(books[0].accessionNumber).toBe('ACC001')
+      expect(books[0].title).toBe('Test Book')
+    })
+
+    it('should skip existing books when updateExisting is false', async () => {
+      // Create existing book
+      await prisma.book.create({
+        data: {
+          accessionNumber: 'ACC001',
+          title: 'Test Book',
+          author: 'Test Author',
+          publisher: 'Test Publisher',
+          category: 'Fiction',
+          location: 'Main Library'
+        }
+      })
+
+      const csvData = `Accession Number,Title,Author,Publisher,Category,Location
+ACC001,Updated Book,Updated Author,Updated Pub,Updated Category,Updated Location
+ACC002,New Book,New Author,New Pub,New Category,New Location`
+
+      const result = await importBooksFromCSV(csvData, {
+        skipValidation: false,
+        updateExisting: false
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.importedCount).toBe(1) // Only new book
+      expect(result.skippedCount).toBe(1) // Existing book skipped
+
+      // Verify existing book was not updated
+      const existingBook = await prisma.book.findUnique({
+        where: { accessionNumber: 'ACC001' }
+      })
+      expect(existingBook?.title).toBe('Test Book')
+      expect(existingBook?.location).toBe('Main Library')
+    })
+
+    it('should update existing books when updateExisting is true', async () => {
+      // Create existing book
+      await prisma.book.create({
+        data: {
+          accessionNumber: 'ACC001',
+          title: 'Test Book',
+          author: 'Test Author',
+          publisher: 'Test Publisher',
+          category: 'Fiction',
+          location: 'Main Library'
+        }
+      })
+
+      const csvData = `Accession Number,Title,Author,Publisher,Category,Location
+ACC001,Updated Title,Updated Author,Updated Publisher,Updated Category,Updated Location`
+
+      const result = await importBooksFromCSV(csvData, {
+        skipValidation: false,
+        updateExisting: true
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.updatedCount).toBe(1)
+
+      // Verify existing book was updated
+      const updatedBook = await prisma.book.findUnique({
+        where: { accessionNumber: 'ACC001' }
+      })
+      expect(updatedBook?.title).toBe('Updated Title')
+      expect(updatedBook?.location).toBe('Updated Location')
+    })
+  })
+
+  describe('processImportBatch', () => {
+    it('should process batch import for multiple records', async () => {
+      const studentData = [
+        {
+          studentId: '2023001',
+          firstName: 'John',
+          lastName: 'Doe',
+          gradeLevel: 'Grade 7',
+          section: '7-A'
+        },
+        {
+          studentId: '2023002',
+          firstName: 'Jane',
+          lastName: 'Smith',
+          gradeLevel: 'Grade 8',
+          section: '8-B'
+        }
+      ]
+
+      const result = await processImportBatch(studentData, 'students', {
+        batchSize: 1,
+        skipValidation: false,
+        updateExisting: false
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.processedCount).toBe(2)
+      expect(result.importedCount).toBe(2)
+      expect(result.errors).toHaveLength(0)
+
+      // Verify all students were created
+      const students = await prisma.student.findMany()
+      expect(students).toHaveLength(2)
+    })
+
+    it('should handle partial failures in batch processing', async () => {
+      const mixedData = [
+        {
+          studentId: '2023001',
+          firstName: 'John',
+          lastName: 'Doe',
+          gradeLevel: 'Grade 7',
+          section: '7-A'
+        },
+        {
+          studentId: '', // Invalid - missing student ID
+          firstName: 'Jane',
+          lastName: 'Smith',
+          gradeLevel: 'Grade 8',
+          section: '8-B'
+        }
+      ]
+
+      const result = await processImportBatch(mixedData, 'students', {
+        batchSize: 1,
+        skipValidation: false,
+        updateExisting: false
+      })
+
+      expect(result.success).toBe(false) // Partial failure
+      expect(result.processedCount).toBe(2)
+      expect(result.importedCount).toBe(1)
+      expect(result.errorCount).toBe(1)
+      expect(result.errors).toHaveLength(1)
+    })
+  })
+})

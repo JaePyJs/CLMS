@@ -1,5 +1,8 @@
+console.log('[DEBUG server.ts] Loading app module...');
 import { app } from './app';
+console.log('[DEBUG server.ts] App module loaded');
 import { logger } from '@/utils/logger';
+console.log('[DEBUG server.ts] Logger loaded');
 
 // Graceful shutdown handler
 const gracefulShutdown = async (signal: string) => {
@@ -40,4 +43,21 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Start the server
 const port = parseInt(process.env.PORT || '3001', 10);
-app.start(port);
+console.log('[DEBUG server.ts] About to call app.start() with port:', port);
+
+// Use an async IIFE to await the start
+(async () => {
+  try {
+    console.log('[DEBUG server.ts] Inside async IIFE');
+    await app.start(port);
+    console.log('[DEBUG server.ts] app.start() completed');
+    // Server is now running, keep process alive
+  } catch (error) {
+    console.log('[DEBUG server.ts] Error caught:', error);
+    logger.error('Failed to start server', {
+      error: (error as Error).message,
+    });
+    process.exit(1);
+  }
+})();
+console.log('[DEBUG server.ts] After IIFE definition');

@@ -11,7 +11,7 @@ const ROLES = ['ADMIN', 'LIBRARIAN'] as const;
 type ManagedRole = (typeof ROLES)[number];
 
 async function listManagedUsers(): Promise<void> {
-  const users = await prisma.user.findMany({
+  const users = await prisma.users.findMany({
     where: { role: { in: ROLES as unknown as string[] } },
     orderBy: [{ role: 'asc' }, { username: 'asc' }],
   });
@@ -23,7 +23,7 @@ async function listManagedUsers(): Promise<void> {
 
   console.log('\nCurrent admin/librarian accounts:');
   users.forEach(user => {
-    console.log(`- ${user.username} (${user.role})${user.isActive ? '' : ' [inactive]'}`);
+    console.log(`- ${user.username} (${user.role})${user.is_active ? '' : ' [inactive]'}`);
   });
 }
 
@@ -34,7 +34,7 @@ async function addManagedUser(): Promise<void> {
     return;
   }
 
-  const existing = await prisma.user.findUnique({ where: { username } });
+  const existing = await prisma.users.findUnique({ where: { username } });
   if (existing) {
     console.log('A user with that username already exists.');
     return;
@@ -53,14 +53,14 @@ async function addManagedUser(): Promise<void> {
     return;
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, parseInt(process.env.BCRYPT_ROUNDS || '12'));
 
-  await prisma.user.create({
-    data: {
+  await prisma.users.create({
+    data: { id: crypto.randomUUID(), updated_at: new Date(), 
       username,
       password: hashedPassword,
       role,
-      isActive: true,
+      is_active: true,
     },
   });
 
@@ -74,7 +74,7 @@ async function removeManagedUser(): Promise<void> {
     return;
   }
 
-  const user = await prisma.user.findUnique({ where: { username } });
+  const user = await prisma.users.findUnique({ where: { username } });
   if (!user || !ROLES.includes(user.role as ManagedRole)) {
     console.log('No admin or librarian found with that username.');
     return;
@@ -86,7 +86,7 @@ async function removeManagedUser(): Promise<void> {
     return;
   }
 
-  await prisma.user.delete({ where: { username } });
+  await prisma.users.delete({ where: { username } });
   console.log(`Removed account ${username}.`);
 }
 

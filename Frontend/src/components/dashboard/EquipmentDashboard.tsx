@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useMobileOptimization, useTouchOptimization, useAccessibility, getResponsiveClasses } from '@/hooks/useMobileOptimization'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -8,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useEquipment, useStartSession, useEndSession } from '@/hooks/api-hooks'
 import { useAppStore } from '@/store/useAppStore'
 import { offlineActions } from '@/lib/offline-queue'
+import { DashboardCardSkeleton, CardSkeleton, ButtonLoading, EmptyState } from '@/components/LoadingStates'
 import {
   Monitor,
   Gamepad2,
@@ -45,7 +47,15 @@ interface EquipmentItem {
 }
 
 export function EquipmentDashboard() {
+  // Mobile optimization
+  const { isMobile, isTablet, isDesktop } = useMobileOptimization();
+  const { handleTouchStart, handleTouchEnd, gesture } = useTouchOptimization();
+  const { prefersReducedMotion } = useAccessibility();
+
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isStartingSession, setIsStartingSession] = useState<string | null>(null)
+  const [isEndingSession, setIsEndingSession] = useState<string | null>(null)
   const { equipment: equipmentData, isOnline } = useAppStore()
   const { mutate: startSession } = useStartSession()
   const { mutate: endSession } = useEndSession()
@@ -171,8 +181,20 @@ export function EquipmentDashboard() {
     return (elapsed / session.timeLimitMinutes) * 100
   }
 
+  // Handle double-tap to refresh on mobile
+  useEffect(() => {
+    if (isMobile && gesture === 'double-tap') {
+      // Refresh equipment data
+      window.location.reload();
+    }
+  }, [gesture, isMobile]);
+
   return (
-    <div className="space-y-6">
+    <div 
+      className={getResponsiveClasses('space-y-6', { isMobile, isTablet })}
+      onTouchStart={isMobile ? handleTouchStart : undefined}
+      onTouchEnd={isMobile ? handleTouchEnd : undefined}
+    >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -190,7 +212,7 @@ export function EquipmentDashboard() {
       </div>
 
       {/* Status Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Equipment</CardTitle>
@@ -261,7 +283,7 @@ export function EquipmentDashboard() {
       )}
 
       {/* Equipment List */}
-      <Tabs defaultValue="all" className="space-y-4">
+      <Tabs defaultValue="all" className={`space-y-${isMobile ? '3' : '4'}`}>
         <div className="flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="all" onClick={() => setSelectedFilter('all')}>
@@ -288,8 +310,8 @@ export function EquipmentDashboard() {
           </div>
         </div>
 
-        <TabsContent value="all" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <TabsContent value="all" className={`space-y-${isMobile ? '3' : '4'}`}>
+          <div className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
             {filteredEquipment.map((item: any) => (
               <Card key={item.id} className="relative">
                 <CardHeader className="pb-3">
@@ -411,7 +433,7 @@ export function EquipmentDashboard() {
       </Tabs>
 
       {/* Equipment Stats */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2'}`}>
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Usage Statistics</CardTitle>

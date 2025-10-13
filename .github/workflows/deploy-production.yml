@@ -1,0 +1,550 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'Backend/**'
+      - 'Frontend/**'
+      - 'infrastructure/**'
+  pull_request:
+    branches: [ master, main ]
+    types: [ opened, synchronize, reopened ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  # Security and Quality Checks
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    outputs:
+      backend-scan-result: ${{ steps.backend-scan.outputs.result }}
+      frontend-scan-result: ${{ steps.frontend-scan.outputs.result }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy vulnerability scanner (Backend)
+        id: backend-scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'Backend'
+          format: 'sarif'
+          output: 'backend-scan.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab (Backend)
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'backend-scan.sarif'
+
+      - name: Run Trivy vulnerability scanner (Frontend)
+        id: frontend-scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: 'Frontend'
+          format: 'sarif'
+          output: 'frontend-scan.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab (Frontend)
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'frontend-scan.sarif'
+
+  # Code Quality and Testing
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    needs: security-scan
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpassword
+          MYSQL_DATABASE: clms_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Backend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: ./Backend
+        run: npm ci
+
+      - name: Run Linting
+        working-directory: ./Backend
+        run: npm run lint:check
+
+      - name: Run Type Checking
+        working-directory: ./Backend
+        run: npx tsc --noEmit
+
+      - name: Generate Prisma Client
+        working-directory: ./Backend
+        run: npm run db:generate
+        env:
+          DATABASE_URL: mysql://root:testpassword@localhost:3306/clms_test
+
+      - name: Run Unit Tests
+        working-directory: ./Backend
+        run: npm run test
+        env:
+          NODE_ENV: test
+          DATABASE_URL: mysql://root:testpassword@localhost:3306/clms_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
+      - name: Run Integration Tests
+        working-directory: ./Backend
+        run: npm run test:integration
+        env:
+          NODE_ENV: test
+          DATABASE_URL: mysql://root:testpassword@localhost:3306/clms_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
+      - name: Generate Test Coverage Report
+        working-directory: ./Backend
+        run: npm run test:coverage
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./Backend/coverage/lcov.info
+          directory: ./Backend/coverage
+          flags: backend
+          name: backend-coverage
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    needs: security-scan
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Frontend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: ./Frontend
+        run: npm ci
+
+      - name: Run Linting
+        working-directory: ./Frontend
+        run: npm run lint:check
+
+      - name: Run Type Checking
+        working-directory: ./Frontend
+        run: npx tsc --noEmit
+
+      - name: Run Unit Tests
+        working-directory: ./Frontend
+        run: npm run test
+
+      - name: Run Component Tests
+        working-directory: ./Frontend
+        run: npm run test:coverage
+
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./Frontend/coverage/lcov.info
+          directory: ./Frontend/coverage
+          flags: frontend
+          name: frontend-coverage
+
+      - name: Build Frontend
+        working-directory: ./Frontend
+        run: npm run build
+        env:
+          VITE_API_URL: http://localhost:3001
+          VITE_WS_URL: ws://localhost:3001
+
+      - name: Run E2E Tests
+        working-directory: ./Frontend
+        run: npx playwright test
+        env:
+          CI: true
+
+      - name: Upload E2E Test Results
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: playwright-report
+          path: Frontend/playwright-report/
+          retention-days: 30
+
+  # Performance and Load Testing
+  performance-tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: Backend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: ./Backend
+        run: npm ci
+
+      - name: Run Load Tests
+        working-directory: ./Backend
+        run: npm run test:load
+
+      - name: Run Performance Tests
+        working-directory: ./Backend
+        run: npm run test:performance
+
+      - name: Upload Performance Results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: Backend/performance-results/
+          retention-days: 30
+
+  # Build and Push Docker Images
+  build-and-push:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    outputs:
+      backend-image-tag: ${{ steps.meta-backend.outputs.tags }}
+      frontend-image-tag: ${{ steps.meta-frontend.outputs.tags }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract Backend Metadata
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.ECR_REGISTRY }}/clms-backend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and Push Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Backend
+          file: ./Backend/Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Extract Frontend Metadata
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.ECR_REGISTRY }}/clms-frontend
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and Push Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Frontend
+          file: ./Frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  # Infrastructure Deployment
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    environment: production
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Initialize Terraform
+        working-directory: ./infrastructure/terraform
+        run: terraform init
+        env:
+          TF_VAR_owner_email: ${{ secrets.OWNER_EMAIL }}
+          TF_VAR_domain_name: ${{ secrets.DOMAIN_NAME }}
+          TF_VAR_notification_email: ${{ secrets.NOTIFICATION_EMAIL }}
+          TF_VAR_ssh_allowed_ips: ${{ secrets.SSH_ALLOWED_IPS }}
+
+      - name: Plan Terraform
+        working-directory: ./infrastructure/terraform
+        run: terraform plan -out=tfplan
+        continue-on-error: true
+        env:
+          TF_VAR_owner_email: ${{ secrets.OWNER_EMAIL }}
+          TF_VAR_domain_name: ${{ secrets.DOMAIN_NAME }}
+          TF_VAR_notification_email: ${{ secrets.NOTIFICATION_EMAIL }}
+          TF_VAR_ssh_allowed_ips: ${{ secrets.SSH_ALLOWED_IPS }}
+
+      - name: Apply Terraform
+        working-directory: ./infrastructure/terraform
+        run: terraform apply -auto-approve tfplan
+        env:
+          TF_VAR_owner_email: ${{ secrets.OWNER_EMAIL }}
+          TF_VAR_domain_name: ${{ secrets.DOMAIN_NAME }}
+          TF_VAR_notification_email: ${{ secrets.NOTIFICATION_EMAIL }}
+          TF_VAR_ssh_allowed_ips: ${{ secrets.SSH_ALLOWED_IPS }}
+
+      - name: Output Terraform Values
+        working-directory: ./infrastructure/terraform
+        run: terraform output -json > terraform-outputs.json
+
+      - name: Upload Terraform Outputs
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-outputs
+          path: infrastructure/terraform/terraform-outputs.json
+          retention-days: 7
+
+  # Application Deployment
+  deploy-application:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    needs: [deploy-infrastructure]
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    environment: production
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download Terraform Outputs
+        uses: actions/download-artifact@v3
+        with:
+          name: terraform-outputs
+          path: ./terraform-outputs
+
+      - name: Update ECS Services
+        run: |
+          # Update backend service
+          aws ecs update-service \
+            --cluster ${{ env.PROJECT_NAME }}-cluster-${{ env.ENVIRONMENT }} \
+            --service ${{ env.PROJECT_NAME }}-backend-${{ env.ENVIRONMENT }} \
+            --force-new-deployment
+
+          # Update frontend service
+          aws ecs update-service \
+            --cluster ${{ env.PROJECT_NAME }}-cluster-${{ env.ENVIRONMENT }} \
+            --service ${{ env.PROJECT_NAME }}-frontend-${{ env.ENVIRONMENT }} \
+            --force-new-deployment
+
+      - name: Wait for Services to Stabilize
+        run: |
+          # Wait for backend service
+          aws ecs wait services-stable \
+            --cluster ${{ env.PROJECT_NAME }}-cluster-${{ env.ENVIRONMENT }} \
+            --services ${{ env.PROJECT_NAME }}-backend-${{ env.ENVIRONMENT }}
+
+          # Wait for frontend service
+          aws ecs wait services-stable \
+            --cluster ${{ env.PROJECT_NAME }}-cluster-${{ env.ENVIRONMENT }} \
+            --services ${{ env.PROJECT_NAME }}-frontend-${{ env.ENVIRONMENT }}
+
+  # Production Validation
+  production-validation:
+    name: Production Validation
+    runs-on: ubuntu-latest
+    needs: [deploy-application]
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Validation Tools
+        run: npm install -g @playwright/test
+
+      - name: Download Terraform Outputs
+        uses: actions/download-artifact@v3
+        with:
+          name: terraform-outputs
+          path: ./terraform-outputs
+
+      - name: Run Smoke Tests
+        working-directory: ./tests/production
+        run: npm run test:smoke
+        env:
+          BASE_URL: https://${{ secrets.DOMAIN_NAME }}
+
+      - name: Run Health Checks
+        working-directory: ./tests/production
+        run: npm run test:health
+        env:
+          BASE_URL: https://${{ secrets.DOMAIN_NAME }}
+
+      - name: Run Security Scans on Production
+        working-directory: ./tests/production
+        run: npm run test:security
+        env:
+          BASE_URL: https://${{ secrets.DOMAIN_NAME }}
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: production-test-results
+          path: tests/production/results/
+          retention-days: 30
+
+  # Notification
+  notify:
+    name: Notify Deployment Status
+    runs-on: ubuntu-latest
+    needs: [production-validation]
+    if: always()
+
+    steps:
+      - name: Notify Slack on Success
+        if: needs.production-validation.result == 'success'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+
+      - name: Notify Slack on Failure
+        if: needs.production-validation.result == 'failure'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+
+      - name: Send Email Notification
+        if: needs.production-validation.result == 'failure'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "CLMS Production Deployment Failed"
+          body: |
+            The CLMS production deployment has failed.
+
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+            Workflow: ${{ github.workflow }}
+
+            Please check the GitHub Actions logs for details.
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: ${{ secrets.EMAIL_USERNAME }}

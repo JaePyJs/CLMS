@@ -10,7 +10,7 @@ export interface BarcodeResult {
     error?: string;
 }
 export interface BarcodeGenerationResult {
-    studentId: string;
+    student_id: string;
     name: string;
     barcodePath: string;
     barcodeUrl: string;
@@ -19,19 +19,19 @@ export interface BarcodeGenerationResult {
 }
 export interface BarcodeGenerationSummary {
     totalStudents: number;
-    successCount: number;
+    success_count: number;
     errorCount: number;
     outputDir: string;
     results: BarcodeGenerationResult[];
-    generatedAt: string;
+    generated_at: string;
 }
 export declare class BarcodeService {
     private outputDir;
     private studentBarcodeDir;
     constructor();
-    generateStudentBarcode(studentId: string, options?: BarcodeOptions): Promise<BarcodeResult>;
-    generateBookBarcode(bookId: string, options?: BarcodeOptions): Promise<BarcodeResult>;
-    generateEquipmentBarcode(equipmentId: string, options?: BarcodeOptions): Promise<BarcodeResult>;
+    generateStudentBarcode(student_id: string, options?: BarcodeOptions): Promise<BarcodeResult>;
+    generateBookBarcode(book_id: string, options?: BarcodeOptions): Promise<BarcodeResult>;
+    generateEquipmentBarcode(equipment_id: string, options?: BarcodeOptions): Promise<BarcodeResult>;
     generateAllStudentBarcodes(options?: BarcodeOptions): Promise<{
         success: boolean;
         count: number;
@@ -48,25 +48,25 @@ export declare class BarcodeService {
         error?: string;
     }>;
     generateBarcodesForAllStudents(): Promise<BarcodeGenerationSummary>;
-    generateBarcodeForStudent(studentId: string): Promise<string>;
-    regenerateBarcodeForStudent(studentId: string): Promise<string>;
-    deleteBarcodeForStudent(studentId: string): Promise<void>;
-    barcodeExists(studentId: string): boolean;
-    getBarcodePath(studentId: string): string | null;
+    generateBarcodeForStudent(student_id: string): Promise<string>;
+    regenerateBarcodeForStudent(student_id: string): Promise<string>;
+    deleteBarcodeForStudent(student_id: string): Promise<void>;
+    barcodeExists(student_id: string): boolean;
+    getBarcodePath(student_id: string): string | null;
     getGenerationReport(): Promise<BarcodeGenerationSummary | null>;
     private generatePrintableSheet;
     private generateBarcodeImage;
     private saveBarcodeHistory;
-    getBarcodeHistory(entityId: string, entityType: string): Promise<{
+    getBarcodeHistory(entity_id: string, entity_type: string): Promise<{
         format: string;
-        entityId: string;
-        studentId: string | null;
+        entity_id: string;
         id: string;
-        bookId: string | null;
-        entityType: string;
-        barcodeData: string;
-        generatedAt: Date;
-        generatedBy: string;
+        student_id: string | null;
+        book_id: string | null;
+        barcode_data: string;
+        entity_type: string;
+        generated_at: Date;
+        generated_by: string;
     }[]>;
     getOutputDir(): string;
 }

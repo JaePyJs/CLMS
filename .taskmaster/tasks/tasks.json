@@ -1,0 +1,1726 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": "1",
+        "title": "Repository and Project Setup",
+        "description": "Initialize the monorepo with backend and frontend using the specified tech stack, configure Docker Compose, and set up environment variables.",
+        "details": "Use pnpm or Yarn workspaces for monorepo management. Scaffold backend (Node.js 20 LTS, Express.js, TypeScript) and frontend (React 18, Vite 5, TypeScript). Set up Docker Compose with services for MySQL 8.0 (port 3308), Redis 7 (port 6380), backend (port 3001), frontend (port 3000), and scanner service. Configure .env files for secrets and ports. Use multi-stage Docker builds for production images. Add health checks for all services.",
+        "testStrategy": "Run Docker Compose locally, verify all containers start, health checks pass, and services are accessible at correct ports.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "2",
+        "title": "Database Schema Finalization and Migration",
+        "description": "Finalize and migrate the MySQL schema using Prisma ORM, ensuring all 11+ tables and relationships are defined.",
+        "details": "Define Prisma schema with all required tables (students, users, equipment, logs, sessions, etc.), including indexes for frequent queries. Use Prisma Migrate to generate and apply migrations. Enable strict mode and referential integrity. Document schema with Prisma's introspection and generate ER diagrams.",
+        "testStrategy": "Run Prisma migrate and introspect. Validate schema with sample data and ensure all relationships and constraints are enforced.",
+        "priority": "high",
+        "dependencies": [
+          "1"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "3",
+        "title": "Backend API Endpoint Completion",
+        "description": "Implement and finalize all 26 REST API endpoints with Express.js and TypeScript, following OpenAPI specs.",
+        "details": "Use Express Router for modular endpoints. Apply input validation with Zod or Joi. Ensure endpoints cover CRUD for students, equipment, users, logs, analytics, and settings. Use Prisma Client for DB access. Implement error handling with centralized middleware. Document endpoints with Swagger (OpenAPI 3.1).",
+        "testStrategy": "Write unit and integration tests for each endpoint using Vitest. Validate OpenAPI docs with Swagger UI.",
+        "priority": "high",
+        "dependencies": [
+          "2"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "4",
+        "title": "Authentication and JWT Security Hardening",
+        "description": "Implement JWT authentication with best practices, including token rotation, revocation, and secure cookie storage.",
+        "details": "Use jsonwebtoken (v9+) with RS256 or HS256 (256-bit keys). Store tokens in HttpOnly, Secure, SameSite cookies. Implement short-lived access tokens (15-30 min) and refresh tokens with rotation. Add token blacklist for revocation. Validate exp, iss, aud claims. Use bcrypt (12 rounds) for password hashing.",
+        "testStrategy": "Test login, refresh, and logout flows. Attempt token replay and tampering. Validate cookie flags and expiration.",
+        "priority": "high",
+        "dependencies": [
+          "3"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "5",
+        "title": "Role-Based Access Control (RBAC) Middleware",
+        "description": "Implement RBAC middleware for Express.js to enforce granular permissions based on user roles and permission categories.",
+        "details": "Define roles (SUPERADMIN, ADMIN, LIBRARIAN, TEACHER, STUDENT, GUEST) and permission matrix. Use middleware to check permissions on each endpoint. Store permissions in DB and cache in Redis for performance. Provide admin UI for permission editing.",
+        "testStrategy": "Write tests for all role/permission combinations. Attempt unauthorized actions and verify access is denied.",
+        "priority": "high",
+        "dependencies": [
+          "4"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "6",
+        "title": "FERPA Compliance: Access Controls and Audit Logging",
+        "description": "Implement FERPA-compliant access controls and audit logging for all sensitive data operations.",
+        "details": "Log all access and modifications to student records and sensitive fields. Use Prisma middleware for automatic audit trails. Store logs in a dedicated table with user, action, timestamp, and IP. Provide log export and search features. Enforce least privilege on sensitive endpoints.",
+        "testStrategy": "Simulate data access/modification and verify audit logs. Attempt unauthorized access and check logs.",
+        "priority": "high",
+        "dependencies": [
+          "5"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design and Implement FERPA-Compliant Access Controls",
+            "description": "Develop and enforce least privilege access controls for all sensitive student data endpoints, ensuring only authorized users can access or modify records.",
+            "dependencies": [],
+            "details": "Integrate with existing RBAC middleware to restrict access to sensitive endpoints based on user roles. Review and update endpoint permissions to enforce least privilege. Ensure that access control logic is consistent with FERPA requirements and document the access policies.",
+            "status": "pending",
+            "testStrategy": "Attempt to access sensitive endpoints with various user roles and verify that only authorized users can access or modify records. Log and review unauthorized access attempts.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement Prisma Middleware for Automatic Audit Logging",
+            "description": "Develop Prisma middleware to automatically log all access and modifications to student records and sensitive fields.",
+            "dependencies": [
+              1
+            ],
+            "details": "Create middleware that intercepts all Prisma queries related to sensitive tables. Capture user ID, action (read, create, update, delete), timestamp, and IP address for each operation. Ensure middleware is applied globally to all relevant operations.",
+            "status": "pending",
+            "testStrategy": "Simulate data access and modification through the API and verify that audit logs are generated for each operation, including all required metadata.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Create Dedicated Audit Log Table and Storage Mechanism",
+            "description": "Design and migrate a dedicated database table for storing audit logs, capturing user, action, timestamp, and IP address.",
+            "dependencies": [
+              2
+            ],
+            "details": "Extend the Prisma schema to include an 'audit_logs' table with fields for user ID, action, affected record, timestamp, and IP address. Apply database migrations and ensure referential integrity with user and record tables.",
+            "status": "pending",
+            "testStrategy": "Insert sample audit log entries and verify correct storage, indexing, and referential integrity. Query logs to ensure data is retrievable and accurate.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Develop Log Search and Export Features",
+            "description": "Implement API endpoints and backend logic to search, filter, and export audit logs for compliance and review purposes.",
+            "dependencies": [
+              3
+            ],
+            "details": "Create REST API endpoints for querying audit logs by user, action, date range, and affected record. Implement export functionality (e.g., CSV or JSON) for selected logs. Ensure endpoints are protected and accessible only to authorized roles.",
+            "status": "pending",
+            "testStrategy": "Perform searches and exports via the API, validate returned data, and ensure only authorized users can access these features.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Monitor and Review Audit Logs for Unauthorized Access",
+            "description": "Establish procedures and tools for ongoing monitoring and periodic review of audit logs to detect and respond to unauthorized access attempts.",
+            "dependencies": [
+              4
+            ],
+            "details": "Set up regular reviews of audit logs, either manually or via automated alerts for suspicious activity (e.g., repeated failed access attempts). Document procedures for investigating and responding to incidents. Integrate with SIEM if available.",
+            "status": "pending",
+            "testStrategy": "Simulate unauthorized access attempts and verify that they are logged, detected, and trigger the appropriate review or alert process.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 8,
+        "recommendedSubtasks": 5,
+        "expansionPrompt": "Break down FERPA compliance implementation into: (1) access control enforcement, (2) audit logging middleware, (3) log storage schema, (4) log export/search features, (5) least privilege enforcement and endpoint review."
+      },
+      {
+        "id": "7",
+        "title": "Data Encryption (At-Rest and In-Transit)",
+        "description": "Encrypt sensitive fields in the database and enforce TLS 1.3 for all network communications.",
+        "details": "Use AES-256 encryption for fields like student PII and credentials. Use Prisma field-level encryption plugin or custom logic. Configure Nginx reverse proxy for TLS 1.3 termination. Enforce HTTPS for all frontend/backend traffic, even on local network.",
+        "testStrategy": "Inspect DB for encrypted fields. Use SSL Labs or similar to verify TLS 1.3. Attempt MITM and verify data is encrypted.",
+        "priority": "high",
+        "dependencies": [
+          "6"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Identify and Annotate Sensitive Fields for Encryption in Prisma Schema",
+            "description": "Review the database schema and mark all sensitive fields (e.g., student PII, credentials) for encryption using Prisma field-level encryption annotations.",
+            "dependencies": [],
+            "details": "Examine the Prisma schema models and add the /// @encrypted annotation to all fields that require encryption at rest, such as names, emails, and credentials. Ensure triple-slash comments are used, as required by the plugin.",
+            "status": "pending",
+            "testStrategy": "Verify that all required fields are annotated by reviewing the schema and cross-referencing with data privacy requirements.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Configure and Integrate Prisma Field-Level Encryption Plugin",
+            "description": "Set up the Prisma field-level encryption plugin and configure it to use AES-256 encryption for the annotated fields.",
+            "dependencies": [
+              1
+            ],
+            "details": "Install the prisma-field-encryption package. Generate a secure AES-256 encryption key and set it via the PRISMA_FIELD_ENCRYPTION_KEY environment variable. Extend the Prisma client with the fieldEncryptionExtension or middleware as per documentation. Regenerate the Prisma client after configuration.[2][3]",
+            "status": "pending",
+            "testStrategy": "Check that the Prisma client is properly extended and that encrypted fields are written as ciphertext in the database.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Migrate and Encrypt Existing Sensitive Data in Database",
+            "description": "Run migrations to ensure all existing sensitive data in the database is encrypted using the configured field-level encryption.",
+            "dependencies": [
+              2
+            ],
+            "details": "After updating the schema and configuring the plugin, run the necessary Prisma migrations. Use the plugin's migration utilities to iterate over existing records and encrypt any plaintext data in the annotated fields.[2][3]",
+            "status": "pending",
+            "testStrategy": "Inspect the database directly to confirm that sensitive fields are now stored as encrypted ciphertext.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Configure Nginx Reverse Proxy for TLS 1.3 Termination",
+            "description": "Set up and configure Nginx as a reverse proxy to terminate TLS 1.3 connections for all frontend and backend services.",
+            "dependencies": [],
+            "details": "Update the Nginx configuration to enable TLS 1.3, using strong ciphers and certificates. Ensure all HTTP traffic is redirected to HTTPS. Test with SSL Labs or similar tools to confirm TLS 1.3 is enforced.",
+            "status": "pending",
+            "testStrategy": "Use SSL Labs or OpenSSL to verify that only TLS 1.3 is accepted and that all connections are encrypted.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Enforce HTTPS for All Internal and External Traffic",
+            "description": "Ensure that all frontend and backend communications, including those on the local network, are forced to use HTTPS.",
+            "dependencies": [
+              4
+            ],
+            "details": "Update application and server configurations to reject non-HTTPS requests. Implement HTTP Strict Transport Security (HSTS) headers. Test all endpoints to confirm that HTTP requests are redirected or rejected.",
+            "status": "pending",
+            "testStrategy": "Attempt to access services over HTTP and verify redirection or rejection. Confirm all traffic is encrypted using HTTPS.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Expand into: (1) field-level encryption implementation, (2) TLS 1.3 configuration and enforcement, (3) Prisma plugin/custom logic integration, (4) Nginx reverse proxy setup and HTTPS enforcement."
+      },
+      {
+        "id": "8",
+        "title": "Frontend Settings Page: System Configuration Tab",
+        "description": "Implement the System Configuration tab in the settings page with all required fields and validation.",
+        "details": "Use React 18, shadcn/ui, and Tailwind CSS 3 for UI. Implement form with fields for library name, hours, session limits, checkout periods, fine rules, and equipment settings. Use TanStack Query for data fetching/mutation. Validate inputs with Zod. Persist changes via API.\n<info added on 2025-10-13T16:16:37.822Z>\nBackend settings API is now fully implemented with real database integration. All settings endpoints use Prisma queries for GET/PUT operations, with error handling and data validation. System configuration, Google Sheets integration, backup management, system logs, and user management are persisted to the MySQL system_config table. Frontend integration is now required to connect React components to these new API endpoints for data fetching and mutation.\n</info added on 2025-10-13T16:16:37.822Z>\n<info added on 2025-10-13T16:24:14.543Z>\nCore infrastructure compilation issues have been resolved, with fixes applied to logger.ts, email.ts, clientManager.ts, and websocketServer.ts. However, non-critical errors remain in scripts/ and tests/ folders. The next steps include either continuing script cleanup or proceeding with frontend integration tasks, such as implementing the System Configuration tab in the settings page.\n</info added on 2025-10-13T16:24:14.543Z>\n<info added on 2025-10-13T16:29:13.015Z>\nFrontend integration for the System Configuration tab is now complete. Key features include real-time validation with change detection, loading states with skeletons, disabled buttons during mutations, query caching, and type-safe API calls. The tab is fully functional with backend integration, allowing users to save, load, and reset all configuration values. Next steps involve testing this integration or proceeding with the User Management tab implementation.\n</info added on 2025-10-13T16:29:13.015Z>",
+        "testStrategy": "Write React Testing Library tests for form validation, submission, and error handling.",
+        "priority": "high",
+        "dependencies": [
+          "3"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "9",
+        "title": "Frontend Settings Page: User Management Tab",
+        "description": "Implement the User Management tab with user list, role assignment, CRUD, permission matrix editor, and password reset.",
+        "details": "Display paginated user list with search/filter. Add modals for add/edit/delete. Implement permission matrix editor with checkboxes. Use Zustand for local state. Integrate password reset flow. Use optimistic UI updates for responsiveness.",
+        "testStrategy": "Test all CRUD flows, permission changes, and password resets with React Testing Library.",
+        "priority": "high",
+        "dependencies": [
+          "8"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "10",
+        "title": "Frontend Settings Page: Google Sheets Integration Tab",
+        "description": "Implement Google Sheets integration tab for credentials upload, spreadsheet ID, sync schedule, field mapping, and manual sync.",
+        "details": "Use Google API client (v4) for OAuth and Sheets API. Allow credential file upload and validation. Schedule sync jobs via backend. Provide field mapping UI. Manual sync triggers backend job via API.",
+        "testStrategy": "Mock Google API and test credential upload, mapping, and sync flows.",
+        "priority": "medium",
+        "dependencies": [
+          "8"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Credential Upload and Validation UI",
+            "description": "Create a user interface for uploading Google API credential files and validate them using the Google API client.",
+            "dependencies": [],
+            "details": "Develop a form component that allows users to upload their Google API credential file (JSON). Integrate with the Google API client (v4) to validate the uploaded credentials and display success or error messages. Ensure secure handling of sensitive credential data.",
+            "status": "pending",
+            "testStrategy": "Mock credential files and test upload/validation flows, including error handling for invalid files.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Spreadsheet ID Input and Verification",
+            "description": "Provide an input field for users to enter a Google Spreadsheet ID and verify access using the validated credentials.",
+            "dependencies": [
+              1
+            ],
+            "details": "Add a text input for the spreadsheet ID. Upon entry, use the authenticated Google API client to check if the spreadsheet is accessible and display feedback. Handle cases where the spreadsheet is not found or access is denied.",
+            "status": "pending",
+            "testStrategy": "Test with valid and invalid spreadsheet IDs, ensuring correct feedback and error handling.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Sync Schedule Configuration UI",
+            "description": "Build a UI for configuring sync schedules, allowing users to set intervals for automatic data synchronization.",
+            "dependencies": [
+              2
+            ],
+            "details": "Design a schedule picker (e.g., dropdowns or cron expression input) for users to select sync frequency. Integrate with backend API to save and update the schedule. Display current schedule status and allow modifications.",
+            "status": "pending",
+            "testStrategy": "Test schedule selection, saving, and updating flows. Verify backend integration with mock API responses.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Field Mapping Interface",
+            "description": "Create an interactive UI for mapping Google Sheets columns to application fields.",
+            "dependencies": [
+              2
+            ],
+            "details": "Fetch spreadsheet columns using the Sheets API and display them alongside application fields. Allow users to create, edit, and remove mappings. Save mappings via backend API and validate for completeness.",
+            "status": "pending",
+            "testStrategy": "Test mapping creation, editing, and saving. Use mock spreadsheet data and verify correct mapping persistence.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Manual Sync Trigger Implementation",
+            "description": "Add a button to manually trigger a sync job, sending a request to the backend to synchronize data immediately.",
+            "dependencies": [
+              2,
+              4
+            ],
+            "details": "Implement a 'Sync Now' button that calls the backend API to start a sync job. Display progress and result notifications. Ensure sync respects current field mappings and credentials.",
+            "status": "pending",
+            "testStrategy": "Test manual sync initiation, progress indication, and result handling using mock backend responses.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Divide into: (1) OAuth credential upload/validation, (2) spreadsheet ID and sync schedule UI, (3) field mapping interface, (4) manual sync trigger and backend job integration."
+      },
+      {
+        "id": "11",
+        "title": "Frontend Settings Page: Automation Settings Tab",
+        "description": "Implement Automation Settings tab for job scheduling, email/SMS templates, backup schedule, and maintenance windows.",
+        "details": "Use cron expression input for job schedules. Provide template editors for email/SMS (with preview). Allow backup schedule configuration. Maintenance window picker disables features during set times.",
+        "testStrategy": "Test schedule validation, template saving, and maintenance window enforcement.",
+        "priority": "medium",
+        "dependencies": [
+          "8"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Job Scheduling Section with Cron Expression Input",
+            "description": "Create the job scheduling UI component, allowing users to define schedules using cron expressions.",
+            "dependencies": [],
+            "details": "Develop a form section with a cron expression input field, helper text, and validation. Integrate a cron expression parser to provide real-time feedback and error messages. Ensure accessibility and keyboard navigation for the input.",
+            "status": "pending",
+            "testStrategy": "Unit test cron input validation and error handling. Simulate user input and verify correct parsing and feedback.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Develop Email and SMS Template Editors with Live Preview",
+            "description": "Provide rich text editors for email and SMS templates, including a live preview feature.",
+            "dependencies": [],
+            "details": "Integrate WYSIWYG editors for email and SMS templates. Implement a preview pane that updates in real time as the user edits the template. Support variable placeholders and validate template syntax.",
+            "status": "pending",
+            "testStrategy": "Test template editing, placeholder insertion, and preview rendering. Verify template saving and error handling.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Create Backup Schedule Configuration UI",
+            "description": "Build the interface for configuring automated backup schedules.",
+            "dependencies": [
+              1
+            ],
+            "details": "Add a section for backup scheduling, allowing users to set frequency, time, and retention policies. Use dropdowns or cron input as appropriate. Validate user input and display current schedule status.",
+            "status": "pending",
+            "testStrategy": "Test schedule input, validation, and persistence. Simulate schedule changes and verify UI updates.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Implement Maintenance Window Picker and Enforcement Logic",
+            "description": "Enable users to define maintenance windows and ensure features are disabled during those times.",
+            "dependencies": [],
+            "details": "Develop a date/time range picker for maintenance windows. Implement logic to disable or hide affected features in the UI during active windows. Display clear indicators when maintenance is active.",
+            "status": "pending",
+            "testStrategy": "Test window selection, enforcement of disabled features, and UI indicators during maintenance periods.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Integrate Automation Settings Tab into Frontend Settings Page",
+            "description": "Combine all automation settings sections into a cohesive tab within the settings page, ensuring accessibility and responsive design.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Assemble job scheduling, template editors, backup schedule, and maintenance window picker into a single tab. Ensure ARIA roles and keyboard navigation for accessibility. Test layout on multiple screen sizes.",
+            "status": "pending",
+            "testStrategy": "Perform end-to-end UI tests for navigation, accessibility, and integration of all automation settings features.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Split into: (1) job scheduling UI and validation, (2) email/SMS template editor with preview, (3) backup schedule and maintenance window configuration."
+      },
+      {
+        "id": "12",
+        "title": "Frontend Settings Page: Backup & Restore Tab",
+        "description": "Implement Backup & Restore tab with manual trigger, history, restore interface, and destination config.",
+        "details": "Display backup history with timestamps and status. Manual backup triggers backend job. Restore interface with warnings and confirmation. Allow destination path config (local/network).",
+        "testStrategy": "Test backup/restore flows with mock data. Simulate restore errors and verify warnings.",
+        "priority": "medium",
+        "dependencies": [
+          "8"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design and Implement Backup History Display",
+            "description": "Create a UI component to display a list of previous backups with timestamps and status indicators.",
+            "dependencies": [],
+            "details": "Develop a table or list view showing backup entries, including date/time, status (success/failure), and relevant metadata. Integrate with backend API to fetch backup history. Ensure the UI updates dynamically when new backups are created.",
+            "status": "pending",
+            "testStrategy": "Mock backup history data and verify correct rendering, sorting, and status display. Test with empty and large datasets.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement Manual Backup Trigger Interface",
+            "description": "Add a button or control to manually initiate a backup job from the frontend.",
+            "dependencies": [
+              1
+            ],
+            "details": "Provide a clear 'Backup Now' button with optional naming input. On trigger, call backend API to start backup and show progress indicator. Disable button during active backup. Update backup history upon completion.",
+            "status": "pending",
+            "testStrategy": "Simulate manual backup requests and verify backend job initiation, UI feedback, and history update.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Develop Restore Interface with Confirmation and Warnings",
+            "description": "Build a restore workflow allowing users to select a backup and restore, with appropriate warnings and confirmation dialogs.",
+            "dependencies": [
+              1
+            ],
+            "details": "Enable selection of a backup entry for restore. Display warning about data overwrite and system downtime. Require explicit user confirmation before proceeding. Show restore progress and completion status.",
+            "status": "pending",
+            "testStrategy": "Test restore flow with mock backups, verify warning/confirmation dialogs, and simulate restore errors to check error handling.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Implement Destination Path Configuration UI",
+            "description": "Create a settings section for configuring the backup destination path, supporting local and network locations.",
+            "dependencies": [],
+            "details": "Provide input fields and validation for local and network paths. Integrate with backend to save and retrieve destination settings. Ensure changes are reflected in subsequent backup operations.",
+            "status": "pending",
+            "testStrategy": "Test path input validation, saving/loading settings, and verify integration with backup jobs using mock backend.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Integrate All Components and End-to-End Testing",
+            "description": "Combine backup history, manual trigger, restore interface, and destination config into a cohesive Backup & Restore tab. Perform comprehensive testing.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Ensure all UI components interact correctly. Validate end-to-end flows: backup creation, history update, restore process, and destination changes. Address edge cases and error handling across the tab.",
+            "status": "pending",
+            "testStrategy": "Perform end-to-end tests with mock and real backend, covering all user flows, error scenarios, and UI state transitions.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Break into: (1) backup history display, (2) manual backup/restore triggers and interface, (3) destination configuration and error handling."
+      },
+      {
+        "id": "13",
+        "title": "Frontend Settings Page: System Logs Tab",
+        "description": "Implement System Logs tab with real-time log viewer, filtering, search, export, error dashboard, and audit trail browser.",
+        "details": "Use WebSocket for real-time log streaming. Implement log level filters and search. Allow CSV export. Display error stats and audit trails. Use virtual scrolling for performance.",
+        "testStrategy": "Test log streaming, filtering, export, and error dashboard with large datasets.",
+        "priority": "medium",
+        "dependencies": [
+          "8"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "14",
+        "title": "Mobile Responsive Design Optimization",
+        "description": "Update all frontend components for mobile responsiveness and touch optimization.",
+        "details": "Use Tailwind CSS breakpoints for layouts. Implement bottom navigation for mobile, horizontal scroll for tables, full-screen modals, and touch-friendly forms. Use Framer Motion for smooth transitions. Test on iOS Safari and Android Chrome.\n<info added on 2025-10-13T16:47:41.224Z>\nMOBILE RESPONSIVE IMPROVEMENTS COMPLETE!\n\nCOMPLETED:\n- Settings page tabs now use a 3-column grid on mobile and 6-column on desktop.\n- Icon-only tabs are shown on screens smaller than 640px for improved tap targets.\n- Text labels appear on sm: and larger screens.\n- All table components have overflow-x-auto for horizontal scrolling.\n- Touch-friendly spacing applied with gap-2.\n- Forms stack properly using md:grid-cols-2.\n- Comprehensive testing guide created (MOBILE_RESPONSIVE_IMPROVEMENTS.md).\n\nRESULT: Settings page is now mobile-friendly with usable tabs, scrollable tables, and properly stacked forms.\n\nTESTING NEEDED: Manual testing required on Chrome DevTools and real devices (iPhone, iPad, Android).\n\nFUTURE ENHANCEMENTS (optional):\n- Convert tables to card layout on mobile (<640px).\n- Explore alternative bottom navigation bar designs.\n- Implement swipe gestures between tabs.\n- Add pull-to-refresh functionality.\n\nSTATUS: Ready for user testing!\n</info added on 2025-10-13T16:47:41.224Z>",
+        "testStrategy": "Test all views on real devices/emulators at all breakpoints. Validate touch targets and gestures.",
+        "priority": "high",
+        "dependencies": [
+          "8"
+        ],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Audit and Refine Tailwind CSS Breakpoints Across All Components",
+            "description": "Review all frontend components to ensure Tailwind CSS breakpoints are correctly applied for mobile, tablet, and desktop layouts.",
+            "dependencies": [],
+            "details": "Systematically check each component for proper use of Tailwind's responsive classes (e.g., sm:, md:, lg:). Ensure layouts adapt fluidly at key breakpoints, with special attention to mobile-first design and usability. Adjust grid, flex, and spacing utilities as needed for optimal mobile experience.",
+            "status": "done",
+            "testStrategy": "Visually inspect components at all breakpoints using Chrome DevTools and real devices. Confirm layout changes trigger as expected and no content is clipped or misaligned.",
+            "updatedAt": "2025-10-13T21:56:05.119Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement and Optimize Bottom Navigation for Mobile Devices",
+            "description": "Add a persistent, touch-friendly bottom navigation bar for mobile screens, ensuring accessibility and usability.",
+            "dependencies": [
+              1
+            ],
+            "details": "Design and code a bottom navigation bar that appears only on mobile breakpoints (<640px). Use large, easily tappable icons (min 44px) and ensure ARIA roles for accessibility. Hide or adapt desktop navigation as needed. Test for thumb reach and visual clarity.",
+            "status": "pending",
+            "testStrategy": "Test navigation on iOS Safari and Android Chrome. Validate tap targets, navigation flow, and accessibility with screen readers.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Enhance Table Components with Horizontal Scroll and Optional Card Layout",
+            "description": "Ensure all table components are horizontally scrollable on mobile and explore converting tables to card layouts for screens <640px.",
+            "dependencies": [
+              1
+            ],
+            "details": "Apply overflow-x-auto to all tables for mobile. For enhanced usability, prototype a card-based layout for tables on small screens, displaying each row as a card. Use Tailwind utilities for spacing and stacking. Maintain data clarity and readability.",
+            "status": "pending",
+            "testStrategy": "Test table scrolling and card layouts on mobile devices. Confirm all data remains accessible and legible. Solicit feedback from users on card layout usability.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Optimize Forms and Modals for Touch and Full-Screen Mobile Use",
+            "description": "Update all forms and modal dialogs to be touch-friendly, stack vertically on mobile, and use full-screen modals where appropriate.",
+            "dependencies": [
+              1
+            ],
+            "details": "Increase form field and button sizes for touch (min 44px height). Stack form fields vertically on mobile using grid-cols-1 or flex-col. Convert modal dialogs to full-screen on mobile, ensuring easy dismissal and smooth transitions with Framer Motion.",
+            "status": "pending",
+            "testStrategy": "Test forms and modals on real devices for touch accuracy, stacking, and modal behavior. Validate accessibility and smoothness of transitions.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Conduct Comprehensive Manual Testing on Real Devices and Emulators",
+            "description": "Perform thorough manual testing of all responsive improvements on iOS Safari, Android Chrome, and Chrome DevTools emulators.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Follow the MOBILE_RESPONSIVE_IMPROVEMENTS.md guide to test all views, navigation, tables, forms, and modals at all breakpoints. Validate touch targets, gestures, and transitions. Document any issues or regressions for follow-up.",
+            "status": "pending",
+            "testStrategy": "Test on iPhone, iPad, and Android devices. Use Chrome DevTools for breakpoint simulation. Record results and screenshots for QA review.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Expand into: (1) layout and navigation optimization, (2) table and form mobile adaptations, (3) touch/gesture enhancements and device testing.",
+        "updatedAt": "2025-10-13T21:56:05.119Z"
+      },
+      {
+        "id": "15",
+        "title": "PWA Service Worker and Offline-First Architecture",
+        "description": "Implement service worker for offline support, caching strategies, background sync, and installability.",
+        "details": "Use Workbox (v7+) for service worker generation. Implement network-first for API, cache-first for static, stale-while-revalidate for images. Enable background sync for failed requests. Add offline notifications and IndexedDB for persistence. Create manifest.json with icons and theme colors.",
+        "testStrategy": "Simulate offline mode, verify essential features work, and test installability on iOS/Android.",
+        "priority": "high",
+        "dependencies": [
+          "14"
+        ],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": "16",
+        "title": "Student Management Module Completion",
+        "description": "Complete and test the Student Management Module, focusing on finalized CRUD operations with real API integration, barcode/QR generation, grade-based session limits, photo upload, activity tracking, and CSV/Excel import. API integration is 25% complete, with TanStack Query caching, mutations, and handler updates done. Remaining work includes UI for barcode/QR, CSV import, session limits, photo upload, and integration testing.",
+        "status": "in-progress",
+        "dependencies": [
+          "3",
+          "14"
+        ],
+        "priority": "high",
+        "details": "React is used for the UI, with backend API handling all logic. TanStack Query is integrated for data fetching and 2-minute caching. Five mutations (create, update, delete, QR, barcode) are implemented and nine handler functions now use the real API, with mock data removed. Field mapping between camelCase (frontend) and snake_case (backend) is in place. Barcode/QR generation will use jsbarcode and qrcode.react. Session limits are enforced per grade. Multer will be used for photo uploads. Activity is tracked in the database. CSV/Excel import will use Papaparse/xlsx.",
+        "testStrategy": "Test all CRUD flows using real backend API, including barcode/QR generation, session limit enforcement, photo upload, and CSV/Excel import with sample files. Validate field mapping and caching behavior. Ensure UI updates reflect real API responses.",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Test API Integration with Real Backend",
+            "description": "Test all CRUD operations, mutations, and data fetching using the real backend API. Validate TanStack Query caching and field mapping.",
+            "dependencies": [],
+            "details": "Ensure all create, read, update, and delete flows work end-to-end with the backend. Confirm that camelCase to snake_case mapping is correct and that 2-minute caching is effective.",
+            "status": "done",
+            "testStrategy": "Use sample student data to test all CRUD flows. Check network requests and UI updates. Verify cache invalidation and data consistency.",
+            "parentId": "undefined",
+            "updatedAt": "2025-10-13T22:05:49.183Z"
+          },
+          {
+            "id": 2,
+            "title": "Implement and Test Barcode/QR UI",
+            "description": "Build and connect the UI for barcode and QR code generation using jsbarcode and qrcode.react, ensuring it works with real API data.",
+            "dependencies": [],
+            "details": "Integrate barcode/QR generation components into the student UI. Ensure codes are generated from backend data and displayed/printable as needed.",
+            "status": "pending",
+            "testStrategy": "Generate barcodes/QR codes for sample students. Validate visual output and data accuracy.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement and Test CSV/Excel Import",
+            "description": "Add CSV/Excel import functionality using Papaparse/xlsx, mapping imported fields to backend API format.",
+            "dependencies": [],
+            "details": "Allow users to upload CSV/Excel files. Parse and map fields, then send to backend API for bulk student creation/update.",
+            "status": "pending",
+            "testStrategy": "Import sample files with various field mappings. Confirm correct creation/update of students in the backend.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Enforce and Test Session Limits per Grade",
+            "description": "Implement logic to enforce session limits based on student grade, with UI feedback for limit violations.",
+            "dependencies": [],
+            "details": "Integrate session limit checks into relevant UI flows. Display errors or warnings if limits are exceeded.",
+            "status": "pending",
+            "testStrategy": "Attempt to assign sessions beyond allowed limits for each grade. Confirm correct enforcement and user feedback.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Implement and Test Photo Upload",
+            "description": "Enable photo upload for students using Multer on the backend, with UI integration for file selection and preview.",
+            "dependencies": [],
+            "details": "Add photo upload field to student form. Connect to backend endpoint and handle upload responses.",
+            "status": "pending",
+            "testStrategy": "Upload sample photos for students. Verify upload success, preview, and backend storage.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 8,
+        "recommendedSubtasks": 6,
+        "expansionPrompt": "List subtasks for: (1) API integration testing, (2) barcode/QR UI implementation, (3) CSV/Excel import, (4) session limit enforcement, (5) photo upload, (6) activity tracking and integration testing.",
+        "updatedAt": "2025-10-13T22:05:49.183Z"
+      },
+      {
+        "id": "17",
+        "title": "Equipment Management Module Completion",
+        "description": "Implement real-time equipment status, session assignment, analytics, maintenance scheduling, and reservation system.",
+        "details": "Use WebSocket for real-time updates. Track equipment status in DB. Allow session assignment and reservation via UI. Schedule maintenance jobs with Bull. Generate usage analytics and reports.",
+        "testStrategy": "Test real-time updates, reservation conflicts, maintenance scheduling, and analytics accuracy.",
+        "priority": "high",
+        "dependencies": [
+          "3",
+          "14"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Real-Time Equipment Status Tracking with WebSocket",
+            "description": "Develop backend and frontend logic to track and broadcast real-time equipment status updates using WebSocket.",
+            "dependencies": [],
+            "details": "Set up WebSocket server to push equipment status changes (e.g., available, in-use, under maintenance) to connected clients. Update equipment status in the database and ensure UI reflects real-time changes. Integrate with existing authentication and authorization layers.",
+            "status": "pending",
+            "testStrategy": "Simulate equipment status changes and verify real-time updates are received by multiple clients. Test for race conditions and data consistency.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Develop Session Assignment and Reservation UI and Logic",
+            "description": "Create user interfaces and backend endpoints for assigning equipment to sessions and handling reservations.",
+            "dependencies": [
+              1
+            ],
+            "details": "Design and implement UI components for session assignment and reservation workflows. Build backend logic to validate and persist assignments and reservations, ensuring no conflicts. Integrate with equipment status tracking to prevent double-booking.",
+            "status": "pending",
+            "testStrategy": "Test reservation and assignment flows, including edge cases like overlapping reservations and concurrent requests.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Schedule and Manage Equipment Maintenance Jobs with Bull",
+            "description": "Integrate Bull job queue to schedule, track, and execute equipment maintenance tasks.",
+            "dependencies": [
+              1
+            ],
+            "details": "Set up Bull queues for maintenance scheduling based on time or usage triggers. Store maintenance schedules in the database. Implement job handlers to update equipment status and notify users when maintenance is due or completed.",
+            "status": "pending",
+            "testStrategy": "Create and process maintenance jobs, verify correct status transitions, and test notification delivery.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Implement Equipment Usage Analytics and Reporting",
+            "description": "Develop analytics logic and reporting UI for equipment usage, session history, and maintenance statistics.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Aggregate usage data from session assignments and maintenance logs. Build backend endpoints to provide analytics data. Design UI components for visualizing usage trends, downtime, and maintenance history.",
+            "status": "pending",
+            "testStrategy": "Validate analytics accuracy with test data. Compare reported metrics to raw logs and database records.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Integrate and Test End-to-End Equipment Reservation and Management Flows",
+            "description": "Perform comprehensive integration testing of all module features, including real-time updates, reservations, maintenance, and analytics.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Write and execute integration tests covering typical and edge-case user flows. Validate that real-time updates, reservation conflicts, maintenance scheduling, and analytics all work together as expected. Address any discovered issues.",
+            "status": "pending",
+            "testStrategy": "Automated and manual end-to-end tests simulating real user scenarios. Regression testing after bug fixes.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 8,
+        "recommendedSubtasks": 5,
+        "expansionPrompt": "Divide into: (1) real-time status tracking (WebSocket), (2) session assignment/reservation UI, (3) maintenance scheduling (Bull), (4) analytics/report generation, (5) conflict and accuracy testing.",
+        "updatedAt": "2025-10-13T22:24:10.530Z"
+      },
+      {
+        "id": "18",
+        "title": "USB Scanner Integration and Multi-Device Sync",
+        "description": "Integrate USB barcode/QR/ISBN scanner with auto-activation, duplicate prevention, feedback, and WebSocket sync.",
+        "details": "Use node-hid or webusb for scanner input. Parse Code128, QR, ISBN, and equipment tags. Prevent duplicate scans within 30 min (track in Redis). Provide visual/audio feedback. Broadcast events via WebSocket to all clients.",
+        "testStrategy": "Test all supported barcode types, duplicate prevention, feedback, and multi-device sync.",
+        "priority": "high",
+        "dependencies": [
+          "3",
+          "17"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement USB Scanner Input and Auto-Activation",
+            "description": "Set up USB barcode/QR/ISBN scanner input using node-hid or webusb, ensuring auto-activation when a device is connected.",
+            "dependencies": [],
+            "details": "Use libraries such as 'hid-barcode-scanner' or 'usb-barcode-scanner' to detect and read input from USB scanners. Implement logic to auto-activate scanning when a supported device is detected. Ensure compatibility with multiple platforms (Windows, Linux, Mac).",
+            "status": "pending",
+            "testStrategy": "Connect various supported scanners and verify that input is detected and scanning starts automatically upon device connection.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Parse and Validate Barcode Data (Code128, QR, ISBN, Equipment Tags)",
+            "description": "Develop parsing logic to handle and validate different barcode formats including Code128, QR codes, ISBNs, and custom equipment tags.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement format detection and parsing routines for each supported barcode type. Use regular expressions or barcode libraries to distinguish and validate each format. Ensure extensibility for future barcode types.",
+            "status": "pending",
+            "testStrategy": "Scan sample barcodes of each supported type and verify correct parsing and validation. Include edge cases and malformed codes.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement Duplicate Scan Prevention Using Redis",
+            "description": "Prevent duplicate scans of the same code within a 30-minute window by tracking recent scans in Redis.",
+            "dependencies": [
+              2
+            ],
+            "details": "Store each successfully parsed code in Redis with a 30-minute TTL. On each scan, check Redis for recent entries and suppress duplicates. Ensure atomicity to prevent race conditions in high-concurrency scenarios.",
+            "status": "pending",
+            "testStrategy": "Scan the same code multiple times within and outside the 30-minute window. Verify that duplicates are blocked and allowed as appropriate.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Provide Visual and Audio Feedback on Scan Events",
+            "description": "Deliver immediate visual and/or audio feedback to users upon successful or duplicate scans.",
+            "dependencies": [
+              3
+            ],
+            "details": "Integrate frontend and/or hardware feedback mechanisms (e.g., UI notifications, sounds, LED signals). Differentiate feedback for successful scans and duplicate/prevented scans. Ensure feedback is responsive and accessible.",
+            "status": "pending",
+            "testStrategy": "Trigger scan events and verify that appropriate feedback is provided for both successful and duplicate scans.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Broadcast Scan Events via WebSocket for Multi-Device Sync",
+            "description": "Broadcast scan events to all connected clients in real time using WebSocket to ensure multi-device synchronization.",
+            "dependencies": [
+              3
+            ],
+            "details": "Integrate WebSocket server (e.g., using ws or socket.io) to emit scan events to all subscribed clients. Ensure event payload includes all relevant scan data and status (success/duplicate). Handle client reconnections and missed events.",
+            "status": "pending",
+            "testStrategy": "Connect multiple clients, perform scans, and verify that all clients receive real-time updates for each scan event.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Expand into: (1) scanner input parsing and device integration, (2) duplicate prevention logic (Redis), (3) feedback UI/UX, (4) WebSocket event broadcasting and sync."
+      },
+      {
+        "id": "19",
+        "title": "Analytics & Reporting Module",
+        "description": "Implement dashboard metrics, report generation, export formats, and custom query builder.",
+        "details": "Use React for dashboard UI, Chart.js or Recharts for charts. Backend aggregates metrics (active sessions, utilization, trends). Generate reports in CSV (papaparse), PDF (pdf-lib), and JSON. Implement custom query builder with dynamic filters.",
+        "testStrategy": "Test all metrics, report exports, and custom queries with sample data.",
+        "priority": "medium",
+        "dependencies": [
+          "3",
+          "16",
+          "17"
+        ],
+        "status": "pending",
+        "subtasks": [],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Break down into: (1) dashboard UI and chart integration, (2) backend metrics aggregation, (3) report generation/export (CSV, PDF, JSON), (4) custom query builder with dynamic filters."
+      },
+      {
+        "id": "20",
+        "title": "Performance Optimization: Backend",
+        "description": "Optimize backend for query speed, caching, connection pooling, and API response times.",
+        "details": "Add DB indexes for frequent queries. Tune Prisma connection pooling. Implement Redis caching for analytics and ETags for conditional requests. Enable gzip compression and rate limiting (express-rate-limit). Monitor with Prometheus/Grafana.",
+        "testStrategy": "Benchmark API response times, cache hit rates, and DB query performance under load.",
+        "priority": "high",
+        "dependencies": [
+          "3",
+          "7"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Optimize Database Queries and Indexes",
+            "description": "Analyze and optimize database queries, adding indexes to columns used in frequent queries to improve retrieval speed.",
+            "dependencies": [],
+            "details": "Review query logs to identify slow or frequently executed queries. Add appropriate indexes to columns involved in filtering, sorting, or joining. Refactor inefficient queries and validate improvements using query analyzers.",
+            "status": "pending",
+            "testStrategy": "Benchmark query execution times before and after optimization. Use database profiling tools to verify index usage and query speed.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Tune Prisma Connection Pooling",
+            "description": "Adjust Prisma ORM connection pooling settings to maximize throughput and minimize latency under concurrent load.",
+            "dependencies": [
+              1
+            ],
+            "details": "Analyze current connection pool configuration. Set optimal values for pool size, timeout, and idle connections based on expected traffic. Test under simulated load to ensure connections are efficiently managed.",
+            "status": "pending",
+            "testStrategy": "Simulate concurrent API requests and monitor connection pool metrics. Validate that connection exhaustion and latency are minimized.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement Redis Caching and ETag Support",
+            "description": "Integrate Redis caching for analytics endpoints and add ETag headers for conditional GET requests to reduce redundant processing.",
+            "dependencies": [
+              1
+            ],
+            "details": "Set up Redis and cache results of analytics queries. Implement logic to generate and validate ETag headers for endpoints serving frequently accessed data. Ensure cache invalidation strategies are in place.",
+            "status": "pending",
+            "testStrategy": "Measure cache hit rates and API response times. Validate ETag behavior using HTTP clients to confirm conditional requests return 304 when appropriate.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Enable Gzip Compression and Rate Limiting",
+            "description": "Configure Express middleware for gzip compression and set up express-rate-limit to control request rates and improve API efficiency.",
+            "dependencies": [],
+            "details": "Install and configure compression middleware to enable gzip for all API responses. Set up express-rate-limit with thresholds appropriate for expected usage patterns. Test for correct limiting and compressed responses.",
+            "status": "pending",
+            "testStrategy": "Verify response headers and payload sizes for gzip compression. Simulate high request rates to confirm rate limiting is enforced.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Integrate Monitoring with Prometheus and Grafana",
+            "description": "Set up Prometheus metrics collection and Grafana dashboards to monitor backend performance, including query speed, cache efficiency, and API response times.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Instrument backend code to expose relevant metrics (e.g., response times, cache hits, DB query durations). Configure Prometheus to scrape metrics and Grafana to visualize trends and alert on anomalies.",
+            "status": "pending",
+            "testStrategy": "Validate that all key metrics are collected and displayed in Grafana. Simulate load and verify that monitoring reflects real-time performance changes.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 5,
+        "expansionPrompt": "Expand into: (1) DB indexing and query optimization, (2) connection pooling tuning, (3) Redis caching and ETag implementation, (4) compression and rate limiting, (5) monitoring setup (Prometheus/Grafana)."
+      },
+      {
+        "id": "21",
+        "title": "Performance Optimization: Frontend",
+        "description": "Reduce bundle size, enable code splitting, lazy loading, image optimization, and React performance best practices.",
+        "details": "Use Vite dynamic imports for code splitting. Enable tree shaking. Lazy load components with React.lazy/Suspense. Optimize images with next/image or vite-plugin-image-optimizer. Memoize expensive components and use virtual scrolling for large lists.",
+        "testStrategy": "Measure bundle size, initial load time, and component render performance. Use Lighthouse and React DevTools.",
+        "priority": "high",
+        "dependencies": [
+          "14"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Code Splitting with Vite Dynamic Imports",
+            "description": "Enable code splitting to reduce initial bundle size using Vite's dynamic import capabilities.",
+            "dependencies": [],
+            "details": "Refactor routes and major components to use dynamic imports with Vite. Ensure that only necessary code is loaded for each route or feature. Validate that tree shaking is enabled in the build configuration.",
+            "status": "pending",
+            "testStrategy": "Measure bundle size before and after code splitting. Use Lighthouse to verify reduced initial load time.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Enable Lazy Loading for React Components",
+            "description": "Lazy load non-critical React components using React.lazy and Suspense to improve initial render performance.",
+            "dependencies": [
+              1
+            ],
+            "details": "Identify components that are not required at initial load (e.g., modals, dropdowns, secondary pages). Refactor these components to use React.lazy and wrap them with Suspense for fallback UI. Ensure proper error boundaries for lazy-loaded components.",
+            "status": "pending",
+            "testStrategy": "Use React DevTools Profiler to confirm deferred loading. Measure initial render time and verify fallback UI displays correctly.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Optimize Images Using Automated Tools",
+            "description": "Reduce image payload by optimizing formats, compression, and delivery using next/image or vite-plugin-image-optimizer.",
+            "dependencies": [],
+            "details": "Convert images to modern formats (WebP, AVIF) and automate resizing/compression during build. Implement responsive image techniques (srcset, picture). Integrate lazy loading for images using native loading='lazy' or IntersectionObserver.",
+            "status": "pending",
+            "testStrategy": "Audit image payload with Lighthouse. Verify correct formats and responsive delivery. Measure impact on LCP (Largest Contentful Paint).",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Apply React Performance Best Practices: Memoization and Virtualization",
+            "description": "Optimize expensive components and large lists using memoization (React.memo, useMemo, useCallback) and virtualization.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Profile components to identify slow renders. Apply React.memo to pure components, useMemo/useCallback for expensive calculations and functions. Implement list virtualization (e.g., react-window, react-virtualized) for large data sets.",
+            "status": "pending",
+            "testStrategy": "Use React DevTools Profiler to measure render times before and after optimization. Test list virtualization with large datasets for smooth scrolling and reduced memory usage.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Benchmark and Monitor Frontend Performance",
+            "description": "Establish a baseline and continuously monitor frontend performance using Lighthouse and React DevTools.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Set up automated performance audits in CI/CD using Lighthouse. Regularly profile component render times and bundle sizes. Document improvements and regressions. Share reports with the team for ongoing optimization.",
+            "status": "pending",
+            "testStrategy": "Run Lighthouse and React DevTools profiling before and after each optimization. Track metrics such as bundle size, initial load time, LCP, and component render durations.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Divide into: (1) bundle size reduction and code splitting, (2) lazy loading and tree shaking, (3) image optimization, (4) React performance tuning (memoization, virtual scrolling)."
+      },
+      {
+        "id": "22",
+        "title": "Performance Optimization: Background Jobs",
+        "description": "Optimize Bull queue jobs, implement job priority, retry logic, and monitoring dashboard.",
+        "details": "Configure Bull with Redis for job queues. Set job priorities and retry policies. Implement job monitoring dashboard (bull-board v4+). Handle failed jobs with alerts.",
+        "testStrategy": "Test job scheduling, retries, and dashboard monitoring under simulated load.",
+        "priority": "medium",
+        "dependencies": [
+          "3",
+          "20"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Configure Bull with Redis for Reliable Job Queues",
+            "description": "Set up Bull to use Redis as the backend for job queues, ensuring persistence and correct Redis memory policy.",
+            "dependencies": [],
+            "details": "Install Bull and connect it to the Redis instance. Enable Redis persistence (AOF recommended) and set maxmemory-policy to 'noeviction' to prevent job loss. Document configuration in the codebase and verify Redis connection.",
+            "status": "pending",
+            "testStrategy": "Start the application and verify that jobs can be enqueued and dequeued. Simulate Redis restarts to ensure jobs persist.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement Job Priority and Rate Limiting",
+            "description": "Enable job prioritization and configure rate limiting for Bull queues.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use Bull's job options to assign priorities to different job types. Configure the queue's limiter to control the rate of job processing as needed for system stability.",
+            "status": "pending",
+            "testStrategy": "Enqueue jobs with varying priorities and verify execution order. Test rate limiting by submitting jobs in bulk and observing processing rates.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Add Robust Retry Logic for Failed Jobs",
+            "description": "Configure retry policies for jobs to handle transient failures and ensure reliability.",
+            "dependencies": [
+              1
+            ],
+            "details": "Set up retry strategies in Bull, such as maximum attempts and backoff delays. Ensure failed jobs are retried according to policy and not lost. Document retry configuration.",
+            "status": "pending",
+            "testStrategy": "Force job failures and verify that jobs are retried according to the configured policy. Check that jobs are eventually marked as failed after exceeding retries.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Integrate bull-board v4+ for Job Monitoring Dashboard",
+            "description": "Set up bull-board v4+ to provide a web-based dashboard for monitoring and managing Bull queues.",
+            "dependencies": [
+              1
+            ],
+            "details": "Install and configure bull-board v4+ in the backend. Expose the dashboard at a secure endpoint. Ensure it displays job status, progress, and allows manual job management.",
+            "status": "pending",
+            "testStrategy": "Access the dashboard and verify that all queues and jobs are visible. Test job filtering, status updates, and manual job actions.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Implement Alerts for Failed Jobs",
+            "description": "Set up alerting for jobs that fail after all retries, to enable prompt intervention.",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Configure Bull event listeners for failed jobs. Integrate with notification systems (e.g., email, Slack) to send alerts when jobs fail permanently. Document alerting logic.",
+            "status": "pending",
+            "testStrategy": "Simulate job failures and verify that alerts are triggered and delivered to the configured channels.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Break into: (1) Bull queue configuration (priority, retry), (2) monitoring dashboard setup (bull-board), (3) failed job handling and alerting."
+      },
+      {
+        "id": "23",
+        "title": "Comprehensive Unit and Integration Testing",
+        "description": "Write and run unit and integration tests for backend (Vitest) and frontend (React Testing Library) to achieve >80% coverage.",
+        "details": "Write tests for all critical paths, API endpoints, DB operations, and UI components. Use coverage reports to identify gaps. Mock external dependencies (Google API, scanner).",
+        "testStrategy": "Run test suites, check coverage, and ensure all tests pass. Address uncovered code.",
+        "priority": "high",
+        "dependencies": [
+          "3",
+          "8",
+          "14",
+          "16",
+          "17",
+          "18",
+          "19"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Identify Critical Backend and Frontend Test Targets",
+            "description": "List all critical backend (API endpoints, DB operations) and frontend (UI components, user flows) code paths that require unit and integration testing.",
+            "dependencies": [],
+            "details": "Review the codebase and documentation to enumerate all critical backend and frontend modules, endpoints, and UI components. Prioritize based on business logic, user impact, and recent changes. Document the list for test planning.",
+            "status": "pending",
+            "testStrategy": "Peer review the list for completeness and alignment with requirements.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Write Unit Tests for Backend and Frontend Components",
+            "description": "Develop unit tests for backend (Vitest) and frontend (React Testing Library) covering all critical logic and edge cases.",
+            "dependencies": [
+              1
+            ],
+            "details": "For each identified backend and frontend target, write unit tests that validate expected behavior, handle edge cases, and use mocks for external dependencies (e.g., Google API, scanner). Ensure tests are isolated and fast.",
+            "status": "pending",
+            "testStrategy": "Run unit test suites locally and in CI; verify all tests pass and cover intended logic.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Develop Integration Tests for Backend and Frontend Interactions",
+            "description": "Implement integration tests to verify interactions between backend modules and between frontend components and backend APIs.",
+            "dependencies": [
+              1
+            ],
+            "details": "Write integration tests using Vitest for backend module interactions (e.g., API to DB) and React Testing Library for frontend-to-backend flows. Mock external services where needed. Focus on realistic data and negative scenarios.",
+            "status": "pending",
+            "testStrategy": "Execute integration test suites; confirm that all critical paths and error cases are exercised.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Generate and Analyze Test Coverage Reports",
+            "description": "Run all test suites and generate coverage reports to identify untested code and gaps.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Use built-in coverage tools (e.g., Vitest, React Testing Library) to produce detailed reports. Review uncovered lines and branches, and correlate with the list of critical paths. Document areas needing additional tests.",
+            "status": "pending",
+            "testStrategy": "Review coverage reports; ensure >80% overall coverage and no critical gaps remain.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Address Coverage Gaps and Finalize Test Suites",
+            "description": "Write additional tests to cover gaps identified in coverage reports and finalize all test suites for CI integration.",
+            "dependencies": [
+              4
+            ],
+            "details": "For each uncovered or under-tested area, add targeted unit or integration tests. Re-run coverage analysis to confirm >80% threshold is met. Ensure all tests are stable and integrate with CI pipelines.",
+            "status": "pending",
+            "testStrategy": "Re-run all tests in CI; verify coverage threshold is achieved and all tests pass reliably.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 8,
+        "recommendedSubtasks": 5,
+        "expansionPrompt": "List: (1) backend unit tests (Vitest), (2) frontend unit tests (React Testing Library), (3) integration tests for API/UI, (4) coverage analysis and gap remediation, (5) mocking external dependencies."
+      },
+      {
+        "id": "24",
+        "title": "End-to-End Testing and Multi-Device Sync Validation",
+        "description": "Implement E2E tests for user workflows, device sync, authentication, and error handling using Playwright or Cypress.",
+        "details": "Write E2E tests for check-in/out, settings, scanner, and reporting flows. Simulate multi-device scenarios. Test authentication and error cases. Use Docker for test environment.",
+        "testStrategy": "Run E2E tests on CI, validate all workflows, and check for regressions.",
+        "priority": "high",
+        "dependencies": [
+          "23"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set Up E2E Test Environment with Docker and CI Integration",
+            "description": "Prepare a reproducible end-to-end testing environment using Docker, and configure continuous integration (CI) to run tests automatically.",
+            "dependencies": [],
+            "details": "Create Dockerfiles and docker-compose configurations for the application and test runner (Playwright or Cypress). Integrate with CI (e.g., GitHub Actions, GitLab CI) to execute E2E tests on every push or pull request. Ensure environment variables and secrets are securely managed.",
+            "status": "pending",
+            "testStrategy": "Verify environment setup by running a sample test in CI and confirming logs, screenshots, and artifacts are generated.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement E2E Tests for Core User Workflows (Check-in/out, Settings, Scanner, Reporting)",
+            "description": "Write end-to-end tests covering main user flows: check-in/out, settings management, scanner usage, and reporting features.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use Playwright or Cypress to script user journeys for check-in/out, updating settings, using the scanner, and generating/viewing reports. Ensure tests cover both typical and edge cases, including form validation and navigation.",
+            "status": "pending",
+            "testStrategy": "Run tests locally and in CI, validate that all workflows complete successfully, and check for regressions after code changes.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Simulate and Validate Multi-Device Synchronization Scenarios",
+            "description": "Design and execute tests that simulate multiple devices interacting with the system to validate real-time sync and data consistency.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Leverage Playwright's parallel browser context or Cypress workarounds to simulate multiple users/devices. Test scenarios such as concurrent check-in/out, settings updates, and real-time data propagation. Validate that changes on one device are reflected on others without conflicts.",
+            "status": "pending",
+            "testStrategy": "Assert data consistency and synchronization across simulated devices by comparing state before and after actions in parallel sessions.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Test Authentication Flows and Session Management",
+            "description": "Develop E2E tests for login, logout, session expiration, and access control, ensuring secure and correct authentication behavior.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Script tests for valid and invalid login attempts, session timeouts, and role-based access restrictions. Validate that protected routes are inaccessible without authentication and that session handling is robust.",
+            "status": "pending",
+            "testStrategy": "Check that authentication flows work as expected, unauthorized access is blocked, and session expiration triggers correct UI and backend responses.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Implement E2E Tests for Error Handling and Edge Cases",
+            "description": "Write tests to verify application behavior under error conditions, such as network failures, invalid inputs, and backend errors.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Simulate network interruptions, server errors, and invalid user actions using Playwright or Cypress capabilities. Assert that the application displays appropriate error messages, recovers gracefully, and logs errors as expected.",
+            "status": "pending",
+            "testStrategy": "Intentionally trigger errors and verify that the UI and logs reflect correct error handling, with no unhandled exceptions or data corruption.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Divide into: (1) E2E test suite setup (Playwright/Cypress), (2) workflow coverage (check-in/out, settings, reporting), (3) multi-device scenario simulation, (4) authentication/error case testing.",
+        "updatedAt": "2025-10-13T22:34:22.081Z"
+      },
+      {
+        "id": "25",
+        "title": "Security Testing and Hardening",
+        "description": "Conduct security testing for OWASP Top 10, JWT validation, SQL injection, and XSS prevention.",
+        "details": "Use automated scanners (OWASP ZAP, Snyk) and manual testing. Validate JWT handling, parameterized queries, and input sanitization. Add security headers (helmet.js).",
+        "testStrategy": "Run vulnerability scans, attempt common attacks, and verify no critical issues.",
+        "priority": "high",
+        "dependencies": [
+          "4",
+          "5",
+          "7",
+          "23"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Automated OWASP Top 10 Vulnerability Scanning",
+            "description": "Run automated security scans targeting OWASP Top 10 vulnerabilities using tools like OWASP ZAP and Snyk.",
+            "dependencies": [],
+            "details": "Configure OWASP ZAP and Snyk to scan the application for vulnerabilities such as injection, broken authentication, XSS, and security misconfiguration. Document all findings and prioritize remediation based on severity.",
+            "status": "pending",
+            "testStrategy": "Review scan reports, verify detection of OWASP Top 10 issues, and confirm remediation steps for critical findings.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Manual Penetration Testing for OWASP Top 10 Risks",
+            "description": "Perform manual penetration tests to validate the effectiveness of automated scans and uncover additional OWASP Top 10 vulnerabilities.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use the OWASP Web Application Penetration Checklist to manually test for vulnerabilities such as authentication bypass, access control flaws, and session management issues. Attempt common attack vectors not always detected by automated tools.",
+            "status": "pending",
+            "testStrategy": "Document manual test cases, reproduce vulnerabilities, and verify that mitigations are effective.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "JWT Validation and Security Assessment",
+            "description": "Assess and validate the security of JWT handling, including token validation, rotation, revocation, and secure storage.",
+            "dependencies": [
+              1
+            ],
+            "details": "Review JWT implementation for proper validation of claims (exp, iss, aud), secure cookie flags (HttpOnly, Secure, SameSite), and token rotation/revocation mechanisms. Attempt token replay and tampering attacks.",
+            "status": "pending",
+            "testStrategy": "Test login, refresh, and logout flows; attempt token misuse; verify cookie attributes and expiration.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "SQL Injection and XSS Prevention Validation",
+            "description": "Test for SQL injection and cross-site scripting (XSS) vulnerabilities, ensuring use of parameterized queries and input sanitization.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Attempt SQL injection and XSS attacks on all user input fields. Verify that parameterized queries are used for database access and that input is properly sanitized and encoded. Test both reflected and stored XSS scenarios.",
+            "status": "pending",
+            "testStrategy": "Use automated and manual techniques to inject malicious payloads; confirm that no exploitable vulnerabilities exist.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Security Headers and Middleware Hardening",
+            "description": "Implement and validate security headers using helmet.js and other middleware to protect against common web threats.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Configure helmet.js to set headers such as Content-Security-Policy, X-Frame-Options, X-XSS-Protection, and Strict-Transport-Security. Verify headers are present and correctly configured in HTTP responses.",
+            "status": "pending",
+            "testStrategy": "Inspect HTTP responses for required headers; use security header analysis tools to confirm compliance.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 8,
+        "recommendedSubtasks": 5,
+        "expansionPrompt": "Expand into: (1) automated vulnerability scanning, (2) manual penetration testing, (3) JWT validation and security header implementation, (4) SQL injection and XSS prevention, (5) remediation and retesting."
+      },
+      {
+        "id": "26",
+        "title": "Docker Deployment and Health Checks",
+        "description": "Finalize Docker Compose deployment, add health checks, and test on target hardware.",
+        "details": "Configure Docker Compose for all services. Add health checks (mysqladmin ping, redis-cli ping, /api/health, HTTP 200). Use restart policies and volume management. Test deployment on server PC (192.168.1.100).",
+        "testStrategy": "Deploy on local network, verify all services are healthy and restart as needed.",
+        "priority": "high",
+        "dependencies": [
+          "1",
+          "3",
+          "7",
+          "20"
+        ],
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Develop docker-compose.yml for Development with Hot-Reload",
+            "description": "Create a Docker Compose file optimized for local development, enabling hot-reload, volume mounting for code, and development-specific settings (e.g., debug profiles, bind mounts).",
+            "dependencies": [],
+            "details": "Define services for backend, frontend, database (MySQL), and Redis. Use bind mounts for code directories to enable live reloading without rebuilds. Set appropriate restart policies and named volumes for data persistence. Include development-only services (e.g., webpack) using profiles. Document each service’s purpose and configuration.",
+            "status": "done",
+            "testStrategy": "Run docker-compose up, modify code locally, and verify changes reflect instantly in containers without rebuild. Check that all services start and remain healthy.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Develop docker-compose.prod.yml for Production with Health Checks",
+            "description": "Create a production-optimized Compose file with multi-stage builds, minimal images, explicit health checks, and resource limits.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use multi-stage Dockerfiles for backend and frontend. Define health checks for MySQL (mysqladmin ping), Redis (redis-cli ping), and backend API (/api/health returning HTTP 200). Set deploy.replicas, resource limits (CPU/memory), and restart: always policies. Use secrets for sensitive data and custom networks for isolation. Place volumes at the bottom for readability.",
+            "status": "done",
+            "testStrategy": "Deploy with docker-compose -f docker-compose.prod.yml up, verify all health checks pass, and confirm services restart automatically on failure.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Update Backend Dockerfile with Multi-Stage Build",
+            "description": "Refactor the Backend Dockerfile to use a builder stage for dependencies and a runner stage with only production necessities.",
+            "dependencies": [],
+            "details": "First stage installs dev dependencies and builds the app. Second stage copies only the built artifacts and production node_modules. Use alpine or distroless base images for minimal footprint. Set non-root user, expose only necessary ports, and define HEALTHCHECK instruction for /api/health endpoint.",
+            "status": "done",
+            "testStrategy": "Build and run the image, verify it starts, serves the API, and responds correctly to health checks. Check image size and non-root user.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Update Frontend Dockerfile with Multi-Stage Build and Nginx",
+            "description": "Create a Frontend Dockerfile with dependency, builder, and runner stages, serving static assets via Nginx in production.",
+            "dependencies": [],
+            "details": "First stage installs dependencies, second builds the app, third serves it via Nginx with optimized config. Use .dockerignore to exclude unnecessary files. Set HEALTHCHECK for the frontend service if applicable. Minimize final image size.",
+            "status": "done",
+            "testStrategy": "Build and run the image, access the frontend in a browser, verify assets are served correctly, and check for minimal image size.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Create Root package.json with Docker-Centric Scripts",
+            "description": "Add Docker-specific npm scripts (start, prod, stop, logs, restart, clean) to root package.json for one-command workflows.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Define scripts like npm run start (dev compose), npm run prod (prod compose), npm run stop (compose down), npm run logs (compose logs), npm run restart (compose restart), and npm run clean (remove containers, volumes, networks). Document each script’s purpose.",
+            "status": "done",
+            "testStrategy": "Execute each script, verify correct Docker Compose behavior, and ensure no manual docker-compose commands are needed for routine tasks.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 6,
+            "title": "Create One-Click start-dev.bat and start-prod.bat for Windows",
+            "description": "Write Windows batch files that, when double-clicked, start the dev or prod Docker environment with a single action.",
+            "dependencies": [
+              1,
+              2,
+              5
+            ],
+            "details": "Each .bat file should run the appropriate npm script (start or prod) in a new command window, ensuring the user sees logs. Handle errors gracefully and provide clear feedback. Test on target Windows machines.",
+            "status": "done",
+            "testStrategy": "Double-click each .bat file, verify all services start, and check that the command window remains open with live logs.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 7,
+            "title": "Update .env.example and .env.production with All Variables",
+            "description": "Ensure all required environment variables are documented in .env.example and set in .env.production for production use.",
+            "dependencies": [],
+            "details": "List every variable needed by backend, frontend, database, and Redis services. Include secrets, URLs, ports, and feature flags. Keep .env.production out of version control. Provide clear comments in .env.example.",
+            "status": "done",
+            "testStrategy": "Copy .env.example to .env.production, fill in values, and verify all services start without missing variable errors.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 8,
+            "title": "Test End-to-End Docker Workflow from Fresh Clone",
+            "description": "Validate the entire Docker setup by testing a clean clone, install, and start of both dev and prod environments.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "details": "From a fresh repository clone, run npm install, then npm start (dev) and npm run prod (production). Verify all services start, health checks pass, and the application is fully functional. Check volume persistence and automatic restarts.",
+            "status": "done",
+            "testStrategy": "Follow the documented workflow, confirm no manual intervention is needed, and validate all health endpoints and application features work as expected.",
+            "parentId": "undefined"
+          }
+        ]
+      },
+      {
+        "id": "27",
+        "title": "Network and Firewall Configuration",
+        "description": "Configure network, firewall rules, and access controls for local-only access and optional VPN.",
+        "details": "Set firewall to allow only specified ports (3000, 3001, 3308, 6380) on 192.168.1.0/24. Block external access. Set up VPN for remote admin if required. Document configuration.",
+        "testStrategy": "Test access from allowed and blocked IPs. Attempt unauthorized access and verify denial.",
+        "priority": "medium",
+        "dependencies": [
+          "26"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Audit and Document Current Network Topology and Requirements",
+            "description": "Review and document the existing network layout, identify all devices, subnets, and required access patterns for local and remote administration.",
+            "dependencies": [],
+            "details": "Map out the 192.168.1.0/24 subnet, list all devices/services needing access to ports 3000, 3001, 3308, and 6380, and determine if VPN access is required for remote administration. Document findings for reference.",
+            "status": "pending",
+            "testStrategy": "Verify documentation accuracy by cross-checking with network inventory and interviewing stakeholders.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Configure Firewall Rules for Local-Only Access",
+            "description": "Set up firewall rules to allow only specified ports (3000, 3001, 3308, 6380) for the 192.168.1.0/24 subnet and block all other inbound and outbound traffic by default.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement a 'default deny' policy, explicitly allowing only the required ports for the local subnet. Ensure all other ports and external IP ranges are blocked. Use explicit drop rules at the end of the rule set.",
+            "status": "pending",
+            "testStrategy": "Attempt connections to allowed ports from within the subnet and verify access. Attempt connections from outside the subnet and verify denial.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement Access Controls and Role-Based Restrictions",
+            "description": "Apply access controls to firewall and network management interfaces, restricting changes and access to authorized personnel only.",
+            "dependencies": [
+              2
+            ],
+            "details": "Configure role-based access control (RBAC) for firewall administration. Limit management interface access to secure internal hosts or via VPN. Ensure strong authentication for all admin accounts.",
+            "status": "pending",
+            "testStrategy": "Test admin access from authorized and unauthorized accounts and locations. Attempt privilege escalation and verify restrictions.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Set Up and Configure VPN for Remote Administration (If Required)",
+            "description": "Deploy a VPN solution to enable secure remote administrative access, ensuring only authenticated users can access the internal network.",
+            "dependencies": [
+              3
+            ],
+            "details": "Install and configure a VPN server (e.g., OpenVPN, WireGuard). Restrict VPN access to authorized users. Ensure VPN traffic is routed only to necessary internal resources and is logged.",
+            "status": "pending",
+            "testStrategy": "Connect via VPN as an authorized user and verify access to internal resources. Attempt VPN connection as unauthorized user and verify denial.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Document Configuration and Validate Security Posture",
+            "description": "Create comprehensive documentation of the network and firewall configuration, including rules, access controls, and VPN setup. Validate the configuration through testing and review.",
+            "dependencies": [
+              4
+            ],
+            "details": "Document all firewall rules, access controls, and VPN settings. Include diagrams and rationale for each rule. Perform a security review and penetration test to ensure compliance with requirements.",
+            "status": "pending",
+            "testStrategy": "Review documentation for completeness. Conduct penetration tests and review logs to confirm only intended access is possible.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Break into: (1) firewall rule setup and validation, (2) VPN configuration for remote admin, (3) documentation of network configuration."
+      },
+      {
+        "id": "28",
+        "title": "Documentation: Technical, User, and Developer",
+        "description": "Write and publish all required documentation: API (OpenAPI), DB schema, ADRs, deployment, troubleshooting, user guides, and development docs.",
+        "details": "Generate OpenAPI docs with Swagger. Document DB schema with Prisma. Write ADRs for key decisions. Create user guides for librarians, students, and admins. Add README, contributing, code style, and testing guides.",
+        "testStrategy": "Review docs for completeness and clarity. Validate API docs with Swagger UI.",
+        "priority": "medium",
+        "dependencies": [
+          "3",
+          "8",
+          "14",
+          "16",
+          "17",
+          "26"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Generate and Review OpenAPI Documentation with Swagger",
+            "description": "Create comprehensive API documentation using Swagger for all REST endpoints, ensuring accuracy and completeness.",
+            "dependencies": [],
+            "details": "Use Swagger to auto-generate OpenAPI 3.1 documentation from the Express.js codebase. Manually review and supplement endpoint descriptions, request/response schemas, and authentication details. Ensure all endpoints are covered and examples are included.",
+            "status": "pending",
+            "testStrategy": "Validate documentation in Swagger UI. Cross-check endpoints and schemas against implemented API. Solicit feedback from developers.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Document Database Schema with Prisma",
+            "description": "Produce clear and up-to-date documentation of the database schema using Prisma's tools and conventions.",
+            "dependencies": [],
+            "details": "Leverage Prisma's schema files and introspection tools to generate entity-relationship diagrams and field descriptions. Add explanations for key tables, relationships, and constraints. Ensure documentation is accessible to both developers and technical stakeholders.",
+            "status": "pending",
+            "testStrategy": "Compare documentation with actual schema in the database. Review with backend developers for accuracy and clarity.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Write Architecture Decision Records (ADRs) for Key Technical Choices",
+            "description": "Create ADRs documenting major architectural and technology decisions made during the project.",
+            "dependencies": [],
+            "details": "Identify significant decisions (e.g., technology stack, deployment strategy, authentication approach). Use a standard ADR template to record context, decision, alternatives, and consequences. Store ADRs in the repository for version control.",
+            "status": "pending",
+            "testStrategy": "Peer review ADRs for completeness and clarity. Ensure each major decision is documented and rationale is clear.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Develop User Guides for Librarians, Students, and Admins",
+            "description": "Write clear, role-specific user guides covering core workflows, troubleshooting, and FAQs.",
+            "dependencies": [],
+            "details": "Structure guides by user role. Include step-by-step instructions, annotated screenshots, and troubleshooting tips. Address common tasks and issues for librarians, students, and admins. Use plain language and provide examples.",
+            "status": "pending",
+            "testStrategy": "Have representatives from each user group review the guides for clarity and usefulness. Revise based on feedback.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Create Developer and Project Documentation (README, Contributing, Code Style, Testing Guides)",
+            "description": "Prepare comprehensive developer-facing documentation to support onboarding and ongoing contribution.",
+            "dependencies": [],
+            "details": "Draft a README with project overview, setup instructions, and key links. Write contributing guidelines, code style conventions, and testing instructions. Ensure consistency in formatting and tone. Store docs in the repository root.",
+            "status": "pending",
+            "testStrategy": "Onboard a new developer using only the documentation. Gather feedback on gaps or ambiguities and update accordingly.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 6,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Divide into: (1) API and DB schema documentation, (2) ADRs and deployment guides, (3) user guides and troubleshooting, (4) developer docs (README, contributing, code style, testing)."
+      },
+      {
+        "id": "29",
+        "title": "User Training and Onboarding Materials",
+        "description": "Develop training materials and onboarding flows for librarians, admins, and students.",
+        "details": "Create quick start guides, video tutorials, and onboarding checklists. Implement in-app onboarding for new users. Collect feedback for improvements.",
+        "testStrategy": "Pilot training with sample users and gather feedback on clarity and effectiveness.",
+        "priority": "medium",
+        "dependencies": [
+          "28"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Define User Segments and Training Needs",
+            "description": "Identify distinct user groups (librarians, admins, students) and document their specific onboarding and training requirements.",
+            "dependencies": [],
+            "details": "Conduct stakeholder interviews and review user roles to clarify the unique workflows and knowledge gaps for each segment. Create a requirements matrix mapping user types to onboarding content and training objectives.",
+            "status": "pending",
+            "testStrategy": "Review requirements matrix with stakeholders for completeness and accuracy.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Develop Quick Start Guides and Onboarding Checklists",
+            "description": "Create concise, role-specific quick start guides and onboarding checklists for each user segment.",
+            "dependencies": [
+              1
+            ],
+            "details": "Draft step-by-step guides and checklists tailored to librarians, admins, and students. Ensure instructions are clear, visual, and actionable, following best practices for simplicity and relevance[5][6]. Format materials for both print and digital delivery.",
+            "status": "pending",
+            "testStrategy": "Pilot guides with sample users from each segment and collect feedback on clarity and usefulness.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Produce Video Tutorials Covering Core Workflows",
+            "description": "Script, record, and edit video tutorials demonstrating key workflows and features for each user group.",
+            "dependencies": [
+              1
+            ],
+            "details": "Identify core tasks for each segment and storyboard short, focused videos. Use screen recording and voiceover to illustrate actions. Include visual cues and contextual assistance as recommended in onboarding best practices[1][2]. Host videos on an accessible platform.",
+            "status": "pending",
+            "testStrategy": "Share videos with pilot users and gather feedback on engagement and instructional value.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Implement In-App Onboarding Flows",
+            "description": "Design and integrate interactive in-app onboarding experiences for new users, tailored by role.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Use tooltips, walkthroughs, and contextual prompts to guide users through initial setup and core features[2][3]. Allow users to skip or revisit onboarding steps. Personalize flows based on user segment and provide progress indicators and success messages.",
+            "status": "pending",
+            "testStrategy": "Test onboarding flows with new users, track completion rates, and monitor user engagement metrics.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Collect and Analyze User Feedback for Continuous Improvement",
+            "description": "Establish feedback mechanisms and analyze responses to refine training materials and onboarding flows.",
+            "dependencies": [
+              2,
+              3,
+              4
+            ],
+            "details": "Integrate surveys and feedback prompts at the end of onboarding and training sessions[3]. Review feedback regularly to identify pain points and improvement opportunities. Iterate materials and flows based on user input and engagement data.",
+            "status": "pending",
+            "testStrategy": "Monitor feedback response rates and track improvements in user satisfaction and onboarding effectiveness after updates.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 5,
+        "recommendedSubtasks": 3,
+        "expansionPrompt": "Break into: (1) quick start guides and checklists, (2) video tutorial creation, (3) in-app onboarding flow and feedback collection."
+      },
+      {
+        "id": "30",
+        "title": "Production Readiness Review and Go-Live Checklist",
+        "description": "Conduct final review against success criteria, run go-live checklist, and monitor initial production usage.",
+        "details": "Verify all 26 endpoints, 13 tabs, Docker deployment, multi-device sync, scanner integration, backup/restore, documentation, and training. Monitor logs and metrics for first week. Prepare incident response plan.",
+        "testStrategy": "Run through checklist, monitor system, and address any critical issues before full rollout.",
+        "priority": "high",
+        "dependencies": [
+          "24",
+          "25",
+          "26",
+          "27",
+          "28",
+          "29"
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Verify All Functional Components Against Success Criteria",
+            "description": "Systematically validate all 26 endpoints, 13 tabs, multi-device sync, scanner integration, and backup/restore features to ensure they meet defined success criteria.",
+            "dependencies": [],
+            "details": "Use the documented acceptance criteria for each component. Perform manual and automated tests to confirm endpoints respond correctly, tabs render as expected, device sync works across platforms, scanner integration is operational, and backup/restore functions reliably. Record results and flag any deviations for remediation.",
+            "status": "pending",
+            "testStrategy": "Run regression and acceptance tests for each component. Use API testing tools and cross-device manual checks.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Validate Docker Deployment and Environment Configuration",
+            "description": "Confirm Docker deployment works as intended and all environment variables are correctly set for production.",
+            "dependencies": [
+              1
+            ],
+            "details": "Deploy the application using the production Docker Compose setup. Verify all containers (backend, frontend, MySQL, Redis, scanner service) start successfully and health checks pass. Ensure environment variables for secrets, ports, and service configuration are correctly loaded and documented.",
+            "status": "pending",
+            "testStrategy": "Deploy to a staging/production-like environment, check container logs, run health checks, and validate service accessibility.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Review and Finalize Documentation and Training Materials",
+            "description": "Ensure all user, API, and operational documentation is complete and accessible, and training materials are prepared for end-users and support staff.",
+            "dependencies": [
+              1
+            ],
+            "details": "Audit documentation for completeness and accuracy, including API docs, user guides, and operational runbooks. Prepare and review training materials for relevant stakeholders. Confirm documentation is stored in a central, accessible location.",
+            "status": "pending",
+            "testStrategy": "Conduct documentation walkthroughs with team members and stakeholders. Validate training materials through sample training sessions.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Monitor Initial Production Usage and System Health",
+            "description": "Set up and actively monitor logs, metrics, and alerts for the first week of production to detect and address issues promptly.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Configure monitoring tools to track key metrics (error rates, latency, resource usage) and log aggregation. Establish alerting thresholds and ensure on-call rotation is in place. Review logs daily and respond to anomalies or incidents.",
+            "status": "pending",
+            "testStrategy": "Simulate production load, verify monitoring dashboards, and test alerting mechanisms. Review incident response effectiveness during the monitoring period.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Prepare and Validate Incident Response Plan",
+            "description": "Develop, review, and test the incident response plan to ensure readiness for handling production issues.",
+            "dependencies": [
+              4
+            ],
+            "details": "Draft an incident response plan covering escalation paths, communication protocols, and recovery procedures. Conduct a tabletop exercise or drill to validate the plan. Update the plan based on feedback and ensure all team members are familiar with their roles.",
+            "status": "pending",
+            "testStrategy": "Run an incident response simulation and evaluate team performance and plan effectiveness. Adjust plan as needed based on outcomes.",
+            "parentId": "undefined"
+          }
+        ],
+        "complexity": 7,
+        "recommendedSubtasks": 4,
+        "expansionPrompt": "Divide into: (1) success criteria verification, (2) go-live checklist execution, (3) initial production monitoring (logs, metrics), (4) incident response plan preparation."
+      }
+    ],
+    "metadata": {
+      "version": "1.0.0",
+      "lastModified": "2025-10-13T22:34:22.083Z",
+      "taskCount": 30,
+      "completedCount": 12,
+      "tags": [
+        "master"
+      ]
+    }
+  }
+}

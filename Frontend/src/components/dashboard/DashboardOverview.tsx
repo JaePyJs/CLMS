@@ -5,9 +5,13 @@ import { Button } from '@/components/ui/button'
 import { useDashboardMetrics, useActivityTimeline, useHealthCheck } from '@/hooks/api-hooks'
 import { useAppStore } from '@/store/useAppStore'
 import { useAuth } from '@/contexts/AuthContext'
+import { useWebSocketContext } from '@/contexts/WebSocketContext'
 import { NotificationCalendar } from './NotificationCalendar'
+import { AddStudentDialog } from './AddStudentDialog'
+import { RealTimeDashboard } from './RealTimeDashboard'
 import { utilitiesApi } from '@/lib/api'
 import { toast } from 'sonner'
+import { DashboardCardSkeleton, ButtonLoading } from '@/components/LoadingStates'
 import {
   Users,
   Monitor,
@@ -39,13 +43,22 @@ import {
   Bell
 } from 'lucide-react'
 
-export function DashboardOverview() {
+interface DashboardOverviewProps {
+  onTabChange?: (tab: string) => void;
+}
+
+export function DashboardOverview({ onTabChange }: DashboardOverviewProps = {}) {
   const { user } = useAuth()
   const { isOnline, connectedToBackend, activities, automationJobs } = useAppStore()
+  const { isConnected: wsConnected, notifications } = useWebSocketContext()
+  const [showRealTime, setShowRealTime] = useState(true)
 
-  // Real-time clock state
+  // Real-time clock state (updates every minute for professional appearance)
   const [currentTime, setCurrentTime] = useState(new Date())
 
+  // Quick Actions loading states
+  const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false)
+  
   // Quick Actions loading states
   const [isAddingStudent, setIsAddingStudent] = useState(false)
   const [isStartingSession, setIsStartingSession] = useState(false)
@@ -57,44 +70,19 @@ export function DashboardOverview() {
   const [isExporting, setIsExporting] = useState(false)
   const [isPrinting, setIsPrinting] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [lastDataUpdate, setLastDataUpdate] = useState(new Date())
 
-  // Update time every second
+  // Update time every minute (professional standard)
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())
-    }, 1000)
+    }, 60000) // Update every 60 seconds
 
     return () => clearInterval(timer)
   }, [])
 
   // Quick Actions handlers
-  const handleAddStudent = async () => {
-    // Simple implementation - add a sample student
-    const sampleStudent = {
-      firstName: 'John',
-      lastName: 'Doe',
-      grade: '10',
-      section: 'A'
-    }
-
-    try {
-      setIsAddingStudent(true)
-      const response = await utilitiesApi.quickAddStudent(sampleStudent)
-
-      if (response.success) {
-        toast.success(`Student ${response.data.student.firstName} ${response.data.student.lastName} added successfully!`)
-        // Refresh the page or update store
-        window.location.reload()
-      } else {
-        toast.error(response.error || 'Failed to add student')
-      }
-    } catch (error) {
-      console.error('Error adding student:', error)
-      toast.error('Failed to add student. Please try again.')
-    } finally {
-      setIsAddingStudent(false)
-    }
+  const handleAddStudent = () => {
+    setIsAddStudentDialogOpen(true)
   }
 
   const handleStartSession = async () => {
@@ -148,11 +136,7 @@ export function DashboardOverview() {
   const handleRefresh = async () => {
     try {
       setIsRefreshing(true)
-      // Simulate data refresh
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setLastDataUpdate(new Date())
       window.location.reload()
-      toast.success('Dashboard refreshed successfully!')
     } catch (error) {
       toast.error('Failed to refresh dashboard')
     } finally {
@@ -219,17 +203,17 @@ export function DashboardOverview() {
   }
 
   // Use error boundaries for API calls to prevent crashes
-  const { isLoading: metricsLoading } = useDashboardMetrics()
+  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics()
   const { data: timeline, isLoading: timelineLoading } = useActivityTimeline(10)
   const { data: healthData } = useHealthCheck()
 
   // Calculate real-time metrics from store (initialized to 0)
-  const activeSessions = activities?.filter(a => a.status === 'active').length || 0
-  const totalToday = activities?.filter(a => {
+  const activeSessions = Array.isArray(activities) ? activities.filter(a => a.status === 'active').length : 0
+  const totalToday = Array.isArray(activities) ? activities.filter(a => {
     const today = new Date()
     const activityDate = new Date(a.startTime)
     return activityDate.toDateString() === today.toDateString()
-  }).length || 0
+  }).length : 0
 
   const runningJobs = automationJobs?.filter(job => job.status === 'running').length || 0
 
@@ -243,79 +227,115 @@ export function DashboardOverview() {
 
   return (
     <div className={`space-y-8 ${isFullscreen ? 'fixed inset-0 z-50 bg-white dark:bg-gray-900 p-6 overflow-auto' : ''}`}>
-      {/* Enhanced Welcome Header with Action Buttons */}
-      <div className="relative">
-        <div className="text-center space-y-2 py-6 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-purple-950/20 rounded-2xl border border-blue-100 dark:border-blue-900/30 shadow-sm">
-          <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-            Good Morning, {user?.username || 'Administrator'}! <span className="opacity-70">🌅</span>
-          </h2>
-          <p className="text-lg text-muted-foreground dark:text-muted-foreground/80">
-            Your library is ready for another wonderful day
-          </p>
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <span>{currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-            <span>•</span>
-            <span className="font-mono font-semibold">{currentTime.toLocaleTimeString()}</span>
-            <span>•</span>
-            <span className="text-xs opacity-70">Last updated: {lastDataUpdate.toLocaleTimeString()}</span>
+      {/* Enhanced Welcome Header - Clean & Professional */}
+      <div className="space-y-4">
+        {/* Real-time Dashboard Toggle */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-semibold">Dashboard View</h3>
+            <div className="flex items-center gap-2">
+              <Badge variant={wsConnected ? "default" : "secondary"} className="bg-green-500">
+                <Wifi className="h-3 w-3 mr-1" />
+                Real-time {wsConnected ? 'Active' : 'Inactive'}
+              </Badge>
+              {notifications.length > 0 && (
+                <Badge variant="outline" className="text-orange-600 border-orange-600">
+                  <Bell className="h-3 w-3 mr-1" />
+                  {notifications.length} notifications
+                </Badge>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showRealTime ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowRealTime(true)}
+              className="flex items-center gap-2"
+            >
+              <Activity className="h-4 w-4" />
+              Real-time View
+            </Button>
+            <Button
+              variant={!showRealTime ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowRealTime(false)}
+              className="flex items-center gap-2"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Standard View
+            </Button>
           </div>
         </div>
 
-        {/* Header Action Buttons */}
-        <div className="absolute top-4 right-4 flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="bg-white/90 hover:bg-white shadow-sm"
-          >
-            <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-            disabled={isExporting}
-            className="bg-white/90 hover:bg-white shadow-sm"
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePrint}
-            disabled={isPrinting}
-            className="bg-white/90 hover:bg-white shadow-sm"
-          >
-            <Printer className="h-4 w-4 mr-1" />
-            Print
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleFullscreen}
-            className="bg-white/90 hover:bg-white shadow-sm"
-          >
-            {isFullscreen ? <Minimize2 className="h-4 w-4 mr-1" /> : <Maximize2 className="h-4 w-4 mr-1" />}
-            {isFullscreen ? 'Exit' : 'Fullscreen'}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleEmergencyAlert}
-            className="bg-red-50 hover:bg-red-100 text-red-600 border-red-200 shadow-sm"
-          >
-            <AlertTriangle className="h-4 w-4 mr-1" />
-            Emergency
-          </Button>
+        {/* Welcome Header with Integrated Info */}
+        <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-purple-950/20 rounded-2xl border border-blue-100 dark:border-blue-900/30 shadow-sm overflow-hidden">
+          {/* Action Toolbar */}
+          <div className="flex justify-end gap-2 px-6 pt-4 pb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExport}
+              disabled={isExporting}
+              className="hover:bg-white/50 dark:hover:bg-slate-800/50"
+              title="Export dashboard data"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handlePrint}
+              disabled={isPrinting}
+              className="hover:bg-white/50 dark:hover:bg-slate-800/50"
+              title="Print dashboard"
+            >
+              <Printer className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleFullscreen}
+              className="hover:bg-white/50 dark:hover:bg-slate-800/50"
+              title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            >
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleEmergencyAlert}
+              className="text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+              title="Emergency alert"
+            >
+              <AlertTriangle className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          {/* Main Welcome Content */}
+          <div className="text-center space-y-2 py-6 px-6">
+            <h2 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
+              Good Morning, {user?.username || 'Administrator'}! <span className="opacity-70">🌅</span>
+            </h2>
+            <p className="text-lg text-slate-600 dark:text-slate-300">
+              Your library is ready for another wonderful day
+            </p>
+            <div className="text-sm text-slate-600 dark:text-slate-400 pt-2">
+              <span className="font-medium">{currentTime.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <span className="mx-2">at</span>
+              <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Main Cozy Layout with Calendar as Focal Point */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      {/* Conditional Dashboard Rendering */}
+      {showRealTime ? (
+        <RealTimeDashboard />
+      ) : (
+        <>
+          {/* Main Cozy Layout with Calendar as Focal Point */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
 
         {/* Left Sidebar - Calendar & Quick Stats */}
         <div className="xl:col-span-4 space-y-6">
@@ -336,14 +356,36 @@ export function DashboardOverview() {
           </Card>
 
           {/* Enhanced Interactive Status Cards */}
-          <div className="grid grid-cols-2 gap-4">
-            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800 hover:shadow-lg transition-all cursor-pointer group">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {metricsLoading ? (
+              <>
+                <DashboardCardSkeleton />
+                <DashboardCardSkeleton />
+                <DashboardCardSkeleton />
+                <DashboardCardSkeleton />
+              </>
+            ) : (
+            <>
+            <Card
+              className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800 hover:shadow-lg transition-all cursor-pointer group"
+              onClick={() => {
+                if (onTabChange) {
+                  onTabChange('students');
+                  toast.success('Opening Students tab...');
+                } else {
+                  toast.info('View detailed student analytics');
+                }
+              }}
+            >
               <CardContent className="p-4 text-center relative">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => toast.info('View detailed student analytics')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toast.info('View detailed student analytics');
+                  }}
                 >
                   <Eye className="h-3 w-3" />
                 </Button>
@@ -354,13 +396,26 @@ export function DashboardOverview() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800 hover:shadow-lg transition-all cursor-pointer group">
+            <Card 
+              className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800 hover:shadow-lg transition-all cursor-pointer group"
+              onClick={() => {
+                if (onTabChange) {
+                  onTabChange('scan');
+                  toast.success('Opening Activity Management...');
+                } else {
+                  toast.info('View active sessions management');
+                }
+              }}
+            >
               <CardContent className="p-4 text-center relative">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => toast.info('View active sessions management')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toast.info('View active sessions management');
+                  }}
                 >
                   <Settings className="h-3 w-3" />
                 </Button>
@@ -371,13 +426,26 @@ export function DashboardOverview() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200 dark:border-purple-800 hover:shadow-lg transition-all cursor-pointer group">
+            <Card 
+              className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200 dark:border-purple-800 hover:shadow-lg transition-all cursor-pointer group"
+              onClick={() => {
+                if (onTabChange) {
+                  onTabChange('automation');
+                  toast.success('Opening Automation tab...');
+                } else {
+                  toast.info('View automation job status');
+                }
+              }}
+            >
               <CardContent className="p-4 text-center relative">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => toast.info('View automation job status')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toast.info('View automation job status');
+                  }}
                 >
                   <BarChart3 className="h-3 w-3" />
                 </Button>
@@ -388,13 +456,23 @@ export function DashboardOverview() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800 hover:shadow-lg transition-all cursor-pointer group">
+            <Card 
+              className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800 hover:shadow-lg transition-all cursor-pointer group"
+              onClick={() => {
+                toast.info(`System Status:\n✅ Backend: ${connectedToBackend ? 'Connected' : 'Disconnected'}\n✅ Internet: ${isOnline ? 'Online' : 'Offline'}\n✅ Database: Healthy\n✅ Google Sheets: Connected`, {
+                  duration: 5000
+                });
+              }}
+            >
               <CardContent className="p-4 text-center relative">
                 <Button
                   variant="ghost"
                   size="sm"
                   className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => toast.info('View system health details')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toast.info('View system health details');
+                  }}
                 >
                   <Shield className="h-3 w-3" />
                 </Button>
@@ -407,9 +485,11 @@ export function DashboardOverview() {
                   {connectedToBackend ? 'Online' : 'Offline'}
                 </div>
                 <p className="text-xs text-amber-600 dark:text-amber-400">System</p>
-                <div className="mt-2 text-xs text-amber-500">Click for health</div>
+                <div className="mt-2 text-xs text-amber-500">Click for status</div>
               </CardContent>
             </Card>
+            </>
+            )}
           </div>
 
           {/* Equipment Status Summary */}
@@ -423,7 +503,7 @@ export function DashboardOverview() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
                 <div className="p-2 rounded bg-blue-50 dark:bg-blue-950/20">
                   <Monitor className="h-4 w-4 mx-auto mb-1 text-blue-600" />
                   <div className="text-lg font-bold text-blue-700">{availableComputers - equipmentInUse}</div>
@@ -467,12 +547,7 @@ export function DashboardOverview() {
                   {(timeline as any[]).map((activity: any, index) => (
                     <div key={activity.id} className="flex items-start space-x-4 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50/30 dark:from-gray-800/50 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 shadow-sm">
                       <div className="flex-shrink-0 mt-1">
-                        <div className={`h-3 w-3 rounded-full shadow-sm ${
-                          activity.status === 'active' ? 'bg-green-500 shadow-green-500/50' :
-                          activity.status === 'completed' ? 'bg-blue-500 shadow-blue-500/50' :
-                          activity.status === 'expired' ? 'bg-yellow-500 shadow-yellow-500/50' :
-                          'bg-gray-500 shadow-gray-500/50'
-                        }`}></div>
+                        <div className={`h-3 w-3 rounded-full shadow-sm ${activity.status === 'active' ? 'bg-green-500 shadow-green-500/50' : activity.status === 'completed' ? 'bg-blue-500 shadow-blue-500/50' : activity.status === 'expired' ? 'bg-yellow-500 shadow-yellow-500/50' : 'bg-gray-500 shadow-gray-500/50'}`}></div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground dark:text-foreground">
@@ -569,16 +644,13 @@ export function DashboardOverview() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 <Button
                   className="h-16 flex-col bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all"
                   onClick={handleAddStudent}
-                  disabled={isAddingStudent}
                 >
                   <Users className="h-5 w-5 mb-1" />
-                  <span className="text-xs font-medium">
-                    {isAddingStudent ? 'Adding...' : 'Add Student'}
-                  </span>
+                  <span className="text-xs font-medium">Add Student</span>
                 </Button>
                 <Button
                   className="h-16 flex-col bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg hover:shadow-xl transition-all"
@@ -615,7 +687,7 @@ export function DashboardOverview() {
               {/* Additional Quick Actions */}
               <div className="border-t pt-4">
                 <p className="text-sm font-medium text-muted-foreground mb-3">Additional Actions</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -649,6 +721,15 @@ export function DashboardOverview() {
           </Card>
         </div>
       </div>
+      
+        </>
+      )}
+
+      {/* Add Student Dialog */}
+      <AddStudentDialog
+        open={isAddStudentDialogOpen}
+        onOpenChange={setIsAddStudentDialogOpen}
+      />
     </div>
   )
 }

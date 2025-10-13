@@ -350,8 +350,8 @@ class DocumentationService {
   }
 
   private getProjectRoot(): string {
-    // Go up from Backend/src to project root
-    return join(__dirname, '..', '..');
+    // Go up from Backend/src to repository root so shared paths resolve correctly
+    return join(__dirname, '..', '..', '..');
   }
 
   async refreshCache(): Promise<void> {

@@ -132,31 +132,31 @@ export class GoogleSheetsService {
       // Sync students
       const studentsResult = await this.syncStudents();
       if (studentsResult.success) {
-        totalRecordsProcessed += studentsResult.recordsProcessed || 0;
+        totalRecordsProcessed += studentsResult.records_processed || 0;
       }
 
       // Sync books
       const booksResult = await this.syncBooks();
       if (booksResult.success) {
-        totalRecordsProcessed += booksResult.recordsProcessed || 0;
+        totalRecordsProcessed += booksResult.records_processed || 0;
       }
 
       // Sync equipment
       const equipmentResult = await this.syncEquipment();
       if (equipmentResult.success) {
-        totalRecordsProcessed += equipmentResult.recordsProcessed || 0;
+        totalRecordsProcessed += equipmentResult.records_processed || 0;
       }
 
       // Sync activities
       const activitiesResult = await this.syncActivities();
       if (activitiesResult.success) {
-        totalRecordsProcessed += activitiesResult.recordsProcessed || 0;
+        totalRecordsProcessed += activitiesResult.records_processed || 0;
       }
 
       // Sync book checkouts
       const checkoutsResult = await this.syncBookCheckouts();
       if (checkoutsResult.success) {
-        totalRecordsProcessed += checkoutsResult.recordsProcessed || 0;
+        totalRecordsProcessed += checkoutsResult.records_processed || 0;
       }
 
       const duration = Date.now() - startTime;
@@ -166,7 +166,7 @@ export class GoogleSheetsService {
 
       return {
         success: true,
-        recordsProcessed: totalRecordsProcessed,
+        records_processed: totalRecordsProcessed,
       };
     } catch (error) {
       logger.error('Google Sheets sync failed', {
@@ -191,9 +191,9 @@ export class GoogleSheetsService {
       }
 
       // Get all students from database
-      const students = await prisma.student.findMany({
-        where: { isActive: true },
-        orderBy: { studentId: 'asc' },
+      const students = await prisma.students.findMany({
+        where: { is_active: true },
+        orderBy: { student_id: 'asc' },
       });
 
       // Prepare data for Google Sheets
@@ -209,14 +209,14 @@ export class GoogleSheetsService {
       ];
 
       const rows = students.map(student => [
-        student.studentId,
-        student.firstName,
-        student.lastName,
-        student.gradeLevel,
-        student.gradeCategory,
+        student.student_id,
+        student.first_name,
+        student.last_name,
+        student.grade_level,
+        student.grade_category,
         student.section || '',
-        student.createdAt.toISOString(),
-        student.updatedAt.toISOString(),
+        student.created_at.toISOString(),
+        student.updated_at.toISOString(),
       ]);
 
       // Update Google Sheets
@@ -226,7 +226,7 @@ export class GoogleSheetsService {
 
       return {
         success: true,
-        recordsProcessed: students.length,
+        records_processed: students.length,
       };
     } catch (error) {
       logger.error('Failed to sync students to Google Sheets', {
@@ -251,9 +251,9 @@ export class GoogleSheetsService {
       }
 
       // Get all books from database
-      const books = await prisma.book.findMany({
-        where: { isActive: true },
-        orderBy: { accessionNo: 'asc' },
+      const books = await prisma.books.findMany({
+        where: { is_active: true },
+        orderBy: { accession_no: 'asc' },
       });
 
       // Prepare data for Google Sheets
@@ -273,7 +273,7 @@ export class GoogleSheetsService {
       ];
 
       const rows = books.map(book => [
-        book.accessionNo,
+        book.accession_no,
         book.isbn || '',
         book.title,
         book.author,
@@ -281,10 +281,10 @@ export class GoogleSheetsService {
         book.category,
         book.subcategory || '',
         book.location || '',
-        book.totalCopies.toString(),
-        book.availableCopies.toString(),
-        book.createdAt.toISOString(),
-        book.updatedAt.toISOString(),
+        book.total_copies.toString(),
+        book.available_copies.toString(),
+        book.created_at.toISOString(),
+        book.updated_at.toISOString(),
       ]);
 
       // Update Google Sheets
@@ -294,7 +294,7 @@ export class GoogleSheetsService {
 
       return {
         success: true,
-        recordsProcessed: books.length,
+        records_processed: books.length,
       };
     } catch (error) {
       logger.error('Failed to sync books to Google Sheets', {
@@ -320,7 +320,7 @@ export class GoogleSheetsService {
 
       // Get all equipment from database
       const equipment = await prisma.equipment.findMany({
-        orderBy: { equipmentId: 'asc' },
+        orderBy: { equipment_id: 'asc' },
       });
 
       // Prepare data for Google Sheets
@@ -338,16 +338,16 @@ export class GoogleSheetsService {
       ];
 
       const rows = equipment.map(item => [
-        item.equipmentId,
+        item.equipment_id,
         item.name,
         item.type,
         item.location,
         item.status,
-        item.maxTimeMinutes.toString(),
-        item.requiresSupervision ? 'Yes' : 'No',
+        item.max_time_minutes.toString(),
+        item.requires_supervision ? 'Yes' : 'No',
         item.description || '',
-        item.createdAt.toISOString(),
-        item.updatedAt.toISOString(),
+        item.created_at.toISOString(),
+        item.updated_at.toISOString(),
       ]);
 
       // Update Google Sheets
@@ -359,7 +359,7 @@ export class GoogleSheetsService {
 
       return {
         success: true,
-        recordsProcessed: equipment.length,
+        records_processed: equipment.length,
       };
     } catch (error) {
       logger.error('Failed to sync equipment to Google Sheets', {
@@ -387,26 +387,26 @@ export class GoogleSheetsService {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const activities = await prisma.activity.findMany({
+      const activities = await prisma.student_activities.findMany({
         where: {
-          startTime: { gte: thirtyDaysAgo },
+          start_time: { gte: thirtyDaysAgo },
         },
         include: {
           student: {
             select: {
-              studentId: true,
-              firstName: true,
-              lastName: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
             },
           },
           equipment: {
             select: {
-              equipmentId: true,
+              equipment_id: true,
               name: true,
             },
           },
         },
-        orderBy: { startTime: 'desc' },
+        orderBy: { start_time: 'desc' },
       });
 
       // Prepare data for Google Sheets
@@ -429,21 +429,21 @@ export class GoogleSheetsService {
 
       const rows = activities.map(activity => [
         activity.id,
-        activity.student?.studentId ?? '',
+        activity.student?.student_id ?? '',
         activity.student
-          ? `${activity.student.firstName} ${activity.student.lastName}`
+          ? `${activity.student.first_name} ${activity.student.last_name}`
           : '',
-        activity.activityType,
-        activity.equipment?.equipmentId ?? '',
+        activity.activity_type,
+        activity.equipment?.equipment_id ?? '',
         activity.equipment?.name ?? '',
-        activity.startTime.toISOString(),
-        activity.endTime?.toISOString() ?? '',
-        activity.durationMinutes?.toString() ?? '',
-        activity.timeLimitMinutes?.toString() ?? '',
+        activity.start_time.toISOString(),
+        activity.end_time?.toISOString() ?? '',
+        activity.duration_minutes?.toString() ?? '',
+        activity.time_limit_minutes?.toString() ?? '',
         activity.status,
         activity.notes ?? '',
-        activity.processedBy,
-        activity.createdAt.toISOString(),
+        activity.processed_by,
+        activity.created_at.toISOString(),
       ]);
 
       // Update Google Sheets
@@ -453,7 +453,7 @@ export class GoogleSheetsService {
 
       return {
         success: true,
-        recordsProcessed: activities.length,
+        records_processed: activities.length,
       };
     } catch (error) {
       logger.error('Failed to sync activities to Google Sheets', {
@@ -481,27 +481,27 @@ export class GoogleSheetsService {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      const checkouts = await prisma.bookCheckout.findMany({
+      const checkouts = await prisma.book_checkouts.findMany({
         where: {
-          checkoutDate: { gte: thirtyDaysAgo },
+          checkout_date: { gte: thirtyDaysAgo },
         },
         include: {
           student: {
             select: {
-              studentId: true,
-              firstName: true,
-              lastName: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
             },
           },
           book: {
             select: {
-              accessionNo: true,
+              accession_no: true,
               title: true,
               author: true,
             },
           },
         },
-        orderBy: { checkoutDate: 'desc' },
+        orderBy: { checkout_date: 'desc' },
       });
 
       // Prepare data for Google Sheets
@@ -526,23 +526,23 @@ export class GoogleSheetsService {
 
       const rows = checkouts.map(checkout => [
         checkout.id,
-        checkout.student?.studentId ?? '',
+        checkout.student?.student_id ?? '',
         checkout.student
-          ? `${checkout.student.firstName} ${checkout.student.lastName}`
+          ? `${checkout.student.first_name} ${checkout.student.last_name}`
           : '',
-        checkout.book?.accessionNo ?? '',
+        checkout.book?.accession_no ?? '',
         checkout.book?.title ?? '',
         checkout.book?.author ?? '',
-        checkout.checkoutDate.toISOString(),
-        checkout.dueDate.toISOString(),
-        checkout.returnDate?.toISOString() ?? '',
+        checkout.checkout_date.toISOString(),
+        checkout.due_date.toISOString(),
+        checkout.return_date?.toISOString() ?? '',
         checkout.status,
-        checkout.overdueDays.toString(),
-        checkout.fineAmount.toString(),
-        checkout.finePaid ? 'Yes' : 'No',
+        checkout.overdue_days.toString(),
+        checkout.fine_amount.toString(),
+        checkout.fine_paid ? 'Yes' : 'No',
         checkout.notes ?? '',
-        checkout.processedBy,
-        checkout.createdAt.toISOString(),
+        checkout.processed_by,
+        checkout.created_at.toISOString(),
       ]);
 
       // Update Google Sheets
@@ -552,7 +552,7 @@ export class GoogleSheetsService {
 
       return {
         success: true,
-        recordsProcessed: checkouts.length,
+        records_processed: checkouts.length,
       };
     } catch (error) {
       logger.error('Failed to sync book checkouts to Google Sheets', {
@@ -704,9 +704,9 @@ export class GoogleSheetsService {
       endOfDay.setHours(23, 59, 59, 999);
 
       // Get activities for the specified date
-      const activities = await prisma.activity.findMany({
+      const activities = await prisma.student_activities.findMany({
         where: {
-          startTime: {
+          start_time: {
             gte: startOfDay,
             lte: endOfDay,
           },
@@ -714,21 +714,21 @@ export class GoogleSheetsService {
         include: {
           student: {
             select: {
-              studentId: true,
-              firstName: true,
-              lastName: true,
-              gradeLevel: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+              grade_level: true,
             },
           },
           equipment: {
             select: {
-              equipmentId: true,
+              equipment_id: true,
               name: true,
               type: true,
             },
           },
         },
-        orderBy: { startTime: 'desc' },
+        orderBy: { start_time: 'desc' },
       });
 
       // Prepare report data
@@ -737,14 +737,14 @@ export class GoogleSheetsService {
         totalActivities: activities.length,
         activitiesByType: activities.reduce(
           (acc, activity) => {
-            acc[activity.activityType] = (acc[activity.activityType] || 0) + 1;
+            acc[activity.activity_type] = (acc[activity.activity_type] || 0) + 1;
             return acc;
           },
           {} as Record<string, number>,
         ),
         activitiesByGrade: activities.reduce(
           (acc, activity) => {
-            const gradeLevel = activity.student?.gradeLevel ?? 'Unknown';
+            const gradeLevel = activity.student?.grade_level ?? 'Unknown';
             acc[gradeLevel] = (acc[gradeLevel] || 0) + 1;
             return acc;
           },
@@ -753,7 +753,7 @@ export class GoogleSheetsService {
         equipmentUsage: activities.filter(a => a.equipment).length,
         uniqueStudents: new Set(
           activities
-            .map(activity => activity.student?.studentId)
+            .map(activity => activity.student?.student_id)
             .filter((id): id is string => Boolean(id)),
         ).size,
       };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -6,6 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useUsageStats, useActivityTimeline, useExportData } from '@/hooks/api-hooks'
 import { useAppStore } from '@/store/useAppStore'
+import { DashboardCardSkeleton, LoadingSpinner, ButtonLoading } from '@/components/LoadingStates'
+import { useBreakpoint } from '@/hooks/useBreakpoint'
+import PredictiveInsights from '@/components/analytics/PredictiveInsights'
+import UsageHeatMap from '@/components/analytics/UsageHeatMap'
+import TimeSeriesForecast from '@/components/analytics/TimeSeriesForecast'
 import {
   BarChart,
   Bar,
@@ -36,10 +41,17 @@ import {
 } from 'lucide-react'
 
 export function AnalyticsDashboard() {
-  const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month'>('day')
-  const [selectedChart, setSelectedChart] = useState('overview')
+  const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month'>('week')
+  const [selectedChart, setSelectedChart] = useState('insights')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [predictiveInsights, setPredictiveInsights] = useState<any[]>([])
+  const [heatMapData, setHeatMapData] = useState<any[]>([])
+  const [forecastData, setForecastData] = useState<any[]>([])
+  const [selectedMetric, setSelectedMetric] = useState<'student_visits' | 'equipment_usage' | 'book_circulation'>('student_visits')
   const { activities } = useAppStore()
   const { mutate: exportData } = useExportData()
+  const isLargeScreen = useBreakpoint('lg')
 
   // Mock data for charts
   const mockUsageData = {
@@ -89,9 +101,53 @@ export function AnalyticsDashboard() {
   ]
 
   const currentUsageData = mockUsageData[selectedPeriod]
+  const overviewChartHeight = isLargeScreen ? 400 : 280
+  const activityChartHeight = isLargeScreen ? 300 : 240
+
+  // Fetch predictive analytics data
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      try {
+        setIsLoading(true)
+
+        // Fetch predictive insights
+        const insightsResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/insights?timeframe=${selectedPeriod}`)
+        if (insightsResponse.ok) {
+          const insightsData = await insightsResponse.json()
+          setPredictiveInsights(insightsData.data.insights || [])
+        }
+
+        // Fetch heat map data
+        const heatMapResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/heatmap?timeframe=${selectedPeriod}`)
+        if (heatMapResponse.ok) {
+          const heatMapResult = await heatMapResponse.json()
+          setHeatMapData(heatMapResult.data.heatMapData || [])
+        }
+
+        // Fetch forecast data
+        const forecastResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/forecast?metric=${selectedMetric}&timeframe=${selectedPeriod}&periods=7`)
+        if (forecastResponse.ok) {
+          const forecastResult = await forecastResponse.json()
+          setForecastData(forecastResult.data.forecastData || [])
+        }
+
+      } catch (error) {
+        console.error('Failed to fetch analytics data:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchAnalyticsData()
+  }, [selectedPeriod, selectedMetric])
 
   const handleExport = (format: 'csv' | 'json') => {
     exportData({ format })
+  }
+
+  const handleInsightAction = async (insight: any, action: string) => {
+    console.log('Insight action:', insight, action)
+    // Implement insight action handling
   }
 
   const calculateTotalStudents = () => {
@@ -114,14 +170,14 @@ export function AnalyticsDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Analytics</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Analytics</h2>
           <p className="text-muted-foreground">
             Track library usage patterns and generate insights.
           </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -139,6 +195,10 @@ export function AnalyticsDashboard() {
           <Button variant="outline" size="sm" onClick={() => handleExport('json')}>
             <FileText className="h-4 w-4 mr-2" />
             Export JSON
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => window.open(`${import.meta.env.VITE_API_URL}/analytics/report?timeframe=${selectedPeriod}`, '_blank')}>
+            <FileText className="h-4 w-4 mr-2" />
+            Generate Report
           </Button>
         </div>
       </div>
@@ -198,14 +258,96 @@ export function AnalyticsDashboard() {
         </Card>
       </div>
 
-      {/* Charts */}
+      {/* Enhanced Analytics with Predictive Insights */}
       <Tabs value={selectedChart} onValueChange={setSelectedChart} className="space-y-4">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+          <TabsTrigger value="insights">Predictive Insights</TabsTrigger>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="forecasting">Forecasting</TabsTrigger>
+          <TabsTrigger value="heatmap">Heat Map</TabsTrigger>
           <TabsTrigger value="activities">Activities</TabsTrigger>
-          <TabsTrigger value="equipment">Equipment Usage</TabsTrigger>
           <TabsTrigger value="demographics">Demographics</TabsTrigger>
         </TabsList>
+
+        {/* Predictive Insights Tab */}
+        <TabsContent value="insights" className="space-y-4">
+          {isLoading ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              {[1, 2, 3, 4].map(i => (
+                <Card key={i}>
+                  <CardHeader>
+                    <DashboardCardSkeleton />
+                  </CardHeader>
+                  <CardContent>
+                    <DashboardCardSkeleton />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <PredictiveInsights
+              insights={predictiveInsights}
+              timeframe={selectedPeriod}
+              onTimeframeChange={setSelectedPeriod}
+              onInsightAction={handleInsightAction}
+            />
+          )}
+        </TabsContent>
+
+        {/* Forecasting Tab */}
+        <TabsContent value="forecasting" className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">Time Series Forecasting</h3>
+              <p className="text-sm text-muted-foreground">
+                Predict future trends based on historical data patterns
+              </p>
+            </div>
+            <Select value={selectedMetric} onValueChange={(value: any) => setSelectedMetric(value)}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="student_visits">Student Visits</SelectItem>
+                <SelectItem value="equipment_usage">Equipment Usage</SelectItem>
+                <SelectItem value="book_circulation">Book Circulation</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isLoading ? (
+            <Card>
+              <CardContent className="py-12">
+                <LoadingSpinner />
+              </CardContent>
+            </Card>
+          ) : (
+            <TimeSeriesForecast
+              data={forecastData}
+              metric={selectedMetric}
+              timeframe={selectedPeriod}
+              onMetricChange={setSelectedMetric}
+              onTimeframeChange={setSelectedPeriod}
+            />
+          )}
+        </TabsContent>
+
+        {/* Heat Map Tab */}
+        <TabsContent value="heatmap" className="space-y-4">
+          {isLoading ? (
+            <Card>
+              <CardContent className="py-12">
+                <LoadingSpinner />
+              </CardContent>
+            </Card>
+          ) : (
+            <UsageHeatMap
+              data={heatMapData}
+              filterType="all"
+              onCellClick={(data) => console.log('Heat map cell clicked:', data)}
+            />
+          )}
+        </TabsContent>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4">
@@ -217,7 +359,7 @@ export function AnalyticsDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
+              <ResponsiveContainer width="100%" height={overviewChartHeight}>
                 <LineChart data={currentUsageData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                   <XAxis
@@ -273,7 +415,7 @@ export function AnalyticsDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={activityChartHeight}>
                   <PieChart>
                     <Pie
                       data={mockActivityData}
@@ -311,7 +453,7 @@ export function AnalyticsDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={activityChartHeight}>
                   <BarChart data={currentUsageData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                     <XAxis
@@ -347,7 +489,7 @@ export function AnalyticsDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
+              <ResponsiveContainer width="100%" height={overviewChartHeight}>
                 <BarChart data={currentUsageData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
                   <XAxis

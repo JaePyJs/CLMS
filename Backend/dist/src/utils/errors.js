@@ -166,20 +166,20 @@ class TimeLimitExceededError extends BusinessLogicError {
 }
 exports.TimeLimitExceededError = TimeLimitExceededError;
 class EquipmentUnavailableError extends BusinessLogicError {
-    constructor(equipmentId, currentStatus) {
-        super(`Equipment ${equipmentId} is not available. Current status: ${currentStatus}`, 'EQUIPMENT_UNAVAILABLE', { equipmentId, currentStatus });
+    constructor(equipment_id, currentStatus) {
+        super(`Equipment ${equipment_id} is not available. Current status: ${currentStatus}`, 'EQUIPMENT_UNAVAILABLE', { equipment_id, currentStatus });
     }
 }
 exports.EquipmentUnavailableError = EquipmentUnavailableError;
 class ConcurrentSessionError extends BusinessLogicError {
-    constructor(studentId, equipmentType) {
-        super(`Student ${studentId} already has an active ${equipmentType} session`, 'CONCURRENT_SESSION', { studentId, equipmentType });
+    constructor(student_id, equipmentType) {
+        super(`Student ${student_id} already has an active ${equipmentType} session`, 'CONCURRENT_SESSION', { student_id, equipmentType });
     }
 }
 exports.ConcurrentSessionError = ConcurrentSessionError;
 class StudentInactiveError extends BusinessLogicError {
-    constructor(studentId) {
-        super(`Student ${studentId} is inactive and cannot use library facilities`, 'STUDENT_INACTIVE', { studentId });
+    constructor(student_id) {
+        super(`Student ${student_id} is inactive and cannot use library facilities`, 'STUDENT_INACTIVE', { student_id });
     }
 }
 exports.StudentInactiveError = StudentInactiveError;
@@ -236,7 +236,7 @@ const errorHandler = (error, req, res, _next) => {
             url: req.url,
             method: req.method,
             ip: req.ip,
-            userAgent: req.get('User-Agent'),
+            user_agent: req.get('User-Agent'),
         });
     }
     const statusCode = (0, exports.getErrorStatusCode)(error);

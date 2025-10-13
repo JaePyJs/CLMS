@@ -1,0 +1,224 @@
+# Artillery Load Testing Configuration for CLMS
+# Advanced load testing scenarios for production readiness
+
+config:
+  target: 'http://localhost:3001'
+  phases:
+    # Warmup phase
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+
+    # Low load phase
+    - duration: 120
+      arrivalRate: 10
+      name: "Low load"
+
+    # Medium load phase
+    - duration: 180
+      arrivalRate: 25
+      name: "Medium load"
+
+    # High load phase
+    - duration: 240
+      arrivalRate: 50
+      name: "High load"
+
+    # Stress test phase
+    - duration: 300
+      arrivalRate: 100
+      name: "Stress test"
+
+    # Spike test phase
+    - duration: 60
+      arrivalRate: 200
+      name: "Spike test"
+
+    # Recovery phase
+    - duration: 120
+      arrivalRate: 10
+      name: "Recovery"
+
+  # Processor configuration
+  processor: "./test-processor.js"
+
+  # Payload configuration
+  payload:
+    path: "./test-data.csv"
+    fields:
+      - "studentId"
+      - "bookId"
+      - "barcode"
+
+  # Variables
+  variables:
+    authHeader:
+      - "Authorization: Bearer test-token-123"
+    contentType:
+      - "Content-Type: application/json"
+
+scenarios:
+  - name: "Health Check"
+    weight: 10
+    flow:
+      - get:
+          url: "/health"
+          headers:
+            $contentType: []
+
+  - name: "Student Operations"
+    weight: 25
+    flow:
+      - get:
+          url: "/api/students"
+          headers:
+            $authHeader: []
+            $contentType: []
+          capture:
+            - json: "$.data[0].id"
+              as: "studentId"
+
+      - think: 1
+
+      - get:
+          url: "/api/students/{{ studentId }}"
+          headers:
+            $authHeader: []
+            $contentType: []
+
+      - think: 2
+
+      - post:
+          url: "/api/students/search"
+          headers:
+            $authHeader: []
+            $contentType: []
+          json:
+            query: "test"
+            limit: 10
+
+  - name: "Book Operations"
+    weight: 25
+    flow:
+      - get:
+          url: "/api/books"
+          headers:
+            $authHeader: []
+            $contentType: []
+          capture:
+            - json: "$.data[0].id"
+              as: "bookId"
+
+      - think: 1
+
+      - get:
+          url: "/api/books/{{ bookId }}"
+          headers:
+            $authHeader: []
+            $contentType: []
+
+      - think: 2
+
+      - post:
+          url: "/api/books/search"
+          headers:
+            $authHeader: []
+            $contentType: []
+          json:
+            query: "javascript"
+            limit: 20
+
+  - name: "Equipment Operations"
+    weight: 15
+    flow:
+      - get:
+          url: "/api/equipment"
+          headers:
+            $authHeader: []
+            $contentType: []
+
+      - think: 1
+
+      - post:
+          url: "/api/equipment/available"
+          headers:
+            $authHeader: []
+            $contentType: []
+          json:
+            type: "computer"
+            date: "2024-01-01"
+
+  - name: "Activity Logging"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/activities"
+          headers:
+            $authHeader: []
+            $contentType: []
+          json:
+            studentId: "{{ studentId }}"
+            activityType: "CHECKOUT"
+            bookId: "{{ bookId }}"
+            notes: "Load test activity"
+
+      - think: 1
+
+      - get:
+          url: "/api/activities/recent"
+          headers:
+            $authHeader: []
+            $contentType: []
+          qs:
+            limit: 50
+
+  - name: "Analytics and Reports"
+    weight: 5
+    flow:
+      - get:
+          url: "/api/analytics/dashboard"
+          headers:
+            $authHeader: []
+            $contentType: []
+
+      - think: 3
+
+      - get:
+          url: "/api/reports/summary"
+          headers:
+            $authHeader: []
+            $contentType: []
+          qs:
+            startDate: "2024-01-01"
+            endDate: "2024-12-31"
+
+  - name: "Concurrent Operations"
+    weight: 10
+    flow:
+      - parallel:
+          - get:
+              url: "/api/students"
+              headers:
+                $authHeader: []
+                $contentType: []
+          - get:
+              url: "/api/books"
+              headers:
+                $authHeader: []
+                $contentType: []
+          - get:
+              url: "/api/equipment"
+              headers:
+                $authHeader: []
+                $contentType: []
+
+      - think: 2
+
+      - post:
+          url: "/api/scan"
+          headers:
+            $authHeader: []
+            $contentType: []
+          json:
+            barcode: "{{ barcode }}"
+            type: "book"

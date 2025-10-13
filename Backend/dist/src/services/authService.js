@@ -7,7 +7,10 @@ exports.authService = exports.AuthService = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const logger_1 = require("@/utils/logger");
-const prisma_1 = require("@/utils/prisma");
+const client_1 = require("@prisma/client");
+const prisma = new client_1.PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'info', 'warn'] : ['error'],
+});
 class AuthService {
     jwtSecret;
     jwtExpiration;
@@ -17,7 +20,7 @@ class AuthService {
     }
     async login(username, password) {
         try {
-            const user = await prisma_1.prisma.user.findUnique({
+            const user = await prisma.users.findUnique({
                 where: { username },
             });
             if (!user) {
@@ -27,7 +30,7 @@ class AuthService {
                     error: 'Invalid username or password',
                 };
             }
-            if (!user.isActive) {
+            if (!user.is_active) {
                 logger_1.logger.warn(`Login attempt with inactive user: ${username}`);
                 return {
                     success: false,
@@ -43,16 +46,16 @@ class AuthService {
                 };
             }
             const payload = {
-                userId: user.id,
+                id: user.id,
                 username: user.username,
                 role: user.role,
             };
             const token = jsonwebtoken_1.default.sign(payload, this.jwtSecret, {
                 expiresIn: this.jwtExpiration,
             });
-            await prisma_1.prisma.user.update({
+            await prisma.users.update({
                 where: { id: user.id },
-                data: { lastLoginAt: new Date() },
+                data: { id: crypto.randomUUID(), updated_at: new Date(), last_login_at: new Date() },
             });
             logger_1.logger.info(`User logged in successfully: ${username}`);
             return {
@@ -92,7 +95,7 @@ class AuthService {
     }
     async createUser(userData) {
         try {
-            const existingUser = await prisma_1.prisma.user.findUnique({
+            const existingUser = await prisma.users.findUnique({
                 where: { username: userData.username },
             });
             if (existingUser) {
@@ -102,13 +105,18 @@ class AuthService {
                 };
             }
             const hashedPassword = await this.hashPassword(userData.password);
-            const user = await prisma_1.prisma.user.create({
-                data: {
+            const id = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            const user = await prisma.users.create({
+                data: { id: crypto.randomUUID(), updated_at: new Date(),
+                    id: id,
                     username: userData.username,
                     password: hashedPassword,
                     role: userData.role,
-                    isActive: userData.isActive !== undefined ? userData.isActive : true,
-                },
+                    is_active: userData.is_active !== undefined ? userData.is_active : true,
+                    email: null,
+                    full_name: null,
+                    permissions: {},
+                    updated_at: new Date(), },
             });
             logger_1.logger.info(`New user created: ${userData.username}`);
             return {
@@ -117,9 +125,9 @@ class AuthService {
                     id: user.id,
                     username: user.username,
                     role: user.role,
-                    isActive: user.isActive,
-                    lastLoginAt: user.lastLoginAt,
-                    createdAt: user.createdAt,
+                    is_active: user.is_active,
+                    last_login_at: user.last_login_at,
+                    created_at: user.created_at,
                 },
             };
         }
@@ -134,10 +142,10 @@ class AuthService {
             };
         }
     }
-    async updatePassword(userId, currentPassword, newPassword) {
+    async updatePassword(id, currentPassword, newPassword) {
         try {
-            const user = await prisma_1.prisma.user.findUnique({
-                where: { id: userId },
+            const user = await prisma.users.findUnique({
+                where: { id: id },
             });
             if (!user) {
                 return {
@@ -153,9 +161,9 @@ class AuthService {
                 };
             }
             const hashedPassword = await this.hashPassword(newPassword);
-            await prisma_1.prisma.user.update({
-                where: { id: userId },
-                data: { password: hashedPassword },
+            await prisma.users.update({
+                where: { id: id },
+                data: { id: crypto.randomUUID(), updated_at: new Date(), password: hashedPassword },
             });
             logger_1.logger.info(`Password updated for user: ${user.username}`);
             return {
@@ -165,7 +173,7 @@ class AuthService {
         catch (error) {
             logger_1.logger.error('Update password error', {
                 error: error.message,
-                userId,
+                id,
             });
             return {
                 success: false,
@@ -173,10 +181,10 @@ class AuthService {
             };
         }
     }
-    async resetPassword(userId, newPassword) {
+    async resetPassword(id, newPassword) {
         try {
-            const user = await prisma_1.prisma.user.findUnique({
-                where: { id: userId },
+            const user = await prisma.users.findUnique({
+                where: { id: id },
             });
             if (!user) {
                 return {
@@ -185,9 +193,9 @@ class AuthService {
                 };
             }
             const hashedPassword = await this.hashPassword(newPassword);
-            await prisma_1.prisma.user.update({
-                where: { id: userId },
-                data: { password: hashedPassword },
+            await prisma.users.update({
+                where: { id: id },
+                data: { id: crypto.randomUUID(), updated_at: new Date(), password: hashedPassword },
             });
             logger_1.logger.info(`Password reset for user: ${user.username}`);
             return {
@@ -197,7 +205,7 @@ class AuthService {
         catch (error) {
             logger_1.logger.error('Reset password error', {
                 error: error.message,
-                userId,
+                id,
             });
             return {
                 success: false,
@@ -207,24 +215,24 @@ class AuthService {
     }
     async getUsers() {
         try {
-            const users = await prisma_1.prisma.user.findMany({
+            const users = await prisma.users.findMany({
                 select: {
                     id: true,
                     username: true,
                     role: true,
-                    isActive: true,
-                    lastLoginAt: true,
-                    createdAt: true,
+                    is_active: true,
+                    last_login_at: true,
+                    created_at: true,
                 },
-                orderBy: { createdAt: 'desc' },
+                orderBy: { created_at: 'desc' },
             });
             return users.map(user => ({
                 id: user.id,
                 username: user.username,
                 role: user.role,
-                isActive: user.isActive,
-                lastLoginAt: user.lastLoginAt,
-                createdAt: user.createdAt,
+                is_active: user.is_active,
+                last_login_at: user.last_login_at,
+                created_at: user.created_at,
             }));
         }
         catch (error) {
@@ -232,17 +240,17 @@ class AuthService {
             throw error;
         }
     }
-    async getUserById(userId) {
+    async getUserById(id) {
         try {
-            const user = await prisma_1.prisma.user.findUnique({
-                where: { id: userId },
+            const user = await prisma.users.findUnique({
+                where: { id: id },
                 select: {
                     id: true,
                     username: true,
                     role: true,
-                    isActive: true,
-                    lastLoginAt: true,
-                    createdAt: true,
+                    is_active: true,
+                    last_login_at: true,
+                    created_at: true,
                 },
             });
             if (!user) {
@@ -252,26 +260,26 @@ class AuthService {
                 id: user.id,
                 username: user.username,
                 role: user.role,
-                isActive: user.isActive,
-                lastLoginAt: user.lastLoginAt,
-                createdAt: user.createdAt,
+                is_active: user.is_active,
+                last_login_at: user.last_login_at,
+                created_at: user.created_at,
             };
         }
         catch (error) {
             logger_1.logger.error('Get user by ID error', {
                 error: error.message,
-                userId,
+                id,
             });
             throw error;
         }
     }
-    async updateUser(userId, updateData) {
+    async updateUser(id, updateData) {
         try {
             if (updateData.username) {
-                const existingUser = await prisma_1.prisma.user.findFirst({
+                const existingUser = await prisma.users.findFirst({
                     where: {
                         username: updateData.username,
-                        id: { not: userId },
+                        id: { not: id },
                     },
                 });
                 if (existingUser) {
@@ -281,16 +289,19 @@ class AuthService {
                     };
                 }
             }
-            const updatedUser = await prisma_1.prisma.user.update({
-                where: { id: userId },
-                data: updateData,
+            const updatedUser = await prisma.users.update({
+                where: { id: id },
+                data: { id: crypto.randomUUID(), updated_at: new Date(),
+                    username: updateData.username,
+                    role: updateData.role,
+                    is_active: updateData.is_active, },
                 select: {
                     id: true,
                     username: true,
                     role: true,
-                    isActive: true,
-                    lastLoginAt: true,
-                    createdAt: true,
+                    is_active: true,
+                    last_login_at: true,
+                    created_at: true,
                 },
             });
             logger_1.logger.info(`User updated: ${updatedUser.username}`);
@@ -300,16 +311,16 @@ class AuthService {
                     id: updatedUser.id,
                     username: updatedUser.username,
                     role: updatedUser.role,
-                    isActive: updatedUser.isActive,
-                    lastLoginAt: updatedUser.lastLoginAt,
-                    createdAt: updatedUser.createdAt,
+                    is_active: updatedUser.is_active,
+                    last_login_at: updatedUser.last_login_at,
+                    created_at: updatedUser.created_at,
                 },
             };
         }
         catch (error) {
             logger_1.logger.error('Update user error', {
                 error: error.message,
-                userId,
+                id,
             });
             return {
                 success: false,
@@ -317,10 +328,10 @@ class AuthService {
             };
         }
     }
-    async deleteUser(userId) {
+    async deleteUser(id) {
         try {
-            const user = await prisma_1.prisma.user.findUnique({
-                where: { id: userId },
+            const user = await prisma.users.findUnique({
+                where: { id: id },
             });
             if (!user) {
                 return {
@@ -328,8 +339,8 @@ class AuthService {
                     error: 'User not found',
                 };
             }
-            await prisma_1.prisma.user.delete({
-                where: { id: userId },
+            await prisma.users.delete({
+                where: { id: id },
             });
             logger_1.logger.info(`User deleted: ${user.username}`);
             return {
@@ -339,7 +350,7 @@ class AuthService {
         catch (error) {
             logger_1.logger.error('Delete user error', {
                 error: error.message,
-                userId,
+                id,
             });
             return {
                 success: false,

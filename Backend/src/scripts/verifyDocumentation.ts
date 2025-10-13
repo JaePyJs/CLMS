@@ -31,7 +31,7 @@ class DocumentationVerifier {
   private projectRoot: string;
 
   constructor() {
-    this.projectRoot = join(__dirname, '..', '..');
+    this.projectRoot = join(__dirname, '..', '..', '..');
   }
 
   async verifyAll(): Promise<VerificationResult> {
@@ -219,31 +219,16 @@ class DocumentationVerifier {
   private async checkApiEndpoints(
     result: VerificationResult,
   ): Promise<boolean> {
-    // Only check API if server is likely running
+    const baseUrl = (
+      process.env.DOCS_VERIFIER_BASE_URL || 'http://localhost:3001'
+    ).replace(/\/$/, '');
+    const healthUrl = `${baseUrl}/health`;
+
     try {
-      const response = await fetch(
-        'http://localhost:3001/api/utilities/documentation',
-        {
-          method: 'GET',
-          signal: AbortSignal.timeout(5000),
-        },
-      );
-
-      if (!response.ok) {
-        result.details.apiErrors.push(
-          `Documentation endpoint returned ${response.status}`,
-        );
-        return false;
-      }
-
-      // Check health endpoint
-      const healthResponse = await fetch(
-        'http://localhost:3001/api/utilities/documentation/health',
-        {
-          method: 'GET',
-          signal: AbortSignal.timeout(5000),
-        },
-      );
+      const healthResponse = await fetch(healthUrl, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+      });
 
       if (!healthResponse.ok) {
         result.details.apiErrors.push(
@@ -251,15 +236,142 @@ class DocumentationVerifier {
         );
         return false;
       }
-
-      return true;
-    } catch (_error) {
-      // Don't fail the check if server isn't running, just note it
+    } catch (error) {
       result.details.apiErrors.push(
-        'Server not running - API endpoints not verified',
+        `Unable to reach API health endpoint: ${(error as Error).message}`,
       );
       return false;
     }
+
+    const username =
+      process.env.DOCS_VERIFIER_USERNAME ||
+      process.env.ADMIN_USERNAME ||
+      'admin';
+    const password =
+      process.env.DOCS_VERIFIER_PASSWORD ||
+      process.env.ADMIN_PASSWORD ||
+      'librarian123';
+
+    let token = process.env.DOCS_VERIFIER_TOKEN?.trim();
+
+    if (!token) {
+      try {
+        const loginResponse = await fetch(`${baseUrl}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+          signal: AbortSignal.timeout(5000),
+        });
+
+        const bodyText = await loginResponse.text();
+        let payload: unknown = null;
+        try {
+          payload = bodyText ? JSON.parse(bodyText) : null;
+        } catch {
+          payload = null;
+        }
+
+        const payloadObject =
+          payload && typeof payload === 'object'
+            ? (payload as Record<string, unknown>)
+            : null;
+
+        if (!loginResponse.ok) {
+          const payloadMessage =
+            payloadObject && typeof payloadObject['message'] === 'string'
+              ? (payloadObject['message'] as string)
+              : undefined;
+          const payloadError =
+            payloadObject && typeof payloadObject['error'] === 'string'
+              ? (payloadObject['error'] as string)
+              : undefined;
+          const message =
+            payloadMessage ||
+            payloadError ||
+            loginResponse.statusText ||
+            'Login failed';
+          result.details.apiErrors.push(
+            `Failed to authenticate for documentation check: ${loginResponse.status} ${message}`.trim(),
+          );
+          return false;
+        }
+
+        const payloadData =
+          payloadObject &&
+          typeof payloadObject['data'] === 'object' &&
+          payloadObject['data'] !== null
+            ? (payloadObject['data'] as Record<string, unknown>)
+            : null;
+
+        const dataToken =
+          payloadData && typeof payloadData['token'] === 'string'
+            ? (payloadData['token'] as string)
+            : undefined;
+        const rootToken =
+          payloadObject && typeof payloadObject['token'] === 'string'
+            ? (payloadObject['token'] as string)
+            : undefined;
+
+        token = dataToken || rootToken || undefined;
+
+        if (!token) {
+          result.details.apiErrors.push(
+            'Authentication succeeded but no token was returned by the API',
+          );
+          return false;
+        }
+      } catch (error) {
+        result.details.apiErrors.push(
+          `Authentication request failed: ${(error as Error).message}`,
+        );
+        return false;
+      }
+    }
+
+    if (!token) {
+      result.details.apiErrors.push(
+        'No authentication token available for documentation check',
+      );
+      return false;
+    }
+
+    const authorizedFetch = async (
+      path: string,
+      label: string,
+    ): Promise<boolean> => {
+      try {
+        const response = await fetch(`${baseUrl}${path}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (!response.ok) {
+          result.details.apiErrors.push(`${label} returned ${response.status}`);
+          return false;
+        }
+
+        return true;
+      } catch (error) {
+        result.details.apiErrors.push(
+          `${label} request failed: ${(error as Error).message}`,
+        );
+        return false;
+      }
+    };
+
+    const docsInfoOk = await authorizedFetch(
+      '/api/utilities/documentation',
+      'Documentation endpoint',
+    );
+    const docsHealthOk = await authorizedFetch(
+      '/api/utilities/documentation/health',
+      'Documentation health endpoint',
+    );
+
+    return docsInfoOk && docsHealthOk;
   }
 
   private async checkSynchronization(

@@ -1,12 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient, ActivityStatus, EquipmentStatus } from '@prisma/client';
 import { logger } from '@/utils/logger';
+import { analyticsService } from '@/services/analyticsService';
+import { requirePermission } from '@/middleware/authorization.middleware';
+import { Permission } from '@/config/permissions';
 
 const router = Router();
 const prisma = new PrismaClient();
 
 // Get dashboard metrics
-router.get('/metrics', async (req: Request, res: Response) => {
+router.get('/metrics', requirePermission(Permission.ANALYTICS_VIEW), async (req: Request, res: Response) => {
   try {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -266,5 +269,221 @@ router.get('/notifications', async (req: Request, res: Response) => {
     });
   }
 });
+
+// Get predictive insights
+router.get('/insights', async (req: Request, res: Response) => {
+  try {
+    const timeframe = (req.query.timeframe as 'day' | 'week' | 'month') || 'week';
+
+    const insights = await analyticsService.generatePredictiveInsights(timeframe);
+
+    res.json({
+      success: true,
+      data: { insights },
+      timeframe,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Failed to get predictive insights', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve predictive insights',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get usage heat map data
+router.get('/heatmap', async (req: Request, res: Response) => {
+  try {
+    const timeframe = (req.query.timeframe as 'day' | 'week' | 'month') || 'week';
+
+    const heatMapData = await analyticsService.generateUsageHeatMap(timeframe);
+
+    res.json({
+      success: true,
+      data: { heatMapData },
+      timeframe,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Failed to get heat map data', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve heat map data',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get time series forecast
+router.get('/forecast', async (req: Request, res: Response) => {
+  try {
+    const metric = (req.query.metric as 'student_visits' | 'equipment_usage' | 'book_circulation') || 'student_visits';
+    const timeframe = (req.query.timeframe as 'day' | 'week' | 'month') || 'week';
+    const periods = parseInt(req.query.periods as string) || 7;
+
+    const forecastData = await analyticsService.generateTimeSeriesForecast(metric, timeframe, periods);
+
+    res.json({
+      success: true,
+      data: { forecastData },
+      metric,
+      timeframe,
+      periods,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Failed to get time series forecast', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve time series forecast',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get seasonal patterns
+router.get('/seasonal', async (req: Request, res: Response) => {
+  try {
+    const seasonalPatterns = await analyticsService.analyzeSeasonalPatterns();
+
+    res.json({
+      success: true,
+      data: { seasonalPatterns },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Failed to get seasonal patterns', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve seasonal patterns',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get resource forecasts
+router.get('/resource-forecast', async (req: Request, res: Response) => {
+  try {
+    const timeframe = (req.query.timeframe as 'day' | 'week' | 'month') || 'week';
+
+    const forecasts = await analyticsService.generateResourceForecasts(timeframe);
+
+    res.json({
+      success: true,
+      data: { forecasts },
+      timeframe,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Failed to get resource forecasts', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve resource forecasts',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Generate comprehensive insights report
+router.get('/report', async (req: Request, res: Response) => {
+  try {
+    const timeframe = (req.query.timeframe as 'day' | 'week' | 'month') || 'week';
+
+    const report = await analyticsService.generateInsightsReport(timeframe);
+
+    res.json({
+      success: true,
+      data: report,
+      timeframe,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Failed to generate insights report', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate insights report',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get detailed analytics summary
+router.get('/summary', async (req: Request, res: Response) => {
+  try {
+    const timeframe = (req.query.timeframe as 'day' | 'week' | 'month') || 'week';
+
+    // Get all analytics data in parallel
+    const [
+      insights,
+      heatMapData,
+      seasonalPatterns,
+      resourceForecasts,
+      baseMetrics
+    ] = await Promise.all([
+      analyticsService.generatePredictiveInsights(timeframe),
+      analyticsService.generateUsageHeatMap(timeframe),
+      analyticsService.analyzeSeasonalPatterns(),
+      analyticsService.generateResourceForecasts(timeframe),
+      // Use existing metrics endpoint data
+      getBaseMetrics()
+    ]);
+
+    const summary = {
+      timeframe,
+      insights,
+      heatMapData,
+      seasonalPatterns,
+      resourceForecasts,
+      baseMetrics,
+      generatedAt: new Date().toISOString()
+    };
+
+    res.json({
+      success: true,
+      data: summary,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Failed to get analytics summary', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve analytics summary',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Helper function to get base metrics (extracted from existing metrics endpoint)
+async function getBaseMetrics() {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [totalStudents, activeStudents, totalActivities, todayActivities] = await Promise.all([
+    prisma.student.count(),
+    prisma.student.count({ where: { isActive: true } }),
+    prisma.activity.count(),
+    prisma.activity.count({
+      where: {
+        startTime: { gte: todayStart }
+      }
+    })
+  ]);
+
+  return {
+    students: { total: totalStudents, active: activeStudents },
+    activities: { total: totalActivities, today: todayActivities }
+  };
+}
 
 export default router;

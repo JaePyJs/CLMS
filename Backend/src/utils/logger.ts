@@ -110,16 +110,16 @@ export const auditLogger = {
   log: (
     action: string,
     entity: string,
-    entityId: string,
-    userId: string,
+    entity_id: string,
+    id: string,
     details?: Metadata,
   ): void => {
     const payload: Metadata = {
       type: 'audit',
       action,
       entity,
-      entityId,
-      userId,
+      entity_id,
+      id,
       timestamp: withTimestamp(),
     };
 
@@ -129,43 +129,43 @@ export const auditLogger = {
 
     logger.info('AUDIT', payload);
   },
-  studentAccess: (studentId: string, userId: string, action: string): void => {
-    auditLogger.log(action, 'Student', studentId, userId);
+  studentAccess: (student_id: string, id: string, action: string): void => {
+    auditLogger.log(action, 'Student', student_id, id);
   },
   bookTransaction: (
-    bookId: string,
-    studentId: string,
-    userId: string,
+    book_id: string,
+    student_id: string,
+    id: string,
     action: string,
   ): void => {
-    auditLogger.log(action, 'Book', bookId, userId, { studentId });
+    auditLogger.log(action, 'Book', book_id, id, { student_id });
   },
   equipmentUsage: (
-    equipmentId: string,
-    studentId: string,
-    userId: string,
+    equipment_id: string,
+    student_id: string,
+    id: string,
     action: string,
   ): void => {
-    auditLogger.log(action, 'Equipment', equipmentId, userId, { studentId });
+    auditLogger.log(action, 'Equipment', equipment_id, id, { student_id });
   },
   systemConfig: (
     configKey: string,
-    userId: string,
+    id: string,
     oldValue?: unknown,
     newValue?: unknown,
   ): void => {
-    auditLogger.log('CONFIG_UPDATE', 'SystemConfig', configKey, userId, {
+    auditLogger.log('CONFIG_UPDATE', 'SystemConfig', configKey, id, {
       oldValue,
       newValue,
     });
   },
   dataImport: (
-    entityType: string,
-    userId: string,
+    entity_type: string,
+    id: string,
     recordCount: number,
     success: boolean,
   ): void => {
-    auditLogger.log('DATA_IMPORT', entityType, 'BULK', userId, {
+    auditLogger.log('DATA_IMPORT', entity_type, 'BULK', id, {
       recordCount,
       success,
     });
@@ -204,26 +204,26 @@ export const performanceLogger = {
 
 export const securityLogger = {
   login: (
-    userId: string,
+    id: string,
     success: boolean,
     ip: string,
     userAgent?: string,
   ): void => {
-    logger.info('AUTH_LOGIN', { userId, success, ip, userAgent });
+    logger.info('AUTH_LOGIN', { id, success, ip, userAgent });
   },
-  logout: (userId: string, ip: string): void => {
-    logger.info('AUTH_LOGOUT', { userId, ip });
+  logout: (id: string, ip: string): void => {
+    logger.info('AUTH_LOGOUT', { id, ip });
   },
   failedAuth: (identifier: string, reason: string, ip: string): void => {
     logger.warn('AUTH_FAILED', { identifier, reason, ip });
   },
   permissionDenied: (
-    userId: string,
+    id: string,
     resource: string,
     action: string,
     ip: string,
   ): void => {
-    logger.warn('PERMISSION_DENIED', { userId, resource, action, ip });
+    logger.warn('PERMISSION_DENIED', { id, resource, action, ip });
   },
   suspiciousActivity: (description: string, details: Metadata): void => {
     logger.error('SECURITY_ALERT', { description, ...details });

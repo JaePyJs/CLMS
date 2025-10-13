@@ -2,12 +2,35 @@
 
 ## Overview
 
-The CLMS API provides RESTful endpoints for managing library operations, including student tracking, equipment management, book checkouts, and automation workflows.
+The CLMS API provides comprehensive RESTful endpoints for managing library operations, including student tracking, equipment management, book checkouts, automation workflows, real-time features, advanced analytics, and security monitoring.
+
+### 🎉 Interactive API Documentation
+
+**Swagger UI is now available!** For a complete, interactive API documentation with "Try it out" functionality, visit:
+
+- **Development**: http://localhost:3001/api-docs
+- **Production**: https://your-domain.com/api-docs
+- **OpenAPI Spec**: http://localhost:3001/api-docs.json
+
+The Swagger UI provides:
+- ✅ **193 documented endpoints** organized by tags
+- ✅ **Try it out** functionality for testing endpoints directly
+- ✅ **Request/Response schemas** with examples
+- ✅ **Authentication support** - Enter your JWT token once and use it for all requests
+- ✅ **Validation rules** and error responses documented
+
+## API Statistics
+
+- **Total Endpoints**: 193
+- **Route Modules**: 21
+- **Supported HTTP Methods**: GET, POST, PUT, PATCH, DELETE
+- **OpenAPI Version**: 3.1.0
 
 ## Base URL
 
 - **Development**: `http://localhost:3001`
 - **Production**: `https://your-domain.com/api`
+- **WebSocket**: `ws://localhost:3002/ws` (Development) / `wss://your-domain.com/ws` (Production)
 
 ## Authentication
 
@@ -232,6 +255,73 @@ Manually trigger automation job.
 #### GET /api/automation/queues
 Get queue status and statistics.
 
+### Analytics
+
+#### GET /api/analytics/predictive-insights
+Generate predictive insights and recommendations.
+
+**Query Parameters:**
+- `timeframe` (optional): `day` | `week` | `month` (default: `week`)
+- `category` (optional): Filter by insight type (`demand`, `peak`, `optimization`, `anomaly`)
+- `confidence` (optional): Minimum confidence threshold (0-100)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "insight_123",
+      "type": "demand_forecast",
+      "title": "Equipment Demand Forecast",
+      "description": "Predicted weekly equipment demand: 45 sessions/day",
+      "confidence": 85,
+      "impact": "high",
+      "recommendations": [
+        "Consider adding 2 more computers",
+        "Implement time-based access controls"
+      ],
+      "validUntil": "2025-10-20T10:30:00Z"
+    }
+  ]
+}
+```
+
+#### GET /api/analytics/heat-map
+Generate usage heat map data.
+
+**Query Parameters:**
+- `timeframe` (optional): `day` | `week` | `month` (default: `week`)
+- `activityType` (optional): Filter by activity type
+- `gradeLevel` (optional): Filter by grade level
+- `location` (optional): Filter by location
+
+#### GET /api/analytics/time-series-forecast
+Generate time series forecast with predictions.
+
+**Query Parameters:**
+- `metric` (required): `student_visits` | `equipment_usage` | `book_circulation`
+- `timeframe` (optional): `day` | `week` | `month` (default: `week`)
+- `periods` (optional): Number of forecast periods (default: 7)
+
+#### GET /api/analytics/resource-forecasts
+Generate resource utilization forecasts.
+
+#### GET /api/analytics/seasonal-patterns
+Analyze seasonal usage patterns.
+
+#### POST /api/analytics/insights-report
+Generate comprehensive insights report.
+
+**Request:**
+```json
+{
+  "timeframe": "month",
+  "includeRecommendations": true,
+  "format": "json"
+}
+```
+
 ### Reports
 
 #### GET /api/reports/dashboard
@@ -239,6 +329,112 @@ Get dashboard statistics and metrics.
 
 #### GET /api/reports/activities
 Generate activity reports with filtering options.
+
+#### GET /api/reports/custom
+Generate custom reports with advanced filtering.
+
+**Query Parameters:**
+- `type` (required): Report type (`usage`, `performance`, `compliance`, `custom`)
+- `startDate` (optional): Report start date (ISO string)
+- `endDate` (optional): Report end date (ISO string)
+- `format` (optional): Output format (`json`, `pdf`, `csv`, `excel`)
+
+### Error Handling & Monitoring
+
+#### GET /api/errors/dashboard
+Get error monitoring dashboard data.
+
+#### GET /api/errors/reports
+Get error reports with filtering.
+
+#### POST /api/errors/report
+Report client-side error.
+
+#### GET /api/errors/health
+Get system health and recovery status.
+
+#### GET /api/analytics/metrics
+Get system performance metrics.
+
+#### GET /api/analytics/trends
+Get error trend analysis.
+
+### Self-Service Operations
+
+#### POST /api/self-service/scan
+Auto check-in/out student using barcode scan.
+
+**Request:**
+```json
+{
+  "barcode": "STU001",
+  "location": "Main Library"
+}
+```
+
+#### GET /api/self-service/status/:scanData
+Get student status by barcode/QR data.
+
+#### POST /api/self-service/check-in
+Manual student check-in.
+
+#### POST /api/self-service/check-out
+Manual student check-out.
+
+#### GET /api/self-service/statistics
+Get self-service usage statistics.
+
+### Notifications
+
+#### GET /api/notifications
+Get user notifications with filtering.
+
+#### POST /api/notifications
+Create new notification.
+
+#### PUT /api/notifications/:id/read
+Mark notification as read.
+
+#### GET /api/notifications/channels
+Get available notification channels.
+
+### Settings & Configuration
+
+#### GET /api/settings
+Get system settings.
+
+#### PUT /api/settings/:category/:key
+Update specific setting.
+
+#### GET /api/settings/system
+Get system configuration settings.
+
+#### GET /api/settings/backup
+Get backup configuration.
+
+### Security & Audit
+
+#### GET /api/audit/logs
+Get audit trail logs.
+
+**Query Parameters:**
+- `userId` (optional): Filter by user ID
+- `action` (optional): Filter by action type
+- `startDate` (optional): Filter by start date
+- `endDate` (optional): Filter by end date
+- `resourceType` (optional): Filter by resource type
+
+#### GET /api/audit/export
+Export audit logs.
+
+#### GET /api/audit/compliance
+Generate compliance reports.
+
+#### GET /api/security/threats
+Get security threat analysis.
+
+#### GET /api/users/permissions
+Get user permissions and roles.
 
 ### Utilities
 
@@ -269,14 +465,69 @@ Get system statistics.
 
 ## WebSocket Events
 
-Real-time events are available via WebSocket connection at `ws://localhost:3001`.
+Real-time events are available via WebSocket connection at `ws://localhost:3002/ws`.
+
+### Authentication
+
+WebSocket connections require JWT authentication via the `Authorization` header during the WebSocket upgrade.
+
+### Subscription Topics
+
+Clients can subscribe to specific topics to receive relevant updates:
+
+- `activities` - Student check-in/out, equipment usage
+- `equipment` - Equipment status changes and availability
+- `notifications` - System alerts and user notifications
+- `dashboard` - Real-time dashboard metrics and statistics
+- `analytics` - Usage analytics and insights
+- `emergency` - Emergency alerts and system warnings
+- `chat` - Inter-user messaging (future feature)
+- `system` - System status and maintenance updates
 
 ### Events
 
-- `activity:created` - New activity created
-- `activity:ended` - Activity ended
-- `equipment:status_changed` - Equipment status updated
-- `system:notification` - System notifications
+#### Client-to-Server Messages
+- `subscribe` - Subscribe to topic
+- `unsubscribe` - Unsubscribe from topic
+- `ping` - Keep-alive ping
+- `get_status` - Get connection status
+
+#### Server-to-Client Events
+- `welcome` - Connection welcome message
+- `activity_update` - Activity status changes
+- `equipment_update` - Equipment status changes
+- `notification` - System notifications
+- `dashboard_update` - Dashboard metrics
+- `error` - Error messages
+- `batch` - Batched messages
+
+### Example WebSocket Usage
+
+```javascript
+const ws = new WebSocket('ws://localhost:3002/ws', {
+  headers: {
+    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+  }
+});
+
+ws.onopen = () => {
+  // Subscribe to activities
+  ws.send(JSON.stringify({
+    type: 'subscribe',
+    data: {
+      topic: 'activities',
+      filters: {
+        activityType: ['CHECK_IN', 'CHECK_OUT']
+      }
+    }
+  }));
+};
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  console.log('Received:', message);
+};
+```
 
 ## Testing
 
@@ -316,6 +567,16 @@ api.interceptors.request.use(config => {
 ```
 
 ## Changelog
+
+### v2.0.0 (October 2025)
+- **Advanced Analytics Engine**: Predictive insights, usage patterns, and resource optimization
+- **Enhanced WebSocket System**: Real-time updates with subscription-based topics
+- **Comprehensive Error Handling**: Self-healing capabilities and automatic recovery
+- **Security Enhancements**: Advanced authentication, audit trails, and threat detection
+- **Self-Service Features**: Automated check-in/out with barcode scanner integration
+- **Advanced Reporting**: Custom report builder with multiple export formats
+- **Performance Monitoring**: Real-time metrics and health monitoring
+- **Backup & Recovery**: Automated backup systems with disaster recovery procedures
 
 ### v1.0.0
 - Initial API release

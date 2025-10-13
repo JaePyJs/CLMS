@@ -28,27 +28,27 @@ class BarcodeService {
             (0, fs_1.mkdirSync)(this.studentBarcodeDir, { recursive: true });
         }
     }
-    async generateStudentBarcode(studentId, options = {}) {
+    async generateStudentBarcode(student_id, options = {}) {
         try {
             const opts = { ...defaultOptions, ...options };
-            const student = await prisma_1.prisma.student.findUnique({
-                where: { studentId },
+            const student = await prisma_1.prisma.students.findUnique({
+                where: { student_id },
             });
             if (!student) {
                 return {
                     success: false,
-                    error: `Student with ID ${studentId} not found`,
+                    error: `Student with ID ${student_id} not found`,
                 };
             }
-            const filename = `student_${student.studentId}.${opts.format}`;
+            const filename = `student_${student.student_id}.${opts.format}`;
             const barcodePath = (0, path_1.join)(this.outputDir, filename);
-            await this.generateBarcodeImage(student.studentId, barcodePath, opts);
-            await prisma_1.prisma.student.update({
+            await this.generateBarcodeImage(student.student_id, barcodePath, opts);
+            await prisma_1.prisma.students.update({
                 where: { id: student.id },
-                data: { barcodeImage: barcodePath },
+                data: { id: crypto.randomUUID(), updated_at: new Date(), barcode_image: barcodePath },
             });
-            await this.saveBarcodeHistory(student.id, 'Student', student.studentId, opts.format || 'png');
-            logger_1.logger.info(`Generated barcode for student ${student.studentId}`, {
+            await this.saveBarcodeHistory(student.id, 'Student', student.student_id, opts.format || 'png');
+            logger_1.logger.info(`Generated barcode for student ${student.student_id}`, {
                 path: barcodePath,
             });
             return {
@@ -59,7 +59,7 @@ class BarcodeService {
         catch (error) {
             logger_1.logger.error('Failed to generate student barcode', {
                 error: error.message,
-                studentId,
+                student_id,
             });
             return {
                 success: false,
@@ -67,28 +67,28 @@ class BarcodeService {
             };
         }
     }
-    async generateBookBarcode(bookId, options = {}) {
+    async generateBookBarcode(book_id, options = {}) {
         try {
             const opts = { ...defaultOptions, ...options };
-            const book = await prisma_1.prisma.book.findUnique({
-                where: { id: bookId },
+            const book = await prisma_1.prisma.books.findUnique({
+                where: { id: book_id },
             });
             if (!book) {
                 return {
                     success: false,
-                    error: `Book with ID ${bookId} not found`,
+                    error: `Book with ID ${book_id} not found`,
                 };
             }
-            const barcodeData = book.accessionNo;
-            const filename = `book_${barcodeData}.${opts.format}`;
+            const barcodeData = book.accession_no;
+            const filename = `book_${barcode_data}.${opts.format}`;
             const barcodePath = (0, path_1.join)(this.outputDir, filename);
-            await this.generateBarcodeImage(barcodeData, barcodePath, opts);
-            await prisma_1.prisma.book.update({
+            await this.generateBarcodeImage(barcode_data, barcodePath, opts);
+            await prisma_1.prisma.books.update({
                 where: { id: book.id },
-                data: { barcodeImage: barcodePath },
+                data: { id: crypto.randomUUID(), updated_at: new Date(), barcode_image: barcodePath },
             });
-            await this.saveBarcodeHistory(book.id, 'Book', barcodeData, opts.format || 'png');
-            logger_1.logger.info(`Generated barcode for book ${barcodeData}`, {
+            await this.saveBarcodeHistory(book.id, 'Book', barcode_data, opts.format || 'png');
+            logger_1.logger.info(`Generated barcode for book ${barcode_data}`, {
                 path: barcodePath,
             });
             return {
@@ -99,7 +99,7 @@ class BarcodeService {
         catch (error) {
             logger_1.logger.error('Failed to generate book barcode', {
                 error: error.message,
-                bookId,
+                book_id,
             });
             return {
                 success: false,
@@ -107,23 +107,23 @@ class BarcodeService {
             };
         }
     }
-    async generateEquipmentBarcode(equipmentId, options = {}) {
+    async generateEquipmentBarcode(equipment_id, options = {}) {
         try {
             const opts = { ...defaultOptions, ...options };
             const equipment = await prisma_1.prisma.equipment.findUnique({
-                where: { id: equipmentId },
+                where: { id: equipment_id },
             });
             if (!equipment) {
                 return {
                     success: false,
-                    error: `Equipment with ID ${equipmentId} not found`,
+                    error: `Equipment with ID ${equipment_id} not found`,
                 };
             }
-            const barcodeData = equipment.equipmentId;
-            const filename = `equipment_${barcodeData}.${opts.format}`;
+            const barcodeData = equipment.equipment_id;
+            const filename = `equipment_${barcode_data}.${opts.format}`;
             const barcodePath = (0, path_1.join)(this.outputDir, filename);
-            await this.generateBarcodeImage(barcodeData, barcodePath, opts);
-            logger_1.logger.info(`Generated barcode for equipment ${barcodeData}`, {
+            await this.generateBarcodeImage(barcode_data, barcodePath, opts);
+            logger_1.logger.info(`Generated barcode for equipment ${barcode_data}`, {
                 path: barcodePath,
             });
             return {
@@ -134,7 +134,7 @@ class BarcodeService {
         catch (error) {
             logger_1.logger.error('Failed to generate equipment barcode', {
                 error: error.message,
-                equipmentId,
+                equipment_id,
             });
             return {
                 success: false,
@@ -144,27 +144,27 @@ class BarcodeService {
     }
     async generateAllStudentBarcodes(options = {}) {
         try {
-            const students = await prisma_1.prisma.student.findMany({
-                where: { isActive: true },
+            const students = await prisma_1.prisma.students.findMany({
+                where: { is_active: true },
             });
             let successCount = 0;
             let errorCount = 0;
             for (const student of students) {
-                const result = await this.generateStudentBarcode(student.studentId, options);
+                const result = await this.generateStudentBarcode(student.student_id, options);
                 if (result.success) {
                     successCount++;
                 }
                 else {
                     errorCount++;
-                    logger_1.logger.warn(`Failed to generate barcode for student ${student.studentId}`, { error: result.error });
+                    logger_1.logger.warn(`Failed to generate barcode for student ${student.student_id}`, { error: result.error });
                 }
             }
-            logger_1.logger.info(`Generated barcodes for ${successCount} students`, {
+            logger_1.logger.info(`Generated barcodes for ${success_count} students`, {
                 errorCount,
             });
             return {
                 success: true,
-                count: successCount,
+                count: success_count,
             };
         }
         catch (error) {
@@ -180,8 +180,8 @@ class BarcodeService {
     }
     async generateAllBookBarcodes(options = {}) {
         try {
-            const books = await prisma_1.prisma.book.findMany({
-                where: { isActive: true },
+            const books = await prisma_1.prisma.books.findMany({
+                where: { is_active: true },
             });
             let successCount = 0;
             let errorCount = 0;
@@ -192,15 +192,15 @@ class BarcodeService {
                 }
                 else {
                     errorCount++;
-                    logger_1.logger.warn(`Failed to generate barcode for book ${book.accessionNo}`, { error: result.error });
+                    logger_1.logger.warn(`Failed to generate barcode for book ${book.accession_no}`, { error: result.error });
                 }
             }
-            logger_1.logger.info(`Generated barcodes for ${successCount} books`, {
+            logger_1.logger.info(`Generated barcodes for ${success_count} books`, {
                 errorCount,
             });
             return {
                 success: true,
-                count: successCount,
+                count: success_count,
             };
         }
         catch (error) {
@@ -226,15 +226,15 @@ class BarcodeService {
                 }
                 else {
                     errorCount++;
-                    logger_1.logger.warn(`Failed to generate barcode for equipment ${item.equipmentId}`, { error: result.error });
+                    logger_1.logger.warn(`Failed to generate barcode for equipment ${item.equipment_id}`, { error: result.error });
                 }
             }
-            logger_1.logger.info(`Generated barcodes for ${successCount} equipment items`, {
+            logger_1.logger.info(`Generated barcodes for ${success_count} equipment items`, {
                 errorCount,
             });
             return {
                 success: true,
-                count: successCount,
+                count: success_count,
             };
         }
         catch (error) {
@@ -250,9 +250,9 @@ class BarcodeService {
     }
     async generateBarcodesForAllStudents() {
         logger_1.logger.info('Starting barcode generation for all students');
-        const students = await prisma_1.prisma.student.findMany({
-            where: { isActive: true },
-            orderBy: { studentId: 'asc' },
+        const students = await prisma_1.prisma.students.findMany({
+            where: { is_active: true },
+            orderBy: { student_id: 'asc' },
         });
         logger_1.logger.info(`Found ${students.length} active students`);
         const results = [];
@@ -260,57 +260,57 @@ class BarcodeService {
         let errorCount = 0;
         for (const student of students) {
             try {
-                const barcodePath = await this.generateBarcodeForStudent(student.studentId);
-                await prisma_1.prisma.student.update({
-                    where: { studentId: student.studentId },
-                    data: { barcodeImage: barcodePath },
+                const barcodePath = await this.generateBarcodeForStudent(student.student_id);
+                await prisma_1.prisma.students.update({
+                    where: { student_id: student.student_id },
+                    data: { id: crypto.randomUUID(), updated_at: new Date(), barcode_image: barcodePath },
                 });
-                const fullName = `${student.firstName} ${student.lastName}`;
+                const fullName = `${student.first_name} ${student.last_name}`;
                 results.push({
-                    studentId: student.studentId,
-                    name: fullName,
+                    student_id: student.student_id,
+                    name: full_name,
                     barcodePath,
-                    barcodeUrl: `/api/utilities/barcode/${student.studentId}`,
+                    barcodeUrl: `/api/utilities/barcode/${student.student_id}`,
                     success: true,
                 });
                 successCount++;
-                logger_1.logger.info(`✅ Generated barcode for ${student.studentId} - ${fullName}`);
+                logger_1.logger.info(`✅ Generated barcode for ${student.student_id} - ${full_name}`);
             }
             catch (error) {
-                const fullName = `${student.firstName} ${student.lastName}`;
+                const fullName = `${student.first_name} ${student.last_name}`;
                 results.push({
-                    studentId: student.studentId,
-                    name: fullName,
+                    student_id: student.student_id,
+                    name: full_name,
                     barcodePath: '',
                     barcodeUrl: '',
                     success: false,
                     error: error instanceof Error ? error.message : 'Unknown error',
                 });
                 errorCount++;
-                logger_1.logger.error(`❌ Failed to generate barcode for ${student.studentId}`, error);
+                logger_1.logger.error(`❌ Failed to generate barcode for ${student.student_id}`, error);
             }
         }
         const summary = {
             totalStudents: students.length,
-            successCount,
+            success_count,
             errorCount,
             outputDir: this.studentBarcodeDir,
             results,
-            generatedAt: new Date().toISOString(),
+            generated_at: new Date().toISOString(),
         };
         const reportPath = (0, path_1.join)(this.studentBarcodeDir, '_generation-report.json');
         (0, fs_1.writeFileSync)(reportPath, JSON.stringify(summary, null, 2));
         logger_1.logger.info(`Saved generation report to ${reportPath}`);
         await this.generatePrintableSheet(results.filter(r => r.success));
-        logger_1.logger.info(`Barcode generation complete: ${successCount} success, ${errorCount} errors`);
+        logger_1.logger.info(`Barcode generation complete: ${success_count} success, ${errorCount} errors`);
         return summary;
     }
-    async generateBarcodeForStudent(studentId) {
-        const fileName = `${studentId}.png`;
+    async generateBarcodeForStudent(student_id) {
+        const fileName = `${student_id}.png`;
         const filePath = (0, path_1.join)(this.studentBarcodeDir, fileName);
         const png = await bwip_js_1.default.toBuffer({
             bcid: 'code128',
-            text: studentId,
+            text: student_id,
             scale: 3,
             height: 15,
             includetext: true,
@@ -320,31 +320,31 @@ class BarcodeService {
         (0, fs_1.writeFileSync)(filePath, png);
         return filePath;
     }
-    async regenerateBarcodeForStudent(studentId) {
-        const oldPath = (0, path_1.join)(this.studentBarcodeDir, `${studentId}.png`);
+    async regenerateBarcodeForStudent(student_id) {
+        const oldPath = (0, path_1.join)(this.studentBarcodeDir, `${student_id}.png`);
         if ((0, fs_1.existsSync)(oldPath)) {
             (0, fs_1.unlinkSync)(oldPath);
-            logger_1.logger.info(`Deleted old barcode for ${studentId}`);
+            logger_1.logger.info(`Deleted old barcode for ${student_id}`);
         }
-        return this.generateBarcodeForStudent(studentId);
+        return this.generateBarcodeForStudent(student_id);
     }
-    async deleteBarcodeForStudent(studentId) {
-        const filePath = (0, path_1.join)(this.studentBarcodeDir, `${studentId}.png`);
+    async deleteBarcodeForStudent(student_id) {
+        const filePath = (0, path_1.join)(this.studentBarcodeDir, `${student_id}.png`);
         if ((0, fs_1.existsSync)(filePath)) {
             (0, fs_1.unlinkSync)(filePath);
-            logger_1.logger.info(`Deleted barcode for ${studentId}`);
+            logger_1.logger.info(`Deleted barcode for ${student_id}`);
         }
-        await prisma_1.prisma.student.update({
-            where: { studentId },
-            data: { barcodeImage: null },
+        await prisma_1.prisma.students.update({
+            where: { student_id },
+            data: { id: crypto.randomUUID(), updated_at: new Date(), barcode_image: null },
         });
     }
-    barcodeExists(studentId) {
-        const filePath = (0, path_1.join)(this.studentBarcodeDir, `${studentId}.png`);
+    barcodeExists(student_id) {
+        const filePath = (0, path_1.join)(this.studentBarcodeDir, `${student_id}.png`);
         return (0, fs_1.existsSync)(filePath);
     }
-    getBarcodePath(studentId) {
-        const filePath = (0, path_1.join)(this.studentBarcodeDir, `${studentId}.png`);
+    getBarcodePath(student_id) {
+        const filePath = (0, path_1.join)(this.studentBarcodeDir, `${student_id}.png`);
         return (0, fs_1.existsSync)(filePath) ? filePath : null;
     }
     async getGenerationReport() {
@@ -541,8 +541,8 @@ class BarcodeService {
             .map(result => `
     <div class="barcode-card">
       <h3>${result.name}</h3>
-      <p>Student ID: ${result.studentId}</p>
-      <img src="${result.studentId}.png" alt="Barcode for ${result.studentId}" />
+      <p>Student ID: ${result.student_id}</p>
+      <img src="${result.student_id}.png" alt="Barcode for ${result.student_id}" />
     </div>
     `)
             .join('')}
@@ -589,15 +589,15 @@ class BarcodeService {
             }
         });
     }
-    async saveBarcodeHistory(entityId, entityType, barcodeData, format) {
+    async saveBarcodeHistory(entity_id, entity_type, barcode_data, format) {
         try {
-            await prisma_1.prisma.barcodeHistory.create({
-                data: {
-                    entityId,
-                    entityType,
-                    barcodeData,
+            await prisma_1.prisma.barcode_history.create({
+                data: { id: crypto.randomUUID(), updated_at: new Date(),
+                    entity_id,
+                    entity_type,
+                    barcode_data,
                     format,
-                    generatedBy: 'CLMS System',
+                    generated_by: 'CLMS System',
                 },
             });
         }
@@ -607,15 +607,15 @@ class BarcodeService {
             });
         }
     }
-    async getBarcodeHistory(entityId, entityType) {
+    async getBarcodeHistory(entity_id, entity_type) {
         try {
-            const history = await prisma_1.prisma.barcodeHistory.findMany({
+            const history = await prisma_1.prisma.barcode_history.findMany({
                 where: {
-                    entityId,
-                    entityType,
+                    entity_id,
+                    entity_type,
                 },
                 orderBy: {
-                    generatedAt: 'desc',
+                    generated_at: 'desc',
                 },
             });
             return history;

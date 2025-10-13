@@ -68,13 +68,13 @@ export declare class TimeLimitExceededError extends BusinessLogicError {
     constructor(resource: string, timeLimit: number, currentTime: number);
 }
 export declare class EquipmentUnavailableError extends BusinessLogicError {
-    constructor(equipmentId: string, currentStatus: string);
+    constructor(equipment_id: string, currentStatus: string);
 }
 export declare class ConcurrentSessionError extends BusinessLogicError {
-    constructor(studentId: string, equipmentType: string);
+    constructor(student_id: string, equipmentType: string);
 }
 export declare class StudentInactiveError extends BusinessLogicError {
-    constructor(studentId: string);
+    constructor(student_id: string);
 }
 export declare class GradeRestrictionError extends BusinessLogicError {
     constructor(studentGrade: string, requiredGrade: string, resource: string);

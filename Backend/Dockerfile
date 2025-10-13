@@ -1,56 +1,75 @@
-# Use Node.js 18 Alpine as base image
-FROM node:18-alpine AS base
+# ============================================================================
+# CLMS Backend Production Dockerfile - Multi-Stage Build
+# ============================================================================
+# Purpose: Optimized production image with minimal footprint
+# Features: Multi-stage build, non-root user, health checks, security hardening
+# Build: docker build -t clms-backend:prod .
+# ============================================================================
 
-# Install dependencies only when needed
-FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
+# Stage 1: Base image with Node.js 20 LTS
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat curl
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+# Stage 2: Install dependencies
+FROM base AS deps
+WORKDIR /app
 
-# Rebuild the source code only when needed
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install production dependencies only
+RUN npm ci --only=production --ignore-scripts && \
+    npm cache clean --force
+
+# Stage 3: Build application
 FROM base AS builder
 WORKDIR /app
+
+# Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code
 COPY . .
 
 # Generate Prisma client
-RUN npm run db:generate
+RUN npx prisma generate
 
-# Build the application
-RUN npm run build
+# Build TypeScript application
+RUN npm run build && \
+    rm -rf src tests *.test.ts
 
-# Production image, copy all the files and run the app
+# Stage 4: Production runner
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
+# Set production environment
+ENV NODE_ENV=production \
+    PORT=3001
 
-# Create a non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nodejs
+# Create non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nodejs
 
-# Copy the built application
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/prisma ./prisma
+# Copy only necessary files from builder
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
 
-# Create a directory for logs
-RUN mkdir -p /app/logs && chown -R nodejs:nodejs /app/logs
+# Create directories for runtime data
+RUN mkdir -p logs uploads generated && \
+    chown -R nodejs:nodejs logs uploads generated
 
 # Switch to non-root user
 USER nodejs
 
-# Expose port
+# Expose application port
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+# Health check with proper timeouts for production
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["node", "dist/src/server.js"]

@@ -16,10 +16,10 @@ async function main() {
     console.log('='.repeat(60));
     console.log(`📁 Output Directory: ${summary.outputDir}`);
     console.log(`👥 Total Students: ${summary.totalStudents}`);
-    console.log(`✅ Successful: ${summary.successCount}`);
+    console.log(`✅ Successful: ${summary.success_count}`);
     console.log(`❌ Errors: ${summary.errorCount}`);
     console.log(
-      `🕒 Generated At: ${new Date(summary.generatedAt).toLocaleString()}`,
+      `🕒 Generated At: ${new Date(summary.generated_at).toLocaleString()}`,
     );
     console.log('='.repeat(60));
 
@@ -29,13 +29,13 @@ async function main() {
         .filter(r => !r.success)
         .forEach(result => {
           console.log(
-            `  • ${result.studentId} - ${result.name}: ${result.error}`,
+            `  • ${result.student_id} - ${result.name}: ${result.error}`,
           );
         });
     }
 
     console.log('\n📄 Files Generated:');
-    console.log(`  • ${summary.successCount} barcode PNG files`);
+    console.log(`  • ${summary.success_count} barcode PNG files`);
     console.log(`  • 1 generation report JSON file`);
     console.log(`  • 1 printable HTML sheet (index.html)`);
 

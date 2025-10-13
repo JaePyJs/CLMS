@@ -36,5 +36,14 @@
     }
   },
   "include": ["src/**/*", "scripts/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "src/routes/analytics-broken.ts",
+    "src/scripts/clear-all-data.ts",
+    "src/scripts/generate-sample-data.ts",
+    "src/scripts/setup-library-rooms.ts"
+  ]
 }

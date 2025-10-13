@@ -1,0 +1,39 @@
+# ============================================================================
+# CLMS Frontend Development Dockerfile
+# ============================================================================
+# Purpose: Hot-reload development environment with Vite HMR
+# Features: Volume mounting, fast refresh, debugging support
+# ============================================================================
+
+FROM node:20-alpine AS development
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    bash
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install all dependencies (including devDependencies)
+RUN npm ci
+
+# Copy application source (overridden by volume mount in development)
+COPY . .
+
+# Create non-root user for security
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001 && \
+    chown -R nextjs:nodejs /app
+
+# Switch to non-root user
+USER nextjs
+
+# Expose Vite dev server port
+EXPOSE 3000
+
+# Development command with Vite HMR
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

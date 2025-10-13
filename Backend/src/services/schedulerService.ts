@@ -2,12 +2,12 @@ import cron from 'node-cron';
 import { logger } from '@/utils/logger';
 import { prisma } from '@/utils/prisma';
 import {
-  JobType,
-  JobStatus,
-  ActivityStatus,
-  EquipmentStatus,
-  CheckoutStatus,
-  GradeCategory,
+  automation_jobs_type,
+  automation_jobs_status,
+  student_activities_status,
+  equipment_status,
+  book_checkouts_status,
+  students_grade_category,
   Prisma,
 } from '@prisma/client';
 
@@ -53,8 +53,8 @@ export class JobScheduler {
   // Load jobs from database
   private async loadJobsFromDatabase(): Promise<void> {
     try {
-      const jobs = await prisma.automationJob.findMany({
-        where: { isEnabled: true },
+      const jobs = await prisma.automation_jobs.findMany({
+        where: { is_enabled: true },
       });
 
       for (const job of jobs) {
@@ -67,9 +67,9 @@ export class JobScheduler {
             name: job.name,
             cronExpression: job.schedule,
             task,
-            enabled: job.isEnabled,
-            lastRun: job.lastRunAt || null,
-            nextRun: job.nextRunAt || null,
+            enabled: job.is_enabled,
+            lastRun: job.last_run_at || null,
+            nextRun: job.next_run_at || null,
           });
         }
       }
@@ -84,23 +84,23 @@ export class JobScheduler {
   }
 
   // Create task function based on job type
-  private createTaskForJobType(jobType: JobType): (() => Promise<void>) | null {
+  private createTaskForJobType(jobType: automation_jobs_type): (() => Promise<void>) | null {
     switch (jobType) {
-      case JobType.DAILY_BACKUP:
+      case automation_jobs_type.DAILY_BACKUP:
         return this.createDailyBackupTask();
-      case JobType.GOOGLE_SHEETS_SYNC:
+      case automation_jobs_type.GOOGLE_SHEETS_SYNC:
         return this.createGoogleSheetsSyncTask();
-      case JobType.SESSION_EXPIRY_CHECK:
+      case automation_jobs_type.SESSION_EXPIRY_CHECK:
         return this.createSessionExpiryCheckTask();
-      case JobType.OVERDUE_NOTIFICATIONS:
+      case automation_jobs_type.OVERDUE_NOTIFICATIONS:
         return this.createOverdueNotificationsTask();
-      case JobType.WEEKLY_CLEANUP:
+      case automation_jobs_type.WEEKLY_CLEANUP:
         return this.createWeeklyCleanupTask();
-      case JobType.MONTHLY_REPORT:
+      case automation_jobs_type.MONTHLY_REPORT:
         return this.createMonthlyReportTask();
-      case JobType.INTEGRITY_AUDIT:
+      case automation_jobs_type.INTEGRITY_AUDIT:
         return this.createIntegrityAuditTask();
-      case JobType.TEACHER_NOTIFICATIONS:
+      case automation_jobs_type.TEACHER_NOTIFICATIONS:
         return this.createTeacherNotificationsTask();
       default:
         logger.warn(`Unknown job type: ${jobType}`);
@@ -117,12 +117,12 @@ export class JobScheduler {
       try {
         // This would implement database backup logic
         // For now, we'll just log the execution
-        await this.updateJobStatus('Daily Backup', JobStatus.RUNNING);
+        await this.updateJobStatus('Daily Backup', automation_jobs_status.RUNNING);
 
         // Simulate backup process
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        await this.updateJobStatus('Daily Backup', JobStatus.COMPLETED);
+        await this.updateJobStatus('Daily Backup', automation_jobs_status.COMPLETED);
 
         const duration = Date.now() - startTime;
         logger.info(`Daily backup task completed in ${duration}ms`);
@@ -130,7 +130,7 @@ export class JobScheduler {
         logger.error('Daily backup task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Daily Backup', JobStatus.FAILED);
+        await this.updateJobStatus('Daily Backup', automation_jobs_status.FAILED);
       }
     };
   }
@@ -142,17 +142,17 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Google Sheets Sync', JobStatus.RUNNING);
+        await this.updateJobStatus('Google Sheets Sync', automation_jobs_status.RUNNING);
 
         // Import Google Sheets service dynamically to avoid circular dependencies
         const { googleSheetsService } = await import('./googleSheets');
         const syncResult = await googleSheetsService.testConnection();
 
         if (syncResult) {
-          await this.updateJobStatus('Google Sheets Sync', JobStatus.COMPLETED);
+          await this.updateJobStatus('Google Sheets Sync', automation_jobs_status.COMPLETED);
           logger.info('Google Sheets sync completed successfully');
         } else {
-          await this.updateJobStatus('Google Sheets Sync', JobStatus.FAILED);
+          await this.updateJobStatus('Google Sheets Sync', automation_jobs_status.FAILED);
           logger.error('Google Sheets sync failed');
         }
 
@@ -162,7 +162,7 @@ export class JobScheduler {
         logger.error('Google Sheets sync task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Google Sheets Sync', JobStatus.FAILED);
+        await this.updateJobStatus('Google Sheets Sync', automation_jobs_status.FAILED);
       }
     };
   }
@@ -174,21 +174,21 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Session Expiry Check', JobStatus.RUNNING);
+        await this.updateJobStatus('Session Expiry Check', automation_jobs_status.RUNNING);
 
         // Find expired sessions
         const now = new Date();
-        const expiredSessions = await prisma.activity.findMany({
+        const expiredSessions = await prisma.student_activities.findMany({
           where: {
-            endTime: { lt: now },
-            status: ActivityStatus.ACTIVE,
+            end_time: { lt: now },
+            status: student_activities_status.ACTIVE,
           },
           include: {
             student: {
               select: {
-                studentId: true,
-                firstName: true,
-                lastName: true,
+                student_id: true,
+                first_name: true,
+                last_name: true,
               },
             },
           },
@@ -197,23 +197,23 @@ export class JobScheduler {
         // Update expired sessions
         let expiredCount = 0;
         for (const session of expiredSessions) {
-          await prisma.activity.update({
+          await prisma.student_activities.update({
             where: { id: session.id },
-            data: { status: ActivityStatus.EXPIRED },
+            data: { id: crypto.randomUUID(), updated_at: new Date(),  status: student_activities_status.EXPIRED },
           });
 
           // If equipment was used, update its status
-          if (session.equipmentId) {
+          if (session.equipment_id) {
             await prisma.equipment.update({
-              where: { id: session.equipmentId },
-              data: { status: EquipmentStatus.AVAILABLE },
+              where: { id: session.equipment_id },
+              data: { id: crypto.randomUUID(), updated_at: new Date(),  status: equipment_status.AVAILABLE },
             });
           }
 
           expiredCount++;
         }
 
-        await this.updateJobStatus('Session Expiry Check', JobStatus.COMPLETED);
+        await this.updateJobStatus('Session Expiry Check', automation_jobs_status.COMPLETED);
         logger.info(
           `Session expiry check completed: ${expiredCount} sessions expired`,
         );
@@ -224,7 +224,7 @@ export class JobScheduler {
         logger.error('Session expiry check task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Session Expiry Check', JobStatus.FAILED);
+        await this.updateJobStatus('Session Expiry Check', automation_jobs_status.FAILED);
       }
     };
   }
@@ -236,27 +236,27 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Overdue Notifications', JobStatus.RUNNING);
+        await this.updateJobStatus('Overdue Notifications', automation_jobs_status.RUNNING);
 
         // Find overdue books
         const now = new Date();
-        const overdueCheckouts = await prisma.bookCheckout.findMany({
+        const overdueCheckouts = await prisma.book_checkouts.findMany({
           where: {
-            dueDate: { lt: now },
-            status: CheckoutStatus.ACTIVE,
+            due_date: { lt: now },
+            status: book_checkouts_status.ACTIVE,
           },
           include: {
             student: {
               select: {
-                studentId: true,
-                firstName: true,
-                lastName: true,
-                gradeLevel: true,
+                student_id: true,
+                first_name: true,
+                last_name: true,
+                grade_level: true,
               },
             },
             book: {
               select: {
-                accessionNo: true,
+                accession_no: true,
                 title: true,
                 author: true,
               },
@@ -268,24 +268,24 @@ export class JobScheduler {
         let notifiedCount = 0;
         for (const checkout of overdueCheckouts) {
           const overdueDays = Math.ceil(
-            (now.getTime() - checkout.dueDate.getTime()) /
+            (now.getTime() - checkout.due_date.getTime()) /
               (1000 * 60 * 60 * 24),
           );
           const fineAmount = overdueDays * 1.0; // 1 peso per day
 
-          await prisma.bookCheckout.update({
+          await prisma.book_checkouts.update({
             where: { id: checkout.id },
-            data: {
-              status: CheckoutStatus.OVERDUE,
-              overdueDays,
-              fineAmount,
+            data: { id: crypto.randomUUID(), updated_at: new Date(), 
+              status: book_checkouts_status.OVERDUE,
+              overdue_days,
+              fine_amount,
             },
           });
 
           // Here you would implement notification logic (email, SMS, etc.)
           // For now, we'll just log it
           logger.info(
-            `Overdue notification sent to ${checkout.student.firstName} ${checkout.student.lastName} for book "${checkout.book.title}" (${overdueDays} days, ₱${fineAmount} fine)`,
+            `Overdue notification sent to ${checkout.student.first_name} ${checkout.student.last_name} for book "${checkout.book.title}" (${overdue_days} days, ₱${fine_amount} fine)`,
           );
 
           notifiedCount++;
@@ -293,7 +293,7 @@ export class JobScheduler {
 
         await this.updateJobStatus(
           'Overdue Notifications',
-          JobStatus.COMPLETED,
+          automation_jobs_status.COMPLETED,
         );
         logger.info(
           `Overdue notifications task completed: ${notifiedCount} notifications sent`,
@@ -305,7 +305,7 @@ export class JobScheduler {
         logger.error('Overdue notifications task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Overdue Notifications', JobStatus.FAILED);
+        await this.updateJobStatus('Overdue Notifications', automation_jobs_status.FAILED);
       }
     };
   }
@@ -317,15 +317,15 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Weekly Cleanup', JobStatus.RUNNING);
+        await this.updateJobStatus('Weekly Cleanup', automation_jobs_status.RUNNING);
 
         // Clean up old logs (older than 30 days)
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const deletedLogs = await prisma.automationLog.deleteMany({
+        const deletedLogs = await prisma.automation_logs.deleteMany({
           where: {
-            startedAt: { lt: thirtyDaysAgo },
+            started_at: { lt: thirtyDaysAgo },
           },
         });
 
@@ -333,13 +333,13 @@ export class JobScheduler {
         const ninetyDaysAgo = new Date();
         ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-        const deletedAuditLogs = await prisma.auditLog.deleteMany({
+        const deletedAuditLogs = await prisma.audit_logs.deleteMany({
           where: {
-            createdAt: { lt: ninetyDaysAgo },
+            created_at: { lt: ninetyDaysAgo },
           },
         });
 
-        await this.updateJobStatus('Weekly Cleanup', JobStatus.COMPLETED);
+        await this.updateJobStatus('Weekly Cleanup', automation_jobs_status.COMPLETED);
         logger.info(
           `Weekly cleanup completed: ${deletedLogs.count} logs deleted, ${deletedAuditLogs.count} audit logs deleted`,
         );
@@ -350,7 +350,7 @@ export class JobScheduler {
         logger.error('Weekly cleanup task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Weekly Cleanup', JobStatus.FAILED);
+        await this.updateJobStatus('Weekly Cleanup', automation_jobs_status.FAILED);
       }
     };
   }
@@ -362,7 +362,7 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Monthly Report', JobStatus.RUNNING);
+        await this.updateJobStatus('Monthly Report', automation_jobs_status.RUNNING);
 
         // Get date range for last month
         const now = new Date();
@@ -381,17 +381,17 @@ export class JobScheduler {
           totalActivities,
           totalCheckouts,
         ] = await Promise.all([
-          prisma.student.count({ where: { isActive: true } }),
-          prisma.book.count({ where: { isActive: true } }),
+          prisma.students.count({ where: { is_active: true } }),
+          prisma.books.count({ where: { is_active: true } }),
           prisma.equipment.count(),
-          prisma.activity.count({
+          prisma.student_activities.count({
             where: {
-              startTime: { gte: firstDayLastMonth, lte: lastDayLastMonth },
+              start_time: { gte: firstDayLastMonth, lte: lastDayLastMonth },
             },
           }),
-          prisma.bookCheckout.count({
+          prisma.book_checkouts.count({
             where: {
-              checkoutDate: { gte: firstDayLastMonth, lte: lastDayLastMonth },
+              checkout_date: { gte: firstDayLastMonth, lte: lastDayLastMonth },
             },
           }),
         ]);
@@ -402,7 +402,7 @@ export class JobScheduler {
             year: 'numeric',
             month: 'long',
           }),
-          generatedAt: now.toISOString(),
+          generated_at: now.toISOString(),
           statistics: {
             totalStudents,
             totalBooks,
@@ -417,7 +417,7 @@ export class JobScheduler {
           `Monthly report generated: ${JSON.stringify(report, null, 2)}`,
         );
 
-        await this.updateJobStatus('Monthly Report', JobStatus.COMPLETED);
+        await this.updateJobStatus('Monthly Report', automation_jobs_status.COMPLETED);
         logger.info('Monthly report task completed');
 
         const duration = Date.now() - startTime;
@@ -426,7 +426,7 @@ export class JobScheduler {
         logger.error('Monthly report task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Monthly Report', JobStatus.FAILED);
+        await this.updateJobStatus('Monthly Report', automation_jobs_status.FAILED);
       }
     };
   }
@@ -438,14 +438,14 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Integrity Audit', JobStatus.RUNNING);
+        await this.updateJobStatus('Integrity Audit', automation_jobs_status.RUNNING);
 
         // Check for data inconsistencies
         const issues: string[] = [];
 
         // Check for active activities without valid students
-        const invalidActivities = await prisma.activity.findMany({
-          where: { status: ActivityStatus.ACTIVE },
+        const invalidActivities = await prisma.student_activities.findMany({
+          where: { status: student_activities_status.ACTIVE },
           include: { student: true },
         });
 
@@ -458,8 +458,8 @@ export class JobScheduler {
         }
 
         // Check for active checkouts without valid books
-        const invalidCheckouts = await prisma.bookCheckout.findMany({
-          where: { status: CheckoutStatus.ACTIVE },
+        const invalidCheckouts = await prisma.book_checkouts.findMany({
+          where: { status: book_checkouts_status.ACTIVE },
           include: { book: true },
         });
 
@@ -469,7 +469,7 @@ export class JobScheduler {
           }
         }
 
-        await this.updateJobStatus('Integrity Audit', JobStatus.COMPLETED);
+        await this.updateJobStatus('Integrity Audit', automation_jobs_status.COMPLETED);
         logger.info(`Integrity audit completed: ${issues.length} issues found`);
 
         if (issues.length > 0) {
@@ -482,7 +482,7 @@ export class JobScheduler {
         logger.error('Integrity audit task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Integrity Audit', JobStatus.FAILED);
+        await this.updateJobStatus('Integrity Audit', automation_jobs_status.FAILED);
       }
     };
   }
@@ -494,26 +494,26 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Teacher Notifications', JobStatus.RUNNING);
+        await this.updateJobStatus('Teacher Notifications', automation_jobs_status.RUNNING);
 
         // Get all active students with overdue books
-        const overdueStudents = await prisma.bookCheckout.findMany({
+        const overdueStudents = await prisma.book_checkouts.findMany({
           where: {
-            status: CheckoutStatus.OVERDUE,
+            status: book_checkouts_status.OVERDUE,
           },
           include: {
             student: {
               select: {
-                studentId: true,
-                firstName: true,
-                lastName: true,
-                gradeLevel: true,
-                gradeCategory: true,
+                student_id: true,
+                first_name: true,
+                last_name: true,
+                grade_level: true,
+                grade_category: true,
               },
             },
             book: {
               select: {
-                accessionNo: true,
+                accession_no: true,
                 title: true,
                 author: true,
               },
@@ -524,9 +524,9 @@ export class JobScheduler {
         // Group by grade category for teacher notifications
         type OverdueCheckout = (typeof overdueStudents)[number];
         const studentsByGrade = overdueStudents.reduce<
-          Partial<Record<GradeCategory, OverdueCheckout[]>>
+          Partial<Record<students_grade_category, OverdueCheckout[]>>
         >((acc, checkout) => {
-          const grade = checkout.student.gradeCategory;
+          const grade = checkout.student.grade_category;
           if (!acc[grade]) {
             acc[grade] = [];
           }
@@ -543,16 +543,16 @@ export class JobScheduler {
 
           // Here you would implement actual notification logic
           // For now, we'll just log the details
-          overdueList.forEach(({ student, book, overdueDays, fineAmount }) => {
+          overdueList.forEach(({ student, book, overdue_days, fine_amount }) => {
             logger.info(
-              `- ${student.firstName} ${student.lastName} (${student.studentId}): "${book.title}" (${overdueDays} days, ₱${fineAmount} fine)`,
+              `- ${student.first_name} ${student.last_name} (${student.student_id}): "${book.title}" (${overdue_days} days, ₱${fine_amount} fine)`,
             );
           });
         }
 
         await this.updateJobStatus(
           'Teacher Notifications',
-          JobStatus.COMPLETED,
+          automation_jobs_status.COMPLETED,
         );
         logger.info('Teacher notifications task completed');
 
@@ -562,7 +562,7 @@ export class JobScheduler {
         logger.error('Teacher notifications task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Teacher Notifications', JobStatus.FAILED);
+        await this.updateJobStatus('Teacher Notifications', automation_jobs_status.FAILED);
       }
     };
   }
@@ -570,29 +570,29 @@ export class JobScheduler {
   // Update job status in database
   private async updateJobStatus(
     name: string,
-    status: JobStatus,
+    status: automation_jobs_status,
   ): Promise<void> {
     try {
       const now = new Date();
 
-      const updateData: Prisma.AutomationJobUpdateManyMutationInput = {
+      const updateData: Prisma.automation_jobsUpdateManyMutationInput = {
         status,
-        totalRuns: { increment: 1 },
+        total_runs: { increment: 1 },
       };
 
-      if (status === JobStatus.RUNNING) {
-        updateData.lastRunAt = now;
+      if (status === automation_jobs_status.RUNNING) {
+        updateData.last_run_at = now;
       }
 
-      if (status === JobStatus.COMPLETED) {
-        updateData.successCount = { increment: 1 };
+      if (status === automation_jobs_status.COMPLETED) {
+        updateData.success_count = { increment: 1 };
       }
 
-      if (status === JobStatus.FAILED) {
-        updateData.failureCount = { increment: 1 };
+      if (status === automation_jobs_status.FAILED) {
+        updateData.failure_count = { increment: 1 };
       }
 
-      await prisma.automationJob.updateMany({
+      await prisma.automation_jobs.updateMany({
         where: { name },
         data: updateData,
       });

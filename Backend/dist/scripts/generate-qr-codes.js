@@ -49,9 +49,9 @@ async function generateQRCodes() {
         console.log(`📁 Created directory: ${qrDir}\n`);
     }
     try {
-        const students = await prisma.student.findMany({
-            where: { isActive: true },
-            orderBy: { studentId: 'asc' },
+        const students = await prisma.students.findMany({
+            where: { is_active: true },
+            orderBy: { student_id: 'asc' },
         });
         console.log(`📊 Found ${students.length} active students\n`);
         const results = [];
@@ -59,8 +59,8 @@ async function generateQRCodes() {
         let errorCount = 0;
         for (const student of students) {
             try {
-                const qrData = student.studentId;
-                const fileName = `${student.studentId}.png`;
+                const qrData = student.student_id;
+                const fileName = `${student.student_id}.png`;
                 const filePath = path.join(qrDir, fileName);
                 await qrcode_1.default.toFile(filePath, qrData, {
                     type: 'png',
@@ -72,46 +72,46 @@ async function generateQRCodes() {
                     },
                     errorCorrectionLevel: 'H',
                 });
-                await prisma.student.update({
+                await prisma.students.update({
                     where: { id: student.id },
-                    data: { barcodeImage: filePath },
+                    data: { id: crypto.randomUUID(), updated_at: new Date(), barcode_image: filePath },
                 });
                 results.push({
-                    studentId: student.studentId,
-                    name: `${student.firstName} ${student.lastName}`,
+                    student_id: student.student_id,
+                    name: `${student.first_name} ${student.last_name}`,
                     qrPath: filePath,
                     success: true,
                 });
                 successCount++;
                 if (successCount % 50 === 0) {
-                    console.log(`✅ Generated ${successCount} QR codes...`);
+                    console.log(`✅ Generated ${success_count} QR codes...`);
                 }
             }
             catch (error) {
                 errorCount++;
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                 results.push({
-                    studentId: student.studentId,
-                    name: `${student.firstName} ${student.lastName}`,
+                    student_id: student.student_id,
+                    name: `${student.first_name} ${student.last_name}`,
                     qrPath: '',
                     success: false,
-                    error: errorMessage,
+                    error: error_message,
                 });
-                console.error(`❌ Error generating QR for ${student.studentId}: ${errorMessage}`);
+                console.error(`❌ Error generating QR for ${student.student_id}: ${error_message}`);
             }
         }
         console.log('\n' + '='.repeat(60));
         console.log('📋 QR CODE GENERATION SUMMARY');
         console.log('='.repeat(60));
-        console.log(`✅ Successfully generated: ${successCount}`);
+        console.log(`✅ Successfully generated: ${success_count}`);
         console.log(`❌ Failed: ${errorCount}`);
         console.log(`📁 Output directory: ${qrDir}`);
         console.log('='.repeat(60) + '\n');
         const reportPath = path.join(qrDir, '_generation-report.json');
         fs.writeFileSync(reportPath, JSON.stringify({
-            generatedAt: new Date().toISOString(),
+            generated_at: new Date().toISOString(),
             totalStudents: students.length,
-            successCount,
+            success_count,
             errorCount,
             results,
         }, null, 2));
@@ -296,10 +296,10 @@ async function generatePrintableSheet(students, qrDir) {
     ${students
         .map(student => `
       <div class="qr-card">
-        <img src="${student.studentId}.png" alt="QR Code for ${student.studentId}">
-        <div class="student-id">${student.studentId}</div>
-        <div class="student-name">${student.firstName} ${student.lastName}</div>
-        <div class="student-grade">${student.gradeLevel}</div>
+        <img src="${student.student_id}.png" alt="QR Code for ${student.student_id}">
+        <div class="student-id">${student.student_id}</div>
+        <div class="student-name">${student.first_name} ${student.last_name}</div>
+        <div class="student-grade">${student.grade_level}</div>
       </div>
     `)
         .join('')}

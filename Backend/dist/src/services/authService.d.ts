@@ -1,5 +1,5 @@
 export interface JWTPayload {
-    userId: string;
+    id: string;
     username: string;
     role: string;
 }
@@ -17,9 +17,9 @@ export interface UserSummary {
     id: string;
     username: string;
     role: string;
-    isActive: boolean;
-    lastLoginAt: Date | null;
-    createdAt: Date;
+    is_active: boolean;
+    last_login_at: Date | null;
+    created_at: Date;
 }
 export declare class AuthService {
     private jwtSecret;
@@ -38,17 +38,17 @@ export declare class AuthService {
         user?: UserSummary;
         error?: string;
     }>;
-    updatePassword(userId: string, currentPassword: string, newPassword: string): Promise<{
+    updatePassword(id: string, currentPassword: string, newPassword: string): Promise<{
         success: boolean;
         error?: string;
     }>;
-    resetPassword(userId: string, newPassword: string): Promise<{
+    resetPassword(id: string, newPassword: string): Promise<{
         success: boolean;
         error?: string;
     }>;
     getUsers(): Promise<UserSummary[]>;
-    getUserById(userId: string): Promise<UserSummary | null>;
-    updateUser(userId: string, updateData: {
+    getUserById(id: string): Promise<UserSummary | null>;
+    updateUser(id: string, updateData: {
         username?: string;
         role?: string;
         isActive?: boolean;
@@ -57,7 +57,7 @@ export declare class AuthService {
         user?: UserSummary;
         error?: string;
     }>;
-    deleteUser(userId: string): Promise<{
+    deleteUser(id: string): Promise<{
         success: boolean;
         error?: string;
     }>;
