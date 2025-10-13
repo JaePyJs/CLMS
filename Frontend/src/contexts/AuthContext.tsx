@@ -1,15 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { apiClient, LoginResponse } from '@/lib/api'
 
-interface User {
-  id: string
-  username: string
-  role: string
-}
+import {
+  apiClient,
+  LoginResponse,
+  setAccessTokenProvider,
+  setUnauthorizedHandler,
+} from '@/lib/api'
+import { AuthUser, authKeys, clearAuthState, fetchCurrentUser, primeAuthState } from '@/lib/auth-queries'
 
 interface AuthContextType {
-  user: User | null
+  user: AuthUser | null
   isAuthenticated: boolean
   isLoading: boolean
   login: (username: string, password: string) => Promise<boolean>
@@ -23,110 +25,142 @@ interface AuthProviderProps {
   children: ReactNode
 }
 
+interface LogoutOptions {
+  message?: string
+  silent?: boolean
+  severity?: 'info' | 'error'
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const queryClient = useQueryClient()
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('clms_token'))
 
-  // Check authentication on mount
-  useEffect(() => {
-    checkAuth()
-  }, [])
-
-  const checkAuth = async (): Promise<boolean> => {
-    try {
-      const token = localStorage.getItem('clms_token')
-      const userStr = localStorage.getItem('clms_user')
-
-      if (!token || !userStr) {
-        setIsLoading(false)
-        setIsAuthenticated(false)
-        setUser(null)
-        return false
-      }
-
-      // Parse user data
-      const userData = JSON.parse(userStr) as User
-      
-      // Verify token with backend (optional but recommended)
-      // For now, we'll just validate the token exists and user data is valid
-      if (userData && userData.id && userData.username) {
-        setUser(userData)
-        setIsAuthenticated(true)
-        setIsLoading(false)
-        return true
-      } else {
-        // Invalid user data, clear storage
-        localStorage.removeItem('clms_token')
-        localStorage.removeItem('clms_user')
-        setIsLoading(false)
-        setIsAuthenticated(false)
-        setUser(null)
-        return false
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error)
-      // Clear invalid data
+  const performLogout = useCallback(
+    ({ message, silent, severity = 'info' }: LogoutOptions = {}) => {
       localStorage.removeItem('clms_token')
       localStorage.removeItem('clms_user')
-      setIsLoading(false)
-      setIsAuthenticated(false)
-      setUser(null)
-      return false
+      setToken(null)
+      clearAuthState(queryClient)
+
+      if (!silent) {
+        const text = message ?? 'You have been logged out'
+        if (severity === 'error') {
+          toast.error(text)
+        } else {
+          toast.info(text)
+        }
+      }
+    },
+    [queryClient],
+  )
+
+  const authQuery = useQuery({
+    queryKey: authKeys.current(),
+    queryFn: fetchCurrentUser,
+    enabled: Boolean(token),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
+    retry: false,
+    onSuccess: (currentUser) => {
+      localStorage.setItem('clms_user', JSON.stringify(currentUser))
+    },
+  })
+
+  const logout = useCallback(() => {
+    performLogout()
+  }, [performLogout])
+
+  useEffect(() => {
+    setAccessTokenProvider(() => localStorage.getItem('clms_token'))
+
+    setUnauthorizedHandler(() => {
+      performLogout({ message: 'Session expired. Please log in again.', severity: 'error' })
+    })
+
+    return () => {
+      setAccessTokenProvider(() => null)
+      setUnauthorizedHandler(null)
     }
-  }
+  }, [performLogout])
 
-  const login = async (username: string, password: string): Promise<boolean> => {
-    try {
-      const response = await apiClient.post<LoginResponse>('/api/auth/login', {
-        username,
-        password
-      })
+  const login = useCallback(
+    async (username: string, password: string) => {
+      try {
+        const response = await apiClient.post<LoginResponse>('/api/auth/login', {
+          username,
+          password,
+        })
 
-      if (response.success && response.data) {
-        // Store JWT token
-        localStorage.setItem('clms_token', response.data.token)
-        
-        // Store user info
-        localStorage.setItem('clms_user', JSON.stringify(response.data.user))
-        
-        // Update state
-        setUser(response.data.user)
-        setIsAuthenticated(true)
-        
-        toast.success(`Welcome back, ${response.data.user.username}!`)
-        return true
-      } else {
+        if (response.success && response.data) {
+          const { token: accessToken, user } = response.data
+
+          localStorage.setItem('clms_token', accessToken)
+          localStorage.setItem('clms_user', JSON.stringify(user))
+          setToken(accessToken)
+
+          queryClient.setQueryData(authKeys.current(), user)
+
+          try {
+            await primeAuthState(queryClient)
+          } catch (primeError) {
+            console.error('Failed to prime auth state after login:', primeError)
+          }
+
+          toast.success(`Welcome back, ${user.username}!`)
+          return true
+        }
+
         toast.error(response.error || 'Login failed')
         return false
+      } catch (error) {
+        console.error('Login error:', error)
+        toast.error('An error occurred during login')
+        return false
       }
-    } catch (error) {
-      console.error('Login error:', error)
-      toast.error('An error occurred during login')
+    },
+    [queryClient],
+  )
+
+  const checkAuth = useCallback(async (): Promise<boolean> => {
+    const storedToken = localStorage.getItem('clms_token')
+
+    if (!storedToken) {
+      performLogout({ silent: true })
       return false
     }
-  }
 
-  const logout = () => {
-    // Clear storage
-    localStorage.removeItem('clms_token')
-    localStorage.removeItem('clms_user')
-    
-    // Update state
-    setUser(null)
-    setIsAuthenticated(false)
-    
-    toast.info('You have been logged out')
-  }
+    setToken(storedToken)
 
-  const value: AuthContextType = {
-    user,
-    isAuthenticated,
-    isLoading,
-    login,
-    logout,
-    checkAuth,
-  }
+    try {
+      const currentUser = await primeAuthState(queryClient)
+      queryClient.setQueryData(authKeys.current(), currentUser)
+      return true
+    } catch (error) {
+      console.error('Auth check failed:', error)
+      performLogout({ message: 'Session expired. Please log in again.', severity: 'error' })
+      return false
+    }
+  }, [performLogout, queryClient])
+
+  useEffect(() => {
+    checkAuth()
+  }, [checkAuth])
+
+  const user = authQuery.data ?? null
+  const isAuthenticated = Boolean(token && user)
+  const isLoading = token ? authQuery.isPending : false
+
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      isAuthenticated,
+      isLoading,
+      login,
+      logout,
+      checkAuth,
+    }),
+    [checkAuth, isAuthenticated, isLoading, login, logout, user],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

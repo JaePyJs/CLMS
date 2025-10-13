@@ -47,7 +47,7 @@ export declare class AutomationService {
     private logJobExecution;
     private getNextRunTime;
     private setupCleanupInterval;
-    triggerJob(jobId: string, userId?: string): Promise<void>;
+    triggerJob(jobId: string, id?: string): Promise<void>;
     getJobStatus(jobId: string): Promise<(AutomationJob & {
         AutomationLog: AutomationLog[];
     }) | null>;

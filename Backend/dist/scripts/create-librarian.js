@@ -9,7 +9,7 @@ const prisma = new client_1.PrismaClient();
 async function createLibrarianAccount() {
     try {
         console.log('Creating default librarian account...');
-        const existingLibrarian = await prisma.user.findFirst({
+        const existingLibrarian = await prisma.users.findFirst({
             where: { role: 'LIBRARIAN' }
         });
         if (existingLibrarian) {
@@ -18,29 +18,29 @@ async function createLibrarianAccount() {
         }
         const saltRounds = 10;
         const hashedPassword = await bcryptjs_1.default.hash('library123', saltRounds);
-        const librarian = await prisma.user.create({
-            data: {
+        const librarian = await prisma.users.create({
+            data: { id: crypto.randomUUID(), updated_at: new Date(),
                 username: 'librarian',
                 password: hashedPassword,
                 role: 'LIBRARIAN',
-                isActive: true
+                is_active: true
             }
         });
         console.log('✅ Librarian account created successfully!');
         console.log('Username: librarian');
         console.log('Password: library123');
         console.log('⚠️  Please change the default password after first login!');
-        const existingAdmin = await prisma.user.findFirst({
+        const existingAdmin = await prisma.users.findFirst({
             where: { role: 'ADMIN' }
         });
         if (!existingAdmin) {
             const adminHashedPassword = await bcryptjs_1.default.hash('admin123', saltRounds);
-            const admin = await prisma.user.create({
-                data: {
+            const admin = await prisma.users.create({
+                data: { id: crypto.randomUUID(), updated_at: new Date(),
                     username: 'admin',
                     password: adminHashedPassword,
                     role: 'ADMIN',
-                    isActive: true
+                    is_active: true
                 }
             });
             console.log('✅ Admin account created successfully!');

@@ -76,13 +76,13 @@ if (process.env.NODE_ENV !== 'production') {
 }
 const withTimestamp = () => new Date().toISOString();
 exports.auditLogger = {
-    log: (action, entity, entityId, userId, details) => {
+    log: (action, entity, entity_id, id, details) => {
         const payload = {
             type: 'audit',
             action,
             entity,
-            entityId,
-            userId,
+            entity_id,
+            id,
             timestamp: withTimestamp(),
         };
         if (details) {
@@ -90,23 +90,23 @@ exports.auditLogger = {
         }
         exports.logger.info('AUDIT', payload);
     },
-    studentAccess: (studentId, userId, action) => {
-        exports.auditLogger.log(action, 'Student', studentId, userId);
+    studentAccess: (student_id, id, action) => {
+        exports.auditLogger.log(action, 'Student', student_id, id);
     },
-    bookTransaction: (bookId, studentId, userId, action) => {
-        exports.auditLogger.log(action, 'Book', bookId, userId, { studentId });
+    bookTransaction: (book_id, student_id, id, action) => {
+        exports.auditLogger.log(action, 'Book', book_id, id, { student_id });
     },
-    equipmentUsage: (equipmentId, studentId, userId, action) => {
-        exports.auditLogger.log(action, 'Equipment', equipmentId, userId, { studentId });
+    equipmentUsage: (equipment_id, student_id, id, action) => {
+        exports.auditLogger.log(action, 'Equipment', equipment_id, id, { student_id });
     },
-    systemConfig: (configKey, userId, oldValue, newValue) => {
-        exports.auditLogger.log('CONFIG_UPDATE', 'SystemConfig', configKey, userId, {
+    systemConfig: (configKey, id, oldValue, newValue) => {
+        exports.auditLogger.log('CONFIG_UPDATE', 'SystemConfig', configKey, id, {
             oldValue,
             newValue,
         });
     },
-    dataImport: (entityType, userId, recordCount, success) => {
-        exports.auditLogger.log('DATA_IMPORT', entityType, 'BULK', userId, {
+    dataImport: (entity_type, id, recordCount, success) => {
+        exports.auditLogger.log('DATA_IMPORT', entity_type, 'BULK', id, {
             recordCount,
             success,
         });
@@ -137,17 +137,17 @@ exports.performanceLogger = {
     },
 };
 exports.securityLogger = {
-    login: (userId, success, ip, userAgent) => {
-        exports.logger.info('AUTH_LOGIN', { userId, success, ip, userAgent });
+    login: (id, success, ip, userAgent) => {
+        exports.logger.info('AUTH_LOGIN', { id, success, ip, userAgent });
     },
-    logout: (userId, ip) => {
-        exports.logger.info('AUTH_LOGOUT', { userId, ip });
+    logout: (id, ip) => {
+        exports.logger.info('AUTH_LOGOUT', { id, ip });
     },
     failedAuth: (identifier, reason, ip) => {
         exports.logger.warn('AUTH_FAILED', { identifier, reason, ip });
     },
-    permissionDenied: (userId, resource, action, ip) => {
-        exports.logger.warn('PERMISSION_DENIED', { userId, resource, action, ip });
+    permissionDenied: (id, resource, action, ip) => {
+        exports.logger.warn('PERMISSION_DENIED', { id, resource, action, ip });
     },
     suspiciousActivity: (description, details) => {
         exports.logger.error('SECURITY_ALERT', { description, ...details });

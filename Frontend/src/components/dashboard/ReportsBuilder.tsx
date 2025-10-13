@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LoadingSpinner, TableSkeleton, ButtonLoading, CardSkeleton, GridSkeleton, EmptyState } from '@/components/LoadingStates';
 import {
   Card,
   CardContent,
@@ -59,7 +60,7 @@ import {
   Share2,
   Star,
   FileDown,
-  Schedule,
+  CalendarClock,
   Bell,
   BarChart,
   LineChart,
@@ -139,6 +140,8 @@ export function ReportsBuilder() {
   const [isExporting, setIsExporting] = useState(false);
   const [isEmailing, setIsEmailing] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [isLoadingReports, setIsLoadingReports] = useState(true);
 
   // Mock data
   const mockTemplates: ReportTemplate[] = [
@@ -436,7 +439,7 @@ export function ReportsBuilder() {
             onClick={() => setShowScheduleReport(true)}
             className="bg-white/90 hover:bg-white shadow-sm"
           >
-            <Schedule className="h-4 w-4 mr-1" />
+            <CalendarClock className="h-4 w-4 mr-1" />
             Schedule
           </Button>
         </div>
@@ -844,7 +847,7 @@ export function ReportsBuilder() {
             </CardHeader>
             <CardContent>
               <div className="text-center py-12">
-                <Schedule className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <CalendarClock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-muted-foreground">No scheduled reports yet</p>
                 <p className="text-sm text-muted-foreground mt-2">Click "Add Schedule" to create your first scheduled report</p>
               </div>
@@ -1153,7 +1156,7 @@ export function ReportsBuilder() {
               toast.success('Report scheduled successfully!');
               setShowScheduleReport(false);
             }}>
-              <Schedule className="h-4 w-4 mr-2" />
+              <CalendarClock className="h-4 w-4 mr-2" />
               Schedule Report
             </Button>
           </div>

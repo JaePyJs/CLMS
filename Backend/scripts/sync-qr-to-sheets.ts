@@ -59,23 +59,23 @@ async function uploadQRToGoogleSheets() {
     }
 
     // Fetch students with QR codes
-    const students = await prisma.student.findMany({
-      where: { isActive: true },
-      orderBy: { studentId: 'asc' },
+    const students = await prisma.students.findMany({
+      where: { is_active: true },
+      orderBy: { student_id: 'asc' },
     });
 
     console.log(`👥 Found ${students.length} students\n`);
 
     const rows = students.map(student => ({
-      'Student ID': student.studentId,
-      'Full Name': `${student.firstName} ${student.lastName}`,
-      'Grade Level': student.gradeLevel,
+      'Student ID': student.student_id,
+      'Full Name': `${student.first_name} ${student.last_name}`,
+      'Grade Level': student.grade_level,
       Section: student.section || 'N/A',
-      Status: student.isActive ? 'Active' : 'Inactive',
-      'QR Code Generated': student.barcodeImage ? 'Yes' : 'No',
-      'QR Code Path': student.barcodeImage || 'Not generated',
-      'QR Code URL': student.barcodeImage
-        ? `file:///${student.barcodeImage.replace(/\\/g, '/')}`
+      Status: student.is_active ? 'Active' : 'Inactive',
+      'QR Code Generated': student.barcode_image ? 'Yes' : 'No',
+      'QR Code Path': student.barcode_image || 'Not generated',
+      'QR Code URL': student.barcode_image
+        ? `file:///${student.barcode_image.replace(/\\/g, '/')}`
         : 'N/A',
       'Last Updated': new Date().toISOString(),
     }));
@@ -121,9 +121,9 @@ async function uploadQRToGoogleSheets() {
 async function generateStudentIDCards() {
   console.log('\n📇 Generating Student ID Cards with QR Codes...\n');
 
-  const students = await prisma.student.findMany({
-    where: { isActive: true },
-    orderBy: { studentId: 'asc' },
+  const students = await prisma.students.findMany({
+    where: { is_active: true },
+    orderBy: { student_id: 'asc' },
   });
 
   const html = `
@@ -303,15 +303,15 @@ async function generateStudentIDCards() {
         <div class="id-card-left">
           <div class="school-logo">📚 SHJCS</div>
           <div class="student-info">
-            <h2>${student.firstName} ${student.lastName}</h2>
-            <p>${student.gradeLevel}</p>
+            <h2>${student.first_name} ${student.last_name}</h2>
+            <p>${student.grade_level}</p>
             <p>Section: ${student.section || 'N/A'}</p>
-            <div class="student-id-number">${student.studentId}</div>
+            <div class="student-id-number">${student.student_id}</div>
           </div>
         </div>
         <div class="id-card-right">
           <div class="qr-code-container">
-            <img src="students/${student.studentId}.png" alt="QR Code">
+            <img src="students/${student.student_id}.png" alt="QR Code">
             <div class="qr-label">SCAN ME</div>
           </div>
         </div>

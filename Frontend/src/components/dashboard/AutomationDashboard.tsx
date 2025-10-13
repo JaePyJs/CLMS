@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAutomationJobs, useTriggerJob, useGoogleSheetsTest } from '@/hooks/api-hooks'
 import { useAppStore } from '@/store/useAppStore'
+import { DashboardCardSkeleton, CardSkeleton, ButtonLoading, LoadingSpinner } from '@/components/LoadingStates'
 import {
   Bot,
   Play,
@@ -39,6 +40,8 @@ interface AutomationJob {
 
 export function AutomationDashboard() {
   const [selectedTab, setSelectedTab] = useState('jobs')
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [triggeringJobId, setTriggeringJobId] = useState<string | null>(null)
   const { automationJobs } = useAppStore()
   const { mutate: triggerJob } = useTriggerJob()
   const { data: googleSheetsStatus } = useGoogleSheetsTest()

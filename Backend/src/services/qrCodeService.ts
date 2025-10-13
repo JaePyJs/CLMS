@@ -7,7 +7,7 @@ import { logger } from '@/utils/logger';
 const prisma = new PrismaClient();
 
 export interface QRGenerationResult {
-  studentId: string;
+  student_id: string;
   name: string;
   qrPath: string;
   qrUrl: string;
@@ -17,11 +17,11 @@ export interface QRGenerationResult {
 
 export interface QRGenerationSummary {
   totalStudents: number;
-  successCount: number;
+  success_count: number;
   errorCount: number;
   outputDir: string;
   results: QRGenerationResult[];
-  generatedAt: string;
+  generated_at: string;
 }
 
 export class QRCodeService {
@@ -42,9 +42,9 @@ export class QRCodeService {
   async generateQRCodesForAllStudents(): Promise<QRGenerationSummary> {
     logger.info('Starting QR code generation for all students');
 
-    const students = await prisma.student.findMany({
-      where: { isActive: true },
-      orderBy: { studentId: 'asc' },
+    const students = await prisma.students.findMany({
+      where: { is_active: true },
+      orderBy: { student_id: 'asc' },
     });
 
     logger.info(`Found ${students.length} active students`);
@@ -67,52 +67,52 @@ export class QRCodeService {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
         logger.error(
-          `Failed to generate QR for student ${student.studentId}: ${errorMessage}`,
+          `Failed to generate QR for student ${student.student_id}: ${error_message}`,
         );
 
         results.push({
-          studentId: student.studentId,
-          name: `${student.firstName} ${student.lastName}`,
+          student_id: student.student_id,
+          name: `${student.first_name} ${student.last_name}`,
           qrPath: '',
           qrUrl: '',
           success: false,
-          error: errorMessage,
+          error: error_message,
         });
       }
     }
 
     const summary: QRGenerationSummary = {
       totalStudents: students.length,
-      successCount,
+      success_count,
       errorCount,
       outputDir: this.qrDir,
       results,
-      generatedAt: new Date().toISOString(),
+      generated_at: new Date().toISOString(),
     };
 
     // Save report
     const reportPath = path.join(this.qrDir, '_generation-report.json');
     fs.writeFileSync(reportPath, JSON.stringify(summary, null, 2));
     logger.info(
-      `QR generation complete. Success: ${successCount}, Failed: ${errorCount}`,
+      `QR generation complete. Success: ${success_count}, Failed: ${errorCount}`,
     );
 
     return summary;
   }
 
   async generateQRCodeForStudent(
-    studentId: string,
+    student_id: string,
   ): Promise<QRGenerationResult> {
-    const student = await prisma.student.findUnique({
-      where: { id: studentId },
+    const student = await prisma.students.findUnique({
+      where: { id: student_id },
     });
 
     if (!student) {
       throw new Error('Student not found');
     }
 
-    const qrData = student.studentId;
-    const fileName = `${student.studentId}.png`;
+    const qrData = student.student_id;
+    const fileName = `${student.student_id}.png`;
     const filePath = path.join(this.qrDir, fileName);
 
     await QRCode.toFile(filePath, qrData, {
@@ -127,30 +127,30 @@ export class QRCodeService {
     });
 
     // Update database
-    await prisma.student.update({
+    await prisma.students.update({
       where: { id: student.id },
-      data: { barcodeImage: filePath },
+      data: { id: crypto.randomUUID(), updated_at: new Date(),  barcode_image: filePath },
     });
 
     return {
-      studentId: student.studentId,
-      name: `${student.firstName} ${student.lastName}`,
+      student_id: student.student_id,
+      name: `${student.first_name} ${student.last_name}`,
       qrPath: filePath,
-      qrUrl: `/api/qr-codes/${student.studentId}.png`,
+      qrUrl: `/api/qr-codes/${student.student_id}.png`,
       success: true,
     };
   }
 
-  async getQRCodeForStudent(studentId: string): Promise<string | null> {
-    const student = await prisma.student.findFirst({
-      where: { studentId },
+  async getQRCodeForStudent(student_id: string): Promise<string | null> {
+    const student = await prisma.students.findFirst({
+      where: { student_id },
     });
 
-    if (!student || !student.barcodeImage) {
+    if (!student || !student.barcode_image) {
       return null;
     }
 
-    return student.barcodeImage;
+    return student.barcode_image;
   }
 
   async getGenerationReport(): Promise<QRGenerationSummary | null> {
@@ -164,29 +164,29 @@ export class QRCodeService {
     return JSON.parse(reportData);
   }
 
-  getQRCodePath(studentId: string): string {
-    return path.join(this.qrDir, `${studentId}.png`);
+  getQRCodePath(student_id: string): string {
+    return path.join(this.qrDir, `${student_id}.png`);
   }
 
-  qrCodeExists(studentId: string): boolean {
-    return fs.existsSync(this.getQRCodePath(studentId));
+  qrCodeExists(student_id: string): boolean {
+    return fs.existsSync(this.getQRCodePath(student_id));
   }
 
-  async deleteQRCode(studentId: string): Promise<boolean> {
-    const filePath = this.getQRCodePath(studentId);
+  async deleteQRCode(student_id: string): Promise<boolean> {
+    const filePath = this.getQRCodePath(student_id);
 
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
 
       // Update database
-      const student = await prisma.student.findFirst({
-        where: { studentId },
+      const student = await prisma.students.findFirst({
+        where: { student_id },
       });
 
       if (student) {
-        await prisma.student.update({
+        await prisma.students.update({
           where: { id: student.id },
-          data: { barcodeImage: null },
+          data: { id: crypto.randomUUID(), updated_at: new Date(),  barcode_image: null },
         });
       }
 
@@ -196,11 +196,11 @@ export class QRCodeService {
     return false;
   }
 
-  async regenerateQRCode(studentId: string): Promise<QRGenerationResult> {
-    await this.deleteQRCode(studentId);
+  async regenerateQRCode(student_id: string): Promise<QRGenerationResult> {
+    await this.deleteQRCode(student_id);
 
-    const student = await prisma.student.findFirst({
-      where: { studentId },
+    const student = await prisma.students.findFirst({
+      where: { student_id },
     });
 
     if (!student) {

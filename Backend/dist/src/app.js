@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.app = exports.CLMSApplication = void 0;
 const express_1 = __importDefault(require("express"));
+const http_1 = require("http");
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
@@ -12,9 +13,15 @@ const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const client_1 = require("@prisma/client");
 require("express-async-errors");
 const logger_1 = require("@/utils/logger");
+const requestLogger_1 = require("@/middleware/requestLogger");
 const errors_1 = require("@/utils/errors");
+const errorMiddleware_1 = require("@/middleware/errorMiddleware");
 const automation_1 = require("@/services/automation");
 const googleSheets_1 = require("@/services/googleSheets");
+const websocketServer_1 = require("@/websocket/websocketServer");
+const recoveryService_1 = require("@/services/recoveryService");
+const errorNotificationService_1 = require("@/services/errorNotificationService");
+const reportingService_1 = require("@/services/reportingService");
 const auth_1 = __importDefault(require("@/routes/auth"));
 const students_1 = __importDefault(require("@/routes/students"));
 const books_1 = __importDefault(require("@/routes/books"));
@@ -24,11 +31,21 @@ const activities_1 = __importDefault(require("@/routes/activities"));
 const automation_2 = __importDefault(require("@/routes/automation"));
 const admin_1 = __importDefault(require("@/routes/admin"));
 const reports_1 = __importDefault(require("@/routes/reports"));
+const fines_1 = __importDefault(require("@/routes/fines"));
 const utilities_1 = __importDefault(require("@/routes/utilities"));
 const analytics_1 = __importDefault(require("@/routes/analytics"));
+const import_routes_1 = __importDefault(require("@/routes/import.routes"));
+const settings_1 = __importDefault(require("@/routes/settings"));
+const notifications_routes_1 = __importDefault(require("@/routes/notifications.routes"));
+const users_routes_1 = __importDefault(require("@/routes/users.routes"));
+const backup_routes_1 = __importDefault(require("@/routes/backup.routes"));
+const self_service_routes_1 = __importDefault(require("@/routes/self-service.routes"));
+const errors_routes_1 = __importDefault(require("@/routes/errors.routes"));
+const reporting_1 = __importDefault(require("@/routes/reporting"));
 const auth_2 = require("@/middleware/auth");
 class CLMSApplication {
     app;
+    httpServer = null;
     prisma;
     isInitialized = false;
     constructor() {
@@ -50,6 +67,16 @@ class CLMSApplication {
             this.setupRoutes();
             this.setupErrorHandling();
             await this.initializeServices();
+            this.httpServer = (0, http_1.createServer)(this.app);
+            try {
+                await websocketServer_1.webSocketManager.initialize(this.httpServer);
+                logger_1.logger.info('WebSocket server initialized successfully');
+            }
+            catch (error) {
+                logger_1.logger.warn('Failed to initialize WebSocket server', {
+                    error: error.message,
+                });
+            }
             this.setupGracefulShutdown();
             this.isInitialized = true;
             logger_1.logger.info('CLMS Application initialized successfully');
@@ -82,8 +109,10 @@ class CLMSApplication {
         logger_1.logger.debug('Parsing middleware configured');
     }
     setupLoggingMiddleware() {
-        this.app.use((0, logger_1.createRequestLogger)());
-        logger_1.logger.debug('Logging middleware configured');
+        this.app.use(requestLogger_1.requestId);
+        this.app.use(requestLogger_1.requestLogger);
+        this.app.use(requestLogger_1.performanceMonitor);
+        logger_1.logger.debug('Enhanced logging middleware configured');
     }
     setupRateLimiting() {
         const limiter = (0, express_rate_limit_1.default)({
@@ -142,8 +171,17 @@ class CLMSApplication {
         this.app.use('/api/automation', auth_2.authMiddleware, automation_2.default);
         this.app.use('/api/admin', auth_2.authMiddleware, admin_1.default);
         this.app.use('/api/reports', auth_2.authMiddleware, reports_1.default);
+        this.app.use('/api/fines', auth_2.authMiddleware, fines_1.default);
         this.app.use('/api/utilities', auth_2.authMiddleware, utilities_1.default);
         this.app.use('/api/analytics', auth_2.authMiddleware, analytics_1.default);
+        this.app.use('/api/import', auth_2.authMiddleware, import_routes_1.default);
+        this.app.use('/api/settings', auth_2.authMiddleware, settings_1.default);
+        this.app.use('/api/users', users_routes_1.default);
+        this.app.use('/api/notifications', notifications_routes_1.default);
+        this.app.use('/api/backups', backup_routes_1.default);
+        this.app.use('/api/self-service', self_service_routes_1.default);
+        this.app.use('/api/errors', auth_2.authMiddleware, errors_routes_1.default);
+        this.app.use('/api/reporting', auth_2.authMiddleware, reporting_1.default);
         this.app.get('/', (req, res) => {
             res.json({
                 success: true,
@@ -167,8 +205,16 @@ class CLMSApplication {
                     automation: '/api/automation',
                     admin: '/api/admin',
                     reports: '/api/reports',
+                    fines: '/api/fines',
                     utilities: '/api/utilities',
                     analytics: '/api/analytics',
+                    import: '/api/import',
+                    settings: '/api/settings',
+                    users: '/api/users',
+                    notifications: '/api/notifications',
+                    selfService: '/api/self-service',
+                    errors: '/api/errors',
+                    reporting: '/api/reporting',
                 },
                 timestamp: new Date().toISOString(),
             });
@@ -177,8 +223,9 @@ class CLMSApplication {
     }
     setupErrorHandling() {
         this.app.use(errors_1.notFoundHandler);
-        this.app.use(errors_1.errorHandler);
-        logger_1.logger.debug('Error handling configured');
+        this.app.use(requestLogger_1.errorLogger);
+        this.app.use(errorMiddleware_1.enhancedErrorHandler);
+        logger_1.logger.debug('Enhanced error handling configured');
     }
     async initializeServices() {
         try {
@@ -197,6 +244,35 @@ class CLMSApplication {
         }
         catch (error) {
             logger_1.logger.warn('Failed to initialize automation service', {
+                error: error.message,
+            });
+        }
+        try {
+            logger_1.logger.info('Initializing recovery service...');
+            logger_1.logger.info('Recovery service initialized');
+        }
+        catch (error) {
+            logger_1.logger.warn('Failed to initialize recovery service', {
+                error: error.message,
+            });
+        }
+        try {
+            logger_1.logger.info('Initializing error notification service...');
+            logger_1.logger.info('Error notification service initialized');
+        }
+        catch (error) {
+            logger_1.logger.warn('Failed to initialize error notification service', {
+                error: error.message,
+            });
+        }
+        try {
+            logger_1.logger.info('Initializing reporting service...');
+            await reportingService_1.reportingService.initializeScheduledReports();
+            await reportingService_1.reportingService.initializeAlertMonitoring();
+            logger_1.logger.info('Reporting service initialized');
+        }
+        catch (error) {
+            logger_1.logger.warn('Failed to initialize reporting service', {
                 error: error.message,
             });
         }
@@ -221,6 +297,9 @@ class CLMSApplication {
             logger_1.logger.info(`Received ${signal}, starting graceful shutdown...`);
             try {
                 await automation_1.automationService.shutdown();
+                await recoveryService_1.recoveryService.shutdown();
+                await errorNotificationService_1.errorNotificationService.shutdown?.();
+                await reportingService_1.reportingService.cleanup();
                 await this.prisma.$disconnect();
                 logger_1.logger.info('Graceful shutdown completed');
                 process.exit(0);
@@ -242,6 +321,7 @@ class CLMSApplication {
             const databaseHealth = await this.checkDatabaseHealth();
             const googleSheetsHealth = await googleSheets_1.googleSheetsService.healthCheck();
             const automationHealth = automation_1.automationService.getSystemHealth();
+            const webSocketStatus = websocketServer_1.webSocketManager.getStatus();
             const memoryUsage = process.memoryUsage();
             const totalMemory = memoryUsage.heapTotal;
             const usedMemory = memoryUsage.heapUsed;
@@ -257,6 +337,12 @@ class CLMSApplication {
                     database: databaseHealth,
                     googleSheets: googleSheetsHealth,
                     automation: automationHealth,
+                    websockets: {
+                        initialized: webSocketStatus.isInitialized,
+                        running: webSocketStatus.isRunning,
+                        connections: webSocketStatus.stats.totalConnections,
+                        connectionsByRole: webSocketStatus.stats.connectionsByRole,
+                    },
                 },
                 system: {
                     memory: {
@@ -307,16 +393,30 @@ class CLMSApplication {
     }
     async start(port = 3001) {
         try {
+            console.log('[DEBUG] Starting CLMS Application...');
             await this.initialize();
-            this.app.listen(port, () => {
-                logger_1.logger.info(`🚀 CLMS Backend Server running on port ${port}`);
-                logger_1.logger.info(`📝 Environment: ${process.env.NODE_ENV}`);
-                logger_1.logger.info(`🔗 Health check: http://localhost:${port}/health`);
-                logger_1.logger.info(`📚 Library: ${process.env.LIBRARY_NAME}`);
-                logger_1.logger.info(`⏰ Automation: ${automation_1.automationService.getSystemHealth().initialized ? 'Enabled' : 'Disabled'}`);
+            console.log('[DEBUG] Initialization complete');
+            if (!this.httpServer) {
+                throw new Error('HTTP server not initialized');
+            }
+            console.log('[DEBUG] About to call httpServer.listen()...');
+            await new Promise(resolve => {
+                this.httpServer.listen(port, () => {
+                    console.log('[DEBUG] Listen callback fired!');
+                    logger_1.logger.info(`🚀 CLMS Backend Server running on port ${port}`);
+                    logger_1.logger.info(`📝 Environment: ${process.env.NODE_ENV}`);
+                    logger_1.logger.info(`🔗 Health check: http://localhost:${port}/health`);
+                    logger_1.logger.info(`🔌 WebSocket: ws://localhost:${port}/ws`);
+                    logger_1.logger.info(`📚 Library: ${process.env.LIBRARY_NAME}`);
+                    logger_1.logger.info(`⏰ Automation: ${automation_1.automationService.getSystemHealth().initialized ? 'Enabled' : 'Disabled'}`);
+                    logger_1.logger.info(`🌐 WebSocket: ${websocketServer_1.webSocketManager.getStatus().isRunning ? 'Enabled' : 'Disabled'}`);
+                    resolve();
+                });
             });
+            console.log('[DEBUG] After listen promise');
         }
         catch (error) {
+            console.log('[DEBUG] Error in start():', error);
             logger_1.logger.error('Failed to start server', {
                 error: error.message,
             });
@@ -326,7 +426,23 @@ class CLMSApplication {
     async shutdown() {
         logger_1.logger.info('Shutting down CLMS Application...');
         try {
+            await websocketServer_1.webSocketManager.shutdown();
+            if (this.httpServer) {
+                await new Promise((resolve, reject) => {
+                    this.httpServer.close(error => {
+                        if (error) {
+                            reject(error);
+                        }
+                        else {
+                            resolve();
+                        }
+                    });
+                });
+            }
             await automation_1.automationService.shutdown();
+            await recoveryService_1.recoveryService.shutdown();
+            await errorNotificationService_1.errorNotificationService.shutdown?.();
+            await reportingService_1.reportingService.cleanup();
             await this.prisma.$disconnect();
             logger_1.logger.info('CLMS Application shutdown complete');
         }

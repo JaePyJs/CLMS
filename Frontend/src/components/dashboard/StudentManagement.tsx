@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMobileOptimization, useTouchOptimization, useAccessibility, getResponsiveClasses, getOptimalImageSize } from '@/hooks/useMobileOptimization';
+import { studentsApi, utilitiesApi } from '@/lib/api';
+import { LoadingSpinner, TableSkeleton, ButtonLoading, EmptyState } from '@/components/LoadingStates';
 import {
   Card,
   CardContent,
@@ -107,16 +111,33 @@ interface MockStudentData {
 }
 
 export function StudentManagement() {
+  const queryClient = useQueryClient();
+
+  // Mobile optimization
+  const { isMobile, isTablet, isDesktop, isLarge, isExtraLarge, orientation } = useMobileOptimization();
+  const { handleTouchStart, handleTouchEnd, gesture } = useTouchOptimization();
+  const { prefersReducedMotion } = useAccessibility();
+
   // State management
-  const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterGrade, setFilterGrade] = useState<string>('all');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Fetch students with TanStack Query
+  const { data: studentsResponse, isLoading, error, refetch } = useQuery({
+    queryKey: ['students'],
+    queryFn: async () => {
+      const response = await studentsApi.getStudents();
+      return response.data || { students: [], total: 0, pagination: {} };
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+  });
+
+  const students = studentsResponse?.students || [];
 
   // Dialog states
   const [showAddStudent, setShowAddStudent] = useState(false);
@@ -146,6 +167,82 @@ export function StudentManagement() {
   const [isPrintingIDs, setIsPrintingIDs] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isSendingNotifications, setIsSendingNotifications] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
+
+  // Mutations
+  const createStudentMutation = useMutation({
+    mutationFn: (studentData: any) => studentsApi.createStudent(studentData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast.success('Student added successfully!');
+      setShowAddStudent(false);
+      setNewStudent({
+        firstName: '',
+        lastName: '',
+        gradeLevel: '',
+        section: '',
+        email: '',
+        phone: '',
+        parentName: '',
+        parentPhone: '',
+        parentEmail: '',
+        emergencyContact: '',
+        address: '',
+        notes: ''
+      });
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to add student');
+    },
+  });
+
+  const updateStudentMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      studentsApi.updateStudent(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast.success('Student updated successfully!');
+      setShowEditStudent(false);
+      setSelectedStudent(null);
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to update student');
+    },
+  });
+
+  const deleteStudentMutation = useMutation({
+    mutationFn: (id: string) => studentsApi.deleteStudent(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast.success('Student deleted successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to delete student');
+    },
+  });
+
+  const generateQRCodesMutation = useMutation({
+    mutationFn: () => utilitiesApi.generateQRCodes(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast.success('QR codes generated successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to generate QR codes');
+    },
+  });
+
+  const generateBarcodesMutation = useMutation({
+    mutationFn: () => utilitiesApi.generateBarcodes(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast.success('Barcodes generated successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.error || 'Failed to generate barcodes');
+    },
+  });
 
   // Mock data
   const mockData: MockStudentData = {
@@ -239,14 +336,9 @@ export function StudentManagement() {
     }
   };
 
-  useEffect(() => {
-    // Load mock data
-    setStudents(mockData.students);
-    setFilteredStudents(mockData.students);
-  }, []);
-
   // Filter and search logic
   useEffect(() => {
+    if (!students) return;
     let filtered = students;
 
     if (searchTerm) {
@@ -271,11 +363,16 @@ export function StudentManagement() {
   }, [students, searchTerm, filterStatus, filterGrade]);
 
   // Handler functions
-  const handleAddStudent = () => {
+  const handleAddStudent = async () => {
     if (!newStudent.firstName || !newStudent.lastName || !newStudent.gradeLevel) {
       toast.error('Please fill in required fields');
       return;
     }
+
+    setIsAddingStudent(true);
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
 
     const student: Student = {
       id: Date.now().toString(),
@@ -303,23 +400,28 @@ export function StudentManagement() {
       libraryCardPrinted: false
     };
 
-    setStudents([...students, student]);
-    toast.success(`Student ${student.firstName} ${student.lastName} added successfully!`);
-    setShowAddStudent(false);
-    setNewStudent({
-      firstName: '',
-      lastName: '',
-      gradeLevel: '',
-      section: '',
-      email: '',
-      phone: '',
-      parentName: '',
-      parentPhone: '',
-      parentEmail: '',
-      emergencyContact: '',
-      address: '',
-      notes: ''
-    });
+      setStudents([...students, student]);
+      toast.success(`Student ${student.firstName} ${student.lastName} added successfully!`);
+      setShowAddStudent(false);
+      setNewStudent({
+        firstName: '',
+        lastName: '',
+        gradeLevel: '',
+        section: '',
+        email: '',
+        phone: '',
+        parentName: '',
+        parentPhone: '',
+        parentEmail: '',
+        emergencyContact: '',
+        address: '',
+        notes: ''
+      });
+    } catch (error) {
+      toast.error('Failed to add student');
+    } finally {
+      setIsAddingStudent(false);
+    }
   };
 
   const handleEditStudent = () => {
@@ -348,12 +450,9 @@ export function StudentManagement() {
   const handleGenerateQRCodes = async () => {
     setIsGeneratingQRCodes(true);
     try {
-      // Simulate QR code generation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setStudents(students.map(s => ({ ...s, qrCodeGenerated: true })));
-      toast.success('QR codes generated successfully!');
+      await generateQRCodesMutation.mutateAsync();
     } catch (error) {
-      toast.error('Failed to generate QR codes');
+      // Error handled by mutation
     } finally {
       setIsGeneratingQRCodes(false);
     }
@@ -362,12 +461,10 @@ export function StudentManagement() {
   const handlePrintIDCards = async () => {
     setIsPrintingIDs(true);
     try {
-      // Simulate ID card printing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setStudents(students.map(s => ({ ...s, libraryCardPrinted: true })));
+      await generateBarcodesMutation.mutateAsync();
       toast.success('ID cards printed successfully!');
     } catch (error) {
-      toast.error('Failed to print ID cards');
+      // Error handled by mutation
     } finally {
       setIsPrintingIDs(false);
     }
@@ -416,24 +513,48 @@ export function StudentManagement() {
     }
   };
 
-  const handleBulkGradeUpdate = (grade: string) => {
-    setStudents(students.map(s =>
-      selectedStudents.includes(s.id)
-        ? { ...s, gradeLevel: grade, gradeCategory: getGradeCategory(grade) }
-        : s
-    ));
+  const handleBulkGradeUpdate = async (grade: string) => {
+    try {
+      // Update each selected student
+      await Promise.all(
+        selectedStudents.map(id => 
+          updateStudentMutation.mutateAsync({
+            id,
+            data: {
+              grade_level: grade,
+              grade_category: getGradeCategory(grade)
+            }
+          })
+        )
+      );
+      toast.success(`Updated ${selectedStudents.length} students`);
+      setSelectedStudents([]);
+      setShowBulkActions(false);
+    } catch (error) {
+      // Error handled by mutation
+    }
     toast.success(`Grade updated for ${selectedStudents.length} students!`);
     setSelectedStudents([]);
     setShowBulkActions(false);
   };
 
-  const handleBulkStatusUpdate = (status: 'active' | 'inactive') => {
-    setStudents(students.map(s =>
-      selectedStudents.includes(s.id) ? { ...s, isActive: status === 'active' } : s
-    ));
-    toast.success(`Status updated for ${selectedStudents.length} students!`);
-    setSelectedStudents([]);
-    setShowBulkActions(false);
+  const handleBulkStatusUpdate = async (status: 'active' | 'inactive') => {
+    try {
+      // Update each selected student
+      await Promise.all(
+        selectedStudents.map(id => 
+          updateStudentMutation.mutateAsync({
+            id,
+            data: { is_active: status === 'active' }
+          })
+        )
+      );
+      toast.success(`Status updated for ${selectedStudents.length} students!`);
+      setSelectedStudents([]);
+      setShowBulkActions(false);
+    } catch (error) {
+      // Error handled by mutation
+    }
   };
 
   const toggleStudentSelection = (studentId: string) => {
@@ -470,18 +591,50 @@ export function StudentManagement() {
     toast.info(`Opening awards interface for ${student.firstName} ${student.lastName}`);
   };
 
-  const handleAddNotes = (student: Student) => {
+  const handleAddNotes = async (student: Student) => {
     const notes = prompt('Add notes for this student:', student.notes || '');
     if (notes !== null) {
-      setStudents(students.map(s => s.id === student.id ? { ...s, notes } : s));
-      toast.success('Notes updated!');
+      try {
+        await updateStudentMutation.mutateAsync({
+          id: student.id,
+          data: { notes }
+        });
+        toast.success('Notes updated!');
+      } catch (error) {
+        // Error handled by mutation
+      }
     }
   };
 
+  // Handle swipe gestures for mobile navigation
+  useEffect(() => {
+    if (isMobile && gesture) {
+      if (gesture === 'swipe-left') {
+        // Navigate to next tab
+        const tabs = ['overview', 'students', 'bulk', 'reports'];
+        const currentIndex = tabs.indexOf(activeTab);
+        if (currentIndex < tabs.length - 1) {
+          setActiveTab(tabs[currentIndex + 1]);
+        }
+      } else if (gesture === 'swipe-right') {
+        // Navigate to previous tab
+        const tabs = ['overview', 'students', 'bulk', 'reports'];
+        const currentIndex = tabs.indexOf(activeTab);
+        if (currentIndex > 0) {
+          setActiveTab(tabs[currentIndex - 1]);
+        }
+      }
+    }
+  }, [gesture, isMobile, activeTab]);
+
   return (
-    <div className="space-y-6">
+    <div
+      className={getResponsiveClasses('space-y-6', { isMobile, isTablet, isDesktop, isLarge, isExtraLarge })}
+      onTouchStart={isMobile ? handleTouchStart : undefined}
+      onTouchEnd={isMobile ? handleTouchEnd : undefined}
+    >
       {/* Enhanced Header */}
-      <div className="relative">
+      <div className={`relative ${isMobile ? 'mb-4' : ''}`}>
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-black dark:text-foreground">
             Student Management
@@ -492,7 +645,7 @@ export function StudentManagement() {
         </div>
 
         {/* Header Action Buttons */}
-        <div className="absolute top-0 right-0 flex gap-2">
+        <div className={`${isMobile ? 'relative mt-4 grid grid-cols-2 gap-2' : isTablet ? 'relative mt-4 grid grid-cols-3 gap-2' : 'absolute top-0 right-0 flex gap-2'}`}>
           <Button
             variant="outline"
             size="sm"
@@ -545,8 +698,8 @@ export function StudentManagement() {
       </div>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-2">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="students">Students</TabsTrigger>
           <TabsTrigger value="bulk">Bulk Operations</TabsTrigger>
@@ -555,7 +708,7 @@ export function StudentManagement() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className={`grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4`}>
             <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800">
               <CardContent className="p-4 text-center">
                 <Users className="h-8 w-8 mx-auto mb-2 text-blue-600 dark:text-blue-400" />

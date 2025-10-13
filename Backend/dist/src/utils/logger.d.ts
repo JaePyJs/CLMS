@@ -3,12 +3,12 @@ import winston from 'winston';
 type Metadata = Record<string, unknown>;
 export declare const logger: winston.Logger;
 export declare const auditLogger: {
-    log: (action: string, entity: string, entityId: string, userId: string, details?: Metadata) => void;
-    studentAccess: (studentId: string, userId: string, action: string) => void;
-    bookTransaction: (bookId: string, studentId: string, userId: string, action: string) => void;
-    equipmentUsage: (equipmentId: string, studentId: string, userId: string, action: string) => void;
-    systemConfig: (configKey: string, userId: string, oldValue?: unknown, newValue?: unknown) => void;
-    dataImport: (entityType: string, userId: string, recordCount: number, success: boolean) => void;
+    log: (action: string, entity: string, entity_id: string, id: string, details?: Metadata) => void;
+    studentAccess: (student_id: string, id: string, action: string) => void;
+    bookTransaction: (book_id: string, student_id: string, id: string, action: string) => void;
+    equipmentUsage: (equipment_id: string, student_id: string, id: string, action: string) => void;
+    systemConfig: (configKey: string, id: string, oldValue?: unknown, newValue?: unknown) => void;
+    dataImport: (entity_type: string, id: string, recordCount: number, success: boolean) => void;
 };
 export declare const performanceLogger: {
     start: (operation: string, metadata?: Metadata) => number;
@@ -17,10 +17,10 @@ export declare const performanceLogger: {
     googleSheets: (operation: string, duration: number, rowCount?: number) => void;
 };
 export declare const securityLogger: {
-    login: (userId: string, success: boolean, ip: string, userAgent?: string) => void;
-    logout: (userId: string, ip: string) => void;
+    login: (id: string, success: boolean, ip: string, userAgent?: string) => void;
+    logout: (id: string, ip: string) => void;
     failedAuth: (identifier: string, reason: string, ip: string) => void;
-    permissionDenied: (userId: string, resource: string, action: string, ip: string) => void;
+    permissionDenied: (id: string, resource: string, action: string, ip: string) => void;
     suspiciousActivity: (description: string, details: Metadata) => void;
 };
 export declare const automationLogger: {

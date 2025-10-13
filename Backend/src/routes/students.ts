@@ -15,11 +15,18 @@ import {
 } from '@/services/studentService';
 import { GradeCategory, ActivityType, ActivityStatus } from '@prisma/client';
 import { logger } from '@/utils/logger';
+import { requirePermission } from '@/middleware/authorization.middleware';
+import { Permission } from '@/config/permissions';
+import { auditMiddleware, ferpaAccessCheck, parentalConsentCheck } from '@/middleware/ferpa.middleware';
 
 const router = Router();
 
 // Get all students
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', 
+  auditMiddleware('LIST_STUDENTS'),
+  ferpaAccessCheck('READ'),
+  requirePermission(Permission.STUDENTS_VIEW), 
+  async (req: Request, res: Response) => {
   try {
     const { gradeCategory, isActive, page = '1', limit = '50' } = req.query;
 
@@ -58,7 +65,12 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // Get student by ID
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', 
+  auditMiddleware('READ_STUDENT_DATA'),
+  ferpaAccessCheck('READ'),
+  parentalConsentCheck,
+  requirePermission(Permission.STUDENTS_VIEW), 
+  async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!id) {
@@ -100,7 +112,11 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // Create new student
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', 
+  auditMiddleware('CREATE_STUDENT'),
+  ferpaAccessCheck('WRITE'),
+  requirePermission(Permission.STUDENTS_CREATE), 
+  async (req: Request, res: Response) => {
   try {
     const {
       studentId,
@@ -156,7 +172,11 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // Update student
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', 
+  auditMiddleware('UPDATE_STUDENT'),
+  ferpaAccessCheck('WRITE'),
+  requirePermission(Permission.STUDENTS_UPDATE), 
+  async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!id) {
@@ -208,7 +228,11 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 // Delete student
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', 
+  auditMiddleware('DELETE_STUDENT'),
+  ferpaAccessCheck('DELETE'),
+  requirePermission(Permission.STUDENTS_DELETE), 
+  async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!id) {
@@ -242,7 +266,11 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 // Get student activities
-router.get('/activities/all', async (req: Request, res: Response) => {
+router.get('/activities/all', 
+  auditMiddleware('READ_STUDENT_ACTIVITIES'),
+  ferpaAccessCheck('READ'),
+  requirePermission(Permission.ACTIVITIES_VIEW), 
+  async (req: Request, res: Response) => {
   try {
     const {
       studentId,
@@ -302,7 +330,10 @@ router.get('/activities/all', async (req: Request, res: Response) => {
 });
 
 // Get active sessions
-router.get('/activities/active', async (req: Request, res: Response) => {
+router.get('/activities/active', 
+  auditMiddleware('LIST_ACTIVE_SESSIONS'),
+  requirePermission(Permission.ACTIVITIES_VIEW), 
+  async (req: Request, res: Response) => {
   try {
     const activities = await getActiveSessions();
 
@@ -326,7 +357,10 @@ router.get('/activities/active', async (req: Request, res: Response) => {
 });
 
 // Create student activity
-router.post('/activities', async (req: Request, res: Response) => {
+router.post('/activities', 
+  auditMiddleware('CREATE_STUDENT_ACTIVITY'),
+  requirePermission(Permission.ACTIVITIES_CREATE), 
+  async (req: Request, res: Response) => {
   try {
     const { studentId, activityType, equipmentId, timeLimitMinutes, notes } =
       req.body;
@@ -369,7 +403,10 @@ router.post('/activities', async (req: Request, res: Response) => {
 });
 
 // End student activity
-router.patch('/activities/:id/end', async (req: Request, res: Response) => {
+router.patch('/activities/:id/end', 
+  auditMiddleware('END_STUDENT_ACTIVITY'),
+  requirePermission(Permission.ACTIVITIES_UPDATE), 
+  async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     if (!id) {
@@ -404,7 +441,11 @@ router.patch('/activities/:id/end', async (req: Request, res: Response) => {
 });
 
 // Scan student barcode
-router.post('/scan', async (req: Request, res: Response) => {
+router.post('/scan', 
+  auditMiddleware('SCAN_STUDENT_BARCODE'),
+  ferpaAccessCheck('READ'),
+  requirePermission(Permission.STUDENTS_VIEW), 
+  async (req: Request, res: Response) => {
   try {
     const { barcode } = req.body;
 

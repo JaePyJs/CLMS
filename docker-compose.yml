@@ -1,10 +1,20 @@
+# ============================================================================
+# CLMS Development Docker Compose Configuration
+# ============================================================================
+# Purpose: Local development environment with hot-reload and live code updates
+# Usage: docker-compose up OR npm start
+# Features: Volume mounting for instant code changes, development tools enabled
+# ============================================================================
+
 version: '3.8'
 
 services:
-  # MySQL Database
+  # ============================================================================
+  # MySQL Database - Primary Data Store
+  # ============================================================================
   mysql:
     image: mysql:8.0
-    container_name: clms-mysql
+    container_name: clms-mysql-dev
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: clms_root_password
@@ -18,27 +28,33 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
-      - ./docker/mysql/conf:/etc/mysql/conf.d
+      - ./docker/mysql/conf.d:/etc/mysql/conf.d
     networks:
       - clms-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$$MYSQL_ROOT_PASSWORD"]
       timeout: 20s
       retries: 10
       interval: 30s
       start_period: 40s
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=200
+      --log-bin-trust-function-creators=1
 
-  # Redis for Job Queues
+  # ============================================================================
+  # Redis - Caching & Job Queue
+  # ============================================================================
   redis:
     image: redis:7-alpine
-    container_name: clms-redis
+    container_name: clms-redis-dev
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
-    command: redis-server /usr/local/etc/redis/redis.conf
     networks:
       - clms-network
     healthcheck:
@@ -46,26 +62,39 @@ services:
       timeout: 10s
       retries: 5
       interval: 30s
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
 
-  # Adminer (Database Management)
+  # ============================================================================
+  # Adminer - Database Management UI (Development Only)
+  # ============================================================================
   adminer:
     image: adminer:latest
-    container_name: clms-adminer
+    container_name: clms-adminer-dev
     restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
       ADMINER_DEFAULT_SERVER: mysql
+      ADMINER_DESIGN: pepa-linha
     networks:
       - clms-network
     depends_on:
       mysql:
         condition: service_healthy
+    profiles:
+      - debug
 
-  # Koha Database (Read-only for CLMS)
+  # ============================================================================
+  # Koha Database - Legacy Library System (Read-Only)
+  # ============================================================================
   koha-mysql:
     image: mysql:8.0
-    container_name: clms-koha-mysql
+    container_name: clms-koha-mysql-dev
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: koha_root_password
@@ -82,35 +111,54 @@ services:
     networks:
       - clms-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$$MYSQL_ROOT_PASSWORD"]
       timeout: 20s
       retries: 10
       interval: 30s
       start_period: 40s
+    profiles:
+      - koha
 
-  # Backend API
+  # ============================================================================
+  # Backend API - Express.js with TypeScript (Hot-Reload Enabled)
+  # ============================================================================
   backend:
     build:
       context: ./Backend
-      dockerfile: Dockerfile
-    container_name: clms-backend
+      dockerfile: Dockerfile.dev
+      target: development
+    image: clms-backend:dev
+    container_name: clms-backend-dev
     restart: unless-stopped
     ports:
       - "3001:3001"
+      - "9229:9229"  # Node.js debugger port
     environment:
       NODE_ENV: development
+      PORT: 3001
       DATABASE_URL: mysql://clms_user:clms_password@mysql:3306/clms_database
       KOHA_DATABASE_URL: mysql://koha_user:koha_password@koha-mysql:3306/koha_database
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CORS_ORIGIN: http://localhost:3000
+      LOG_LEVEL: debug
+      JWT_SECRET: dev_jwt_secret_change_in_production
+      BCRYPT_ROUNDS: 10
     volumes:
-      - ./Backend:/app
-      - /app/node_modules
+      # Mount source code for hot-reload
+      - ./Backend/src:/app/src:delegated
+      - ./Backend/prisma:/app/prisma:delegated
+      - ./Backend/scripts:/app/scripts:delegated
+      - ./Backend/package.json:/app/package.json:ro
+      - ./Backend/tsconfig.json:/app/tsconfig.json:ro
+      # Persistent data directories
       - ./Backend/logs:/app/logs
       - ./Backend/uploads:/app/uploads
       - ./Backend/generated:/app/generated
+      # Google credentials (optional)
       - ./google-credentials.json:/app/google-credentials.json:ro
+      # Prevent overwriting node_modules
+      - backend_node_modules:/app/node_modules
     networks:
       - clms-network
     depends_on:
@@ -118,47 +166,78 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      koha-mysql:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       timeout: 30s
-      retries: 3
+      retries: 5
       interval: 60s
       start_period: 120s
+    command: npm run dev
 
-  # Frontend
+  # ============================================================================
+  # Frontend - React 18 with Vite (Hot Module Replacement)
+  # ============================================================================
   frontend:
     build:
       context: ./Frontend
-      dockerfile: Dockerfile
-    container_name: clms-frontend
+      dockerfile: Dockerfile.dev
+      target: development
+    image: clms-frontend:dev
+    container_name: clms-frontend-dev
     restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
+      NODE_ENV: development
       VITE_API_URL: http://localhost:3001
       VITE_WS_URL: ws://localhost:3001
+      VITE_APP_NAME: CLMS Development
+      CHOKIDAR_USEPOLLING: "false"
     volumes:
-      - ./Frontend:/app
-      - /app/node_modules
+      # Mount source code for hot-reload
+      - ./Frontend/src:/app/src:delegated
+      - ./Frontend/public:/app/public:delegated
+      - ./Frontend/index.html:/app/index.html:ro
+      - ./Frontend/package.json:/app/package.json:ro
+      - ./Frontend/vite.config.ts:/app/vite.config.ts:ro
+      - ./Frontend/tailwind.config.js:/app/tailwind.config.js:ro
+      - ./Frontend/tsconfig.json:/app/tsconfig.json:ro
+      # Prevent overwriting node_modules
+      - frontend_node_modules:/app/node_modules
     networks:
       - clms-network
     depends_on:
       backend:
         condition: service_healthy
+    command: npm run dev -- --host 0.0.0.0
 
+# ============================================================================
+# Named Volumes - Persistent Data Storage
+# ============================================================================
 volumes:
   mysql_data:
     driver: local
+    name: clms_mysql_data_dev
   koha_mysql_data:
     driver: local
+    name: clms_koha_mysql_data_dev
   redis_data:
     driver: local
+    name: clms_redis_data_dev
+  backend_node_modules:
+    driver: local
+    name: clms_backend_node_modules_dev
+  frontend_node_modules:
+    driver: local
+    name: clms_frontend_node_modules_dev
 
+# ============================================================================
+# Custom Network - Service Isolation
+# ============================================================================
 networks:
   clms-network:
     driver: bridge
+    name: clms_network_dev
     ipam:
       config:
         - subnet: 172.20.0.0/16

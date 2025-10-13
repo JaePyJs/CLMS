@@ -48,67 +48,66 @@ This repository contains both the backend API (Express + Prisma) and the React d
 
 ## Quick Start
 
-### Prerequisites
+### One-Click Startup ⚡
 
-- Node.js v20+ (Required - matches CI/CD environment)
-- Docker Desktop (or native Docker + Compose)
+```powershell
+# Start both servers
+Double-click: START_SERVERS.bat
+
+# Access application
+Frontend: http://localhost:3000
+Backend: http://localhost:3001
+Health: http://localhost:3001/health
+
+# Admin credentials (ready once login fixed)
+Username: admin
+Password: admin123
+⚠️ Note: Login currently blocked by frontend auth loop
+```
+
+### Manual Setup (Optional)
+
+**Prerequisites**
+
+- Node.js v20+ (Required)
+- MySQL (port 3308)
 - Git
 
-### Clone
+**Install & Run**
 
 ```powershell
+# Clone
 git clone https://github.com/JaePyJs/CLMS.git
 cd CLMS
+
+# Install dependencies
+cd Backend && npm install
+cd ../Frontend && npm install
+
+# Start servers
+cd Backend && npm run dev
+cd ../Frontend && npm run dev
 ```
 
-### Install Dependencies
+### Documentation
 
-```powershell
-cd Backend
-npm install
-cd ..\Frontend
-npm install
-```
+📖 **Complete Status & Development Guide**: [CLMS_STATUS_GUIDE.md](./CLMS_STATUS_GUIDE.md)
 
-### Environment Setup
+This comprehensive guide includes:
 
-- Copy `Backend/.env.example` to `Backend/.env` and configure database, JWT secrets, Google credentials paths, and rate limit settings.
-- Copy `Frontend/.env.example` to `Frontend/.env` to configure API endpoints and feature flags.
+- ⚠️ **CURRENT STATUS**: Backend 100% operational, Frontend auth issues blocking testing
+- 🚀 Quick start instructions
+- 📊 Feature breakdown and system status
+- 🔧 Known issues and troubleshooting
+- 🎯 Next development steps (fix authentication first)
+- 📁 Project structure overview
 
-### Start Supporting Services
+**CRITICAL NOTICE (October 13, 2025):**
 
-```powershell
-cd ..
-docker-compose up -d mysql redis koha-mysql adminer
-```
-
-### Run the Stack (Dev Mode)
-
-```powershell
-# Backend API
-cd Backend
-npm run dev
-
-# Frontend
-cd ..\Frontend
-npm run dev
-```
-
-- Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:3001`
-- Adminer: `http://localhost:8080`
-
-### Seed & Test (Optional)
-
-```powershell
-cd ..\Backend
-npm run db:push
-npm run db:seed
-npm test
-
-cd ..\Frontend
-npm test
-```
+- ✅ Backend fully functional on port 3001
+- ✅ Frontend starts on port 3000
+- ❌ Login currently blocked by frontend authentication loop
+- 🔧 Working on fix - testing blocked until resolved
 
 ## Key Scripts
 
@@ -155,13 +154,18 @@ CLMS/
 
 ## Documentation
 
-- `CLAUDE.md` – Platform architecture guidance and development principles
-- `CONTRIBUTING.md` – Contribution guidelines and development workflow
-- `BARCODE_GUIDE.md` & `BARCODE_IMPLEMENTATION_SUMMARY.md` – Deep dives into barcode workflow
-- `QR_CODE_GUIDE.md` – QR generation and distribution
-- `USB_SCANNER_SETUP.md` – Hardware setup for USB scanners
-- `Docs/codebase-overview.md` – Architectural summary and onboarding checklist
-- `Docs/database-setup.md` – Database provisioning details
+📖 **Complete Status & Development Guide**: [CLMS_STATUS_GUIDE.md](./CLMS_STATUS_GUIDE.md)
+
+- ✅ Current system status (85% complete, production-ready)
+- 🚀 Quick start instructions and server management
+- 📊 Complete feature breakdown and what's working
+- 🔧 Troubleshooting and common issues
+- 🎯 Next development steps and priorities
+- 📁 Project structure and technical details
+
+📋 **Architecture Guide**: [CLAUDE.md](./CLAUDE.md)
+
+- Platform architecture guidance and development principles
 
 ## Deployment Notes
 
@@ -171,6 +175,8 @@ CLMS/
 - Consider enabling HTTPS termination via reverse proxy when exposing beyond localhost.
 
 ## Contributing
+
+For development guidelines and workflow, see the [Complete Status & Development Guide](./CLMS_STATUS_GUIDE.md#development-environment).
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/name`)
@@ -186,6 +192,7 @@ Licensed under the MIT License – see [LICENSE](LICENSE) for details.
 ### Common Issues
 
 **Database Connection Issues**
+
 ```bash
 # Check Docker containers are running
 docker-compose ps
@@ -198,6 +205,7 @@ docker-compose restart mysql redis
 ```
 
 **Backend Won't Start**
+
 ```bash
 # Check Node.js version (requires v20+)
 node --version
@@ -212,6 +220,7 @@ cat .env | grep DATABASE_URL
 ```
 
 **Frontend Build Issues**
+
 ```bash
 # Clear cache and reinstall
 cd Frontend
@@ -221,21 +230,25 @@ npm run build
 ```
 
 **Authentication Issues**
+
 - Verify JWT_SECRET is set in Backend/.env
 - Check that CORS_ORIGIN matches frontend URL
 - Ensure user exists in database (run npm run cli)
 
 **Google Sheets Integration Issues**
+
 - Verify google-credentials.json exists and has correct permissions
 - Check GOOGLE_SPREADSHEET_ID is correct
 - Test connection: `curl http://localhost:3001/api/health`
 
 **Barcode Scanner Not Working**
+
 - Check VITE_BARCODE_SCANNER_MODE in Frontend/.env
 - Ensure scanner is in keyboard wedge mode
 - Test with manual input first
 
 **Tests Failing**
+
 ```bash
 # Run tests with verbose output
 cd Backend && npm test -- --verbose
@@ -248,11 +261,13 @@ cd Backend && npm run db:reset
 ### Performance Issues
 
 **Slow API Response**
+
 - Check Redis connection: `docker-compose logs redis`
 - Monitor database performance: use Adminer at http://localhost:8080
 - Check automation job queue status in backend logs
 
 **Frontend Loading Slow**
+
 - Disable TanStack Query dev tools in production
 - Check network tab for API response times
 - Verify asset compression in build output
@@ -260,19 +275,22 @@ cd Backend && npm run db:reset
 ### Environment-Specific Issues
 
 **Windows Development**
+
 - Use PowerShell commands as shown in README
 - Ensure Windows long paths are enabled
 - Use Git Bash or WSL for better compatibility
 
 **Mac Development**
+
 - Install Docker Desktop for Mac
 - Use `./scripts/start-dev.sh` if available
 - Check for port conflicts with system services
 
 ## Support
 
+- 📖 **First check**: [Complete Status & Development Guide](./CLMS_STATUS_GUIDE.md)
 - Create an issue in this repository
-- Review docs inside `Docs/`
+- Review server logs in `Backend/logs/`
 - Contact the maintainers via GitHub issues
 
 ---

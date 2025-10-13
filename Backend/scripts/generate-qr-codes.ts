@@ -6,7 +6,7 @@ import QRCode from 'qrcode';
 const prisma = new PrismaClient();
 
 interface QRGenerationResult {
-  studentId: string;
+  student_id: string;
   name: string;
   qrPath: string;
   success: boolean;
@@ -25,9 +25,9 @@ async function generateQRCodes() {
 
   try {
     // Fetch all active students
-    const students = await prisma.student.findMany({
-      where: { isActive: true },
-      orderBy: { studentId: 'asc' },
+    const students = await prisma.students.findMany({
+      where: { is_active: true },
+      orderBy: { student_id: 'asc' },
     });
 
     console.log(`📊 Found ${students.length} active students\n`);
@@ -40,18 +40,18 @@ async function generateQRCodes() {
     for (const student of students) {
       try {
         // QR code data format: StudentID or full JSON
-        const qrData = student.studentId; // Simple format - just the ID
+        const qrData = student.student_id; // Simple format - just the ID
 
         // Alternative: Include more data in QR code
         // const qrData = JSON.stringify({
-        //   id: student.studentId,
-        //   name: `${student.firstName} ${student.lastName}`,
-        //   grade: student.gradeLevel,
+        //   id: student.student_id,
+        //   name: `${student.first_name} ${student.last_name}`,
+        //   grade: student.grade_level,
         //   type: 'student'
         // });
 
         // Generate filename
-        const fileName = `${student.studentId}.png`;
+        const fileName = `${student.student_id}.png`;
         const filePath = path.join(qrDir, fileName);
 
         // Generate QR code with options
@@ -67,14 +67,14 @@ async function generateQRCodes() {
         });
 
         // Update database with QR code path
-        await prisma.student.update({
+        await prisma.students.update({
           where: { id: student.id },
-          data: { barcodeImage: filePath },
+          data: { id: crypto.randomUUID(), updated_at: new Date(),  barcode_image: filePath },
         });
 
         results.push({
-          studentId: student.studentId,
-          name: `${student.firstName} ${student.lastName}`,
+          student_id: student.student_id,
+          name: `${student.first_name} ${student.last_name}`,
           qrPath: filePath,
           success: true,
         });
@@ -83,7 +83,7 @@ async function generateQRCodes() {
 
         // Progress indicator
         if (successCount % 50 === 0) {
-          console.log(`✅ Generated ${successCount} QR codes...`);
+          console.log(`✅ Generated ${success_count} QR codes...`);
         }
       } catch (error) {
         errorCount++;
@@ -91,15 +91,15 @@ async function generateQRCodes() {
           error instanceof Error ? error.message : 'Unknown error';
 
         results.push({
-          studentId: student.studentId,
-          name: `${student.firstName} ${student.lastName}`,
+          student_id: student.student_id,
+          name: `${student.first_name} ${student.last_name}`,
           qrPath: '',
           success: false,
-          error: errorMessage,
+          error: error_message,
         });
 
         console.error(
-          `❌ Error generating QR for ${student.studentId}: ${errorMessage}`,
+          `❌ Error generating QR for ${student.student_id}: ${error_message}`,
         );
       }
     }
@@ -108,7 +108,7 @@ async function generateQRCodes() {
     console.log('\n' + '='.repeat(60));
     console.log('📋 QR CODE GENERATION SUMMARY');
     console.log('='.repeat(60));
-    console.log(`✅ Successfully generated: ${successCount}`);
+    console.log(`✅ Successfully generated: ${success_count}`);
     console.log(`❌ Failed: ${errorCount}`);
     console.log(`📁 Output directory: ${qrDir}`);
     console.log('='.repeat(60) + '\n');
@@ -119,9 +119,9 @@ async function generateQRCodes() {
       reportPath,
       JSON.stringify(
         {
-          generatedAt: new Date().toISOString(),
+          generated_at: new Date().toISOString(),
           totalStudents: students.length,
-          successCount,
+          success_count,
           errorCount,
           results,
         },
@@ -315,10 +315,10 @@ async function generatePrintableSheet(students: any[], qrDir: string) {
       .map(
         student => `
       <div class="qr-card">
-        <img src="${student.studentId}.png" alt="QR Code for ${student.studentId}">
-        <div class="student-id">${student.studentId}</div>
-        <div class="student-name">${student.firstName} ${student.lastName}</div>
-        <div class="student-grade">${student.gradeLevel}</div>
+        <img src="${student.student_id}.png" alt="QR Code for ${student.student_id}">
+        <div class="student-id">${student.student_id}</div>
+        <div class="student-name">${student.first_name} ${student.last_name}</div>
+        <div class="student-grade">${student.grade_level}</div>
       </div>
     `,
       )

@@ -1,0 +1,642 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import {
+  analyticsService,
+  prisma,
+  seedAnalyticsData,
+  validateTimeSeriesData,
+  validatePredictiveInsight
+} from './setup'
+
+describe('Analytics Performance Tests', () => {
+  beforeEach(async () => {
+    // Seed comprehensive test data for performance testing
+    await seedAnalyticsData(1000, 500)
+  })
+
+  afterEach(async () => {
+    // Clean up activities and checkouts
+    await prisma.activity.deleteMany()
+    await prisma.bookCheckout.deleteMany()
+  })
+
+  describe('Predictive Insights Performance', () => {
+    it('should generate insights within acceptable time limits', async () => {
+      const startTime = Date.now()
+
+      const insights = await analyticsService.generatePredictiveInsights('week')
+
+      const endTime = Date.now()
+      const executionTime = endTime - startTime
+
+      console.log(`Predictive insights generation took ${executionTime}ms for ${insights.length} insights`)
+
+      expect(insights).toBeInstanceOf(Array)
+      expect(insights.length).toBeGreaterThan(0)
+      expect(executionTime).toBeLessThan(10000) // Should complete within 10 seconds
+
+      insights.forEach(insight => {
+        validatePredictiveInsight(insight)
+      })
+    })
+
+    it('should handle large datasets efficiently', async () => {
+      // Create additional test data to simulate larger dataset
+      await seedAnalyticsData(2000, 1000) // Add more data
+
+      const startTime = Date.now()
+
+      const insights = await analyticsService.generatePredictiveInsights('month')
+
+      const endTime = Date.now()
+      const executionTime = endTime - startTime
+
+      console.log(`Large dataset insights generation took ${executionTime}ms`)
+
+      expect(insights).toBeInstanceOf(Array)
+      expect(insights.length).toBeGreaterThan(0)
+      expect(executionTime).toBeLessThan(15000) // Should still complete within 15 seconds
+
+      // Clean up additional data
+      await prisma.activity.deleteMany({
+        where: {
+          id: {
+            gt: 1000 // Remove additional activities
+          }
+        }
+      })
+      await prisma.bookCheckout.deleteMany({
+        where: {
+          id: {
+            gt: 500 // Remove additional checkouts
+          }
+        }
+      })
+    })
+
+    it('should maintain performance across different timeframes', async () => {
+      const timeframes = ['day', 'week', 'month'] as const
+      const performanceResults = []
+
+      for (const timeframe of timeframes) {
+        const startTime = Date.now()
+
+        const insights = await analyticsService.generatePredictiveInsights(timeframe)
+
+        const endTime = Date.now()
+        const executionTime = endTime - startTime
+
+        performanceResults.push({
+          timeframe,
+          executionTime,
+          insightsCount: insights.length
+        })
+
+        expect(insights).toBeInstanceOf(Array)
+        expect(insights.length).toBeGreaterThan(0)
+        expect(executionTime).toBeLessThan(12000) // Should complete within 12 seconds
+      }
+
+      console.log('Performance across timeframes:', performanceResults)
+
+      // Performance should scale reasonably with timeframe complexity
+      const dayTime = performanceResults.find(r => r.timeframe === 'day')!.executionTime
+      const monthTime = performanceResults.find(r => r.timeframe === 'month')!.executionTime
+
+      expect(monthTime).toBeLessThan(dayTime * 3) // Month shouldn't take more than 3x day time
+    })
+
+    it('should handle concurrent insight generation requests', async () => {
+      const concurrentRequests = 5
+      const startTime = Date.now()
+
+      const promises = Array.from({ length: concurrentRequests }, () =>
+        analyticsService.generatePredictiveInsights('week')
+      )
+
+      const results = await Promise.all(promises)
+
+      const endTime = Date.now()
+      const totalTime = endTime - startTime
+      const averageTime = totalTime / concurrentRequests
+
+      console.log(`Concurrent insights generation: ${totalTime}ms total, ${averageTime}ms average per request`)
+
+      expect(results).toHaveLength(concurrentRequests)
+      results.forEach(insights => {
+        expect(insights).toBeInstanceOf(Array)
+        expect(insights.length).toBeGreaterThan(0)
+      })
+
+      // Concurrent requests should be more efficient than sequential
+      expect(averageTime).toBeLessThan(8000) // Average time should be reasonable
+      expect(totalTime).toBeLessThan(15000) // Total time should be acceptable
+    })
+  })
+
+  describe('Time Series Forecast Performance', () => {
+    it('should generate forecasts efficiently', async () => {
+      const metrics = ['student_visits', 'equipment_usage', 'book_circulation'] as const
+      const performanceResults = []
+
+      for (const metric of metrics) {
+        const startTime = Date.now()
+
+        const forecast = await analyticsService.generateTimeSeriesForecast(metric, 'week', 7)
+
+        const endTime = Date.now()
+        const executionTime = endTime - startTime
+
+        performanceResults.push({
+          metric,
+          executionTime,
+          dataPoints: forecast.length
+        })
+
+        validateTimeSeriesData(forecast, 14) // 7 historical + 7 predicted
+        expect(executionTime).toBeLessThan(8000) // Should complete within 8 seconds
+      }
+
+      console.log('Time series forecast performance:', performanceResults)
+
+      // All metrics should perform within acceptable limits
+      performanceResults.forEach(result => {
+        expect(result.executionTime).toBeLessThan(8000)
+        expect(result.dataPoints).toBe(14)
+      })
+    })
+
+    it('should handle different forecast periods efficiently', async () => {
+      const periods = [7, 14, 30] // Different forecast periods
+      const performanceResults = []
+
+      for (const period of periods) {
+        const startTime = Date.now()
+
+        const forecast = await analyticsService.generateTimeSeriesForecast('student_visits', 'week', period)
+
+        const endTime = Date.now()
+        const executionTime = endTime - startTime
+
+        performanceResults.push({
+          period,
+          executionTime,
+          totalDataPoints: forecast.length
+        })
+
+        validateTimeSeriesData(forecast, 7 + period) // 7 historical + period predicted
+        expect(executionTime).toBeLessThan(10000) // Should complete within 10 seconds
+      }
+
+      console.log('Different forecast periods performance:', performanceResults)
+
+      // Performance should scale reasonably with period length
+      const shortPeriod = performanceResults.find(r => r.period === 7)!
+      const longPeriod = performanceResults.find(r => r.period === 30)!
+
+      expect(longPeriod.executionTime).toBeLessThan(shortPeriod.executionTime * 4)
+    })
+
+    it('should optimize repeated forecast requests', async () => {
+      const iterations = 5
+      const times = []
+
+      for (let i = 0; i < iterations; i++) {
+        const startTime = Date.now()
+
+        const forecast = await analyticsService.generateTimeSeriesForecast('student_visits', 'week', 7)
+
+        const endTime = Date.now()
+        const executionTime = endTime - startTime
+        times.push(executionTime)
+
+        validateTimeSeriesData(forecast, 14)
+        expect(executionTime).toBeLessThan(6000) // Should be fast for repeated requests
+      }
+
+      console.log('Repeated forecast request times:', times)
+
+      // Performance should be consistent or improve with caching
+      const averageTime = times.reduce((sum, time) => sum + time, 0) / times.length
+      const maxTime = Math.max(...times)
+
+      expect(averageTime).toBeLessThan(5000)
+      expect(maxTime).toBeLessThan(6000)
+    })
+  })
+
+  describe('Heat Map Generation Performance', () => {
+    it('should generate heat maps efficiently', async () => {
+      const timeframes = ['day', 'week', 'month'] as const
+      const performanceResults = []
+
+      for (const timeframe of timeframes) {
+        const startTime = Date.now()
+
+        const heatMapData = await analyticsService.generateUsageHeatMap(timeframe)
+
+        const endTime = Date.now()
+        const executionTime = endTime - startTime
+
+        performanceResults.push({
+          timeframe,
+          executionTime,
+          dataPoints: heatMapData.length
+        })
+
+        expect(heatMapData).toBeInstanceOf(Array)
+        expect(heatMapData.length).toBeGreaterThan(0)
+        expect(executionTime).toBeLessThan(6000) // Should complete within 6 seconds
+
+        // Verify data structure
+        heatMapData.forEach(point => {
+          expect(point).toHaveProperty('hour')
+          expect(point).toHaveProperty('dayOfWeek')
+          expect(point).toHaveProperty('intensity')
+        })
+      }
+
+      console.log('Heat map generation performance:', performanceResults)
+
+      // Performance should be reasonable across all timeframes
+      performanceResults.forEach(result => {
+        expect(result.executionTime).toBeLessThan(6000)
+      })
+    })
+
+    it('should handle concurrent heat map requests', async () => {
+      const concurrentRequests = 3
+      const startTime = Date.now()
+
+      const promises = Array.from({ length: concurrentRequests }, () =>
+        analyticsService.generateUsageHeatMap('week')
+      )
+
+      const results = await Promise.all(promises)
+
+      const endTime = Date.now()
+      const totalTime = endTime - startTime
+      const averageTime = totalTime / concurrentRequests
+
+      console.log(`Concurrent heat map generation: ${totalTime}ms total, ${averageTime}ms average`)
+
+      expect(results).toHaveLength(concurrentRequests)
+      results.forEach(heatMapData => {
+        expect(heatMapData).toBeInstanceOf(Array)
+        expect(heatMapData.length).toBeGreaterThan(0)
+      })
+
+      expect(averageTime).toBeLessThan(5000)
+      expect(totalTime).toBeLessThan(10000)
+    })
+  })
+
+  describe('Seasonal Pattern Analysis Performance', () => {
+    it('should analyze seasonal patterns efficiently', async () => {
+      const startTime = Date.now()
+
+      const patterns = await analyticsService.analyzeSeasonalPatterns()
+
+      const endTime = Date.now()
+      const executionTime = endTime - startTime
+
+      console.log(`Seasonal pattern analysis took ${executionTime}ms`)
+
+      expect(patterns).toBeInstanceOf(Array)
+      expect(patterns.length).toBeGreaterThan(0)
+      expect(executionTime).toBeLessThan(8000) // Should complete within 8 seconds
+
+      // Verify all expected pattern types
+      const patternTypes = patterns.map(p => p.period)
+      expect(patternTypes).toContain('daily')
+      expect(patternTypes).toContain('weekly')
+      expect(patternTypes).toContain('monthly')
+    })
+
+    it('should handle repeated pattern analysis efficiently', async () => {
+      const iterations = 3
+      const times = []
+
+      for (let i = 0; i < iterations; i++) {
+        const startTime = Date.now()
+
+        const patterns = await analyticsService.analyzeSeasonalPatterns()
+
+        const endTime = Date.now()
+        const executionTime = endTime - startTime
+        times.push(executionTime)
+
+        expect(patterns).toBeInstanceOf(Array)
+        expect(patterns.length).toBeGreaterThan(0)
+      }
+
+      console.log('Repeated pattern analysis times:', times)
+
+      const averageTime = times.reduce((sum, time) => sum + time, 0) / times.length
+      expect(averageTime).toBeLessThan(6000) // Should be reasonably fast with caching
+    })
+  })
+
+  describe('Resource Forecast Performance', () => {
+    it('should generate resource forecasts efficiently', async () => {
+      const timeframes = ['day', 'week', 'month'] as const
+      const performanceResults = []
+
+      for (const timeframe of timeframes) {
+        const startTime = Date.now()
+
+        const forecasts = await analyticsService.generateResourceForecasts(timeframe)
+
+        const endTime = Date.now()
+        const executionTime = endTime - startTime
+
+        performanceResults.push({
+          timeframe,
+          executionTime,
+          forecastCount: forecasts.length
+        })
+
+        expect(forecasts).toBeInstanceOf(Array)
+        expect(forecasts.length).toBeGreaterThan(0)
+        expect(executionTime).toBeLessThan(7000) // Should complete within 7 seconds
+      }
+
+      console.log('Resource forecast performance:', performanceResults)
+
+      performanceResults.forEach(result => {
+        expect(result.executionTime).toBeLessThan(7000)
+        expect(result.forecastCount).toBe(4) // Should have 4 resource types
+      })
+    })
+
+    it('should handle large resource inventories efficiently', async () => {
+      // Create additional equipment to test scalability
+      const additionalEquipment = []
+      for (let i = 100; i < 200; i++) {
+        additionalEquipment.push({
+          name: `Performance Test Equipment ${i}`,
+          type: 'computer',
+          status: 'AVAILABLE',
+          location: 'Performance Test Lab',
+          specifications: JSON.stringify({
+            cpu: 'Test CPU',
+            ram: '32GB',
+            storage: '1TB SSD'
+          })
+        })
+      }
+
+      await prisma.equipment.createMany({
+        data: additionalEquipment
+      })
+
+      const startTime = Date.now()
+
+      const forecasts = await analyticsService.generateResourceForecasts('week')
+
+      const endTime = Date.now()
+      const executionTime = endTime - startTime
+
+      console.log(`Large resource inventory forecast took ${executionTime}ms`)
+
+      expect(forecasts).toBeInstanceOf(Array)
+      expect(forecasts.length).toBeGreaterThan(0)
+      expect(executionTime).toBeLessThan(10000) // Should handle larger inventory efficiently
+
+      // Clean up additional equipment
+      await prisma.equipment.deleteMany({
+        where: {
+          name: {
+            startsWith: 'Performance Test Equipment'
+          }
+        }
+      })
+    })
+  })
+
+  describe('Comprehensive Report Performance', () => {
+    it('should generate comprehensive reports efficiently', async () => {
+      const startTime = Date.now()
+
+      const report = await analyticsService.generateInsightsReport('week')
+
+      const endTime = Date.now()
+      const executionTime = endTime - startTime
+
+      console.log(`Comprehensive report generation took ${executionTime}ms`)
+
+      expect(report).toHaveProperty('summary')
+      expect(report).toHaveProperty('insights')
+      expect(report).toHaveProperty('recommendations')
+      expect(report).toHaveProperty('keyMetrics')
+      expect(executionTime).toBeLessThan(15000) // Should complete within 15 seconds
+
+      // Verify report quality
+      expect(report.insights.length).toBeGreaterThan(0)
+      expect(report.recommendations.length).toBeGreaterThan(0)
+      expect(report.summary.length).toBeGreaterThan(0)
+    })
+
+    it('should handle different report timeframes efficiently', async () => {
+      const timeframes = ['day', 'week', 'month'] as const
+      const performanceResults = []
+
+      for (const timeframe of timeframes) {
+        const startTime = Date.now()
+
+        const report = await analyticsService.generateInsightsReport(timeframe)
+
+        const endTime = Date.now()
+        const executionTime = endTime - startTime
+
+        performanceResults.push({
+          timeframe,
+          executionTime,
+          insightsCount: report.insights.length,
+          recommendationsCount: report.recommendations.length
+        })
+
+        expect(report.insights.length).toBeGreaterThan(0)
+        expect(report.recommendations.length).toBeGreaterThan(0)
+        expect(executionTime).toBeLessThan(18000) // Should complete within 18 seconds
+      }
+
+      console.log('Report generation performance by timeframe:', performanceResults)
+
+      // Performance should be reasonable across all timeframes
+      performanceResults.forEach(result => {
+        expect(result.executionTime).toBeLessThan(18000)
+      })
+    })
+
+    it('should handle concurrent report generation efficiently', async () => {
+      const concurrentRequests = 3
+      const startTime = Date.now()
+
+      const promises = Array.from({ length: concurrentRequests }, () =>
+        analyticsService.generateInsightsReport('week')
+      )
+
+      const results = await Promise.all(promises)
+
+      const endTime = Date.now()
+      const totalTime = endTime - startTime
+      const averageTime = totalTime / concurrentRequests
+
+      console.log(`Concurrent report generation: ${totalTime}ms total, ${averageTime}ms average`)
+
+      expect(results).toHaveLength(concurrentRequests)
+      results.forEach(report => {
+        expect(report.insights.length).toBeGreaterThan(0)
+        expect(report.recommendations.length).toBeGreaterThan(0)
+      })
+
+      expect(averageTime).toBeLessThan(12000)
+      expect(totalTime).toBeLessThan(20000)
+    })
+  })
+
+  describe('Memory and Resource Usage', () => {
+    it('should not cause memory leaks during analytics operations', async () => {
+      const initialMemory = process.memoryUsage()
+      const operations = 10
+
+      for (let i = 0; i < operations; i++) {
+        // Perform various analytics operations
+        await analyticsService.generatePredictiveInsights('week')
+        await analyticsService.generateTimeSeriesForecast('student_visits', 'week', 7)
+        await analyticsService.generateUsageHeatMap('week')
+        await analyticsService.analyzeSeasonalPatterns()
+
+        // Force garbage collection if available
+        if (global.gc) {
+          global.gc()
+        }
+      }
+
+      const finalMemory = process.memoryUsage()
+      const memoryIncrease = finalMemory.heapUsed - initialMemory.heapUsed
+
+      console.log(`Memory usage after ${operations} analytics operations:`)
+      console.log(`  Initial heap: ${(initialMemory.heapUsed / 1024 / 1024).toFixed(2)} MB`)
+      console.log(`  Final heap: ${(finalMemory.heapUsed / 1024 / 1024).toFixed(2)} MB`)
+      console.log(`  Memory increase: ${(memoryIncrease / 1024 / 1024).toFixed(2)} MB`)
+
+      // Memory increase should be reasonable
+      expect(memoryIncrease).toBeLessThan(50 * 1024 * 1024) // Less than 50MB increase
+    })
+
+    it('should handle CPU usage efficiently during analytics operations', async () => {
+      const startTime = Date.now()
+      const operationCount = 5
+
+      // Perform CPU-intensive analytics operations
+      for (let i = 0; i < operationCount; i++) {
+        const operationStart = Date.now()
+
+        await Promise.all([
+          analyticsService.generatePredictiveInsights('week'),
+          analyticsService.generateTimeSeriesForecast('equipment_usage', 'week', 7),
+          analyticsService.generateResourceForecasts('week')
+        ])
+
+        const operationTime = Date.now() - operationStart
+        console.log(`Analytics operation ${i + 1} completed in ${operationTime}ms`)
+
+        // Individual operations should complete in reasonable time
+        expect(operationTime).toBeLessThan(12000)
+      }
+
+      const totalTime = Date.now() - startTime
+      const averageTime = totalTime / operationCount
+
+      console.log(`CPU performance: ${operationCount} operations in ${totalTime}ms (avg: ${averageTime}ms)`)
+
+      // Overall performance should be reasonable
+      expect(averageTime).toBeLessThan(10000)
+      expect(totalTime).toBeLessThan(30000)
+    })
+  })
+
+  describe('Scalability Tests', () => {
+    it('should maintain performance with increasing data volumes', async () => {
+      const dataSizes = [100, 500, 1000] // Different activity counts
+      const performanceResults = []
+
+      for (const dataSize of dataSizes) {
+        // Clean up previous data
+        await prisma.activity.deleteMany()
+
+        // Create specific amount of test data
+        await seedAnalyticsData(dataSize, Math.floor(dataSize / 2))
+
+        const startTime = Date.now()
+
+        const insights = await analyticsService.generatePredictiveInsights('week')
+
+        const endTime = Date.now()
+        const executionTime = endTime - startTime
+
+        performanceResults.push({
+          dataSize,
+          executionTime,
+          insightsCount: insights.length
+        })
+
+        expect(insights).toBeInstanceOf(Array)
+        expect(insights.length).toBeGreaterThan(0)
+
+        console.log(`Performance with ${dataSize} activities: ${executionTime}ms`)
+      }
+
+      // Analyze scalability
+      for (let i = 1; i < performanceResults.length; i++) {
+        const current = performanceResults[i]
+        const previous = performanceResults[i - 1]
+
+        const dataRatio = current.dataSize / previous.dataSize
+        const timeRatio = current.executionTime / previous.executionTime
+
+        console.log(`Scalability from ${previous.dataSize} to ${current.dataSize} activities:`)
+        console.log(`  Data ratio: ${dataRatio.toFixed(2)}x`)
+        console.log(`  Time ratio: ${timeRatio.toFixed(2)}x`)
+
+        // Time increase should be proportional to data increase, not exponential
+        expect(timeRatio).toBeLessThan(dataRatio * 1.5)
+      }
+    })
+
+    it('should handle concurrent analytics operations efficiently', async () => {
+      const concurrentOperations = 3
+      const operations = [
+        () => analyticsService.generatePredictiveInsights('week'),
+        () => analyticsService.generateTimeSeriesForecast('student_visits', 'week', 7),
+        () => analyticsService.generateUsageHeatMap('week'),
+        () => analyticsService.analyzeSeasonalPatterns(),
+        () => analyticsService.generateResourceForecasts('week')
+      ]
+
+      const startTime = Date.now()
+
+      // Run all operations concurrently
+      const promises = []
+      for (let i = 0; i < concurrentOperations; i++) {
+        promises.push(...operations.map(op => op()))
+      }
+
+      const results = await Promise.all(promises)
+
+      const endTime = Date.now()
+      const totalTime = endTime - startTime
+      const averageTime = totalTime / (concurrentOperations * operations.length)
+
+      console.log(`Concurrent analytics operations: ${totalTime}ms total, ${averageTime}ms average per operation`)
+      console.log(`Total operations completed: ${results.length}`)
+
+      expect(results).toHaveLength(concurrentOperations * operations.length)
+
+      // Performance should be reasonable for concurrent operations
+      expect(averageTime).toBeLessThan(8000)
+      expect(totalTime).toBeLessThan(25000)
+    })
+  })
+})

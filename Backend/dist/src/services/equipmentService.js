@@ -27,7 +27,7 @@ async function getEquipment(options = {}) {
         if (search) {
             where.OR = [
                 { name: { contains: search, mode: 'insensitive' } },
-                { equipmentId: { contains: search, mode: 'insensitive' } },
+                { equipment_id: { contains: search, mode: 'insensitive' } },
                 { location: { contains: search, mode: 'insensitive' } },
             ];
         }
@@ -64,15 +64,15 @@ async function getEquipmentById(id) {
             where: { id },
             include: {
                 activities: {
-                    where: { status: client_1.ActivityStatus.ACTIVE },
-                    orderBy: { startTime: 'desc' },
+                    where: { status: client_1.student_activities_status.ACTIVE },
+                    orderBy: { start_time: 'desc' },
                     take: 1,
                     include: {
                         student: {
                             select: {
-                                studentId: true,
-                                firstName: true,
-                                lastName: true,
+                                student_id: true,
+                                first_name: true,
+                                last_name: true,
                             },
                         },
                     },
@@ -89,21 +89,21 @@ async function getEquipmentById(id) {
         throw error;
     }
 }
-async function getEquipmentByEquipmentId(equipmentId) {
+async function getEquipmentByEquipmentId(equipment_id) {
     try {
         const equipment = await prisma_1.prisma.equipment.findUnique({
-            where: { equipmentId },
+            where: { equipment_id },
             include: {
                 activities: {
-                    where: { status: client_1.ActivityStatus.ACTIVE },
-                    orderBy: { startTime: 'desc' },
+                    where: { status: client_1.student_activities_status.ACTIVE },
+                    orderBy: { start_time: 'desc' },
                     take: 1,
                     include: {
                         student: {
                             select: {
-                                studentId: true,
-                                firstName: true,
-                                lastName: true,
+                                student_id: true,
+                                first_name: true,
+                                last_name: true,
                             },
                         },
                     },
@@ -115,7 +115,7 @@ async function getEquipmentByEquipmentId(equipmentId) {
     catch (error) {
         logger_1.logger.error('Error fetching equipment by equipment ID', {
             error: error.message,
-            equipmentId,
+            equipment_id,
         });
         throw error;
     }
@@ -123,28 +123,28 @@ async function getEquipmentByEquipmentId(equipmentId) {
 async function createEquipment(data) {
     try {
         const existing = await prisma_1.prisma.equipment.findUnique({
-            where: { equipmentId: data.equipmentId },
+            where: { equipment_id: data.equipment_id },
         });
         if (existing) {
             logger_1.logger.warn('Attempted to create duplicate equipment', {
-                equipmentId: data.equipmentId,
+                equipment_id: data.equipment_id,
             });
             throw new Error('Equipment ID already exists');
         }
         const equipment = await prisma_1.prisma.equipment.create({
             data: {
-                equipmentId: data.equipmentId,
+                equipment_id: data.equipment_id,
                 name: data.name,
                 type: data.type,
                 location: data.location,
-                maxTimeMinutes: data.maxTimeMinutes,
-                requiresSupervision: data.requiresSupervision || false,
+                max_time_minutes: data.max_time_minutes,
+                requires_supervision: data.requires_supervision || false,
                 description: data.description || null,
-                status: client_1.EquipmentStatus.AVAILABLE,
+                status: client_1.equipment_status.AVAILABLE,
             },
         });
         logger_1.logger.info('Equipment created successfully', {
-            equipmentId: equipment.equipmentId,
+            equipment_id: equipment.equipment_id,
         });
         return equipment;
     }
@@ -170,7 +170,7 @@ async function updateEquipment(id, data) {
             where: { id },
             data,
         });
-        logger_1.logger.info('Equipment updated successfully', { equipmentId: id });
+        logger_1.logger.info('Equipment updated successfully', { equipment_id: id });
         return equipment;
     }
     catch (error) {
@@ -195,7 +195,7 @@ async function deleteEquipment(id) {
         await prisma_1.prisma.equipment.delete({
             where: { id },
         });
-        logger_1.logger.info('Equipment deleted successfully', { equipmentId: id });
+        logger_1.logger.info('Equipment deleted successfully', { equipment_id: id });
         return true;
     }
     catch (error) {
@@ -212,51 +212,51 @@ async function deleteEquipment(id) {
 async function useEquipment(data) {
     try {
         const equipment = await prisma_1.prisma.equipment.findUnique({
-            where: { id: data.equipmentId },
+            where: { id: data.equipment_id },
         });
         if (!equipment) {
             throw new Error('Equipment not found');
         }
-        if (equipment.status !== client_1.EquipmentStatus.AVAILABLE) {
+        if (equipment.status !== client_1.equipment_status.AVAILABLE) {
             throw new Error('Equipment is not available for use');
         }
-        const student = await prisma_1.prisma.student.findUnique({
-            where: { id: data.studentId },
+        const student = await prisma_1.prisma.students.findUnique({
+            where: { id: data.student_id },
         });
         if (!student) {
             throw new Error('Student not found');
         }
         const startTime = new Date();
         const endTime = new Date(startTime.getTime() +
-            (data.timeLimitMinutes || equipment.maxTimeMinutes) * 60000);
-        const activity = await prisma_1.prisma.activity.create({
+            (data.time_limit_minutes || equipment.max_time_minutes) * 60000);
+        const activity = await prisma_1.prisma.student_activities.create({
             data: {
-                studentId: data.studentId,
-                studentName: `${student.firstName} ${student.lastName}`.trim(),
-                studentGradeLevel: student.gradeLevel,
-                studentGradeCategory: student.gradeCategory,
-                activityType: data.activityType,
-                equipmentId: data.equipmentId,
-                startTime,
-                endTime,
-                timeLimitMinutes: data.timeLimitMinutes || equipment.maxTimeMinutes,
+                student_id: data.student_id,
+                student_name: `${student.first_name} ${student.last_name}`.trim(),
+                studentGradeLevel: student.grade_level,
+                studentGradeCategory: student.grade_category,
+                activity_type: data.activity_type,
+                equipment_id: data.equipment_id,
+                start_time,
+                end_time,
+                time_limit_minutes: data.time_limit_minutes || equipment.max_time_minutes,
                 notes: data.notes || null,
-                status: client_1.ActivityStatus.ACTIVE,
-                processedBy: 'System',
+                status: client_1.student_activities_status.ACTIVE,
+                processed_by: 'System',
             },
             include: {
                 student: {
                     select: {
-                        studentId: true,
-                        firstName: true,
-                        lastName: true,
-                        gradeLevel: true,
-                        gradeCategory: true,
+                        student_id: true,
+                        first_name: true,
+                        last_name: true,
+                        grade_level: true,
+                        grade_category: true,
                     },
                 },
                 equipment: {
                     select: {
-                        equipmentId: true,
+                        equipment_id: true,
                         name: true,
                         type: true,
                     },
@@ -264,15 +264,15 @@ async function useEquipment(data) {
             },
         });
         await prisma_1.prisma.equipment.update({
-            where: { id: data.equipmentId },
+            where: { id: data.equipment_id },
             data: {
-                status: client_1.EquipmentStatus.IN_USE,
+                status: client_1.equipment_status.IN_USE,
             },
         });
         logger_1.logger.info('Equipment used successfully', {
             activityId: activity.id,
-            equipmentId: data.equipmentId,
-            studentId: data.studentId,
+            equipment_id: data.equipment_id,
+            student_id: data.student_id,
         });
         return activity;
     }
@@ -286,7 +286,7 @@ async function useEquipment(data) {
 }
 async function releaseEquipment(activityId) {
     try {
-        const activity = await prisma_1.prisma.activity.findUnique({
+        const activity = await prisma_1.prisma.student_activities.findUnique({
             where: { id: activityId },
             include: {
                 equipment: true,
@@ -295,49 +295,49 @@ async function releaseEquipment(activityId) {
         if (!activity) {
             throw new Error('Activity not found');
         }
-        if (!activity.equipmentId) {
+        if (!activity.equipment_id) {
             throw new Error('Activity is not associated with equipment');
         }
         const now = new Date();
-        const updatedActivity = await prisma_1.prisma.activity.update({
+        const updatedActivity = await prisma_1.prisma.student_activities.update({
             where: { id: activityId },
             data: {
-                endTime: now,
-                status: client_1.ActivityStatus.COMPLETED,
+                end_time: now,
+                status: client_1.student_activities_status.COMPLETED,
             },
             include: {
                 student: {
                     select: {
-                        studentId: true,
-                        firstName: true,
-                        lastName: true,
+                        student_id: true,
+                        first_name: true,
+                        last_name: true,
                     },
                 },
                 equipment: {
                     select: {
-                        equipmentId: true,
+                        equipment_id: true,
                         name: true,
                         type: true,
                     },
                 },
             },
         });
-        if (activity.startTime) {
-            const duration = Math.floor((now.getTime() - activity.startTime.getTime()) / 60000);
-            await prisma_1.prisma.activity.update({
+        if (activity.start_time) {
+            const duration = Math.floor((now.getTime() - activity.start_time.getTime()) / 60000);
+            await prisma_1.prisma.student_activities.update({
                 where: { id: activityId },
-                data: { durationMinutes: duration },
+                data: { duration_minutes: duration },
             });
         }
         await prisma_1.prisma.equipment.update({
-            where: { id: activity.equipmentId },
+            where: { id: activity.equipment_id },
             data: {
-                status: client_1.EquipmentStatus.AVAILABLE,
+                status: client_1.equipment_status.AVAILABLE,
             },
         });
         logger_1.logger.info('Equipment released successfully', {
             activityId,
-            equipmentId: activity.equipmentId,
+            equipment_id: activity.equipment_id,
         });
         return updatedActivity;
     }
@@ -351,19 +351,19 @@ async function releaseEquipment(activityId) {
 }
 async function getEquipmentUsageHistory(options = {}) {
     try {
-        const { equipmentId, studentId, activityType, startDate, endDate, page = 1, limit = 50, } = options;
+        const { equipment_id, student_id, activity_type, startDate, endDate, page = 1, limit = 50, } = options;
         const skip = (page - 1) * limit;
         const where = {
-            equipmentId: { not: null },
+            equipment_id: { not: null },
         };
-        if (equipmentId) {
-            where.equipmentId = equipmentId;
+        if (equipment_id) {
+            where.equipment_id = equipment_id;
         }
-        if (studentId) {
-            where.studentId = studentId;
+        if (student_id) {
+            where.student_id = student_id;
         }
         if (activityType) {
-            where.activityType = activityType;
+            where.activity_type = activityType;
         }
         if (startDate || endDate) {
             const startTimeFilter = {};
@@ -373,27 +373,27 @@ async function getEquipmentUsageHistory(options = {}) {
             if (endDate) {
                 startTimeFilter.lte = endDate;
             }
-            where.startTime = startTimeFilter;
+            where.start_time = startTimeFilter;
         }
         const [activities, total] = await Promise.all([
-            prisma_1.prisma.activity.findMany({
+            prisma_1.prisma.student_activities.findMany({
                 where,
                 skip,
                 take: limit,
-                orderBy: { startTime: 'desc' },
+                orderBy: { start_time: 'desc' },
                 include: {
                     student: {
                         select: {
-                            studentId: true,
-                            firstName: true,
-                            lastName: true,
-                            gradeLevel: true,
-                            gradeCategory: true,
+                            student_id: true,
+                            first_name: true,
+                            last_name: true,
+                            grade_level: true,
+                            grade_category: true,
                         },
                     },
                     equipment: {
                         select: {
-                            equipmentId: true,
+                            equipment_id: true,
                             name: true,
                             type: true,
                             location: true,
@@ -401,7 +401,7 @@ async function getEquipmentUsageHistory(options = {}) {
                     },
                 },
             }),
-            prisma_1.prisma.activity.count({ where }),
+            prisma_1.prisma.student_activities.count({ where }),
         ]);
         return {
             activities,
@@ -427,17 +427,17 @@ async function getEquipmentStatistics() {
             prisma_1.prisma.equipment.count(),
             prisma_1.prisma.equipment.count({
                 where: {
-                    status: client_1.EquipmentStatus.AVAILABLE,
+                    status: client_1.equipment_status.AVAILABLE,
                 },
             }),
             prisma_1.prisma.equipment.count({
                 where: {
-                    status: client_1.EquipmentStatus.IN_USE,
+                    status: client_1.equipment_status.IN_USE,
                 },
             }),
             prisma_1.prisma.equipment.count({
                 where: {
-                    status: client_1.EquipmentStatus.MAINTENANCE,
+                    status: client_1.equipment_status.MAINTENANCE,
                 },
             }),
             prisma_1.prisma.equipment.groupBy({

@@ -4,7 +4,7 @@ import 'dotenv/config'
 
 export default defineConfig({
   test: {
-    setupFiles: ['./src/tests/setup.ts'],
+    // setupFiles: ['./src/tests/setup-simple.ts'], // Temporarily disabled
     environment: 'node',
     globals: true,
     poolOptions: {
@@ -12,7 +12,6 @@ export default defineConfig({
         singleThread: true
       }
     },
-    logLevel: 'error', // Reduce test output
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

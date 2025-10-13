@@ -1,0 +1,341 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import WebSocket from 'ws'
+import {
+  WebSocketTestClient,
+  generateTestJWT,
+  testWebSocketUrl,
+  wsMessageBuilders,
+  prisma
+} from './setup'
+
+describe('WebSocket Connection Tests', () => {
+  let adminClient: WebSocketTestClient
+  let librarianClient: WebSocketTestClient
+  let staffClient: WebSocketTestClient
+
+  beforeEach(async () => {
+    // Create authenticated WebSocket clients
+    adminClient = new WebSocketTestClient(generateTestJWT('ws-admin', 'ADMIN'))
+    librarianClient = new WebSocketTestClient(generateTestJWT('ws-librarian', 'LIBRARIAN'))
+    staffClient = new WebSocketTestClient(generateTestJWT('ws-staff', 'STAFF'))
+  })
+
+  afterEach(async () => {
+    // Disconnect all clients
+    await adminClient.disconnect()
+    await librarianClient.disconnect()
+    await staffClient.disconnect()
+  })
+
+  describe('Connection Authentication', () => {
+    it('should allow authenticated admin user to connect', async () => {
+      await adminClient.connect()
+
+      expect(adminClient.isConnectedState).toBe(true)
+
+      // Should receive welcome message
+      const welcomeMessage = await adminClient.waitForMessage('welcome', 5000)
+      expect(welcomeMessage).toBeDefined()
+      expect(welcomeMessage.data.availableSubscriptions).toContain('activities')
+      expect(welcomeMessage.data.availableSubscriptions).toContain('equipment')
+      expect(welcomeMessage.data.availableSubscriptions).toContain('analytics')
+    })
+
+    it('should allow authenticated librarian user to connect', async () => {
+      await librarianClient.connect()
+
+      expect(librarianClient.isConnectedState).toBe(true)
+
+      // Should receive welcome message
+      const welcomeMessage = await librarianClient.waitForMessage('welcome', 5000)
+      expect(welcomeMessage).toBeDefined()
+      expect(welcomeMessage.data.role).toBe('LIBRARIAN')
+    })
+
+    it('should allow authenticated staff user to connect', async () => {
+      await staffClient.connect()
+
+      expect(staffClient.isConnectedState).toBe(true)
+
+      // Should receive welcome message
+      const welcomeMessage = await staffClient.waitForMessage('welcome', 5000)
+      expect(welcomeMessage).toBeDefined()
+      expect(welcomeMessage.data.role).toBe('STAFF')
+    })
+
+    it('should reject connection without authentication', async () => {
+      const unauthenticatedClient = new WebSocket(testWebSocketUrl)
+
+      await new Promise<void>((resolve, reject) => {
+        unauthenticatedClient.on('close', (code, reason) => {
+          expect(code).toBe(1008) // Policy Violation
+          resolve()
+        })
+
+        unauthenticatedClient.on('error', (error) => {
+          reject(error)
+        })
+
+        // Connection should close quickly due to auth failure
+        setTimeout(() => {
+          unauthenticatedClient.close()
+          resolve()
+        }, 2000)
+      })
+    })
+
+    it('should reject connection with invalid JWT token', async () => {
+      const invalidClient = new WebSocket(testWebSocketUrl, {
+        headers: {
+          'Authorization': 'Bearer invalid.jwt.token'
+        }
+      })
+
+      await new Promise<void>((resolve, reject) => {
+        invalidClient.on('close', (code, reason) => {
+          expect(code).toBe(1008)
+          resolve()
+        })
+
+        invalidClient.on('error', (error) => {
+          reject(error)
+        })
+
+        setTimeout(() => {
+          invalidClient.close()
+          resolve()
+        }, 2000)
+      })
+    })
+
+    it('should reject connection with expired JWT token', async () => {
+      const expiredToken = generateTestJWT('ws-admin', 'ADMIN')
+      // Create a client with expired token (simulate by modifying token creation)
+      const expiredClient = new WebSocket(testWebSocketUrl, {
+        headers: {
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ3cy1hZG1pbiIsInVzZXJuYW1lIjoid3MtYWRtaW4iLCJyb2xlIjoiQURNSU4iLCJwZXJtaXNzaW9ucyI6WyJyZWFkIiwid3JpdGUiXSwiaWF0IjoxNjAwMDAwMDAwLCJleHAiOjE2MDAwMDAwMDF9.invalid'
+        }
+      })
+
+      await new Promise<void>((resolve) => {
+        expiredClient.on('close', (code, reason) => {
+          expect(code).toBe(1008)
+          resolve()
+        })
+
+        setTimeout(() => {
+          expiredClient.close()
+          resolve()
+        }, 2000)
+      })
+    })
+  })
+
+  describe('Connection Management', () => {
+    it('should handle multiple simultaneous connections', async () => {
+      const clients = []
+
+      // Create 5 simultaneous connections
+      for (let i = 0; i < 5; i++) {
+        const client = new WebSocketTestClient(generateTestJWT(`ws-user-${i}`, 'STAFF'))
+        await client.connect()
+        clients.push(client)
+      }
+
+      // All clients should be connected
+      for (const client of clients) {
+        expect(client.isConnectedState).toBe(true)
+      }
+
+      // Disconnect all clients
+      for (const client of clients) {
+        await client.disconnect()
+      }
+    })
+
+    it('should handle connection timeout', async () => {
+      const slowClient = new WebSocketTestClient(generateTestJWT('ws-slow-admin', 'ADMIN'))
+
+      // Simulate slow connection by modifying the connection timeout
+      const originalConnect = slowClient.connect
+      slowClient.connect = async () => {
+        return new Promise((resolve, reject) => {
+          setTimeout(() => {
+            originalConnect.call(slowClient).then(resolve).catch(reject)
+          }, 5000) // 5 second delay
+        })
+      }
+
+      await expect(slowClient.connect()).rejects.toThrow('WebSocket connection timeout')
+    })
+
+    it('should handle connection disconnection gracefully', async () => {
+      await adminClient.connect()
+      expect(adminClient.isConnectedState).toBe(true)
+
+      await adminClient.disconnect()
+      expect(adminClient.isConnectedState).toBe(false)
+    })
+
+    it('should maintain connection during inactivity with heartbeat', async () => {
+      await adminClient.connect()
+
+      // Send ping message
+      await adminClient.sendMessage(wsMessageBuilders.ping())
+
+      // Should receive pong response
+      const pongMessage = await adminClient.waitForMessage('pong', 5000)
+      expect(pongMessage).toBeDefined()
+      expect(pongMessage.data.timestamp).toBeDefined()
+
+      // Connection should still be active
+      expect(adminClient.isConnectedState).toBe(true)
+    })
+  })
+
+  describe('Connection Limits', () => {
+    it('should enforce maximum connections per user', async () => {
+      const maxConnections = 5 // Based on WebSocket server config
+      const clients = []
+
+      try {
+        // Create connections up to the limit
+        for (let i = 0; i < maxConnections; i++) {
+          const client = new WebSocketTestClient(generateTestJWT('ws-limit-user', 'STAFF'))
+          await client.connect()
+          clients.push(client)
+        }
+
+        // All connections should succeed
+        for (const client of clients) {
+          expect(client.isConnectedState).toBe(true)
+        }
+
+        // Try to create one more connection (should fail)
+        const excessClient = new WebSocketTestClient(generateTestJWT('ws-limit-user', 'STAFF'))
+
+        await expect(excessClient.connect()).rejects.toThrow()
+
+      } finally {
+        // Clean up all connections
+        for (const client of clients) {
+          await client.disconnect()
+        }
+      }
+    })
+
+    it('should handle connection limit per role correctly', async () => {
+      // Admin users might have higher connection limits
+      const adminClients = []
+      const staffClients = []
+
+      try {
+        // Create admin connections (higher limit)
+        for (let i = 0; i < 3; i++) {
+          const client = new WebSocketTestClient(generateTestJWT(`ws-admin-${i}`, 'ADMIN'))
+          await client.connect()
+          adminClients.push(client)
+        }
+
+        // Create staff connections
+        for (let i = 0; i < 3; i++) {
+          const client = new WebSocketTestClient(generateTestJWT(`ws-staff-${i}`, 'STAFF'))
+          await client.connect()
+          staffClients.push(client)
+        }
+
+        // All should be connected (role-specific limits)
+        for (const client of [...adminClients, ...staffClients]) {
+          expect(client.isConnectedState).toBe(true)
+        }
+
+      } finally {
+        // Clean up
+        for (const client of [...adminClients, ...staffClients]) {
+          await client.disconnect()
+        }
+      }
+    })
+  })
+
+  describe('Error Handling', () => {
+    it('should handle malformed messages gracefully', async () => {
+      await adminClient.connect()
+
+      // Send malformed JSON
+      await adminClient.ws.send('invalid json message')
+
+      // Should receive error message
+      const errorMessage = await adminClient.waitForMessage('error', 5000)
+      expect(errorMessage).toBeDefined()
+      expect(errorMessage.data.error).toContain('Invalid message format')
+
+      // Connection should still be active
+      expect(adminClient.isConnectedState).toBe(true)
+    })
+
+    it('should handle message types that don\'t exist', async () => {
+      await adminClient.connect()
+
+      // Send unknown message type
+      await adminClient.sendMessage({
+        type: 'unknown_message_type',
+        data: { test: 'data' }
+      })
+
+      // Should receive error message
+      const errorMessage = await adminClient.waitForMessage('error', 5000)
+      expect(errorMessage).toBeDefined()
+      expect(errorMessage.data.error).toContain('Unknown message type')
+
+      // Connection should still be active
+      expect(adminClient.isConnectedState).toBe(true)
+    })
+
+    it('should handle missing required fields in messages', async () => {
+      await adminClient.connect()
+
+      // Send message without type
+      await adminClient.sendMessage({
+        data: { test: 'data' }
+      })
+
+      // Should receive error message
+      const errorMessage = await adminClient.waitForMessage('error', 5000)
+      expect(errorMessage).toBeDefined()
+
+      // Connection should still be active
+      expect(adminClient.isConnectedState).toBe(true)
+    })
+  })
+
+  describe('Connection State', () => {
+    it('should track connection metadata correctly', async () => {
+      await adminClient.connect()
+
+      const welcomeMessage = await adminClient.waitForMessage('welcome', 5000)
+
+      expect(welcomeMessage.data.clientId).toBeDefined()
+      expect(welcomeMessage.data.username).toBe('ws-admin')
+      expect(welcomeMessage.data.role).toBe('ADMIN')
+      expect(welcomeMessage.data.serverTime).toBeDefined()
+      expect(welcomeMessage.data.availableSubscriptions).toBeInstanceOf(Array)
+    })
+
+    it('should update last activity timestamp', async () => {
+      await adminClient.connect()
+
+      const initialWelcome = await adminClient.waitForMessage('welcome', 5000)
+      const initialTime = new Date(initialWelcome.data.serverTime)
+
+      // Send a message to update activity
+      await adminClient.sendMessage(wsMessageBuilders.ping())
+
+      const pongResponse = await adminClient.waitForMessage('pong', 5000)
+      const pongTime = new Date(pongResponse.data.timestamp)
+
+      // Time should have advanced
+      expect(pongTime.getTime()).toBeGreaterThanOrEqual(initialTime.getTime())
+    })
+  })
+})

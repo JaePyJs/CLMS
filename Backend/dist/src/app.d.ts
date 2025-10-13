@@ -2,6 +2,7 @@ import { Application } from 'express';
 import 'express-async-errors';
 export declare class CLMSApplication {
     private app;
+    private httpServer;
     private prisma;
     private isInitialized;
     constructor();

@@ -2,7 +2,7 @@ import { createReadStream } from 'fs';
 import { logger } from '@/utils/logger';
 import { prisma } from '@/utils/prisma';
 import { parse } from 'csv-parse';
-import { GradeCategory, EquipmentType, EquipmentStatus } from '@prisma/client';
+import { students_grade_category, equipment_type, equipment_status } from '@prisma/client';
 
 // Import result interface
 export interface ImportResult {
@@ -14,36 +14,38 @@ export interface ImportResult {
   errors: string[];
 }
 
-// Student import data interface
+// Student import data interface (updated to match Google Sheets)
 interface StudentImportData {
-  studentId: string;
-  firstName: string;
-  lastName: string;
-  gradeLevel: string;
-  gradeCategory: string;
-  section?: string;
+  name: string; // Format: "Last name, First name MI"
+  grade_level: string;
+  section: string;
+  // Note: CSV may have a 4th blank column for barcode scanning - it will be ignored during import
+  [key: string]: string; // Allow additional columns to be ignored
 }
 
-// Book import data interface
+// Book import data interface (updated to match Google Sheets)
 interface BookImportData {
-  accessionNo: string;
+  accession_no: string; // Accession No.
   isbn?: string;
   title: string;
   author: string;
+  edition?: string;
+  volume?: string;
+  pages?: string;
+  sourceOfFund?: string; // Source of Fund
+  costPrice?: string; // Cost Price
   publisher?: string;
-  category: string;
-  subcategory?: string;
-  location?: string;
-  totalCopies: number;
+  year?: string;
+  remarks?: string;
 }
 
 // Equipment import data interface
 interface EquipmentImportData {
-  equipmentId: string;
+  equipment_id: string;
   name: string;
   type: string;
   location: string;
-  maxTimeMinutes: number;
+  max_time_minutes: number;
   requiresSupervision?: string;
   description?: string;
 }
@@ -70,13 +72,7 @@ export class ImportService {
       for (const record of records) {
         try {
           // Validate required fields
-          if (
-            !record.studentId ||
-            !record.firstName ||
-            !record.lastName ||
-            !record.gradeLevel ||
-            !record.gradeCategory
-          ) {
+          if (!record.name || !record.grade_level || !record.section) {
             result.errors.push(
               `Missing required fields for student: ${JSON.stringify(record)}`,
             );
@@ -84,48 +80,81 @@ export class ImportService {
             continue;
           }
 
-          // Validate grade category
-          if (
-            !Object.values(GradeCategory).includes(
-              record.gradeCategory as GradeCategory,
-            )
-          ) {
+          // Parse name (format: "Last name, First name MI")
+          const nameParts = record.name.split(',').map((part) => part.trim());
+          if (nameParts.length < 2 || !nameParts[0] || !nameParts[1]) {
             result.errors.push(
-              `Invalid grade category: ${record.gradeCategory} for student: ${record.studentId}`,
+              `Invalid name format for student: ${record.name}. Expected: "Last name, First name MI"`,
+            );
+            result.errorRecords++;
+            continue;
+          }
+
+          const lastName = nameParts[0];
+          const firstNameAndMI = nameParts[1].split(' ');
+          const firstName = firstNameAndMI[0] || '';
+
+          // Validate required name parts
+          if (!lastName || !firstName) {
+            result.errors.push(
+              `Invalid name parts for student: ${record.name}`,
+            );
+            result.errorRecords++;
+            continue;
+          }
+
+          // Auto-generate student ID from name and grade
+          const sanitizedLastName = lastName
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+          const sanitizedFirstName = firstName
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+          const gradeNum = record.grade_level.replace(/[^0-9]/g, '');
+          const student_id = `${gradeNum}-${sanitizedLastName}-${sanitizedFirstName}`;
+
+          // Determine grade category based on grade level
+          let grade_category: students_grade_category;
+          const gradeNumber = parseInt(gradeNum, 10);
+          if (gradeNumber >= 7 && gradeNumber <= 10) {
+            gradeCategory = students_grade_category.JUNIOR_HIGH;
+          } else if (gradeNumber >= 11 && gradeNumber <= 12) {
+            gradeCategory = students_grade_category.SENIOR_HIGH;
+          } else {
+            result.errors.push(
+              `Invalid grade level: ${record.grade_level} for student: ${record.name}`,
             );
             result.errorRecords++;
             continue;
           }
 
           // Check if student already exists
-          const existingStudent = await prisma.student.findUnique({
-            where: { studentId: record.studentId },
+          const existingStudent = await prisma.students.findUnique({
+            where: { student_id },
           });
 
           if (existingStudent) {
-            logger.info(
-              `Student already exists, skipping: ${record.studentId}`,
-            );
+            logger.info(`Student already exists, skipping: ${student_id}`);
             result.skippedRecords++;
             continue;
           }
 
           // Create student
-          await prisma.student.create({
-            data: {
-              studentId: record.studentId,
-              firstName: record.firstName,
-              lastName: record.lastName,
-              gradeLevel: record.gradeLevel,
-              gradeCategory: record.gradeCategory as GradeCategory,
-              section: record.section || null,
+          await prisma.students.create({
+            data: { id: crypto.randomUUID(), updated_at: new Date(), 
+              student_id,
+              first_name,
+              last_name,
+              grade_level: record.grade_level,
+              grade_category,
+              section: record.section,
             },
           });
 
           result.importedRecords++;
-          logger.info(`Imported student: ${record.studentId}`);
+          logger.info(`Imported student: ${student_id}`);
         } catch (error) {
-          const errorMessage = `Error importing student ${record.studentId}: ${(error as Error).message}`;
+          const errorMessage = `Error importing student ${record.name}: ${(error as Error).message}`;
           result.errors.push(errorMessage);
           result.errorRecords++;
           logger.error(errorMessage);
@@ -170,13 +199,7 @@ export class ImportService {
       for (const record of records) {
         try {
           // Validate required fields
-          if (
-            !record.accessionNo ||
-            !record.title ||
-            !record.author ||
-            !record.category ||
-            !record.totalCopies
-          ) {
+          if (!record.accession_no || !record.title || !record.author) {
             result.errors.push(
               `Missing required fields for book: ${JSON.stringify(record)}`,
             );
@@ -185,36 +208,64 @@ export class ImportService {
           }
 
           // Check if book already exists
-          const existingBook = await prisma.book.findUnique({
-            where: { accessionNo: record.accessionNo },
+          const existingBook = await prisma.books.findUnique({
+            where: { accession_no: record.accession_no },
           });
 
           if (existingBook) {
-            logger.info(`Book already exists, skipping: ${record.accessionNo}`);
+            logger.info(`Book already exists, skipping: ${record.accession_no}`);
             result.skippedRecords++;
             continue;
           }
 
-          // Create book
-          await prisma.book.create({
-            data: {
-              accessionNo: record.accessionNo,
+          // Parse cost price to number
+          let cost_price: number | null = null;
+          if (record.cost_price) {
+            const parsedCost = parseFloat(
+              record.cost_price.replace(/[^0-9.-]/g, ''),
+            );
+            if (!isNaN(parsedCost)) {
+              costPrice = parsedCost;
+            }
+          }
+
+          // Parse year to number
+          let year: number | null = null;
+          if (record.year) {
+            const parsedYear = parseInt(record.year, 10);
+            if (!isNaN(parsedYear)) {
+              year = parsedYear;
+            }
+          }
+
+          // Create book with all fields from Google Sheets
+          await prisma.books.create({
+            data: { id: crypto.randomUUID(), updated_at: new Date(), 
+              accession_no: record.accession_no,
               isbn: record.isbn || null,
               title: record.title,
               author: record.author,
               publisher: record.publisher || null,
-              category: record.category,
-              subcategory: record.subcategory || null,
-              location: record.location || null,
-              totalCopies: record.totalCopies,
-              availableCopies: record.totalCopies,
+              category: 'General', // Default category, can be updated later
+              subcategory: null,
+              location: null,
+              total_copies: 1, // Default to 1 copy per accession number
+              available_copies: 1,
+              // Additional metadata stored in remarks or new fields
+              edition: record.edition || null,
+              volume: record.volume || null,
+              pages: record.pages || null,
+              source_of_fund: record.source_of_fund || null,
+              cost_price,
+              year,
+              remarks: record.remarks || null,
             },
           });
 
           result.importedRecords++;
-          logger.info(`Imported book: ${record.accessionNo}`);
+          logger.info(`Imported book: ${record.accession_no}`);
         } catch (error) {
-          const errorMessage = `Error importing book ${record.accessionNo}: ${(error as Error).message}`;
+          const errorMessage = `Error importing book ${record.accession_no}: ${(error as Error).message}`;
           result.errors.push(errorMessage);
           result.errorRecords++;
           logger.error(errorMessage);
@@ -260,11 +311,11 @@ export class ImportService {
         try {
           // Validate required fields
           if (
-            !record.equipmentId ||
+            !record.equipment_id ||
             !record.name ||
             !record.type ||
             !record.location ||
-            !record.maxTimeMinutes
+            !record.max_time_minutes
           ) {
             result.errors.push(
               `Missing required fields for equipment: ${JSON.stringify(record)}`,
@@ -275,10 +326,10 @@ export class ImportService {
 
           // Validate equipment type
           if (
-            !Object.values(EquipmentType).includes(record.type as EquipmentType)
+            !Object.values(equipment_type).includes(record.type as equipment_type)
           ) {
             result.errors.push(
-              `Invalid equipment type: ${record.type} for equipment: ${record.equipmentId}`,
+              `Invalid equipment type: ${record.type} for equipment: ${record.equipment_id}`,
             );
             result.errorRecords++;
             continue;
@@ -286,17 +337,17 @@ export class ImportService {
 
           // Parse requiresSupervision
           const requiresSupervision =
-            record.requiresSupervision?.toLowerCase() === 'yes' ||
-            record.requiresSupervision?.toLowerCase() === 'true';
+            record.requires_supervision?.toLowerCase() === 'yes' ||
+            record.requires_supervision?.toLowerCase() === 'true';
 
           // Check if equipment already exists
           const existingEquipment = await prisma.equipment.findUnique({
-            where: { equipmentId: record.equipmentId },
+            where: { equipment_id: record.equipment_id },
           });
 
           if (existingEquipment) {
             logger.info(
-              `Equipment already exists, skipping: ${record.equipmentId}`,
+              `Equipment already exists, skipping: ${record.equipment_id}`,
             );
             result.skippedRecords++;
             continue;
@@ -304,22 +355,22 @@ export class ImportService {
 
           // Create equipment
           await prisma.equipment.create({
-            data: {
-              equipmentId: record.equipmentId,
+            data: { id: crypto.randomUUID(), updated_at: new Date(), 
+              equipment_id: record.equipment_id,
               name: record.name,
-              type: record.type as EquipmentType,
+              type: record.type as equipment_type,
               location: record.location,
-              maxTimeMinutes: record.maxTimeMinutes,
-              requiresSupervision,
+              max_time_minutes: record.max_time_minutes,
+              requires_supervision,
               description: record.description || null,
-              status: EquipmentStatus.AVAILABLE,
+              status: equipment_status.AVAILABLE,
             },
           });
 
           result.importedRecords++;
-          logger.info(`Imported equipment: ${record.equipmentId}`);
+          logger.info(`Imported equipment: ${record.equipment_id}`);
         } catch (error) {
-          const errorMessage = `Error importing equipment ${record.equipmentId}: ${(error as Error).message}`;
+          const errorMessage = `Error importing equipment ${record.equipment_id}: ${(error as Error).message}`;
           result.errors.push(errorMessage);
           result.errorRecords++;
           logger.error(errorMessage);
@@ -369,21 +420,23 @@ export class ImportService {
     });
   }
 
-  // Get sample CSV templates
+  // Get sample CSV templates (updated to match Google Sheets format)
   getStudentTemplate(): string {
-    return `studentId,firstName,lastName,gradeLevel,gradeCategory,section
-2023001,John,Doe,Grade 7,JUNIOR_HIGH,7-A
-2023002,Jane,Smith,Grade 8,JUNIOR_HIGH,8-B`;
+    // Note: 4th column is blank for barcode scanning (don't type 'barcode' as header)
+    return `name,grade_level,section,
+"Doe, John A",Grade 7,7-A,
+"Smith, Jane B",Grade 8,8-B,
+"Garcia, Maria C",Grade 11,11-STEM,`;
   }
 
   getBookTemplate(): string {
-    return `accessionNo,isbn,title,author,publisher,category,subcategory,location,totalCopies
-ACC-001,978-0-13-468599-1,Effective Java,Joshua Bloch,Addison-Wesley,Programming,Java,Stack A,2
-ACC-002,978-1-4919-0409-0,Design Patterns,Erich Gamma,Addison-Wesley,Programming,OOP,Stack B,1`;
+    return `accession_no,isbn,title,author,edition,volume,pages,source_of_fund,cost_price,publisher,year,remarks
+ACC-001,978-0-13-468599-1,Effective Java,Joshua Bloch,3rd Edition,1,416,School Budget,1200.00,Addison-Wesley,2018,Good condition
+ACC-002,978-1-4919-0409-0,Design Patterns,Erich Gamma,1st Edition,1,395,Donation,0,Addison-Wesley,1994,Classic book`;
   }
 
   getEquipmentTemplate(): string {
-    return `equipmentId,name,type,location,maxTimeMinutes,requiresSupervision,description
+    return `equipment_id,name,type,location,max_time_minutes,requires_supervision,description
 COMP-01,Desktop Computer 1,COMPUTER,Computer Lab,60,No,Intel i5 with 8GB RAM
 COMP-02,Desktop Computer 2,COMPUTER,Computer Lab,60,No,Intel i5 with 8GB RAM
 GAME-01,PlayStation 5,GAMING,Gaming Room,30,Yes,Sony PlayStation 5 with controller`;

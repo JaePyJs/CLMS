@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { prisma, generateTestStudentId } from '../setup'
+import { prisma, generateTestStudentId } from '../setup-simple'
 import {
   createStudent,
   getStudents,
@@ -8,12 +8,12 @@ import {
   updateStudent,
   deleteStudent
 } from '@/services/studentService'
-import { GradeCategory } from '@prisma/client'
+import { students_grade_category } from '@prisma/client'
 
 describe('Students Service Integration Tests', () => {
   beforeEach(async () => {
     // Clean up database before each test
-    await prisma.student.deleteMany()
+    await prisma.students.deleteMany()
   })
 
   describe('getStudents', () => {
@@ -25,22 +25,22 @@ describe('Students Service Integration Tests', () => {
 
     it('should return all students', async () => {
       // Create test students
-      await prisma.student.createMany({
+      await prisma.students.createMany({
         data: [
           {
-            studentId: '2023001',
-            firstName: 'John',
-            lastName: 'Doe',
-            gradeLevel: 'Grade 7',
-            gradeCategory: GradeCategory.JUNIOR_HIGH,
+            student_id: '2023001',
+            first_name: 'John',
+            last_name: 'Doe',
+            grade_level: 'Grade 7',
+            grade_category: students_grade_category.JUNIOR_HIGH,
             section: '7-A'
           },
           {
-            studentId: '2023002',
-            firstName: 'Jane',
-            lastName: 'Smith',
-            gradeLevel: 'Grade 8',
-            gradeCategory: GradeCategory.JUNIOR_HIGH,
+            student_id: '2023002',
+            first_name: 'Jane',
+            last_name: 'Smith',
+            grade_level: 'Grade 8',
+            grade_category: students_grade_category.JUNIOR_HIGH,
             section: '8-B'
           }
         ]
@@ -54,32 +54,32 @@ describe('Students Service Integration Tests', () => {
 
   describe('createStudent', () => {
     it('should create a new student', async () => {
-      const studentId = generateTestStudentId('api-create')
+      const student_id = generateTestStudentId('api-create')
       const studentData = {
-        studentId,
-        firstName: 'John',
-        lastName: 'Doe',
-        gradeLevel: 'Grade 7',
-        gradeCategory: GradeCategory.JUNIOR_HIGH,
+        student_id,
+        first_name: 'John',
+        last_name: 'Doe',
+        grade_level: 'Grade 7',
+        grade_category: students_grade_category.JUNIOR_HIGH,
         section: '7-A'
       }
 
       const student = await createStudent(studentData)
 
       expect(student).toBeDefined()
-      expect(student.studentId).toBe(studentData.studentId)
-      expect(student.firstName).toBe(studentData.firstName)
-      expect(student.lastName).toBe(studentData.lastName)
+      expect(student.student_id).toBe(studentData.student_id)
+      expect(student.first_name).toBe(studentData.first_name)
+      expect(student.last_name).toBe(studentData.last_name)
     })
 
     it('should throw error for duplicate student ID', async () => {
-      const studentId = generateTestStudentId('api-duplicate')
+      const student_id = generateTestStudentId('api-duplicate')
       const studentData = {
-        studentId,
-        firstName: 'John',
-        lastName: 'Doe',
-        gradeLevel: 'Grade 7',
-        gradeCategory: GradeCategory.JUNIOR_HIGH,
+        student_id,
+        first_name: 'John',
+        last_name: 'Doe',
+        grade_level: 'Grade 7',
+        grade_category: students_grade_category.JUNIOR_HIGH,
         section: '7-A'
       }
 
@@ -94,14 +94,14 @@ describe('Students Service Integration Tests', () => {
   describe('getStudentById', () => {
     it('should return a student by ID', async () => {
       // Create test student
-      const studentId = generateTestStudentId('api-byid')
-      const createdStudent = await prisma.student.create({
-        data: {
-          studentId,
-          firstName: 'John',
-          lastName: 'Doe',
-          gradeLevel: 'Grade 7',
-          gradeCategory: GradeCategory.JUNIOR_HIGH,
+      const student_id = generateTestStudentId('api-byid')
+      const createdStudent = await prisma.students.create({
+        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+          student_id,
+          first_name: 'John',
+          last_name: 'Doe',
+          grade_level: 'Grade 7',
+          grade_category: students_grade_category.JUNIOR_HIGH,
           section: '7-A'
         }
       })
@@ -109,7 +109,7 @@ describe('Students Service Integration Tests', () => {
       const student = await getStudentById(createdStudent.id)
       expect(student).toBeDefined()
       expect(student?.id).toBe(createdStudent.id)
-      expect(student?.studentId).toBe(studentId)
+      expect(student?.student_id).toBe(student_id)
     })
 
     it('should return null for non-existent student', async () => {
@@ -121,31 +121,31 @@ describe('Students Service Integration Tests', () => {
   describe('updateStudent', () => {
     it('should update a student', async () => {
       // Create test student
-      const studentId = generateTestStudentId('api-update')
-      const createdStudent = await prisma.student.create({
-        data: {
-          studentId,
-          firstName: 'John',
-          lastName: 'Doe',
-          gradeLevel: 'Grade 7',
-          gradeCategory: GradeCategory.JUNIOR_HIGH,
+      const student_id = generateTestStudentId('api-update')
+      const createdStudent = await prisma.students.create({
+        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+          student_id,
+          first_name: 'John',
+          last_name: 'Doe',
+          grade_level: 'Grade 7',
+          grade_category: students_grade_category.JUNIOR_HIGH,
           section: '7-A'
         }
       })
 
       const updateData = {
-        firstName: 'Johnathan',
+        first_name: 'Johnathan',
         section: '7-B'
       }
 
       const updatedStudent = await updateStudent(createdStudent.id, updateData)
       expect(updatedStudent).toBeDefined()
-      expect(updatedStudent?.firstName).toBe(updateData.firstName)
+      expect(updatedStudent?.first_name).toBe(updateData.first_name)
       expect(updatedStudent?.section).toBe(updateData.section)
     })
 
     it('should return null for non-existent student', async () => {
-      const updatedStudent = await updateStudent('non-existent-id', { firstName: 'John' })
+      const updatedStudent = await updateStudent('non-existent-id', { first_name: 'John' })
       expect(updatedStudent).toBeNull()
     })
   })
@@ -153,14 +153,14 @@ describe('Students Service Integration Tests', () => {
   describe('deleteStudent', () => {
     it('should delete a student', async () => {
       // Create test student
-      const studentId = generateTestStudentId('api-delete')
-      const createdStudent = await prisma.student.create({
-        data: {
-          studentId,
-          firstName: 'John',
-          lastName: 'Doe',
-          gradeLevel: 'Grade 7',
-          gradeCategory: GradeCategory.JUNIOR_HIGH,
+      const student_id = generateTestStudentId('api-delete')
+      const createdStudent = await prisma.students.create({
+        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+          student_id,
+          first_name: 'John',
+          last_name: 'Doe',
+          grade_level: 'Grade 7',
+          grade_category: students_grade_category.JUNIOR_HIGH,
           section: '7-A'
         }
       })
@@ -170,7 +170,7 @@ describe('Students Service Integration Tests', () => {
       expect(deletedStudent?.id).toBe(createdStudent.id)
 
       // Verify student is deleted
-      const student = await prisma.student.findUnique({
+      const student = await prisma.students.findUnique({
         where: { id: createdStudent.id }
       })
       expect(student).toBeNull()
@@ -185,21 +185,21 @@ describe('Students Service Integration Tests', () => {
   describe('getStudentByBarcode', () => {
     it('should return a student by barcode (student ID)', async () => {
       // Create test student
-      const studentId = generateTestStudentId('api-barcode')
-      await prisma.student.create({
-        data: {
-          studentId,
-          firstName: 'John',
-          lastName: 'Doe',
-          gradeLevel: 'Grade 7',
-          gradeCategory: GradeCategory.JUNIOR_HIGH,
+      const student_id = generateTestStudentId('api-barcode')
+      await prisma.students.create({
+        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+          student_id,
+          first_name: 'John',
+          last_name: 'Doe',
+          grade_level: 'Grade 7',
+          grade_category: students_grade_category.JUNIOR_HIGH,
           section: '7-A'
         }
       })
 
-      const student = await getStudentByBarcode(studentId)
+      const student = await getStudentByBarcode(student_id)
       expect(student).toBeDefined()
-      expect(student?.studentId).toBe(studentId)
+      expect(student?.student_id).toBe(student_id)
     })
 
     it('should return null for non-existent barcode', async () => {

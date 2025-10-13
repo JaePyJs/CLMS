@@ -8,12 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, user, checkAuth } = useAuth()
-
-  useEffect(() => {
-    // Re-check authentication when component mounts
-    checkAuth()
-  }, [checkAuth])
+  const { isAuthenticated, isLoading, user } = useAuth()
 
   // Show loading spinner while checking authentication
   if (isLoading) {

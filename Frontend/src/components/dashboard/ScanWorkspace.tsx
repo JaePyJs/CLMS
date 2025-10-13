@@ -19,12 +19,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  useCameraScanner,
-  useUsbScanner,
-  useManualEntry,
-  barcodeValidation,
-} from '@/lib/scanner';
+import { useCameraScanner, useUsbScanner, useManualEntry } from '@/lib/scanner';
+import selfServiceApi from '@/services/selfServiceApi';
 import { useStudentActivity } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { offlineActions } from '@/lib/offline-queue';
@@ -59,7 +55,8 @@ import {
   ExternalLink,
   Calendar,
   BarChart3,
-  Activity
+  Activity,
+  Shield,
 } from 'lucide-react';
 
 interface Student {
@@ -92,7 +89,15 @@ export function ScanWorkspace() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
   const [isPrintingSessions, setIsPrintingSessions] = useState(false);
-  const [selectedTimeExtension, setSelectedTimeExtension] = useState<number>(15);
+  const [selectedTimeExtension, setSelectedTimeExtension] =
+    useState<number>(15);
+
+  // Self-service enhancements
+  const [cooldownInfo, setCooldownInfo] = useState<{
+    studentId: string;
+    remainingSeconds: number;
+  } | null>(null);
+  const [statistics, setStatistics] = useState<any>(null);
 
   const { isOnline, lastScanResult } = useAppStore();
   const {
@@ -109,32 +114,10 @@ export function ScanWorkspace() {
   const { isOpen, input, setIsOpen, setInput, handleSubmit } = useManualEntry();
   const { mutate: logActivity } = useStudentActivity();
 
-  // Mock student lookup for now (replace with real API call)
-  const lookupStudent = async (barcode: string): Promise<Student | null> => {
-    // This would normally call the API
-    const mockStudents: Student[] = [
-      {
-        id: '1',
-        studentId: 'STU001',
-        firstName: 'Juan',
-        lastName: 'Dela Cruz',
-        gradeLevel: 'Grade 5',
-        gradeCategory: 'gradeSchool',
-        section: 'A',
-      },
-      {
-        id: '2',
-        studentId: 'STU002',
-        firstName: 'Maria',
-        lastName: 'Santos',
-        gradeLevel: 'Grade 8',
-        gradeCategory: 'juniorHigh',
-        section: 'B',
-      },
-    ];
-
-    return mockStudents.find((s) => s.studentId === barcode) || null;
-  };
+  // Sound effects
+  const successSound = new Audio('/sounds/success.mp3');
+  const errorSound = new Audio('/sounds/error.mp3');
+  const cooldownSound = new Audio('/sounds/warning.mp3');
 
   // Process scanned barcode
   useEffect(() => {
@@ -143,34 +126,118 @@ export function ScanWorkspace() {
     }
   }, [lastScanResult]);
 
+  // Cooldown timer effect
+  useEffect(() => {
+    if (!cooldownInfo) return;
+
+    const interval = setInterval(() => {
+      setCooldownInfo(prev => {
+        if (!prev || prev.remainingSeconds <= 1) {
+          return null;
+        }
+        return {
+          ...prev,
+          remainingSeconds: prev.remainingSeconds - 1,
+        };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [cooldownInfo]);
+
+  // Load statistics on mount
+  useEffect(() => {
+    loadStatistics();
+    const interval = setInterval(loadStatistics, 60000); // Refresh every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadStatistics = async () => {
+    try {
+      const result = await selfServiceApi.getStatistics(
+        new Date(new Date().setHours(0, 0, 0, 0)), // Today start
+        new Date() // Now
+      );
+      setStatistics(result.data);
+    } catch (error) {
+      console.error('Failed to load statistics:', error);
+    }
+  };
+
   const processBarcode = async (barcode: string) => {
     setIsProcessing(true);
 
     try {
-      const barcodeType = barcodeValidation.getBarcodeType(barcode);
-      let student: Student | null = null;
+      const result = await selfServiceApi.processScan(barcode);
 
-      if (barcodeType === 'student') {
-        student = await lookupStudent(barcode);
-      }
+      if (result.success) {
+        // Play success sound
+        try {
+          successSound.play().catch(e => console.log('Audio play failed:', e));
+        } catch (e) {
+          console.log('Audio not available:', e);
+        }
 
-      const result: ScanResult = {
-        student: student || undefined,
-        barcode,
-        type: barcodeType,
-        timestamp: Date.now(),
-      };
+        toast.success(result.message, {
+          description: result.student
+            ? `${result.student.name} - ${result.student.gradeLevel}`
+            : undefined,
+        });
 
-      setScanResult(result);
+        setScanResult({
+          student: result.student
+            ? {
+                id: result.student.id,
+                studentId: result.student.studentId,
+                firstName: result.student.name.split(' ')[0],
+                lastName: result.student.name.split(' ').slice(1).join(' '),
+                gradeLevel: result.student.gradeLevel,
+                gradeCategory: '',
+                section: result.student.section,
+              }
+            : undefined,
+          barcode,
+          type: 'student',
+          timestamp: Date.now(),
+        });
 
-      // Auto-select action based on barcode type
-      if (barcodeType === 'student' && student) {
-        setSelectedAction('computer');
-      } else if (barcodeType === 'book') {
-        setSelectedAction('borrowing');
+        if (result.activity) {
+          setTimeLimit(result.activity.timeLimit);
+        }
+      } else {
+        if (result.cooldownRemaining && result.cooldownRemaining > 0) {
+          // Play cooldown warning sound
+          try {
+            cooldownSound.play().catch(e => console.log('Audio play failed:', e));
+          } catch (e) {
+            console.log('Audio not available:', e);
+          }
+
+          const minutes = Math.ceil(result.cooldownRemaining / 60);
+          toast.warning(result.message, {
+            description: `Please wait ${minutes} more minute(s)`,
+            duration: 5000,
+          });
+
+          // Set cooldown timer display
+          setCooldownInfo({
+            studentId: barcode,
+            remainingSeconds: result.cooldownRemaining,
+          });
+        } else {
+          // Play error sound
+          try {
+            errorSound.play().catch(e => console.log('Audio play failed:', e));
+          } catch (e) {
+            console.log('Audio not available:', e);
+          }
+
+          toast.error(result.message);
+        }
       }
     } catch (error) {
       console.error('Error processing barcode:', error);
+      toast.error('Failed to process scan');
     } finally {
       setIsProcessing(false);
     }
@@ -216,7 +283,9 @@ export function ScanWorkspace() {
   const handleBulkCheckout = async () => {
     try {
       // Mock bulk checkout functionality
-      toast.success(`Bulk checkout initiated for ${selectedSessions.length} sessions`);
+      toast.success(
+        `Bulk checkout initiated for ${selectedSessions.length} sessions`
+      );
       setSelectedSessions([]);
       setShowBulkActions(false);
     } catch (error) {
@@ -227,7 +296,9 @@ export function ScanWorkspace() {
   const handleBulkExtendTime = async (additionalMinutes: number) => {
     try {
       // Mock bulk time extension
-      toast.success(`Extended time by ${additionalMinutes} minutes for ${selectedSessions.length} sessions`);
+      toast.success(
+        `Extended time by ${additionalMinutes} minutes for ${selectedSessions.length} sessions`
+      );
       setSelectedSessions([]);
       setShowBulkActions(false);
     } catch (error) {
@@ -238,7 +309,9 @@ export function ScanWorkspace() {
   const handleBulkNotify = async () => {
     try {
       // Mock bulk notification
-      toast.success(`Notifications sent to ${selectedSessions.length} students`);
+      toast.success(
+        `Notifications sent to ${selectedSessions.length} students`
+      );
       setSelectedSessions([]);
       setShowBulkActions(false);
     } catch (error) {
@@ -250,13 +323,17 @@ export function ScanWorkspace() {
     try {
       setIsExporting(true);
       // Mock export functionality
-      const csvContent = `Session ID,Student Name,Activity,Start Time,Status\n${selectedSessions.map(id => `${id},Student Name,Activity,Time,Active`).join('\n')}`;
+      const csvContent = `Session ID,Student Name,Activity,Start Time,Status\n${selectedSessions
+        .map((id) => `${id},Student Name,Activity,Time,Active`)
+        .join('\n')}`;
 
       const blob = new Blob([csvContent], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `sessions-export-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `sessions-export-${
+        new Date().toISOString().split('T')[0]
+      }.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -283,7 +360,9 @@ export function ScanWorkspace() {
   };
 
   const handleTransferEquipment = (sessionId: string) => {
-    toast.info(`Equipment transfer for session ${sessionId} - would open transfer dialog`);
+    toast.info(
+      `Equipment transfer for session ${sessionId} - would open transfer dialog`
+    );
   };
 
   const handleAddSessionNotes = (sessionId: string) => {
@@ -291,31 +370,57 @@ export function ScanWorkspace() {
   };
 
   const handleViewStudentHistory = (studentId: string) => {
-    toast.info(`View history for student ${studentId} - would open history dialog`);
+    toast.info(
+      `View history for student ${studentId} - would open history dialog`
+    );
   };
 
   const handlePrintHallPass = (sessionId: string) => {
-    toast.info(`Print hall pass for session ${sessionId} - would generate pass`);
+    toast.info(
+      `Print hall pass for session ${sessionId} - would generate pass`
+    );
   };
 
   const toggleSessionSelection = (sessionId: string) => {
-    setSelectedSessions(prev =>
+    setSelectedSessions((prev) =>
       prev.includes(sessionId)
-        ? prev.filter(id => id !== sessionId)
+        ? prev.filter((id) => id !== sessionId)
         : [...prev, sessionId]
     );
   };
 
   // Mock active sessions data
   const mockActiveSessions = [
-    { id: '1', studentName: 'Juan Dela Cruz', activity: 'Computer Session', startTime: '10:30 AM', status: 'active', equipment: 'PC Station 1' },
-    { id: '2', studentName: 'Maria Santos', activity: 'Gaming Session', startTime: '11:15 AM', status: 'active', equipment: 'Recreational Room' },
-    { id: '3', studentName: 'Jose Reyes', activity: 'AVR Room', startTime: '09:45 AM', status: 'overdue', equipment: 'AVR Room' },
+    {
+      id: '1',
+      studentName: 'Juan Dela Cruz',
+      activity: 'Computer Session',
+      startTime: '10:30 AM',
+      status: 'active',
+      equipment: 'PC Station 1',
+    },
+    {
+      id: '2',
+      studentName: 'Maria Santos',
+      activity: 'Gaming Session',
+      startTime: '11:15 AM',
+      status: 'active',
+      equipment: 'Recreational Room',
+    },
+    {
+      id: '3',
+      studentName: 'Jose Reyes',
+      activity: 'AVR Room',
+      startTime: '09:45 AM',
+      status: 'overdue',
+      equipment: 'AVR Room',
+    },
   ];
 
-  const filteredSessions = filterStatus === 'all'
-    ? mockActiveSessions
-    : mockActiveSessions.filter(session => session.status === filterStatus);
+  const filteredSessions =
+    filterStatus === 'all'
+      ? mockActiveSessions
+      : mockActiveSessions.filter((session) => session.status === filterStatus);
 
   // Get time limit based on grade category
   const getDefaultTimeLimit = (gradeCategory?: string) => {
@@ -406,6 +511,73 @@ export function ScanWorkspace() {
         </AlertDescription>
       </Alert>
 
+      {/* Visual Cooldown Timer */}
+      {cooldownInfo && (
+        <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              <strong>Cooldown Active:</strong> Please wait before checking in again
+            </span>
+            <div className="flex items-center gap-2">
+              <div className="w-32 bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-orange-500 h-2 rounded-full transition-all duration-1000"
+                  style={{
+                    width: `${((30 * 60 - cooldownInfo.remainingSeconds) / (30 * 60)) * 100}%`
+                  }}
+                />
+              </div>
+              <span className="font-mono text-sm font-semibold">
+                {Math.floor(cooldownInfo.remainingSeconds / 60)}:
+                {(cooldownInfo.remainingSeconds % 60).toString().padStart(2, '0')}
+              </span>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Self-Service Statistics Dashboard */}
+      {statistics && (
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Check-ins Today</p>
+                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{statistics.totalCheckIns}</p>
+                </div>
+                <Users className="h-8 w-8 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Unique Students</p>
+                  <p className="text-2xl font-bold text-green-700 dark:text-green-300">{statistics.uniqueStudents}</p>
+                </div>
+                <Activity className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Avg Time</p>
+                  <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{statistics.averageTimeSpent} min</p>
+                </div>
+                <Clock className="h-8 w-8 text-purple-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Enhanced Filter Buttons */}
       <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
         <div className="flex items-center gap-2">
@@ -424,14 +596,16 @@ export function ScanWorkspace() {
               size="sm"
               onClick={() => setFilterStatus('active')}
             >
-              Active ({mockActiveSessions.filter(s => s.status === 'active').length})
+              Active (
+              {mockActiveSessions.filter((s) => s.status === 'active').length})
             </Button>
             <Button
               variant={filterStatus === 'overdue' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setFilterStatus('overdue')}
             >
-              Overdue ({mockActiveSessions.filter(s => s.status === 'overdue').length})
+              Overdue (
+              {mockActiveSessions.filter((s) => s.status === 'overdue').length})
             </Button>
           </div>
         </div>
@@ -439,7 +613,9 @@ export function ScanWorkspace() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => toast.info('Manual session entry - would open entry form')}
+            onClick={() =>
+              toast.info('Manual session entry - would open entry form')
+            }
           >
             <Plus className="h-3 w-3 mr-1" />
             Manual Entry
@@ -447,7 +623,9 @@ export function ScanWorkspace() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => toast.info('End all active sessions - would confirm action')}
+            onClick={() =>
+              toast.info('End all active sessions - would confirm action')
+            }
           >
             <Square className="h-3 w-3 mr-1" />
             End All
@@ -460,7 +638,9 @@ export function ScanWorkspace() {
         <Card className="border-2 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center justify-between">
-              <span>Bulk Actions - {selectedSessions.length} Sessions Selected</span>
+              <span>
+                Bulk Actions - {selectedSessions.length} Sessions Selected
+              </span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -516,11 +696,7 @@ export function ScanWorkspace() {
                   <Square className="h-3 w-3 mr-1" />
                   End Sessions
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBulkNotify}
-                >
+                <Button variant="outline" size="sm" onClick={handleBulkNotify}>
                   <AlertCircle className="h-3 w-3 mr-1" />
                   Send Notices
                 </Button>
@@ -575,13 +751,18 @@ export function ScanWorkspace() {
                       <div>
                         <div className="font-medium">{session.studentName}</div>
                         <div className="text-sm text-muted-foreground">
-                          {session.activity} • {session.equipment} • {session.startTime}
+                          {session.activity} • {session.equipment} •{' '}
+                          {session.startTime}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge
-                        variant={session.status === 'overdue' ? 'destructive' : 'default'}
+                        variant={
+                          session.status === 'overdue'
+                            ? 'destructive'
+                            : 'default'
+                        }
                         className="text-xs"
                       >
                         {session.status.toUpperCase()}
@@ -1006,7 +1187,11 @@ export function ScanWorkspace() {
             <Button
               variant="outline"
               className="h-16 flex-col hover:bg-blue-50 hover:border-blue-300 transition-colors"
-              onClick={() => toast.info('Register New Student - would open registration form')}
+              onClick={() =>
+                toast.info(
+                  'Register New Student - would open registration form'
+                )
+              }
             >
               <UserPlus className="h-6 w-6 mb-2 text-blue-600" />
               <span className="text-sm">Register Student</span>
@@ -1022,7 +1207,9 @@ export function ScanWorkspace() {
             <Button
               variant="outline"
               className="h-16 flex-col hover:bg-purple-50 hover:border-purple-300 transition-colors"
-              onClick={() => toast.info('Generate Reports - would open report builder')}
+              onClick={() =>
+                toast.info('Generate Reports - would open report builder')
+              }
             >
               <BarChart3 className="h-6 w-6 mb-2 text-purple-600" />
               <span className="text-sm">Reports</span>
@@ -1030,7 +1217,9 @@ export function ScanWorkspace() {
             <Button
               variant="outline"
               className="h-16 flex-col hover:bg-orange-50 hover:border-orange-300 transition-colors"
-              onClick={() => toast.info('Sync Offline Data - would sync queued activities')}
+              onClick={() =>
+                toast.info('Sync Offline Data - would sync queued activities')
+              }
             >
               <RefreshCw className="h-6 w-6 mb-2 text-orange-600" />
               <span className="text-sm">Sync Data</span>
@@ -1042,7 +1231,9 @@ export function ScanWorkspace() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => toast.info('Emergency Alert - would notify administrators')}
+              onClick={() =>
+                toast.info('Emergency Alert - would notify administrators')
+              }
               className="text-red-600 hover:bg-red-50"
             >
               <AlertTriangle className="h-3 w-3 mr-1" />
@@ -1051,7 +1242,9 @@ export function ScanWorkspace() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => toast.info('Maintenance Mode - would schedule maintenance')}
+              onClick={() =>
+                toast.info('Maintenance Mode - would schedule maintenance')
+              }
               className="text-gray-600 hover:bg-gray-50"
             >
               <Settings className="h-3 w-3 mr-1" />
@@ -1060,7 +1253,9 @@ export function ScanWorkspace() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => toast.info('System Health - would run diagnostics')}
+              onClick={() =>
+                toast.info('System Health - would run diagnostics')
+              }
               className="text-blue-600 hover:bg-blue-50"
             >
               <Shield className="h-3 w-3 mr-1" />
@@ -1069,7 +1264,9 @@ export function ScanWorkspace() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => toast.info('Daily Summary - would generate summary')}
+              onClick={() =>
+                toast.info('Daily Summary - would generate summary')
+              }
               className="text-green-600 hover:bg-green-50"
             >
               <Calendar className="h-3 w-3 mr-1" />
@@ -1078,7 +1275,9 @@ export function ScanWorkspace() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => toast.info('Export Data - would export current data')}
+              onClick={() =>
+                toast.info('Export Data - would export current data')
+              }
               className="text-purple-600 hover:bg-purple-50"
             >
               <ExportIcon className="h-3 w-3 mr-1" />
@@ -1087,7 +1286,9 @@ export function ScanWorkspace() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => toast.info('Print Reports - would open print dialog')}
+              onClick={() =>
+                toast.info('Print Reports - would open print dialog')
+              }
               className="text-orange-600 hover:bg-orange-50"
             >
               <Printer className="h-3 w-3 mr-1" />

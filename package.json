@@ -1,0 +1,54 @@
+{
+  "name": "clms-monorepo",
+  "version": "1.0.0",
+  "description": "CLMS - Comprehensive Library Management System",
+  "private": true,
+  "workspaces": [
+    "Backend",
+    "Frontend"
+  ],
+  "scripts": {
+    "start": "docker-compose up",
+    "dev": "docker-compose up",
+    "prod": "docker-compose -f docker-compose.prod.yml up -d",
+    "stop": "docker-compose down",
+    "stop:prod": "docker-compose -f docker-compose.prod.yml down",
+    "restart": "npm run stop && npm start",
+    "restart:prod": "npm run stop:prod && npm run prod",
+    "logs": "docker-compose logs -f",
+    "logs:prod": "docker-compose -f docker-compose.prod.yml logs -f",
+    "logs:backend": "docker-compose logs -f backend",
+    "logs:frontend": "docker-compose logs -f frontend",
+    "clean": "docker-compose down -v",
+    "clean:prod": "docker-compose -f docker-compose.prod.yml down -v",
+    "build": "docker-compose build",
+    "build:prod": "docker-compose -f docker-compose.prod.yml build",
+    "build:nocache": "docker-compose build --no-cache",
+    "ps": "docker-compose ps",
+    "ps:prod": "docker-compose -f docker-compose.prod.yml ps",
+    "install:all": "npm install && npm run install:backend && npm run install:frontend",
+    "install:backend": "cd Backend && npm install",
+    "install:frontend": "cd Frontend && npm install",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:report": "playwright show-report"
+  },
+  "keywords": [
+    "library-management",
+    "education",
+    "docker",
+    "typescript",
+    "react"
+  ],
+  "author": "CLMS Development Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "axe-playwright": "^2.0.1"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

@@ -531,14 +531,34 @@ router.post('/quick-add-student', async (req: Request, res: Response) => {
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
 
+    // Generate unique student ID
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substr(2, 9).toUpperCase();
+    const studentId = `STU-${timestamp}-${randomStr}`;
+
+    // Determine grade category based on grade level
+    const gradeNum = parseInt(grade);
+    let gradeCategory: string;
+    if (gradeNum >= 1 && gradeNum <= 6) {
+      gradeCategory = 'ELEMENTARY';
+    } else if (gradeNum >= 7 && gradeNum <= 10) {
+      gradeCategory = 'JUNIOR_HIGH';
+    } else if (gradeNum >= 11 && gradeNum <= 12) {
+      gradeCategory = 'SENIOR_HIGH';
+    } else {
+      gradeCategory = 'JUNIOR_HIGH'; // default
+    }
+
     const student = await prisma.student.create({
       data: {
+        studentId,
         firstName,
         lastName,
-        grade,
+        gradeLevel: grade,
+        gradeCategory,
         section: section || null,
         isActive: true,
-        barcode: `STU-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+        barcodeImage: `STU-${timestamp}-${randomStr}`,
       }
     });
 
@@ -549,11 +569,13 @@ router.post('/quick-add-student', async (req: Request, res: Response) => {
       data: {
         student: {
           id: student.id,
+          studentId: student.studentId,
           firstName: student.firstName,
           lastName: student.lastName,
-          grade: student.grade,
+          gradeLevel: student.gradeLevel,
+          gradeCategory: student.gradeCategory,
           section: student.section,
-          barcode: student.barcode
+          barcodeImage: student.barcodeImage
         }
       },
       message: `Student ${firstName} ${lastName} added successfully`,

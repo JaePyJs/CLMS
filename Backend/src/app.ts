@@ -1,19 +1,37 @@
 import express, { Application, Request, Response } from 'express';
+import { createServer as createHttpServer, Server as HttpServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { PrismaClient } from '@prisma/client';
+import swaggerUi from 'swagger-ui-express';
+import cookieParser from 'cookie-parser';
 import 'express-async-errors';
 
 import { logger, createRequestLogger } from '@/utils/logger';
+import {
+  requestLogger,
+  errorLogger,
+  performanceMonitor,
+  requestId,
+} from '@/middleware/requestLogger';
 import {
   errorHandler,
   notFoundHandler,
   setupGlobalErrorHandlers,
 } from '@/utils/errors';
+import { enhancedErrorHandler } from '@/middleware/errorMiddleware';
+import { selfHealing } from '@/middleware/selfHealingMiddleware';
 import { automationService } from '@/services/automation';
 import { googleSheetsService } from '@/services/googleSheets';
+import { websocketServer } from './websocket/websocketServer';
+import { realtimeService } from './websocket/realtimeService';
+import { recoveryService } from '@/services/recoveryService';
+import { errorNotificationService } from '@/services/errorNotificationService';
+import { reportingService } from '@/services/reportingService';
+import { swaggerSpec } from '@/config/swagger';
+import { TLSMiddleware, SecurityHeaders } from '@/middleware/tls.middleware';
 
 // Import routes
 import authRoutes from '@/routes/auth';
@@ -25,14 +43,25 @@ import activitiesRoutes from '@/routes/activities';
 import automationRoutes from '@/routes/automation';
 import adminRoutes from '@/routes/admin';
 import reportsRoutes from '@/routes/reports';
+import finesRoutes from '@/routes/fines';
 import utilitiesRoutes from '@/routes/utilities';
 import analyticsRoutes from '@/routes/analytics';
+import importRoutes from '@/routes/import.routes';
+import settingsRoutes from '@/routes/settings';
+import notificationsRoutes from '@/routes/notifications.routes';
+import auditRoutes from '@/routes/audit.routes';
+import usersRoutes from '@/routes/users.routes';
+import backupRoutes from '@/routes/backup.routes';
+import selfServiceRoutes from '@/routes/self-service.routes';
+import errorsRoutes from '@/routes/errors.routes';
+import reportingRoutes from '@/routes/reporting';
 
 // Import middleware
 import { authMiddleware } from '@/middleware/auth';
 
 export class CLMSApplication {
   private app: Application;
+  private httpServer: HttpServer | null = null;
   private prisma: PrismaClient;
   private isInitialized = false;
 
@@ -76,6 +105,24 @@ export class CLMSApplication {
       // Initialize services
       await this.initializeServices();
 
+      // Create HTTP server for WebSocket integration
+      this.httpServer = createHttpServer(this.app);
+
+      // Initialize WebSocket server
+      try {
+        websocketServer.initialize(this.httpServer);
+        logger.info('WebSocket server initialized successfully');
+        
+        // Initialize realtime monitoring services
+        realtimeService.initialize();
+        logger.info('Realtime service initialized successfully');
+      } catch (error) {
+        logger.warn('Failed to initialize WebSocket server', {
+          error: (error as Error).message,
+        });
+        // Don't throw - app can still work without WebSocket
+      }
+
       // Setup graceful shutdown
       this.setupGracefulShutdown();
 
@@ -90,25 +137,16 @@ export class CLMSApplication {
   }
 
   private setupSecurityMiddleware(): void {
-    // Helmet for security headers
-    this.app.use(
-      helmet({
-        contentSecurityPolicy: {
-          directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'"],
-            imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'"],
-          },
-        },
-      }),
-    );
+    // TLS enforcement for production
+    this.app.use(TLSMiddleware.enforceHTTPS);
 
-    // Compression for response bodies
-    this.app.use(compression());
+    // Enhanced security headers with TLS 1.3 compliance
+    this.app.use(TLSMiddleware.securityHeaders);
 
-    logger.debug('Security middleware configured');
+    // Advanced compression with TLS considerations
+    this.app.use(compression(TLSMiddleware.compressionSettings));
+
+    logger.debug('TLS and security middleware configured');
   }
 
   private setupParsingMiddleware(): void {
@@ -118,33 +156,38 @@ export class CLMSApplication {
     // URL-encoded body parser
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+    // Cookie parser (for secure token storage)
+    this.app.use(cookieParser());
+
     logger.debug('Parsing middleware configured');
   }
 
   private setupLoggingMiddleware(): void {
-    // Request logging
-    this.app.use(createRequestLogger());
+    // Request ID middleware (must be first)
+    this.app.use(requestId);
 
-    logger.debug('Logging middleware configured');
+    // Enhanced request logging with full context
+    this.app.use(requestLogger);
+
+    // Performance monitoring
+    this.app.use(performanceMonitor);
+
+    logger.debug('Enhanced logging middleware configured');
   }
 
   private setupRateLimiting(): void {
-    // General rate limiting
+    // Advanced rate limiting with TLS-aware configuration
     const limiter = rateLimit({
-      windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
-      max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
+      ...TLSMiddleware.rateLimiting,
       message: {
-        success: false,
-        error: 'Too many requests from this IP, please try again later.',
+        ...TLSMiddleware.rateLimiting.message,
         timestamp: new Date().toISOString(),
       },
-      standardHeaders: true,
-      legacyHeaders: false,
     });
 
     this.app.use('/api', limiter);
 
-    // Stricter rate limiting for auth endpoints (if enabled)
+    // Stricter rate limiting for auth endpoints with TLS security
     const authRateLimitEnabled =
       process.env.RATE_LIMIT_AUTH_ENABLED !== 'false';
 
@@ -158,38 +201,54 @@ export class CLMSApplication {
           timestamp: new Date().toISOString(),
         },
         skipSuccessfulRequests: true,
+        keyGenerator: (req: Request) => {
+          // Use user ID if available, otherwise IP
+          const user = (req as any).user;
+          return user?.id || req.ip;
+        },
       });
 
       this.app.use('/api/auth/login', authLimiter);
+      this.app.use('/api/auth/register', authLimiter);
+      this.app.use('/api/auth/forgot-password', authLimiter);
     }
 
-    logger.debug('Rate limiting middleware configured');
+    logger.debug('Advanced rate limiting middleware configured');
   }
 
   private setupCORS(): void {
-    const corsOptions = {
-      origin:
-        process.env.NODE_ENV === 'production'
-          ? [process.env.CORS_ORIGIN || 'http://localhost:3000']
-          : [
-              'http://localhost:3000',
-              'http://localhost:5173', // Vite dev server
-              'http://127.0.0.1:3000',
-              'http://127.0.0.1:5173',
-            ],
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    };
+    // TLS-aware CORS configuration
+    this.app.use(cors(TLSMiddleware.corsSettings));
 
-    this.app.use(cors(corsOptions));
-
-    logger.debug('CORS middleware configured');
+    logger.debug('TLS-aware CORS middleware configured');
   }
 
   private setupRoutes(): void {
     // Health check endpoint (no auth required)
     this.app.get('/health', this.healthCheck.bind(this));
+
+    // Swagger API Documentation (no auth required)
+    this.app.use(
+      '/api-docs',
+      swaggerUi.serve,
+      swaggerUi.setup(swaggerSpec, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'CLMS API Documentation',
+        customfavIcon: '/favicon.ico',
+        swaggerOptions: {
+          persistAuthorization: true,
+          displayRequestDuration: true,
+          filter: true,
+          tryItOutEnabled: true,
+        },
+      }),
+    );
+
+    // Swagger JSON endpoint
+    this.app.get('/api-docs.json', (req: Request, res: Response) => {
+      res.setHeader('Content-Type', 'application/json');
+      res.send(swaggerSpec);
+    });
 
     // API routes
     this.app.use('/api/auth', authRoutes);
@@ -201,8 +260,18 @@ export class CLMSApplication {
     this.app.use('/api/automation', authMiddleware, automationRoutes);
     this.app.use('/api/admin', authMiddleware, adminRoutes);
     this.app.use('/api/reports', authMiddleware, reportsRoutes);
+    this.app.use('/api/fines', authMiddleware, finesRoutes);
     this.app.use('/api/utilities', authMiddleware, utilitiesRoutes);
     this.app.use('/api/analytics', authMiddleware, analyticsRoutes);
+    this.app.use('/api/import', authMiddleware, importRoutes);
+    this.app.use('/api/settings', authMiddleware, settingsRoutes);
+    this.app.use('/api/users', usersRoutes); // User management with built-in auth
+    this.app.use('/api/notifications', notificationsRoutes); // Notifications with built-in auth
+    this.app.use('/api/backups', backupRoutes); // Backup management with built-in auth
+    this.app.use('/api/self-service', selfServiceRoutes); // Self-service check-in/out with built-in auth
+    this.app.use('/api/errors', authMiddleware, errorsRoutes); // Error reporting and management
+    this.app.use('/api/reporting', authMiddleware, reportingRoutes); // Advanced reporting and analytics
+    this.app.use('/api/audit', authMiddleware, auditRoutes); // Audit log management and export
 
     // Root endpoint
     this.app.get('/', (req: Request, res: Response) => {
@@ -230,8 +299,16 @@ export class CLMSApplication {
           automation: '/api/automation',
           admin: '/api/admin',
           reports: '/api/reports',
+          fines: '/api/fines',
           utilities: '/api/utilities',
           analytics: '/api/analytics',
+          import: '/api/import',
+          settings: '/api/settings',
+          users: '/api/users',
+          notifications: '/api/notifications',
+          selfService: '/api/self-service',
+          errors: '/api/errors',
+          reporting: '/api/reporting',
         },
         timestamp: new Date().toISOString(),
       });
@@ -244,10 +321,13 @@ export class CLMSApplication {
     // 404 handler
     this.app.use(notFoundHandler);
 
-    // Global error handler
-    this.app.use(errorHandler);
+    // Error logging middleware
+    this.app.use(errorLogger);
 
-    logger.debug('Error handling configured');
+    // Enhanced error handler with recovery and reporting
+    this.app.use(enhancedErrorHandler);
+
+    logger.debug('Enhanced error handling configured');
   }
 
   private async initializeServices(): Promise<void> {
@@ -271,6 +351,43 @@ export class CLMSApplication {
         error: (error as Error).message,
       });
       // Don't throw - app can still work without automation
+    }
+
+    // Initialize recovery service
+    try {
+      logger.info('Initializing recovery service...');
+      // Recovery service initializes automatically in constructor
+      logger.info('Recovery service initialized');
+    } catch (error) {
+      logger.warn('Failed to initialize recovery service', {
+        error: (error as Error).message,
+      });
+      // Don't throw - app can still work without recovery
+    }
+
+    // Initialize error notification service
+    try {
+      logger.info('Initializing error notification service...');
+      // Notification service initializes automatically in constructor
+      logger.info('Error notification service initialized');
+    } catch (error) {
+      logger.warn('Failed to initialize error notification service', {
+        error: (error as Error).message,
+      });
+      // Don't throw - app can still work without notifications
+    }
+
+    // Initialize reporting service
+    try {
+      logger.info('Initializing reporting service...');
+      await reportingService.initializeScheduledReports();
+      await reportingService.initializeAlertMonitoring();
+      logger.info('Reporting service initialized');
+    } catch (error) {
+      logger.warn('Failed to initialize reporting service', {
+        error: (error as Error).message,
+      });
+      // Don't throw - app can still work without advanced reporting
     }
 
     // Test Google Sheets connection
@@ -301,6 +418,9 @@ export class CLMSApplication {
 
         // Shutdown services
         await automationService.shutdown();
+        await recoveryService.shutdown();
+        await errorNotificationService.shutdown?.();
+        await reportingService.cleanup();
 
         // Close database connection
         await this.prisma.$disconnect();
@@ -335,6 +455,9 @@ export class CLMSApplication {
       // Check automation service
       const automationHealth = automationService.getSystemHealth();
 
+      // Check WebSocket server
+      const webSocketStatus = webSocketManager.getStatus();
+
       // Check memory usage
       const memoryUsage = process.memoryUsage();
       const totalMemory = memoryUsage.heapTotal;
@@ -354,6 +477,12 @@ export class CLMSApplication {
           database: databaseHealth,
           googleSheets: googleSheetsHealth,
           automation: automationHealth,
+          websockets: {
+            initialized: webSocketStatus.isInitialized,
+            running: webSocketStatus.isRunning,
+            connections: webSocketStatus.stats.totalConnections,
+            connectionsByRole: webSocketStatus.stats.connectionsByRole,
+          },
         },
         system: {
           memory: {
@@ -418,18 +547,36 @@ export class CLMSApplication {
 
   async start(port: number = 3001): Promise<void> {
     try {
+      console.log('[DEBUG] Starting CLMS Application...');
       await this.initialize();
+      console.log('[DEBUG] Initialization complete');
 
-      this.app.listen(port, () => {
-        logger.info(`🚀 CLMS Backend Server running on port ${port}`);
-        logger.info(`📝 Environment: ${process.env.NODE_ENV}`);
-        logger.info(`🔗 Health check: http://localhost:${port}/health`);
-        logger.info(`📚 Library: ${process.env.LIBRARY_NAME}`);
-        logger.info(
-          `⏰ Automation: ${automationService.getSystemHealth().initialized ? 'Enabled' : 'Disabled'}`,
-        );
+      if (!this.httpServer) {
+        throw new Error('HTTP server not initialized');
+      }
+
+      console.log('[DEBUG] About to call httpServer.listen()...');
+      // Wrap listen in a Promise to keep the process alive
+      await new Promise<void>(resolve => {
+        this.httpServer!.listen(port, () => {
+          console.log('[DEBUG] Listen callback fired!');
+          logger.info(`🚀 CLMS Backend Server running on port ${port}`);
+          logger.info(`📝 Environment: ${process.env.NODE_ENV}`);
+          logger.info(`🔗 Health check: http://localhost:${port}/health`);
+          logger.info(`🔌 WebSocket: ws://localhost:${port}/ws`);
+          logger.info(`📚 Library: ${process.env.LIBRARY_NAME}`);
+          logger.info(
+            `⏰ Automation: ${automationService.getSystemHealth().initialized ? 'Enabled' : 'Disabled'}`,
+          );
+          logger.info(
+            `🌐 WebSocket: ${websocketServer.getConnectedClients() >= 0 ? 'Enabled' : 'Disabled'}`,
+          );
+          resolve();
+        });
       });
+      console.log('[DEBUG] After listen promise');
     } catch (error) {
+      console.log('[DEBUG] Error in start():', error);
       logger.error('Failed to start server', {
         error: (error as Error).message,
       });
@@ -441,7 +588,28 @@ export class CLMSApplication {
     logger.info('Shutting down CLMS Application...');
 
     try {
+      // Shutdown realtime service
+      realtimeService.shutdown();
+      logger.info('Realtime service shut down');
+
+      // Close HTTP server
+      if (this.httpServer) {
+        await new Promise<void>((resolve, reject) => {
+          this.httpServer!.close(error => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve();
+            }
+          });
+        });
+      }
+
+      // Shutdown other services
       await automationService.shutdown();
+      await recoveryService.shutdown();
+      await errorNotificationService.shutdown?.();
+      await reportingService.cleanup();
       await this.prisma.$disconnect();
       logger.info('CLMS Application shutdown complete');
     } catch (error) {

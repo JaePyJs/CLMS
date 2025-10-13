@@ -269,32 +269,32 @@ export class TimeLimitExceededError extends BusinessLogicError {
 
 // Equipment specific errors
 export class EquipmentUnavailableError extends BusinessLogicError {
-  constructor(equipmentId: string, currentStatus: string) {
+  constructor(equipment_id: string, currentStatus: string) {
     super(
-      `Equipment ${equipmentId} is not available. Current status: ${currentStatus}`,
+      `Equipment ${equipment_id} is not available. Current status: ${currentStatus}`,
       'EQUIPMENT_UNAVAILABLE',
-      { equipmentId, currentStatus },
+      { equipment_id, currentStatus },
     );
   }
 }
 
 export class ConcurrentSessionError extends BusinessLogicError {
-  constructor(studentId: string, equipmentType: string) {
+  constructor(student_id: string, equipmentType: string) {
     super(
-      `Student ${studentId} already has an active ${equipmentType} session`,
+      `Student ${student_id} already has an active ${equipmentType} session`,
       'CONCURRENT_SESSION',
-      { studentId, equipmentType },
+      { student_id, equipmentType },
     );
   }
 }
 
 // Student specific errors
 export class StudentInactiveError extends BusinessLogicError {
-  constructor(studentId: string) {
+  constructor(student_id: string) {
     super(
-      `Student ${studentId} is inactive and cannot use library facilities`,
+      `Student ${student_id} is inactive and cannot use library facilities`,
       'STUDENT_INACTIVE',
-      { studentId },
+      { student_id },
     );
   }
 }
@@ -369,7 +369,7 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
       url: req.url,
       method: req.method,
       ip: req.ip,
-      userAgent: req.get('User-Agent'),
+      user_agent: req.get('User-Agent'),
     });
   }
 

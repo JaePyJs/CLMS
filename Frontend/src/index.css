@@ -27,25 +27,26 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+    /* Enhanced dark mode with better contrast ratios */
+    --background: 220 20% 8%;           /* Deeper, richer background */
+    --foreground: 210 40% 98%;          /* High contrast text */
+    --card: 220 20% 12%;                /* Elevated card surfaces */
+    --card-foreground: 210 40% 98%;     /* High contrast on cards */
+    --popover: 220 20% 12%;             /* Match card elevation */
+    --popover-foreground: 210 40% 98%;  /* High contrast popover text */
+    --primary: 217.2 91.2% 59.8%;       /* Vibrant blue */
+    --primary-foreground: 220 20% 8%;   /* Dark text on primary */
+    --secondary: 220 20% 16%;           /* Subtle elevation */
+    --secondary-foreground: 210 40% 98%; /* High contrast */
+    --muted: 220 20% 16%;               /* Muted backgrounds */
+    --muted-foreground: 215 20% 70%;    /* Better readability for secondary text (WCAG AA) */
+    --accent: 220 20% 18%;              /* Accent backgrounds */
+    --accent-foreground: 210 40% 98%;   /* High contrast accent text */
+    --destructive: 0 72% 51%;           /* Visible red */
+    --destructive-foreground: 210 40% 98%; /* High contrast on destructive */
+    --border: 217 25% 20%;              /* Visible but subtle borders */
+    --input: 220 20% 16%;               /* Input backgrounds */
+    --ring: 217.2 91.2% 59.8%;          /* Focus ring matches primary */
   }
 }
 
@@ -60,6 +61,7 @@
   /* Dark mode specific styles */
   .dark body {
     background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 
   /* Background image overlay for better text readability */
@@ -70,6 +72,46 @@
   /* Dark mode support for charts and interactive elements */
   .dark {
     color-scheme: dark;
+  }
+
+  /* Enhanced card styling for dark mode */
+  .dark .card-enhanced {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  /* Better button visibility in dark mode */
+  .dark button {
+    border-color: hsl(var(--border));
+  }
+
+  .dark button:hover {
+    background-color: hsl(var(--accent));
+    border-color: hsl(var(--primary));
+  }
+
+  /* Input fields dark mode optimization */
+  .dark input,
+  .dark textarea,
+  .dark select {
+    background-color: hsl(var(--input));
+    border-color: hsl(var(--border));
+    color: hsl(var(--foreground));
+  }
+
+  .dark input:focus,
+  .dark textarea:focus,
+  .dark select:focus {
+    border-color: hsl(var(--primary));
+    ring-color: hsl(var(--ring));
+  }
+
+  /* Improved placeholder text visibility */
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: hsl(var(--muted-foreground));
+    opacity: 0.7;
   }
   
   /* Custom tooltip styles for dark mode */
@@ -110,8 +152,41 @@
     color: hsl(var(--primary)) !important;
   }
   
-  /* Ensure all text is properly themed */
-  .dark * {
+  /* Smooth transitions for theme switching */
+  :root {
+    transition: background-color 300ms ease-in-out, color 300ms ease-in-out;
+  }
+  
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *:before,
+  html.theme-transitioning *:after {
+    transition: background-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+                color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+                fill 300ms cubic-bezier(0.4, 0, 0.2, 1),
+                stroke 300ms cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition-delay: 0ms !important;
+  }
+  
+  /* Prevent flash on page load */
+  html:not(.theme-transitioning) * {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Ensure proper text theming without breaking specific color classes */
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4,
+  .dark h5,
+  .dark h6,
+  .dark p,
+  .dark span:not([class*="text-"]),
+  .dark div:not([class*="text-"]) {
     color: hsl(var(--foreground));
   }
   
@@ -146,5 +221,21 @@
   
   .text-foreground {
     color: hsl(var(--foreground)) !important;
+  }
+  
+  /* Toast animations */
+  @keyframes slide-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+  .animate-slide-in {
+    animation: slide-in 0.3s ease-out;
   }
 }

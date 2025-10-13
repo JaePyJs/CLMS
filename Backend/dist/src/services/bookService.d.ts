@@ -1,4 +1,4 @@
-import { CheckoutStatus, Prisma } from '@prisma/client';
+import { Prisma, book_checkouts_status } from '@prisma/client';
 export interface GetBooksOptions {
     category?: string;
     subcategory?: string;
@@ -8,9 +8,9 @@ export interface GetBooksOptions {
     search?: string;
 }
 export interface GetBookCheckoutsOptions {
-    bookId?: string;
-    studentId?: string;
-    status?: CheckoutStatus;
+    book_id?: string;
+    student_id?: string;
+    status?: typeof book_checkouts_status;
     startDate?: Date;
     endDate?: Date;
     page?: number;
@@ -19,20 +19,27 @@ export interface GetBookCheckoutsOptions {
 export declare function getBooks(options?: GetBooksOptions): Promise<{
     books: {
         id: string;
-        barcodeImage: string | null;
-        isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        isbn: string | null;
-        accessionNo: string;
+        updated_at: Date;
         title: string;
+        created_at: Date;
+        category: string;
+        barcode_image: string | null;
+        is_active: boolean;
+        isbn: string | null;
         author: string;
         publisher: string | null;
-        category: string;
         subcategory: string | null;
         location: string | null;
-        totalCopies: number;
-        availableCopies: number;
+        accession_no: string;
+        available_copies: number;
+        total_copies: number;
+        cost_price: number | null;
+        edition: string | null;
+        pages: string | null;
+        remarks: string | null;
+        source_of_fund: string | null;
+        volume: string | null;
+        year: number | null;
     }[];
     pagination: {
         page: number;
@@ -42,110 +49,131 @@ export declare function getBooks(options?: GetBooksOptions): Promise<{
     };
 }>;
 export declare function getBookById(id: string): Promise<({
-    checkouts: {
-        studentId: string;
-        status: import(".prisma/client").$Enums.CheckoutStatus;
+    book_checkouts: {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        student_id: string;
+        status: import(".prisma/client").$Enums.book_checkouts_status;
+        updated_at: Date;
+        created_at: Date;
         notes: string | null;
-        processedBy: string;
-        bookId: string;
-        checkoutDate: Date;
-        dueDate: Date;
-        returnDate: Date | null;
-        overdueDays: number;
-        fineAmount: Prisma.Decimal;
-        finePaid: boolean;
+        processed_by: string;
+        book_id: string;
+        checkout_date: Date;
+        due_date: Date;
+        fine_amount: Prisma.Decimal;
+        fine_paid: boolean;
+        overdue_days: number;
+        return_date: Date | null;
     }[];
 } & {
     id: string;
-    barcodeImage: string | null;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    isbn: string | null;
-    accessionNo: string;
+    updated_at: Date;
     title: string;
+    created_at: Date;
+    category: string;
+    barcode_image: string | null;
+    is_active: boolean;
+    isbn: string | null;
     author: string;
     publisher: string | null;
-    category: string;
     subcategory: string | null;
     location: string | null;
-    totalCopies: number;
-    availableCopies: number;
+    accession_no: string;
+    available_copies: number;
+    total_copies: number;
+    cost_price: number | null;
+    edition: string | null;
+    pages: string | null;
+    remarks: string | null;
+    source_of_fund: string | null;
+    volume: string | null;
+    year: number | null;
 }) | null>;
-export declare function getBookByAccessionNo(accessionNo: string): Promise<({
-    checkouts: {
-        studentId: string;
-        status: import(".prisma/client").$Enums.CheckoutStatus;
+export declare function getBookByAccessionNo(accession_no: string): Promise<({
+    book_checkouts: {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        student_id: string;
+        status: import(".prisma/client").$Enums.book_checkouts_status;
+        updated_at: Date;
+        created_at: Date;
         notes: string | null;
-        processedBy: string;
-        bookId: string;
-        checkoutDate: Date;
-        dueDate: Date;
-        returnDate: Date | null;
-        overdueDays: number;
-        fineAmount: Prisma.Decimal;
-        finePaid: boolean;
+        processed_by: string;
+        book_id: string;
+        checkout_date: Date;
+        due_date: Date;
+        fine_amount: Prisma.Decimal;
+        fine_paid: boolean;
+        overdue_days: number;
+        return_date: Date | null;
     }[];
 } & {
     id: string;
-    barcodeImage: string | null;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    isbn: string | null;
-    accessionNo: string;
+    updated_at: Date;
     title: string;
+    created_at: Date;
+    category: string;
+    barcode_image: string | null;
+    is_active: boolean;
+    isbn: string | null;
     author: string;
     publisher: string | null;
-    category: string;
     subcategory: string | null;
     location: string | null;
-    totalCopies: number;
-    availableCopies: number;
+    accession_no: string;
+    available_copies: number;
+    total_copies: number;
+    cost_price: number | null;
+    edition: string | null;
+    pages: string | null;
+    remarks: string | null;
+    source_of_fund: string | null;
+    volume: string | null;
+    year: number | null;
 }) | null>;
 export declare function getBookByIsbn(isbn: string): Promise<({
-    checkouts: {
-        studentId: string;
-        status: import(".prisma/client").$Enums.CheckoutStatus;
+    book_checkouts: {
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        student_id: string;
+        status: import(".prisma/client").$Enums.book_checkouts_status;
+        updated_at: Date;
+        created_at: Date;
         notes: string | null;
-        processedBy: string;
-        bookId: string;
-        checkoutDate: Date;
-        dueDate: Date;
-        returnDate: Date | null;
-        overdueDays: number;
-        fineAmount: Prisma.Decimal;
-        finePaid: boolean;
+        processed_by: string;
+        book_id: string;
+        checkout_date: Date;
+        due_date: Date;
+        fine_amount: Prisma.Decimal;
+        fine_paid: boolean;
+        overdue_days: number;
+        return_date: Date | null;
     }[];
 } & {
     id: string;
-    barcodeImage: string | null;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    isbn: string | null;
-    accessionNo: string;
+    updated_at: Date;
     title: string;
+    created_at: Date;
+    category: string;
+    barcode_image: string | null;
+    is_active: boolean;
+    isbn: string | null;
     author: string;
     publisher: string | null;
-    category: string;
     subcategory: string | null;
     location: string | null;
-    totalCopies: number;
-    availableCopies: number;
+    accession_no: string;
+    available_copies: number;
+    total_copies: number;
+    cost_price: number | null;
+    edition: string | null;
+    pages: string | null;
+    remarks: string | null;
+    source_of_fund: string | null;
+    volume: string | null;
+    year: number | null;
 }) | null>;
 export declare function createBook(data: {
     isbn?: string;
-    accessionNo: string;
+    accession_no: string;
     title: string;
     author: string;
     publisher?: string;
@@ -156,20 +184,27 @@ export declare function createBook(data: {
     availableCopies?: number;
 }): Promise<{
     id: string;
-    barcodeImage: string | null;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    isbn: string | null;
-    accessionNo: string;
+    updated_at: Date;
     title: string;
+    created_at: Date;
+    category: string;
+    barcode_image: string | null;
+    is_active: boolean;
+    isbn: string | null;
     author: string;
     publisher: string | null;
-    category: string;
     subcategory: string | null;
     location: string | null;
-    totalCopies: number;
-    availableCopies: number;
+    accession_no: string;
+    available_copies: number;
+    total_copies: number;
+    cost_price: number | null;
+    edition: string | null;
+    pages: string | null;
+    remarks: string | null;
+    source_of_fund: string | null;
+    volume: string | null;
+    year: number | null;
 }>;
 export declare function updateBook(id: string, data: {
     isbn?: string;
@@ -185,111 +220,118 @@ export declare function updateBook(id: string, data: {
     isActive?: boolean;
 }): Promise<{
     id: string;
-    barcodeImage: string | null;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    isbn: string | null;
-    accessionNo: string;
+    updated_at: Date;
     title: string;
+    created_at: Date;
+    category: string;
+    barcode_image: string | null;
+    is_active: boolean;
+    isbn: string | null;
     author: string;
     publisher: string | null;
-    category: string;
     subcategory: string | null;
     location: string | null;
-    totalCopies: number;
-    availableCopies: number;
+    accession_no: string;
+    available_copies: number;
+    total_copies: number;
+    cost_price: number | null;
+    edition: string | null;
+    pages: string | null;
+    remarks: string | null;
+    source_of_fund: string | null;
+    volume: string | null;
+    year: number | null;
 }>;
 export declare function deleteBook(id: string): Promise<boolean>;
 export declare function checkoutBook(data: {
-    bookId: string;
-    studentId: string;
-    dueDate: Date;
+    book_id: string;
+    student_id: string;
+    due_date: Date;
     notes?: string;
 }): Promise<{
-    student: {
-        studentId: string;
-        firstName: string;
-        lastName: string;
-    };
-    book: {
-        accessionNo: string;
+    books: {
         title: string;
         author: string;
+        accession_no: string;
+    };
+    students: {
+        student_id: string;
+        first_name: string;
+        last_name: string;
     };
 } & {
-    studentId: string;
-    status: import(".prisma/client").$Enums.CheckoutStatus;
     id: string;
-    createdAt: Date;
-    updatedAt: Date;
+    student_id: string;
+    status: import(".prisma/client").$Enums.book_checkouts_status;
+    updated_at: Date;
+    created_at: Date;
     notes: string | null;
-    processedBy: string;
-    bookId: string;
-    checkoutDate: Date;
-    dueDate: Date;
-    returnDate: Date | null;
-    overdueDays: number;
-    fineAmount: Prisma.Decimal;
-    finePaid: boolean;
+    processed_by: string;
+    book_id: string;
+    checkout_date: Date;
+    due_date: Date;
+    fine_amount: Prisma.Decimal;
+    fine_paid: boolean;
+    overdue_days: number;
+    return_date: Date | null;
 }>;
-export declare function returnBook(checkoutId: string): Promise<{
-    student: {
-        studentId: string;
-        firstName: string;
-        lastName: string;
-    };
-    book: {
-        accessionNo: string;
+export declare function returnBook(checkout_id: string): Promise<{
+    books: {
         title: string;
         author: string;
+        accession_no: string;
+    };
+    students: {
+        student_id: string;
+        first_name: string;
+        last_name: string;
     };
 } & {
-    studentId: string;
-    status: import(".prisma/client").$Enums.CheckoutStatus;
     id: string;
-    createdAt: Date;
-    updatedAt: Date;
+    student_id: string;
+    status: import(".prisma/client").$Enums.book_checkouts_status;
+    updated_at: Date;
+    created_at: Date;
     notes: string | null;
-    processedBy: string;
-    bookId: string;
-    checkoutDate: Date;
-    dueDate: Date;
-    returnDate: Date | null;
-    overdueDays: number;
-    fineAmount: Prisma.Decimal;
-    finePaid: boolean;
+    processed_by: string;
+    book_id: string;
+    checkout_date: Date;
+    due_date: Date;
+    fine_amount: Prisma.Decimal;
+    fine_paid: boolean;
+    overdue_days: number;
+    return_date: Date | null;
 }>;
 export declare function getBookCheckouts(options?: GetBookCheckoutsOptions): Promise<{
     checkouts: ({
-        student: {
-            studentId: string;
-            firstName: string;
-            lastName: string;
-            gradeLevel: string;
-            gradeCategory: import(".prisma/client").$Enums.GradeCategory;
-        };
-        book: {
-            accessionNo: string;
+        books: {
             title: string;
-            author: string;
             category: string;
+            author: string;
+            accession_no: string;
+        };
+        students: {
+            student_id: string;
+            first_name: string;
+            grade_category: import(".prisma/client").$Enums.students_grade_category;
+            grade_level: string;
+            last_name: string;
         };
     } & {
-        studentId: string;
-        status: import(".prisma/client").$Enums.CheckoutStatus;
         id: string;
-        createdAt: Date;
-        updatedAt: Date;
+        student_id: string;
+        status: import(".prisma/client").$Enums.book_checkouts_status;
+        updated_at: Date;
+        created_at: Date;
         notes: string | null;
-        processedBy: string;
-        bookId: string;
-        checkoutDate: Date;
-        dueDate: Date;
-        returnDate: Date | null;
-        overdueDays: number;
-        fineAmount: Prisma.Decimal;
-        finePaid: boolean;
+        processed_by: string;
+        book_id: string;
+        checkout_date: Date;
+        due_date: Date;
+        fine_amount: Prisma.Decimal;
+        fine_paid: boolean;
+        overdue_days: number;
+        return_date: Date | null;
     })[];
     pagination: {
         page: number;
@@ -299,32 +341,32 @@ export declare function getBookCheckouts(options?: GetBookCheckoutsOptions): Pro
     };
 }>;
 export declare function getOverdueBooks(): Promise<{
-    overdueDays: number;
-    fineAmount: number;
-    student: {
-        studentId: string;
-        firstName: string;
-        lastName: string;
-        gradeLevel: string;
-        gradeCategory: import(".prisma/client").$Enums.GradeCategory;
-    };
-    book: {
-        accessionNo: string;
+    overdue_days: any;
+    fine_amount: number;
+    books: {
         title: string;
-        author: string;
         category: string;
+        author: string;
+        accession_no: string;
     };
-    studentId: string;
-    status: import(".prisma/client").$Enums.CheckoutStatus;
+    students: {
+        student_id: string;
+        first_name: string;
+        grade_category: import(".prisma/client").$Enums.students_grade_category;
+        grade_level: string;
+        last_name: string;
+    };
     id: string;
-    createdAt: Date;
-    updatedAt: Date;
+    student_id: string;
+    status: import(".prisma/client").$Enums.book_checkouts_status;
+    updated_at: Date;
+    created_at: Date;
     notes: string | null;
-    processedBy: string;
-    bookId: string;
-    checkoutDate: Date;
-    dueDate: Date;
-    returnDate: Date | null;
-    finePaid: boolean;
+    processed_by: string;
+    book_id: string;
+    checkout_date: Date;
+    due_date: Date;
+    fine_paid: boolean;
+    return_date: Date | null;
 }[]>;
 //# sourceMappingURL=bookService.d.ts.map
