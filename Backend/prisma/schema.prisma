@@ -10,17 +10,21 @@ datasource db {
 
 /// Comprehensive audit trail for all system changes and user actions
 /// Stores who did what, when, and tracks before/after values
+/// Contains encrypted sensitive information in audit data
 model audit_logs {
   id           String   @id
   entity       String
   action       String
   created_at   DateTime @default(now())
   entity_id    String
-  ip_address   String?
-  new_values   Json?
-  old_values   Json?
+  ip_address   String?  @db.Text /// IP address (encrypted)
+  new_values   Json?    /// New values (may contain encrypted data)
+  old_values   Json?    /// Old values (may contain encrypted data)
   performed_by String   @default("Sophia")
   user_agent   String?
+
+  // Encryption metadata fields
+  ip_address_enc Json?   /// IP address encryption metadata
 
   @@index([action], map: "idx_audit_logs_action")
   @@index([created_at], map: "idx_audit_logs_created_at")
@@ -162,6 +166,7 @@ model books {
 
 /// Library equipment inventory (computers, gaming stations, AVR)
 /// Manages equipment availability, reservations, maintenance, and lifecycle
+/// Contains encrypted sensitive identification information
 model equipment {
   id                      String                     @id
   name                    String
@@ -176,8 +181,8 @@ model equipment {
   updated_at              DateTime
   purchase_date           DateTime?                  /// When equipment was acquired
   purchase_cost           Float?                     /// Purchase price
-  serial_number           String?                    /// Manufacturer serial number
-  asset_tag               String?                    /// Asset tracking tag
+  serial_number           String?                    @db.Text /// Manufacturer serial number (encrypted)
+  asset_tag               String?                    @db.Text /// Asset tracking tag (encrypted)
   warranty_expiry         DateTime?                  /// Warranty expiration date
   condition_rating        equipment_condition_rating @default(EXCELLENT) /// Current condition
   maintenance_interval    Int?                       /// Days between maintenance
@@ -192,6 +197,10 @@ model equipment {
   specifications          Json?                      /// Technical specifications
   notes                   String?                    @db.Text /// General notes
   is_active               Boolean                    @default(true) /// Active/inactive status
+
+  // Encryption metadata fields
+  serial_number_enc       Json?                      /// Serial number encryption metadata
+  asset_tag_enc           Json?                      /// Asset tag encryption metadata
 
   // Relations
   equipment_sessions      equipment_sessions[]
@@ -437,23 +446,30 @@ model student_activities {
 
 /// Student registry with grade-based time limit categorization
 /// Central entity for all library interactions and activity tracking
+/// Contains encrypted PII fields for privacy protection
 model students {
   id                     String                  @id
-  section                String?
+  section                String?                 @db.Text /// Section/class (encrypted)
   barcode_image          String?                 /// Generated barcode image path
   created_at             DateTime                @default(now())
-  first_name             String
+  first_name             String                  @db.Text /// First name (encrypted)
   grade_category         students_grade_category /// Determines time limits and permissions
   grade_level            String
   is_active              Boolean                 @default(true)
-  last_name              String
-  student_id             String                  @unique /// School-issued student ID
+  last_name              String                  @db.Text /// Last name (encrypted)
+  student_id             String                  @unique /// School-issued student ID (encrypted)
   updated_at             DateTime
   equipment_ban          Boolean                 @default(false) /// Equipment usage ban
   equipment_ban_reason   String?                 @db.Text /// Reason for equipment ban
   equipment_ban_until    DateTime?               /// Equipment ban expiration
   fine_balance           Float                   @default(0) /// Outstanding fines
   max_concurrent_reservations Int                @default(2) /// Max concurrent reservations
+
+  // Encryption metadata fields
+  first_name_enc         Json?                   /// First name encryption metadata
+  last_name_enc          Json?                   /// Last name encryption metadata
+  student_id_enc         Json?                   /// Student ID encryption metadata
+  section_enc            Json?                   /// Section encryption metadata
 
   // Relations
   barcode_history        barcode_history[]
@@ -470,33 +486,43 @@ model students {
 
 /// System-wide configuration key-value store
 /// Stores library settings, time limits, and feature flags
+/// Contains encrypted sensitive configuration values
 model system_config {
   id          String   @id
   key         String   @unique
-  value       String                   /// Configuration value (encrypted if is_secret=true)
+  value       String?  @db.Text /// Configuration value (encrypted if is_secret=true)
   description String?
-  category    String                   /// Config grouping (LIBRARY, SECURITY, FEATURES)
+  category    String   /// Config grouping (LIBRARY, SECURITY, FEATURES)
   created_at  DateTime @default(now())
   is_secret   Boolean  @default(false) /// Sensitive data flag
   updated_at  DateTime
+
+  // Encryption metadata fields
+  value_enc   Json?    /// Value encryption metadata
 
   @@index([category], map: "idx_system_config_category")
 }
 
 /// System users with role-based access control
 /// Supports 6 permission levels from SUPER_ADMIN to VIEWER
+/// Contains encrypted personal information
 model users {
   id            String     @id
-  username      String     @unique
+  username      String     @unique /// Username (encrypted)
   password      String                /// Bcrypt hashed password
   role          users_role @default(LIBRARIAN)
   created_at    DateTime   @default(now())
   is_active     Boolean    @default(true)
   last_login_at DateTime?
   updated_at    DateTime
-  email         String?    @unique
-  full_name     String?
+  email         String?    @unique @db.Text /// Email address (encrypted)
+  full_name     String?    @db.Text /// Full name (encrypted)
   permissions   Json?                 /// Fine-grained permission overrides
+
+  // Encryption metadata fields
+  username_enc  Json?      /// Username encryption metadata
+  email_enc     Json?      /// Email encryption metadata
+  full_name_enc Json?      /// Full name encryption metadata
 
   @@index([is_active], map: "idx_users_is_active")
   @@index([role], map: "idx_users_role")

@@ -1,0 +1,464 @@
+# ============================================================================
+# CLMS Production Security Configuration
+# ============================================================================
+# Purpose: Production deployment with comprehensive security hardening
+# Usage: docker-compose -f docker-compose.security.yml up -d
+# Features: Network isolation, security headers, rate limiting, monitoring
+# ============================================================================
+
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Nginx Reverse Proxy with SSL/TLS and Security Hardening
+  # ============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: clms-nginx-prod
+    restart: always
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    networks:
+      - frontend-network
+      - backend-network
+    depends_on:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      timeout: 10s
+      retries: 3
+      interval: 30s
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ============================================================================
+  # MySQL Database with Security Hardening
+  # ============================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: clms-mysql-prod
+    restart: always
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=100
+      --innodb_buffer_pool_size=512M
+      --innodb_log_file_size=128M
+      --query_cache_size=0
+      --slow_query_log=1
+      --long_query_time=2
+      --skip-name-resolve
+      --bind-address=0.0.0.0
+    env_file:
+      - ./.env.production
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "${MYSQL_HOST_PORT:-3308}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/conf.d:/etc/mysql/conf.d:ro
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+      - ./backups/mysql:/backups
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$$MYSQL_ROOT_PASSWORD"]
+      timeout: 20s
+      retries: 10
+      interval: 30s
+      start_period: 40s
+    security_opt:
+      - no-new-privileges:true
+    user: "999:999"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ============================================================================
+  # Redis with Security Hardening
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: clms-redis-prod
+    restart: always
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --bind 0.0.0.0
+      --port 6379
+      --timeout 300
+      --tcp-keepalive 60
+    env_file:
+      - ./.env.production
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+      - ./backups/redis:/backups
+    networks:
+      - backend-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "$$REDIS_PASSWORD", "ping"]
+      timeout: 10s
+      retries: 5
+      interval: 30s
+    security_opt:
+      - no-new-privileges:true
+    user: "999:999"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ============================================================================
+  # Backend API with Security Hardening
+  # ============================================================================
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+      target: runner
+    image: clms-backend:prod
+    container_name: clms-backend-prod
+    restart: always
+    env_file:
+      - ./.env.production
+    environment:
+      NODE_ENV: production
+      PORT: ${BACKEND_PORT:-3001}
+      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      CORS_ORIGIN: ${FRONTEND_URL}
+      APP_BASE_URL: ${FRONTEND_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+      LOG_LEVEL: info
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+    volumes:
+      - backend_logs:/app/logs
+      - backend_uploads:/app/uploads
+      - backend_generated:/app/generated
+      - ./backups/app:/backups
+    networks:
+      - backend-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      timeout: 30s
+      retries: 5
+      interval: 60s
+      start_period: 120s
+    security_opt:
+      - no-new-privileges:true
+    user: "1000:1000"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ============================================================================
+  # Frontend with Security Hardening
+  # ============================================================================
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile.prod
+      target: runner
+      args:
+        VITE_API_URL: ${PUBLIC_API_URL:-https://clms.local/api}
+        VITE_WS_URL: ${PUBLIC_WS_URL:-wss://clms.local}
+        VITE_APP_NAME: ${APP_NAME:-CLMS}
+    image: clms-frontend:prod
+    container_name: clms-frontend-prod
+    restart: always
+    networks:
+      - frontend-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      timeout: 10s
+      retries: 3
+      interval: 30s
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    user: "1001:1001"
+    read_only: true
+    tmpfs:
+      - /tmp
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # ============================================================================
+  # Certbot for SSL Certificate Management
+  # ============================================================================
+  certbot:
+    image: certbot/certbot:latest
+    container_name: clms-certbot
+    restart: "no"
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    networks:
+      - frontend-network
+    command: >
+      sh -c "while :; do
+        certbot renew --webroot --webroot-path=/var/www/certbot --quiet;
+        sleep 12h;
+      done"
+    security_opt:
+      - no-new-privileges:true
+
+  # ============================================================================
+  # Prometheus Monitoring
+  # ============================================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: clms-prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    security_opt:
+      - no-new-privileges:true
+
+  # ============================================================================
+  # Grafana Visualization
+  # ============================================================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: clms-grafana
+    restart: always
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - monitoring-network
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-changeme}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    security_opt:
+      - no-new-privileges:true
+    user: "472:0"
+
+  # ============================================================================
+  # Filebeat for Log Forwarding
+  # ============================================================================
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:latest
+    container_name: clms-filebeat
+    restart: always
+    user: root
+    volumes:
+      - ./monitoring/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./logs:/var/log/app:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - monitoring-network
+    environment:
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:-elasticsearch:9200}
+      - KIBANA_HOST=${KIBANA_HOST:-kibana:5601}
+    security_opt:
+      - no-new-privileges:true
+
+# ============================================================================
+# Network Configuration with Isolation
+# ============================================================================
+networks:
+  frontend-network:
+    driver: bridge
+    name: clms_frontend_prod
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+          gateway: 172.21.0.1
+    internal: false
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+
+  backend-network:
+    driver: bridge
+    name: clms_backend_prod
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+          gateway: 172.22.0.1
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+
+  monitoring-network:
+    driver: bridge
+    name: clms_monitoring_prod
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+          gateway: 172.23.0.1
+    internal: true
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+
+# ============================================================================
+# Persistent Volumes with Security
+# ============================================================================
+volumes:
+  mysql_data:
+    driver: local
+    name: clms_mysql_data_prod
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/clms/data/mysql
+
+  redis_data:
+    driver: local
+    name: clms_redis_data_prod
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/clms/data/redis
+
+  backend_logs:
+    driver: local
+    name: clms_backend_logs_prod
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/clms/logs/backend
+
+  backend_uploads:
+    driver: local
+    name: clms_backend_uploads_prod
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/clms/uploads
+
+  backend_generated:
+    driver: local
+    name: clms_backend_generated_prod
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/clms/generated
+
+  prometheus_data:
+    driver: local
+    name: clms_prometheus_data_prod
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/clms/data/prometheus
+
+  grafana_data:
+    driver: local
+    name: clms_grafana_data_prod
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/clms/data/grafana
+
+  certbot_certs:
+    driver: local
+    name: clms_certbot_certs_prod
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/clms/certs/letsencrypt
+
+  certbot_www:
+    driver: local
+    name: clms_certbot_www_prod
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/clms/www/certbot

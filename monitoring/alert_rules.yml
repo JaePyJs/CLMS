@@ -1,0 +1,246 @@
+# ============================================================================
+# CLMS Prometheus Alert Rules
+# ============================================================================
+# Purpose: Application and infrastructure monitoring alerts
+# Network: 192.168.1.0/24 local monitoring
+# Severity levels: critical, warning, info
+# ============================================================================
+
+groups:
+  # Application Performance Alerts
+  - name: clms.application
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: clms-backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second on {{ $labels.instance }}"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: clms-backend
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }} seconds on {{ $labels.instance }}"
+
+      - alert: ApplicationDown
+        expr: up{job="clms-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: clms-backend
+        annotations:
+          summary: "CLMS backend is down"
+          description: "CLMS backend has been down for more than 1 minute"
+
+      - alert: FrontendDown
+        expr: up{job="clms-frontend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: clms-frontend
+        annotations:
+          summary: "CLMS frontend is down"
+          description: "CLMS frontend has been down for more than 2 minutes"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+          service: system
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is {{ $value }}% on {{ $labels.instance }}:{{ $labels.mountpoint }}"
+
+  # Database Alerts
+  - name: clms.database
+    rules:
+      - alert: MySQLDown
+        expr: up{job="mysql"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: mysql
+        annotations:
+          summary: "MySQL database is down"
+          description: "MySQL database has been down for more than 1 minute"
+
+      - alert: MySQLSlowQueries
+        expr: rate(mysql_global_status_slow_queries[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: mysql
+        annotations:
+          summary: "MySQL slow queries detected"
+          description: "MySQL slow queries rate is {{ $value }} per second"
+
+      - alert: MySQLConnectionsHigh
+        expr: mysql_global_status_threads_connected / mysql_global_variables_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: mysql
+        annotations:
+          summary: "MySQL connection usage high"
+          description: "MySQL connection usage is {{ $value | humanizePercentage }}"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis is down"
+          description: "Redis has been down for more than 1 minute"
+
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Redis memory usage high"
+          description: "Redis memory usage is {{ $value | humanizePercentage }}"
+
+  # Web Server Alerts
+  - name: clms.webserver
+    rules:
+      - alert: NginxDown
+        expr: up{job="nginx"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: nginx
+        annotations:
+          summary: "Nginx is down"
+          description: "Nginx has been down for more than 1 minute"
+
+      - alert: HighRequestRate
+        expr: rate(nginx_http_requests_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: nginx
+        annotations:
+          summary: "High request rate"
+          description: "Request rate is {{ $value }} requests per second"
+
+      - alert: NginxConnectionUsageHigh
+        expr: nginx_connections_active / nginx_connections_limit > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: nginx
+        annotations:
+          summary: "Nginx connection usage high"
+          description: "Nginx connection usage is {{ $value | humanizePercentage }}"
+
+  # SSL Certificate Alerts
+  - name: clms.ssl
+    rules:
+      - alert: SSLCertificateExpiringSoon
+        expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 7
+        for: 1h
+        labels:
+          severity: warning
+          service: ssl
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }}"
+
+      - alert: SSLCertificateExpired
+        expr: probe_ssl_earliest_cert_expiry - time() < 0
+        for: 1m
+        labels:
+          severity: critical
+          service: ssl
+        annotations:
+          summary: "SSL certificate expired"
+          description: "SSL certificate for {{ $labels.instance }} has expired"
+
+  # Network Alerts
+  - name: clms.network
+    rules:
+      - alert: HighNetworkLatency
+        expr: probe_duration_seconds{job="network-ping"} > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: network
+        annotations:
+          summary: "High network latency"
+          description: "Network latency to {{ $labels.instance }} is {{ $value }}s"
+
+      - alert: NetworkPacketLoss
+        expr: probe_success{job="network-ping"} < 0.95
+        for: 5m
+        labels:
+          severity: critical
+          service: network
+        annotations:
+          summary: "Network packet loss detected"
+          description: "Packet loss to {{ $labels.instance }} is {{ $value | humanizePercentage }}"
+
+  # Container Alerts
+  - name: clms.containers
+    rules:
+      - alert: ContainerHighMemoryUsage
+        expr: container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: docker
+        annotations:
+          summary: "Container memory usage high"
+          description: "Container {{ $labels.name }} memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: ContainerHighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: docker
+        annotations:
+          summary: "Container CPU usage high"
+          description: "Container {{ $labels.name }} CPU usage is {{ $value | humanizePercentage }}"
+
+      - alert: ContainerDown
+        expr: container_last_seen{container_label_com_docker_compose_service!=""} < time() - 300
+        for: 2m
+        labels:
+          severity: critical
+          service: docker
+        annotations:
+          summary: "Container is down"
+          description: "Container {{ $labels.name }} has been down for more than 2 minutes"

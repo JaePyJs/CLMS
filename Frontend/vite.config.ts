@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { visualizer } from 'rollup-plugin-visualizer'
 import viteCompression from 'vite-plugin-compression'
+import imagemin from 'vite-plugin-imagemin'
 import path from 'path'
 
 // https://vitejs.dev/config/
@@ -10,60 +11,61 @@ export default defineConfig({
   plugins: [
     react(),
     // PWA plugin for service worker and caching
-    VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-      manifest: {
-        name: 'CLMS - Library Management System',
-        short_name: 'CLMS',
-        description: 'Comprehensive Library Management System',
-        theme_color: '#2563eb',
-        background_color: '#ffffff',
-        display: 'standalone',
-        icons: [
-          {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/api\./i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 // 24 hours
-              },
-              cacheKeyWillBeUsed: async ({ request }) => {
-                return `${request.url}?version=1`
-              }
-            }
-          },
-          {
-            urlPattern: /\.(?:png|jpg|jpeg|svg)$/,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'images-cache',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
-              }
-            }
-          }
-        ]
-      }
-    }),
+    // Temporarily disabled during development
+    // VitePWA({
+    //   registerType: 'autoUpdate',
+    //   includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+    //   manifest: {
+    //     name: 'CLMS - Library Management System',
+    //     short_name: 'CLMS',
+    //     description: 'Comprehensive Library Management System',
+    //     theme_color: '#2563eb',
+    //     background_color: '#ffffff',
+    //     display: 'standalone',
+    //     icons: [
+    //       {
+    //         src: 'pwa-192x192.png',
+    //         sizes: '192x192',
+    //         type: 'image/png'
+    //       },
+    //       {
+    //         src: 'pwa-512x512.png',
+    //         sizes: '512x512',
+    //         type: 'image/png'
+    //       }
+    //     ]
+    //   },
+    //   workbox: {
+    //     globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+    //     runtimeCaching: [
+    //       {
+    //         urlPattern: /^https:\/\/api\./i,
+    //         handler: 'NetworkFirst',
+    //         options: {
+    //           cacheName: 'api-cache',
+    //           expiration: {
+    //             maxEntries: 100,
+    //             maxAgeSeconds: 60 * 60 * 24 // 24 hours
+    //           },
+    //           cacheKeyWillBeUsed: async ({ request }) => {
+    //             return `${request.url}?version=1`
+    //           }
+    //         }
+    //       },
+    //       {
+    //         urlPattern: /\.(?:png|jpg|jpeg|svg)$/,
+    //         handler: 'CacheFirst',
+    //         options: {
+    //           cacheName: 'images-cache',
+    //           expiration: {
+    //             maxEntries: 100,
+    //             maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+    //           }
+    //         }
+    //       }
+    //     ]
+    //   }
+    // }),
     // Compression plugin for production builds
     viteCompression({
       algorithm: 'gzip',
@@ -79,6 +81,34 @@ export default defineConfig({
       open: false,
       gzipSize: true,
       brotliSize: true
+    }),
+    // Image optimization plugin
+    imagemin({
+      gifsicle: {
+        optimizationLevel: 7,
+        interlaced: false,
+      },
+      optipng: {
+        optimizationLevel: 7,
+      },
+      mozjpeg: {
+        quality: 80,
+      },
+      pngquant: {
+        quality: [0.8, 0.9],
+        speed: 4,
+      },
+      svgo: {
+        plugins: [
+          {
+            name: 'removeViewBox',
+          },
+          {
+            name: 'removeEmptyAttrs',
+            active: false,
+          },
+        ],
+      },
     })
   ],
   resolve: {
@@ -265,7 +295,55 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts']
+    setupFiles: ['./src/test/setup-comprehensive.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'json', 'lcov'],
+      reportsDirectory: './coverage',
+      exclude: [
+        'node_modules/',
+        'src/test/',
+        'dist/',
+        '**/*.d.ts',
+        '**/*.config.*',
+        'coverage/**',
+        '**/*.spec.ts',
+        '**/factories/**',
+        '**/mocks/**',
+        'vite.config.ts'
+      ],
+      thresholds: {
+        global: {
+          branches: 90,
+          functions: 90,
+          lines: 90,
+          statements: 90
+        },
+        // Lower thresholds for complex components
+        'src/components/dashboard/**': {
+          branches: 85,
+          functions: 85,
+          lines: 85,
+          statements: 85
+        }
+      }
+    },
+    include: [
+      'src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
+      'test/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+    ],
+    exclude: [
+      'node_modules/',
+      'dist/',
+      '**/*.d.ts',
+      'coverage/**'
+    ],
+    testTimeout: 10000,
+    hookTimeout: 10000,
+    sequence: {
+      concurrent: false,
+      shuffle: false
+    }
   },
 
   // Preview server configuration

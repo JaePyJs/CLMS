@@ -6,6 +6,7 @@ import {
   student_activities_status,
   Prisma,
 } from '@prisma/client';
+import { performanceOptimizationService } from './performanceOptimizationService';
 
 export interface GetStudentsOptions {
   gradeCategory?: students_grade_category;
@@ -36,119 +37,126 @@ export function getDefaultTimeLimit(grade_category: students_grade_category): nu
   return timeLimits[gradeCategory] || 60;
 }
 
-// Get student by barcode
+// Get student by barcode (optimized with caching)
 export async function getStudentByBarcode(barcode: string) {
-  try {
-    const student = await prisma.students.findUnique({
-      where: { student_id: barcode },
-      include: {
-        activities: {
-          where: { status: student_activities_status.ACTIVE },
-          orderBy: { start_time: 'desc' },
-          take: 1,
+  return performanceOptimizationService.executeQuery(
+    'student_by_barcode',
+    async () => {
+      const student = await prisma.students.findUnique({
+        where: { student_id: barcode },
+        include: {
+          activities: {
+            where: { status: student_activities_status.ACTIVE },
+            orderBy: { start_time: 'desc' },
+            take: 1,
+          },
         },
-      },
-    });
+      });
 
-    if (!student) {
-      return null;
+      if (!student) {
+        return null;
+      }
+
+      // Get default time limit based on grade category
+      const defaultTimeLimit = getDefaultTimeLimit(student.grade_category);
+
+      return {
+        ...student,
+        defaultTimeLimit,
+        hasActiveSession: student.activities.length > 0,
+      };
+    },
+    {
+      key: `student:barcode:${barcode}`,
+      ttl: 300, // 5 minutes
+      tags: ['student', 'barcode'],
     }
-
-    // Get default time limit based on grade category
-    const defaultTimeLimit = getDefaultTimeLimit(student.grade_category);
-
-    return {
-      ...student,
-      defaultTimeLimit,
-      hasActiveSession: student.activities.length > 0,
-    };
-  } catch (error) {
-    logger.error('Error fetching student by barcode', {
-      error: (error as Error).message,
-      barcode,
-    });
-    throw error;
-  }
+  );
 }
 
-// Get student by ID
+// Get student by ID (optimized with caching)
 export async function getStudentById(id: string) {
-  try {
-    const student = await prisma.students.findUnique({
-      where: { id },
-      include: {
-        activities: {
-          where: { status: student_activities_status.ACTIVE },
-          orderBy: { start_time: 'desc' },
-          take: 1,
+  return performanceOptimizationService.executeQuery(
+    'student_by_id',
+    async () => {
+      const student = await prisma.students.findUnique({
+        where: { id },
+        include: {
+          activities: {
+            where: { status: student_activities_status.ACTIVE },
+            orderBy: { start_time: 'desc' },
+            take: 1,
+          },
         },
-      },
-    });
+      });
 
-    if (!student) {
-      return null;
+      if (!student) {
+        return null;
+      }
+
+      // Get default time limit based on grade category
+      const defaultTimeLimit = getDefaultTimeLimit(student.grade_category);
+
+      return {
+        ...student,
+        defaultTimeLimit,
+        hasActiveSession: student.activities.length > 0,
+      };
+    },
+    {
+      key: `student:id:${id}`,
+      ttl: 300, // 5 minutes
+      tags: ['student'],
     }
-
-    // Get default time limit based on grade category
-    const defaultTimeLimit = getDefaultTimeLimit(student.grade_category);
-
-    return {
-      ...student,
-      defaultTimeLimit,
-      hasActiveSession: student.activities.length > 0,
-    };
-  } catch (error) {
-    logger.error('Error fetching student by ID', {
-      error: (error as Error).message,
-      id,
-    });
-    throw error;
-  }
+  );
 }
 
-// Get all students with optional filtering
+// Get all students with optional filtering (optimized with caching)
 export async function getStudents(options: GetStudentsOptions = {}) {
-  try {
-    const { grade_category, is_active, page = 1, limit = 50 } = options;
-    const skip = (page - 1) * limit;
+  const { grade_category, is_active, page = 1, limit = 50 } = options;
+  const cacheKey = `students:list:${JSON.stringify({ grade_category, is_active, page, limit })}`;
 
-    const where: Prisma.studentsWhereInput = {};
+  return performanceOptimizationService.executeQuery(
+    'students_list',
+    async () => {
+      const skip = (page - 1) * limit;
+      const where: Prisma.studentsWhereInput = {};
 
-    if (gradeCategory) {
-      where.grade_category = gradeCategory;
+      if (grade_category) {
+        where.grade_category = grade_category;
+      }
+
+      if (isActive !== undefined) {
+        where.is_active = isActive;
+      }
+
+      const [students, total] = await Promise.all([
+        prisma.students.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { last_name: 'asc' },
+        }),
+        prisma.students.count({ where }),
+      ]);
+
+      return {
+        students,
+        total, // Add total directly for backward compatibility with tests
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      };
+    },
+    {
+      key: cacheKey,
+      ttl: 180, // 3 minutes for lists
+      tags: ['students', 'list'],
     }
-
-    if (isActive !== undefined) {
-      where.is_active = isActive;
-    }
-
-    const [students, total] = await Promise.all([
-      prisma.students.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { last_name: 'asc' },
-      }),
-      prisma.students.count({ where }),
-    ]);
-
-    return {
-      students,
-      total, // Add total directly for backward compatibility with tests
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-    };
-  } catch (error) {
-    logger.error('Error fetching students', {
-      error: (error as Error).message,
-      options,
-    });
-    throw error;
-  }
+  );
 }
 
 // Create new student

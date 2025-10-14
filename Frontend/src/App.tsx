@@ -13,6 +13,7 @@ import NotificationCenter from '@/components/NotificationCenter';
 import WebSocketProvider from '@/contexts/WebSocketContext';
 import { ResponsiveDrawer } from '@/components/layout/ResponsiveDrawer';
 import { useMobileOptimization, usePerformanceOptimization } from '@/hooks/useMobileOptimization';
+import Image from '@/components/performance/Image';
 import {
   Wifi,
   WifiOff,
@@ -294,11 +295,19 @@ export default function App() {
   return (
     <WebSocketProvider>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-300 relative">
-        {/* Background Image with Opacity */}
-        <div
-          className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-[0.25] dark:opacity-[0.05] pointer-events-none z-0 transition-opacity duration-300"
-          style={{ backgroundImage: `url('/Background.png')` }}
-        />
+        {/* Background Image with Optimized Loading */}
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <Image
+            src="/Background.png"
+            alt="Background"
+            useCase="BACKGROUND"
+            size="large"
+            className="w-full h-full object-cover opacity-[0.25] dark:opacity-[0.05] transition-opacity duration-300"
+            priority={false}
+            lazy={true}
+            placeholder="blur"
+          />
+        </div>
 
         {/* Enhanced Header */}
         <header className="bg-white/95 dark:bg-card/95 border-b border-slate-200 dark:border-border sticky top-0 z-50 backdrop-blur-md shadow-sm transition-all duration-200">
@@ -308,10 +317,15 @@ export default function App() {
               {/* Left Side - Logo and Title */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 <div className="flex-shrink-0">
-                  <img
+                  <Image
                     src="/src/assets/School_logo.png"
                     alt="Educational Library Management System Logo"
+                    useCase="AVATAR"
+                    size="large"
                     className="w-8 h-8 sm:w-10 sm:h-10 lg:w-14 lg:h-14 object-contain opacity-100 dark:opacity-90 transition-all"
+                    priority={true}
+                    lazy={false}
+                    position="above-fold"
                   />
                 </div>
                 <div className="min-w-0">
