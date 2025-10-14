@@ -106,7 +106,7 @@ class MockDataGenerator {
       const studentId = this.generateUniqueStudentId();
 
       const student = {
-        id: `student-${faker.string.alphanumeric(10)}`,
+        id: `student-${faker.string.alphanumeric({ length: 10 })}`,
         studentId,
         firstName: faker.person.firstName(),
         lastName: faker.person.lastName(),
@@ -139,7 +139,7 @@ class MockDataGenerator {
       const availableCopies = faker.number.int({ min: 0, max: totalCopies });
 
       const book = {
-        id: `book-${faker.string.alphanumeric(10)}`,
+        id: `book-${faker.string.alphanumeric({ length: 10 })}`,
         accessionNo: this.generateUniqueAccessionNumber(),
         title: faker.lorem.words({ min: 2, max: 8 }),
         author: `${faker.person.firstName()} ${faker.person.lastName()}`,
@@ -147,7 +147,7 @@ class MockDataGenerator {
         publisher: faker.company.name(),
         category: faker.helpers.arrayElement(categories),
         subcategory: faker.helpers.arrayElement(categories),
-        location: `${faker.string.alpha(1)}${faker.number.int({ min: 1, max: 20 })}-${faker.string.alpha(1)}${faker.number.int({ min: 1, max: 30 })}`,
+        location: `${faker.string.alpha({ length: 1 })}${faker.number.int({ min: 1, max: 20 })}-${faker.string.alpha({ length: 1 })}${faker.number.int({ min: 1, max: 30 })}`,
         totalCopies,
         availableCopies,
         isActive: includeInactive ? faker.datatype.boolean({ probability: 0.95 }) : true,
@@ -182,7 +182,7 @@ class MockDataGenerator {
       const status = faker.helpers.arrayElement(equipmentStatuses);
 
       const equipmentItem = {
-        id: `equipment-${faker.string.alphanumeric(10)}`,
+        id: `equipment-${faker.string.alphanumeric({ length: 10 })}`,
         equipmentId: this.generateUniqueEquipmentId(type),
         name: this.generateEquipmentName(type),
         type,
@@ -212,8 +212,8 @@ class MockDataGenerator {
       const role = faker.helpers.arrayElement(roles);
 
       const user = {
-        id: `user-${faker.string.alphanumeric(10)}`,
-        username: faker.internet.userName(),
+        id: `user-${faker.string.alphanumeric({ length: 10 })}`,
+        username: faker.internet.username(),
         password: '$2b$12$hashedPassword', // In real tests, this would be properly hashed
         role,
         isActive: faker.datatype.boolean({ probability: 0.95 }),
@@ -262,7 +262,7 @@ class MockDataGenerator {
       }
 
       const activity = {
-        id: `activity-${faker.string.alphanumeric(10)}`,
+        id: `activity-${faker.string.alphanumeric({ length: 10 })}`,
         studentId: student.id,
         studentName: `${student.firstName} ${student.lastName}`,
         gradeLevel: student.gradeLevel,
@@ -271,7 +271,7 @@ class MockDataGenerator {
         equipmentId: activityType.includes('COMPUTER') || activityType.includes('GAMING') || activityType.includes('AVR')
           ? faker.helpers.arrayElement(equipment).id
           : null,
-        checkoutId: activityType.includes('BOOK') ? `checkout-${faker.string.alphanumeric(8)}` : null,
+        checkoutId: activityType.includes('BOOK') ? `checkout-${faker.string.alphanumeric({ length: 8 })}` : null,
         startTime,
         endTime,
         durationMinutes,
@@ -321,7 +321,7 @@ class MockDataGenerator {
       const fineAmount = overdueDays > 0 ? overdueDays * 0.50 : 0;
 
       const checkout = {
-        id: `checkout-${faker.string.alphanumeric(10)}`,
+        id: `checkout-${faker.string.alphanumeric({ length: 10 })}`,
         bookId: book.id,
         studentId: student.id,
         status,
@@ -356,7 +356,7 @@ class MockDataGenerator {
 
     for (let i = 0; i < count; i++) {
       const notification = {
-        id: `notification-${faker.string.alphanumeric(10)}`,
+        id: `notification-${faker.string.alphanumeric({ length: 10 })}`,
         userId: faker.helpers.arrayElement([`user-super-admin`, `user-admin`, `user-librarian`]) || null,
         type: faker.helpers.arrayElement(types),
         title: faker.lorem.words({ min: 2, max: 6 }),
@@ -366,7 +366,7 @@ class MockDataGenerator {
         readAt: faker.datatype.boolean({ probability: 0.3 }) ? faker.date.recent() : null,
         actionUrl: faker.datatype.boolean({ probability: 0.4 }) ? faker.internet.url() : null,
         metadata: faker.datatype.boolean({ probability: 0.3 }) ? {
-          relatedId: faker.string.alphanumeric(8),
+          relatedId: faker.string.alphanumeric({ length: 8 }),
           relatedType: faker.helpers.arrayElement(['student', 'book', 'equipment'])
         } : null,
         created_at: faker.date.recent(),

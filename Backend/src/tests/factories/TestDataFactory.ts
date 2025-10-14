@@ -78,7 +78,7 @@ export class TestDataFactory {
       grade_level: gradeCategory.replace('_', ' '),
       grade_category: gradeCategory,
       section: `${gradeCategory.split('_')[1]}-${faker.string.alpha({ length: 1 }).toUpperCase()}`,
-      is_active: faker.datatype.boolean(0.9), // 90% active
+      is_active: faker.datatype.boolean({ probability: 0.9 }), // 90% active
       created_at: faker.date.past({ years: 2 }),
       updated_at: faker.date.recent({ days: 30 }),
       barcode: studentId,
@@ -119,7 +119,7 @@ export class TestDataFactory {
       location: `Shelf ${faker.string.alpha({ length: 1 }).toUpperCase()}${faker.number.int({ min: 1, max: 20 })}`,
       price: faker.number.float({ min: 100, max: 2000, fractionDigits: 2 }),
       description: faker.lorem.paragraph(),
-      is_active: faker.datatype.boolean(0.95), // 95% active
+      is_active: faker.datatype.boolean({ probability: 0.95 }), // 95% active
       created_at: faker.date.past({ years: 1 }),
       updated_at: faker.date.recent({ days: 30 }),
       barcode: accessionNo,
@@ -158,7 +158,7 @@ export class TestDataFactory {
       warranty_expiry: faker.date.future({ years: 2 }),
       last_maintenance: faker.date.past({ months: 6 }),
       next_maintenance: faker.date.future({ months: 6 }),
-      is_active: faker.datatype.boolean(0.9), // 90% active
+      is_active: faker.datatype.boolean({ probability: 0.9 }), // 90% active
       created_at: faker.date.past({ years: 2 }),
       updated_at: faker.date.recent({ days: 30 }),
       notes: faker.lorem.sentence(),
@@ -179,23 +179,23 @@ export class TestDataFactory {
 
     return {
       id,
-      username: faker.internet.userName(),
+      username: faker.internet.username(),
       email: faker.internet.email(),
       password: faker.internet.password({ length: 12 }),
       first_name: faker.person.firstName(),
       last_name: faker.person.lastName(),
       role,
-      is_active: faker.datatype.boolean(0.95), // 95% active
+      is_active: faker.datatype.boolean({ probability: 0.95 }), // 95% active
       last_login: faker.date.recent({ days: 7 }),
       failed_login_attempts: faker.number.int({ min: 0, max: 3 }),
-      locked_until: faker.datatype.boolean(0.1) ? faker.date.future({ hours: 24 }) : null,
+      locked_until: faker.datatype.boolean({ probability: 0.1 }) ? faker.date.future({ hours: 24 }) : null,
       created_at: faker.date.past({ years: 1 }),
       updated_at: faker.date.recent({ days: 30 }),
       phone: faker.phone.number(),
       department: faker.helpers.arrayElement(['Library', 'IT', 'Administration', 'Academics']),
       profile_image_url: faker.internet.url(),
-      two_factor_enabled: faker.datatype.boolean(0.3),
-      two_factor_secret: faker.datatype.boolean(0.3) ? faker.string.alphanumeric({ length: 32 }) : null,
+      two_factor_enabled: faker.datatype.boolean({ probability: 0.3 }),
+      two_factor_secret: faker.datatype.boolean({ probability: 0.3 }) ? faker.string.alphanumeric({ length: 32 }) : null,
       ...overrides
     } as User;
   }
@@ -296,8 +296,8 @@ export class TestDataFactory {
         'students', 'books', 'equipment', 'users', 'student_activities', 'book_checkouts'
       ]),
       record_id: this.getNextId(),
-      old_values: faker.datatype.boolean(0.5) ? JSON.stringify(faker.lorem.words()) : null,
-      new_values: faker.datatype.boolean(0.8) ? JSON.stringify(faker.lorem.words()) : null,
+      old_values: faker.datatype.boolean({ probability: 0.5 }) ? JSON.stringify(faker.lorem.words()) : null,
+      new_values: faker.datatype.boolean({ probability: 0.8 }) ? JSON.stringify(faker.lorem.words()) : null,
       ip_address: faker.internet.ip(),
       user_agent: faker.internet.userAgent(),
       created_at: faker.date.recent({ days: 30 }),
@@ -320,12 +320,12 @@ export class TestDataFactory {
       message: faker.lorem.sentences({ min: 1, max: 3 }),
       type: faker.helpers.arrayElement(['INFO', 'WARNING', 'ERROR', 'SUCCESS']),
       priority: faker.helpers.arrayElement(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
-      is_read: faker.datatype.boolean(0.7), // 70% read
+      is_read: faker.datatype.boolean({ probability: 0.7 }), // 70% read
       created_at: faker.date.recent({ days: 7 }),
       updated_at: faker.date.recent({ hours: 1 }),
-      read_at: faker.datatype.boolean(0.5) ? faker.date.recent({ hours: 6 }) : null,
-      action_url: faker.datatype.boolean(0.3) ? faker.internet.url() : null,
-      expires_at: faker.datatype.boolean(0.2) ? faker.date.future({ days: 7 }) : null,
+      read_at: faker.datatype.boolean({ probability: 0.5 }) ? faker.date.recent({ hours: 6 }) : null,
+      action_url: faker.datatype.boolean({ probability: 0.3 }) ? faker.internet.url() : null,
+      expires_at: faker.datatype.boolean({ probability: 0.2 }) ? faker.date.future({ days: 7 }) : null,
       ...overrides
     } as Notification;
   }

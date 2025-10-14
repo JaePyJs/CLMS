@@ -1,5 +1,5 @@
 import { websocketServer } from './websocketServer';
-import prisma from '../lib/prisma';
+import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
 
 interface EquipmentSessionData {
@@ -40,9 +40,10 @@ class RealtimeService {
       try {
         const equipment = await prisma.equipment.findMany({
           include: {
-            currentSession: {
+            equipment_sessions: {
+              where: { status: 'ACTIVE' },
               include: {
-                student: true
+                students: true
               }
             }
           }
@@ -67,15 +68,15 @@ class RealtimeService {
     // Poll active activities every 10 seconds
     this.activityPollingInterval = setInterval(async () => {
       try {
-        const activities = await prisma.studentActivity.findMany({
+        const activities = await prisma.student_activities.findMany({
           where: {
             status: 'ACTIVE'
           },
           include: {
-            student: true
+            students: true
           },
           orderBy: {
-            checkInTime: 'desc'
+            start_time: 'desc'
           },
           take: 50
         });
@@ -98,36 +99,36 @@ class RealtimeService {
   private startSessionTimeLimitMonitoring() {
     setInterval(async () => {
       try {
-        const activeSessions = await prisma.equipmentSession.findMany({
+        const activeSessions = await prisma.equipment_sessions.findMany({
           where: {
             status: 'ACTIVE',
-            endTime: null
+            session_end: null
           },
           include: {
             equipment: true,
-            student: true
+            students: true
           }
         });
 
         for (const session of activeSessions) {
           const elapsedMinutes = Math.floor(
-            (Date.now() - new Date(session.startTime).getTime()) / (1000 * 60)
+            (Date.now() - new Date(session.session_start).getTime()) / (1000 * 60)
           );
-          const remainingMinutes = session.timeLimitMinutes - elapsedMinutes;
+          const remainingMinutes = session.max_time_minutes - elapsedMinutes;
 
           // Send alerts at 5, 2, and 1 minute remaining
           if ([5, 2, 1].includes(remainingMinutes)) {
             this.sendTimeLimitAlert({
               sessionId: session.id,
-              equipmentId: session.equipmentId,
-              studentId: session.studentId,
+              equipmentId: session.equipment_id,
+              studentId: session.student_id,
               remainingMinutes,
-              timeLimit: session.timeLimitMinutes
+              timeLimit: session.max_time_minutes
             });
           }
 
           // Auto-end session when time limit exceeded
-          if (remainingMinutes <= 0 && !session.endTime) {
+          if (remainingMinutes <= 0 && !session.session_end) {
             await this.autoEndSession(session.id);
           }
         }
@@ -161,16 +162,16 @@ class RealtimeService {
    */
   private async autoEndSession(sessionId: string) {
     try {
-      const session = await prisma.equipmentSession.update({
+      const session = await prisma.equipment_sessions.update({
         where: { id: sessionId },
         data: {
-          endTime: new Date(),
+          session_end: new Date(),
           status: 'COMPLETED',
-          autoEnded: true
+          updated_at: new Date()
         },
         include: {
           equipment: true,
-          student: true
+          students: true
         }
       });
 
@@ -182,7 +183,7 @@ class RealtimeService {
       });
 
       // Notify student
-      websocketServer.broadcastToUser(session.studentId, {
+      websocketServer.broadcastToUser(session.student_id, {
         type: 'session:ended',
         payload: {
           ...session,
@@ -226,14 +227,14 @@ class RealtimeService {
       activeSessions,
       todayActivities
     ] = await Promise.all([
-      prisma.student.count(),
-      prisma.student.count({ where: { isActive: true } }),
+      prisma.students.count(),
+      prisma.students.count({ where: { is_active: true } }),
       prisma.equipment.count(),
       prisma.equipment.count({ where: { status: 'AVAILABLE' } }),
-      prisma.equipmentSession.count({ where: { status: 'ACTIVE' } }),
-      prisma.studentActivity.count({
+      prisma.equipment_sessions.count({ where: { status: 'ACTIVE' } }),
+      prisma.student_activities.count({
         where: {
-          checkInTime: {
+          start_time: {
             gte: new Date(new Date().setHours(0, 0, 0, 0))
           }
         }
@@ -335,34 +336,33 @@ class RealtimeService {
   }) {
     try {
       // Try to find student first
-      const student = await prisma.student.findFirst({
+      const student = await prisma.students.findFirst({
         where: {
           OR: [
-            { studentId: scanData.code },
-            { qrCode: scanData.code },
-            { barcode: scanData.code }
+            { student_id: scanData.code }
           ]
         }
       });
 
       if (student) {
         // Check if there's an active activity
-        const activeActivity = await prisma.studentActivity.findFirst({
+        const activeActivity = await prisma.student_activities.findFirst({
           where: {
-            studentId: student.id,
+            student_id: student.id,
             status: 'ACTIVE'
           }
         });
 
         if (activeActivity) {
           // Check out
-          const updated = await prisma.studentActivity.update({
+          const updated = await prisma.student_activities.update({
             where: { id: activeActivity.id },
             data: {
-              checkOutTime: new Date(),
-              status: 'COMPLETED'
+              end_time: new Date(),
+              status: 'COMPLETED',
+              updated_at: new Date()
             },
-            include: { student: true }
+            include: { students: true }
           });
 
           websocketServer.broadcastToRoom('scanner', {
@@ -374,14 +374,16 @@ class RealtimeService {
           return { action: 'checkout', activity: updated };
         } else {
           // Check in
-          const activity = await prisma.studentActivity.create({
+          const activity = await prisma.student_activities.create({
             data: {
-              studentId: student.id,
-              activityType: 'LIBRARY_VISIT',
-              checkInTime: new Date(),
-              status: 'ACTIVE'
+              id: crypto.randomUUID(),
+              student_id: student.id,
+              activity_type: 'LIBRARY_VISIT',
+              start_time: new Date(),
+              status: 'ACTIVE',
+              updated_at: new Date()
             },
-            include: { student: true }
+            include: { students: true }
           });
 
           websocketServer.broadcastToRoom('scanner', {
@@ -398,9 +400,7 @@ class RealtimeService {
       const equipment = await prisma.equipment.findFirst({
         where: {
           OR: [
-            { equipmentId: scanData.code },
-            { qrCode: scanData.code },
-            { barcode: scanData.code }
+            { equipment_id: scanData.code }
           ]
         }
       });

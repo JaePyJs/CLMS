@@ -2,7 +2,8 @@ import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import { logger } from '../utils/logger';
 import jwt from 'jsonwebtoken';
-import prisma from '../lib/prisma';
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -45,7 +46,7 @@ class WebSocketServer {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as any;
         
         // Verify user exists
-        const user = await prisma.user.findUnique({
+        const user = await prisma.users.findUnique({
           where: { id: decoded.userId },
           select: { id: true, username: true, role: true }
         });
@@ -168,17 +169,19 @@ class WebSocketServer {
       const { equipmentId, studentId, timeLimitMinutes } = data;
 
       // Create session in database
-      const session = await prisma.equipmentSession.create({
+      const session = await prisma.equipment_sessions.create({
         data: {
-          equipmentId,
-          studentId,
-          startTime: new Date(),
-          timeLimitMinutes,
-          status: 'ACTIVE'
+          id: crypto.randomUUID(),
+          equipment_id: equipmentId,
+          student_id: studentId,
+          session_start: new Date(),
+          planned_end: new Date(Date.now() + timeLimitMinutes * 60 * 1000),
+          status: 'ACTIVE',
+          updated_at: new Date()
         },
         include: {
           equipment: true,
-          student: true
+          students: true
         }
       });
 
@@ -208,15 +211,15 @@ class WebSocketServer {
     try {
       const { sessionId } = data;
 
-      const session = await prisma.equipmentSession.update({
+      const session = await prisma.equipment_sessions.update({
         where: { id: sessionId },
         data: {
-          endTime: new Date(),
+          session_end: new Date(),
           status: 'COMPLETED'
         },
         include: {
           equipment: true,
-          student: true
+          students: true
         }
       });
 
@@ -262,15 +265,17 @@ class WebSocketServer {
     try {
       const { studentId, activityType } = data;
 
-      const activity = await prisma.studentActivity.create({
+      const activity = await prisma.student_activities.create({
         data: {
-          studentId,
-          activityType: activityType || 'CHECK_IN',
-          checkInTime: new Date(),
-          status: 'ACTIVE'
+          id: crypto.randomUUID(),
+          student_id: studentId,
+          activity_type: activityType || 'CHECK_IN',
+          start_time: new Date(),
+          status: 'ACTIVE',
+          updated_at: new Date()
         },
         include: {
-          student: true
+          students: true
         }
       });
 
@@ -293,14 +298,14 @@ class WebSocketServer {
     try {
       const { activityId } = data;
 
-      const activity = await prisma.studentActivity.update({
+      const activity = await prisma.student_activities.update({
         where: { id: activityId },
         data: {
-          checkOutTime: new Date(),
+          end_time: new Date(),
           status: 'COMPLETED'
         },
         include: {
-          student: true
+          students: true
         }
       });
 
@@ -312,7 +317,7 @@ class WebSocketServer {
       });
 
       socket.emit('student:checked-out', { success: true, activity });
-      logger.info(`Student checked out: ${activity.studentId}`);
+      logger.info(`Student checked out: ${activity.student_id}`);
     } catch (error) {
       logger.error('Error checking out student:', error);
       socket.emit('error', { message: 'Failed to check out', error });
@@ -327,12 +332,10 @@ class WebSocketServer {
       let result: any = null;
 
       if (scannerType === 'student' || code.startsWith('STU')) {
-        result = await prisma.student.findFirst({
+        result = await prisma.students.findFirst({
           where: {
             OR: [
-              { studentId: code },
-              { qrCode: code },
-              { barcode: code }
+              { student_id: code }
             ]
           }
         });
@@ -348,9 +351,7 @@ class WebSocketServer {
         result = await prisma.equipment.findFirst({
           where: {
             OR: [
-              { equipmentId: code },
-              { qrCode: code },
-              { barcode: code }
+              { equipment_id: code }
             ]
           }
         });
@@ -380,13 +381,14 @@ class WebSocketServer {
       const { recipientId, title, message, type } = data;
 
       // Create notification in database
-      const notification = await prisma.notification.create({
+      const notification = await prisma.notifications.create({
         data: {
-          userId: recipientId,
+          id: crypto.randomUUID(),
+          user_id: recipientId,
           title,
           message,
           type: type || 'INFO',
-          read: false
+          updated_at: new Date()
         }
       });
 
@@ -454,7 +456,28 @@ class WebSocketServer {
       socket => socket.userId === userId
     );
   }
+
+  public getStatus() {
+    return {
+      isInitialized: !!this.io,
+      isRunning: !!this.io,
+      stats: {
+        totalConnections: this.connectedClients.size,
+        connectionsByRole: this.getConnectionsByRole()
+      }
+    };
+  }
+
+  private getConnectionsByRole(): Record<string, number> {
+    const roleCounts: Record<string, number> = {};
+    this.connectedClients.forEach(socket => {
+      const role = socket.userRole || 'unknown';
+      roleCounts[role] = (roleCounts[role] || 0) + 1;
+    });
+    return roleCounts;
+  }
 }
 
 export const websocketServer = new WebSocketServer();
+export const webSocketManager = websocketServer;
 export default websocketServer;

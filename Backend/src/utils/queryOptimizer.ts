@@ -102,11 +102,11 @@ class QueryOptimizer {
     return this.cachedQuery(
       `student:${studentId}:activities`,
       async () => {
-        return this.prisma.student.findUnique({
+        return this.prisma.students.findUnique({
           where: { id: studentId },
           include: {
-            activities: {
-              orderBy: { checkInTime: 'desc' },
+            student_activities: {
+              orderBy: { start_time: 'desc' },
               take: 10
             }
           }
@@ -120,15 +120,15 @@ class QueryOptimizer {
     return this.cachedQuery(
       'students:active',
       async () => {
-        return this.prisma.student.findMany({
-          where: { isActive: true },
+        return this.prisma.students.findMany({
+          where: { is_active: true },
           select: {
             id: true,
-            studentId: true,
-            firstName: true,
-            lastName: true,
-            gradeLevel: true,
-            gradeCategory: true
+            student_id: true,
+            first_name: true,
+            last_name: true,
+            grade_level: true,
+            grade_category: true
           }
         });
       },
@@ -160,18 +160,18 @@ class QueryOptimizer {
     return this.cachedQuery(
       `equipment:${equipmentId}:sessions:${limit}`,
       async () => {
-        return this.prisma.equipmentSession.findMany({
-          where: { equipmentId },
+        return this.prisma.equipment_sessions.findMany({
+          where: { equipment_id: equipmentId },
           include: {
-            student: {
+            students: {
               select: {
-                studentId: true,
-                firstName: true,
-                lastName: true
+                student_id: true,
+                first_name: true,
+                last_name: true
               }
             }
           },
-          orderBy: { startTime: 'desc' },
+          orderBy: { session_start: 'desc' },
           take: limit
         });
       },
@@ -192,14 +192,14 @@ class QueryOptimizer {
           activeSessions,
           todayActivities
         ] = await Promise.all([
-          this.prisma.student.count(),
-          this.prisma.student.count({ where: { isActive: true } }),
+          this.prisma.students.count(),
+          this.prisma.students.count({ where: { is_active: true } }),
           this.prisma.equipment.count(),
           this.prisma.equipment.count({ where: { status: 'AVAILABLE' } }),
-          this.prisma.equipmentSession.count({ where: { status: 'ACTIVE' } }),
-          this.prisma.studentActivity.count({
+          this.prisma.equipment_sessions.count({ where: { status: 'ACTIVE' } }),
+          this.prisma.student_activities.count({
             where: {
-              checkInTime: {
+              start_time: {
                 gte: new Date(new Date().setHours(0, 0, 0, 0))
               }
             }
@@ -235,10 +235,10 @@ class QueryOptimizer {
     return this.cachedQuery(
       cacheKey,
       async () => {
-        return this.prisma.studentActivity.groupBy({
-          by: ['activityType'],
+        return this.prisma.student_activities.groupBy({
+          by: ['activity_type'],
           where: {
-            checkInTime: {
+            start_time: {
               gte: startDate,
               lte: endDate
             }
@@ -253,7 +253,7 @@ class QueryOptimizer {
   // Batch operations
   async batchCreateStudents(students: any[]) {
     // No caching for write operations
-    return this.prisma.student.createMany({
+    return this.prisma.students.createMany({
       data: students,
       skipDuplicates: true
     });
@@ -261,7 +261,7 @@ class QueryOptimizer {
 
   async batchUpdateStudents(updates: Array<{ id: string; data: any }>) {
     const transaction = updates.map(({ id, data }) =>
-      this.prisma.student.update({
+      this.prisma.students.update({
         where: { id },
         data
       })
@@ -279,36 +279,34 @@ class QueryOptimizer {
   // Optimized search queries
   async searchStudents(query: string, limit: number = 20) {
     // Don't cache search results as they're dynamic
-    return this.prisma.student.findMany({
+    return this.prisma.students.findMany({
       where: {
         OR: [
-          { firstName: { contains: query, mode: 'insensitive' } },
-          { lastName: { contains: query, mode: 'insensitive' } },
-          { studentId: { contains: query, mode: 'insensitive' } },
-          { email: { contains: query, mode: 'insensitive' } }
+          { first_name: { contains: query, mode: 'insensitive' } },
+          { last_name: { contains: query, mode: 'insensitive' } },
+          { student_id: { contains: query, mode: 'insensitive' } }
         ]
       },
       select: {
         id: true,
-        studentId: true,
-        firstName: true,
-        lastName: true,
-        gradeLevel: true,
-        email: true,
-        isActive: true
+        student_id: true,
+        first_name: true,
+        last_name: true,
+        grade_level: true,
+        is_active: true
       },
       take: limit
     });
   }
 
   async searchBooks(query: string, limit: number = 20) {
-    return this.prisma.book.findMany({
+    return this.prisma.books.findMany({
       where: {
         OR: [
           { title: { contains: query, mode: 'insensitive' } },
           { author: { contains: query, mode: 'insensitive' } },
           { isbn: { contains: query, mode: 'insensitive' } },
-          { accessionNumber: { contains: query, mode: 'insensitive' } }
+          { accession_no: { contains: query, mode: 'insensitive' } }
         ]
       },
       select: {
@@ -316,8 +314,8 @@ class QueryOptimizer {
         title: true,
         author: true,
         isbn: true,
-        accessionNumber: true,
-        status: true
+        accession_no: true,
+        is_active: true
       },
       take: limit
     });

@@ -251,7 +251,7 @@ export function generateTestData(type: string, overrides: any = {}): any {
 
     case 'user':
       return {
-        username: faker.internet.userName(),
+        username: faker.internet.username(),
         password: 'testpassword123',
         role: 'LIBRARIAN',
         isActive: true,

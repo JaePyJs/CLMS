@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { logger } from '@/utils/logger';
-import { verifyToken } from '@/services/authService';
+import { authService } from '@/services/authService';
 import { prisma } from '@/utils/prisma';
 
 export interface EquipmentWebSocketMessage {
@@ -129,7 +129,7 @@ export class EquipmentWebSocketService {
         return;
       }
 
-      const user = await verifyToken(token);
+      const user = authService.verifyToken(token);
       if (!user) {
         this.sendError(ws, 'Invalid authentication token');
         return;
@@ -342,7 +342,7 @@ export class EquipmentWebSocketService {
     if (!ws.userId) return false;
 
     if (ws.subscribedAll) return true;
-    if (ws.subscribedEquipment && ws.subscribedEquipment.has(equipmentId)) return true;
+    if (equipmentId && ws.subscribedEquipment && ws.subscribedEquipment.has(equipmentId)) return true;
 
     return false;
   }
