@@ -519,6 +519,33 @@ export const ferpaEmergencyAccess = ferpaProtection(['PERSONAL', 'ACADEMIC', 'ME
   auditAction: 'EMERGENCY_ACCESS'
 });
 
+// Audit middleware for tracking operations
+export const auditMiddleware = (action: string) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    try {
+      // Log the audit action
+      logger.info('Audit log', {
+        action,
+        userId: req.user?.id,
+        userRole: req.user?.role,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        timestamp: new Date().toISOString(),
+        requestId: req.headers['x-request-id'] as string
+      });
+
+      next();
+    } catch (error) {
+      logger.error('Audit middleware error', {
+        error: (error as Error).message,
+        action,
+        userId: req.user?.id
+      });
+      next();
+    }
+  };
+};
+
 // Legacy exports for backward compatibility
 export const ferpaAccessCheck = ferpaComplianceCheck;
 export const parentalConsentCheck = ferpaConsentCheck(['PERSONAL_INFO']);

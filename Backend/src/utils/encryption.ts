@@ -1,7 +1,7 @@
-import crypto from 'crypto';
-import fs from 'fs/promises';
-import path from 'path';
-import configuration from '@/config';
+import * as crypto from 'crypto';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+// import configuration from '@/config'; // Config not available, using environment variables directly
 import { logger } from './logger';
 
 // Enhanced encryption algorithms and constants
@@ -94,12 +94,13 @@ class KeyManager {
       const keys = JSON.parse(dataKeyData);
 
       for (const [context, keyInfo] of Object.entries(keys)) {
-        if (this.masterKey) {
-          const decryptedKey = this.decryptKey(keyInfo.encrypted, this.masterKey);
+        if (this.masterKey && keyInfo && typeof keyInfo === 'object' &&
+            'encrypted' in keyInfo && 'created' in keyInfo && 'version' in keyInfo) {
+          const decryptedKey = this.decryptKey(keyInfo.encrypted as string, this.masterKey);
           this.dataKeys.set(context, {
             key: decryptedKey,
-            created: new Date(keyInfo.created),
-            version: keyInfo.version
+            created: new Date(keyInfo.created as string),
+            version: keyInfo.version as string
           });
         }
       }
@@ -529,10 +530,13 @@ class DataMasking {
 
   static maskEmail(email: string): string {
     const [localPart, domain] = email.split('@');
+    if (!localPart || !domain) {
+      return email;
+    }
     if (localPart.length <= 2) {
       return `${'*'.repeat(localPart.length)}@${domain}`;
     }
-    
+
     const visibleLocal = localPart.slice(0, 2);
     const maskedLocal = '*'.repeat(localPart.length - 2);
     return `${visibleLocal}${maskedLocal}@${domain}`;
@@ -563,7 +567,7 @@ class DataMasking {
 // Convenience functions for FERPA service compatibility
 export const encryptData = (data: string): string => {
   try {
-    const result = FieldEncryption.encryptField(data);
+    const result = FieldEncryption.encryptField(data, 'default');
     return JSON.stringify(result);
   } catch (error) {
     logger.error('Error encrypting data', { error: (error as Error).message });
@@ -574,7 +578,7 @@ export const encryptData = (data: string): string => {
 export const decryptData = (encryptedData: string): string => {
   try {
     const parsed = JSON.parse(encryptedData);
-    return FieldEncryption.decryptField(parsed.encrypted, parsed.iv, parsed.tag);
+    return FieldEncryption.decryptField(parsed.encrypted, parsed.iv, parsed.tag, parsed.context);
   } catch (error) {
     logger.error('Error decrypting data', { error: (error as Error).message });
     throw new Error('Decryption failed');
@@ -600,31 +604,6 @@ export const decryptObject = (encryptedData: string): any => {
   }
 };
 
-export const generateSecureToken = (length: number = 32): string => {
-  return crypto.randomBytes(length).toString('hex');
-};
-
-export const hashData = (data: string, salt?: string): string => {
-  try {
-    const hashSalt = salt || crypto.randomBytes(16).toString('hex');
-    const hash = crypto.pbkdf2Sync(data, hashSalt, 100000, 64, 'sha512');
-    return `${hashSalt}:${hash.toString('hex')}`;
-  } catch (error) {
-    logger.error('Error hashing data', { error: (error as Error).message });
-    throw new Error('Hashing failed');
-  }
-};
-
-export const verifyHash = (data: string, hashedData: string): boolean => {
-  try {
-    const [salt, hash] = hashedData.split(':');
-    const computedHash = crypto.pbkdf2Sync(data, salt, 100000, 64, 'sha512');
-    return computedHash.toString('hex') === hash;
-  } catch (error) {
-    logger.error('Error verifying hash', { error: (error as Error).message });
-    return false;
-  }
-};
 
 // Enhanced compliance and audit logging
 class EncryptionCompliance {
@@ -993,7 +972,7 @@ class EncryptionMigration {
 }
 
 // Enhanced convenience functions with context awareness
-export const encryptData = (data: string, context: string): string => {
+export const encryptDataWithCompliance = (data: string, context: string): string => {
   try {
     EncryptionCompliance.logEncryptionEvent('encrypt', context);
     const result = FieldEncryption.encryptField(data, context);
@@ -1004,7 +983,7 @@ export const encryptData = (data: string, context: string): string => {
   }
 };
 
-export const decryptData = (encryptedData: string): string => {
+export const decryptDataWithCompliance = (encryptedData: string): string => {
   try {
     const parsed = JSON.parse(encryptedData);
     EncryptionCompliance.logEncryptionEvent('decrypt', parsed.context);
@@ -1015,21 +994,21 @@ export const decryptData = (encryptedData: string): string => {
   }
 };
 
-export const encryptObject = (obj: any, context: string): string => {
+export const encryptObjectWithCompliance = (obj: any, context: string): string => {
   try {
     EncryptionCompliance.logEncryptionEvent('encrypt_object', context);
-    return encryptData(JSON.stringify(obj), context);
+    return encryptDataWithCompliance(JSON.stringify(obj), context);
   } catch (error) {
     logger.error('Error encrypting object', { error: (error as Error).message, context });
     throw new Error('Object encryption failed');
   }
 };
 
-export const decryptObject = (encryptedData: string): any => {
+export const decryptObjectWithCompliance = (encryptedData: string): any => {
   try {
     const parsed = JSON.parse(encryptedData);
     EncryptionCompliance.logEncryptionEvent('decrypt_object', parsed.context);
-    const decrypted = decryptData(encryptedData);
+    const decrypted = decryptDataWithCompliance(encryptedData);
     return JSON.parse(decrypted);
   } catch (error) {
     logger.error('Error decrypting object', { error: (error as Error).message });
@@ -1054,7 +1033,12 @@ export const hashData = (data: string, salt?: string): string => {
 
 export const verifyHash = (data: string, hashedData: string): boolean => {
   try {
-    const [salt, hash] = hashedData.split(':');
+    const parts = hashedData.split(':');
+    if (parts.length < 2) return false;
+
+    const [salt, hash] = parts;
+    if (!salt || !hash) return false;
+
     const computedHash = crypto.pbkdf2Sync(data, salt, EncryptionConstants.ITERATIONS, 64, 'sha512');
     return computedHash.toString('hex') === hash;
   } catch (error) {

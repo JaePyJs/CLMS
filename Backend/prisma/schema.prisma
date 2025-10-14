@@ -181,8 +181,8 @@ model equipment {
   updated_at              DateTime
   purchase_date           DateTime?                  /// When equipment was acquired
   purchase_cost           Float?                     /// Purchase price
-  serial_number           String?                    @db.Text /// Manufacturer serial number (encrypted)
-  asset_tag               String?                    @db.Text /// Asset tracking tag (encrypted)
+  serial_number           String?                    @db.VarChar(255) /// Manufacturer serial number (encrypted)
+  asset_tag               String?                    @db.VarChar(255) /// Asset tracking tag (encrypted)
   warranty_expiry         DateTime?                  /// Warranty expiration date
   condition_rating        equipment_condition_rating @default(EXCELLENT) /// Current condition
   maintenance_interval    Int?                       /// Days between maintenance
@@ -515,7 +515,7 @@ model users {
   is_active     Boolean    @default(true)
   last_login_at DateTime?
   updated_at    DateTime
-  email         String?    @unique @db.Text /// Email address (encrypted)
+  email         String?    @unique @db.VarChar(255) /// Email address (encrypted)
   full_name     String?    @db.Text /// Full name (encrypted)
   permissions   Json?                 /// Fine-grained permission overrides
 
