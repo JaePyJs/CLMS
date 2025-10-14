@@ -32,6 +32,9 @@ import { errorNotificationService } from '@/services/errorNotificationService';
 import { reportingService } from '@/services/reportingService';
 import { swaggerSpec } from '@/config/swagger';
 import { TLSMiddleware, SecurityHeaders } from '@/middleware/tls.middleware';
+import { performanceMiddleware } from '@/middleware/performanceMiddleware';
+import { cacheMiddleware } from '@/middleware/cacheMiddleware';
+import performanceRoutes from '@/routes/performance';
 
 // Import routes
 import authRoutes from '@/routes/auth';
@@ -55,6 +58,8 @@ import backupRoutes from '@/routes/backup.routes';
 import selfServiceRoutes from '@/routes/self-service.routes';
 import errorsRoutes from '@/routes/errors.routes';
 import reportingRoutes from '@/routes/reporting';
+import scannerRoutes from '@/routes/scanner';
+import scannerTestingRoutes from '@/routes/scannerTesting';
 
 // Import middleware
 import { authMiddleware } from '@/middleware/auth';
@@ -86,6 +91,9 @@ export class CLMSApplication {
 
       // Setup parsing middleware
       this.setupParsingMiddleware();
+
+      // Setup performance monitoring middleware
+      this.setupPerformanceMiddleware();
 
       // Setup logging middleware
       this.setupLoggingMiddleware();
@@ -162,6 +170,25 @@ export class CLMSApplication {
     logger.debug('Parsing middleware configured');
   }
 
+  private setupPerformanceMiddleware(): void {
+    // Request performance monitoring
+    this.app.use(performanceMiddleware.requestTimer());
+
+    // ETag caching for conditional requests
+    this.app.use(performanceMiddleware.etagCache());
+
+    // Compression middleware
+    this.app.use(performanceMiddleware.compression());
+
+    // Memory monitoring
+    this.app.use(performanceMiddleware.memoryMonitor());
+
+    // API response monitoring
+    this.app.use(performanceMiddleware.apiResponseMonitor());
+
+    logger.debug('Performance monitoring middleware configured');
+  }
+
   private setupLoggingMiddleware(): void {
     // Request ID middleware (must be first)
     this.app.use(requestId);
@@ -224,6 +251,11 @@ export class CLMSApplication {
   }
 
   private setupRoutes(): void {
+    // Performance monitoring endpoints
+    this.app.get('/api/performance/metrics', performanceMiddleware.getMetrics());
+    this.app.get('/api/performance/cache/stats', cacheMiddleware.cacheStats());
+    this.app.post('/api/performance/cache/clear', cacheMiddleware.clearCache());
+
     // Health check endpoint (no auth required)
     this.app.get('/health', this.healthCheck.bind(this));
 
@@ -262,7 +294,8 @@ export class CLMSApplication {
     this.app.use('/api/reports', authMiddleware, reportsRoutes);
     this.app.use('/api/fines', authMiddleware, finesRoutes);
     this.app.use('/api/utilities', authMiddleware, utilitiesRoutes);
-    this.app.use('/api/analytics', authMiddleware, analyticsRoutes);
+    this.app.use('/api/analytics', authMiddleware, cacheMiddleware.cache({ ttl: 1800 }), analyticsRoutes);
+    this.app.use('/api/performance', authMiddleware, performanceRoutes);
     this.app.use('/api/import', authMiddleware, importRoutes);
     this.app.use('/api/settings', authMiddleware, settingsRoutes);
     this.app.use('/api/users', usersRoutes); // User management with built-in auth
@@ -272,6 +305,8 @@ export class CLMSApplication {
     this.app.use('/api/errors', authMiddleware, errorsRoutes); // Error reporting and management
     this.app.use('/api/reporting', authMiddleware, reportingRoutes); // Advanced reporting and analytics
     this.app.use('/api/audit', authMiddleware, auditRoutes); // Audit log management and export
+    this.app.use('/api/scanner', authMiddleware, scannerRoutes); // USB scanner management and integration
+    this.app.use('/api/scanner-testing', authMiddleware, scannerTestingRoutes); // Scanner testing and simulation
 
     // Root endpoint
     this.app.get('/', (req: Request, res: Response) => {
@@ -302,6 +337,7 @@ export class CLMSApplication {
           fines: '/api/fines',
           utilities: '/api/utilities',
           analytics: '/api/analytics',
+          performance: '/api/performance',
           import: '/api/import',
           settings: '/api/settings',
           users: '/api/users',
@@ -309,6 +345,8 @@ export class CLMSApplication {
           selfService: '/api/self-service',
           errors: '/api/errors',
           reporting: '/api/reporting',
+          scanner: '/api/scanner',
+          scannerTesting: '/api/scanner-testing',
         },
         timestamp: new Date().toISOString(),
       });

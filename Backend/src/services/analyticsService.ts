@@ -1,5 +1,6 @@
 import { PrismaClient, student_activities_activity_type, student_activities_status, equipment_status, students_grade_category } from '@prisma/client';
 import { logger } from '@/utils/logger';
+import { performanceOptimizationService } from './performanceOptimizationService';
 
 const prisma = new PrismaClient();
 
@@ -59,33 +60,31 @@ export interface ResourceForecast {
 
 class AnalyticsService {
   /**
-   * Generate predictive insights using statistical analysis and ML algorithms
+   * Generate predictive insights using statistical analysis and ML algorithms (optimized with caching)
    */
   async generatePredictiveInsights(timeframe: 'day' | 'week' | 'month' = 'week'): Promise<PredictiveInsight[]> {
-    try {
-      const insights: PredictiveInsight[] = [];
+    return performanceOptimizationService.executeQuery(
+      `predictive_insights_${timeframe}`,
+      async () => {
+        const insights: PredictiveInsight[] = [];
 
-      // Demand forecasting for equipment
-      const demandForecast = await this.forecastEquipmentDemand(timeframe);
-      insights.push(demandForecast);
+        // Parallel execution of all analysis methods
+        const [demandForecast, peakPrediction, resourceOptimization, anomalies] = await Promise.all([
+          this.forecastEquipmentDemand(timeframe),
+          this.predictPeakUsage(timeframe),
+          this.analyzeResourceOptimization(timeframe),
+          this.detectUsageAnomalies(),
+        ]);
 
-      // Peak usage prediction
-      const peakPrediction = await this.predictPeakUsage(timeframe);
-      insights.push(peakPrediction);
-
-      // Resource optimization recommendations
-      const resourceOptimization = await this.analyzeResourceOptimization(timeframe);
-      insights.push(resourceOptimization);
-
-      // Anomaly detection
-      const anomalies = await this.detectUsageAnomalies();
-      insights.push(...anomalies);
-
-      return insights.sort((a, b) => b.confidence - a.confidence);
-    } catch (error) {
-      logger.error('Failed to generate predictive insights', { error: (error as Error).message });
-      throw error;
-    }
+        insights.push(demandForecast, peakPrediction, resourceOptimization, ...anomalies);
+        return insights.sort((a, b) => b.confidence - a.confidence);
+      },
+      {
+        key: `analytics:insights:${timeframe}`,
+        ttl: this.getAnalyticsTTL(timeframe),
+        tags: ['analytics', 'insights', timeframe],
+      }
+    );
   }
 
   /**
@@ -292,38 +291,42 @@ class AnalyticsService {
   }
 
   /**
-   * Generate usage patterns for heat map visualization
+   * Generate usage patterns for heat map visualization (optimized with caching)
    */
   async generateUsageHeatMap(timeframe: 'day' | 'week' | 'month' = 'week'): Promise<HeatMapData[]> {
-    try {
-      const endDate = new Date();
-      const startDate = this.getStartDate(timeframe, endDate);
+    return performanceOptimizationService.executeQuery(
+      `usage_heatmap_${timeframe}`,
+      async () => {
+        const endDate = new Date();
+        const startDate = this.getStartDate(timeframe, endDate);
 
-      const heatMapData = await prisma.$queryRaw<Array<HeatMapData>>`
-        SELECT
-          EXTRACT(HOUR FROM startTime) as hour,
-          EXTRACT(DOW FROM startTime) as dayOfWeek,
-          COUNT(*) as intensity,
-          activity_type,
-          s.grade_level
-        FROM activities a
-        JOIN students s ON a.student_id = s.id
-        WHERE a.start_time >= ${startDate}
-        GROUP BY EXTRACT(HOUR FROM startTime), EXTRACT(DOW FROM startTime), activity_type, s.grade_level
-        ORDER BY intensity DESC
-      `;
+        const heatMapData = await prisma.$queryRaw<Array<HeatMapData>>`
+          SELECT
+            EXTRACT(HOUR FROM start_time) as hour,
+            EXTRACT(DOW FROM start_time) as dayOfWeek,
+            COUNT(*) as intensity,
+            activity_type,
+            grade_level
+          FROM student_activities
+          WHERE start_time >= ${startDate}
+          GROUP BY EXTRACT(HOUR FROM start_time), EXTRACT(DOW FROM start_time), activity_type, grade_level
+          ORDER BY intensity DESC
+        `;
 
-      return heatMapData.map(d => ({
-        hour: Number(d.hour),
-        dayOfWeek: Number(d.dayOfWeek),
-        intensity: Number(d.intensity),
-        activity_type: d.activity_type as student_activities_activity_type,
-        grade_level: d.grade_level as students_grade_category
-      }));
-    } catch (error) {
-      logger.error('Failed to generate usage heat map', { error: (error as Error).message });
-      throw error;
-    }
+        return heatMapData.map(d => ({
+          hour: Number(d.hour),
+          dayOfWeek: Number(d.dayOfWeek),
+          intensity: Number(d.intensity),
+          activity_type: d.activity_type as student_activities_activity_type,
+          grade_level: d.grade_level as students_grade_category
+        }));
+      },
+      {
+        key: `analytics:heatmap:${timeframe}`,
+        ttl: this.getAnalyticsTTL(timeframe),
+        tags: ['analytics', 'heatmap', timeframe],
+      }
+    );
   }
 
   /**
@@ -736,6 +739,17 @@ class AnalyticsService {
     if (maxPredicted > 90) return 'high';
     if (maxPredicted > 75 || (maxPredicted - currentUtilization) > 20) return 'medium';
     return 'low';
+  }
+
+  /**
+   * Get TTL for analytics data based on timeframe
+   */
+  private getAnalyticsTTL(timeframe: 'day' | 'week' | 'month'): number {
+    switch (timeframe) {
+      case 'day': return 300; // 5 minutes for daily data
+      case 'week': return 1800; // 30 minutes for weekly data
+      case 'month': return 3600; // 1 hour for monthly data
+    }
   }
 }
 

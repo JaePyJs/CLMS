@@ -11,6 +11,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint'
 import PredictiveInsights from '@/components/analytics/PredictiveInsights'
 import UsageHeatMap from '@/components/analytics/UsageHeatMap'
 import TimeSeriesForecast from '@/components/analytics/TimeSeriesForecast'
+import AdvancedReporting from '@/components/dashboard/AdvancedReporting'
 import {
   BarChart,
   Bar,
@@ -260,13 +261,14 @@ export function AnalyticsDashboard() {
 
       {/* Enhanced Analytics with Predictive Insights */}
       <Tabs value={selectedChart} onValueChange={setSelectedChart} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7">
           <TabsTrigger value="insights">Predictive Insights</TabsTrigger>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="forecasting">Forecasting</TabsTrigger>
           <TabsTrigger value="heatmap">Heat Map</TabsTrigger>
           <TabsTrigger value="activities">Activities</TabsTrigger>
           <TabsTrigger value="demographics">Demographics</TabsTrigger>
+          <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
 
         {/* Predictive Insights Tab */}
@@ -589,6 +591,11 @@ export function AnalyticsDashboard() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Reports Tab */}
+        <TabsContent value="reports" className="space-y-4">
+          <AdvancedReporting />
         </TabsContent>
       </Tabs>
 
