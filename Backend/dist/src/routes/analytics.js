@@ -4,9 +4,11 @@ const express_1 = require("express");
 const client_1 = require("@prisma/client");
 const logger_1 = require("@/utils/logger");
 const analyticsService_1 = require("@/services/analyticsService");
+const authorization_middleware_1 = require("@/middleware/authorization.middleware");
+const permissions_1 = require("@/config/permissions");
 const router = (0, express_1.Router)();
 const prisma = new client_1.PrismaClient();
-router.get('/metrics', async (req, res) => {
+router.get('/metrics', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.ANALYTICS_VIEW), async (req, res) => {
     try {
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());

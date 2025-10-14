@@ -62,8 +62,8 @@ export declare class BarcodeService {
         entity_id: string;
         id: string;
         student_id: string | null;
-        book_id: string | null;
         barcode_data: string;
+        book_id: string | null;
         entity_type: string;
         generated_at: Date;
         generated_by: string;

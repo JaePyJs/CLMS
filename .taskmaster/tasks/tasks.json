@@ -1724,6 +1724,50 @@
         "complexity": 7,
         "recommendedSubtasks": 4,
         "expansionPrompt": "Divide into: (1) success criteria verification, (2) go-live checklist execution, (3) initial production monitoring (logs, metrics), (4) incident response plan preparation."
+      },
+      {
+        "id": 31,
+        "title": "Verify System Health and Basic Connectivity",
+        "description": "Test that both frontend and backend services are running and accessible",
+        "details": "1. Test frontend accessibility at http://localhost:3000\n2. Test backend health endpoint at http://localhost:3001/health\n3. Verify database connectivity through backend\n4. Check that all required services are running",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 32,
+        "title": "Test Authentication Flow",
+        "description": "Verify admin login and JWT token generation",
+        "details": "1. Test admin login with credentials admin/librarian123\n2. Verify JWT token is returned and valid\n3. Test protected route access with token\n4. Test token refresh mechanism\n5. Test invalid credentials handling",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 33,
+        "title": "Test Core API Endpoints",
+        "description": "Systematically test key API endpoints from all 26 routes",
+        "details": "1. Students API endpoints (/api/students)\n2. Books API endpoints (/api/books)\n3. Equipment API endpoints (/api/equipment)\n4. Activities API endpoints (/api/activities)\n5. Analytics API endpoints (/api/analytics)\n6. Reports API endpoints (/api/reports)\n7. Settings API endpoints (/api/settings)\n8. Authentication endpoints (/api/auth)\n9. Test both authenticated and unauthenticated access\n10. Verify proper error handling and validation",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 34,
+        "title": "Test Frontend-Backend Integration",
+        "description": "Verify React frontend can properly communicate with Express backend",
+        "details": "1. Test frontend login functionality\n2. Test data fetching in dashboard tabs\n3. Test API error handling in frontend\n4. Test CORS configuration\n5. Verify all 13 dashboard tabs can load data\n6. Test responsive design and UI functionality",
+        "testStrategy": "",
+        "status": "pending",
+        "dependencies": [],
+        "priority": "high",
+        "subtasks": []
       }
     ],
     "metadata": {
@@ -1736,7 +1780,7 @@
       ],
       "created": "2025-10-14T05:42:58.699Z",
       "description": "Tasks for master context",
-      "updated": "2025-10-14T06:29:59.687Z"
+      "updated": "2025-10-14T14:19:19.080Z"
     }
   }
 }

@@ -29,6 +29,11 @@ export declare function getStudentByBarcode(barcode: string): Promise<{
     grade_level: string;
     is_active: boolean;
     last_name: string;
+    equipment_ban: boolean;
+    equipment_ban_reason: string | null;
+    equipment_ban_until: Date | null;
+    fine_balance: number;
+    max_concurrent_reservations: number;
 } | null>;
 export declare function getStudentById(id: string): Promise<{
     defaultTimeLimit: number;
@@ -44,6 +49,11 @@ export declare function getStudentById(id: string): Promise<{
     grade_level: string;
     is_active: boolean;
     last_name: string;
+    equipment_ban: boolean;
+    equipment_ban_reason: string | null;
+    equipment_ban_until: Date | null;
+    fine_balance: number;
+    max_concurrent_reservations: number;
 } | null>;
 export declare function getStudents(options?: GetStudentsOptions): Promise<{
     students: {
@@ -58,6 +68,11 @@ export declare function getStudents(options?: GetStudentsOptions): Promise<{
         grade_level: string;
         is_active: boolean;
         last_name: string;
+        equipment_ban: boolean;
+        equipment_ban_reason: string | null;
+        equipment_ban_until: Date | null;
+        fine_balance: number;
+        max_concurrent_reservations: number;
     }[];
     total: number;
     pagination: {
@@ -86,6 +101,11 @@ export declare function createStudent(data: {
     grade_level: string;
     is_active: boolean;
     last_name: string;
+    equipment_ban: boolean;
+    equipment_ban_reason: string | null;
+    equipment_ban_until: Date | null;
+    fine_balance: number;
+    max_concurrent_reservations: number;
 }>;
 export declare function updateStudent(identifier: string, data: {
     firstName?: string;
@@ -106,6 +126,11 @@ export declare function updateStudent(identifier: string, data: {
     grade_level: string;
     is_active: boolean;
     last_name: string;
+    equipment_ban: boolean;
+    equipment_ban_reason: string | null;
+    equipment_ban_until: Date | null;
+    fine_balance: number;
+    max_concurrent_reservations: number;
 } | null>;
 export declare function deleteStudent(identifier: string): Promise<{
     id: string;
@@ -119,6 +144,11 @@ export declare function deleteStudent(identifier: string): Promise<{
     grade_level: string;
     is_active: boolean;
     last_name: string;
+    equipment_ban: boolean;
+    equipment_ban_reason: string | null;
+    equipment_ban_until: Date | null;
+    fine_balance: number;
+    max_concurrent_reservations: number;
 } | null>;
 export declare function getStudentActivities(options?: GetStudentActivitiesOptions): Promise<{
     activities: {
@@ -130,6 +160,7 @@ export declare function getStudentActivities(options?: GetStudentActivitiesOptio
         grade_category: import(".prisma/client").$Enums.student_activities_grade_category | null;
         grade_level: string | null;
         equipment_id: string | null;
+        notes: string | null;
         student_name: string | null;
         activity_type: import(".prisma/client").$Enums.student_activities_activity_type;
         checkout_id: string | null;
@@ -137,7 +168,6 @@ export declare function getStudentActivities(options?: GetStudentActivitiesOptio
         end_time: Date | null;
         duration_minutes: number | null;
         time_limit_minutes: number | null;
-        notes: string | null;
         processed_by: string;
         google_synced: boolean;
         sync_attempts: number;
@@ -158,6 +188,7 @@ export declare function getActiveSessions(): Promise<{
     grade_category: import(".prisma/client").$Enums.student_activities_grade_category | null;
     grade_level: string | null;
     equipment_id: string | null;
+    notes: string | null;
     student_name: string | null;
     activity_type: import(".prisma/client").$Enums.student_activities_activity_type;
     checkout_id: string | null;
@@ -165,7 +196,6 @@ export declare function getActiveSessions(): Promise<{
     end_time: Date | null;
     duration_minutes: number | null;
     time_limit_minutes: number | null;
-    notes: string | null;
     processed_by: string;
     google_synced: boolean;
     sync_attempts: number;
@@ -185,6 +215,7 @@ export declare function createStudentActivity(data: {
     grade_category: import(".prisma/client").$Enums.student_activities_grade_category | null;
     grade_level: string | null;
     equipment_id: string | null;
+    notes: string | null;
     student_name: string | null;
     activity_type: import(".prisma/client").$Enums.student_activities_activity_type;
     checkout_id: string | null;
@@ -192,7 +223,6 @@ export declare function createStudentActivity(data: {
     end_time: Date | null;
     duration_minutes: number | null;
     time_limit_minutes: number | null;
-    notes: string | null;
     processed_by: string;
     google_synced: boolean;
     sync_attempts: number;
@@ -206,6 +236,7 @@ export declare function endStudentActivity(activityId: string): Promise<{
     grade_category: import(".prisma/client").$Enums.student_activities_grade_category | null;
     grade_level: string | null;
     equipment_id: string | null;
+    notes: string | null;
     student_name: string | null;
     activity_type: import(".prisma/client").$Enums.student_activities_activity_type;
     checkout_id: string | null;
@@ -213,7 +244,6 @@ export declare function endStudentActivity(activityId: string): Promise<{
     end_time: Date | null;
     duration_minutes: number | null;
     time_limit_minutes: number | null;
-    notes: string | null;
     processed_by: string;
     google_synced: boolean;
     sync_attempts: number;

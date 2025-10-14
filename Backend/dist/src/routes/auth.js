@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const express_validator_1 = require("express-validator");
 const authService_1 = require("@/services/authService");
+const enhancedAuthService_1 = require("@/services/enhancedAuthService");
 const auth_1 = require("@/middleware/auth");
 const validation_1 = require("@/middleware/validation");
 const asyncHandler_1 = require("@/utils/asyncHandler");
@@ -34,14 +35,54 @@ router.post('/login', [
     validation_1.validationMiddleware,
 ], (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { username, password } = req.body;
-    const result = await authService_1.authService.login(username, password);
-    if (!result.success || !result.token || !result.user) {
+    const result = await enhancedAuthService_1.enhancedAuthService.login(username, password, req, res);
+    if (!result.success || !result.user) {
         throw new errors_1.AuthenticationError(result.error || 'Invalid credentials');
     }
     return (0, apiResponse_1.sendSuccess)(res, {
-        token: result.token,
         user: result.user,
     }, { message: 'Login successful' });
+}));
+router.post('/refresh', (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const refreshToken = req.cookies?.refreshToken || req.body.refreshToken;
+    if (!refreshToken) {
+        throw new errors_1.AuthenticationError('Refresh token required');
+    }
+    const result = await enhancedAuthService_1.enhancedAuthService.refresh(refreshToken, req, res);
+    if (!result.success) {
+        throw new errors_1.AuthenticationError(result.error || 'Invalid refresh token');
+    }
+    return (0, apiResponse_1.sendSuccess)(res, {
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+    }, { message: 'Token refreshed successfully' });
+}));
+router.post('/logout', auth_1.authMiddleware, (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    if (!req.user?.sessionId) {
+        throw new errors_1.AuthenticationError('Session not found');
+    }
+    const result = await enhancedAuthService_1.enhancedAuthService.logout(req.user.sessionId, res);
+    if (!result.success) {
+        throw new errors_1.BusinessLogicError(result.error || 'Logout failed');
+    }
+    return (0, apiResponse_1.sendSuccess)(res, {}, { message: 'Logged out successfully' });
+}));
+router.post('/logout-all', auth_1.authMiddleware, (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    if (!req.user) {
+        throw new errors_1.AuthenticationError('Not authenticated');
+    }
+    const result = await enhancedAuthService_1.enhancedAuthService.logoutAll(req.user.id, res);
+    if (!result.success) {
+        throw new errors_1.BusinessLogicError(result.error || 'Logout all failed');
+    }
+    return (0, apiResponse_1.sendSuccess)(res, { sessionsRevoked: result.sessionsRevoked }, { message: 'Logged out from all devices' });
+}));
+router.get('/sessions', auth_1.authMiddleware, (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    if (!req.user) {
+        throw new errors_1.AuthenticationError('Not authenticated');
+    }
+    const sessions = await enhancedAuthService_1.enhancedAuthService.getUserSessions(req.user.id);
+    return (0, apiResponse_1.sendSuccess)(res, { sessions });
 }));
 router.post('/users', [
     (0, express_validator_1.body)('username').notEmpty().withMessage('Username is required'),

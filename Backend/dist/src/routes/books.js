@@ -3,8 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const bookService_1 = require("@/services/bookService");
 const logger_1 = require("@/utils/logger");
+const authorization_middleware_1 = require("@/middleware/authorization.middleware");
+const permissions_1 = require("@/config/permissions");
+const ferpa_middleware_1 = require("@/middleware/ferpa.middleware");
 const router = (0, express_1.Router)();
-router.get('/', async (req, res) => {
+router.get('/', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.BOOKS_VIEW), async (req, res) => {
     try {
         const { category, subcategory, isActive, page = '1', limit = '50', search, } = req.query;
         const options = {
@@ -244,7 +247,7 @@ router.post('/scan', async (req, res) => {
         });
     }
 });
-router.post('/checkout', async (req, res) => {
+router.post('/checkout', (0, ferpa_middleware_1.auditMiddleware)('BOOK_CHECKOUT'), async (req, res) => {
     try {
         const { bookId, studentId, dueDate, notes } = req.body;
         if (!bookId || !studentId || !dueDate) {
@@ -281,7 +284,7 @@ router.post('/checkout', async (req, res) => {
         });
     }
 });
-router.post('/return', async (req, res) => {
+router.post('/return', (0, ferpa_middleware_1.auditMiddleware)('BOOK_RETURN'), async (req, res) => {
     try {
         const { checkoutId } = req.body;
         if (!checkoutId) {
@@ -313,7 +316,7 @@ router.post('/return', async (req, res) => {
         });
     }
 });
-router.get('/checkouts/all', async (req, res) => {
+router.get('/checkouts/all', (0, ferpa_middleware_1.auditMiddleware)('LIST_BOOK_CHECKOUTS'), async (req, res) => {
     try {
         const { bookId, studentId, status, startDate, endDate, page = '1', limit = '50', } = req.query;
         const options = {
@@ -356,7 +359,7 @@ router.get('/checkouts/all', async (req, res) => {
         });
     }
 });
-router.get('/checkouts/overdue', async (req, res) => {
+router.get('/checkouts/overdue', (0, ferpa_middleware_1.auditMiddleware)('LIST_OVERDUE_BOOKS'), async (req, res) => {
     try {
         const overdueBooks = await (0, bookService_1.getOverdueBooks)();
         const response = {
