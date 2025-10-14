@@ -16,7 +16,7 @@ async function createLibrarianAccount() {
             console.log('Librarian account already exists:', existingLibrarian.username);
             return;
         }
-        const saltRounds = 10;
+        const saltRounds = parseInt(process.env.BCRYPT_ROUNDS || '12');
         const hashedPassword = await bcryptjs_1.default.hash('library123', saltRounds);
         const librarian = await prisma.users.create({
             data: { id: crypto.randomUUID(), updated_at: new Date(),
@@ -34,7 +34,7 @@ async function createLibrarianAccount() {
             where: { role: 'ADMIN' }
         });
         if (!existingAdmin) {
-            const adminHashedPassword = await bcryptjs_1.default.hash('admin123', saltRounds);
+            const adminHashedPassword = await bcryptjs_1.default.hash('admin123', parseInt(process.env.BCRYPT_ROUNDS || '12'));
             const admin = await prisma.users.create({
                 data: { id: crypto.randomUUID(), updated_at: new Date(),
                     username: 'admin',

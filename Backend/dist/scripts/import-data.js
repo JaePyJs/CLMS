@@ -10,7 +10,7 @@ const path_1 = require("path");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const prisma = new client_1.PrismaClient();
 function mapGradeCategory(grade_level) {
-    const level = gradeLevel.toLowerCase();
+    const level = grade_level.toLowerCase();
     if (level.includes('k-') ||
         level.includes('kindergarten') ||
         level.includes('grade 1') ||
@@ -57,39 +57,41 @@ async function importStudentsFromJSON() {
                 const schoolLevel = student.School_Level || 'Unknown';
                 let grade_category = client_1.students_grade_category.GRADE_SCHOOL;
                 if (schoolLevel.includes('Senior High')) {
-                    gradeCategory = client_1.students_grade_category.SENIOR_HIGH;
+                    grade_category = client_1.students_grade_category.SENIOR_HIGH;
                 }
                 else if (schoolLevel.includes('Junior') ||
                     schoolLevel.includes('High School (Junior)')) {
-                    gradeCategory = client_1.students_grade_category.JUNIOR_HIGH;
+                    grade_category = client_1.students_grade_category.JUNIOR_HIGH;
                 }
                 else if (gradeLevel.includes('Grade 4') ||
                     gradeLevel.includes('Grade 5') ||
                     gradeLevel.includes('Grade 6')) {
-                    gradeCategory = client_1.students_grade_category.GRADE_SCHOOL;
+                    grade_category = client_1.students_grade_category.GRADE_SCHOOL;
                 }
                 else if (gradeLevel.includes('Grade 1') ||
                     gradeLevel.includes('Grade 2') ||
                     gradeLevel.includes('Grade 3') ||
                     gradeLevel.includes('K-')) {
-                    gradeCategory = client_1.students_grade_category.PRIMARY;
+                    grade_category = client_1.students_grade_category.PRIMARY;
                 }
                 await prisma.students.upsert({
                     where: { student_id },
                     update: {
-                        first_name,
-                        last_name,
-                        grade_level,
+                        first_name: firstName,
+                        last_name: lastName,
+                        grade_level: gradeLevel,
                         grade_category,
                         is_active: true,
                     },
                     create: {
+                        id: crypto.randomUUID(),
                         student_id,
-                        first_name,
-                        last_name,
-                        grade_level,
+                        first_name: firstName,
+                        last_name: lastName,
+                        grade_level: gradeLevel,
                         grade_category,
                         is_active: true,
+                        updated_at: new Date(),
                     },
                 });
                 imported++;
@@ -147,7 +149,7 @@ async function importBooksFromExcel() {
                     return;
                 }
                 await prisma.books.upsert({
-                    where: { accession_no },
+                    where: { accession_no: accessionNo },
                     update: {
                         isbn,
                         title,
@@ -156,12 +158,13 @@ async function importBooksFromExcel() {
                         category,
                         subcategory,
                         location,
-                        total_copies,
-                        available_copies: total_copies,
+                        total_copies: totalCopies,
+                        available_copies: totalCopies,
                         is_active: true,
                     },
                     create: {
-                        accession_no,
+                        id: crypto.randomUUID(),
+                        accession_no: accessionNo,
                         isbn,
                         title,
                         author,
@@ -169,9 +172,10 @@ async function importBooksFromExcel() {
                         category,
                         subcategory,
                         location,
-                        total_copies,
-                        available_copies: total_copies,
+                        total_copies: totalCopies,
+                        available_copies: totalCopies,
                         is_active: true,
+                        updated_at: new Date(),
                     },
                 });
                 imported++;
@@ -245,7 +249,11 @@ async function createDefaultEquipment() {
             await prisma.equipment.upsert({
                 where: { equipment_id: item.equipment_id },
                 update: item,
-                create: item,
+                create: {
+                    ...item,
+                    id: crypto.randomUUID(),
+                    updated_at: new Date(),
+                },
             });
         }
         console.log(`✅ Created ${equipment.length} equipment items`);
@@ -268,10 +276,12 @@ async function createAdminUser() {
                 is_active: true,
             },
             create: {
+                id: crypto.randomUUID(),
                 username: process.env.ADMIN_USERNAME || 'admin',
                 password: hashedPassword,
                 role: 'ADMIN',
                 is_active: true,
+                updated_at: new Date(),
             },
         });
         console.log(`✅ Admin user created: ${process.env.ADMIN_USERNAME || 'admin'}`);

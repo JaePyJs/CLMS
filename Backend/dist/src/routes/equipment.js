@@ -1,10 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const equipmentService_1 = require("@/services/equipmentService");
+const enhancedEquipmentService_1 = require("@/services/enhancedEquipmentService");
+const enhancedEquipmentService_2 = require("@/services/enhancedEquipmentService");
 const logger_1 = require("@/utils/logger");
+const authorization_middleware_1 = require("@/middleware/authorization.middleware");
+const permissions_1 = require("@/config/permissions");
 const router = (0, express_1.Router)();
-router.get('/', async (req, res) => {
+router.get('/', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_VIEW), async (req, res) => {
     try {
         const { type, status, page = '1', limit = '50', search } = req.query;
         const options = {
@@ -20,7 +23,7 @@ router.get('/', async (req, res) => {
         if (search) {
             options.search = search;
         }
-        const result = await (0, equipmentService_1.getEquipment)(options);
+        const result = await (0, enhancedEquipmentService_1.getEquipment)(options);
         const response = {
             success: true,
             data: result,
@@ -41,7 +44,7 @@ router.get('/', async (req, res) => {
         });
     }
 });
-router.get('/:id', async (req, res) => {
+router.get('/:id', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_VIEW), async (req, res) => {
     try {
         const { id } = req.params;
         if (!id) {
@@ -51,7 +54,7 @@ router.get('/:id', async (req, res) => {
                 timestamp: new Date().toISOString(),
             });
         }
-        const equipment = await (0, equipmentService_1.getEquipmentById)(id);
+        const equipment = await (0, enhancedEquipmentService_1.getEquipmentById)(id);
         if (!equipment) {
             return res.status(404).json({
                 success: false,
@@ -79,7 +82,7 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
-router.post('/', async (req, res) => {
+router.post('/', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_CREATE), async (req, res) => {
     try {
         const { equipmentId, name, type, location, maxTimeMinutes, requiresSupervision, description, } = req.body;
         if (!equipmentId || !name || !type || !location || !maxTimeMinutes) {
@@ -89,7 +92,7 @@ router.post('/', async (req, res) => {
                 timestamp: new Date().toISOString(),
             });
         }
-        const equipment = await (0, equipmentService_1.createEquipment)({
+        const equipment = await (0, enhancedEquipmentService_1.createEquipment)({
             equipmentId,
             name,
             type,
@@ -119,7 +122,7 @@ router.post('/', async (req, res) => {
         });
     }
 });
-router.put('/:id', async (req, res) => {
+router.put('/:id', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_UPDATE), async (req, res) => {
     try {
         const { id } = req.params;
         if (!id) {
@@ -130,7 +133,7 @@ router.put('/:id', async (req, res) => {
             });
         }
         const { equipmentId, name, type, location, maxTimeMinutes, requiresSupervision, description, status, } = req.body;
-        const equipment = await (0, equipmentService_1.updateEquipment)(id, {
+        const equipment = await (0, enhancedEquipmentService_1.updateEquipment)(id, {
             equipmentId,
             name,
             type,
@@ -162,7 +165,7 @@ router.put('/:id', async (req, res) => {
         });
     }
 });
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_DELETE), async (req, res) => {
     try {
         const { id } = req.params;
         if (!id) {
@@ -172,7 +175,7 @@ router.delete('/:id', async (req, res) => {
                 timestamp: new Date().toISOString(),
             });
         }
-        await (0, equipmentService_1.deleteEquipment)(id);
+        await (0, enhancedEquipmentService_1.deleteEquipment)(id);
         const response = {
             success: true,
             message: 'Equipment deleted successfully',
@@ -193,7 +196,7 @@ router.delete('/:id', async (req, res) => {
         });
     }
 });
-router.post('/scan', async (req, res) => {
+router.post('/scan', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_VIEW), async (req, res) => {
     try {
         const { barcode } = req.body;
         if (!barcode) {
@@ -203,7 +206,7 @@ router.post('/scan', async (req, res) => {
                 timestamp: new Date().toISOString(),
             });
         }
-        const equipment = await (0, equipmentService_1.getEquipmentByEquipmentId)(barcode);
+        const equipment = await (0, enhancedEquipmentService_1.getEquipmentByEquipmentId)(barcode);
         if (!equipment) {
             return res.status(404).json({
                 success: false,
@@ -232,7 +235,7 @@ router.post('/scan', async (req, res) => {
         });
     }
 });
-router.post('/use', async (req, res) => {
+router.post('/use', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_ASSIGN), async (req, res) => {
     try {
         const { equipmentId, studentId, activityType, timeLimitMinutes, notes } = req.body;
         if (!equipmentId || !studentId || !activityType) {
@@ -242,7 +245,7 @@ router.post('/use', async (req, res) => {
                 timestamp: new Date().toISOString(),
             });
         }
-        const activity = await (0, equipmentService_1.useEquipment)({
+        const activity = await (0, enhancedEquipmentService_1.useEquipment)({
             equipmentId,
             studentId,
             activityType,
@@ -270,7 +273,7 @@ router.post('/use', async (req, res) => {
         });
     }
 });
-router.post('/release', async (req, res) => {
+router.post('/release', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_ASSIGN), async (req, res) => {
     try {
         const { activityId } = req.body;
         if (!activityId) {
@@ -280,7 +283,7 @@ router.post('/release', async (req, res) => {
                 timestamp: new Date().toISOString(),
             });
         }
-        const activity = await (0, equipmentService_1.releaseEquipment)(activityId);
+        const activity = await (0, enhancedEquipmentService_1.releaseEquipment)(activityId);
         const response = {
             success: true,
             data: activity,
@@ -302,7 +305,7 @@ router.post('/release', async (req, res) => {
         });
     }
 });
-router.get('/usage/history', async (req, res) => {
+router.get('/usage/history', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_VIEW), async (req, res) => {
     try {
         const { equipmentId, studentId, activityType, startDate, endDate, page = '1', limit = '50', } = req.query;
         const options = {
@@ -324,7 +327,7 @@ router.get('/usage/history', async (req, res) => {
         if (endDate) {
             options.endDate = new Date(endDate);
         }
-        const result = await (0, equipmentService_1.getEquipmentUsageHistory)(options);
+        const result = await (0, enhancedEquipmentService_1.getEquipmentUsageHistory)(options);
         const response = {
             success: true,
             data: result,
@@ -345,9 +348,10 @@ router.get('/usage/history', async (req, res) => {
         });
     }
 });
-router.get('/statistics', async (req, res) => {
+router.get('/statistics', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_VIEW), async (req, res) => {
     try {
-        const statistics = await (0, equipmentService_1.getEquipmentStatistics)();
+        const { startDate, endDate } = req.query;
+        const statistics = await enhancedEquipmentService_2.equipmentService.getEquipmentMetrics(startDate ? new Date(startDate) : undefined, endDate ? new Date(endDate) : undefined);
         const response = {
             success: true,
             data: statistics,
@@ -358,6 +362,222 @@ router.get('/statistics', async (req, res) => {
     catch (error) {
         logger_1.logger.error('Error fetching equipment statistics', {
             error: error.message,
+        });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+        });
+    }
+});
+router.post('/reservations', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_RESERVE), async (req, res) => {
+    try {
+        const { equipmentId, studentId, startTime, endTime, purpose, notes } = req.body;
+        if (!equipmentId || !studentId || !startTime || !endTime) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: equipmentId, studentId, startTime, endTime',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        const reservation = await enhancedEquipmentService_2.equipmentService.createReservation({
+            equipmentId,
+            studentId,
+            startTime: new Date(startTime),
+            endTime: new Date(endTime),
+            purpose,
+            notes,
+        });
+        const response = {
+            success: true,
+            data: reservation,
+            message: 'Reservation created successfully',
+            timestamp: new Date().toISOString(),
+        };
+        res.status(201).json(response);
+    }
+    catch (error) {
+        logger_1.logger.error('Error creating reservation', {
+            error: error.message,
+            body: req.body,
+        });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+        });
+    }
+});
+router.post('/reservations/check-conflicts', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_VIEW), async (req, res) => {
+    try {
+        const { equipmentId, startTime, endTime, excludeReservationId } = req.body;
+        if (!equipmentId || !startTime || !endTime) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: equipmentId, startTime, endTime',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        const conflicts = await enhancedEquipmentService_2.equipmentService.checkReservationConflicts(equipmentId, new Date(startTime), new Date(endTime), excludeReservationId);
+        const response = {
+            success: true,
+            data: { conflicts, hasConflicts: conflicts.length > 0 },
+            timestamp: new Date().toISOString(),
+        };
+        res.json(response);
+    }
+    catch (error) {
+        logger_1.logger.error('Error checking reservation conflicts', {
+            error: error.message,
+            body: req.body,
+        });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+        });
+    }
+});
+router.post('/maintenance', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_MAINTENANCE), async (req, res) => {
+    try {
+        const { equipmentId, maintenanceType, description, cost, vendor, scheduledDate, priority, estimatedDuration, warrantyClaim, } = req.body;
+        if (!equipmentId || !maintenanceType) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: equipmentId, maintenanceType',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        const maintenance = await enhancedEquipmentService_2.equipmentService.createMaintenance({
+            equipmentId,
+            maintenanceType,
+            description,
+            cost,
+            vendor,
+            scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
+            priority,
+            estimatedDuration,
+            warrantyClaim,
+        });
+        const response = {
+            success: true,
+            data: maintenance,
+            message: 'Maintenance record created successfully',
+            timestamp: new Date().toISOString(),
+        };
+        res.status(201).json(response);
+    }
+    catch (error) {
+        logger_1.logger.error('Error creating maintenance record', {
+            error: error.message,
+            body: req.body,
+        });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+        });
+    }
+});
+router.post('/condition-reports', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_ASSESS), async (req, res) => {
+    try {
+        const { equipmentId, conditionBefore, conditionAfter, assessmentType, damageType, damageSeverity, description, costEstimate, photos, witnessNames, } = req.body;
+        if (!equipmentId || !conditionBefore || !conditionAfter || !assessmentType) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required fields: equipmentId, conditionBefore, conditionAfter, assessmentType',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        const report = await enhancedEquipmentService_2.equipmentService.createConditionReport({
+            equipmentId,
+            conditionBefore,
+            conditionAfter,
+            assessmentType,
+            damageType,
+            damageSeverity,
+            description,
+            costEstimate,
+            photos,
+            witnessNames,
+        });
+        const response = {
+            success: true,
+            data: report,
+            message: 'Condition report created successfully',
+            timestamp: new Date().toISOString(),
+        };
+        res.status(201).json(response);
+    }
+    catch (error) {
+        logger_1.logger.error('Error creating condition report', {
+            error: error.message,
+            body: req.body,
+        });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+        });
+    }
+});
+router.get('/metrics', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_VIEW), async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        const metrics = await enhancedEquipmentService_2.equipmentService.getEquipmentMetrics(startDate ? new Date(startDate) : undefined, endDate ? new Date(endDate) : undefined);
+        const response = {
+            success: true,
+            data: metrics,
+            timestamp: new Date().toISOString(),
+        };
+        res.json(response);
+    }
+    catch (error) {
+        logger_1.logger.error('Error fetching equipment metrics', {
+            error: error.message,
+        });
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            message: error.message,
+            timestamp: new Date().toISOString(),
+        });
+    }
+});
+router.get('/:id/details', (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.EQUIPMENT_VIEW), async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                error: 'Equipment ID is required',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        const equipment = await enhancedEquipmentService_2.equipmentService.getEquipmentById(id);
+        if (!equipment) {
+            return res.status(404).json({
+                success: false,
+                error: 'Equipment not found',
+                timestamp: new Date().toISOString(),
+            });
+        }
+        const response = {
+            success: true,
+            data: equipment,
+            timestamp: new Date().toISOString(),
+        };
+        res.json(response);
+    }
+    catch (error) {
+        logger_1.logger.error('Error fetching equipment details', {
+            error: error.message,
+            id: req.params.id,
         });
         res.status(500).json({
             success: false,

@@ -84,7 +84,7 @@ async function generateQRCodes() {
                 });
                 successCount++;
                 if (successCount % 50 === 0) {
-                    console.log(`✅ Generated ${success_count} QR codes...`);
+                    console.log(`✅ Generated ${successCount} QR codes...`);
                 }
             }
             catch (error) {
@@ -95,15 +95,15 @@ async function generateQRCodes() {
                     name: `${student.first_name} ${student.last_name}`,
                     qrPath: '',
                     success: false,
-                    error: error_message,
+                    error: errorMessage,
                 });
-                console.error(`❌ Error generating QR for ${student.student_id}: ${error_message}`);
+                console.error(`❌ Error generating QR for ${student.student_id}: ${errorMessage}`);
             }
         }
         console.log('\n' + '='.repeat(60));
         console.log('📋 QR CODE GENERATION SUMMARY');
         console.log('='.repeat(60));
-        console.log(`✅ Successfully generated: ${success_count}`);
+        console.log(`✅ Successfully generated: ${successCount}`);
         console.log(`❌ Failed: ${errorCount}`);
         console.log(`📁 Output directory: ${qrDir}`);
         console.log('='.repeat(60) + '\n');
@@ -111,7 +111,7 @@ async function generateQRCodes() {
         fs.writeFileSync(reportPath, JSON.stringify({
             generated_at: new Date().toISOString(),
             totalStudents: students.length,
-            success_count,
+            successCount,
             errorCount,
             results,
         }, null, 2));

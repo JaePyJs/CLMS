@@ -3,8 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const studentService_1 = require("@/services/studentService");
 const logger_1 = require("@/utils/logger");
+const authorization_middleware_1 = require("@/middleware/authorization.middleware");
+const permissions_1 = require("@/config/permissions");
+const ferpa_middleware_1 = require("@/middleware/ferpa.middleware");
 const router = (0, express_1.Router)();
-router.get('/', async (req, res) => {
+router.get('/', (0, ferpa_middleware_1.auditMiddleware)('LIST_STUDENTS'), (0, ferpa_middleware_1.ferpaAccessCheck)('READ'), (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.STUDENTS_VIEW), async (req, res) => {
     try {
         const { gradeCategory, isActive, page = '1', limit = '50' } = req.query;
         const options = {
@@ -37,7 +40,7 @@ router.get('/', async (req, res) => {
         });
     }
 });
-router.get('/:id', async (req, res) => {
+router.get('/:id', (0, ferpa_middleware_1.auditMiddleware)('READ_STUDENT_DATA'), (0, ferpa_middleware_1.ferpaAccessCheck)('READ'), ferpa_middleware_1.parentalConsentCheck, (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.STUDENTS_VIEW), async (req, res) => {
     try {
         const { id } = req.params;
         if (!id) {
@@ -75,7 +78,7 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
-router.post('/', async (req, res) => {
+router.post('/', (0, ferpa_middleware_1.auditMiddleware)('CREATE_STUDENT'), (0, ferpa_middleware_1.ferpaAccessCheck)('WRITE'), (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.STUDENTS_CREATE), async (req, res) => {
     try {
         const { studentId, firstName, lastName, gradeLevel, gradeCategory, section, } = req.body;
         if (!studentId ||
@@ -118,7 +121,7 @@ router.post('/', async (req, res) => {
         });
     }
 });
-router.put('/:id', async (req, res) => {
+router.put('/:id', (0, ferpa_middleware_1.auditMiddleware)('UPDATE_STUDENT'), (0, ferpa_middleware_1.ferpaAccessCheck)('WRITE'), (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.STUDENTS_UPDATE), async (req, res) => {
     try {
         const { id } = req.params;
         if (!id) {
@@ -159,7 +162,7 @@ router.put('/:id', async (req, res) => {
         });
     }
 });
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', (0, ferpa_middleware_1.auditMiddleware)('DELETE_STUDENT'), (0, ferpa_middleware_1.ferpaAccessCheck)('DELETE'), (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.STUDENTS_DELETE), async (req, res) => {
     try {
         const { id } = req.params;
         if (!id) {
@@ -190,7 +193,7 @@ router.delete('/:id', async (req, res) => {
         });
     }
 });
-router.get('/activities/all', async (req, res) => {
+router.get('/activities/all', (0, ferpa_middleware_1.auditMiddleware)('READ_STUDENT_ACTIVITIES'), (0, ferpa_middleware_1.ferpaAccessCheck)('READ'), (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.ACTIVITIES_VIEW), async (req, res) => {
     try {
         const { studentId, startDate, endDate, activityType, status, page = '1', limit = '50', } = req.query;
         const options = {
@@ -233,7 +236,7 @@ router.get('/activities/all', async (req, res) => {
         });
     }
 });
-router.get('/activities/active', async (req, res) => {
+router.get('/activities/active', (0, ferpa_middleware_1.auditMiddleware)('LIST_ACTIVE_SESSIONS'), (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.ACTIVITIES_VIEW), async (req, res) => {
     try {
         const activities = await (0, studentService_1.getActiveSessions)();
         const response = {
@@ -255,7 +258,7 @@ router.get('/activities/active', async (req, res) => {
         });
     }
 });
-router.post('/activities', async (req, res) => {
+router.post('/activities', (0, ferpa_middleware_1.auditMiddleware)('CREATE_STUDENT_ACTIVITY'), (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.ACTIVITIES_CREATE), async (req, res) => {
     try {
         const { studentId, activityType, equipmentId, timeLimitMinutes, notes } = req.body;
         if (!studentId || !activityType) {
@@ -293,7 +296,7 @@ router.post('/activities', async (req, res) => {
         });
     }
 });
-router.patch('/activities/:id/end', async (req, res) => {
+router.patch('/activities/:id/end', (0, ferpa_middleware_1.auditMiddleware)('END_STUDENT_ACTIVITY'), (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.ACTIVITIES_UPDATE), async (req, res) => {
     try {
         const { id } = req.params;
         if (!id) {
@@ -325,7 +328,7 @@ router.patch('/activities/:id/end', async (req, res) => {
         });
     }
 });
-router.post('/scan', async (req, res) => {
+router.post('/scan', (0, ferpa_middleware_1.auditMiddleware)('SCAN_STUDENT_BARCODE'), (0, ferpa_middleware_1.ferpaAccessCheck)('READ'), (0, authorization_middleware_1.requirePermission)(permissions_1.Permission.STUDENTS_VIEW), async (req, res) => {
     try {
         const { barcode } = req.body;
         if (!barcode) {

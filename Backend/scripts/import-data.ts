@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
 
 // Grade category mapping
 function mapGradeCategory(grade_level: string): students_grade_category {
-  const level = gradeLevel.toLowerCase();
+  const level = grade_level.toLowerCase();
   if (
     level.includes('k-') ||
     level.includes('kindergarten') ||
@@ -75,43 +75,45 @@ async function importStudentsFromJSON() {
         // Map school level to grade category
         let grade_category: students_grade_category = students_grade_category.GRADE_SCHOOL;
         if (schoolLevel.includes('Senior High')) {
-          gradeCategory = students_grade_category.SENIOR_HIGH;
+          grade_category = students_grade_category.SENIOR_HIGH;
         } else if (
           schoolLevel.includes('Junior') ||
           schoolLevel.includes('High School (Junior)')
         ) {
-          gradeCategory = students_grade_category.JUNIOR_HIGH;
+          grade_category = students_grade_category.JUNIOR_HIGH;
         } else if (
           gradeLevel.includes('Grade 4') ||
           gradeLevel.includes('Grade 5') ||
           gradeLevel.includes('Grade 6')
         ) {
-          gradeCategory = students_grade_category.GRADE_SCHOOL;
+          grade_category = students_grade_category.GRADE_SCHOOL;
         } else if (
           gradeLevel.includes('Grade 1') ||
           gradeLevel.includes('Grade 2') ||
           gradeLevel.includes('Grade 3') ||
           gradeLevel.includes('K-')
         ) {
-          gradeCategory = students_grade_category.PRIMARY;
+          grade_category = students_grade_category.PRIMARY;
         }
 
         await prisma.students.upsert({
           where: { student_id },
           update: {
-            first_name,
-            last_name,
-            grade_level,
+            first_name: firstName,
+            last_name: lastName,
+            grade_level: gradeLevel,
             grade_category,
             is_active: true,
           },
           create: {
+            id: crypto.randomUUID(),
             student_id,
-            first_name,
-            last_name,
-            grade_level,
+            first_name: firstName,
+            last_name: lastName,
+            grade_level: gradeLevel,
             grade_category,
             is_active: true,
+            updated_at: new Date(),
           },
         });
 
@@ -188,7 +190,7 @@ async function importBooksFromExcel() {
         }
 
         await prisma.books.upsert({
-          where: { accession_no },
+          where: { accession_no: accessionNo },
           update: {
             isbn,
             title,
@@ -197,12 +199,13 @@ async function importBooksFromExcel() {
             category,
             subcategory,
             location,
-            total_copies,
-            available_copies: total_copies,
+            total_copies: totalCopies,
+            available_copies: totalCopies,
             is_active: true,
           },
           create: {
-            accession_no,
+            id: crypto.randomUUID(),
+            accession_no: accessionNo,
             isbn,
             title,
             author,
@@ -210,9 +213,10 @@ async function importBooksFromExcel() {
             category,
             subcategory,
             location,
-            total_copies,
-            available_copies: total_copies,
+            total_copies: totalCopies,
+            available_copies: totalCopies,
             is_active: true,
+            updated_at: new Date(),
           },
         });
 
@@ -294,7 +298,11 @@ async function createDefaultEquipment() {
       await prisma.equipment.upsert({
         where: { equipment_id: item.equipment_id },
         update: item,
-        create: item,
+        create: {
+          ...item,
+          id: crypto.randomUUID(),
+          updated_at: new Date(),
+        },
       });
     }
 
@@ -323,10 +331,12 @@ async function createAdminUser() {
         is_active: true,
       },
       create: {
+        id: crypto.randomUUID(),
         username: process.env.ADMIN_USERNAME || 'admin',
         password: hashedPassword,
         role: 'ADMIN',
         is_active: true,
+        updated_at: new Date(),
       },
     });
 

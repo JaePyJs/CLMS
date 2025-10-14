@@ -9,6 +9,7 @@ export declare class CLMSApplication {
     initialize(): Promise<void>;
     private setupSecurityMiddleware;
     private setupParsingMiddleware;
+    private setupPerformanceMiddleware;
     private setupLoggingMiddleware;
     private setupRateLimiting;
     private setupCORS;

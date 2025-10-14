@@ -40,6 +40,11 @@ export declare function registerStudent(registrationData: StudentRegistrationDat
     grade_level: string;
     is_active: boolean;
     last_name: string;
+    equipment_ban: boolean;
+    equipment_ban_reason: string | null;
+    equipment_ban_until: Date | null;
+    fine_balance: number;
+    max_concurrent_reservations: number;
 }>;
 export declare function checkDuplicateScan(student_id: string): Promise<boolean>;
 export declare function scanStudentBarcode(student_id: string): Promise<StudentScanResult>;
@@ -53,6 +58,7 @@ export declare function processStudentCheckIn(student_id: string, activity_type:
     grade_category: import(".prisma/client").$Enums.student_activities_grade_category | null;
     grade_level: string | null;
     equipment_id: string | null;
+    notes: string | null;
     student_name: string | null;
     activity_type: import(".prisma/client").$Enums.student_activities_activity_type;
     checkout_id: string | null;
@@ -60,7 +66,6 @@ export declare function processStudentCheckIn(student_id: string, activity_type:
     end_time: Date | null;
     duration_minutes: number | null;
     time_limit_minutes: number | null;
-    notes: string | null;
     processed_by: string;
     google_synced: boolean;
     sync_attempts: number;
@@ -74,6 +79,7 @@ export declare function processStudentCheckOut(student_id: string): Promise<{
     grade_category: import(".prisma/client").$Enums.student_activities_grade_category | null;
     grade_level: string | null;
     equipment_id: string | null;
+    notes: string | null;
     student_name: string | null;
     activity_type: import(".prisma/client").$Enums.student_activities_activity_type;
     checkout_id: string | null;
@@ -81,7 +87,6 @@ export declare function processStudentCheckOut(student_id: string): Promise<{
     end_time: Date | null;
     duration_minutes: number | null;
     time_limit_minutes: number | null;
-    notes: string | null;
     processed_by: string;
     google_synced: boolean;
     sync_attempts: number;
@@ -149,6 +154,7 @@ export declare function processEquipmentUse(equipment_id: string, student_id: st
     grade_category: import(".prisma/client").$Enums.student_activities_grade_category | null;
     grade_level: string | null;
     equipment_id: string | null;
+    notes: string | null;
     student_name: string | null;
     activity_type: import(".prisma/client").$Enums.student_activities_activity_type;
     checkout_id: string | null;
@@ -156,7 +162,6 @@ export declare function processEquipmentUse(equipment_id: string, student_id: st
     end_time: Date | null;
     duration_minutes: number | null;
     time_limit_minutes: number | null;
-    notes: string | null;
     processed_by: string;
     google_synced: boolean;
     sync_attempts: number;
@@ -170,6 +175,7 @@ export declare function processEquipmentRelease(activityId: string): Promise<{
     grade_category: import(".prisma/client").$Enums.student_activities_grade_category | null;
     grade_level: string | null;
     equipment_id: string | null;
+    notes: string | null;
     student_name: string | null;
     activity_type: import(".prisma/client").$Enums.student_activities_activity_type;
     checkout_id: string | null;
@@ -177,7 +183,6 @@ export declare function processEquipmentRelease(activityId: string): Promise<{
     end_time: Date | null;
     duration_minutes: number | null;
     time_limit_minutes: number | null;
-    notes: string | null;
     processed_by: string;
     google_synced: boolean;
     sync_attempts: number;
@@ -197,6 +202,11 @@ export declare function getStudentStatus(student_id: string): Promise<{
         grade_level: string;
         is_active: boolean;
         last_name: string;
+        equipment_ban: boolean;
+        equipment_ban_reason: string | null;
+        equipment_ban_until: Date | null;
+        fine_balance: number;
+        max_concurrent_reservations: number;
     };
     hasActiveSession: boolean;
     activeSession: {
@@ -208,6 +218,7 @@ export declare function getStudentStatus(student_id: string): Promise<{
         grade_category: import(".prisma/client").$Enums.student_activities_grade_category | null;
         grade_level: string | null;
         equipment_id: string | null;
+        notes: string | null;
         student_name: string | null;
         activity_type: import(".prisma/client").$Enums.student_activities_activity_type;
         checkout_id: string | null;
@@ -215,7 +226,6 @@ export declare function getStudentStatus(student_id: string): Promise<{
         end_time: Date | null;
         duration_minutes: number | null;
         time_limit_minutes: number | null;
-        notes: string | null;
         processed_by: string;
         google_synced: boolean;
         sync_attempts: number;
@@ -365,11 +375,29 @@ export declare function getEquipmentStatus(equipment_id: string): Promise<{
         updated_at: Date;
         name: string;
         created_at: Date;
+        category: string | null;
         description: string | null;
+        is_active: boolean;
         location: string;
         equipment_id: string;
         max_time_minutes: number;
         requires_supervision: boolean;
+        purchase_date: Date | null;
+        purchase_cost: number | null;
+        serial_number: string | null;
+        asset_tag: string | null;
+        warranty_expiry: Date | null;
+        condition_rating: import(".prisma/client").$Enums.equipment_condition_rating;
+        maintenance_interval: number | null;
+        last_maintenance: Date | null;
+        next_maintenance: Date | null;
+        total_usage_hours: number;
+        daily_usage_hours: number;
+        qr_code_data: string | null;
+        barcode_data: string | null;
+        tags: import("@prisma/client/runtime/library").JsonValue | null;
+        specifications: import("@prisma/client/runtime/library").JsonValue | null;
+        notes: string | null;
     };
     isAvailable: boolean;
     activeSession: {
@@ -381,6 +409,7 @@ export declare function getEquipmentStatus(equipment_id: string): Promise<{
         grade_category: import(".prisma/client").$Enums.student_activities_grade_category | null;
         grade_level: string | null;
         equipment_id: string | null;
+        notes: string | null;
         student_name: string | null;
         activity_type: import(".prisma/client").$Enums.student_activities_activity_type;
         checkout_id: string | null;
@@ -388,7 +417,6 @@ export declare function getEquipmentStatus(equipment_id: string): Promise<{
         end_time: Date | null;
         duration_minutes: number | null;
         time_limit_minutes: number | null;
-        notes: string | null;
         processed_by: string;
         google_synced: boolean;
         sync_attempts: number;

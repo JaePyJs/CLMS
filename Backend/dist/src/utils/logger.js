@@ -1,15 +1,48 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.shutdownLogger = exports.structuredLogger = exports.logError = exports.createRequestLogger = exports.healthLogger = exports.automationLogger = exports.securityLogger = exports.performanceLogger = exports.auditLogger = exports.logger = void 0;
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 const winston_1 = __importDefault(require("winston"));
-const logsDir = path_1.default.join(process.cwd(), 'logs');
-if (!fs_1.default.existsSync(logsDir)) {
-    fs_1.default.mkdirSync(logsDir, { recursive: true });
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
 }
 const buildLogEntry = (info) => {
     const { level, message, stack, ...meta } = info;
@@ -38,20 +71,20 @@ exports.logger = winston_1.default.createLogger({
     },
     transports: [
         new winston_1.default.transports.File({
-            filename: path_1.default.join(logsDir, 'error.log'),
+            filename: path.join(logsDir, 'error.log'),
             level: 'error',
             maxsize: 5_242_880,
             maxFiles: 5,
             format: winston_1.default.format.combine(winston_1.default.format.timestamp(), winston_1.default.format.json()),
         }),
         new winston_1.default.transports.File({
-            filename: path_1.default.join(logsDir, 'combined.log'),
+            filename: path.join(logsDir, 'combined.log'),
             maxsize: 5_242_880,
             maxFiles: 10,
             format: winston_1.default.format.combine(winston_1.default.format.timestamp(), winston_1.default.format.json()),
         }),
         new winston_1.default.transports.File({
-            filename: path_1.default.join(logsDir, 'audit.log'),
+            filename: path.join(logsDir, 'audit.log'),
             level: 'info',
             maxsize: 10_485_760,
             maxFiles: 20,
@@ -60,12 +93,12 @@ exports.logger = winston_1.default.createLogger({
     ],
     exceptionHandlers: [
         new winston_1.default.transports.File({
-            filename: path_1.default.join(logsDir, 'exceptions.log'),
+            filename: path.join(logsDir, 'exceptions.log'),
         }),
     ],
     rejectionHandlers: [
         new winston_1.default.transports.File({
-            filename: path_1.default.join(logsDir, 'rejections.log'),
+            filename: path.join(logsDir, 'rejections.log'),
         }),
     ],
 });

@@ -90,7 +90,7 @@ class AuthService {
         }
     }
     async hashPassword(password) {
-        const saltRounds = 10;
+        const saltRounds = parseInt(process.env.BCRYPT_ROUNDS || '12');
         return bcryptjs_1.default.hash(password, saltRounds);
     }
     async createUser(userData) {

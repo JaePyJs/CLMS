@@ -14,6 +14,7 @@ exports.endStudentActivity = endStudentActivity;
 const prisma_1 = require("@/utils/prisma");
 const logger_1 = require("@/utils/logger");
 const client_1 = require("@prisma/client");
+const performanceOptimizationService_1 = require("./performanceOptimizationService");
 function getDefaultTimeLimit(grade_category) {
     const timeLimits = {
         PRIMARY: parseInt(process.env.PRIMARY_TIME_LIMIT || '30'),
@@ -24,7 +25,7 @@ function getDefaultTimeLimit(grade_category) {
     return timeLimits[gradeCategory] || 60;
 }
 async function getStudentByBarcode(barcode) {
-    try {
+    return performanceOptimizationService_1.performanceOptimizationService.executeQuery('student_by_barcode', async () => {
         const student = await prisma_1.prisma.students.findUnique({
             where: { student_id: barcode },
             include: {
@@ -44,17 +45,14 @@ async function getStudentByBarcode(barcode) {
             defaultTimeLimit,
             hasActiveSession: student.activities.length > 0,
         };
-    }
-    catch (error) {
-        logger_1.logger.error('Error fetching student by barcode', {
-            error: error.message,
-            barcode,
-        });
-        throw error;
-    }
+    }, {
+        key: `student:barcode:${barcode}`,
+        ttl: 300,
+        tags: ['student', 'barcode'],
+    });
 }
 async function getStudentById(id) {
-    try {
+    return performanceOptimizationService_1.performanceOptimizationService.executeQuery('student_by_id', async () => {
         const student = await prisma_1.prisma.students.findUnique({
             where: { id },
             include: {
@@ -74,22 +72,20 @@ async function getStudentById(id) {
             defaultTimeLimit,
             hasActiveSession: student.activities.length > 0,
         };
-    }
-    catch (error) {
-        logger_1.logger.error('Error fetching student by ID', {
-            error: error.message,
-            id,
-        });
-        throw error;
-    }
+    }, {
+        key: `student:id:${id}`,
+        ttl: 300,
+        tags: ['student'],
+    });
 }
 async function getStudents(options = {}) {
-    try {
-        const { grade_category, is_active, page = 1, limit = 50 } = options;
+    const { grade_category, is_active, page = 1, limit = 50 } = options;
+    const cacheKey = `students:list:${JSON.stringify({ grade_category, is_active, page, limit })}`;
+    return performanceOptimizationService_1.performanceOptimizationService.executeQuery('students_list', async () => {
         const skip = (page - 1) * limit;
         const where = {};
-        if (gradeCategory) {
-            where.grade_category = gradeCategory;
+        if (grade_category) {
+            where.grade_category = grade_category;
         }
         if (isActive !== undefined) {
             where.is_active = isActive;
@@ -113,14 +109,11 @@ async function getStudents(options = {}) {
                 pages: Math.ceil(total / limit),
             },
         };
-    }
-    catch (error) {
-        logger_1.logger.error('Error fetching students', {
-            error: error.message,
-            options,
-        });
-        throw error;
-    }
+    }, {
+        key: cacheKey,
+        ttl: 180,
+        tags: ['students', 'list'],
+    });
 }
 async function createStudent(data) {
     try {
