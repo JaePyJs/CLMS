@@ -303,4 +303,3 @@ const setupGlobalErrorHandlers = () => {
 };
 exports.setupGlobalErrorHandlers = setupGlobalErrorHandlers;
 exports.default = BaseError;
-//# sourceMappingURL=errors.js.map

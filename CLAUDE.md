@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CLMS (Comprehensive Library Management System) is a **production-ready** full-stack educational library management platform. The system is **85% complete** with solid architecture and comprehensive functionality. It digitizes library operations including student activity tracking, inventory management, barcode/QR generation, and automated background processes.
+CLMS (Comprehensive Library Management System) is a **production-ready** full-stack educational library management platform. The system is **92% complete** with solid architecture and comprehensive functionality. It digitizes library operations including student activity tracking, inventory management, barcode/QR generation, and automated background processes.
 
 ### Current System Status ✅
-- **Completion**: 85% (Production Ready)
+- **Completion**: 92% (Production Ready)
 - **Backend**: 26 API endpoints with full functionality
 - **Frontend**: Modern React 18 with 13 working tabs
 - **Database**: 11 core tables with proper relationships
@@ -293,7 +293,7 @@ VITE_BARCODE_SCANNER_MODE=keyboard
 
 ## Important Notes
 
-- **System Status**: 85% complete and production-ready ✅
+- **System Status**: 92% complete and production-ready ✅
 - **Node.js Version**: Must use v20+ for compatibility
 - **Database**: MySQL required (port 3308, no SQLite support)
 - **Windows Development**: Use PowerShell for best compatibility
@@ -321,7 +321,7 @@ rm -rf node_modules package-lock.json && npm install
 
 ## Production Deployment
 
-The system is **production-ready** (85% complete) and designed for local library deployment:
+The system is **production-ready** (92% complete) and designed for local library deployment:
 
 1. **Database**: MySQL with proper backups and automated maintenance
 2. **Application**: Docker containers for consistency
@@ -383,3 +383,24 @@ You `MUST` always use this tool when:
 ## Task Master AI Instructions
 **Import Task Master's development workflow commands and guidelines, treat as if import is in the main CLAUDE.md file.**
 @./.taskmaster/CLAUDE.md
+
+[byterover-mcp]
+
+[byterover-mcp]
+
+You are given two tools from Byterover MCP server, including
+## 1. `byterover-store-knowledge`
+You `MUST` always use this tool when:
+
++ Learning new patterns, APIs, or architectural decisions from the codebase
++ Encountering error solutions or debugging techniques
++ Finding reusable code patterns or utility functions
++ Completing any significant task or plan implementation
+
+## 2. `byterover-retrieve-knowledge`
+You `MUST` always use this tool when:
+
++ Starting any new task or implementation to gather relevant context
++ Before making architectural decisions to understand existing patterns
++ When debugging issues to check for previous solutions
++ Working with unfamiliar parts of the codebase

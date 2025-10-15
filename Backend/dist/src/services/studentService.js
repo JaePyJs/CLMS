@@ -411,4 +411,3 @@ async function endStudentActivity(activityId) {
         throw error;
     }
 }
-//# sourceMappingURL=studentService.js.map

@@ -311,4 +311,3 @@ exports.automationJobValidationRules = {
             .withMessage('Config must be an object'),
     ],
 };
-//# sourceMappingURL=validation.js.map

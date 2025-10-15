@@ -452,4 +452,3 @@ router.get('/custom', async (req, res) => {
     }
 });
 exports.default = router;
-//# sourceMappingURL=reports.js.map

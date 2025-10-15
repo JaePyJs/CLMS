@@ -426,14 +426,20 @@ router.get('/summary', async (req: Request, res: Response) => {
       heatMapData,
       seasonalPatterns,
       resourceForecasts,
-      baseMetrics
+      baseMetrics,
+      bookCirculation,
+      fineCollection,
+      equipmentUtilization
     ] = await Promise.all([
       analyticsService.generatePredictiveInsights(timeframe),
       analyticsService.generateUsageHeatMap(timeframe),
       analyticsService.analyzeSeasonalPatterns(),
       analyticsService.generateResourceForecasts(timeframe),
       // Use existing metrics endpoint data
-      getBaseMetrics()
+      getBaseMetrics(),
+      analyticsService.getBookCirculationAnalytics(timeframe),
+      analyticsService.getFineCollectionAnalytics(timeframe),
+      analyticsService.getEquipmentUtilizationAnalytics(timeframe)
     ]);
 
     const summary = {
@@ -443,6 +449,9 @@ router.get('/summary', async (req: Request, res: Response) => {
       seasonalPatterns,
       resourceForecasts,
       baseMetrics,
+      bookCirculation,
+      fineCollection,
+      equipmentUtilization,
       generatedAt: new Date().toISOString()
     };
 
@@ -457,6 +466,143 @@ router.get('/summary', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve analytics summary',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get comprehensive library metrics
+router.get('/library-metrics', requirePermission(Permission.ANALYTICS_VIEW), async (req: Request, res: Response) => {
+  try {
+    const timeframe = (req.query.timeframe as 'day' | 'week' | 'month') || 'week';
+
+    const metrics = await analyticsService.getComprehensiveLibraryMetrics(timeframe);
+
+    res.json({
+      success: true,
+      data: metrics,
+      timeframe,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Failed to get library metrics', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve library metrics',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get book circulation analytics
+router.get('/book-circulation', requirePermission(Permission.ANALYTICS_VIEW), async (req: Request, res: Response) => {
+  try {
+    const timeframe = (req.query.timeframe as 'day' | 'week' | 'month') || 'week';
+
+    const circulationData = await analyticsService.getBookCirculationAnalytics(timeframe);
+
+    res.json({
+      success: true,
+      data: circulationData,
+      timeframe,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Failed to get book circulation analytics', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve book circulation analytics',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get equipment utilization reports
+router.get('/equipment-utilization', requirePermission(Permission.ANALYTICS_VIEW), async (req: Request, res: Response) => {
+  try {
+    const timeframe = (req.query.timeframe as 'day' | 'week' | 'month') || 'week';
+
+    const utilizationData = await analyticsService.getEquipmentUtilizationAnalytics(timeframe);
+
+    res.json({
+      success: true,
+      data: utilizationData,
+      timeframe,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Failed to get equipment utilization analytics', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve equipment utilization analytics',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Get fine collection analytics
+router.get('/fine-collection', requirePermission(Permission.ANALYTICS_VIEW), async (req: Request, res: Response) => {
+  try {
+    const timeframe = (req.query.timeframe as 'day' | 'week' | 'month') || 'week';
+
+    const fineData = await analyticsService.getFineCollectionAnalytics(timeframe);
+
+    res.json({
+      success: true,
+      data: fineData,
+      timeframe,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Failed to get fine collection analytics', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve fine collection analytics',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Export analytics data
+router.post('/export', requirePermission(Permission.ANALYTICS_VIEW), async (req: Request, res: Response) => {
+  try {
+    const { format, timeframe, sections } = req.body;
+
+    if (!format || !['csv', 'json', 'pdf'].includes(format)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid format. Must be csv, json, or pdf'
+      });
+    }
+
+    const exportData = await analyticsService.exportAnalyticsData(format, timeframe, sections);
+
+    // Set appropriate headers
+    const filename = `analytics-${timeframe}-${new Date().toISOString().split('T')[0]}.${format}`;
+
+    if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(exportData);
+    } else if (format === 'json') {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.json(exportData);
+    } else if (format === 'pdf') {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(exportData);
+    }
+
+  } catch (error) {
+    logger.error('Failed to export analytics data', { error: (error as Error).message });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to export analytics data',
       timestamp: new Date().toISOString()
     });
   }

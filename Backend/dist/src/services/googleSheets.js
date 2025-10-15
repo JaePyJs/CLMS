@@ -725,4 +725,3 @@ class GoogleSheetsService {
 exports.GoogleSheetsService = GoogleSheetsService;
 exports.googleSheetsService = new GoogleSheetsService();
 exports.default = exports.googleSheetsService;
-//# sourceMappingURL=googleSheets.js.map

@@ -60,6 +60,11 @@ interface AppStore {
   connectedToBackend: boolean
   isDarkMode: boolean
 
+  // Offline Sync State
+  offlineQueueCount: number
+  lastSyncTime: number | null
+  syncInProgress: boolean
+
   // Data State
   students: Student[]
   equipment: Equipment[]
@@ -76,6 +81,9 @@ interface AppStore {
   setBackendConnection: (connected: boolean) => void
   setDarkMode: (isDark: boolean) => void
   toggleDarkMode: () => void
+  setOfflineQueueCount: (count: number) => void
+  setLastSyncTime: (time: number | null) => void
+  setSyncInProgress: (inProgress: boolean) => void
   setStudents: (students: Student[]) => void
   setEquipment: (equipment: Equipment[]) => void
   setActivities: (activities: Activity[]) => void
@@ -94,6 +102,9 @@ export const useAppStore = create<AppStore>()(
       isOnline: navigator.onLine,
       connectedToBackend: false,
       isDarkMode: false,
+      offlineQueueCount: 0,
+      lastSyncTime: null,
+      syncInProgress: false,
       students: [],
       equipment: [],
       activities: [],
@@ -107,6 +118,9 @@ export const useAppStore = create<AppStore>()(
       setBackendConnection: (connected) => set({ connectedToBackend: connected }),
       setDarkMode: (isDark) => set({ isDarkMode: isDark }),
       toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      setOfflineQueueCount: (count) => set({ offlineQueueCount: count }),
+      setLastSyncTime: (time) => set({ lastSyncTime: time }),
+      setSyncInProgress: (inProgress) => set({ syncInProgress: inProgress }),
       setStudents: (students) => set({ students }),
       setEquipment: (equipment) => set({ equipment }),
       setActivities: (activities) => set({ activities }),

@@ -212,4 +212,3 @@ router.delete('/users/:id', [(0, express_validator_1.param)('id').notEmpty().wit
     });
 }));
 exports.default = router;
-//# sourceMappingURL=auth.js.map

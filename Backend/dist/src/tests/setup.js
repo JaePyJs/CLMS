@@ -29,4 +29,3 @@ function generateTestStudentId(testName) {
     const random = Math.random().toString(36).substring(2, 5);
     return `TEST-${testName}-${timestamp}-${random}`;
 }
-//# sourceMappingURL=setup.js.map

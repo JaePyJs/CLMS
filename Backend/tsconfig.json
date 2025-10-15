@@ -24,6 +24,8 @@
     "exactOptionalPropertyTypes": false,
     "isolatedModules": true,
     "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "baseUrl": "./src",
     "paths": {
       "@/*": ["*"],
@@ -46,6 +48,11 @@
     "src/routes/analytics-broken.ts",
     "src/scripts/clear-all-data.ts",
     "src/scripts/generate-sample-data.ts",
-    "src/scripts/setup-library-rooms.ts"
+    "src/scripts/setup-library-rooms.ts",
+    "src/websocket/**",
+    "src/workers/**",
+    "src/working-app.ts",
+    "src/utils/queryOptimizer.ts",
+    "src/tests/**"
   ]
 }

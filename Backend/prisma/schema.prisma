@@ -3,28 +3,23 @@ generator client {
 }
 
 datasource db {
-  provider          = "mysql"
-  url               = env("DATABASE_URL")
-  relationMode      = "prisma"
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
-/// Comprehensive audit trail for all system changes and user actions
-/// Stores who did what, when, and tracks before/after values
-/// Contains encrypted sensitive information in audit data
 model audit_logs {
-  id           String   @id
-  entity       String
-  action       String
-  created_at   DateTime @default(now())
-  entity_id    String
-  ip_address   String?  @db.Text /// IP address (encrypted)
-  new_values   Json?    /// New values (may contain encrypted data)
-  old_values   Json?    /// Old values (may contain encrypted data)
-  performed_by String   @default("Sophia")
-  user_agent   String?
-
-  // Encryption metadata fields
-  ip_address_enc Json?   /// IP address encryption metadata
+  id             String   @id
+  entity         String
+  action         String
+  created_at     DateTime @default(now())
+  entity_id      String
+  ip_address     String?  @db.Text
+  new_values     Json?
+  old_values     Json?
+  performed_by   String   @default("Sophia")
+  user_agent     String?
+  ip_address_enc Json?
 
   @@index([action], map: "idx_audit_logs_action")
   @@index([created_at], map: "idx_audit_logs_created_at")
@@ -33,16 +28,14 @@ model audit_logs {
   @@index([performed_by], map: "idx_audit_logs_performed_by")
 }
 
-/// Scheduled automation jobs for background tasks
-/// Includes daily backups, Google Sheets sync, cleanup tasks
 model automation_jobs {
   id                  String                 @id
   name                String                 @unique
   type                automation_jobs_type
-  schedule            String                 /// Cron expression for job scheduling
+  schedule            String
   description         String?
   status              automation_jobs_status @default(IDLE)
-  config              Json?                  /// Job-specific configuration
+  config              Json?
   average_duration_ms Int?
   created_at          DateTime               @default(now())
   failure_count       Int                    @default(0)
@@ -52,7 +45,6 @@ model automation_jobs {
   success_count       Int                    @default(0)
   total_runs          Int                    @default(0)
   updated_at          DateTime
-  automation_logs     automation_logs[]
 
   @@index([is_enabled], map: "idx_automation_jobs_is_enabled")
   @@index([next_run_at], map: "idx_automation_jobs_next_run")
@@ -60,22 +52,19 @@ model automation_jobs {
   @@index([type], map: "idx_automation_jobs_type")
 }
 
-/// Execution history and logs for automation jobs
-/// Tracks success/failure, performance metrics, and error details
 model automation_logs {
   id                String                 @id
   status            automation_logs_status
   success           Boolean
   completed_at      DateTime?
-  duration_ms       Int?                   /// Job execution time in milliseconds
-  error_details     Json?                  /// Detailed error stack trace
+  duration_ms       Int?
+  error_details     Json?
   error_message     String?
   execution_id      String                 @unique
   job_id            String
-  records_processed Int?                   /// Number of records affected
+  records_processed Int?
   started_at        DateTime               @default(now())
   triggered_by      String                 @default("SCHEDULED")
-  automation_jobs   automation_jobs        @relation(fields: [job_id], references: [id], onDelete: Cascade)
 
   @@index([job_id], map: "idx_automation_logs_job_id")
   @@index([started_at], map: "idx_automation_logs_started_at")
@@ -83,20 +72,16 @@ model automation_logs {
   @@index([success], map: "idx_automation_logs_success")
 }
 
-/// Tracking of all generated barcodes for students and books
-/// Maintains history of barcode generation for audit purposes
 model barcode_history {
-  id           String    @id
-  format       String                        /// Barcode format (CODE128, EAN13, etc.)
+  id           String   @id
+  format       String
   barcode_data String
   book_id      String?
   entity_id    String
-  entity_type  String                        /// Type of entity (STUDENT, BOOK, EQUIPMENT)
-  generated_at DateTime  @default(now())
-  generated_by String    @default("Sophia")
+  entity_type  String
+  generated_at DateTime @default(now())
+  generated_by String   @default("Sophia")
   student_id   String?
-  books        books?    @relation(fields: [book_id], references: [id], onDelete: Cascade)
-  students     students? @relation(fields: [student_id], references: [id], onDelete: Cascade)
 
   @@index([book_id], map: "barcode_history_book_id_fkey")
   @@index([student_id], map: "barcode_history_student_id_fkey")
@@ -104,8 +89,6 @@ model barcode_history {
   @@index([entity_type], map: "idx_barcode_history_entity_type")
 }
 
-/// Book checkout/return transactions and fine management
-/// Tracks active loans, returns, overdue items, and fines
 model book_checkouts {
   id            String                @id
   status        book_checkouts_status @default(ACTIVE)
@@ -121,8 +104,6 @@ model book_checkouts {
   return_date   DateTime?
   student_id    String
   updated_at    DateTime
-  books         books                 @relation(fields: [book_id], references: [id], onDelete: Restrict)
-  students      students              @relation(fields: [student_id], references: [id], onDelete: Restrict)
 
   @@index([book_id], map: "idx_book_checkouts_book_id")
   @@index([due_date], map: "idx_book_checkouts_due_date")
@@ -131,104 +112,180 @@ model book_checkouts {
   @@index([student_id], map: "idx_book_checkouts_student_id")
 }
 
-/// Library book catalog with inventory tracking
-/// Supports barcode scanning and checkout management
 model books {
-  id               String            @id
+  id               String   @id
   isbn             String?
-  title            String            @db.VarChar(500)
-  author           String            @db.VarChar(500)
+  title            String   @db.VarChar(500)
+  author           String   @db.VarChar(500)
   publisher        String?
   category         String
   subcategory      String?
-  location         String?           /// Physical shelf location
-  accession_no     String            @unique /// Unique library catalog number
-  available_copies Int               @default(1)
+  location         String?
+  accession_no     String   @unique
+  available_copies Int      @default(1)
   barcode_image    String?
-  created_at       DateTime          @default(now())
-  is_active        Boolean           @default(true)
-  total_copies     Int               @default(1)
+  created_at       DateTime @default(now())
+  is_active        Boolean  @default(true)
+  total_copies     Int      @default(1)
   updated_at       DateTime
   cost_price       Float?
   edition          String?
   pages            String?
-  remarks          String?           @db.Text
+  remarks          String?  @db.Text
   source_of_fund   String?
   volume           String?
   year             Int?
-  barcode_history  barcode_history[]
-  book_checkouts   book_checkouts[]
 
   @@index([accession_no], map: "idx_books_accession_no")
   @@index([category], map: "idx_books_category")
   @@index([is_active], map: "idx_books_is_active")
 }
 
-/// Library equipment inventory (computers, gaming stations, AVR)
-/// Manages equipment availability, reservations, maintenance, and lifecycle
-/// Contains encrypted sensitive identification information
 model equipment {
-  id                      String                     @id
-  name                    String
-  type                    equipment_type
-  location                String                     /// Physical location in library
-  status                  equipment_status           @default(AVAILABLE)
-  description             String?
-  created_at              DateTime                   @default(now())
-  equipment_id            String                     @unique
-  max_time_minutes        Int                        /// Maximum session duration
-  requires_supervision    Boolean                    @default(false)
-  updated_at              DateTime
-  purchase_date           DateTime?                  /// When equipment was acquired
-  purchase_cost           Float?                     /// Purchase price
-  serial_number           String?                    @db.VarChar(255) /// Manufacturer serial number (encrypted)
-  asset_tag               String?                    @db.VarChar(255) /// Asset tracking tag (encrypted)
-  warranty_expiry         DateTime?                  /// Warranty expiration date
-  condition_rating        equipment_condition_rating @default(EXCELLENT) /// Current condition
-  maintenance_interval    Int?                       /// Days between maintenance
-  last_maintenance        DateTime?                  /// Last maintenance date
-  next_maintenance        DateTime?                  /// Scheduled maintenance
-  total_usage_hours       Float                      @default(0) /// Total usage tracking
-  daily_usage_hours       Float                      @default(0) /// Daily usage hours
-  qr_code_data            String?                    /// QR code for scanning
-  barcode_data            String?                    /// Barcode data
-  category                String?                    /// Equipment category
-  tags                    Json?                      /// Equipment tags for filtering
-  specifications          Json?                      /// Technical specifications
-  notes                   String?                    @db.Text /// General notes
-  is_active               Boolean                    @default(true) /// Active/inactive status
+  id                   String                     @id
+  name                 String
+  type                 equipment_type
+  location             String
+  status               equipment_status           @default(AVAILABLE)
+  description          String?
+  created_at           DateTime                   @default(now())
+  equipment_id         String                     @unique
+  max_time_minutes     Int
+  requires_supervision Boolean                    @default(false)
+  updated_at           DateTime
+  purchase_date        DateTime?
+  purchase_cost        Float?
+  serial_number        String?                    @db.VarChar(255)
+  asset_tag            String?                    @db.VarChar(255)
+  warranty_expiry      DateTime?
+  condition_rating     equipment_condition_rating @default(EXCELLENT)
+  maintenance_interval Int?
+  last_maintenance     DateTime?
+  next_maintenance     DateTime?
+  total_usage_hours    Float                      @default(0)
+  daily_usage_hours    Float                      @default(0)
+  qr_code_data         String?
+  barcode_data         String?
+  category             String?
+  tags                 Json?
+  specifications       Json?
+  notes                String?                    @db.Text
+  is_active            Boolean                    @default(true)
+  serial_number_enc    Json?
+  asset_tag_enc        Json?
 
-  // Encryption metadata fields
-  serial_number_enc       Json?                      /// Serial number encryption metadata
-  asset_tag_enc           Json?                      /// Asset tag encryption metadata
-
-  // Relations
-  equipment_sessions      equipment_sessions[]
-  student_activities      student_activities[]
-  equipment_reservations  equipment_reservations[]
-  equipment_maintenance   equipment_maintenance[]
-  equipment_usage_stats   equipment_usage_stats[]
-  equipment_reports       equipment_reports[]
-  equipment_condition_reports equipment_condition_reports[]
-
+  @@index([asset_tag], map: "idx_equipment_asset_tag")
+  @@index([category], map: "idx_equipment_category")
   @@index([equipment_id], map: "idx_equipment_equipment_id")
+  @@index([is_active], map: "idx_equipment_is_active")
+  @@index([location], map: "idx_equipment_location")
+  @@index([next_maintenance], map: "idx_equipment_next_maintenance")
   @@index([status], map: "idx_equipment_status")
   @@index([type], map: "idx_equipment_type")
-  @@index([category], map: "idx_equipment_category")
-  @@index([location], map: "idx_equipment_location")
-  @@index([asset_tag], map: "idx_equipment_asset_tag")
-  @@index([next_maintenance], map: "idx_equipment_next_maintenance")
-  @@index([is_active], map: "idx_equipment_is_active")
 }
 
-/// Student equipment usage sessions with time tracking
-/// Supports session extensions and automatic expiry checking
+model equipment_condition_reports {
+  id               String                                       @id
+  equipment_id     String
+  condition_before equipment_condition_reports_condition_before
+  condition_after  equipment_condition_reports_condition_after
+  assessment_type  equipment_condition_reports_assessment_type  @default(ROUTINE)
+  damage_type      String?
+  damage_severity  equipment_condition_reports_damage_severity  @default(NONE)
+  description      String?                                      @db.Text
+  cost_estimate    Float?
+  reported_by      String                                       @default("Sophia")
+  assessment_date  DateTime                                     @default(now())
+  resolved         Boolean                                      @default(false)
+  resolution_notes String?                                      @db.Text
+  created_at       DateTime                                     @default(now())
+  updated_at       DateTime
+  photos           Json?
+  witness_names    Json?
+
+  @@index([assessment_date], map: "idx_equipment_condition_reports_date")
+  @@index([equipment_id], map: "idx_equipment_condition_reports_equipment_id")
+  @@index([damage_severity], map: "idx_equipment_condition_reports_severity")
+}
+
+model equipment_maintenance {
+  id                 String                                 @id
+  equipment_id       String
+  maintenance_type   equipment_maintenance_maintenance_type @default(ROUTINE)
+  description        String?                                @db.Text
+  cost               Float?
+  vendor             String?
+  scheduled_date     DateTime?
+  completed_date     DateTime?
+  status             equipment_maintenance_status           @default(SCHEDULED)
+  notes              String?                                @db.Text
+  created_at         DateTime                               @default(now())
+  updated_at         DateTime
+  performed_by       String?                                @default("Sophia")
+  priority           equipment_maintenance_priority         @default(NORMAL)
+  estimated_duration Int?
+  actual_duration    Int?
+  parts_replaced     Json?
+  warranty_claim     Boolean                                @default(false)
+  follow_up_required Boolean                                @default(false)
+  follow_up_date     DateTime?
+
+  @@index([equipment_id], map: "idx_equipment_maintenance_equipment_id")
+  @@index([priority], map: "idx_equipment_maintenance_priority")
+  @@index([scheduled_date], map: "idx_equipment_maintenance_scheduled")
+  @@index([status], map: "idx_equipment_maintenance_status")
+  @@index([maintenance_type], map: "idx_equipment_maintenance_type")
+}
+
+model equipment_reports {
+  id            String                        @id
+  equipment_id  String?
+  report_type   equipment_reports_report_type @default(MONTHLY)
+  report_period String
+  title         String
+  content       Json
+  metrics       Json
+  generated_by  String                        @default("Sophia")
+  generated_at  DateTime                      @default(now())
+  is_public     Boolean                       @default(false)
+  file_path     String?
+  summary       String?                       @db.Text
+
+  @@unique([report_type, report_period, equipment_id])
+  @@index([equipment_id], map: "idx_equipment_reports_equipment_id")
+  @@index([report_period], map: "idx_equipment_reports_period")
+  @@index([report_type], map: "idx_equipment_reports_type")
+}
+
+model equipment_reservations {
+  id                  String                        @id
+  equipment_id        String
+  student_id          String
+  reservation_date    DateTime                      @default(now())
+  start_time          DateTime
+  end_time            DateTime
+  status              equipment_reservations_status @default(PENDING)
+  purpose             String?                       @db.Text
+  notes               String?                       @db.Text
+  created_at          DateTime                      @default(now())
+  updated_at          DateTime
+  processed_by        String                        @default("Sophia")
+  cancellation_reason String?                       @db.Text
+  cancelled_at        DateTime?
+
+  @@index([reservation_date], map: "idx_equipment_reservations_date")
+  @@index([equipment_id], map: "idx_equipment_reservations_equipment_id")
+  @@index([start_time], map: "idx_equipment_reservations_start_time")
+  @@index([status], map: "idx_equipment_reservations_status")
+  @@index([student_id], map: "idx_equipment_reservations_student_id")
+}
+
 model equipment_sessions {
   id              String                    @id
   status          equipment_sessions_status @default(ACTIVE)
-  extensions      Int                       @default(0)      /// Number of time extensions granted
+  extensions      Int                       @default(0)
   notes           String?
-  actual_duration Int?                      /// Actual session duration in minutes
+  actual_duration Int?
   created_at      DateTime                  @default(now())
   equipment_id    String
   planned_end     DateTime?
@@ -237,8 +294,6 @@ model equipment_sessions {
   session_start   DateTime                  @default(now())
   student_id      String
   updated_at      DateTime
-  equipment       equipment                 @relation(fields: [equipment_id], references: [id], onDelete: Cascade)
-  students        students                  @relation(fields: [student_id], references: [id], onDelete: Restrict)
 
   @@index([equipment_id], map: "idx_equipment_sessions_equipment_id")
   @@index([session_start], map: "idx_equipment_sessions_start")
@@ -246,150 +301,26 @@ model equipment_sessions {
   @@index([student_id], map: "idx_equipment_sessions_student_id")
 }
 
-/// Equipment reservations for future use
-/// Manages booking system and conflict prevention
-model equipment_reservations {
-  id                String                        @id
-  equipment_id      String
-  student_id        String
-  reservation_date  DateTime                      @default(now())
-  start_time        DateTime                      /// Reservation start time
-  end_time          DateTime                      /// Reservation end time
-  status            equipment_reservation_status  @default(PENDING)
-  purpose           String?                       @db.Text
-  notes             String?                       @db.Text
-  created_at        DateTime                      @default(now())
-  updated_at        DateTime
-  processed_by      String                        @default("Sophia")
-  cancellation_reason String?                     @db.Text
-  cancelled_at      DateTime?
-
-  // Relations
-  equipment         equipment                    @relation(fields: [equipment_id], references: [id], onDelete: Cascade)
-  students          students                     @relation(fields: [student_id], references: [id], onDelete: Restrict)
-
-  @@index([equipment_id], map: "idx_equipment_reservations_equipment_id")
-  @@index([student_id], map: "idx_equipment_reservations_student_id")
-  @@index([start_time], map: "idx_equipment_reservations_start_time")
-  @@index([status], map: "idx_equipment_reservations_status")
-  @@index([reservation_date], map: "idx_equipment_reservations_date")
-}
-
-/// Equipment maintenance and repair tracking
-/// Manages scheduled maintenance and repair history
-model equipment_maintenance {
-  id                    String                         @id
-  equipment_id          String
-  maintenance_type      equipment_maintenance_type     @default(ROUTINE)
-  description           String?                        @db.Text
-  cost                  Float?
-  vendor                String?                        /// Maintenance vendor
-  scheduled_date        DateTime?
-  completed_date        DateTime?
-  status                equipment_maintenance_status   @default(SCHEDULED)
-  notes                 String?                        @db.Text
-  created_at            DateTime                       @default(now())
-  updated_at            DateTime
-  performed_by          String?                        @default("Sophia")
-  priority              equipment_maintenance_priority @default(NORMAL)
-  estimated_duration    Int?                           /// Estimated duration in hours
-  actual_duration       Int?                           /// Actual duration in hours
-  parts_replaced        Json?                          /// List of parts replaced
-  warranty_claim        Boolean                        @default(false)
-  follow_up_required    Boolean                        @default(false)
-  follow_up_date        DateTime?
-
-  // Relations
-  equipment             equipment                      @relation(fields: [equipment_id], references: [id], onDelete: Cascade)
-
-  @@index([equipment_id], map: "idx_equipment_maintenance_equipment_id")
-  @@index([scheduled_date], map: "idx_equipment_maintenance_scheduled")
-  @@index([status], map: "idx_equipment_maintenance_status")
-  @@index([maintenance_type], map: "idx_equipment_maintenance_type")
-  @@index([priority], map: "idx_equipment_maintenance_priority")
-}
-
-/// Equipment usage statistics and analytics
-/// Tracks usage patterns and performance metrics
 model equipment_usage_stats {
-  id                String            @id
+  id                String   @id
   equipment_id      String
-  date              DateTime          @default(now())
-  total_sessions    Int               @default(0)
-  total_minutes     Int               @default(0)
-  peak_hour_start   Int?              /// Peak usage hour start
-  peak_hour_end     Int?              /// Peak usage hour end
-  utilization_rate  Float             @default(0) /// Percentage of time used
-  average_session   Float             @default(0) /// Average session length
-  issues_reported   Int               @default(0)
+  date              DateTime @default(now())
+  total_sessions    Int      @default(0)
+  total_minutes     Int      @default(0)
+  peak_hour_start   Int?
+  peak_hour_end     Int?
+  utilization_rate  Float    @default(0)
+  average_session   Float    @default(0)
+  issues_reported   Int      @default(0)
   revenue_generated Float?
-  created_at        DateTime          @default(now())
+  created_at        DateTime @default(now())
   updated_at        DateTime
-
-  // Relations
-  equipment         equipment        @relation(fields: [equipment_id], references: [id], onDelete: Cascade)
 
   @@unique([equipment_id, date])
-  @@index([equipment_id], map: "idx_equipment_usage_stats_equipment_id")
   @@index([date], map: "idx_equipment_usage_stats_date")
+  @@index([equipment_id], map: "idx_equipment_usage_stats_equipment_id")
 }
 
-/// Equipment condition assessment and damage reports
-/// Tracks condition changes and damage incidents
-model equipment_condition_reports {
-  id                String                          @id
-  equipment_id      String
-  condition_before  equipment_condition_rating     /// Condition before assessment
-  condition_after   equipment_condition_rating     /// Condition after assessment
-  assessment_type   equipment_assessment_type      @default(ROUTINE)
-  damage_type       String?                         /// Type of damage if any
-  damage_severity   equipment_damage_severity       @default(NONE)
-  description       String?                         @db.Text
-  cost_estimate     Float?                          /// Repair cost estimate
-  reported_by       String                          @default("Sophia")
-  assessment_date   DateTime                        @default(now())
-  resolved          Boolean                         @default(false)
-  resolution_notes  String?                         @db.Text
-  created_at        DateTime                        @default(now())
-  updated_at        DateTime
-  photos            Json?                           /// Photo evidence URLs
-  witness_names     Json?                           /// Witnesses if applicable
-
-  // Relations
-  equipment         equipment                       @relation(fields: [equipment_id], references: [id], onDelete: Cascade)
-
-  @@index([equipment_id], map: "idx_equipment_condition_reports_equipment_id")
-  @@index([assessment_date], map: "idx_equipment_condition_reports_date")
-  @@index([damage_severity], map: "idx_equipment_condition_reports_severity")
-}
-
-/// Equipment performance reports and analysis
-/// Monthly/quarterly reports on equipment performance
-model equipment_reports {
-  id                String                    @id
-  equipment_id      String?
-  report_type       equipment_report_type    @default(MONTHLY)
-  report_period     String                   /// Period identifier (e.g., "2024-01")
-  title             String
-  content           Json                     /// Report content as JSON
-  metrics           Json                     /// Performance metrics
-  generated_by      String                   @default("Sophia")
-  generated_at      DateTime                 @default(now())
-  is_public         Boolean                  @default(false)
-  file_path         String?                  /// PDF export path
-  summary           String?                  @db.Text
-
-  // Relations
-  equipment         equipment?               @relation(fields: [equipment_id], references: [id], onDelete: SetNull)
-
-  @@unique([report_type, report_period, equipment_id])
-  @@index([equipment_id], map: "idx_equipment_reports_equipment_id")
-  @@index([report_type], map: "idx_equipment_reports_type")
-  @@index([report_period], map: "idx_equipment_reports_period")
-}
-
-/// System notifications for librarians and administrators
-/// Includes overdue alerts, fines, equipment expiry warnings
 model notifications {
   id         String                 @id
   user_id    String?
@@ -399,10 +330,10 @@ model notifications {
   priority   notifications_priority @default(NORMAL)
   read       Boolean                @default(false)
   read_at    DateTime?
-  action_url String?                /// Optional URL for quick action
-  metadata   Json?                  /// Additional notification context
+  action_url String?
+  metadata   Json?
   created_at DateTime               @default(now())
-  expires_at DateTime?              /// Auto-delete after expiry
+  expires_at DateTime?
 
   @@index([created_at], map: "idx_notifications_created_at")
   @@index([read], map: "idx_notifications_read")
@@ -410,8 +341,6 @@ model notifications {
   @@index([user_id], map: "idx_notifications_user_id")
 }
 
-/// Unified activity log for all student library interactions
-/// Tracks visits, equipment use, checkouts, and Google Sheets sync status
 model student_activities {
   id                 String                             @id
   student_id         String
@@ -423,17 +352,15 @@ model student_activities {
   checkout_id        String?
   start_time         DateTime                           @default(now())
   end_time           DateTime?
-  duration_minutes   Int?                               /// Calculated activity duration
-  time_limit_minutes Int?                               /// Grade-based time limit
+  duration_minutes   Int?
+  time_limit_minutes Int?
   status             student_activities_status          @default(ACTIVE)
   notes              String?
   processed_by       String                             @default("Sophia")
-  google_synced      Boolean                            @default(false) /// Sync status to Google Sheets
+  google_synced      Boolean                            @default(false)
   sync_attempts      Int                                @default(0)
   created_at         DateTime                           @default(now())
   updated_at         DateTime
-  equipment          equipment?                         @relation(fields: [equipment_id], references: [id], onDelete: SetNull)
-  students           students                           @relation(fields: [student_id], references: [id], onDelete: Cascade)
 
   @@index([activity_type], map: "idx_student_activities_activity_type")
   @@index([google_synced], map: "idx_student_activities_google_synced")
@@ -444,85 +371,63 @@ model student_activities {
   @@index([equipment_id], map: "student_activities_equipment_id_fkey")
 }
 
-/// Student registry with grade-based time limit categorization
-/// Central entity for all library interactions and activity tracking
-/// Contains encrypted PII fields for privacy protection
 model students {
-  id                     String                  @id
-  section                String?                 @db.Text /// Section/class (encrypted)
-  barcode_image          String?                 /// Generated barcode image path
-  created_at             DateTime                @default(now())
-  first_name             String                  @db.Text /// First name (encrypted)
-  grade_category         students_grade_category /// Determines time limits and permissions
-  grade_level            String
-  is_active              Boolean                 @default(true)
-  last_name              String                  @db.Text /// Last name (encrypted)
-  student_id             String                  @unique /// School-issued student ID (encrypted)
-  updated_at             DateTime
-  equipment_ban          Boolean                 @default(false) /// Equipment usage ban
-  equipment_ban_reason   String?                 @db.Text /// Reason for equipment ban
-  equipment_ban_until    DateTime?               /// Equipment ban expiration
-  fine_balance           Float                   @default(0) /// Outstanding fines
-  max_concurrent_reservations Int                @default(2) /// Max concurrent reservations
+  id                          String                  @id
+  section                     String?                 @db.Text
+  barcode_image               String?
+  created_at                  DateTime                @default(now())
+  first_name                  String                  @db.Text
+  grade_category              students_grade_category
+  grade_level                 String
+  is_active                   Boolean                 @default(true)
+  last_name                   String                  @db.Text
+  student_id                  String                  @unique
+  updated_at                  DateTime
+  equipment_ban               Boolean                 @default(false)
+  equipment_ban_reason        String?                 @db.Text
+  equipment_ban_until         DateTime?
+  fine_balance                Float                   @default(0)
+  max_concurrent_reservations Int                     @default(2)
+  first_name_enc              Json?
+  last_name_enc               Json?
+  student_id_enc              Json?
+  section_enc                 Json?
 
-  // Encryption metadata fields
-  first_name_enc         Json?                   /// First name encryption metadata
-  last_name_enc          Json?                   /// Last name encryption metadata
-  student_id_enc         Json?                   /// Student ID encryption metadata
-  section_enc            Json?                   /// Section encryption metadata
-
-  // Relations
-  barcode_history        barcode_history[]
-  book_checkouts         book_checkouts[]
-  equipment_sessions     equipment_sessions[]
-  equipment_reservations equipment_reservations[]
-  student_activities     student_activities[]
-
+  @@index([equipment_ban], map: "idx_students_equipment_ban")
   @@index([grade_category], map: "idx_students_grade_category")
   @@index([is_active], map: "idx_students_is_active")
   @@index([student_id], map: "idx_students_student_id")
-  @@index([equipment_ban], map: "idx_students_equipment_ban")
 }
 
-/// System-wide configuration key-value store
-/// Stores library settings, time limits, and feature flags
-/// Contains encrypted sensitive configuration values
 model system_config {
   id          String   @id
   key         String   @unique
-  value       String?  @db.Text /// Configuration value (encrypted if is_secret=true)
+  value       String?  @db.Text
   description String?
-  category    String   /// Config grouping (LIBRARY, SECURITY, FEATURES)
+  category    String
   created_at  DateTime @default(now())
-  is_secret   Boolean  @default(false) /// Sensitive data flag
+  is_secret   Boolean  @default(false)
   updated_at  DateTime
-
-  // Encryption metadata fields
-  value_enc   Json?    /// Value encryption metadata
+  value_enc   Json?
 
   @@index([category], map: "idx_system_config_category")
 }
 
-/// System users with role-based access control
-/// Supports 6 permission levels from SUPER_ADMIN to VIEWER
-/// Contains encrypted personal information
 model users {
   id            String     @id
-  username      String     @unique /// Username (encrypted)
-  password      String                /// Bcrypt hashed password
+  username      String     @unique
+  password      String
   role          users_role @default(LIBRARIAN)
   created_at    DateTime   @default(now())
   is_active     Boolean    @default(true)
   last_login_at DateTime?
   updated_at    DateTime
-  email         String?    @unique @db.VarChar(255) /// Email address (encrypted)
-  full_name     String?    @db.Text /// Full name (encrypted)
-  permissions   Json?                 /// Fine-grained permission overrides
-
-  // Encryption metadata fields
-  username_enc  Json?      /// Username encryption metadata
-  email_enc     Json?      /// Email encryption metadata
-  full_name_enc Json?      /// Full name encryption metadata
+  email         String?    @unique @db.VarChar(255)
+  full_name     String?    @db.Text
+  permissions   Json?
+  username_enc  Json?
+  email_enc     Json?
+  full_name_enc Json?
 
   @@index([is_active], map: "idx_users_is_active")
   @@index([role], map: "idx_users_role")
@@ -573,6 +478,32 @@ enum equipment_type {
   OTHER
 }
 
+enum equipment_condition_reports_condition_before {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+}
+
+enum equipment_maintenance_maintenance_type {
+  ROUTINE
+  REPAIR
+  INSPECTION
+  CALIBRATION
+  UPGRADE
+  CLEANING
+}
+
+enum equipment_reports_report_type {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  CUSTOM
+}
+
 enum notifications_type {
   OVERDUE_BOOK
   FINE_ADDED
@@ -584,6 +515,14 @@ enum notifications_type {
   WARNING
   ERROR
   SUCCESS
+}
+
+enum equipment_condition_reports_condition_after {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
 }
 
 enum users_role {
@@ -604,74 +543,13 @@ enum equipment_status {
   RETIRED
 }
 
-enum equipment_condition_rating {
-  EXCELLENT
-  GOOD
-  FAIR
-  POOR
-  DAMAGED
-}
-
-enum equipment_reservation_status {
-  PENDING
-  CONFIRMED
-  ACTIVE
-  COMPLETED
-  CANCELLED
-  NO_SHOW
-}
-
-enum equipment_maintenance_type {
-  ROUTINE
-  REPAIR
-  INSPECTION
-  CALIBRATION
-  UPGRADE
-  CLEANING
-}
-
-enum equipment_maintenance_status {
-  SCHEDULED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-  ON_HOLD
-  PENDING_PARTS
-}
-
-enum equipment_maintenance_priority {
-  LOW
-  NORMAL
-  HIGH
-  URGENT
-  CRITICAL
-}
-
-enum equipment_assessment_type {
+enum equipment_condition_reports_assessment_type {
   ROUTINE
   DAMAGE_REPORT
   PRE_MAINTENANCE
   POST_MAINTENANCE
   ANNUAL_INSPECTION
   INCIDENT
-}
-
-enum equipment_damage_severity {
-  NONE
-  MINOR
-  MODERATE
-  MAJOR
-  SEVERE
-  CRITICAL
-}
-
-enum equipment_report_type {
-  DAILY
-  WEEKLY
-  MONTHLY
-  QUARTERLY
-  ANNUAL
-  CUSTOM
 }
 
 enum student_activities_grade_category {
@@ -716,10 +594,53 @@ enum students_grade_category {
   SENIOR_HIGH
 }
 
+enum equipment_condition_reports_damage_severity {
+  NONE
+  MINOR
+  MODERATE
+  MAJOR
+  SEVERE
+  CRITICAL
+}
+
+enum equipment_reservations_status {
+  PENDING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum equipment_maintenance_status {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  ON_HOLD
+  PENDING_PARTS
+}
+
 enum student_activities_status {
   ACTIVE
   COMPLETED
   EXPIRED
   CANCELLED
   EXTENDED
+}
+
+enum equipment_maintenance_priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum equipment_condition_rating {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
 }

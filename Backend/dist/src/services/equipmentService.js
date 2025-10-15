@@ -465,4 +465,3 @@ async function getEquipmentStatistics() {
         throw error;
     }
 }
-//# sourceMappingURL=equipmentService.js.map

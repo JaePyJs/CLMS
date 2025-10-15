@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,11 @@ import PredictiveInsights from '@/components/analytics/PredictiveInsights'
 import UsageHeatMap from '@/components/analytics/UsageHeatMap'
 import TimeSeriesForecast from '@/components/analytics/TimeSeriesForecast'
 import AdvancedReporting from '@/components/dashboard/AdvancedReporting'
+import MetricsCards from '@/components/analytics/MetricsCards'
+import BookCirculationAnalytics from '@/components/analytics/BookCirculationAnalytics'
+import EquipmentUtilizationAnalytics from '@/components/analytics/EquipmentUtilizationAnalytics'
+import FineCollectionAnalytics from '@/components/analytics/FineCollectionAnalytics'
+import ExportAnalytics from '@/components/analytics/ExportAnalytics'
 import {
   BarChart,
   Bar,
@@ -43,13 +48,15 @@ import {
 
 export function AnalyticsDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month'>('week')
-  const [selectedChart, setSelectedChart] = useState('insights')
+  const [selectedChart, setSelectedChart] = useState('overview')
   const [isLoading, setIsLoading] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [predictiveInsights, setPredictiveInsights] = useState<any[]>([])
   const [heatMapData, setHeatMapData] = useState<any[]>([])
   const [forecastData, setForecastData] = useState<any[]>([])
   const [selectedMetric, setSelectedMetric] = useState<'student_visits' | 'equipment_usage' | 'book_circulation'>('student_visits')
+  const [comprehensiveData, setComprehensiveData] = useState<any>(null)
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
   const { activities } = useAppStore()
   const { mutate: exportData } = useExportData()
   const isLargeScreen = useBreakpoint('lg')
@@ -105,50 +112,102 @@ export function AnalyticsDashboard() {
   const overviewChartHeight = isLargeScreen ? 400 : 280
   const activityChartHeight = isLargeScreen ? 300 : 240
 
-  // Fetch predictive analytics data
-  useEffect(() => {
-    const fetchAnalyticsData = async () => {
-      try {
-        setIsLoading(true)
+  // Fetch comprehensive analytics data
+  const fetchComprehensiveData = useCallback(async () => {
+    try {
+      setIsLoading(true)
 
-        // Fetch predictive insights
-        const insightsResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/insights?timeframe=${selectedPeriod}`)
-        if (insightsResponse.ok) {
-          const insightsData = await insightsResponse.json()
-          setPredictiveInsights(insightsData.data.insights || [])
-        }
-
-        // Fetch heat map data
-        const heatMapResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/heatmap?timeframe=${selectedPeriod}`)
-        if (heatMapResponse.ok) {
-          const heatMapResult = await heatMapResponse.json()
-          setHeatMapData(heatMapResult.data.heatMapData || [])
-        }
-
-        // Fetch forecast data
-        const forecastResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/forecast?metric=${selectedMetric}&timeframe=${selectedPeriod}&periods=7`)
-        if (forecastResponse.ok) {
-          const forecastResult = await forecastResponse.json()
-          setForecastData(forecastResult.data.forecastData || [])
-        }
-
-      } catch (error) {
-        console.error('Failed to fetch analytics data:', error)
-      } finally {
-        setIsLoading(false)
+      // Fetch comprehensive library metrics
+      const metricsResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/library-metrics?timeframe=${selectedPeriod}`)
+      if (metricsResponse.ok) {
+        const metricsData = await metricsResponse.json()
+        setComprehensiveData(metricsData.data)
       }
-    }
 
-    fetchAnalyticsData()
+      // Fetch predictive insights
+      const insightsResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/insights?timeframe=${selectedPeriod}`)
+      if (insightsResponse.ok) {
+        const insightsData = await insightsResponse.json()
+        setPredictiveInsights(insightsData.data.insights || [])
+      }
+
+      // Fetch heat map data
+      const heatMapResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/heatmap?timeframe=${selectedPeriod}`)
+      if (heatMapResponse.ok) {
+        const heatMapResult = await heatMapResponse.json()
+        setHeatMapData(heatMapResult.data.heatMapData || [])
+      }
+
+      // Fetch forecast data
+      const forecastResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/forecast?metric=${selectedMetric}&timeframe=${selectedPeriod}&periods=7`)
+      if (forecastResponse.ok) {
+        const forecastResult = await forecastResponse.json()
+        setForecastData(forecastResult.data.forecastData || [])
+      }
+
+      setLastRefresh(new Date())
+    } catch (error) {
+      console.error('Failed to fetch analytics data:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }, [selectedPeriod, selectedMetric])
 
-  const handleExport = (format: 'csv' | 'json') => {
-    exportData({ format })
+  // Initial data fetch
+  useEffect(() => {
+    fetchComprehensiveData()
+  }, [fetchComprehensiveData])
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchComprehensiveData()
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [fetchComprehensiveData])
+
+  const handleExport = async (format: 'csv' | 'json' | 'pdf', sections: string[]) => {
+    try {
+      setIsExporting(true)
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics/export`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          format,
+          timeframe: selectedPeriod,
+          sections
+        })
+      })
+
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `analytics-${selectedPeriod}-${new Date().toISOString().split('T')[0]}.${format}`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+      }
+    } catch (error) {
+      console.error('Export failed:', error)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleInsightAction = async (insight: any, action: string) => {
     console.log('Insight action:', insight, action)
     // Implement insight action handling
+  }
+
+  const handleRefresh = () => {
+    fetchComprehensiveData()
   }
 
   const calculateTotalStudents = () => {
@@ -173,9 +232,9 @@ export function AnalyticsDashboard() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Analytics</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Advanced Analytics Dashboard</h2>
           <p className="text-muted-foreground">
-            Track library usage patterns and generate insights.
+            Comprehensive library analytics with real-time insights and reporting.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -189,87 +248,74 @@ export function AnalyticsDashboard() {
               <SelectItem value="month">This Month</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={() => handleExport('csv')}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={() => handleExport('json')}>
-            <FileText className="h-4 w-4 mr-2" />
-            Export JSON
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => window.open(`${import.meta.env.VITE_API_URL}/analytics/report?timeframe=${selectedPeriod}`, '_blank')}>
-            <FileText className="h-4 w-4 mr-2" />
-            Generate Report
-          </Button>
+          <ExportAnalytics
+            timeframe={selectedPeriod}
+            onExport={handleExport}
+            isExporting={isExporting}
+          />
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{calculateTotalStudents()}</div>
-            <p className="text-xs text-muted-foreground">
-              {selectedPeriod === 'day' ? 'Today' : selectedPeriod === 'week' ? 'This week' : 'This month'}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Peak Time</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{calculatePeakTime()}</div>
-            <p className="text-xs text-muted-foreground">
-              Busiest period
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Session</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{calculateAverageSessionTime()}</div>
-            <p className="text-xs text-muted-foreground">
-              Average duration
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Growth</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">+12%</div>
-            <p className="text-xs text-muted-foreground">
-              From last period
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Comprehensive Metrics Cards */}
+      <MetricsCards
+        timeframe={selectedPeriod}
+        data={comprehensiveData}
+        isLoading={isLoading}
+        onRefresh={handleRefresh}
+      />
 
       {/* Enhanced Analytics with Predictive Insights */}
       <Tabs value={selectedChart} onValueChange={setSelectedChart} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-7">
-          <TabsTrigger value="insights">Predictive Insights</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-8">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="circulation">Book Circulation</TabsTrigger>
+          <TabsTrigger value="equipment">Equipment</TabsTrigger>
+          <TabsTrigger value="fines">Fine Collection</TabsTrigger>
+          <TabsTrigger value="insights">Predictive Insights</TabsTrigger>
           <TabsTrigger value="forecasting">Forecasting</TabsTrigger>
           <TabsTrigger value="heatmap">Heat Map</TabsTrigger>
-          <TabsTrigger value="activities">Activities</TabsTrigger>
-          <TabsTrigger value="demographics">Demographics</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-4">
+          <BookCirculationAnalytics
+            timeframe={selectedPeriod}
+            data={comprehensiveData}
+            isLoading={isLoading}
+          />
+        </TabsContent>
+
+        {/* Book Circulation Tab */}
+        <TabsContent value="circulation" className="space-y-4">
+          <BookCirculationAnalytics
+            timeframe={selectedPeriod}
+            data={comprehensiveData}
+            isLoading={isLoading}
+          />
+        </TabsContent>
+
+        {/* Equipment Utilization Tab */}
+        <TabsContent value="equipment" className="space-y-4">
+          <EquipmentUtilizationAnalytics
+            timeframe={selectedPeriod}
+            data={comprehensiveData}
+            isLoading={isLoading}
+          />
+        </TabsContent>
+
+        {/* Fine Collection Tab */}
+        <TabsContent value="fines" className="space-y-4">
+          <FineCollectionAnalytics
+            timeframe={selectedPeriod}
+            data={comprehensiveData}
+            isLoading={isLoading}
+          />
+        </TabsContent>
 
         {/* Predictive Insights Tab */}
         <TabsContent value="insights" className="space-y-4">
@@ -599,31 +645,27 @@ export function AnalyticsDashboard() {
         </TabsContent>
       </Tabs>
 
-      {/* Detailed Reports */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Reports & Insights</CardTitle>
-          <CardDescription>
-            Generate detailed reports for administration and planning
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Button variant="outline" className="h-16 flex-col">
-              <FileText className="h-6 w-6 mb-2" />
-              <span>Daily Report</span>
-            </Button>
-            <Button variant="outline" className="h-16 flex-col">
-              <Calendar className="h-6 w-6 mb-2" />
-              <span>Weekly Summary</span>
-            </Button>
-            <Button variant="outline" className="h-16 flex-col">
-              <TrendingUp className="h-6 w-6 mb-2" />
-              <span>Monthly Analytics</span>
-            </Button>
+      {/* Footer with status and last refresh */}
+      <div className="flex items-center justify-between py-4 border-t">
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Clock className="h-4 w-4" />
+            Last updated: {lastRefresh.toLocaleTimeString()}
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex items-center gap-1">
+            <Activity className="h-4 w-4" />
+            Auto-refresh: Every 30 seconds
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs">
+            {selectedPeriod === 'day' ? 'Today' : selectedPeriod === 'week' ? 'This Week' : 'This Month'}
+          </Badge>
+          <Badge variant={comprehensiveData ? "default" : "secondary"} className="text-xs">
+            {comprehensiveData ? 'Live Data' : 'Sample Data'}
+          </Badge>
+        </div>
+      </div>
     </div>
   )
 }

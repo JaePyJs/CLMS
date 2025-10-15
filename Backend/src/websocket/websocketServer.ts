@@ -3,6 +3,7 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import { logger } from '../utils/logger';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import { notificationService } from '../services/notification.service';
 const prisma = new PrismaClient();
 
 interface AuthenticatedSocket extends Socket {
@@ -124,6 +125,31 @@ class WebSocketServer {
       // Notification events
       socket.on('notification:send', async (data) => {
         await this.handleNotificationSend(socket, data);
+      });
+
+      // Subscribe to notifications
+      socket.on('notification:subscribe', () => {
+        this.subscribeToNotifications(socket);
+      });
+
+      // Unsubscribe from notifications
+      socket.on('notification:unsubscribe', () => {
+        this.unsubscribeFromNotifications(socket);
+      });
+
+      // Mark notification as read
+      socket.on('notification:mark-read', async (data) => {
+        await this.handleMarkNotificationRead(socket, data);
+      });
+
+      // Get notification preferences
+      socket.on('notification:get-preferences', async () => {
+        await this.handleGetNotificationPreferences(socket);
+      });
+
+      // Update notification preferences
+      socket.on('notification:update-preferences', async (data) => {
+        await this.handleUpdateNotificationPreferences(socket, data);
       });
 
       // Ping/pong for connection health
@@ -408,6 +434,89 @@ class WebSocketServer {
     } catch (error) {
       logger.error('Error sending notification:', error);
       socket.emit('error', { message: 'Failed to send notification', error });
+    }
+  }
+
+  // Notification-related handlers
+  private subscribeToNotifications(socket: AuthenticatedSocket) {
+    socket.join(`notifications:${socket.userId}`);
+    socket.emit('notification:subscribed', { timestamp: new Date() });
+    logger.debug(`User ${socket.userId} subscribed to notifications`);
+  }
+
+  private unsubscribeFromNotifications(socket: AuthenticatedSocket) {
+    socket.leave(`notifications:${socket.userId}`);
+    socket.emit('notification:unsubscribed', { timestamp: new Date() });
+    logger.debug(`User ${socket.userId} unsubscribed from notifications`);
+  }
+
+  private async handleMarkNotificationRead(socket: AuthenticatedSocket, data: { notificationId: string }) {
+    try {
+      const { notificationId } = data;
+
+      // Verify user owns the notification
+      const notification = await prisma.notifications.findFirst({
+        where: {
+          id: notificationId,
+          user_id: socket.userId,
+        },
+      });
+
+      if (!notification) {
+        socket.emit('error', { message: 'Notification not found or access denied' });
+        return;
+      }
+
+      const updatedNotification = await notificationService.markAsRead(notificationId);
+
+      socket.emit('notification:marked-read', {
+        notificationId,
+        timestamp: new Date(),
+      });
+
+      logger.info(`Notification marked as read`, {
+        notificationId,
+        userId: socket.userId,
+      });
+    } catch (error) {
+      logger.error('Error marking notification as read', { error, notificationId: data.notificationId });
+      socket.emit('error', { message: 'Failed to mark notification as read' });
+    }
+  }
+
+  private async handleGetNotificationPreferences(socket: AuthenticatedSocket) {
+    try {
+      const preferences = await notificationService.getUserNotificationPreferences(socket.userId!);
+
+      socket.emit('notification:preferences', {
+        preferences,
+        timestamp: new Date(),
+      });
+    } catch (error) {
+      logger.error('Error getting notification preferences', { error, userId: socket.userId });
+      socket.emit('error', { message: 'Failed to get notification preferences' });
+    }
+  }
+
+  private async handleUpdateNotificationPreferences(socket: AuthenticatedSocket, data: any) {
+    try {
+      const updatedPreferences = await notificationService.updateUserNotificationPreferences(
+        socket.userId!,
+        data
+      );
+
+      socket.emit('notification:preferences-updated', {
+        preferences: updatedPreferences,
+        timestamp: new Date(),
+      });
+
+      logger.info('Notification preferences updated via WebSocket', {
+        userId: socket.userId,
+        preferences: data,
+      });
+    } catch (error) {
+      logger.error('Error updating notification preferences', { error, userId: socket.userId });
+      socket.emit('error', { message: 'Failed to update notification preferences' });
     }
   }
 

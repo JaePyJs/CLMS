@@ -16,4 +16,3 @@ process.on('beforeExit', () => {
     void prisma.$disconnect();
 });
 exports.default = prisma;
-//# sourceMappingURL=prisma.js.map

@@ -60,4 +60,3 @@ if (require.main === module) {
     createLibrarianAccount();
 }
 exports.default = createLibrarianAccount;
-//# sourceMappingURL=create-librarian.js.map
