@@ -5,6 +5,7 @@ import { logger } from '@/utils/logger';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { Permission } from '@/config/permissions';
 import ExcelJS from 'exceljs';
+import { auditService, AuditAction, AuditEntity } from '@/services/auditService';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -453,6 +454,138 @@ router.get(
     } catch (error) {
       logger.error('Error fetching audit statistics', {
         error: (error as Error).message,
+      });
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: (error as Error).message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/audit/stats/enhanced - Get enhanced audit statistics
+ * Requires: SUPER_ADMIN or ADMIN role
+ */
+router.get(
+  '/stats/enhanced',
+  requirePermission(Permission.AUDIT_LOGS_VIEW),
+  async (req: Request, res: Response) => {
+    try {
+      const { timeframe = '24h' } = req.query;
+
+      // Get enhanced statistics from audit service
+      const stats = await auditService.getAuditStatistics(timeframe as '24h' | '7d' | '30d');
+
+      const response: ApiResponse = {
+        success: true,
+        data: stats,
+        timestamp: new Date().toISOString(),
+      };
+
+      res.json(response);
+    } catch (error) {
+      logger.error('Error fetching enhanced audit statistics', {
+        error: (error as Error).message,
+      });
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: (error as Error).message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/audit/recent - Get recent audit logs using enhanced service
+ * Requires: SUPER_ADMIN or ADMIN role
+ */
+router.get(
+  '/recent',
+  requirePermission(Permission.AUDIT_LOGS_VIEW),
+  async (req: Request, res: Response) => {
+    try {
+      const { limit = '50' } = req.query;
+      const limitNum = parseInt(limit as string);
+
+      const logs = await auditService.getRecentAuditLogs(limitNum);
+
+      const response: ApiResponse = {
+        success: true,
+        data: logs,
+        timestamp: new Date().toISOString(),
+      };
+
+      res.json(response);
+    } catch (error) {
+      logger.error('Error fetching recent audit logs', {
+        error: (error as Error).message,
+      });
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: (error as Error).message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/audit/log - Manual audit log entry (for special events)
+ * Requires: SUPER_ADMIN role
+ */
+router.post(
+  '/log',
+  requirePermission(Permission.AUDIT_LOGS_CREATE),
+  async (req: Request, res: Response) => {
+    try {
+      const {
+        action,
+        entity,
+        entityId,
+        details,
+        metadata
+      } = req.body;
+
+      // Validate required fields
+      if (!action || !entity) {
+        return res.status(400).json({
+          success: false,
+          error: 'Action and entity are required',
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      // Create audit entry
+      await auditService.log({
+        action,
+        entity,
+        entityId,
+        userName: req.user?.username || 'system',
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        requestId: req.id,
+        success: true,
+        newValues: details,
+        metadata
+      });
+
+      const response: ApiResponse = {
+        success: true,
+        message: 'Audit log entry created successfully',
+        timestamp: new Date().toISOString(),
+      };
+
+      res.json(response);
+    } catch (error) {
+      logger.error('Error creating manual audit log', {
+        error: (error as Error).message,
+        body: req.body,
       });
       res.status(500).json({
         success: false,

@@ -224,4 +224,212 @@ router.get('/templates/equipment', (req, res) => {
   }
 });
 
+/**
+ * @route   POST /api/import/preview
+ * @desc    Preview file data with field mapping suggestions
+ * @access  Private (Admin/Librarian)
+ */
+router.post('/preview', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded',
+      });
+    }
+
+    const { importType = 'students', maxPreviewRows = 10 } = req.body;
+
+    logger.info(`Previewing file: ${req.file.filename}`);
+
+    const previewData = await importService.previewFile(req.file.path, {
+      maxPreviewRows: parseInt(maxPreviewRows),
+      previewMode: true
+    });
+
+    // Clean up uploaded file
+    fs.unlinkSync(req.file.path);
+
+    res.status(200).json({
+      success: true,
+      message: 'File preview generated successfully',
+      data: {
+        ...previewData,
+        importType,
+        fileName: req.file.originalname
+      }
+    });
+  } catch (error) {
+    logger.error('Error previewing file', {
+      error: (error as Error).message,
+    });
+
+    // Clean up uploaded file if it exists
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to preview file',
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
+ * @route   POST /api/import/students/enhanced
+ * @desc    Import students with field mapping support
+ * @access  Private (Admin/Librarian)
+ */
+router.post('/students/enhanced', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded',
+      });
+    }
+
+    const { fieldMappings, dryRun = false } = req.body;
+
+    logger.info(`Starting enhanced student import from file: ${req.file.filename}`);
+
+    // Parse field mappings if provided
+    let mappings;
+    if (fieldMappings) {
+      try {
+        mappings = JSON.parse(fieldMappings);
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid field mappings format',
+        });
+      }
+    }
+
+    // Preview and parse the file
+    const previewData = await importService.previewFile(req.file.path);
+    const records = await importService.parseFile(req.file.path, {
+      fieldMappings: mappings
+    });
+
+    if (dryRun) {
+      // Clean up uploaded file
+      fs.unlinkSync(req.file.path);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Dry run completed successfully',
+        data: {
+          preview: previewData,
+          recordsCount: records.length,
+          sampleRecords: records.slice(0, 5)
+        }
+      });
+    }
+
+    // Import students using enhanced logic
+    const result = await importService.importStudentsWithMapping(req.file.path, mappings || []);
+
+    // Clean up uploaded file
+    fs.unlinkSync(req.file.path);
+
+    logger.info('Enhanced student import completed', {
+      totalRecords: result.totalRecords,
+      importedRecords: result.importedRecords,
+      skippedRecords: result.skippedRecords,
+      errorRecords: result.errorRecords,
+    });
+
+    res.status(200).json({
+      success: result.success,
+      message: `Import completed: ${result.importedRecords} imported, ${result.skippedRecords} skipped, ${result.errorRecords} errors`,
+      data: result,
+    });
+  } catch (error) {
+    logger.error('Error in enhanced student import', {
+      error: (error as Error).message,
+    });
+
+    // Clean up uploaded file if it exists
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to import students',
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
+ * @route   POST /api/import/books/enhanced
+ * @desc    Import books with field mapping support
+ * @access  Private (Admin/Librarian)
+ */
+router.post('/books/enhanced', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded',
+      });
+    }
+
+    const { fieldMappings, dryRun = false } = req.body;
+
+    logger.info(`Starting enhanced book import from file: ${req.file.filename}`);
+
+    // Parse field mappings if provided
+    let mappings;
+    if (fieldMappings) {
+      try {
+        mappings = JSON.parse(fieldMappings);
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid field mappings format',
+        });
+      }
+    }
+
+    // Import books using enhanced logic
+    const result = await importService.importBooksWithMapping(req.file.path, mappings || []);
+
+    // Clean up uploaded file
+    fs.unlinkSync(req.file.path);
+
+    logger.info('Enhanced book import completed', {
+      totalRecords: result.totalRecords,
+      importedRecords: result.importedRecords,
+      skippedRecords: result.skippedRecords,
+      errorRecords: result.errorRecords,
+    });
+
+    res.status(200).json({
+      success: result.success,
+      message: `Import completed: ${result.importedRecords} imported, ${result.skippedRecords} skipped, ${result.errorRecords} errors`,
+      data: result,
+    });
+  } catch (error) {
+    logger.error('Error in enhanced book import', {
+      error: (error as Error).message,
+    });
+
+    // Clean up uploaded file if it exists
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to import books',
+      error: (error as Error).message,
+    });
+  }
+});
+
 export default router;

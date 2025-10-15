@@ -78,4 +78,3 @@ if (require.main === module) {
         process.exit(1);
     });
 }
-//# sourceMappingURL=test-system.js.map

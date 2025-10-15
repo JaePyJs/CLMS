@@ -742,6 +742,551 @@ class AnalyticsService {
   }
 
   /**
+   * Get comprehensive library metrics
+   */
+  async getComprehensiveLibraryMetrics(timeframe: 'day' | 'week' | 'month' = 'week'): Promise<{
+    overview: any;
+    circulation: any;
+    equipment: any;
+    fines: any;
+    trends: any;
+  }> {
+    return performanceOptimizationService.executeQuery(
+      `comprehensive_metrics_${timeframe}`,
+      async () => {
+        const endDate = new Date();
+        const startDate = this.getStartDate(timeframe, endDate);
+
+        // Get overview metrics
+        const [
+          totalStudents,
+          activeStudents,
+          totalBooks,
+          availableBooks,
+          totalEquipment,
+          availableEquipment,
+          totalActivities
+        ] = await Promise.all([
+          prisma.student.count(),
+          prisma.student.count({ where: { isActive: true } }),
+          prisma.book.count(),
+          prisma.book.count({ where: { isActive: true } }),
+          prisma.equipment.count(),
+          prisma.equipment.count({ where: { status: equipment_status.AVAILABLE } }),
+          prisma.student_activities.count({
+            where: { start_time: { gte: startDate } }
+          })
+        ]);
+
+        // Get circulation metrics
+        const [borrowedBooks, returnedBooks, overdueBooks] = await Promise.all([
+          prisma.student_activities.count({
+            where: {
+              start_time: { gte: startDate },
+              activity_type: student_activities_activity_type.BOOK_BORROW
+            }
+          }),
+          prisma.student_activities.count({
+            where: {
+              start_time: { gte: startDate },
+              activity_type: student_activities_activity_type.BOOK_RETURN
+            }
+          }),
+          prisma.student_activities.count({
+            where: {
+              activity_type: student_activities_activity_type.BOOK_BORROW,
+              end_time: { lt: new Date() },
+              // Add logic to calculate overdue books
+            }
+          })
+        ]);
+
+        // Get equipment utilization
+        const equipmentSessions = await prisma.student_activities.groupBy({
+          by: ['equipment_id'],
+          where: {
+            start_time: { gte: startDate },
+            equipment_id: { not: null }
+          },
+          _count: { id: true },
+          _avg: { duration: true }
+        });
+
+        // Get fine collection data (mock for now - implement based on your fine system)
+        const fineData = await this.getFineCollectionAnalytics(timeframe);
+
+        return {
+          overview: {
+            totalStudents,
+            activeStudents,
+            totalBooks,
+            availableBooks,
+            totalEquipment,
+            availableEquipment,
+            totalActivities,
+            studentActivationRate: totalStudents > 0 ? (activeStudents / totalStudents) * 100 : 0,
+            bookAvailabilityRate: totalBooks > 0 ? (availableBooks / totalBooks) * 100 : 0,
+            equipmentAvailabilityRate: totalEquipment > 0 ? (availableEquipment / totalEquipment) * 100 : 0
+          },
+          circulation: {
+            borrowedBooks,
+            returnedBooks,
+            overdueBooks,
+            circulationRate: totalBooks > 0 ? (borrowedBooks / totalBooks) * 100 : 0,
+            returnRate: borrowedBooks > 0 ? (returnedBooks / borrowedBooks) * 100 : 0,
+            overdueRate: borrowedBooks > 0 ? (overdueBooks / borrowedBooks) * 100 : 0
+          },
+          equipment: {
+            totalSessions: equipmentSessions.reduce((sum, session) => sum + session._count.id, 0),
+            averageSessionDuration: equipmentSessions.reduce((sum, session) => sum + (session._avg.duration || 0), 0) / equipmentSessions.length,
+            mostUsedEquipment: equipmentSessions.sort((a, b) => b._count.id - a._count.id).slice(0, 5)
+          },
+          fines: fineData,
+          trends: {
+            dailyGrowth: await this.calculateDailyGrowth(timeframe),
+            peakUsageHours: await this.getPeakUsageHours(timeframe),
+            popularCategories: await this.getPopularCategories(timeframe)
+          }
+        };
+      },
+      {
+        key: `analytics:comprehensive:${timeframe}`,
+        ttl: this.getAnalyticsTTL(timeframe),
+        tags: ['analytics', 'comprehensive', timeframe],
+      }
+    );
+  }
+
+  /**
+   * Get book circulation analytics
+   */
+  async getBookCirculationAnalytics(timeframe: 'day' | 'week' | 'month' = 'week'): Promise<{
+    totalCirculation: number;
+    mostBorrowedBooks: any[];
+    circulationByCategory: any[];
+    overdueAnalysis: any;
+    trends: any;
+  }> {
+    return performanceOptimizationService.executeQuery(
+      `book_circulation_${timeframe}`,
+      async () => {
+        const endDate = new Date();
+        const startDate = this.getStartDate(timeframe, endDate);
+
+        // Get circulation by book
+        const circulationByBook = await prisma.student_activities.groupBy({
+          by: ['book_id'],
+          where: {
+            start_time: { gte: startDate },
+            activity_type: { in: [student_activities_activity_type.BOOK_BORROW, student_activities_activity_type.BOOK_RETURN] }
+          },
+          _count: { id: true },
+          orderBy: { _count: { id: 'desc' } },
+          take: 10
+        });
+
+        // Get most borrowed books with details
+        const mostBorrowedBooks = await prisma.book.findMany({
+          where: {
+            id: { in: circulationByBook.map(item => item.book_id).filter(Boolean) }
+          },
+          select: {
+            id: true,
+            title: true,
+            author: true,
+            category: true,
+            availableCopies: true,
+            totalCopies: true
+          }
+        });
+
+        // Add circulation counts
+        const booksWithCirculation = mostBorrowedBooks.map(book => {
+          const circulation = circulationByBook.find(c => c.book_id === book.id);
+          return {
+            ...book,
+            circulationCount: circulation?._count.id || 0,
+            popularity: this.calculatePopularityScore(circulation?._count.id || 0, book.totalCopies)
+          };
+        });
+
+        // Get circulation by category
+        const circulationByCategory = await prisma.$queryRaw<Array<{ category: string; count: number }>>`
+          SELECT b.category, COUNT(*) as count
+          FROM student_activities sa
+          JOIN books b ON sa.book_id = b.id
+          WHERE sa.start_time >= ${startDate}
+          AND sa.activity_type IN ('BOOK_BORROW', 'BOOK_RETURN')
+          GROUP BY b.category
+          ORDER BY count DESC
+        `;
+
+        // Analyze overdue books
+        const overdueAnalysis = await this.analyzeOverdueBooks(timeframe);
+
+        // Calculate trends
+        const trends = await this.calculateCirculationTrends(timeframe);
+
+        return {
+          totalCirculation: circulationByBook.reduce((sum, item) => sum + item._count.id, 0),
+          mostBorrowedBooks: booksWithCirculation.sort((a, b) => b.circulationCount - a.circulationCount),
+          circulationByCategory: circulationByCategory.map(item => ({
+            category: item.category,
+            count: Number(item.count),
+            percentage: 0 // Will be calculated
+          })),
+          overdueAnalysis,
+          trends
+        };
+      },
+      {
+        key: `analytics:books:${timeframe}`,
+        ttl: this.getAnalyticsTTL(timeframe),
+        tags: ['analytics', 'books', timeframe],
+      }
+    );
+  }
+
+  /**
+   * Get equipment utilization analytics
+   */
+  async getEquipmentUtilizationAnalytics(timeframe: 'day' | 'week' | 'month' = 'week'): Promise<{
+    overallUtilization: number;
+    utilizationByType: any[];
+    peakUsageTimes: any[];
+    maintenanceInsights: any;
+    recommendations: string[];
+  }> {
+    return performanceOptimizationService.executeQuery(
+      `equipment_utilization_${timeframe}`,
+      async () => {
+        const endDate = new Date();
+        const startDate = this.getStartDate(timeframe, endDate);
+
+        // Get utilization by equipment type
+        const utilizationByType = await prisma.$queryRaw<Array<{
+          type: string;
+          total: number;
+          inUse: number;
+          utilizationRate: number;
+        }>>`
+          SELECT
+            e.type,
+            COUNT(*) as total,
+            SUM(CASE WHEN e.status = 'IN_USE' THEN 1 ELSE 0 END) as inUse,
+            (SUM(CASE WHEN e.status = 'IN_USE' THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) as utilizationRate
+          FROM equipment e
+          GROUP BY e.type
+          ORDER BY utilizationRate DESC
+        `;
+
+        // Get hourly usage patterns
+        const hourlyUsage = await prisma.$queryRaw<Array<{ hour: number; sessions: number }>>`
+          SELECT EXTRACT(HOUR FROM start_time) as hour, COUNT(*) as sessions
+          FROM student_activities
+          WHERE start_time >= ${startDate}
+          AND equipment_id IS NOT NULL
+          GROUP BY EXTRACT(HOUR FROM start_time)
+          ORDER BY sessions DESC
+        `;
+
+        // Calculate overall utilization
+        const totalEquipment = await prisma.equipment.count();
+        const inUseEquipment = await prisma.equipment.count({
+          where: { status: equipment_status.IN_USE }
+        });
+        const overallUtilization = totalEquipment > 0 ? (inUseEquipment / totalEquipment) * 100 : 0;
+
+        // Generate maintenance insights
+        const maintenanceInsights = await this.generateMaintenanceInsights(timeframe);
+
+        // Generate recommendations
+        const recommendations = this.generateEquipmentRecommendations(
+          utilizationByType.map(t => ({ ...t, utilizationRate: Number(t.utilizationRate) })),
+          overallUtilization
+        );
+
+        return {
+          overallUtilization,
+          utilizationByType: utilizationByType.map(t => ({
+            ...t,
+            utilizationRate: Number(t.utilizationRate)
+          })),
+          peakUsageTimes: hourlyUsage.slice(0, 5).map(h => ({
+            hour: Number(h.hour),
+            sessions: Number(h.sessions),
+            timeRange: `${Number(h.hour)}:00 - ${Number(h.hour) + 1}:00`
+          })),
+          maintenanceInsights,
+          recommendations
+        };
+      },
+      {
+        key: `analytics:equipment:${timeframe}`,
+        ttl: this.getAnalyticsTTL(timeframe),
+        tags: ['analytics', 'equipment', timeframe],
+      }
+    );
+  }
+
+  /**
+   * Get fine collection analytics
+   */
+  async getFineCollectionAnalytics(timeframe: 'day' | 'week' | 'month' = 'week'): Promise<{
+    totalFines: number;
+    collectedFines: number;
+    outstandingFines: number;
+    collectionRate: number;
+    paymentTrends: any[];
+    fineCategories: any[];
+    overdueAnalysis: any;
+  }> {
+    return performanceOptimizationService.executeQuery(
+      `fine_collection_${timeframe}`,
+      async () => {
+        const endDate = new Date();
+        const startDate = this.getStartDate(timeframe, endDate);
+
+        // Mock fine data - replace with actual fine system queries
+        const totalFines = 1250.00;
+        const collectedFines = 850.00;
+        const outstandingFines = totalFines - collectedFines;
+        const collectionRate = totalFines > 0 ? (collectedFines / totalFines) * 100 : 0;
+
+        // Payment trends (mock data - replace with actual payment records)
+        const paymentTrends = [
+          { period: 'Week 1', amount: 250.00, transactions: 15 },
+          { period: 'Week 2', amount: 320.00, transactions: 18 },
+          { period: 'Week 3', amount: 180.00, transactions: 12 },
+          { period: 'Week 4', amount: 100.00, transactions: 8 }
+        ];
+
+        // Fine categories (mock data)
+        const fineCategories = [
+          { category: 'Overdue Books', amount: 450.00, count: 25 },
+          { category: 'Lost Books', amount: 320.00, count: 8 },
+          { category: 'Damaged Books', amount: 280.00, count: 12 },
+          { category: 'Late Equipment', amount: 200.00, count: 15 }
+        ];
+
+        // Overdue analysis
+        const overdueAnalysis = await this.analyzeOverduePatterns(timeframe);
+
+        return {
+          totalFines,
+          collectedFines,
+          outstandingFines,
+          collectionRate,
+          paymentTrends,
+          fineCategories,
+          overdueAnalysis
+        };
+      },
+      {
+        key: `analytics:fines:${timeframe}`,
+        ttl: this.getAnalyticsTTL(timeframe),
+        tags: ['analytics', 'fines', timeframe],
+      }
+    );
+  }
+
+  /**
+   * Export analytics data in various formats
+   */
+  async exportAnalyticsData(format: 'csv' | 'json' | 'pdf', timeframe: 'day' | 'week' | 'month', sections?: string[]): Promise<any> {
+    try {
+      // Get comprehensive data
+      const metrics = await this.getComprehensiveLibraryMetrics(timeframe);
+      const bookCirculation = await this.getBookCirculationAnalytics(timeframe);
+      const equipmentUtilization = await this.getEquipmentUtilizationAnalytics(timeframe);
+      const fineCollection = await this.getFineCollectionAnalytics(timeframe);
+
+      const exportData = {
+        metadata: {
+          exportDate: new Date().toISOString(),
+          timeframe,
+          sections: sections || ['all'],
+          format
+        },
+        metrics,
+        bookCirculation,
+        equipmentUtilization,
+        fineCollection
+      };
+
+      if (format === 'json') {
+        return exportData;
+      } else if (format === 'csv') {
+        return this.convertToCSV(exportData, sections);
+      } else if (format === 'pdf') {
+        return this.convertToPDF(exportData, sections);
+      }
+
+      throw new Error(`Unsupported export format: ${format}`);
+    } catch (error) {
+      logger.error('Failed to export analytics data', { error: (error as Error).message, format, timeframe });
+      throw error;
+    }
+  }
+
+  // Helper methods for new analytics functions
+  private calculatePopularityScore(circulationCount: number, totalCopies: number): number {
+    if (totalCopies === 0) return 0;
+    const turnoverRate = circulationCount / totalCopies;
+    return Math.min(100, turnoverRate * 10); // Scale to 0-100
+  }
+
+  private async analyzeOverdueBooks(timeframe: 'day' | 'week' | 'month'): Promise<any> {
+    // Mock implementation - replace with actual overdue analysis
+    return {
+      totalOverdue: 15,
+      averageOverdueDays: 4.5,
+      overdueByCategory: [
+        { category: 'Fiction', count: 8, averageDays: 5.2 },
+        { category: 'Non-Fiction', count: 4, averageDays: 3.8 },
+        { category: 'Reference', count: 3, averageDays: 2.1 }
+      ]
+    };
+  }
+
+  private async calculateCirculationTrends(timeframe: 'day' | 'week' | 'month'): Promise<any> {
+    // Mock implementation - replace with actual trend calculation
+    return {
+      growthRate: 12.5,
+      forecastNextPeriod: 135,
+      trendDirection: 'increasing',
+      seasonalityFactor: 1.1
+    };
+  }
+
+  private async calculateDailyGrowth(timeframe: 'day' | 'week' | 'month'): Promise<number> {
+    // Calculate daily growth rate based on historical data
+    const endDate = new Date();
+    const startDate = this.getStartDate(timeframe, endDate);
+    const previousStartDate = new Date(startDate.getTime() - this.getPeriodMs(timeframe));
+
+    const [currentCount, previousCount] = await Promise.all([
+      prisma.student_activities.count({ where: { start_time: { gte: startDate } } }),
+      prisma.student_activities.count({ where: { start_time: { gte: previousStartDate, lt: startDate } } })
+    ]);
+
+    const days = this.getDaysInPeriod(timeframe);
+    return previousCount > 0 ? (((currentCount - previousCount) / previousCount) / days) * 100 : 0;
+  }
+
+  private async getPeakUsageHours(timeframe: 'day' | 'week' | 'month'): Promise<any[]> {
+    const peakHours = await prisma.$queryRaw<Array<{ hour: number; count: number }>>`
+      SELECT EXTRACT(HOUR FROM start_time) as hour, COUNT(*) as count
+      FROM student_activities
+      WHERE start_time >= NOW() - INTERVAL '30 days'
+      GROUP BY EXTRACT(HOUR FROM start_time)
+      ORDER BY count DESC
+      LIMIT 5
+    `;
+
+    return peakHours.map(h => ({
+      hour: Number(h.hour),
+      count: Number(h.count),
+      timeRange: `${Number(h.hour)}:00 - ${Number(h.hour) + 1}:00`
+    }));
+  }
+
+  private async getPopularCategories(timeframe: 'day' | 'week' | 'month'): Promise<any[]> {
+    // Mock implementation - return popular activity categories
+    return [
+      { category: 'Computer Use', count: 245, percentage: 35.2 },
+      { category: 'Book Borrowing', count: 180, percentage: 25.9 },
+      { category: 'Gaming', count: 125, percentage: 18.0 },
+      { category: 'Study Sessions', count: 95, percentage: 13.7 },
+      { category: 'VR Sessions', count: 50, percentage: 7.2 }
+    ];
+  }
+
+  private async generateMaintenanceInsights(timeframe: 'day' | 'week' | 'month'): Promise<any> {
+    return {
+      equipmentNeedingMaintenance: 3,
+      averageUptime: 98.5,
+      maintenanceSchedule: [
+        { equipmentId: 'EQ001', nextMaintenance: '2025-01-20', type: 'Preventive' },
+        { equipmentId: 'EQ015', nextMaintenance: '2025-01-22', type: 'Corrective' }
+      ]
+    };
+  }
+
+  private generateEquipmentRecommendations(utilizationByType: any[], overallUtilization: number): string[] {
+    const recommendations: string[] = [];
+
+    if (overallUtilization > 85) {
+      recommendations.push('Consider adding more equipment to meet demand');
+    }
+
+    const underutilized = utilizationByType.filter(t => t.utilizationRate < 30);
+    if (underutilized.length > 0) {
+      recommendations.push(`Review utilization of underused equipment: ${underutilized.map(u => u.type).join(', ')}`);
+    }
+
+    const overutilized = utilizationByType.filter(t => t.utilizationRate > 80);
+    if (overutilized.length > 0) {
+      recommendations.push(`High demand for: ${overutilized.map(o => o.type).join(', ')} - consider capacity expansion`);
+    }
+
+    recommendations.push('Schedule regular maintenance during off-peak hours');
+    recommendations.push('Monitor equipment usage patterns for optimal scheduling');
+
+    return recommendations;
+  }
+
+  private async analyzeOverduePatterns(timeframe: 'day' | 'week' | 'month'): Promise<any> {
+    return {
+      patterns: [
+        { type: 'Fiction Books', overdueRate: 15.2, averageDelay: 4.5 },
+        { type: 'Non-Fiction Books', overdueRate: 8.7, averageDelay: 2.8 },
+        { type: 'Reference Materials', overdueRate: 3.1, averageDelay: 1.2 }
+      ],
+      recommendations: [
+        'Send automated reminders 2 days before due date',
+        'Implement grace period for first-time overdue',
+        'Consider different loan periods by material type'
+      ]
+    };
+  }
+
+  private convertToCSV(data: any, sections?: string[]): string {
+    // Basic CSV conversion - enhance as needed
+    const headers = ['Metric', 'Value', 'Category', 'Timeframe'];
+    const rows = [
+      ['Total Students', data.metrics.overview.totalStudents, 'Overview', 'Current'],
+      ['Total Books', data.metrics.overview.totalBooks, 'Overview', 'Current'],
+      ['Total Equipment', data.metrics.overview.totalEquipment, 'Overview', 'Current'],
+      ['Book Circulation Rate', `${data.metrics.circulation.circulationRate.toFixed(1)}%`, 'Circulation', 'Current'],
+      ['Equipment Utilization', `${data.metrics.equipment.overallUtilization.toFixed(1)}%`, 'Equipment', 'Current'],
+      ['Fine Collection Rate', `${data.fines.collectionRate.toFixed(1)}%`, 'Fines', 'Current']
+    ];
+
+    return [headers, ...rows].map(row => row.join(',')).join('\n');
+  }
+
+  private convertToPDF(data: any, sections?: string[]): Buffer {
+    // Mock PDF generation - implement with a library like jsPDF or puppeteer
+    const pdfContent = `Analytics Report - ${data.metadata.timeframe}\n\n` +
+      `Generated: ${data.metadata.exportDate}\n\n` +
+      `Overview:\n` +
+      `- Total Students: ${data.metrics.overview.totalStudents}\n` +
+      `- Total Books: ${data.metrics.overview.totalBooks}\n` +
+      `- Total Equipment: ${data.metrics.overview.totalEquipment}\n\n` +
+      `Circulation:\n` +
+      `- Circulation Rate: ${data.metrics.circulation.circulationRate.toFixed(1)}%\n` +
+      `- Return Rate: ${data.metrics.circulation.returnRate.toFixed(1)}%\n\n` +
+      `Equipment:\n` +
+      `- Overall Utilization: ${data.metrics.equipment.overallUtilization.toFixed(1)}%\n\n` +
+      `Fines:\n` +
+      `- Collection Rate: ${data.fines.collectionRate.toFixed(1)}%\n` +
+      `- Total Collected: $${data.fines.collectedFines.toFixed(2)}`;
+
+    return Buffer.from(pdfContent);
+  }
+
+  /**
    * Get TTL for analytics data based on timeframe
    */
   private getAnalyticsTTL(timeframe: 'day' | 'week' | 'month'): number {

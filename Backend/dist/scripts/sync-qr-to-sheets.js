@@ -341,4 +341,3 @@ uploadQRToGoogleSheets()
     console.error('❌ Task failed:', error);
     process.exit(1);
 });
-//# sourceMappingURL=sync-qr-to-sheets.js.map

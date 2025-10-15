@@ -403,4 +403,3 @@ async function getEquipmentStatus(equipment_id) {
         throw error;
     }
 }
-//# sourceMappingURL=scanService.js.map

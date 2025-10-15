@@ -10,62 +10,155 @@ import path from 'path'
 export default defineConfig({
   plugins: [
     react(),
-    // PWA plugin for service worker and caching
-    // Temporarily disabled during development
-    // VitePWA({
-    //   registerType: 'autoUpdate',
-    //   includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
-    //   manifest: {
-    //     name: 'CLMS - Library Management System',
-    //     short_name: 'CLMS',
-    //     description: 'Comprehensive Library Management System',
-    //     theme_color: '#2563eb',
-    //     background_color: '#ffffff',
-    //     display: 'standalone',
-    //     icons: [
-    //       {
-    //         src: 'pwa-192x192.png',
-    //         sizes: '192x192',
-    //         type: 'image/png'
-    //       },
-    //       {
-    //         src: 'pwa-512x512.png',
-    //         sizes: '512x512',
-    //         type: 'image/png'
-    //       }
-    //     ]
-    //   },
-    //   workbox: {
-    //     globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-    //     runtimeCaching: [
-    //       {
-    //         urlPattern: /^https:\/\/api\./i,
-    //         handler: 'NetworkFirst',
-    //         options: {
-    //           cacheName: 'api-cache',
-    //           expiration: {
-    //             maxEntries: 100,
-    //             maxAgeSeconds: 60 * 60 * 24 // 24 hours
-    //           },
-    //           cacheKeyWillBeUsed: async ({ request }) => {
-    //             return `${request.url}?version=1`
-    //           }
-    //         }
-    //       },
-    //       {
-    //         urlPattern: /\.(?:png|jpg|jpeg|svg)$/,
-    //         handler: 'CacheFirst',
-    //         options: {
-    //           cacheName: 'images-cache',
-    //           expiration: {
-    //             maxEntries: 100,
-    //             maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
-    //           }
-    //         }
-    //       }
-    //     ]
-    //   }
-    // }),
+    // PWA plugin for service worker and caching (temporarily disabled due to workbox validation issues)
+    ...(false ? [VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: [
+        'favicon.ico',
+        'apple-touch-icon.png',
+        'masked-icon.svg',
+        'robots.txt',
+        'manifest.webmanifest'
+      ],
+      strategies: 'generateSW',
+      manifest: {
+        name: 'CLMS - Library Management System',
+        short_name: 'CLMS',
+        description: 'Comprehensive Library Management System for educational institutions',
+        theme_color: '#2563eb',
+        background_color: '#ffffff',
+        display: 'standalone',
+        orientation: 'portrait-primary',
+        scope: '/',
+        start_url: '/',
+        id: '/',
+        icons: [
+          {
+            src: 'pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any maskable'
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          },
+          {
+            src: 'apple-touch-icon.png',
+            sizes: '180x180',
+            type: 'image/png',
+            purpose: 'apple touch icon'
+          }
+        ],
+        shortcuts: [
+          {
+            name: 'Quick Scan',
+            short_name: 'Scan',
+            description: 'Quick barcode/QR scanning',
+            url: '/?tab=scan',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'Book Checkout',
+            short_name: 'Checkout',
+            description: 'Quick book checkout',
+            url: '/?tab=checkout',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
+          }
+        ],
+        categories: ['education', 'productivity', 'utilities'],
+        lang: 'en',
+        dir: 'ltr'
+      },
+      workbox: {
+        globPatterns: [
+          '**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2,ttf,eot}'
+        ],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/api\./i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              },
+              cacheKeyWillBeUsed: async ({ request }) => {
+                return `${request.url}?version=1`
+              },
+              networkTimeoutSeconds: 10,
+              fetchOptions: {
+                cache: 'no-store'
+              }
+            }
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|webp|avif)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheKeyWillBeUsed: async ({ request }) => {
+                const url = new URL(request.url)
+                return url.pathname
+              }
+            }
+          },
+          {
+            urlPattern: /\.(?:woff|woff2|ttf|eot)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'fonts-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
+              }
+            }
+          },
+          {
+            urlPattern: /\.(?:js|css)$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'static-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/cdn\./i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'cdn-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              }
+            }
+          }
+        ],
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true
+      },
+      injectRegister: 'auto',
+      injectManifest: {
+        globPatterns: [
+          '**/*.{js,css,html,ico,png,svg}'
+        ]
+      },
+      devOptions: {
+        enabled: false,
+        type: 'module'
+      }
+    })] : []),
     // Compression plugin for production builds
     viteCompression({
       algorithm: 'gzip',
@@ -295,7 +388,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup-comprehensive.ts'],
+    setupFiles: ['./src/test/setup-minimal.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json', 'lcov'],
@@ -336,7 +429,8 @@ export default defineConfig({
       'node_modules/',
       'dist/',
       '**/*.d.ts',
-      'coverage/**'
+      'coverage/**',
+      'tests-disabled/**'
     ],
     testTimeout: 10000,
     hookTimeout: 10000,

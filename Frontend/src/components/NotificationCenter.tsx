@@ -11,36 +11,103 @@ import {
   CheckCircle,
   Clock,
   ExternalLink,
+  Settings,
+  RefreshCw,
+  Filter,
 } from 'lucide-react';
 import notificationApi, { Notification } from '../services/notificationApi';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotificationWebSocket } from '@/hooks/useWebSocket';
+import { toast } from 'sonner';
 
 const NotificationCenter: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [showPreferences, setShowPreferences] = useState(false);
+
+  // Real-time WebSocket integration
+  const { isConnected, error: wsError } = useNotificationWebSocket();
+
+  // Handle real-time notifications
+  const handleRealTimeNotification = useCallback((message: any) => {
+    if (message.type === 'notification') {
+      const newNotification = message.payload;
+
+      // Add to notifications list
+      setNotifications(prev => [newNotification, ...prev.slice(0, 49)]);
+
+      // Update unread count
+      setUnreadCount(prev => prev + 1);
+
+      // Show toast notification
+      const priority = newNotification.priority;
+      const toastConfig = {
+        duration: priority === 'URGENT' ? 10000 : priority === 'HIGH' ? 5000 : 3000,
+      };
+
+      if (priority === 'URGENT') {
+        toast.error(newNotification.title, {
+          description: newNotification.message,
+          ...toastConfig,
+        });
+      } else if (priority === 'HIGH') {
+        toast.warning(newNotification.title, {
+          description: newNotification.message,
+          ...toastConfig,
+        });
+      } else {
+        toast.info(newNotification.title, {
+          description: newNotification.message,
+          ...toastConfig,
+        });
+      }
+    }
+  }, []);
+
+  // Initialize WebSocket listener
+  useEffect(() => {
+    if (isConnected && user) {
+      // Subscribe to real-time notifications
+      const socket = (window as any).socket;
+      if (socket) {
+        socket.emit('notification:subscribe');
+
+        // Listen for real-time notifications
+        socket.on('notification', handleRealTimeNotification);
+
+        return () => {
+          socket.off('notification', handleRealTimeNotification);
+          socket.emit('notification:unsubscribe');
+        };
+      }
+    }
+  }, [isConnected, user, handleRealTimeNotification]);
 
   const fetchNotifications = useCallback(async () => {
     // Don't fetch if not authenticated
     if (!token) return;
-    
+
     try {
       setLoading(true);
       const response = await notificationApi.getNotifications({
         unreadOnly: filter === 'unread',
         limit: 50,
+        type: typeFilter !== 'all' ? typeFilter : undefined,
       });
       setNotifications(response.data.notifications);
       setUnreadCount(response.data.unreadCount);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+      toast.error('Failed to fetch notifications');
     } finally {
       setLoading(false);
     }
-  }, [filter, token]);
+  }, [filter, typeFilter, token]);
 
   useEffect(() => {
     // Only fetch if authenticated
@@ -56,14 +123,34 @@ const NotificationCenter: React.FC = () => {
     
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, token]); // fetchNotifications will be captured by closure when effect re-runs
+  }, [filter, typeFilter, token]); // fetchNotifications will be captured by closure when effect re-runs
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      await notificationApi.markAsRead(notificationId);
-      await fetchNotifications();
+      // Update UI optimistically
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: true, readAt: new Date() } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+
+      // Mark via WebSocket if available
+      const socket = (window as any).socket;
+      if (socket && isConnected) {
+        socket.emit('notification:mark-read', { notificationId });
+
+        // Listen for confirmation
+        socket.once('notification:marked-read', () => {
+          // Already updated optimistically
+        });
+      } else {
+        // Fallback to API
+        await notificationApi.markAsRead(notificationId);
+      }
     } catch (error) {
       console.error('Error marking notification as read:', error);
+      toast.error('Failed to mark notification as read');
+      // Revert optimistic update
+      await fetchNotifications();
     }
   };
 
@@ -155,12 +242,20 @@ const NotificationCenter: React.FC = () => {
 
   return (
     <div className="relative">
-      {/* Bell Icon with Badge */}
+      {/* Bell Icon with Badge and Status Indicator */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+        title={isConnected ? "Connected" : "Disconnected"}
       >
         <Bell className="w-6 h-6" />
+
+        {/* Connection Status Indicator */}
+        <div className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${
+          isConnected ? 'bg-green-500' : 'bg-red-500'
+        }`} />
+
+        {/* Unread Count Badge */}
         {unreadCount > 0 && (
           <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -182,19 +277,38 @@ const NotificationCenter: React.FC = () => {
             {/* Header */}
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                   Notifications
+                  <div className={`w-2 h-2 rounded-full ${
+                    isConnected ? 'bg-green-500' : 'bg-red-500'
+                  }`} title={isConnected ? "Real-time connected" : "Real-time disconnected"} />
                 </h3>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={fetchNotifications}
+                    className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                    title="Refresh notifications"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setShowPreferences(!showPreferences)}
+                    className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                    title="Notification preferences"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Filter Tabs */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 mb-3">
                 <button
                   onClick={() => setFilter('all')}
                   className={`px-3 py-1 text-sm rounded-md transition-colors ${
@@ -217,9 +331,30 @@ const NotificationCenter: React.FC = () => {
                 </button>
               </div>
 
+              {/* Type Filter */}
+              <div className="flex items-center gap-2 mb-3">
+                <Filter className="w-4 h-4 text-gray-500" />
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Types</option>
+                  <option value="OVERDUE_BOOK">Overdue Books</option>
+                  <option value="BOOK_DUE_SOON">Due Soon</option>
+                  <option value="FINE_ADDED">Fines</option>
+                  <option value="EQUIPMENT_EXPIRING">Equipment</option>
+                  <option value="SYSTEM_ALERT">System Alerts</option>
+                  <option value="INFO">Information</option>
+                  <option value="WARNING">Warnings</option>
+                  <option value="ERROR">Errors</option>
+                  <option value="SUCCESS">Success</option>
+                </select>
+              </div>
+
               {/* Action Buttons */}
               {notifications.length > 0 && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2">
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllAsRead}

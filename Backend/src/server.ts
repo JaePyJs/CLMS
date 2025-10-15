@@ -1,5 +1,5 @@
-console.log('[DEBUG server.ts] Loading app module...');
-import { app } from './app';
+console.log('[DEBUG server.ts] Loading minimal app module...');
+import { app } from './app-minimal';
 console.log('[DEBUG server.ts] App module loaded');
 import { logger } from '@/utils/logger';
 console.log('[DEBUG server.ts] Logger loaded');

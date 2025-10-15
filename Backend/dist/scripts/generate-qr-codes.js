@@ -326,4 +326,3 @@ generateQRCodes()
     console.error('❌ Generation failed:', error);
     process.exit(1);
 });
-//# sourceMappingURL=generate-qr-codes.js.map

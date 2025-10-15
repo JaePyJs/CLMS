@@ -211,6 +211,65 @@ vi.stubGlobal('WebSocket', vi.fn().mockImplementation(() => ({
   removeEventListener: vi.fn(),
 })));
 
+// Mock IndexedDB for OfflineSyncService
+const createMockIDBRequest = (result?: any, error?: any) => ({
+  result,
+  error,
+  onsuccess: null,
+  onerror: null,
+  readyState: 'done',
+});
+
+const createMockIDBOpenDBRequest = (result?: any, error?: any) => ({
+  ...createMockIDBRequest(result, error),
+  onblocked: null,
+  onupgradeneeded: null,
+});
+
+const createMockIDBTransaction = () => ({
+  objectStore: vi.fn().mockReturnValue({
+    add: vi.fn().mockReturnValue(createMockIDBRequest()),
+    get: vi.fn().mockReturnValue(createMockIDBRequest()),
+    put: vi.fn().mockReturnValue(createMockIDBRequest()),
+    delete: vi.fn().mockReturnValue(createMockIDBRequest()),
+    clear: vi.fn().mockReturnValue(createMockIDBRequest()),
+    getAll: vi.fn().mockReturnValue(createMockIDBRequest([])),
+    count: vi.fn().mockReturnValue(createMockIDBRequest(0)),
+    index: vi.fn().mockReturnValue({
+      get: vi.fn().mockReturnValue(createMockIDBRequest()),
+      getAll: vi.fn().mockReturnValue(createMockIDBRequest([])),
+      count: vi.fn().mockReturnValue(createMockIDBRequest(0)),
+      openCursor: vi.fn().mockReturnValue(createMockIDBRequest()),
+    }),
+    openCursor: vi.fn().mockReturnValue(createMockIDBRequest()),
+  }),
+  abort: vi.fn(),
+  commit: vi.fn(),
+  onabort: null,
+  oncomplete: null,
+  onerror: null,
+});
+
+const createMockIDBDatabase = () => ({
+  createObjectStore: vi.fn(),
+  deleteObjectStore: vi.fn(),
+  transaction: vi.fn().mockReturnValue(createMockIDBTransaction()),
+  close: vi.fn(),
+  name: 'testDB',
+  version: 1,
+  objectStoreNames: {
+    contains: vi.fn().mockReturnValue(true),
+    length: 1,
+    item: vi.fn().mockReturnValue('testStore'),
+  },
+});
+
+vi.stubGlobal('indexedDB', {
+  open: vi.fn().mockReturnValue(createMockIDBOpenDBRequest(createMockIDBDatabase())),
+  deleteDatabase: vi.fn().mockReturnValue(createMockIDBOpenDBRequest()),
+  cmp: vi.fn().mockReturnValue(0),
+});
+
 // Mock barcode scanner APIs
 vi.stubGlobal('BarcodeDetector', vi.fn().mockImplementation(() => ({
   detect: vi.fn().mockResolvedValue([]),
@@ -264,15 +323,49 @@ const createCanvasContext2D = () => ({
   clip: vi.fn(),
 });
 
-vi.stubGlobal('HTMLCanvasElement', {
-  prototype: {
-    getContext: vi.fn().mockReturnValue(createCanvasContext2D()),
-    toDataURL: vi.fn().mockReturnValue('data:image/png;base64,mock'),
-    toBlob: vi.fn().mockImplementation((callback) => {
-      callback(new Blob());
-    }),
-  },
+// Mock HTMLCanvasElement - completely override JSDOM's implementation
+const mockCanvasElement = vi.fn().mockImplementation(() => ({
+  getContext: vi.fn().mockReturnValue(createCanvasContext2D()),
+  toDataURL: vi.fn().mockReturnValue('data:image/png;base64,mock'),
+  toBlob: vi.fn().mockImplementation((callback) => {
+    callback(new Blob());
+  }),
+  width: 300,
+  height: 150,
+  style: {},
+}));
+
+// Set up the prototype with getContext method
+mockCanvasElement.prototype.getContext = vi.fn().mockReturnValue(createCanvasContext2D());
+
+// Override JSDOM's HTMLCanvasElement before it gets initialized
+Object.defineProperty(global, 'HTMLCanvasElement', {
+  value: mockCanvasElement,
+  writable: true,
 });
+
+// Make sure the prototype also has getContext
+Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+  value: vi.fn().mockReturnValue(createCanvasContext2D()),
+  writable: true,
+});
+
+// Mock Image constructor
+vi.stubGlobal('Image', vi.fn().mockImplementation(() => ({
+  src: '',
+  width: 0,
+  height: 0,
+  naturalWidth: 0,
+  naturalHeight: 0,
+  complete: true,
+  onload: null,
+  onerror: null,
+  onabort: null,
+  load: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+})));
 
 // Test utilities
 export const createTestQueryClient = () => new QueryClient({
@@ -469,6 +562,32 @@ export const createMockStudentActivity = (overrides = {}) => ({
   updatedAt: new Date().toISOString(),
   ...overrides,
 });
+
+// Mock problematic services that cause issues during module loading
+vi.mock('@/services/imageOptimizationService', () => ({
+  ImageOptimizationService: {
+    getInstance: vi.fn().mockReturnValue({
+      detectSupportedFormats: vi.fn().mockReturnValue(['webp', 'avif', 'jpeg', 'png']),
+      optimizeImage: vi.fn().mockResolvedValue('optimized-image-url'),
+      getCompressionSettings: vi.fn().mockReturnValue({ quality: 80 }),
+    }),
+  },
+}));
+
+vi.mock('@/hooks/useOfflineSync', () => ({
+  useOfflineSync: vi.fn().mockReturnValue({
+    isOnline: true,
+    syncData: vi.fn().mockResolvedValue(undefined),
+    isSyncing: false,
+    lastSyncTime: null,
+    pendingChanges: 0,
+  }),
+  OfflineSyncService: vi.fn().mockImplementation(() => ({
+    initializeDB: vi.fn().mockResolvedValue(undefined),
+    syncToServer: vi.fn().mockResolvedValue(undefined),
+    cacheData: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
 
 // Reset mocks between tests
 beforeEach(() => {

@@ -19,7 +19,7 @@ interface LoadTestConfig {
   duration: number;
   pipelining: number;
   requests: Array<{
-    method: string;
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD';
     path: string;
     headers?: Record<string, string>;
     body?: any;
@@ -599,13 +599,13 @@ class CLMSLoadTester {
             }
           } catch (error) {
             results.messages.errors++;
-            results.errors.push(`Message parsing error: ${error.message}`);
+            results.errors.push(`Message parsing error: ${error instanceof Error ? error.message : String(error)}`);
           }
         });
 
         ws.on('error', (error) => {
           results.connections.failed++;
-          results.errors.push(`WebSocket error: ${error.message}`);
+          results.errors.push(`WebSocket error: ${error instanceof Error ? error.message : String(error)}`);
         });
 
         ws.on('close', () => {
@@ -614,7 +614,7 @@ class CLMSLoadTester {
 
       } catch (error) {
         results.connections.failed++;
-        results.errors.push(`Connection error: ${error.message}`);
+        results.errors.push(`Connection error: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
@@ -695,7 +695,7 @@ class CLMSLoadTester {
             results.messages.sent++;
           } catch (error) {
             results.messages.errors++;
-            results.errors.push(`Send error: ${error.message}`);
+            results.errors.push(`Send error: ${error instanceof Error ? error.message : String(error)}`);
           }
         }
       });
@@ -777,7 +777,7 @@ class CLMSLoadTester {
         testName = `API Test ${index + 1}: ${this.getTestDescription(config)}`;
 
         try {
-          await this.runLoadTest(testName, config);
+          await this.runLoadTest(testName, config as LoadTestConfig);
         } catch (error) {
           console.error(`❌ API Test failed: ${testName}`, error);
         }
@@ -785,7 +785,7 @@ class CLMSLoadTester {
         testName = `WebSocket Test ${index + 1}: ${this.getWebSocketTestDescription(config)}`;
 
         try {
-          await this.runWebSocketLoadTest(testName, config);
+          await this.runWebSocketLoadTest(testName, config as WebSocketTestConfig);
         } catch (error) {
           console.error(`❌ WebSocket Test failed: ${testName}`, error);
         }

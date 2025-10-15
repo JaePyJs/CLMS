@@ -43,4 +43,3 @@ async function main() {
     }
 }
 main();
-//# sourceMappingURL=generate-barcodes-new.js.map

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,8 +12,11 @@ import { toast } from 'sonner';
 import NotificationCenter from '@/components/NotificationCenter';
 import WebSocketProvider from '@/contexts/WebSocketContext';
 import { ResponsiveDrawer } from '@/components/layout/ResponsiveDrawer';
-import { useMobileOptimization, usePerformanceOptimization } from '@/hooks/useMobileOptimization';
+import { useMobileOptimization, usePerformanceOptimization, useTouchOptimization } from '@/hooks/useMobileOptimization';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 import Image from '@/components/performance/Image';
+import MobileBottomNavigation from '@/components/mobile/MobileBottomNavigation';
+import PWAInstallPrompt from '@/components/mobile/PWAInstallPrompt';
 import {
   Wifi,
   WifiOff,
@@ -100,13 +103,15 @@ const LoadingFallback = () => (
 );
 
 export default function App() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [networkStatus, setNetworkStatus] = useState(navigator.onLine);
   const { connectedToBackend } = useAppStore();
   const { user, logout } = useAuth();
 
   // Mobile optimization
   const { isMobile, isTablet, isDesktop } = useMobileOptimization();
   const performanceSettings = usePerformanceOptimization();
+  const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
+  const { isOnline, queueCount, syncNow } = useOfflineSync();
 
   // Enhanced navigation state
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -128,11 +133,11 @@ export default function App() {
   // Update online status
   useEffect(() => {
     const handleOnline = () => {
-      setIsOnline(true);
+      setNetworkStatus(true);
       useAppStore.getState().setOnlineStatus(true);
     };
     const handleOffline = () => {
-      setIsOnline(false);
+      setNetworkStatus(false);
       useAppStore.getState().setOnlineStatus(false);
     };
 
@@ -205,6 +210,39 @@ export default function App() {
     toast.info('Checking database status...');
     // Implement database status check
   };
+
+  // Touch gesture support for mobile navigation
+  const handleTouchNavigation = useCallback((gesture: string) => {
+    if (!isMobile && !isTablet) return;
+
+    const allTabs = [
+      'dashboard', 'scan', 'students', 'books', 'checkout', 'equipment',
+      'automation', 'analytics', 'reports', 'import', 'qrcodes', 'barcodes', 'settings'
+    ];
+
+    const currentIndex = allTabs.indexOf(activeTab);
+
+    switch (gesture) {
+      case 'swipe-left':
+        if (currentIndex < allTabs.length - 1) {
+          setActiveTab(allTabs[currentIndex + 1]);
+          toast.info(`Switched to ${allTabs[currentIndex + 1]}`);
+        }
+        break;
+      case 'swipe-right':
+        if (currentIndex > 0) {
+          setActiveTab(allTabs[currentIndex - 1]);
+          toast.info(`Switched to ${allTabs[currentIndex - 1]}`);
+        }
+        break;
+      case 'double-tap':
+        // Toggle mobile menu on double tap
+        if (isMobile) {
+          setShowMobileMenu(!showMobileMenu);
+        }
+        break;
+    }
+  }, [isMobile, isTablet, activeTab, showMobileMenu]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -294,7 +332,16 @@ export default function App() {
 
   return (
     <WebSocketProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-300 relative">
+      <div
+        className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-300 relative"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={(e) => {
+          const gesture = handleTouchEnd(e);
+          if (gesture) {
+            handleTouchNavigation(gesture);
+          }
+        }}
+      >
         {/* Background Image with Optimized Loading */}
         <div className="fixed inset-0 pointer-events-none z-0">
           <Image
@@ -992,6 +1039,22 @@ export default function App() {
             </Tabs>
           </ProtectedRoute>
         </main>
+
+        {/* PWA Install Prompt */}
+        <PWAInstallPrompt
+          onInstall={() => {
+            console.log('[App] PWA installed successfully');
+          }}
+          onDismiss={() => {
+            console.log('[App] PWA install prompt dismissed');
+          }}
+        />
+
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNavigation
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
 
         {/* Footer */}
         <footer className="border-t border-slate-200 dark:border-slate-800 mt-12 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">

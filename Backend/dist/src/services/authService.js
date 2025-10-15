@@ -362,4 +362,3 @@ class AuthService {
 exports.AuthService = AuthService;
 exports.authService = new AuthService();
 exports.default = exports.authService;
-//# sourceMappingURL=authService.js.map

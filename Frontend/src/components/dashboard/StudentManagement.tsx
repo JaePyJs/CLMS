@@ -30,6 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { StudentBarcodeDialog } from './StudentBarcodeDialog';
+import { StudentImportDialog } from './StudentImportDialog';
 import { toast } from 'sonner';
 import {
   Users,
@@ -144,6 +146,7 @@ export function StudentManagement() {
   const [showEditStudent, setShowEditStudent] = useState(false);
   const [showStudentDetails, setShowStudentDetails] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showStudentBarcode, setShowStudentBarcode] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   // Form states
@@ -606,6 +609,11 @@ export function StudentManagement() {
     }
   };
 
+  const handleViewStudentBarcode = (student: Student) => {
+    setSelectedStudent(student);
+    setShowStudentBarcode(true);
+  };
+
   // Handle swipe gestures for mobile navigation
   useEffect(() => {
     if (isMobile && gesture) {
@@ -993,6 +1001,14 @@ export function StudentManagement() {
                       >
                         <FileText className="h-3 w-3 mr-1" />
                         Notes
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewStudentBarcode(student)}
+                      >
+                        <QrCode className="h-3 w-3 mr-1" />
+                        Barcode/QR
                       </Button>
                     </div>
                   </div>
@@ -1574,49 +1590,18 @@ export function StudentManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Bulk Import Dialog */}
-      <Dialog open={showBulkImport} onOpenChange={setShowBulkImport}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Bulk Import Students</DialogTitle>
-            <DialogDescription>
-              Import multiple students from a CSV or Excel file.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-lg font-medium mb-2">Drop your CSV/Excel file here</p>
-              <p className="text-sm text-gray-500 mb-4">or click to browse</p>
-              <Button variant="outline">Choose File</Button>
-            </div>
-            <div className="text-sm text-gray-600">
-              <p className="font-medium mb-2">Required columns:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>First Name</li>
-                <li>Last Name</li>
-                <li>Grade Level</li>
-                <li>Section (optional)</li>
-                <li>Email (optional)</li>
-                <li>Phone (optional)</li>
-                <li>Parent Name (optional)</li>
-                <li>Parent Phone (optional)</li>
-              </ul>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowBulkImport(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => {
-              toast.success('Bulk import started! Processing 50 students...');
-              setShowBulkImport(false);
-            }}>
-              Import Students
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Student Import Dialog */}
+      <StudentImportDialog
+        open={showBulkImport}
+        onOpenChange={setShowBulkImport}
+      />
+
+      {/* Student Barcode Dialog */}
+      <StudentBarcodeDialog
+        open={showStudentBarcode}
+        onOpenChange={setShowStudentBarcode}
+        student={selectedStudent}
+      />
     </div>
   );
 }

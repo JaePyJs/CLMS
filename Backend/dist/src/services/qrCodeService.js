@@ -188,4 +188,3 @@ class QRCodeService {
 }
 exports.QRCodeService = QRCodeService;
 exports.qrCodeService = new QRCodeService();
-//# sourceMappingURL=qrCodeService.js.map

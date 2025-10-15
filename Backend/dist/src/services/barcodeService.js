@@ -634,4 +634,3 @@ class BarcodeService {
 exports.BarcodeService = BarcodeService;
 exports.barcodeService = new BarcodeService();
 exports.default = exports.barcodeService;
-//# sourceMappingURL=barcodeService.js.map

@@ -1,1034 +1,848 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import CryptoJS from 'crypto-js';
+import { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+import { FERPAComplianceError } from '@/errors/error-types';
 import { logger } from '@/utils/logger';
-import { encryptData, decryptData } from '@/utils/encryption';
-import { generateUUID } from '@/utils/helpers';
+import { injectable, inject } from 'inversify';
+import { TYPES } from '@/di/container';
+import { SecurityMonitoringService, SecurityEventType, AlertSeverity } from './securityMonitoringService';
+import crypto from 'crypto';
 
-// Initialize Prisma Client
-const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'info', 'warn'] : ['error'],
-});
-
-// FERPA compliance interfaces
-export interface FerpaAccessRequest {
-  studentId: string;
-  userId: string;
-  dataCategories: string[];
-  accessLevel: string;
-  purpose: string;
-  urgencyLevel?: string;
+// FERPA compliance levels
+export enum FERPAComplianceLevel {
+  PUBLIC = 'public',           // Directory information
+  LIMITED = 'limited',         // Limited access with justification
+  SENSITIVE = 'sensitive',     // Sensitive PII
+  RESTRICTED = 'restricted',   // Highly restricted data
+  CONFIDENTIAL = 'confidential' // Maximum protection
 }
 
-export interface FerpaAccessResult {
-  granted: boolean;
+// Data sensitivity classification
+export enum DataSensitivity {
+  DIRECTORY_INFO = 'directory_info',      // Name, grade, attendance
+  ACADEMIC_RECORDS = 'academic_records',  // Grades, courses, credits
+  PERSONAL_INFO = 'personal_info',        // Address, phone, email
+  MEDICAL_INFO = 'medical_info',          // Health records
+  DISCIPLINARY = 'disciplinary',          // Conduct records
+  FINANCIAL = 'financial',                // Fee records, fines
+  ASSESSMENT = 'assessment',              // Test scores, evaluations
+  SPECIAL_EDUCATION = 'special_education' // IEP, special services
+}
+
+// Access request types
+export enum AccessRequestType {
+  VIEW = 'view',
+  EDIT = 'edit',
+  EXPORT = 'export',
+  PRINT = 'print',
+  SHARE = 'share',
+  ANALYTICS = 'analytics'
+}
+
+// Access justification categories
+export enum AccessJustification {
+  EDUCATIONAL_PURPOSE = 'educational_purpose',
+  LEGAL_REQUIREMENT = 'legal_requirement',
+  HEALTH_SAFETY = 'health_safety',
+  CONSENT = 'consent',
+  DIRECTORY_INFO = 'directory_info',
+  ADMINISTRATIVE = 'administrative',
+  RESEARCH = 'research',
+  AUDIT = 'audit'
+}
+
+export interface FERPAFieldAccess {
+  canRead: boolean;
+  canWrite: boolean;
+  canDelete: boolean;
+  requiresAudit: boolean;
+  requiresJustification: boolean;
+  complianceLevel: FERPAComplianceLevel;
+}
+
+export interface FERPAAuditLog {
+  userId: string;
+  action: 'READ' | 'WRITE' | 'DELETE' | 'EXPORT';
+  resource: string;
+  resourceId: string;
+  fields: string[];
+  timestamp: Date;
+  ipAddress: string;
+  userAgent?: string;
+  success: boolean;
   reason?: string;
-  conditions?: any[];
+  complianceLevel: FERPAComplianceLevel;
+  dataSensitivity: DataSensitivity[];
+  accessJustification?: AccessJustification;
+  sessionId?: string;
+  requestId?: string;
+}
+
+// Access request interface
+export interface AccessRequest {
+  id: string;
+  requesterId: string;
+  requesterRole: string;
+  targetType: 'student' | 'students' | 'activity' | 'activities';
+  targetId?: string;
+  accessType: AccessRequestType;
+  justification: AccessJustification;
+  justificationText: string;
+  duration: number; // hours
+  status: 'pending' | 'approved' | 'denied' | 'expired' | 'revoked';
+  approvedBy?: string;
+  approvedAt?: Date;
   expiresAt?: Date;
-  maskedFields?: string[];
-  redactedData?: any;
+  createdAt: Date;
+  metadata: {
+    ipAddress: string;
+    userAgent: string;
+    requestId?: string;
+    sessionId?: string;
+  };
 }
 
-export interface ConsentRequirement {
-  required: boolean;
-  consentType: string;
-  validConsent?: boolean;
-  expiresAt?: Date;
-  guardianConsent?: boolean;
-}
+// Field mapping for data sensitivity
+export const FIELD_SENSITIVITY_MAP: Record<string, DataSensitivity> = {
+  // Student fields
+  'students.first_name': DataSensitivity.PERSONAL_INFO,
+  'students.last_name': DataSensitivity.PERSONAL_INFO,
+  'students.student_id': DataSensitivity.PERSONAL_INFO,
+  'students.section': DataSensitivity.ACADEMIC_RECORDS,
+  'students.grade_level': DataSensitivity.DIRECTORY_INFO,
+  'students.grade_category': DataSensitivity.DIRECTORY_INFO,
+  'students.fine_balance': DataSensitivity.FINANCIAL,
+  'students.equipment_ban': DataSensitivity.DISCIPLINARY,
+  'students.equipment_ban_reason': DataSensitivity.DISCIPLINARY,
 
-export interface FieldAccessControl {
-  fieldName: string;
-  accessLevel: string;
-  encryptionRequired: boolean;
-  maskingEnabled: boolean;
-  minUserRole?: string;
-  consentRequired: boolean;
-  retentionDays?: number;
-  auditLevel: string;
-}
+  // Activity fields
+  'student_activities.student_name': DataSensitivity.DIRECTORY_INFO,
+  'student_activities.notes': DataSensitivity.ACADEMIC_RECORDS,
 
-export interface FerpaViolationReport {
-  studentId?: string;
-  userId: string;
-  violationType: string;
-  severityLevel: string;
-  description: string;
-  incidentDate: Date;
-  reportedBy: string;
-  impactAssessment?: any;
-  preventiveMeasures?: any;
-}
+  // Equipment session fields
+  'equipment_sessions.notes': DataSensitivity.ACADEMIC_RECORDS,
 
-/**
- * Comprehensive FERPA Compliance Service
- *
- * This service provides centralized FERPA compliance functionality including:
- * - Access control enforcement
- * - Consent management
- * - Data privacy enforcement
- * - Audit logging
- * - Violation detection and reporting
- * - Data retention management
- */
-export class FerpaComplianceService {
-  private instance: FerpaComplianceService;
+  // Book checkout fields
+  'book_checkouts.notes': DataSensitivity.ACADEMIC_RECORDS,
+  'book_checkouts.fine_amount': DataSensitivity.FINANCIAL,
 
-  constructor() {
-    this.instance = this;
+  // User fields
+  'users.email': DataSensitivity.PERSONAL_INFO,
+  'users.full_name': DataSensitivity.PERSONAL_INFO,
+  'users.username': DataSensitivity.PERSONAL_INFO
+};
+
+// Role-based access permissions
+export const ROLE_FERPA_PERMISSIONS: Record<string, FERPAComplianceLevel[]> = {
+  'SUPER_ADMIN': [
+    FERPAComplianceLevel.PUBLIC,
+    FERPAComplianceLevel.LIMITED,
+    FERPAComplianceLevel.SENSITIVE,
+    FERPAComplianceLevel.RESTRICTED,
+    FERPAComplianceLevel.CONFIDENTIAL
+  ],
+  'ADMIN': [
+    FERPAComplianceLevel.PUBLIC,
+    FERPAComplianceLevel.LIMITED,
+    FERPAComplianceLevel.SENSITIVE,
+    FERPAComplianceLevel.RESTRICTED
+  ],
+  'LIBRARIAN': [
+    FERPAComplianceLevel.PUBLIC,
+    FERPAComplianceLevel.LIMITED,
+    FERPAComplianceLevel.SENSITIVE
+  ],
+  'ASSISTANT': [
+    FERPAComplianceLevel.PUBLIC,
+    FERPAComplianceLevel.LIMITED
+  ],
+  'TEACHER': [
+    FERPAComplianceLevel.PUBLIC,
+    FERPAComplianceLevel.LIMITED
+  ],
+  'VIEWER': [
+    FERPAComplianceLevel.PUBLIC
+  ]
+};
+
+@injectable()
+export class FERPAService {
+  private encryptionKey: string;
+  private auditLogs: FERPAAuditLog[] = [];
+  private activeAccessRequests: Map<string, AccessRequest> = new Map();
+  private dataMaskingCache: Map<string, any> = new Map();
+  private prisma: PrismaClient;
+  private securityService: SecurityMonitoringService;
+  private roleAccessLevels: Record<string, string[]> = {
+    'SUPER_ADMIN': ['*'],
+    'ADMIN': ['students.*', 'activities.*', 'equipment.*'],
+    'LIBRARIAN': ['students.read', 'activities.*'],
+    'ASSISTANT': ['students.read', 'activities.read'],
+    'TEACHER': ['students.read', 'activities.read'],
+    'VIEWER': ['students.read']
+  };
+  private sensitiveFields: string[] = [
+    'email', 'phone', 'address', 'parentName', 'parentPhone', 'parentEmail',
+    'fineBalance', 'equipmentBan', 'equipmentBanReason'
+  ];
+
+  constructor(
+    @inject(TYPES.PrismaClient) prisma: PrismaClient,
+    @inject(TYPES.SecurityMonitoringService) securityService: SecurityMonitoringService
+  ) {
+    this.prisma = prisma;
+    this.securityService = securityService;
+    this.encryptionKey = process.env.FERPA_ENCRYPTION_KEY || 'default-ferpa-key-change-in-production';
+
+    if (this.encryptionKey === 'default-ferpa-key-change-in-production') {
+      logger.warn('FERPA service using default encryption key - please set FERPA_ENCRYPTION_KEY environment variable');
+    }
+
+    this.startPeriodicCleanup();
   }
 
   /**
-   * Check if user has access to specific student data
+   * Check if user has FERPA-compliant access to specific data
    */
-  async checkStudentDataAccess(
-    studentId: string,
+  public async checkDataAccess(
     userId: string,
-    dataCategories: string[],
-    accessLevel: string = 'READ_ONLY',
-    context?: {
-      sessionId?: string;
-      ipAddress?: string;
-      userAgent?: string;
-      requestId?: string;
-    }
-  ): Promise<FerpaAccessResult> {
+    userRole: string,
+    entityType: string,
+    fields: string[],
+    accessType: AccessRequestType = AccessRequestType.VIEW,
+    justification?: AccessJustification,
+    justificationText?: string,
+    metadata?: any
+  ): Promise<{
+    allowed: boolean;
+    maskedFields: string[];
+    complianceLevel: FERPAComplianceLevel;
+    requiresJustification: boolean;
+    errorMessage?: string;
+  }> {
     try {
-      // Get user information
-      const user = await prisma.users.findUnique({
-        where: { id: userId },
-        select: { id: true, role: true, username: true, is_active: true }
-      });
+      const requestId = metadata?.requestId || this.generateRequestId();
+      const ipAddress = metadata?.ipAddress || 'unknown';
+      const userAgent = metadata?.userAgent || 'unknown';
 
-      if (!user || !user.is_active) {
-        await this.logDataAccess({
-          studentId,
+      // Determine required compliance level for accessed fields
+      const requiredLevels = fields.map(field =>
+        this.getRequiredComplianceLevel(field)
+      );
+      const maxRequiredLevel = this.getHighestComplianceLevel(requiredLevels);
+
+      // Check if user role has permission for required level
+      const userPermissions = ROLE_FERPA_PERMISSIONS[userRole] || [];
+      const hasPermission = userPermissions.includes(maxRequiredLevel);
+
+      if (!hasPermission) {
+        // Log access violation
+        await this.logAccess({
           userId,
-          accessType: 'VIEW',
-          dataCategory: 'PERSONAL',
-          accessLevel,
-          accessGranted: false,
-          denialReason: 'User not found or inactive',
-          sessionId: context?.sessionId,
-          ipAddress: context?.ipAddress,
-          userAgent: context?.user_agent,
-          requestId: context?.requestId
+          action: 'READ',
+          resource: entityType,
+          resourceId: metadata?.entityId || 'unknown',
+          fields,
+          timestamp: new Date(),
+          ipAddress,
+          userAgent,
+          success: false,
+          reason: `Insufficient FERPA permissions for ${maxRequiredLevel} data`,
+          complianceLevel: maxRequiredLevel,
+          dataSensitivity: fields.map(f => this.getFieldSensitivity(f)),
+          accessJustification: justification,
+          sessionId: metadata?.sessionId,
+          requestId
         });
 
-        return { granted: false, reason: 'User not found or inactive' };
-      }
-
-      // Get student privacy settings
-      const privacySettings = await this.getStudentPrivacySettings(studentId);
-      if (!privacySettings) {
-        return { granted: false, reason: 'Student privacy settings not found' };
-      }
-
-      // Check consent requirements for each data category
-      for (const category of dataCategories) {
-        const consentCheck = await this.checkConsentRequirements(studentId, category, user.role);
-        if (!consentCheck.validConsent) {
-          await this.logDataAccess({
-            studentId,
+        // Record security event
+        await this.securityService.recordSecurityEvent(
+          SecurityEventType.FERPA_VIOLATION,
+          { ip: ipAddress, get: () => userAgent } as Request,
+          {
             userId,
-            accessType: 'VIEW',
-            dataCategory: category,
-            accessLevel,
-            accessGranted: false,
-            denialReason: `Missing required consent: ${consentCheck.consentType}`,
-            sessionId: context?.sessionId,
-            ipAddress: context?.ipAddress,
-            userAgent: context?.user_agent,
-            requestId: context?.requestId
-          });
+            userRole,
+            entityType,
+            fields,
+            requiredLevel: maxRequiredLevel,
+            attemptedAccess: accessType
+          },
+          AlertSeverity.HIGH
+        );
 
-          return {
-            granted: false,
-            reason: `Missing required consent: ${consentCheck.consentType}`
-          };
-        }
+        return {
+          allowed: false,
+          maskedFields: fields,
+          complianceLevel: maxRequiredLevel,
+          requiresJustification: true,
+          errorMessage: `Insufficient FERPA permissions for ${maxRequiredLevel} data`
+        };
       }
 
-      // Check role-based access
-      const roleCheck = await this.checkRoleBasedAccess(user.role, accessLevel, dataCategories);
-      if (!roleCheck.granted) {
-        await this.logDataAccess({
-          studentId,
-          userId,
-          accessType: 'VIEW',
-          dataCategory: dataCategories.join(','),
-          accessLevel,
-          accessGranted: false,
-          denialReason: roleCheck.reason,
-          sessionId: context?.sessionId,
-          ipAddress: context?.ipAddress,
-          userAgent: context?.user_agent,
-          requestId: context?.requestId
-        });
-
-        return roleCheck;
-      }
-
-      // Get fields that require masking/redaction
-      const maskedFields = await this.getMaskedFields(studentId, user.role, dataCategories);
-
-      // Calculate access expiration based on retention policies
-      const expiresAt = await this.calculateAccessExpiration(studentId, dataCategories);
+      // Determine which fields need masking
+      const maskedFields = this.getMaskedFields(userRole, fields);
+      const requiresJustification = this.requiresAccessJustification(userRole, maxRequiredLevel);
 
       // Log successful access
-      await this.logDataAccess({
-        studentId,
+      await this.logAccess({
         userId,
-        requestId: context?.requestId,
-        accessType: 'VIEW',
-        dataCategory: dataCategories.join(','),
-        accessLevel,
-        accessGranted: true,
-        fieldsAccessed: maskedFields,
-        retentionExpiresAt: expiresAt,
-        sessionId: context?.sessionId,
-        ipAddress: context?.ipAddress,
-        userAgent: context?.user_agent
+        action: 'READ',
+        resource: entityType,
+        resourceId: metadata?.entityId || 'unknown',
+        fields,
+        timestamp: new Date(),
+        ipAddress,
+        userAgent,
+        success: true,
+        complianceLevel: maxRequiredLevel,
+        dataSensitivity: fields.map(f => this.getFieldSensitivity(f)),
+        accessJustification: justification,
+        sessionId: metadata?.sessionId,
+        requestId
       });
 
       return {
-        granted: true,
-        conditions: roleCheck.conditions,
-        expiresAt,
-        maskedFields
+        allowed: true,
+        maskedFields,
+        complianceLevel: maxRequiredLevel,
+        requiresJustification
       };
 
     } catch (error) {
-      logger.error('Error checking student data access', {
-        error: (error as Error).message,
-        studentId,
-        userId,
-        dataCategories
-      });
-
-      // Log failed access check
-      await this.logDataAccess({
-        studentId,
-        userId,
-        requestId: context?.requestId,
-        accessType: 'VIEW',
-        dataCategory: dataCategories.join(','),
-        accessLevel,
-        accessGranted: false,
-        denialReason: 'System error during access check',
-        sessionId: context?.sessionId,
-        ipAddress: context?.ipAddress,
-        userAgent: context?.user_agent
-      });
-
-      return { granted: false, reason: 'System error during access check' };
+      logger.error('FERPA access check failed', { error, userId, userRole, entityType, fields });
+      return {
+        allowed: false,
+        maskedFields: fields,
+        complianceLevel: FERPAComplianceLevel.RESTRICTED,
+        requiresJustification: true,
+        errorMessage: 'FERPA access check failed'
+      };
     }
   }
 
   /**
-   * Apply data masking/redaction based on privacy settings and user role
+   * Apply data masking to sensitive fields
    */
-  async applyDataMasking(
+  public applyDataMasking(
     data: any,
-    studentId: string,
-    userRole: string,
-    dataCategories: string[]
-  ): Promise<any> {
-    try {
-      const maskedData = { ...data };
-      const privacySettings = await this.getStudentPrivacySettings(studentId);
-
-      if (!privacySettings) {
-        return data; // No privacy settings, return original data
-      }
-
-      // Get field access controls for the requested categories
-      const fieldControls = await prisma.field_access_controls.findMany({
-        where: {
-          field_category: { in: dataCategories }
-        }
-      });
-
-      for (const control of fieldControls) {
-        const fieldName = control.field_name;
-        if (fieldName in maskedData) {
-          // Check if masking is enabled and user doesn't have sufficient role
-          if (control.masking_enabled && !this.hasSufficientRole(userRole, control.min_user_role)) {
-            maskedData[fieldName] = this.maskFieldValue(maskedData[fieldName], control.access_level);
-          }
-
-          // Check if encryption is required
-          if (control.encryption_required && typeof maskedData[fieldName] === 'string') {
-            try {
-              maskedData[fieldName] = decryptData(maskedData[fieldName]);
-            } catch (decryptError) {
-              logger.warn('Failed to decrypt field', {
-                field: fieldName,
-                studentId,
-                error: (decryptError as Error).message
-              });
-              maskedData[fieldName] = '[ENCRYPTED]';
-            }
-          }
-        }
-      }
-
-      return maskedData;
-
-    } catch (error) {
-      logger.error('Error applying data masking', {
-        error: (error as Error).message,
-        studentId,
-        userRole,
-        dataCategories
-      });
-      return data; // Return original data on error
-    }
-  }
-
-  /**
-   * Create a formal data access request
-   */
-  async createDataAccessRequest(request: FerpaAccessRequest): Promise<string> {
-    try {
-      const requestId = generateUUID();
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 30); // Default 30-day expiry
-
-      const dataAccessRequest = await prisma.data_access_requests.create({
-        data: {
-          id: requestId,
-          student_id: request.studentId,
-          requester_id: request.userId,
-          requester_email: '', // Will be filled from user record
-          request_purpose: request.purpose,
-          data_categories: request.dataCategories,
-          access_level: request.accessLevel,
-          urgency_level: request.urgencyLevel || 'NORMAL',
-          status: 'PENDING',
-          expires_at: expiresAt,
-          created_at: new Date(),
-          updated_at: new Date()
-        }
-      });
-
-      logger.info('Data access request created', {
-        requestId: dataAccessRequest.id,
-        studentId: request.studentId,
-        userId: request.userId,
-        accessLevel: request.accessLevel
-      });
-
-      return dataAccessRequest.id;
-
-    } catch (error) {
-      logger.error('Error creating data access request', {
-        error: (error as Error).message,
-        request
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Check consent requirements for a specific data category
-   */
-  async checkConsentRequirements(
-    studentId: string,
-    dataCategory: string,
+    maskedFields: string[],
     userRole: string
-  ): Promise<ConsentRequirement> {
-    try {
-      const privacySettings = await this.getStudentPrivacySettings(studentId);
-      if (!privacySettings) {
-        return { required: false, consentType: 'NONE' };
+  ): any {
+    if (!data || maskedFields.length === 0) {
+      return data;
+    }
+
+    const maskedData = { ...data };
+
+    for (const field of maskedFields) {
+      const value = this.getNestedValue(data, field);
+      if (value !== undefined) {
+        const maskedValue = this.maskFieldValue(value, field, userRole);
+        this.setNestedValue(maskedData, field, maskedValue);
       }
-
-      // Map data categories to consent requirements
-      const consentMappings: Record<string, { required: boolean; type: string; guardian?: boolean }> = {
-        'PERSONAL': { required: true, type: 'PERSONAL_INFO' },
-        'ACADEMIC': { required: true, type: 'ACADEMIC_RECORD' },
-        'PHOTO_MEDIA': { required: true, type: 'PHOTO_MEDIA' },
-        'MEDICAL': { required: true, type: 'MEDICAL', guardian: true },
-        'FINANCIAL': { required: true, type: 'DATA_SHARING' },
-        'CONTACT': { required: true, type: 'PERSONAL_INFO' }
-      };
-
-      const mapping = consentMappings[dataCategory];
-      if (!mapping) {
-        return { required: false, consentType: 'NONE' };
-      }
-
-      // Check if consent exists and is valid
-      const existingConsent = await prisma.student_consents.findFirst({
-        where: {
-          student_id: studentId,
-          consent_types: {
-            category: mapping.type
-          },
-          consent_value: true,
-          OR: [
-            { expires_at: null },
-            { expires_at: { gt: new Date() } }
-          ]
-        },
-        include: {
-          consent_types: true
-        }
-      });
-
-      return {
-        required: mapping.required,
-        consentType: mapping.type,
-        validConsent: !!existingConsent,
-        expiresAt: existingConsent?.expires_at,
-        guardianConsent: mapping.guardian || false
-      };
-
-    } catch (error) {
-      logger.error('Error checking consent requirements', {
-        error: (error as Error).message,
-        studentId,
-        dataCategory,
-        userRole
-      });
-
-      return {
-        required: true,
-        consentType: 'ERROR',
-        validConsent: false
-      };
     }
+
+    return maskedData;
   }
 
   /**
-   * Log data access for FERPA compliance
+   * Create access request for sensitive data
    */
-  async logDataAccess(logData: {
-    studentId: string;
-    userId: string;
-    requestId?: string;
-    accessType: string;
-    dataCategory: string;
-    accessLevel: string;
-    accessGranted: boolean;
-    fieldsAccessed?: any;
-    recordsCount?: number;
-    accessPurpose?: string;
-    sessionId?: string;
-    ipAddress?: string;
-    userAgent?: string;
-    denialReason?: string;
-    retentionExpiresAt?: Date;
-  }): Promise<void> {
-    try {
-      await prisma.data_access_logs.create({
-        data: {
-          id: generateUUID(),
-          student_id: logData.studentId,
-          user_id: logData.userId,
-          request_id: logData.requestId,
-          access_type: logData.accessType,
-          data_category: logData.dataCategory,
-          access_level: logData.accessLevel,
-          fields_accessed: logData.fieldsAccessed,
-          records_count: logData.recordsCount || 1,
-          access_purpose: logData.accessPurpose,
-          session_id: logData.sessionId,
-          ip_address: logData.ipAddress,
-          user_agent: logData.userAgent,
-          access_granted: logData.accessGranted,
-          denial_reason: logData.denialReason,
-          retention_expires_at: logData.retentionExpiresAt,
-          created_at: new Date()
-        }
-      });
-
-    } catch (error) {
-      logger.error('Error logging data access', {
-        error: (error as Error).message,
-        logData
-      });
-      // Don't throw error for logging failures
+  public async createAccessRequest(
+    requesterId: string,
+    requesterRole: string,
+    targetType: 'student' | 'students' | 'activity' | 'activities',
+    targetId: string | undefined,
+    accessType: AccessRequestType,
+    justification: AccessJustification,
+    justificationText: string,
+    duration: number,
+    metadata: {
+      ipAddress: string;
+      userAgent: string;
+      requestId?: string;
+      sessionId?: string;
     }
-  }
+  ): Promise<AccessRequest> {
+    const request: AccessRequest = {
+      id: this.generateRequestId(),
+      requesterId,
+      requesterRole,
+      targetType,
+      targetId,
+      accessType,
+      justification,
+      justificationText,
+      duration,
+      status: 'pending',
+      createdAt: new Date(),
+      metadata
+    };
 
-  /**
-   * Report a FERPA violation
-   */
-  async reportViolation(violation: FerpaViolationReport): Promise<string> {
-    try {
-      const violationId = generateUUID();
-
-      await prisma.ferpa_violations.create({
-        data: {
-          id: violationId,
-          violation_type: violation.violationType,
-          severity_level: violation.severityLevel,
-          student_id: violation.studentId,
-          user_id: violation.userId,
-          description: violation.description,
-          incident_date: violation.incidentDate,
-          reported_by: violation.reportedBy,
-          impact_assessment: violation.impactAssessment,
-          preventive_measures: violation.preventiveMeasures,
-          created_at: new Date(),
-          updated_at: new Date()
-        }
-      });
-
-      logger.warn('FERPA violation reported', {
-        violationId,
-        violationType: violation.violationType,
-        severityLevel: violation.severityLevel,
-        studentId: violation.studentId,
-        userId: violation.userId
-      });
-
-      return violationId;
-
-    } catch (error) {
-      logger.error('Error reporting FERPA violation', {
-        error: (error as Error).message,
-        violation
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Get student privacy settings
-   */
-  private async getStudentPrivacySettings(studentId: string): Promise<any> {
-    try {
-      return await prisma.student_privacy_settings.findUnique({
-        where: { student_id: studentId },
-        include: {
-          student_consents: {
-            include: {
-              consent_types: true
-            }
+    // Store request in database
+    await this.prisma.audit_logs.create({
+      data: {
+        id: request.id,
+        entity: 'ferpa_access_request',
+        action: 'CREATE',
+        entity_id: request.id,
+        performed_by: requesterId,
+        ip_address: metadata.ipAddress,
+        user_agent: metadata.userAgent,
+        new_values: {
+          request: {
+            id: request.id,
+            requesterId,
+            targetType,
+            accessType,
+            justification,
+            justificationText,
+            duration,
+            status: request.status
           }
         }
-      });
-    } catch (error) {
-      logger.error('Error getting student privacy settings', {
-        error: (error as Error).message,
-        studentId
-      });
-      return null;
-    }
-  }
-
-  /**
-   * Check role-based access permissions
-   */
-  private async checkRoleBasedAccess(
-    userRole: string,
-    accessLevel: string,
-    dataCategories: string[]
-  ): Promise<FerpaAccessResult> {
-    // Role hierarchy: SUPER_ADMIN > ADMIN > LIBRARIAN > ASSISTANT > TEACHER > VIEWER
-
-    const roleHierarchy: Record<string, number> = {
-      'SUPER_ADMIN': 6,
-      'ADMIN': 5,
-      'LIBRARIAN': 4,
-      'ASSISTANT': 3,
-      'TEACHER': 2,
-      'VIEWER': 1
-    };
-
-    const accessLevelHierarchy: Record<string, number> = {
-      'READ_ONLY': 1,
-      'SUMMARY': 2,
-      'DETAILED': 3,
-      'ANALYTICAL': 4
-    };
-
-    const userRoleLevel = roleHierarchy[userRole] || 0;
-    const requiredAccessLevel = accessLevelHierarchy[accessLevel] || 0;
-
-    // Check if user has sufficient role for requested access level
-    if (userRoleLevel < requiredAccessLevel) {
-      return {
-        granted: false,
-        reason: `Insufficient role privileges. Required: ${accessLevel}, User role: ${userRole}`
-      };
-    }
-
-    // Additional checks for sensitive data categories
-    if (dataCategories.includes('MEDICAL') && userRoleLevel < 5) {
-      return {
-        granted: false,
-        reason: 'Medical data access requires ADMIN or SUPER_ADMIN role'
-      };
-    }
-
-    if (dataCategories.includes('FINANCIAL') && userRoleLevel < 4) {
-      return {
-        granted: false,
-        reason: 'Financial data access requires LIBRARIAN, ADMIN, or SUPER_ADMIN role'
-      };
-    }
-
-    return {
-      granted: true,
-      conditions: userRoleLevel < 4 ? ['Limited access, supervisor notification required'] : undefined
-    };
-  }
-
-  /**
-   * Get fields that require masking based on privacy settings
-   */
-  private async getMaskedFields(
-    studentId: string,
-    userRole: string,
-    dataCategories: string[]
-  ): Promise<string[]> {
-    try {
-      const fieldControls = await prisma.field_access_controls.findMany({
-        where: {
-          field_category: { in: dataCategories },
-          masking_enabled: true
-        }
-      });
-
-      return fieldControls
-        .filter(control => !this.hasSufficientRole(userRole, control.min_user_role))
-        .map(control => control.field_name);
-
-    } catch (error) {
-      logger.error('Error getting masked fields', {
-        error: (error as Error).message,
-        studentId,
-        userRole,
-        dataCategories
-      });
-      return [];
-    }
-  }
-
-  /**
-   * Calculate access expiration based on retention policies
-   */
-  private async calculateAccessExpiration(
-    studentId: string,
-    dataCategories: string[]
-  ): Promise<Date> {
-    try {
-      // Get retention policies for the requested data categories
-      const policies = await prisma.data_retention_policies.findMany({
-        where: {
-          data_category: { in: dataCategories },
-          is_active: true
-        }
-      });
-
-      if (policies.length === 0) {
-        // Default retention period of 1 year
-        const defaultExpiry = new Date();
-        defaultExpiry.setFullYear(defaultExpiry.getFullYear() + 1);
-        return defaultExpiry;
       }
+    });
 
-      // Use the shortest retention period among applicable policies
-      const minRetentionDays = Math.min(...policies.map(p => p.retention_days));
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + minRetentionDays);
+    // Store in memory for quick access
+    this.activeAccessRequests.set(request.id, request);
 
-      return expiresAt;
+    logger.info('FERPA access request created', {
+      requestId: request.id,
+      requesterId,
+      targetType,
+      accessType,
+      justification
+    });
 
-    } catch (error) {
-      logger.error('Error calculating access expiration', {
-        error: (error as Error).message,
-        studentId,
-        dataCategories
-      });
+    return request;
+  }
 
-      // Default to 1 year if calculation fails
-      const defaultExpiry = new Date();
-      defaultExpiry.setFullYear(defaultExpiry.getFullYear() + 1);
-      return defaultExpiry;
+  /**
+   * Approve access request
+   */
+  public async approveAccessRequest(
+    requestId: string,
+    approvedBy: string,
+    approvedByRole: string
+  ): Promise<boolean> {
+    const request = this.activeAccessRequests.get(requestId);
+    if (!request) {
+      logger.warn('Access request not found', { requestId });
+      return false;
     }
+
+    request.status = 'approved';
+    request.approvedBy = approvedBy;
+    request.approvedAt = new Date();
+    request.expiresAt = new Date(Date.now() + (request.duration * 60 * 60 * 1000));
+
+    // Update in database
+    await this.prisma.audit_logs.create({
+      data: {
+        id: this.generateAuditId(),
+        entity: 'ferpa_access_request',
+        action: 'APPROVE',
+        entity_id: requestId,
+        performed_by: approvedBy,
+        new_values: {
+          status: 'approved',
+          approvedBy,
+          approvedAt: request.approvedAt,
+          expiresAt: request.expiresAt
+        }
+      }
+    });
+
+    logger.info('FERPA access request approved', {
+      requestId,
+      approvedBy,
+      approvedByRole,
+      expiresAt: request.expiresAt
+    });
+
+    return true;
   }
 
-  /**
-   * Check if user has sufficient role for field access
-   */
-  private hasSufficientRole(userRole: string, minUserRole?: string): boolean {
-    if (!minUserRole) return true;
-
-    const roleHierarchy: Record<string, number> = {
-      'SUPER_ADMIN': 6,
-      'ADMIN': 5,
-      'LIBRARIAN': 4,
-      'ASSISTANT': 3,
-      'TEACHER': 2,
-      'VIEWER': 1
-    };
-
-    const userRoleLevel = roleHierarchy[userRole] || 0;
-    const requiredRoleLevel = roleHierarchy[minUserRole] || 0;
-
-    return userRoleLevel >= requiredRoleLevel;
-  }
+  // Helper methods for FERPA compliance
 
   /**
-   * Mask field value based on access level
+   * Get required compliance level for a field
    */
-  private maskFieldValue(value: any, accessLevel: string): string {
-    if (value === null || value === undefined) return value;
+  private getRequiredComplianceLevel(field: string): FERPAComplianceLevel {
+    const sensitivity = this.getFieldSensitivity(field);
 
-    const stringValue = String(value);
-
-    switch (accessLevel) {
-      case 'PUBLIC':
-        return '[HIDDEN]';
-      case 'INTERNAL':
-        return stringValue.length > 4 ?
-          stringValue.substring(0, 2) + '*'.repeat(stringValue.length - 2) :
-          '*'.repeat(stringValue.length);
-      case 'RESTRICTED':
-        return stringValue.length > 8 ?
-          stringValue.substring(0, 4) + '*'.repeat(stringValue.length - 4) :
-          '*'.repeat(stringValue.length);
-      case 'CONFIDENTIAL':
-        return stringValue.substring(0, 1) + '*'.repeat(stringValue.length - 1);
+    switch (sensitivity) {
+      case DataSensitivity.DIRECTORY_INFO:
+        return FERPAComplianceLevel.PUBLIC;
+      case DataSensitivity.ACADEMIC_RECORDS:
+        return FERPAComplianceLevel.LIMITED;
+      case DataSensitivity.PERSONAL_INFO:
+        return FERPAComplianceLevel.SENSITIVE;
+      case DataSensitivity.FINANCIAL:
+      case DataSensitivity.ASSESSMENT:
+        return FERPAComplianceLevel.RESTRICTED;
+      case DataSensitivity.MEDICAL_INFO:
+      case DataSensitivity.DISCIPLINARY:
+      case DataSensitivity.SPECIAL_EDUCATION:
+        return FERPAComplianceLevel.CONFIDENTIAL;
       default:
-        return '[RESTRICTED]';
+        return FERPAComplianceLevel.RESTRICTED;
     }
   }
 
   /**
-   * Initialize default FERPA compliance settings
+   * Get data sensitivity classification for a field
    */
-  async initializeDefaultSettings(): Promise<void> {
-    try {
-      // Create default consent types
-      const defaultConsentTypes = [
-        {
-          id: generateUUID(),
-          name: 'Personal Information Consent',
-          description: 'Consent for collection and use of personal information',
-          category: 'PERSONAL_INFO',
-          is_required: true,
-          min_age: 13,
-          expiration_days: 365
-        },
-        {
-          id: generateUUID(),
-          name: 'Academic Records Access',
-          description: 'Consent for access to academic records and performance data',
-          category: 'ACADEMIC_RECORD',
-          is_required: true,
-          min_age: 13,
-          expiration_days: 365
-        },
-        {
-          id: generateUUID(),
-          name: 'Photo and Media Consent',
-          description: 'Consent for taking and using photos/videos of students',
-          category: 'PHOTO_MEDIA',
-          is_required: false,
-          min_age: 13,
-          expiration_days: 365
-        },
-        {
-          id: generateUUID(),
-          name: 'Data Sharing Consent',
-          description: 'Consent for sharing data with educational partners',
-          category: 'DATA_SHARING',
-          is_required: true,
-          min_age: 18,
-          expiration_days: 180
-        }
-      ];
-
-      for (const consentType of defaultConsentTypes) {
-        await prisma.consent_types.upsert({
-          where: { name: consentType.name },
-          update: consentType,
-          create: consentType
-        });
-      }
-
-      // Create default field access controls
-      const defaultFieldControls = [
-        {
-          id: generateUUID(),
-          field_name: 'first_name',
-          field_category: 'PERSONAL',
-          access_level: 'INTERNAL',
-          encryption_required: false,
-          masking_enabled: true,
-          min_user_role: 'TEACHER',
-          consent_required: true,
-          retention_days: 1825, // 5 years
-          audit_level: 'STANDARD',
-          description: 'Student first name'
-        },
-        {
-          id: generateUUID(),
-          field_name: 'last_name',
-          field_category: 'PERSONAL',
-          access_level: 'INTERNAL',
-          encryption_required: false,
-          masking_enabled: true,
-          min_user_role: 'TEACHER',
-          consent_required: true,
-          retention_days: 1825,
-          audit_level: 'STANDARD',
-          description: 'Student last name'
-        },
-        {
-          id: generateUUID(),
-          field_name: 'grade_level',
-          field_category: 'ACADEMIC',
-          access_level: 'INTERNAL',
-          encryption_required: false,
-          masking_enabled: false,
-          min_user_role: 'TEACHER',
-          consent_required: true,
-          retention_days: 1825,
-          audit_level: 'DETAILED',
-          description: 'Student grade level'
-        },
-        {
-          id: generateUUID(),
-          field_name: 'student_id',
-          field_category: 'PERSONAL',
-          access_level: 'ENCRYPTED',
-          encryption_required: true,
-          masking_enabled: true,
-          min_user_role: 'LIBRARIAN',
-          consent_required: true,
-          retention_days: 1825,
-          audit_level: 'COMPREHENSIVE',
-          description: 'Official school student ID'
-        }
-      ];
-
-      for (const fieldControl of defaultFieldControls) {
-        await prisma.field_access_controls.upsert({
-          where: { field_name: fieldControl.field_name },
-          update: fieldControl,
-          create: fieldControl
-        });
-      }
-
-      // Create default data retention policies
-      const defaultRetentionPolicies = [
-        {
-          id: generateUUID(),
-          name: 'Student Personal Information',
-          description: 'Retention policy for student personal information',
-          data_category: 'PERSONAL',
-          retention_days: 1825, // 5 years after student leaves
-          archival_action: 'ANONYMIZE',
-          notification_days: 90
-        },
-        {
-          id: generateUUID(),
-          name: 'Academic Records',
-          description: 'Retention policy for academic records',
-          data_category: 'ACADEMIC',
-          retention_days: 3650, // 10 years
-          archival_action: 'ARCHIVE',
-          notification_days: 180
-        },
-        {
-          id: generateUUID(),
-          name: 'Activity Logs',
-          description: 'Retention policy for student activity logs',
-          data_category: 'ACTIVITY',
-          retention_days: 1095, // 3 years
-          archival_action: 'DELETE',
-          notification_days: 30
-        }
-      ];
-
-      for (const policy of defaultRetentionPolicies) {
-        await prisma.data_retention_policies.upsert({
-          where: { name: policy.name },
-          update: policy,
-          create: policy
-        });
-      }
-
-      logger.info('FERPA compliance default settings initialized successfully');
-
-    } catch (error) {
-      logger.error('Error initializing FERPA compliance settings', {
-        error: (error as Error).message
-      });
-      throw error;
-    }
+  private getFieldSensitivity(field: string): DataSensitivity {
+    return FIELD_SENSITIVITY_MAP[field] || DataSensitivity.PERSONAL_INFO;
   }
 
   /**
-   * Generate FERPA compliance report
+   * Get highest compliance level from array
    */
-  async generateComplianceReport(
-    startDate: Date,
-    endDate: Date,
-    reportType: 'ACCESS_LOG' | 'VIOLATIONS' | 'CONSENT_STATUS' | 'RETENTION' = 'ACCESS_LOG'
-  ): Promise<any> {
-    try {
-      switch (reportType) {
-        case 'ACCESS_LOG':
-          return await this.generateAccessLogReport(startDate, endDate);
-        case 'VIOLATIONS':
-          return await this.generateViolationsReport(startDate, endDate);
-        case 'CONSENT_STATUS':
-          return await this.generateConsentStatusReport();
-        case 'RETENTION':
-          return await this.generateRetentionReport();
-        default:
-          throw new Error(`Unknown report type: ${reportType}`);
-      }
-    } catch (error) {
-      logger.error('Error generating compliance report', {
-        error: (error as Error).message,
-        reportType,
-        startDate,
-        endDate
-      });
-      throw error;
+  private getHighestComplianceLevel(levels: FERPAComplianceLevel[]): FERPAComplianceLevel {
+    const levelOrder = [
+      FERPAComplianceLevel.PUBLIC,
+      FERPAComplianceLevel.LIMITED,
+      FERPAComplianceLevel.SENSITIVE,
+      FERPAComplianceLevel.RESTRICTED,
+      FERPAComplianceLevel.CONFIDENTIAL
+    ];
+
+    return levels.reduce((highest, current) => {
+      return levelOrder.indexOf(current) > levelOrder.indexOf(highest) ? current : highest;
+    }, FERPAComplianceLevel.PUBLIC);
+  }
+
+  /**
+   * Get fields that need masking for user role
+   */
+  private getMaskedFields(userRole: string, fields: string[]): string[] {
+    const userPermissions = ROLE_FERPA_PERMISSIONS[userRole] || [];
+
+    return fields.filter(field => {
+      const requiredLevel = this.getRequiredComplianceLevel(field);
+      return !userPermissions.includes(requiredLevel);
+    });
+  }
+
+  /**
+   * Check if access requires justification
+   */
+  private requiresAccessJustification(userRole: string, complianceLevel: FERPAComplianceLevel): boolean {
+    const userPermissions = ROLE_FERPA_PERMISSIONS[userRole] || [];
+    const maxAllowedLevel = userPermissions[userPermissions.length - 1];
+
+    return complianceLevel > maxAllowedLevel;
+  }
+
+  /**
+   * Mask field value based on sensitivity and user role
+   */
+  private maskFieldValue(value: string, field: string, userRole: string): string {
+    const sensitivity = this.getFieldSensitivity(field);
+    const cacheKey = `${field}:${userRole}:${value.substring(0, 10)}`;
+
+    if (this.dataMaskingCache.has(cacheKey)) {
+      return this.dataMaskingCache.get(cacheKey);
     }
-  }
 
-  private async generateAccessLogReport(startDate: Date, endDate: Date): Promise<any> {
-    const accessLogs = await prisma.data_access_logs.findMany({
-      where: {
-        created_at: {
-          gte: startDate,
-          lte: endDate
+    let maskedValue: string;
+
+    switch (sensitivity) {
+      case DataSensitivity.DIRECTORY_INFO:
+        // Show partial information
+        if (field.includes('name')) {
+          maskedValue = value.length > 2 ? value.charAt(0) + '*'.repeat(value.length - 2) + value.charAt(value.length - 1) : '*'.repeat(value.length);
+        } else {
+          maskedValue = value;
         }
-      },
-      include: {
-        data_access_requests: true
-      },
-      orderBy: { created_at: 'desc' }
-    });
+        break;
 
-    const summary = {
-      totalRequests: accessLogs.length,
-      grantedAccess: accessLogs.filter(log => log.access_granted).length,
-      deniedAccess: accessLogs.filter(log => !log.access_granted).length,
-      byAccessLevel: {} as Record<string, number>,
-      byDataCategory: {} as Record<string, number>,
-      byUserRole: {} as Record<string, number>,
-      violationsDetected: accessLogs.filter(log => !log.access_granted).length
-    };
+      case DataSensitivity.ACADEMIC_RECORDS:
+        // Show limited information
+        maskedValue = '[RESTRICTED]';
+        break;
 
-    // Aggregate data
-    accessLogs.forEach(log => {
-      summary.byAccessLevel[log.access_level] = (summary.byAccessLevel[log.access_level] || 0) + 1;
-      summary.byDataCategory[log.data_category] = (summary.byDataCategory[log.data_category] || 0) + 1;
-      // Note: user role would need to be joined from users table
-    });
-
-    return {
-      reportType: 'ACCESS_LOG',
-      period: { startDate, endDate },
-      summary,
-      details: accessLogs
-    };
-  }
-
-  private async generateViolationsReport(startDate: Date, endDate: Date): Promise<any> {
-    const violations = await prisma.ferpa_violations.findMany({
-      where: {
-        incident_date: {
-          gte: startDate,
-          lte: endDate
+      case DataSensitivity.PERSONAL_INFO:
+        // Show minimal information
+        if (field.includes('email')) {
+          const [username, domain] = value.split('@');
+          maskedValue = username.charAt(0) + '*'.repeat(username.length - 2) + username.charAt(username.length - 1) + '@' + domain;
+        } else if (field.includes('phone')) {
+          maskedValue = value.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+        } else {
+          maskedValue = value.length > 4 ? value.substring(0, 2) + '*'.repeat(value.length - 4) + value.substring(value.length - 2) : '*'.repeat(value.length);
         }
-      },
-      orderBy: { incident_date: 'desc' }
-    });
+        break;
 
-    const summary = {
-      totalViolations: violations.length,
-      byType: {} as Record<string, number>,
-      bySeverity: {} as Record<string, number>,
-      resolvedCount: violations.filter(v => v.resolved_at).length,
-      pendingResolution: violations.filter(v => !v.resolved_at).length
-    };
+      case DataSensitivity.FINANCIAL:
+      case DataSensitivity.ASSESSMENT:
+        // Show category only
+        maskedValue = '[CONFIDENTIAL]';
+        break;
 
-    violations.forEach(violation => {
-      summary.byType[violation.violation_type] = (summary.byType[violation.violation_type] || 0) + 1;
-      summary.bySeverity[violation.severity_level] = (summary.bySeverity[violation.severity_level] || 0) + 1;
-    });
+      case DataSensitivity.MEDICAL_INFO:
+      case DataSensitivity.DISCIPLINARY:
+      case DataSensitivity.SPECIAL_EDUCATION:
+        // Completely masked
+        maskedValue = '[PROTECTED]';
+        break;
 
-    return {
-      reportType: 'VIOLATIONS',
-      period: { startDate, endDate },
-      summary,
-      details: violations
-    };
+      default:
+        maskedValue = '[MASKED]';
+    }
+
+    // Cache the result
+    this.dataMaskingCache.set(cacheKey, maskedValue);
+
+    return maskedValue;
   }
 
-  private async generateConsentStatusReport(): Promise<any> {
-    const consentStatus = await prisma.student_consents.findMany({
-      include: {
-        consent_types: true,
-        students: {
-          select: {
-            student_id: true,
-            first_name: true,
-            last_name: true,
-            grade_level: true
+  /**
+   * Get nested value from object using dot notation
+   */
+  private getNestedValue(obj: any, path: string): any {
+    return path.split('.').reduce((current, key) => current?.[key], obj);
+  }
+
+  /**
+   * Set nested value in object using dot notation
+   */
+  private setNestedValue(obj: any, path: string, value: any): void {
+    const keys = path.split('.');
+    const lastKey = keys.pop()!;
+    const target = keys.reduce((current, key) => current[key] = current[key] || {}, obj);
+    target[lastKey] = value;
+  }
+
+  /**
+   * Generate unique request ID
+   */
+  private generateRequestId(): string {
+    return `ferpa_req_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  }
+
+  /**
+   * Generate unique audit ID
+   */
+  private generateAuditId(): string {
+    return `ferpa_audit_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+  }
+
+  /**
+   * Start periodic cleanup of expired access requests and cache
+   */
+  private startPeriodicCleanup(): void {
+    setInterval(async () => {
+      try {
+        const now = new Date();
+
+        // Clean up expired access requests
+        for (const [id, request] of this.activeAccessRequests.entries()) {
+          if (request.expiresAt && request.expiresAt < now) {
+            request.status = 'expired';
+            this.activeAccessRequests.delete(id);
+
+            // Log expiration
+            await this.prisma.audit_logs.create({
+              data: {
+                id: this.generateAuditId(),
+                entity: 'ferpa_access_request',
+                action: 'EXPIRE',
+                entity_id: id,
+                performed_by: 'system',
+                new_values: {
+                  status: 'expired',
+                  expiredAt: now
+                }
+              }
+            });
           }
         }
+
+        // Clean up masking cache (keep last 1000 entries)
+        if (this.dataMaskingCache.size > 1000) {
+          const entries = Array.from(this.dataMaskingCache.entries());
+          this.dataMaskingCache.clear();
+          entries.slice(-500).forEach(([key, value]) => {
+            this.dataMaskingCache.set(key, value);
+          });
+        }
+
+      } catch (error) {
+        logger.error('FERPA service cleanup failed', { error });
       }
-    });
-
-    const summary = {
-      totalConsents: consentStatus.length,
-      activeConsents: consentStatus.filter(c => c.consent_value && (!c.expires_at || c.expires_at > new Date())).length,
-      expiredConsents: consentStatus.filter(c => c.expires_at && c.expires_at <= new Date()).length,
-      revokedConsents: consentStatus.filter(c => !c.consent_value).length,
-      byType: {} as Record<string, number>
-    };
-
-    consentStatus.forEach(consent => {
-      summary.byType[consent.consent_types.name] = (summary.byType[consent.consent_types.name] || 0) + 1;
-    });
-
-    return {
-      reportType: 'CONSENT_STATUS',
-      summary,
-      details: consentStatus
-    };
+    }, 60 * 60 * 1000); // Run every hour
   }
 
-  private async generateRetentionReport(): Promise<any> {
-    const policies = await prisma.data_retention_policies.findMany({
-      where: { is_active: true },
-      include: {
-        retention_schedules: true
-      }
-    });
+  // Encrypt sensitive data
+  encryptSensitiveData(data: any): string {
+    try {
+      const jsonString = JSON.stringify(data);
+      const encrypted = CryptoJS.AES.encrypt(jsonString, this.encryptionKey).toString();
+      return encrypted;
+    } catch (error) {
+      logger.error('Failed to encrypt sensitive data', error);
+      throw new FERPAComplianceError('Data encryption failed', { error: (error as Error).message });
+    }
+  }
 
-    const schedules = await prisma.retention_schedules.findMany({
-      include: {
-        data_retention_policies: true
-      },
-      orderBy: { next_run_at: 'asc' }
-    });
+  // Decrypt sensitive data
+  decryptSensitiveData(encryptedData: string): any {
+    try {
+      const decrypted = CryptoJS.AES.decrypt(encryptedData, this.encryptionKey);
+      const jsonString = decrypted.toString(CryptoJS.enc.Utf8);
 
-    return {
-      reportType: 'RETENTION',
-      policies,
-      schedules,
-      summary: {
-        activePolicies: policies.length,
-        scheduledRuns: schedules.length,
-        nextScheduledRun: schedules[0]?.next_run_at
+      if (!jsonString) {
+        throw new Error('Decryption failed - invalid data or key');
       }
+
+      return JSON.parse(jsonString);
+    } catch (error) {
+      logger.error('Failed to decrypt sensitive data', error);
+      throw new FERPAComplianceError('Data decryption failed', { error: (error as Error).message });
+    }
+  }
+
+  // Log FERPA access
+  private logAccess(logEntry: Partial<FERPAAuditLog>): void {
+    const auditLog: FERPAAuditLog = {
+      userId: logEntry.userId || '',
+      action: logEntry.action || 'READ',
+      resource: logEntry.resource || '',
+      resourceId: logEntry.resourceId || '',
+      fields: logEntry.fields || [],
+      timestamp: logEntry.timestamp || new Date(),
+      ipAddress: logEntry.ipAddress || '',
+      userAgent: logEntry.userAgent,
+      success: logEntry.success !== false,
+      reason: logEntry.reason,
     };
+
+    this.auditLogs.push(auditLog);
+
+    // Log to system logger
+    logger.info('FERPA Audit', {
+      userId: auditLog.userId,
+      action: auditLog.action,
+      resource: auditLog.resource,
+      resourceId: auditLog.resourceId,
+      fields: auditLog.fields,
+      timestamp: auditLog.timestamp,
+      ipAddress: auditLog.ipAddress,
+      success: auditLog.success,
+    });
+
+    // Keep only last 10000 audit logs in memory
+    if (this.auditLogs.length > 10000) {
+      this.auditLogs = this.auditLogs.slice(-10000);
+    }
+  }
+
+  // Get audit logs (admin only)
+  getAuditLogs(userId?: string, resourceId?: string, startDate?: Date, endDate?: Date): FERPAAuditLog[] {
+    let logs = [...this.auditLogs];
+
+    if (userId) {
+      logs = logs.filter(log => log.userId === userId);
+    }
+
+    if (resourceId) {
+      logs = logs.filter(log => log.resourceId === resourceId);
+    }
+
+    if (startDate) {
+      logs = logs.filter(log => log.timestamp >= startDate);
+    }
+
+    if (endDate) {
+      logs = logs.filter(log => log.timestamp <= endDate);
+    }
+
+    // Return newest first
+    return logs.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  }
+
+  // Check for data breaches or suspicious access patterns
+  detectSuspiciousAccess(userId: string, timeWindow: number = 3600000): FERPAAuditLog[] {
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - timeWindow);
+
+    const userLogs = this.auditLogs.filter(log =>
+      log.userId === userId &&
+      log.timestamp >= windowStart &&
+      log.success
+    );
+
+    // Check for unusual patterns
+    const suspiciousLogs: FERPAAuditLog[] = [];
+    const fieldAccessCount = new Map<string, number>();
+
+    userLogs.forEach(log => {
+      log.fields.forEach(field => {
+        fieldAccessCount.set(field, (fieldAccessCount.get(field) || 0) + 1);
+      });
+    });
+
+    // Flag users accessing sensitive fields more than 10 times in an hour
+    fieldAccessCount.forEach((count, field) => {
+      if (this.sensitiveFields.includes(field) && count > 10) {
+        suspiciousLogs.push(...userLogs.filter(log => log.fields.includes(field)));
+      }
+    });
+
+    return suspiciousLogs;
+  }
+
+  // Export data with proper consent and audit
+  async exportStudentData(studentId: string, requestUserId: string, userRole: string, consentGiven: boolean = false): Promise<any> {
+    if (!consentGiven && !['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+      throw new FERPAComplianceError('Student consent required for data export');
+    }
+
+    // Log export attempt
+    this.logAccess({
+      userId: requestUserId,
+      action: 'EXPORT',
+      resource: 'student',
+      resourceId: studentId,
+      fields: ['all'],
+      timestamp: new Date(),
+      ipAddress: '',
+      success: consentGiven || ['ADMIN', 'SUPER_ADMIN'].includes(userRole),
+      reason: consentGiven ? 'Student consent given' : 'Admin access',
+    });
+
+    // In a real implementation, this would fetch and return the student data
+    return { message: 'Export logged and approved' };
+  }
+
+  // Delete data with proper verification
+  deleteStudentData(studentId: string, requestUserId: string, userRole: string, reason: string): void {
+    if (!['ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+      throw new FERPAComplianceError('Insufficient privileges for data deletion');
+    }
+
+    // Log deletion
+    this.logAccess({
+      userId: requestUserId,
+      action: 'DELETE',
+      resource: 'student',
+      resourceId: studentId,
+      fields: ['all'],
+      timestamp: new Date(),
+      ipAddress: '',
+      success: true,
+      reason,
+    });
+
+    logger.info('Student data deletion initiated', {
+      studentId,
+      requestUserId,
+      userRole,
+      reason,
+    });
   }
 }
-
-// Export singleton instance
-export const ferpaComplianceService = new FerpaComplianceService();
-export default ferpaComplianceService;

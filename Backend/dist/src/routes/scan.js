@@ -466,4 +466,3 @@ router.post('/student/self-checkout', async (req, res) => {
     }
 });
 exports.default = router;
-//# sourceMappingURL=scan.js.map

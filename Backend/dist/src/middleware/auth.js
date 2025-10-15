@@ -125,4 +125,3 @@ exports.requireAdmin = (0, exports.authorize)(['ADMIN']);
 exports.requireLibrarian = (0, exports.authorize)(['ADMIN', 'LIBRARIAN']);
 exports.requireStaff = (0, exports.authorize)(['ADMIN', 'LIBRARIAN', 'STAFF']);
 exports.authMiddleware = exports.authenticate;
-//# sourceMappingURL=auth.js.map

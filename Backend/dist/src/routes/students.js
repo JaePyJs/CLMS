@@ -368,4 +368,3 @@ router.post('/scan', (0, ferpa_middleware_1.auditMiddleware)('SCAN_STUDENT_BARCO
     }
 });
 exports.default = router;
-//# sourceMappingURL=students.js.map

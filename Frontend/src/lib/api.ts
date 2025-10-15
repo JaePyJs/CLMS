@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from 'axios';
+import axios from 'axios';
 
 import { setupInterceptors } from './api/interceptors';
 
@@ -23,7 +23,7 @@ export interface LoginResponse {
 
 // API client class
 class ApiClient {
-  private client: AxiosInstance;
+  private client: ReturnType<typeof axios.create>;
   private baseURL: string;
   private DEFAULT_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -132,6 +132,41 @@ export const studentsApi = {
 
   // Log student activity
   logActivity: (data: any) => apiClient.post('/api/students/activity', data),
+
+  // Import students (enhanced with field mapping)
+  importStudents: (file: File, fieldMappings?: any[], dryRun: boolean = false) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (fieldMappings) {
+      formData.append('fieldMappings', JSON.stringify(fieldMappings));
+    }
+    formData.append('dryRun', dryRun.toString());
+
+    return apiClient.post('/api/import/students/enhanced', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  // Preview import file
+  previewImport: (file: File, importType: string = 'students', maxPreviewRows: number = 10) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('importType', importType);
+    formData.append('maxPreviewRows', maxPreviewRows.toString());
+
+    return apiClient.post('/api/import/preview', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  // Download import template
+  downloadTemplate: () => {
+    return apiClient.get('/api/import/templates/students');
+  },
 };
 
 export const equipmentApi = {

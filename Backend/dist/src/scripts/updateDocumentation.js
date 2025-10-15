@@ -315,4 +315,3 @@ async function main() {
 if (require.main === module) {
     main();
 }
-//# sourceMappingURL=updateDocumentation.js.map

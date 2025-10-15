@@ -22,7 +22,6 @@
       "Bash(npm run test)",
       "Bash(npm run test:*)",
       "Bash(npm test)",
-      "Bash(npm test:*)",
       "Bash(npm run lint:*)",
       "Bash(npm run format:*)",
       "Bash(dir:*)",
@@ -94,10 +93,6 @@
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": ["github"],
-  "statusLine": {
-    "type": "command",
-    "command": "bash -c 'input=$(cat); MODEL=$(echo \"$input\" | jq -r \".model.display_name\"); DIR=$(echo \"$input\" | jq -r \".workspace.current_dir\"); WAVES=(\"🌊\" \"🌀\" \"💧\" \"⚡\" \"🔥\"); WAVE=${WAVES[$((RANDOM % 5))]}; DEPTH=$(($(find . -name \"*.py\" -o -name \"*.js\" -o -name \"*.rs\" 2>/dev/null | wc -l) * 10)); CREATURES=$([ $DEPTH -gt 100 ] && echo \"🐋\" || [ $DEPTH -gt 50 ] && echo \"🐠\" || echo \"🐟\"); TREASURE=$([ $((RANDOM % 20)) -eq 0 ] && echo \"💎\" || echo \"\"); echo \"[$MODEL] $WAVE Depth: ${DEPTH}m | $CREATURES $TREASURE | 📁 ${DIR##*/}\"'"
-  },
   "env": {
     "CLAUDE_CODE_ENABLE_TELEMETRY": "0",
     "GIT_FLOW_MAIN_BRANCH": "main",
@@ -114,7 +109,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_COMMAND\" | grep -q 'git checkout -b'; then BRANCH_NAME=$(echo \"$CLAUDE_TOOL_COMMAND\" | sed -n 's/.*git checkout -b \\([^ ]*\\).*/\\1/p'); if [[ -n \"$BRANCH_NAME\" ]] && [[ \"$BRANCH_NAME\" != \"main\" ]] && [[ \"$BRANCH_NAME\" != \"develop\" ]]; then if [[ ! \"$BRANCH_NAME\" =~ ^(feature|release|hotfix)/ ]]; then echo \"❌ Invalid Git Flow branch name: $BRANCH_NAME\"; echo \"\"; echo \"Git Flow branches must follow these patterns:\"; echo \"  • feature/<descriptive-name>\"; echo \"  • release/v<MAJOR>.<MINOR>.<PATCH>\"; echo \"  • hotfix/<descriptive-name>\"; echo \"\"; echo \"Examples:\"; echo \"  ✅ feature/user-authentication\"; echo \"  ✅ release/v1.2.0\"; echo \"  ✅ hotfix/critical-security-fix\"; echo \"\"; echo \"Invalid:\"; echo \"  ❌ $BRANCH_NAME (missing Git Flow prefix)\"; echo \"  ❌ feat/something (use 'feature/' not 'feat/')\"; echo \"  ❌ fix/bug (use 'hotfix/' not 'fix/')\"; echo \"\"; echo \"💡 Use Git Flow commands instead:\"; echo \"  /feature <name>  - Create feature branch\"; echo \"  /release <version> - Create release branch\"; echo \"  /hotfix <name>   - Create hotfix branch\"; exit 1; fi; if [[ \"$BRANCH_NAME\" =~ ^release/ ]] && [[ ! \"$BRANCH_NAME\" =~ ^release/v[0-9]+\\.[0-9]+\\.[0-9]+(-.+)?$ ]]; then echo \"❌ Invalid release version: $BRANCH_NAME\"; echo \"\"; echo \"Release branches must follow semantic versioning:\"; echo \"  release/vMAJOR.MINOR.PATCH[-prerelease]\"; echo \"\"; echo \"Valid examples:\"; echo \"  ✅ release/v1.0.0\"; echo \"  ✅ release/v2.1.3\"; echo \"  ✅ release/v1.0.0-beta.1\"; echo \"\"; echo \"Invalid:\"; echo \"  ❌ release/1.0.0 (missing 'v' prefix)\"; echo \"  ❌ release/v1.0 (incomplete version)\"; echo \"  ❌ $BRANCH_NAME\"; echo \"\"; echo \"💡 Use: /release v1.2.0\"; exit 1; fi; fi; fi"
+            "command": "if echo \"$CLAUDE_TOOL_COMMAND\" | grep -q 'git checkout -b'; then BRANCH_NAME=$(echo \"$CLAUDE_TOOL_COMMAND\" | sed -n 's/.*git checkout -b \\([^ ]*\\).*/\\1/p'); if [[ -n \"$BRANCH_NAME\" ]] && [[ \"$BRANCH_NAME\" != \"main\" ]] && [[ \"$BRANCH_NAME\" != \"develop\" ]]; then if [[ ! \"$BRANCH_NAME\" =~ ^(feature|release|hotfix)/ ]]; then echo \"❌ Invalid Git Flow branch name: $BRANCH_NAME\"; exit 1; fi; if [[ \"$BRANCH_NAME\" =~ ^release/ ]] && [[ ! \"$BRANCH_NAME\" =~ ^release/v[0-9]+\\.[0-9]+\\.[0-9]+(-.+)?$ ]]; then echo \"❌ Invalid release version: $BRANCH_NAME\"; exit 1; fi; fi; fi"
           }
         ]
       },
@@ -133,17 +128,6 @@
           {
             "type": "command",
             "command": "PUSH_CMD=\"$CLAUDE_TOOL_COMMAND\"; CURRENT_BRANCH=$(git branch --show-current 2>/dev/null); if [[ \"$PUSH_CMD\" =~ (origin[[:space:]]+main|origin[[:space:]]+develop) || \"$CURRENT_BRANCH\" =~ ^(main|develop)$ ]]; then echo \"❌ Direct push to main/develop is not allowed!\"; exit 1; fi"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "if command -v osascript >/dev/null 2>&1; then osascript -e 'display notification \"Tool: $CLAUDE_TOOL_NAME completed\" with title \"Claude Code\"'; elif command -v notify-send >/dev/null 2>&1; then notify-send 'Claude Code' \"Tool: $CLAUDE_TOOL_NAME completed\"; fi"
           }
         ]
       }

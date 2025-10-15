@@ -588,4 +588,3 @@ router.get('/:id/details', (0, authorization_middleware_1.requirePermission)(per
     }
 });
 exports.default = router;
-//# sourceMappingURL=equipment.js.map
