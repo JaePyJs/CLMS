@@ -5,7 +5,7 @@
  * stress testing, performance benchmarks, and scalability analysis.
  */
 
-import { createHash } from 'crypto';
+import { randomUUID } from 'crypto';
 import autocannon from 'autocannon';
 import { performance } from 'perf_hooks';
 import { writeFile, mkdir } from 'fs/promises';
@@ -370,8 +370,8 @@ class CLMSLoadTester {
   }
 
   private async runAutocannonTest(config: LoadTestConfig): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const instance = autocannon({
+    try {
+      const result = await autocannon({
         url: config.target,
         connections: config.connections,
         duration: config.duration,
@@ -381,20 +381,10 @@ class CLMSLoadTester {
           path: req.path,
         })),
       });
-
-      autocannon.track(instance, { renderProgressBar: true });
-
-      instance.on('done', (result) => {
-        resolve(result);
-      });
-
-      instance.on('error', (error) => {
-        reject(error);
-      });
-
-      // Start the test
-      instance.start();
-    });
+      return result;
+    } catch (error) {
+      throw error;
+    }
   }
 
   private analyzeResults(result: any): BenchmarkResult['analysis'] {
@@ -582,7 +572,7 @@ class CLMSLoadTester {
           // Subscribe to initial topics
           ws.send(JSON.stringify({
             type: 'subscribe',
-            data: { id: crypto.randomUUID(), updated_at: new Date(),  subscriptions: ['activities', 'equipment'] }
+            data: { id: randomUUID(), updated_at: new Date(),  subscriptions: ['activities', 'equipment'] }
           }));
         });
 
@@ -634,7 +624,7 @@ class CLMSLoadTester {
             case 'ping':
               message = {
                 type: 'ping',
-                data: { id: crypto.randomUUID(), updated_at: new Date(), 
+                data: { id: randomUUID(), updated_at: new Date(), 
                   timestamp: new Date().toISOString(),
                   messageId: currentMessageId
                 }
@@ -645,7 +635,7 @@ class CLMSLoadTester {
             case 'subscribe':
               message = {
                 type: 'subscribe',
-                data: { id: crypto.randomUUID(), updated_at: new Date(), 
+                data: { id: randomUUID(), updated_at: new Date(), 
                   subscriptions: ['activities', 'equipment', 'analytics']
                 }
               };
@@ -654,21 +644,21 @@ class CLMSLoadTester {
             case 'get_activity':
               message = {
                 type: 'get_activity',
-                data: { id: crypto.randomUUID(), updated_at: new Date(),  limit: 10 }
+                data: { id: randomUUID(), updated_at: new Date(),  limit: 10 }
               };
               break;
 
             case 'get_equipment_status':
               message = {
                 type: 'get_equipment_status',
-                data: { id: crypto.randomUUID(), updated_at: new Date(), }
+                data: { id: randomUUID(), updated_at: new Date(), }
               };
               break;
 
             case 'log_activity':
               message = {
                 type: 'log_activity',
-                data: { id: crypto.randomUUID(), updated_at: new Date(), 
+                data: { id: randomUUID(), updated_at: new Date(), 
                   student_id: `WS-LOAD-${index}`,
                   activity_type: 'COMPUTER_USE',
                   notes: 'Load test activity'
@@ -679,14 +669,14 @@ class CLMSLoadTester {
             case 'get_analytics':
               message = {
                 type: 'get_activity_stats',
-                data: { id: crypto.randomUUID(), updated_at: new Date(),  timeframe: 'day' }
+                data: { id: randomUUID(), updated_at: new Date(),  timeframe: 'day' }
               };
               break;
 
             default:
               message = {
                 type: 'ping',
-                data: { id: crypto.randomUUID(), updated_at: new Date(),  timestamp: new Date().toISOString() }
+                data: { id: randomUUID(), updated_at: new Date(),  timestamp: new Date().toISOString() }
               };
           }
 
