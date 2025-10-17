@@ -419,7 +419,7 @@ interface AppState {
 }
 
 // Export all types
-export {
+export type {
   // Base types
   BaseEntity,
   ApiResponse,

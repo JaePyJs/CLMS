@@ -1,4 +1,5 @@
-import React, { ReactNode, ComponentType, ReactElement } from 'react';
+import React from 'react';
+import type { ReactNode, ComponentType, ReactElement } from 'react';
 
 /**
  * Render prop patterns for flexible component composition
@@ -273,19 +274,19 @@ export interface ListProviderProps<T> {
 export function ListProvider<T>({ items, children, render }: ListProviderProps<T>) {
   const mapCallback = React.useCallback(<U>(callback: (item: T, index: number) => U): U[] =>
     items.map(callback), [items]);
-    
+
   const filterCallback = React.useCallback((predicate: (item: T, index: number) => boolean): T[] =>
     items.filter(predicate), [items]);
-    
+
   const reduceCallback = React.useCallback(<U>(callback: (accumulator: U, item: T, index: number) => U, initialValue: U): U =>
     items.reduce(callback, initialValue), [items]);
-    
+
   const findCallback = React.useCallback((predicate: (item: T, index: number) => boolean): T | undefined =>
     items.find(predicate), [items]);
-    
+
   const someCallback = React.useCallback((predicate: (item: T, index: number) => boolean): boolean =>
     items.some(predicate), [items]);
-    
+
   const everyCallback = React.useCallback((predicate: (item: T, index: number) => boolean): boolean =>
     items.every(predicate), [items]);
 

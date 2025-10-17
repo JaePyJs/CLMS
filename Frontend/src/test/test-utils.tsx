@@ -1,5 +1,6 @@
-import { render, RenderOptions } from '@testing-library/react';
-import { ReactElement } from 'react';
+import { render } from '@testing-library/react';
+import type { RenderOptions } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { TestProviders, createTestQueryClient } from './TestProviders';
