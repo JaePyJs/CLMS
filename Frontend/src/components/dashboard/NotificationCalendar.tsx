@@ -4,13 +4,7 @@ import { Badge } from '../ui/badge';
 import { Calendar } from '../ui/calendar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNotifications } from '@/hooks/api-hooks';
-import {
-  Bell,
-  BookOpen,
-  AlertCircle,
-  CalendarDays,
-  CheckCircle,
-} from 'lucide-react';
+import { Bell, BookOpen, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface LibraryNotification {
   id: string;

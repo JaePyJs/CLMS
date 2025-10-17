@@ -5,23 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import {
-  Users,
-  Monitor,
-  Activity,
-  Wifi,
-  WifiOff,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Zap,
-  MessageSquare,
-  Bell,
-  RefreshCw,
-  Settings,
-  TrendingUp,
-  TrendingDown
-} from 'lucide-react';
+import { Monitor, Activity, Wifi, WifiOff, AlertTriangle, CheckCircle, Clock, Zap, MessageSquare, Bell, RefreshCw, Settings, TrendingUp } from 'lucide-react';
 
 interface RealTimeDashboardProps {
   className?: string;

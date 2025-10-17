@@ -12,36 +12,7 @@ import { RealTimeDashboard } from './RealTimeDashboard'
 import { utilitiesApi } from '@/lib/api'
 import { toast } from 'sonner'
 import { DashboardCardSkeleton, ButtonLoading } from '@/components/LoadingStates'
-import {
-  Users,
-  Monitor,
-  Clock,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  Activity,
-  Wifi,
-  Database,
-  CalendarDays,
-  Plus,
-  Play,
-  FileText,
-  Shield,
-  RefreshCw,
-  Download,
-  Printer,
-  Maximize2,
-  Minimize2,
-  AlertTriangle,
-  Settings,
-  BarChart3,
-  Eye,
-  Edit,
-  Trash2,
-  MoreHorizontal,
-  ExternalLink,
-  Bell
-} from 'lucide-react'
+import { Users, Monitor, Clock, TrendingUp, AlertCircle, CheckCircle, Activity, Wifi, CalendarDays, FileText, Shield, Download, Printer, Maximize2, Minimize2, AlertTriangle, Settings, BarChart3, Eye, Edit, ExternalLink, Bell } from 'lucide-react';
 
 interface DashboardOverviewProps {
   onTabChange?: (tab: string) => void;

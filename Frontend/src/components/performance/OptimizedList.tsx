@@ -12,7 +12,7 @@ import { FixedSizeList as ListInfiniteLoader } from 'react-window-infinite-loade
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Filter, ChevronDown, ChevronUp, Download, RefreshCw, BarChart3 } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 
 // Types
 interface OptimizedListProps<T> {

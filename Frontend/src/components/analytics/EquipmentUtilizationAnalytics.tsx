@@ -24,22 +24,7 @@ import {
   RadialBar,
   PolarAngleAxis
 } from 'recharts'
-import {
-  Monitor,
-  Clock,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  CheckCircle,
-  Settings,
-  Users,
-  Activity,
-  Calendar,
-  Zap,
-  Thermometer,
-  Wrench,
-  BarChart3
-} from 'lucide-react'
+import { Monitor, Clock, TrendingUp, AlertTriangle, CheckCircle, Settings, Users, Activity, Calendar, Zap, Thermometer, Wrench, BarChart3 } from 'lucide-react';
 
 interface EquipmentUtilizationAnalyticsProps {
   timeframe: 'day' | 'week' | 'month'

@@ -21,22 +21,7 @@ import {
   Area,
   AreaChart
 } from 'recharts'
-import {
-  DollarSign,
-  TrendingUp,
-  TrendingDown,
-  CreditCard,
-  AlertTriangle,
-  CheckCircle,
-  Users,
-  Calendar,
-  Receipt,
-  Target,
-  Clock,
-  ArrowUpRight,
-  ArrowDownRight,
-  Activity
-} from 'lucide-react'
+import { DollarSign, TrendingUp, CreditCard, AlertTriangle, CheckCircle, Users, Receipt, Target, Clock, ArrowUpRight, ArrowDownRight, Activity } from 'lucide-react';
 
 interface FineCollectionAnalyticsProps {
   timeframe: 'day' | 'week' | 'month'

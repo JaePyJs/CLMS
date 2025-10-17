@@ -14,27 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Shield,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Users,
-  Database,
-  Eye,
-  Activity,
-  TrendingUp,
-  Download,
-  RefreshCw,
-  Settings,
-  FileText,
-  Lock,
-  Unlock,
-  AlertCircle,
-  Info,
-  Zap
-} from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, XCircle, Clock, Users, Database, Activity, RefreshCw, Settings, FileText, Lock, AlertCircle } from 'lucide-react';
 
 // Types for security data
 interface SecurityAlert {

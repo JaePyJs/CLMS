@@ -8,22 +8,7 @@ import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { useScannerMonitor } from '@/hooks/useUSBScanner';
 import { toast } from 'sonner';
-import {
-  Activity,
-  Users,
-  Monitor,
-  Wifi,
-  WifiOff,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  TrendingUp,
-  Zap,
-  RefreshCw,
-  Bell,
-  Camera,
-  Radio
-} from 'lucide-react';
+import { Activity, Users, Monitor, Wifi, WifiOff, AlertCircle, CheckCircle, TrendingUp, Zap, RefreshCw, Bell, Camera, Radio } from 'lucide-react';
 
 interface RealTimeMonitorProps {
   showScanner?: boolean;

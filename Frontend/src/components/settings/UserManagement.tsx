@@ -30,17 +30,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  UserPlus,
-  Edit,
-  Trash2,
-  Key,
-  Search,
-  CheckCircle2,
-  AlertCircle,
-  UserCheck,
-  UserX,
-} from 'lucide-react';
+import { UserPlus, Edit, Trash2, Search, AlertCircle, UserCheck, UserX } from 'lucide-react';
 import { settingsApi } from '@/lib/api';
 
 interface User {

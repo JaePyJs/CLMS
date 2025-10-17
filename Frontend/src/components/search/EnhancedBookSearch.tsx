@@ -19,21 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Search,
-  BookOpen,
-  Filter,
-  X,
-  Download,
-  TrendingUp,
-  Clock,
-  Star,
-  ChevronDown,
-  ChevronUp,
-  Eye,
-  Users,
-  Sparkles,
-} from 'lucide-react';
+import { Search, BookOpen, Filter, X, TrendingUp, Star, ChevronDown, Eye, Users, Sparkles } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 

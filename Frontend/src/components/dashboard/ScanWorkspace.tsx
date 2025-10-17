@@ -25,39 +25,7 @@ import { useStudentActivity } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { offlineActions } from '@/lib/offline-queue';
 import { toast } from 'sonner';
-import {
-  Camera,
-  CameraOff,
-  Keyboard,
-  Edit3,
-  Users,
-  BookOpen,
-  Monitor,
-  Gamepad2,
-  Clock,
-  AlertCircle,
-  CheckCircle,
-  Play,
-  Square,
-  RefreshCw,
-  Plus,
-  Timer,
-  UserPlus,
-  FileText,
-  Download,
-  Settings,
-  Eye,
-  MoreHorizontal,
-  AlertTriangle,
-  Filter,
-  Download as ExportIcon,
-  Printer,
-  ExternalLink,
-  Calendar,
-  BarChart3,
-  Activity,
-  Shield,
-} from 'lucide-react';
+import { Camera, Keyboard, Edit3, Users, BookOpen, Monitor, Gamepad2, Clock, AlertCircle, Play, Square, RefreshCw, Plus, Timer, UserPlus, FileText, Settings, Eye, AlertTriangle, Filter, Printer, ExternalLink, Calendar, BarChart3, Activity, Shield } from 'lucide-react';
 
 interface Student {
   id: string;

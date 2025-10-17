@@ -12,7 +12,7 @@ import { VariableSizeList as List } from 'react-window';
 import { fixedSizeListStyles } from 'react-window/dist/umd/ReactWindow';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle, TrendingUp, Zap, Activity, BarChart3 } from 'lucide-react';
+import { AlertCircle, Activity, BarChart3 } from 'lucide-react';
 
 // Performance monitoring types
 interface PerformanceMetrics {

@@ -5,15 +5,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import {
-  BookOpen,
-  BookMarked,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Eye,
-  Barcode,
-} from 'lucide-react';
+import { BookOpen, BookMarked, CheckCircle, XCircle, AlertCircle, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Book {

@@ -13,26 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { studentsApi } from '@/lib/api';
-import {
-  Upload,
-  FileText,
-  AlertCircle,
-  CheckCircle2,
-  X,
-  Download,
-  ArrowRight,
-  Settings,
-  File,
-  Table,
-  Users,
-  Loader2,
-  ChevronRight,
-  ChevronDown,
-  Info,
-  AlertTriangle,
-  CheckCircle,
-  XCircle
-} from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle2, X, Download, ArrowRight, Settings, File, Users, Loader2, ChevronRight, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 

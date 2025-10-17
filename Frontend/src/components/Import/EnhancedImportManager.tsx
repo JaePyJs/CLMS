@@ -10,26 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import {
-  Upload,
-  Download,
-  CheckCircle,
-  AlertCircle,
-  Info,
-  Loader2,
-  FileText,
-  Users,
-  BookOpen,
-  Settings,
-  Eye,
-  FileSpreadsheet,
-  FileDown,
-  ArrowRight,
-  ArrowLeft,
-  RefreshCw,
-  Database,
-  Zap
-} from 'lucide-react';
+import { Upload, CheckCircle, AlertCircle, Info, Loader2, FileText, Users, BookOpen, Eye, FileSpreadsheet, FileDown, ArrowRight, ArrowLeft, RefreshCw, Database, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 

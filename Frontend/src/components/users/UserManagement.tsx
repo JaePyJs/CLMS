@@ -1,21 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Users,
-  Plus,
-  Edit,
-  Trash2,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  Key,
-  Search,
-  Filter,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  Eye,
-  Settings,
-} from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Shield, ShieldAlert, ShieldCheck, Key, Search, Filter, RefreshCw, CheckCircle, XCircle, Eye } from 'lucide-react';
 import userApi from '../../services/userApi';
 import type { User, UserRole, CreateUserInput } from '../../services/userApi';
 import { useToast } from '../ToastContainer';

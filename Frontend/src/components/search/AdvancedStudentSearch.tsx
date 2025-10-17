@@ -19,21 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Search,
-  Users,
-  Filter,
-  X,
-  Download,
-  BookOpen,
-  Monitor,
-  AlertTriangle,
-  Calendar,
-  ChevronDown,
-  ChevronUp,
-  UserCheck,
-  UserX,
-} from 'lucide-react';
+import { Search, Users, Filter, X, Download, BookOpen, Monitor, AlertTriangle, Calendar, ChevronDown, UserCheck, UserX } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 

@@ -25,24 +25,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import {
-  Search,
-  TrendingUp,
-  Clock,
-  Zap,
-  Database,
-  Users,
-  BookOpen,
-  Monitor,
-  Activity,
-  AlertTriangle,
-  CheckCircle,
-  Target,
-  BarChart3,
-  PieChart as PieChartIcon,
-  RefreshCw,
-  Calendar,
-} from 'lucide-react';
+import { Search, TrendingUp, Clock, Zap, Database, Users, BookOpen, Monitor, Activity, AlertTriangle, CheckCircle, Target, BarChart3, RefreshCw } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 

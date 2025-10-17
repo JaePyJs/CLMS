@@ -7,18 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { settingsApi } from '@/lib/api';
 import { toast } from 'sonner';
-import {
-  Save,
-  RotateCcw,
-  Clock,
-  DollarSign,
-  BookOpen,
-  Calendar,
-  AlertCircle,
-  CheckCircle2,
-  Users,
-  Building2,
-} from 'lucide-react';
+import { Save, RotateCcw, Clock, DollarSign, BookOpen, Calendar, AlertCircle, Users, Building2 } from 'lucide-react';
 
 interface SystemConfig {
   libraryName?: string;

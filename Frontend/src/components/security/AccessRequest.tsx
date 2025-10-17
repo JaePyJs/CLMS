@@ -25,20 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertTriangle,
-  FileText,
-  Send,
-  Eye,
-  Users,
-  Shield,
-  Calendar,
-  Info,
-  Loader2
-} from 'lucide-react';
+import { Clock, CheckCircle, XCircle, AlertTriangle, FileText, Send, Eye, Users, Info, Loader2 } from 'lucide-react';
 
 // Types
 interface AccessRequest {

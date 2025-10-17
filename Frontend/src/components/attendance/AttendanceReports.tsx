@@ -75,7 +75,7 @@ export default function AttendanceReports() {
       const params = new URLSearchParams();
       params.append('date', selectedDate ?? '');
       if (gradeFilter !== 'ALL') {
-        params.append('gradeCategory', gradeFilter);
+        params.append('gradeCategory', gradeFilter ?? '');
       }
 
       const response = await fetch(`/api/attendance/daily?${params}`, {
@@ -102,7 +102,7 @@ export default function AttendanceReports() {
       const params = new URLSearchParams();
       params.append('date', selectedDate ?? '');
       if (gradeFilter !== 'ALL') {
-        params.append('gradeCategory', gradeFilter);
+        params.append('gradeCategory', gradeFilter ?? '');
       }
 
       const response = await fetch(`/api/attendance/export?${params}`, {

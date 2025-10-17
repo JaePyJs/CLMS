@@ -15,15 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  BookOpen,
-  Search,
-  Filter,
-  RefreshCw,
-  ArrowUpDown,
-  Grid3X3,
-  List,
-} from 'lucide-react';
+import { BookOpen, Search, RefreshCw, ArrowUpDown, Grid3X3, List } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
