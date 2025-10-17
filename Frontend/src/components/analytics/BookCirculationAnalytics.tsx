@@ -104,7 +104,7 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
       const variation = Math.random() * 0.4 - 0.2 // ±20% variation
 
       trends.push({
-        date: tf === 'day' ? `${i}:00` : tf === 'week' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i] : `Day ${i + 1}`,
+        date: tf === 'day' ? `${i}:00` : tf === 'week' ? (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i] ?? `Day ${i}`) : `Day ${i + 1}`,
         borrowed: Math.round(baseValue * (1 + variation)),
         returned: Math.round(baseValue * 0.8 * (1 + variation * 0.5)),
         overdue: Math.round(baseValue * 0.1 * (1 + variation * 0.3))
