@@ -5,10 +5,8 @@ import React, {
   useState,
   useRef,
   useEffect,
-  ComponentType,
-  ReactNode,
-  Key,
 } from 'react';
+import type { ComponentType, ReactNode, Key } from 'react';
 import { FixedSizeList as List, VariableSizeList as VariableList } from 'react-window';
 import { FixedSizeList as ListInfiniteLoader } from 'react-window-infinite-loader';
 import { Button } from '@/components/ui/button';

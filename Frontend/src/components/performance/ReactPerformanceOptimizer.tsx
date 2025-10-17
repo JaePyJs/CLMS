@@ -5,11 +5,9 @@ import React, {
   useState,
   useEffect,
   useRef,
-  ComponentType,
-  ReactNode,
-  Profiler,
-  ProfilerOnRenderCallback
+  Profiler
 } from 'react';
+import type { ComponentType, ReactNode, ProfilerOnRenderCallback } from 'react';
 import { VariableSizeList as List } from 'react-window';
 import { fixedSizeListStyles } from 'react-window/dist/umd/ReactWindow';
 import { Button } from '@/components/ui/button';

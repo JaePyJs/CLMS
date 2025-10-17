@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import type { WebSocketState } from '@/hooks/useWebSocket';
 import { useAuth } from '@/contexts/AuthContext';
@@ -104,7 +105,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         refreshDashboard('activities');
         refreshDashboard('equipment');
       }, 1000);
-      
+
       return () => clearTimeout(timeoutId);
     }
   }, [ws.isConnected, user, refreshDashboard]);

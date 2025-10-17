@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, memo, ComponentType, ReactNode, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, useEffect, memo, forwardRef, useImperativeHandle } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 interface OptimizedImageProps {

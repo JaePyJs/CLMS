@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, forwardRef, ComponentType } from 'react';
+import React, { useState, useRef, useEffect, forwardRef } from 'react';
+import type { ComponentType } from 'react';
 import OptimizedImage from './OptimizedImage';
 import { imageOptimizationService } from '@/services/imageOptimizationService';
 import {

@@ -16,7 +16,8 @@ import {
   Eye,
   Settings,
 } from 'lucide-react';
-import userApi, { User, UserRole, CreateUserInput } from '../../services/userApi';
+import userApi from '../../services/userApi';
+import type { User, UserRole, CreateUserInput } from '../../services/userApi';
 import { useToast } from '../ToastContainer';
 
 const UserManagement: React.FC = () => {

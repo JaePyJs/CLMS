@@ -15,7 +15,8 @@ import {
   History,
   Play,
 } from 'lucide-react';
-import backupApi, { BackupMetadata, BackupStatistics } from '../../services/backupApi';
+import backupApi from '../../services/backupApi';
+import type { BackupMetadata, BackupStatistics } from '../../services/backupApi';
 import { useToast } from '../ToastContainer';
 
 const BackupManagement: React.FC = () => {

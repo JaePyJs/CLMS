@@ -35,7 +35,8 @@ import {
   Gauge,
   Target,
 } from 'lucide-react';
-import { performanceMonitoringService, PerformanceReport, ComponentPerformance } from '@/services/performanceMonitoringService';
+import { performanceMonitoringService } from '@/services/performanceMonitoringService';
+import type { PerformanceReport, ComponentPerformance } from '@/services/performanceMonitoringService';
 
 interface MetricCardProps {
   title: string;

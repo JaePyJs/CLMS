@@ -6,7 +6,8 @@
  */
 
 import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
-import { useMutation, useQuery, UseQueryOptions } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import type { UseQueryOptions } from '@tanstack/react-query';
 
 // Performance monitoring types
 interface PerformanceMetrics {

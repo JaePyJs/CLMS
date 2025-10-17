@@ -1,4 +1,5 @@
-import React, { Suspense, lazy, ComponentType, Component, ReactNode, memo } from 'react';
+import React, { Suspense, lazy, Component, memo } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { Loader2, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 
 // Lazy loading component states

@@ -73,7 +73,7 @@ export default function AttendanceReports() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      params.append('date', selectedDate);
+      params.append('date', selectedDate ?? '');
       if (gradeFilter !== 'ALL') {
         params.append('gradeCategory', gradeFilter);
       }
@@ -100,7 +100,7 @@ export default function AttendanceReports() {
   const exportAttendance = async () => {
     try {
       const params = new URLSearchParams();
-      params.append('date', selectedDate);
+      params.append('date', selectedDate ?? '');
       if (gradeFilter !== 'ALL') {
         params.append('gradeCategory', gradeFilter);
       }
