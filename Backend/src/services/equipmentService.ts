@@ -1,4 +1,3 @@
-import { prisma } from '@/utils/prisma';
 import { logger } from '@/utils/logger';
 import {
   equipment_status,
@@ -7,6 +6,8 @@ import {
   student_activities_status,
   Prisma,
 } from '@prisma/client';
+import { EquipmentRepository } from '@/repositories';
+import { prisma } from '@/utils/prisma';
 
 export interface GetEquipmentOptions {
   type?: equipment_type;
@@ -26,48 +27,23 @@ export interface GetEquipmentUsageHistoryOptions {
   limit?: number;
 }
 
+// Create repository instance
+const equipmentRepository = new EquipmentRepository();
+
 // Get all equipment with optional filtering
 export async function getEquipment(options: GetEquipmentOptions = {}) {
   try {
-    const { type, status, page = 1, limit = 50, search } = options;
-    const skip = (page - 1) * limit;
-
-    const where: Prisma.EquipmentWhereInput = {};
-
-    if (type) {
-      where.type = type;
-    }
-
-    if (status) {
-      where.status = status;
-    }
-
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { equipment_id: { contains: search, mode: 'insensitive' } },
-        { location: { contains: search, mode: 'insensitive' } },
-      ] as unknown as Prisma.EquipmentWhereInput['OR'];
-    }
-
-    const [equipment, total] = await Promise.all([
-      prisma.equipment.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { name: 'asc' },
-      }),
-      prisma.equipment.count({ where }),
-    ]);
+    const result = await equipmentRepository.getEquipment({
+      type: options.type,
+      status: options.status,
+      page: options.page || 1,
+      limit: options.limit || 50,
+      search: options.search,
+    });
 
     return {
-      equipment,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
+      equipment: result.equipment,
+      pagination: result.pagination,
     };
   } catch (error) {
     logger.error('Error fetching equipment', {
@@ -81,26 +57,7 @@ export async function getEquipment(options: GetEquipmentOptions = {}) {
 // Get equipment by ID
 export async function getEquipmentById(id: string) {
   try {
-    const equipment = await prisma.equipment.findUnique({
-      where: { id },
-      include: {
-        activities: {
-          where: { status: student_activities_status.ACTIVE },
-          orderBy: { start_time: 'desc' },
-          take: 1,
-          include: {
-            student: {
-              select: {
-                student_id: true,
-                first_name: true,
-                last_name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
+    const equipment = await equipmentRepository.findById(id);
     return equipment;
   } catch (error) {
     logger.error('Error fetching equipment by ID', {
@@ -114,26 +71,7 @@ export async function getEquipmentById(id: string) {
 // Get equipment by equipment ID
 export async function getEquipmentByEquipmentId(equipment_id: string) {
   try {
-    const equipment = await prisma.equipment.findUnique({
-      where: { equipment_id },
-      include: {
-        activities: {
-          where: { status: student_activities_status.ACTIVE },
-          orderBy: { start_time: 'desc' },
-          take: 1,
-          include: {
-            student: {
-              select: {
-                student_id: true,
-                first_name: true,
-                last_name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
+    const equipment = await equipmentRepository.findByEquipmentId(equipment_id);
     return equipment;
   } catch (error) {
     logger.error('Error fetching equipment by equipment ID', {
@@ -145,43 +83,26 @@ export async function getEquipmentByEquipmentId(equipment_id: string) {
 }
 
 // Create new equipment
-export async function createEquipment(data: { 
+export async function createEquipment(data: {
   equipment_id: string;
   name: string;
   type: equipment_type;
   location: string;
   max_time_minutes: number;
-  requiresSupervision?: boolean;
+  requires_supervision?: boolean;
   description?: string;
 }) {
   try {
-    const existing = await prisma.equipment.findUnique({
-      where: { equipment_id: data.equipment_id },
+    const equipment = await equipmentRepository.createEquipment({
+      equipment_id: data.equipment_id,
+      name: data.name,
+      type: data.type,
+      location: data.location,
+      max_time_minutes: data.max_time_minutes,
+      requires_supervision: data.requires_supervision,
+      description: data.description,
     });
 
-    if (existing) {
-      logger.warn('Attempted to create duplicate equipment', {
-        equipment_id: data.equipment_id,
-      });
-      throw new Error('Equipment ID already exists');
-    }
-
-    const equipment = await prisma.equipment.create({
-      data: { 
-        equipment_id: data.equipment_id,
-        name: data.name,
-        type: data.type,
-        location: data.location,
-        max_time_minutes: data.max_time_minutes,
-        requires_supervision: data.requires_supervision || false,
-        description: data.description || null,
-        status: equipment_status.AVAILABLE,
-      },
-    });
-
-    logger.info('Equipment created successfully', {
-      equipment_id: equipment.equipment_id,
-    });
     return equipment;
   } catch (error) {
     if ((error as Error).message === 'Equipment ID already exists') {
@@ -198,7 +119,7 @@ export async function createEquipment(data: {
 // Update equipment
 export async function updateEquipment(
   id: string,
-  data: { 
+  data: {
     equipment_id?: string;
     name?: string;
     type?: equipment_type;
@@ -210,24 +131,27 @@ export async function updateEquipment(
   },
 ) {
   try {
-    const existing = await prisma.equipment.findUnique({ where: { id } });
+    // Convert service interface to repository interface
+    const updateData: Prisma.equipmentUpdateInput = {};
+    if (data.equipment_id !== undefined) updateData.equipment_id = data.equipment_id;
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.type !== undefined) updateData.type = data.type;
+    if (data.location !== undefined) updateData.location = data.location;
+    if (data.maxTimeMinutes !== undefined) updateData.max_time_minutes = data.maxTimeMinutes;
+    if (data.requiresSupervision !== undefined) updateData.requires_supervision = data.requiresSupervision;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.status !== undefined) updateData.status = data.status;
 
-    if (!existing) {
+    const equipment = await equipmentRepository.updateById(id, updateData);
+
+    if (!equipment) {
       logger.warn('Attempted to update non-existent equipment', { id });
-      throw new Error('Equipment not found');
+      return null;
     }
-
-    const equipment = await prisma.equipment.update({
-      where: { id },
-      data,
-    });
 
     logger.info('Equipment updated successfully', { equipment_id: id });
     return equipment;
   } catch (error) {
-    if ((error as Error).message === 'Equipment not found') {
-      throw error;
-    }
     logger.error('Error updating equipment', {
       error: (error as Error).message,
       id,
@@ -240,23 +164,16 @@ export async function updateEquipment(
 // Delete equipment
 export async function deleteEquipment(id: string) {
   try {
-    const existing = await prisma.equipment.findUnique({ where: { id } });
+    const success = await equipmentRepository.deleteById(id);
 
-    if (!existing) {
+    if (!success) {
       logger.warn('Attempted to delete non-existent equipment', { id });
-      throw new Error('Equipment not found');
+      return false;
     }
-
-    await prisma.equipment.delete({
-      where: { id },
-    });
 
     logger.info('Equipment deleted successfully', { equipment_id: id });
     return true;
   } catch (error) {
-    if ((error as Error).message === 'Equipment not found') {
-      throw error;
-    }
     logger.error('Error deleting equipment', {
       error: (error as Error).message,
       id,
@@ -270,7 +187,7 @@ export async function useEquipment(data: {
   equipment_id: string;
   student_id: string;
   activity_type: student_activities_activity_type;
-  timeLimitMinutes?: number;
+  time_limit_minutes?: number;
   notes?: string;
 }) {
   try {
@@ -304,11 +221,11 @@ export async function useEquipment(data: {
 
     // Create activity record
     const activity = await prisma.student_activities.create({
-      data: { 
+      data: {
         student_id: data.student_id,
         student_name: `${student.first_name} ${student.last_name}`.trim(),
-        studentGradeLevel: student.grade_level,
-        studentGradeCategory: student.grade_category,
+        grade_level: student.grade_level,
+        grade_category: student.grade_category,
         activity_type: data.activity_type,
         equipment_id: data.equipment_id,
         start_time,
@@ -418,13 +335,8 @@ export async function releaseEquipment(activityId: string) {
       });
     }
 
-    // Update equipment status
-    await prisma.equipment.update({
-      where: { id: activity.equipment_id },
-      data: { 
-        status: equipment_status.AVAILABLE,
-      },
-    });
+    // Update equipment status using repository
+    await equipmentRepository.updateStatus(activity.equipment_id, equipment_status.AVAILABLE);
 
     logger.info('Equipment released successfully', {
       activityId,

@@ -37,7 +37,7 @@ class CacheManager {
         this.redis = new Redis({
           host: process.env.REDIS_HOST,
           port: parseInt(process.env.REDIS_PORT, 10),
-          password: process.env.REDIS_PASSWORD,
+          password: process.env.REDIS_PASSWORD || undefined,
           retryStrategy: (times) => {
             if (times > 3) {
               logger.warn('Redis connection failed, falling back to memory cache');

@@ -163,7 +163,7 @@ const Image: ComponentType<ImageProps> = forwardRef<HTMLDivElement, ImageProps>(
         }
       };
 
-      const img = new Image();
+      const img = new window.Image();
       img.onload = handleLoad;
       img.onerror = () => console.warn('Failed to load image for performance tracking');
       img.src = optimizedSrc;

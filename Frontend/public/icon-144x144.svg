@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="144" height="144" viewBox="0 0 144 144" xmlns="http://www.w3.org/2000/svg">
+  <rect width="144" height="144" fill="#0ea5e9"/>
+  <text x="72" y="85" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="white">CLMS</text>
+  <text x="72" y="100" font-family="Arial, sans-serif" font-size="8" text-anchor="middle" fill="white">Library</text>
+  <circle cx="72" cy="50" r="20" fill="white" opacity="0.3"/>
+  <circle cx="72" cy="50" r="15" fill="white" opacity="0.5"/>
+  <circle cx="72" cy="50" r="10" fill="white"/>
+</svg>

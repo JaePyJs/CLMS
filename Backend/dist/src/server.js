@@ -1,14 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-console.log('[DEBUG server.ts] Loading minimal app module...');
-const app_minimal_1 = require("./app-minimal");
+console.log('[DEBUG server.ts] Loading full app module...');
+const app_1 = require("./app");
 console.log('[DEBUG server.ts] App module loaded');
 const logger_1 = require("@/utils/logger");
 console.log('[DEBUG server.ts] Logger loaded');
 const gracefulShutdown = async (signal) => {
     logger_1.logger.info(`Received ${signal}, starting graceful shutdown...`);
     try {
-        await app_minimal_1.app.shutdown();
+        await app_1.app.shutdown();
         logger_1.logger.info('Graceful shutdown completed');
         process.exit(0);
     }
@@ -37,7 +37,7 @@ console.log('[DEBUG server.ts] About to call app.start() with port:', port);
 (async () => {
     try {
         console.log('[DEBUG server.ts] Inside async IIFE');
-        await app_minimal_1.app.start(port);
+        await app_1.app.start(port);
         console.log('[DEBUG server.ts] app.start() completed');
     }
     catch (error) {

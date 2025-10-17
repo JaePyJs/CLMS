@@ -2,25 +2,8 @@
   "mcpServers": {
     "sequentialthinking": {
       "command": "docker",
-      "args": [
-        "run",
-        "--rm",
-        "-i",
-        "mcp/sequentialthinking"
-      ],
-      "alwaysAllow": [
-        "sequentialthinking"
-      ]
-    },
-    "exa": {
-      "command": "cmd",
-      "args": [
-        "-y",
-        "exa-mcp-server"
-      ],
-      "env": {
-        "EXA_API_KEY": "15297d03-a18e-4531-9871-8a81f06626f2"
-      }
+      "args": ["run", "--rm", "-i", "mcp/sequentialthinking"],
+      "alwaysAllow": ["sequentialthinking"]
     }
   }
 }

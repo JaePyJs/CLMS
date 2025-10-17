@@ -2,7 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 
 import { apiClient } from '@/lib/api'
 
-export interface AuthUser {
+export type AuthUser = {
   id: string
   username: string
   role: string

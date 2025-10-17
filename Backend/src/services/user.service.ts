@@ -1,8 +1,7 @@
-import { PrismaClient, users_role as UserRole } from '@prisma/client';
+import { users_role as UserRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { getRolePermissions } from '../config/permissions';
-
-const prisma = new PrismaClient();
+import { UsersRepository } from '@/repositories';
 
 export interface CreateUserInput {
   username: string;
@@ -23,6 +22,9 @@ export interface UpdateUserInput {
   isActive?: boolean;
 }
 
+// Create repository instance
+const usersRepository = new UsersRepository();
+
 export const userService = {
   // Get all users with filtering
   async getAllUsers(filters?: {
@@ -32,133 +34,48 @@ export const userService = {
     limit?: number;
     offset?: number;
   }) {
-    const where: any = {};
+    const page = filters?.offset ? Math.floor(filters.offset / (filters?.limit || 50)) + 1 : 1;
+    const limit = filters?.limit || 50;
 
-    if (filters?.role) {
-      where.role = filters.role;
-    }
+    const result = await usersRepository.getUsers({
+      role: filters?.role,
+      isActive: filters?.isActive,
+      search: filters?.search,
+      page,
+      limit,
+      sortBy: 'created_at',
+      sortOrder: 'desc',
+    });
 
-    if (filters?.is_active !== undefined) {
-      where.is_active = filters.is_active;
-    }
-
-    if (filters?.search) {
-      where.OR = [
-        { username: { contains: filters.search } },
-        { email: { contains: filters.search } },
-        { full_name: { contains: filters.search } },
-      ];
-    }
-
-    const [users, total] = await Promise.all([
-      prisma.users.findMany({
-        where,
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          full_name: true,
-          role: true,
-          permissions: true,
-          is_active: true,
-          last_login_at: true,
-          created_at: true,
-          updated_at: true,
-        },
-        orderBy: { created_at: 'desc' },
-        take: filters?.limit || 50,
-        skip: filters?.offset || 0,
-      }),
-      prisma.users.count({ where }),
-    ]);
-
-    return { users, total };
+    return {
+      users: result.users,
+      total: result.pagination.total
+    };
   },
 
   // Get user by ID
   async getUserById(id: string) {
-    return await prisma.users.findUnique({
-      where: { id: id },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        full_name: true,
-        role: true,
-        permissions: true,
-        is_active: true,
-        last_login_at: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+    return await usersRepository.findById(id);
   },
 
   // Get user by username
   async getUserByUsername(username: string) {
-    return await prisma.users.findUnique({
-      where: { username },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        full_name: true,
-        role: true,
-        permissions: true,
-        is_active: true,
-        last_login_at: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+    return await usersRepository.findByUsername(username);
   },
 
   // Create new user
   async createUser(data: CreateUserInput) {
-    // Check if username already exists
-    const existingUser = await prisma.users.findUnique({
-      where: { username: data.username },
-    });
-
-    if (existingUser) {
-      throw new Error('Username already exists');
-    }
-
-    // Check if email already exists (if provided)
-    if (data.email) {
-      const existingEmail = await prisma.users.findUnique({
-        where: { email: data.email },
-      });
-
-      if (existingEmail) {
-        throw new Error('Email already exists');
-      }
-    }
-
     // Hash password
     const hashedPassword = await bcrypt.hash(data.password, parseInt(process.env.BCRYPT_ROUNDS || '12'));
 
-    // Create user
-    const user = await prisma.users.create({
-      data: { id: crypto.randomUUID(), updated_at: new Date(), 
-        username: data.username,
-        password: hashedPassword,
-        email: data.email,
-        full_name: data.full_name,
-        role: data.role || UserRole.LIBRARIAN,
-        permissions: data.permissions || [],
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        full_name: true,
-        role: true,
-        permissions: true,
-        is_active: true,
-        created_at: true,
-        updated_at: true,
-      },
+    // Create user using repository
+    const user = await usersRepository.createUser({
+      username: data.username,
+      password: hashedPassword,
+      email: data.email,
+      full_name: data.fullName,
+      role: data.role || UserRole.LIBRARIAN,
+      permissions: data.permissions || [],
     });
 
     return user;
@@ -170,35 +87,21 @@ export const userService = {
 
     if (data.username !== undefined) {
       // Check if new username is available
-      const existing = await prisma.users.findFirst({
-        where: {
-          username: data.username,
-          NOT: { id: id },
-        },
-      });
-
-      if (existing) {
+      const existing = await usersRepository.findByUsername(data.username);
+      if (existing && existing.id !== id) {
         throw new Error('Username already exists');
       }
-
       updateData.username = data.username;
     }
 
     if (data.email !== undefined) {
       // Check if new email is available
       if (data.email) {
-        const existing = await prisma.users.findFirst({
-          where: {
-            email: data.email,
-            NOT: { id: id },
-          },
-        });
-
-        if (existing) {
+        const existing = await usersRepository.findByEmail(data.email);
+        if (existing && existing.id !== id) {
           throw new Error('Email already exists');
         }
       }
-
       updateData.email = data.email;
     }
 
@@ -206,8 +109,8 @@ export const userService = {
       updateData.password = await bcrypt.hash(data.password, parseInt(process.env.BCRYPT_ROUNDS || '12'));
     }
 
-    if (data.full_name !== undefined) {
-      updateData.full_name = data.full_name;
+    if (data.fullName !== undefined) {
+      updateData.full_name = data.fullName;
     }
 
     if (data.role !== undefined) {
@@ -218,26 +121,15 @@ export const userService = {
       updateData.permissions = data.permissions;
     }
 
-    if (data.is_active !== undefined) {
-      updateData.is_active = data.is_active;
+    if (data.isActive !== undefined) {
+      updateData.is_active = data.isActive;
     }
 
-    const user = await prisma.users.update({
-      where: { id: id },
-      data: updateData,
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        full_name: true,
-        role: true,
-        permissions: true,
-        is_active: true,
-        last_login_at: true,
-        created_at: true,
-        updated_at: true,
-      },
-    });
+    const user = await usersRepository.updateById(id, updateData);
+
+    if (!user) {
+      throw new Error('User not found');
+    }
 
     return user;
   },
@@ -245,23 +137,26 @@ export const userService = {
   // Delete user
   async deleteUser(id: string) {
     // Prevent deletion of last super admin
-    const user = await prisma.users.findUnique({
-      where: { id: id },
-    });
+    const user = await usersRepository.findById(id);
 
-    if (user?.role === UserRole.SUPER_ADMIN) {
-      const superAdminCount = await prisma.users.count({
-        where: { role: UserRole.SUPER_ADMIN, is_active: true },
-      });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (user.role === UserRole.SUPER_ADMIN) {
+      const stats = await usersRepository.getUserStatistics();
+      const superAdminCount = stats.byRole.find(r => r.role === UserRole.SUPER_ADMIN)?._count || 0;
 
       if (superAdminCount <= 1) {
         throw new Error('Cannot delete the last super admin');
       }
     }
 
-    await prisma.users.delete({
-      where: { id: id },
-    });
+    const success = await usersRepository.deleteById(id);
+
+    if (!success) {
+      throw new Error('Failed to delete user');
+    }
 
     return { success: true };
   },
@@ -298,13 +193,7 @@ export const userService = {
 
   // Get user permissions
   async getUserPermissions(id: string) {
-    const user = await prisma.users.findUnique({
-      where: { id: id },
-      select: {
-        role: true,
-        permissions: true,
-      },
-    });
+    const user = await usersRepository.findById(id);
 
     if (!user) {
       throw new Error('User not found');
@@ -328,21 +217,7 @@ export const userService = {
 
   // Get user statistics
   async getUserStatistics() {
-    const [total, byRole, activeUsers] = await Promise.all([
-      prisma.users.count(),
-      prisma.users.groupBy({
-        by: ['role'],
-        _count: true,
-      }),
-      prisma.users.count({ where: { is_active: true } }),
-    ]);
-
-    return {
-      total,
-      active: activeUsers,
-      inactive: total - activeUsers,
-      byRole,
-    };
+    return await usersRepository.getUserStatistics();
   },
 
   // Change password
@@ -351,9 +226,7 @@ export const userService = {
     oldPassword: string,
     newPassword: string,
   ) {
-    const user = await prisma.users.findUnique({
-      where: { id: id },
-    });
+    const user = await usersRepository.findById(id);
 
     if (!user) {
       throw new Error('User not found');
@@ -367,10 +240,7 @@ export const userService = {
 
     // Update password
     const hashedPassword = await bcrypt.hash(newPassword, parseInt(process.env.BCRYPT_ROUNDS || '12'));
-    await prisma.users.update({
-      where: { id: id },
-      data: { id: crypto.randomUUID(), updated_at: new Date(),  password: hashedPassword },
-    });
+    await usersRepository.updatePassword(id, hashedPassword);
 
     return { success: true };
   },
@@ -378,10 +248,7 @@ export const userService = {
   // Reset password (admin only)
   async resetPassword(id: string, newPassword: string) {
     const hashedPassword = await bcrypt.hash(newPassword, parseInt(process.env.BCRYPT_ROUNDS || '12'));
-    await prisma.users.update({
-      where: { id: id },
-      data: { id: crypto.randomUUID(), updated_at: new Date(),  password: hashedPassword },
-    });
+    await usersRepository.updatePassword(id, hashedPassword);
 
     return { success: true };
   },

@@ -332,11 +332,28 @@ The system is **production-ready** (92% complete) and designed for local library
 
 All services run locally with minimal external dependencies beyond optional Google services.
 
-## 📚 Documentation References
+## 📚 Documentation Strategy & References
 
-- **CLMS_STATUS_GUIDE.md** - Complete system status and development guide
-- **REALTIME_PROGRESS.md** - Live progress tracking for parallel tasks
-- **COMPREHENSIVE_TASK_LIST.md** - Detailed task breakdown and roadmap
+**Current Documentation Status**: The system has been consolidated from 165+ files to a streamlined structure. Focus on updating existing files rather than creating new ones.
+
+**Key Documentation Files**:
+- **README.md** - Main project overview and quick start (keep updated with current system state)
+- **Docs/API_DOCUMENTATION.md** - Complete API reference (193+ endpoints)
+- **Docs/DEVELOPER_QUICK_START_GUIDE.md** - Developer onboarding and setup
+- **Docs/DEPLOYMENT_OPERATIONS_GUIDE.md** - Production deployment and operations
+- **Docs/USER_GUIDE.md** - End-user manual for library staff
+
+**Documentation Update Approach**:
+- **Update existing files** instead of creating new ones to avoid file proliferation
+- **Merge redundant content** into existing comprehensive files
+- **Archive completed implementation files** rather than deleting them
+- **Ignore dotfiles and hidden directories** (.claude/, .taskmaster/, .git/, etc.)
+
+**When updating documentation**:
+1. Check if content exists in an existing file first
+2. Update the most relevant existing file
+3. Avoid creating new .md files unless absolutely necessary
+4. Consolidate similar information into single, comprehensive files
 
 [byterover-mcp]
 

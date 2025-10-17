@@ -105,8 +105,15 @@ class QueryOptimizer {
         return this.prisma.students.findUnique({
           where: { id: studentId },
           include: {
-            student_activities: {
-              orderBy: { start_time: 'desc' },
+            activities: {
+              select: {
+                id: true,
+                activity_type: true,
+                start_time: true,
+                end_time: true,
+                status: true
+              },
+              orderBy: { start_time: 'desc' as const },
               take: 10
             }
           }
@@ -145,7 +152,7 @@ class QueryOptimizer {
           where: { status: 'AVAILABLE' },
           select: {
             id: true,
-            equipmentId: true,
+            equipment_id: true,
             name: true,
             type: true,
             status: true
@@ -163,13 +170,7 @@ class QueryOptimizer {
         return this.prisma.equipment_sessions.findMany({
           where: { equipment_id: equipmentId },
           include: {
-            students: {
-              select: {
-                student_id: true,
-                first_name: true,
-                last_name: true
-              }
-            }
+            students: true
           },
           orderBy: { session_start: 'desc' },
           take: limit
@@ -282,9 +283,9 @@ class QueryOptimizer {
     return this.prisma.students.findMany({
       where: {
         OR: [
-          { first_name: { contains: query, mode: 'insensitive' } },
-          { last_name: { contains: query, mode: 'insensitive' } },
-          { student_id: { contains: query, mode: 'insensitive' } }
+          { first_name: { contains: query } },
+          { last_name: { contains: query } },
+          { student_id: { contains: query } }
         ]
       },
       select: {
@@ -303,10 +304,10 @@ class QueryOptimizer {
     return this.prisma.books.findMany({
       where: {
         OR: [
-          { title: { contains: query, mode: 'insensitive' } },
-          { author: { contains: query, mode: 'insensitive' } },
-          { isbn: { contains: query, mode: 'insensitive' } },
-          { accession_no: { contains: query, mode: 'insensitive' } }
+          { title: { contains: query } },
+          { author: { contains: query } },
+          { isbn: { contains: query } },
+          { accession_no: { contains: query } }
         ]
       },
       select: {

@@ -83,7 +83,7 @@ jspm_packages/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
+# dist is needed for Docker build but will be excluded in .gitignore
 
 # Gatsby files
 .cache/

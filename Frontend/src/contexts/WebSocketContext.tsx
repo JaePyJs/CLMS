@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { useWebSocket, WebSocketState } from '@/hooks/useWebSocket';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import type { WebSocketState } from '@/hooks/useWebSocket';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface WebSocketContextType extends WebSocketState {

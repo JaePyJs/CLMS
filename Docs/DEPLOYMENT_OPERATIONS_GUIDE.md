@@ -1,8 +1,27 @@
-# Deployment and Operations Guide
+# CLMS Deployment and Operations Guide
+
+**🚨 CONSOLIDATED GUIDE**: This guide has been merged with `PRODUCTION_DEPLOYMENT_GUIDE.md` to provide comprehensive deployment coverage for both development and production environments.
 
 ## Overview
 
-This guide provides comprehensive instructions for deploying, managing, and maintaining the CLMS (Comprehensive Library Management System) in production environments. It covers production deployment, performance optimization, monitoring procedures, and backup/recovery operations.
+This guide provides comprehensive instructions for deploying, managing, and maintaining the CLMS (Comprehensive Library Management System) in production environments. It covers production deployment, performance optimization, monitoring procedures, load balancing setup, and backup/recovery operations.
+
+**What's Included**:
+- Production deployment procedures
+- System requirements and architecture
+- Load balancing and scaling setup
+- Performance optimization strategies
+- Monitoring and alerting
+- Backup and recovery procedures
+- Maintenance and updates
+
+### 🚀 New in Version 2.0 (October 2025)
+
+- **Enhanced Docker Configuration**: Optimized multi-stage builds with better caching
+- **TypeScript Compilation Improvements**: Faster builds with incremental compilation
+- **Repository Pattern Deployment**: New deployment considerations for the repository pattern
+- **Flexible Import System**: Deployment configuration for enhanced import capabilities
+- **Performance Monitoring**: Enhanced monitoring and observability features
 
 ## Production Deployment Guide
 
@@ -1795,6 +1814,491 @@ fi
 /opt/clms/scripts/verify-backups.sh
 
 echo "Weekly maintenance completed at $(date)"
+```
+
+## Enhanced Docker Deployment (v2.0)
+
+### Optimized Docker Configuration
+
+The v2.0 release includes enhanced Docker configurations with multi-stage builds, better caching, and improved performance:
+
+```dockerfile
+# Enhanced Backend Dockerfile with multi-stage build
+# Backend/Dockerfile
+FROM node:20-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Build the application with TypeScript
+FROM base AS builder
+WORKDIR /app
+COPY package*.json ./
+COPY prisma ./prisma/
+COPY tsconfig.json ./
+COPY src ./src/
+
+# Install all dependencies for building
+RUN npm ci
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Build TypeScript
+RUN npm run build
+
+# Production image
+FROM base AS runner
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S clms -u 1001
+
+# Copy built application
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder --chown=clms:nodejs /app/dist ./dist
+COPY --from=builder --chown=clms:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=clms:nodejs /app/package*.json ./
+
+# Create directories for uploads and logs
+RUN mkdir -p /app/uploads /app/logs && chown -R clms:nodejs /app
+
+# Switch to non-root user
+USER clms
+
+# Expose port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
+
+# Start the application
+CMD ["npm", "start"]
+```
+
+```dockerfile
+# Enhanced Frontend Dockerfile with better caching
+# Frontend/Dockerfile
+FROM node:20-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+RUN npm ci
+
+# Build the application
+FROM base AS builder
+WORKDIR /app
+COPY package*.json ./
+COPY tsconfig.json ./
+COPY vite.config.ts ./
+COPY index.html ./
+COPY src ./src/
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
+
+# Build the application
+RUN npm run build
+
+# Production image with nginx
+FROM nginx:alpine AS runner
+
+# Copy custom nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Copy built application
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Create non-root user
+RUN addgroup -g 1001 -S nginx
+RUN adduser -S nginx -u 1001 -G nginx
+
+# Expose port
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+### Enhanced Docker Compose Configuration
+
+```yaml
+# Enhanced docker-compose.yml for v2.0
+version: '3.8'
+
+services:
+  # MySQL Database with enhanced configuration
+  mysql:
+    image: mysql:8.0
+    container_name: clms_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+      - ./mysql/conf:/etc/mysql/conf.d
+    ports:
+      - "3306:3306"
+    networks:
+      - clms_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Redis Cache with persistence
+  redis:
+    image: redis:7-alpine
+    container_name: clms_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    ports:
+      - "6379:6379"
+    networks:
+      - clms_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Backend API with enhanced configuration
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+      target: runner
+    container_name: clms_backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
+      REDIS_URL: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      KOHA_DATABASE_URL: ${KOHA_DATABASE_URL}
+      # Repository pattern configuration
+      REPOSITORY_CACHE_TTL: 300
+      REPOSITORY_CACHE_MAX_SIZE: 1000
+      # Import system configuration
+      IMPORT_BATCH_SIZE: 100
+      IMPORT_TIMEOUT: 30000
+      # Type inference configuration
+      TYPE_INFERENCE_STRICT_MODE: true
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - ./backups:/app/backups
+    networks:
+      - clms_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+  # Frontend with enhanced nginx configuration
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+      target: runner
+    container_name: clms_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - clms_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+  # WebSocket Server for real-time features
+  websocket:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile.websocket
+    container_name: clms_websocket
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      REDIS_URL: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "3002:3002"
+    networks:
+      - clms_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  clms_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+```
+
+### Production Docker Compose
+
+```yaml
+# docker-compose.prod.yml for production deployment
+version: '3.8'
+
+services:
+  # Use external database and Redis in production
+  backend:
+    image: clms/backend:2.0.0
+    container_name: clms_backend_prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${PROD_DATABASE_URL}
+      REDIS_URL: ${PROD_REDIS_URL}
+      JWT_SECRET: ${PROD_JWT_SECRET}
+      KOHA_DATABASE_URL: ${PROD_KOHA_DATABASE_URL}
+      # Repository pattern configuration
+      REPOSITORY_CACHE_TTL: 600
+      REPOSITORY_CACHE_MAX_SIZE: 5000
+      # Import system configuration
+      IMPORT_BATCH_SIZE: 200
+      IMPORT_TIMEOUT: 60000
+      # Type inference configuration
+      TYPE_INFERENCE_STRICT_MODE: true
+      # Performance monitoring
+      ENABLE_METRICS: true
+      METRICS_PORT: 9090
+    ports:
+      - "3001:3001"
+      - "9090:9090"  # Metrics port
+    volumes:
+      - /data/clms/uploads:/app/uploads
+      - /data/clms/logs:/app/logs
+      - /data/clms/backups:/app/backups
+    networks:
+      - clms_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+        reservations:
+          cpus: '2.0'
+          memory: 2G
+
+  frontend:
+    image: clms/frontend:2.0.0
+    container_name: clms_frontend_prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ssl:/etc/nginx/ssl:ro
+    networks:
+      - clms_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  websocket:
+    image: clms/websocket:2.0.0
+    container_name: clms_websocket_prod
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      REDIS_URL: ${PROD_REDIS_URL}
+      JWT_SECRET: ${PROD_JWT_SECRET}
+      ENABLE_METRICS: true
+      METRICS_PORT: 9091
+    ports:
+      - "3002:3002"
+      - "9091:9091"  # Metrics port
+    networks:
+      - clms_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+networks:
+  clms_network:
+    external: true
+```
+
+### Docker Deployment Scripts
+
+#### Production Deployment Script
+```bash
+#!/bin/bash
+# deploy-docker-production.sh
+
+set -e
+
+echo "🚀 Deploying CLMS to Production with Docker"
+
+# Configuration
+REGISTRY="your-registry.com"
+VERSION="2.0.0"
+ENVIRONMENT="production"
+
+# Build and push images
+echo "📦 Building and pushing Docker images..."
+
+# Backend
+docker build -t ${REGISTRY}/clms/backend:${VERSION} -f Backend/Dockerfile ./Backend
+docker push ${REGISTRY}/clms/backend:${VERSION}
+
+# Frontend
+docker build -t ${REGISTRY}/clms/frontend:${VERSION} -f Frontend/Dockerfile ./Frontend
+docker push ${REGISTRY}/clms/frontend:${VERSION}
+
+# WebSocket
+docker build -t ${REGISTRY}/clms/websocket:${VERSION} -f Backend/Dockerfile.websocket ./Backend
+docker push ${REGISTRY}/clms/websocket:${VERSION}
+
+# Deploy to production server
+echo "🚀 Deploying to production server..."
+
+# Create production network if it doesn't exist
+docker network create clms_network || true
+
+# Stop existing containers
+docker-compose -f docker-compose.prod.yml down || true
+
+# Pull latest images
+docker-compose -f docker-compose.prod.yml pull
+
+# Start services
+docker-compose -f docker-compose.prod.yml up -d
+
+# Wait for services to start
+echo "⏳ Waiting for services to start..."
+sleep 30
+
+# Health check
+echo "🏥 Performing health check..."
+if curl -f http://localhost:3001/health > /dev/null 2>&1; then
+    echo "✅ Backend health check passed"
+else
+    echo "❌ Backend health check failed"
+    exit 1
+fi
+
+if curl -f http://localhost:3000/health > /dev/null 2>&1; then
+    echo "✅ Frontend health check passed"
+else
+    echo "❌ Frontend health check failed"
+    exit 1
+fi
+
+echo "✅ Deployment completed successfully!"
+echo "🌐 Application is available at: http://localhost"
+```
+
+#### Docker Monitoring Script
+```bash
+#!/bin/bash
+# monitor-docker.sh
+
+echo "📊 CLMS Docker Container Status"
+
+# Check container status
+docker-compose -f docker-compose.prod.yml ps
+
+# Check resource usage
+echo ""
+echo "📈 Resource Usage:"
+docker stats --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}"
+
+# Check logs for errors
+echo ""
+echo "🔍 Recent Errors:"
+docker-compose -f docker-compose.prod.yml logs --tail=50 | grep -i error || echo "No errors found"
+
+# Check health status
+echo ""
+echo "🏥 Health Status:"
+for service in backend frontend websocket; do
+    health=$(docker inspect --format='{{.State.Health.Status}}' clms_${service}_prod 2>/dev/null || echo "unknown")
+    echo "  ${service}: ${health}"
+done
 ```
 
 **3. Monthly Maintenance**

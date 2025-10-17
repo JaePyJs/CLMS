@@ -134,7 +134,103 @@ export class CLMSApplication {
         message: 'CLMS API v1.0.0 (Minimal)',
         endpoints: {
           health: '/health',
+          auth: '/api/auth',
         },
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    // Simple authentication endpoint (minimal implementation)
+    this.app.post('/api/auth/login', (req: Request, res: Response) => {
+      const { username, password } = req.body;
+
+      // Basic hardcoded authentication for testing
+      if (username === 'admin' && password === 'librarian123') {
+        res.json({
+          success: true,
+          data: {
+            token: 'mock-jwt-token-for-testing',
+            user: {
+              id: '1',
+              username: 'admin',
+              role: 'ADMIN',
+              isActive: true,
+              lastLoginAt: new Date().toISOString(),
+              createdAt: new Date().toISOString(),
+            }
+          },
+          message: 'Login successful',
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        res.status(401).json({
+          success: false,
+          error: 'Invalid credentials',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+
+    // Simple auth me endpoint
+    this.app.get('/api/auth/me', (req: Request, res: Response) => {
+      // For now, return mock user data
+      res.json({
+        success: true,
+        data: {
+          user: {
+            id: '1',
+            username: 'admin',
+            role: 'ADMIN',
+            isActive: true,
+            lastLoginAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+          }
+        },
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    // Add analytics endpoints for dashboard
+    this.app.get('/api/analytics/metrics', (req: Request, res: Response) => {
+      res.json({
+        success: true,
+        data: {
+          totalStudents: 0,
+          totalBooks: 0,
+          totalActivities: 0,
+          activeEquipment: 0,
+          systemLoad: 0,
+          criticalAlerts: 0
+        },
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    this.app.get('/api/analytics/timeline', (req: Request, res: Response) => {
+      const limit = parseInt(req.query.limit as string) || 10;
+      res.json({
+        success: true,
+        data: [],
+        message: `No timeline data available - using minimal backend`,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    // Add self-service statistics endpoint
+    this.app.get('/api/self-service/statistics', (req: Request, res: Response) => {
+      const { startDate, endDate } = req.query;
+      res.json({
+        success: true,
+        data: {
+          totalStudents: 0,
+          activeUsers: 0,
+          totalBorrowed: 0,
+          totalReturned: 0,
+          overdueItems: 0,
+          newRegistrations: 0
+        },
+        message: `No self-service statistics available - using minimal backend`,
+        period: { startDate, endDate },
         timestamp: new Date().toISOString(),
       });
     });
@@ -336,3 +432,12 @@ export class CLMSApplication {
 export const app = new CLMSApplication();
 
 export default app;
+
+// Start server if this file is run directly
+if (require.main === module) {
+  const port = parseInt(process.env.PORT || '3005', 10);
+  app.start(port).catch(error => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  });
+}

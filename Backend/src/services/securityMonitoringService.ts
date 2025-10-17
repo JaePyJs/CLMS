@@ -1,7 +1,16 @@
 import { Request, Response } from 'express';
 import Redis from 'ioredis';
 import { logger } from '@/utils/logger';
-import { ValidationError, AuthenticationError, FERPAComplianceError } from '@/errors/error-types';
+import { ValidationError, AuthenticationError } from '@/utils/errors';
+import { FERPAComplianceLevel } from '@/services/ferpaService';
+
+// Create a local FERPAComplianceError class if it doesn't exist
+class FERPAComplianceError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'FERPAComplianceError';
+  }
+}
 import { FERPAComplianceLevel, DataSensitivity } from './ferpaService';
 
 // Security event types

@@ -1,14 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
@@ -24,15 +20,11 @@ import {
 import {
   BookOpen,
   TrendingUp,
-  TrendingDown,
-  Clock,
   AlertTriangle,
   CheckCircle,
   Users,
-  Calendar,
   Filter,
-  Download,
-  BarChart3
+  Download
 } from 'lucide-react'
 
 interface BookCirculationAnalyticsProps {

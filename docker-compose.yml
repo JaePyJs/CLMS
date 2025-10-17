@@ -136,7 +136,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3001
-      DATABASE_URL: mysql://clms_user:clms_password@mysql:3306/clms_database
+      DATABASE_URL: mysql://clms_user:clms_password@mysql:3306/clms_database?connection_limit=20&pool_timeout=10000
       KOHA_DATABASE_URL: mysql://koha_user:koha_password@koha-mysql:3306/koha_database
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -172,7 +172,7 @@ services:
       retries: 5
       interval: 60s
       start_period: 120s
-    command: npm run dev
+    # Use the default CMD from Dockerfile which regenerates Prisma client
 
   # ============================================================================
   # Frontend - React 18 with Vite (Hot Module Replacement)

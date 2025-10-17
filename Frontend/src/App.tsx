@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHealthCheck } from '@/hooks/api-hooks';
@@ -18,8 +18,6 @@ import Image from '@/components/performance/Image';
 import MobileBottomNavigation from '@/components/mobile/MobileBottomNavigation';
 import PWAInstallPrompt from '@/components/mobile/PWAInstallPrompt';
 import {
-  Wifi,
-  WifiOff,
   LogOut,
   User,
   Search,
@@ -35,10 +33,7 @@ import {
   Globe,
   Clock,
   Activity,
-  MessageSquare,
-  Calendar,
   Users,
-  Monitor,
   BookOpen,
   Zap,
   LayoutDashboard,
@@ -103,13 +98,11 @@ const LoadingFallback = () => (
 );
 
 export default function App() {
-  const [networkStatus, setNetworkStatus] = useState(navigator.onLine);
-  const { connectedToBackend } = useAppStore();
   const { user, logout } = useAuth();
 
   // Mobile optimization
-  const { isMobile, isTablet, isDesktop } = useMobileOptimization();
-  const performanceSettings = usePerformanceOptimization();
+  const { isMobile, isTablet } = useMobileOptimization();
+  usePerformanceOptimization();
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
   const { isOnline, queueCount, syncNow } = useOfflineSync();
 
@@ -124,20 +117,15 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const appStartTimeRef = useRef(Date.now());
 
-  const [notifications] = useState([]);
-
-
   // Health check to test backend connection
-  const { isLoading: healthLoading } = useHealthCheck();
+  useHealthCheck();
 
   // Update online status
   useEffect(() => {
     const handleOnline = () => {
-      setNetworkStatus(true);
       useAppStore.getState().setOnlineStatus(true);
     };
     const handleOffline = () => {
-      setNetworkStatus(false);
       useAppStore.getState().setOnlineStatus(false);
     };
 
@@ -225,14 +213,20 @@ export default function App() {
     switch (gesture) {
       case 'swipe-left':
         if (currentIndex < allTabs.length - 1) {
-          setActiveTab(allTabs[currentIndex + 1]);
-          toast.info(`Switched to ${allTabs[currentIndex + 1]}`);
+          const nextTab = allTabs[currentIndex + 1];
+          if (nextTab) {
+            setActiveTab(nextTab);
+            toast.info(`Switched to ${nextTab}`);
+          }
         }
         break;
       case 'swipe-right':
         if (currentIndex > 0) {
-          setActiveTab(allTabs[currentIndex - 1]);
-          toast.info(`Switched to ${allTabs[currentIndex - 1]}`);
+          const prevTab = allTabs[currentIndex - 1];
+          if (prevTab) {
+            setActiveTab(prevTab);
+            toast.info(`Switched to ${prevTab}`);
+          }
         }
         break;
       case 'double-tap':

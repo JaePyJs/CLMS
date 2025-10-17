@@ -39,13 +39,13 @@ class RealtimeService {
     this.equipmentPollingInterval = setInterval(async () => {
       try {
         const equipment = await prisma.equipment.findMany({
-          include: {
-            equipment_sessions: {
-              where: { status: 'ACTIVE' },
-              include: {
-                students: true
-              }
-            }
+          select: {
+            id: true,
+            equipment_id: true,
+            name: true,
+            type: true,
+            location: true,
+            status: true
           }
         });
 
@@ -73,7 +73,15 @@ class RealtimeService {
             status: 'ACTIVE'
           },
           include: {
-            students: true
+            students: {
+              select: {
+                id: true,
+                student_id: true,
+                first_name: true,
+                last_name: true,
+                grade_level: true
+              }
+            }
           },
           orderBy: {
             start_time: 'desc'
@@ -378,7 +386,7 @@ class RealtimeService {
             data: {
               id: crypto.randomUUID(),
               student_id: student.id,
-              activity_type: 'LIBRARY_VISIT',
+              activity_type: 'LIBRARY_VISIT' as any,
               start_time: new Date(),
               status: 'ACTIVE',
               updated_at: new Date()
