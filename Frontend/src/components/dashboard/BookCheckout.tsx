@@ -86,10 +86,10 @@ export default function BookCheckout() {
   const [activeTab, setActiveTab] = useState('checkout');
 
   // Calculate default due date (7 days from now)
-  const getDefaultDueDate = () => {
+  const getDefaultDueDate = (): string => {
     const date = new Date();
     date.setDate(date.getDate() + 7);
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split('T')[0] ?? '';
   };
 
   // Initialize due date
@@ -144,7 +144,7 @@ export default function BookCheckout() {
 
       if (response.data.success && response.data.data.books.length > 0) {
         const book = response.data.data.books[0];
-        
+
         if (book.availableCopies <= 0) {
           toast.error('No copies available for checkout');
           return;
@@ -214,7 +214,7 @@ export default function BookCheckout() {
     setLoading(true);
     try {
       const token = localStorage.getItem('clms_token');
-      
+
       // Find active checkout for this book
       const response = await axios.get(
         `${API_BASE_URL}/books/checkouts/all?status=ACTIVE`,
@@ -223,7 +223,7 @@ export default function BookCheckout() {
 
       if (response.data.success) {
         const checkouts = response.data.data.checkouts || [];
-        const checkout = checkouts.find((c: Checkout) => 
+        const checkout = checkouts.find((c: Checkout) =>
           c.book.accessionNo === returnBarcode.trim()
         );
 
@@ -261,7 +261,7 @@ export default function BookCheckout() {
         } else {
           toast.success('Book returned successfully!');
         }
-        
+
         setReturnBarcode('');
         setActiveCheckout(null);
         setShowReturnConfirm(false);
@@ -537,7 +537,7 @@ export default function BookCheckout() {
                 <div><strong>Student:</strong> {activeCheckout.student.firstName} {activeCheckout.student.lastName}</div>
                 <div><strong>Checkout Date:</strong> {new Date(activeCheckout.checkoutDate).toLocaleDateString()}</div>
                 <div><strong>Due Date:</strong> {new Date(activeCheckout.dueDate).toLocaleDateString()}</div>
-                
+
                 {activeCheckout.overdueDays > 0 && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />

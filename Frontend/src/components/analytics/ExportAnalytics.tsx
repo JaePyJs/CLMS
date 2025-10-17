@@ -281,7 +281,7 @@ export function ExportAnalytics({ timeframe, onExport, isExporting = false }: Ex
                 <Checkbox
                   id="charts"
                   checked={includeCharts}
-                  onCheckedChange={setIncludeCharts}
+                  onCheckedChange={(checked) => setIncludeCharts(checked === true)}
                 />
                 <label htmlFor="charts" className="text-sm">
                   Include charts and visualizations
@@ -291,7 +291,7 @@ export function ExportAnalytics({ timeframe, onExport, isExporting = false }: Ex
                 <Checkbox
                   id="raw-data"
                   checked={includeRawData}
-                  onCheckedChange={setIncludeRawData}
+                  onCheckedChange={(checked) => setIncludeRawData(checked === true)}
                 />
                 <label htmlFor="raw-data" className="text-sm">
                   Include raw data tables
@@ -301,7 +301,7 @@ export function ExportAnalytics({ timeframe, onExport, isExporting = false }: Ex
                 <Checkbox
                   id="custom-range"
                   checked={customDateRange}
-                  onCheckedChange={setCustomDateRange}
+                  onCheckedChange={(checked) => setCustomDateRange(checked === true)}
                 />
                 <label htmlFor="custom-range" className="text-sm">
                   Use custom date range
