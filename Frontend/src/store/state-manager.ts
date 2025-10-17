@@ -3,6 +3,7 @@
  * Combines multiple state management patterns for optimal performance and developer experience
  */
 
+import React from 'react';
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { persist, createJSONStorage } from 'zustand/middleware';
