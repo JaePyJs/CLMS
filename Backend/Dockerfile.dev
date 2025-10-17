@@ -5,15 +5,18 @@
 # Features: Volume mounting, tsx watch mode, Node.js debugger support
 # ============================================================================
 
-FROM node:20-alpine AS development
+FROM node:20-bullseye AS development
 
 # Install system dependencies for native modules
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
     curl \
-    bash
+    bash \
+    libssl-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
@@ -22,11 +25,13 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Install all dependencies (including devDependencies)
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
-# Generate Prisma client (will be regenerated on volume mount if schema changes)
+# Copy Prisma schema first
 COPY prisma ./prisma
-RUN npx prisma generate
+
+# Generate Prisma client after OpenSSL is installed
+RUN npx prisma generate --schema=./prisma/schema.prisma
 
 # Copy application source (overridden by volume mount in development)
 COPY . .
@@ -46,4 +51,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3001/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
 
 # Development command with hot-reload and debugging
-CMD ["npm", "run", "dev"]
+# Regenerate Prisma client on startup to ensure compatibility
+CMD ["sh", "-c", "npx prisma generate && npm run dev"]

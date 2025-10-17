@@ -9,24 +9,46 @@ const http_1 = require("http");
 const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
-const client_1 = require("@prisma/client");
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 require("express-async-errors");
 const logger_1 = require("@/utils/logger");
 const errors_1 = require("@/utils/errors");
+const database_1 = __importDefault(require("@/config/database"));
 const auth_1 = __importDefault(require("@/routes/auth"));
 const students_1 = __importDefault(require("@/routes/students"));
 const books_1 = __importDefault(require("@/routes/books"));
 const activities_1 = __importDefault(require("@/routes/activities"));
+const analytics_1 = __importDefault(require("@/routes/analytics"));
+const equipment_1 = __importDefault(require("@/routes/equipment"));
+const fines_1 = __importDefault(require("@/routes/fines"));
+const reports_1 = __importDefault(require("@/routes/reports"));
+const users_routes_1 = __importDefault(require("@/routes/users.routes"));
+const audit_routes_1 = __importDefault(require("@/routes/audit.routes"));
+const notifications_routes_1 = __importDefault(require("@/routes/notifications.routes"));
+const settings_1 = __importDefault(require("@/routes/settings"));
+const backup_routes_1 = __importDefault(require("@/routes/backup.routes"));
+const import_routes_1 = __importDefault(require("@/routes/import.routes"));
+const self_service_routes_1 = __importDefault(require("@/routes/self-service.routes"));
+const scanner_1 = __importDefault(require("@/routes/scanner"));
+const performance_1 = __importDefault(require("@/routes/performance"));
+const utilities_1 = __importDefault(require("@/routes/utilities"));
+const automation_1 = __importDefault(require("@/routes/automation"));
+const admin_1 = __importDefault(require("@/routes/admin"));
+const enhancedEquipment_1 = __importDefault(require("@/routes/enhancedEquipment"));
+const enhancedSearch_1 = __importDefault(require("@/routes/enhancedSearch"));
+const errors_routes_1 = __importDefault(require("@/routes/errors.routes"));
+const securityMonitoring_routes_1 = __importDefault(require("@/routes/securityMonitoring.routes"));
+const reporting_1 = __importDefault(require("@/routes/reporting"));
+const scan_1 = __importDefault(require("@/routes/scan"));
+const scannerTesting_1 = __importDefault(require("@/routes/scannerTesting"));
 const auth_2 = require("@/middleware/auth");
 class CLMSApplication {
     app;
     httpServer = null;
-    prisma;
+    prisma = database_1.default.getClient();
     isInitialized = false;
     constructor() {
         this.app = (0, express_1.default)();
-        this.prisma = new client_1.PrismaClient();
     }
     async initialize() {
         if (this.isInitialized) {
@@ -79,12 +101,35 @@ class CLMSApplication {
         this.app.get('/api', (req, res) => {
             res.json({
                 success: true,
-                message: 'CLMS API v1.0.0 (Simplified)',
+                message: 'CLMS API v1.0.0 (Complete)',
                 endpoints: {
                     auth: '/api/auth',
                     students: '/api/students',
                     books: '/api/books',
                     activities: '/api/activities',
+                    analytics: '/api/analytics',
+                    equipment: '/api/equipment',
+                    fines: '/api/fines',
+                    reports: '/api/reports',
+                    users: '/api/users',
+                    audit: '/api/audit',
+                    notifications: '/api/notifications',
+                    settings: '/api/settings',
+                    backup: '/api/backup',
+                    import: '/api/import',
+                    'self-service': '/api/self-service',
+                    scanner: '/api/scanner',
+                    performance: '/api/performance',
+                    utilities: '/api/utilities',
+                    automation: '/api/automation',
+                    admin: '/api/admin',
+                    'enhanced-equipment': '/api/enhanced-equipment',
+                    'enhanced-search': '/api/enhanced-search',
+                    errors: '/api/errors',
+                    'security-monitoring': '/api/security-monitoring',
+                    reporting: '/api/reporting',
+                    scan: '/api/scan',
+                    'scanner-testing': '/api/scanner-testing',
                 },
                 timestamp: new Date().toISOString(),
             });
@@ -93,7 +138,30 @@ class CLMSApplication {
         this.app.use('/api/students', auth_2.authMiddleware, students_1.default);
         this.app.use('/api/books', auth_2.authMiddleware, books_1.default);
         this.app.use('/api/activities', auth_2.authMiddleware, activities_1.default);
-        logger_1.logger.debug('Basic routes configured');
+        this.app.use('/api/analytics', auth_2.authMiddleware, analytics_1.default);
+        this.app.use('/api/equipment', auth_2.authMiddleware, equipment_1.default);
+        this.app.use('/api/fines', auth_2.authMiddleware, fines_1.default);
+        this.app.use('/api/reports', auth_2.authMiddleware, reports_1.default);
+        this.app.use('/api/users', auth_2.authMiddleware, users_routes_1.default);
+        this.app.use('/api/audit', auth_2.authMiddleware, audit_routes_1.default);
+        this.app.use('/api/notifications', auth_2.authMiddleware, notifications_routes_1.default);
+        this.app.use('/api/settings', auth_2.authMiddleware, settings_1.default);
+        this.app.use('/api/backup', auth_2.authMiddleware, backup_routes_1.default);
+        this.app.use('/api/import', auth_2.authMiddleware, import_routes_1.default);
+        this.app.use('/api/self-service', auth_2.authMiddleware, self_service_routes_1.default);
+        this.app.use('/api/scanner', auth_2.authMiddleware, scanner_1.default);
+        this.app.use('/api/performance', auth_2.authMiddleware, performance_1.default);
+        this.app.use('/api/utilities', auth_2.authMiddleware, utilities_1.default);
+        this.app.use('/api/automation', auth_2.authMiddleware, automation_1.default);
+        this.app.use('/api/admin', auth_2.authMiddleware, admin_1.default);
+        this.app.use('/api/enhanced-equipment', auth_2.authMiddleware, enhancedEquipment_1.default);
+        this.app.use('/api/enhanced-search', auth_2.authMiddleware, enhancedSearch_1.default);
+        this.app.use('/api/errors', auth_2.authMiddleware, errors_routes_1.default);
+        this.app.use('/api/security-monitoring', auth_2.authMiddleware, securityMonitoring_routes_1.default);
+        this.app.use('/api/reporting', auth_2.authMiddleware, reporting_1.default);
+        this.app.use('/api/scan', auth_2.authMiddleware, scan_1.default);
+        this.app.use('/api/scanner-testing', auth_2.authMiddleware, scannerTesting_1.default);
+        logger_1.logger.debug('All routes configured');
     }
     setupErrorHandling() {
         this.app.use(errors_1.notFoundHandler);

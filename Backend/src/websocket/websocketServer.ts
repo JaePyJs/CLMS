@@ -206,8 +206,22 @@ class WebSocketServer {
           updated_at: new Date()
         },
         include: {
-          equipment: true,
-          students: true
+          equipment: {
+            select: {
+              id: true,
+              equipment_id: true,
+              name: true,
+              type: true
+            }
+          },
+          students: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true
+            }
+          }
         }
       });
 
@@ -244,8 +258,22 @@ class WebSocketServer {
           status: 'COMPLETED'
         },
         include: {
-          equipment: true,
-          students: true
+          equipment: {
+            select: {
+              id: true,
+              equipment_id: true,
+              name: true,
+              type: true
+            }
+          },
+          students: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true
+            }
+          }
         }
       });
 
@@ -301,7 +329,14 @@ class WebSocketServer {
           updated_at: new Date()
         },
         include: {
-          students: true
+          students: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true
+            }
+          }
         }
       });
 
@@ -331,7 +366,14 @@ class WebSocketServer {
           status: 'COMPLETED'
         },
         include: {
-          students: true
+          students: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true
+            }
+          }
         }
       });
 
@@ -458,7 +500,7 @@ class WebSocketServer {
       const notification = await prisma.notifications.findFirst({
         where: {
           id: notificationId,
-          user_id: socket.userId,
+          user_id: socket.userId || undefined,
         },
       });
 

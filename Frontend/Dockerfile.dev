@@ -10,7 +10,17 @@ FROM node:20-alpine AS development
 # Install system dependencies
 RUN apk add --no-cache \
     curl \
-    bash
+    bash \
+    python3 \
+    make \
+    g++ \
+    autoconf \
+    automake \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    libwebp-dev \
+    nasm \
+    libtool
 
 # Set working directory
 WORKDIR /app
@@ -19,7 +29,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Install all dependencies (including devDependencies)
-RUN npm ci
+RUN npm install --legacy-peer-deps --no-optional --ignore-scripts
 
 # Copy application source (overridden by volume mount in development)
 COPY . .

@@ -219,8 +219,22 @@ class NotificationWorker {
           },
         },
         include: {
-          books: true,
-          students: true,
+          books: {
+            select: {
+              id: true,
+              accession_no: true,
+              title: true,
+              author: true
+            }
+          },
+          students: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true
+            }
+          },
         },
       });
 
@@ -266,8 +280,22 @@ class NotificationWorker {
       const checkout = await prisma.book_checkouts.findUnique({
         where: { id: checkoutId },
         include: {
-          books: true,
-          students: true,
+          books: {
+            select: {
+              id: true,
+              accession_no: true,
+              title: true,
+              author: true
+            }
+          },
+          students: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true
+            }
+          },
         },
       });
 
@@ -276,12 +304,12 @@ class NotificationWorker {
       }
 
       await notificationService.createNotification({
-        userId: studentId,
+        user_id: studentId,
         type: 'BOOK_DUE_SOON',
         title: `Book Due in ${daysUntilDue} Day${daysUntilDue > 1 ? 's' : ''}`,
         message: `Your book "${checkout.books.title}" is due in ${daysUntilDue} day${daysUntilDue > 1 ? 's' : ''} on ${dueDate.toLocaleDateString()}. Please return it to the library to avoid late fees.`,
         priority: daysUntilDue === 1 ? 'HIGH' : 'NORMAL',
-        actionUrl: `/books/${bookId}`,
+        action_url: `/books/${bookId}`,
         metadata: {
           checkoutId,
           bookId,
@@ -308,8 +336,22 @@ class NotificationWorker {
           },
         },
         include: {
-          books: true,
-          students: true,
+          books: {
+            select: {
+              id: true,
+              accession_no: true,
+              title: true,
+              author: true
+            }
+          },
+          students: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true
+            }
+          },
         },
       });
 
@@ -351,8 +393,22 @@ class NotificationWorker {
       const checkout = await prisma.book_checkouts.findUnique({
         where: { id: checkoutId },
         include: {
-          books: true,
-          students: true,
+          books: {
+            select: {
+              id: true,
+              accession_no: true,
+              title: true,
+              author: true
+            }
+          },
+          students: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true
+            }
+          },
         },
       });
 
@@ -363,12 +419,12 @@ class NotificationWorker {
       const priority = daysOverdue > 7 ? 'URGENT' : daysOverdue > 3 ? 'HIGH' : 'NORMAL';
 
       await notificationService.createNotification({
-        userId: studentId,
+        user_id: studentId,
         type: 'OVERDUE_BOOK',
         title: `Book Overdue - ${daysOverdue} Day${daysOverdue > 1 ? 's' : ''}`,
         message: `Your book "${checkout.books.title}" is ${daysOverdue} day${daysOverdue > 1 ? 's' : ''} overdue. Current fine: $${fineAmount.toFixed(2)}. Please return it as soon as possible.`,
         priority,
-        actionUrl: `/books/${checkout.book_id}`,
+        action_url: `/books/${checkout.book_id}`,
         metadata: {
           checkoutId,
           bookId: checkout.book_id,
@@ -437,8 +493,22 @@ class NotificationWorker {
           },
         },
         include: {
-          equipment: true,
-          students: true,
+          equipment: {
+            select: {
+              id: true,
+              equipment_id: true,
+              name: true,
+              type: true
+            }
+          },
+          students: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true
+            }
+          },
         },
       });
 
@@ -473,8 +543,22 @@ class NotificationWorker {
       const session = await prisma.equipment_sessions.findUnique({
         where: { id: sessionId },
         include: {
-          equipment: true,
-          students: true,
+          equipment: {
+            select: {
+              id: true,
+              equipment_id: true,
+              name: true,
+              type: true
+            }
+          },
+          students: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true
+            }
+          },
         },
       });
 
@@ -483,12 +567,12 @@ class NotificationWorker {
       }
 
       await notificationService.createNotification({
-        userId: session.student_id,
+        user_id: session.student_id,
         type: 'EQUIPMENT_EXPIRING',
         title: 'Equipment Session Expiring Soon',
         message: `Your session for ${session.equipment.name} will expire in 5 minutes. Please save your work and prepare to finish.`,
         priority: 'HIGH',
-        actionUrl: `/equipment/${session.equipment_id}`,
+        action_url: `/equipment/${session.equipment_id}`,
         metadata: {
           sessionId,
           equipmentId: session.equipment_id,
@@ -557,8 +641,22 @@ class NotificationWorker {
           },
         },
         include: {
-          students: true,
-          equipment: true,
+          students: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true
+            }
+          },
+          equipment: {
+            select: {
+              id: true,
+              equipment_id: true,
+              name: true,
+              type: true
+            }
+          },
         },
         take: 10,
       });
@@ -668,7 +766,7 @@ class NotificationWorker {
 
       for (const userId of usersToNotify) {
         await notificationService.createNotification({
-          userId,
+          user_id: userId,
           type: 'SYSTEM_ALERT',
           title,
           message,

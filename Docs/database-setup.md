@@ -9,6 +9,13 @@ CLMS uses two MySQL databases:
 - **CLMS Database**: For storing student activities, equipment sessions, and application data
 - **Koha Database**: Read-only access to existing library system (optional)
 
+### 🚀 New in Version 2.0 (October 2025)
+
+- **Repository Pattern Implementation**: New data access layer with flexible ID handling
+- **Enhanced ID Management**: Support for multiple identifier types (database IDs, external identifiers)
+- **Improved Performance**: Optimized database operations with better indexing
+- **Type-Safe Database Operations**: Full TypeScript support with Prisma
+
 ## 1. MySQL Server Installation
 
 ### Ubuntu/Debian
@@ -317,3 +324,537 @@ http://localhost:3001/health
 ```
 
 This will return database connection status and other system information.
+
+## Repository Pattern and Flexible ID Handling
+
+### Database Schema for Flexible ID Handling
+
+The CLMS database schema is designed to support multiple identifier types for each entity, enabling flexible ID resolution through the repository pattern.
+
+### ID Resolution Tables
+
+#### Entity ID Mappings
+```sql
+-- Table to store all identifier mappings for entities
+CREATE TABLE entity_id_mappings (
+    id CHAR(25) PRIMARY KEY,
+    entity_type ENUM('student', 'book', 'equipment', 'user') NOT NULL,
+    entity_id CHAR(25) NOT NULL,         -- Reference to the entity
+    identifier_type ENUM('database_id', 'external_id', 'barcode', 'qr_code', 'isbn') NOT NULL,
+    identifier_value VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_entity_type (entity_type),
+    INDEX idx_entity_id (entity_id),
+    INDEX idx_identifier (identifier_type, identifier_value),
+    INDEX idx_is_active (is_active),
+    
+    UNIQUE KEY unique_entity_identifier (entity_type, entity_id, identifier_type, identifier_value)
+);
+```
+
+#### Enhanced Student Table
+```sql
+-- Updated student table with flexible ID support
+CREATE TABLE students (
+    id CHAR(25) PRIMARY KEY,                -- Internal database ID (UUID)
+    student_id VARCHAR(50) UNIQUE NOT NULL, -- External student identifier
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    grade_level VARCHAR(20) NOT NULL,
+    grade_category ENUM('primary','gradeSchool','juniorHigh','seniorHigh'),
+    section VARCHAR(50),
+    barcode VARCHAR(32),                    -- Barcode value (defaults to student_id)
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_student_id (student_id),
+    INDEX idx_grade_category (grade_category),
+    INDEX idx_is_active (is_active),
+    INDEX idx_barcode (barcode)
+);
+```
+
+#### Enhanced Book Table
+```sql
+-- Updated book table with flexible ID support
+CREATE TABLE books (
+    id CHAR(25) PRIMARY KEY,                -- Internal database ID (UUID)
+    accession_no VARCHAR(50) UNIQUE NOT NULL, -- External accession number
+    title VARCHAR(255) NOT NULL,
+    author VARCHAR(255) NOT NULL,
+    isbn VARCHAR(20),                       -- ISBN number
+    publisher VARCHAR(100),
+    publication_year INT,
+    category VARCHAR(50),
+    location VARCHAR(100),
+    status ENUM('available','checked_out','reserved','maintenance') DEFAULT 'available',
+    barcode VARCHAR(32),                    -- Barcode value (defaults to accession_no)
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_accession_no (accession_no),
+    INDEX idx_isbn (isbn),
+    INDEX idx_status (status),
+    INDEX idx_barcode (barcode),
+    INDEX idx_is_active (is_active)
+);
+```
+
+#### Enhanced Equipment Table
+```sql
+-- Updated equipment table with flexible ID support
+CREATE TABLE equipment (
+    id CHAR(25) PRIMARY KEY,                -- Internal database ID (UUID)
+    equipment_id VARCHAR(50) UNIQUE NOT NULL, -- External equipment identifier
+    type ENUM('computer','gaming','avr','printer','scanner','other') NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    status ENUM('available','in-use','maintenance','offline') DEFAULT 'available',
+    location VARCHAR(100),
+    max_time_minutes INT,
+    requires_supervision BOOLEAN DEFAULT FALSE,
+    description TEXT,
+    barcode VARCHAR(32),                    -- Barcode value (defaults to equipment_id)
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_equipment_id (equipment_id),
+    INDEX idx_type (type),
+    INDEX idx_status (status),
+    INDEX idx_barcode (barcode),
+    INDEX idx_is_active (is_active)
+);
+```
+
+### Repository Pattern Database Views
+
+#### Flexible ID Resolution Views
+```sql
+-- View for flexible student ID resolution
+CREATE VIEW v_student_id_resolution AS
+SELECT
+    s.id as database_id,
+    s.student_id as external_id,
+    s.barcode as barcode,
+    CONCAT('{"type":"student","id":"', s.student_id, '"}') as qr_code,
+    s.first_name,
+    s.last_name,
+    s.grade_level,
+    s.grade_category,
+    s.section,
+    s.is_active
+FROM students s
+WHERE s.is_active = TRUE;
+
+-- View for flexible book ID resolution
+CREATE VIEW v_book_id_resolution AS
+SELECT
+    b.id as database_id,
+    b.accession_no as external_id,
+    b.barcode as barcode,
+    CASE
+        WHEN b.isbn IS NOT NULL THEN CONCAT('{"type":"book","id":"', b.accession_no, '","isbn":"', b.isbn, '"}')
+        ELSE CONCAT('{"type":"book","id":"', b.accession_no, '"}')
+    END as qr_code,
+    b.title,
+    b.author,
+    b.isbn,
+    b.publisher,
+    b.publication_year,
+    b.category,
+    b.location,
+    b.status,
+    b.is_active
+FROM books b
+WHERE b.is_active = TRUE;
+
+-- View for flexible equipment ID resolution
+CREATE VIEW v_equipment_id_resolution AS
+SELECT
+    e.id as database_id,
+    e.equipment_id as external_id,
+    e.barcode as barcode,
+    CONCAT('{"type":"equipment","id":"', e.equipment_id, '"}') as qr_code,
+    e.type,
+    e.name,
+    e.status,
+    e.location,
+    e.max_time_minutes,
+    e.requires_supervision,
+    e.description,
+    e.is_active
+FROM equipment e
+WHERE e.is_active = TRUE;
+```
+
+### Database Triggers for ID Mapping
+
+#### Trigger for Student ID Mapping
+```sql
+-- Trigger to maintain ID mappings for students
+DELIMITER //
+CREATE TRIGGER tr_student_id_mapping
+AFTER INSERT ON students
+FOR EACH ROW
+BEGIN
+    -- Insert external ID mapping
+    INSERT INTO entity_id_mappings (
+        id, entity_type, entity_id, identifier_type, identifier_value
+    ) VALUES (
+        UUID(), 'student', NEW.id, 'external_id', NEW.student_id
+    );
+    
+    -- Insert barcode mapping (if different from student_id)
+    IF NEW.barcode IS NOT NULL AND NEW.barcode != NEW.student_id THEN
+        INSERT INTO entity_id_mappings (
+            id, entity_type, entity_id, identifier_type, identifier_value
+        ) VALUES (
+            UUID(), 'student', NEW.id, 'barcode', NEW.barcode
+        );
+    END IF;
+END//
+DELIMITER ;
+```
+
+#### Trigger for Book ID Mapping
+```sql
+-- Trigger to maintain ID mappings for books
+DELIMITER //
+CREATE TRIGGER tr_book_id_mapping
+AFTER INSERT ON books
+FOR EACH ROW
+BEGIN
+    -- Insert external ID mapping
+    INSERT INTO entity_id_mappings (
+        id, entity_type, entity_id, identifier_type, identifier_value
+    ) VALUES (
+        UUID(), 'book', NEW.id, 'external_id', NEW.accession_no
+    );
+    
+    -- Insert barcode mapping (if different from accession_no)
+    IF NEW.barcode IS NOT NULL AND NEW.barcode != NEW.accession_no THEN
+        INSERT INTO entity_id_mappings (
+            id, entity_type, entity_id, identifier_type, identifier_value
+        ) VALUES (
+            UUID(), 'book', NEW.id, 'barcode', NEW.barcode
+        );
+    END IF;
+    
+    -- Insert ISBN mapping (if available)
+    IF NEW.isbn IS NOT NULL THEN
+        INSERT INTO entity_id_mappings (
+            id, entity_type, entity_id, identifier_type, identifier_value
+        ) VALUES (
+            UUID(), 'book', NEW.id, 'isbn', NEW.isbn
+        );
+    END IF;
+END//
+DELIMITER ;
+```
+
+### Stored Procedures for ID Resolution
+
+#### Procedure to Resolve Entity by Any ID
+```sql
+-- Stored procedure to resolve entity by any identifier
+DELIMITER //
+CREATE PROCEDURE sp_resolve_entity_by_id(
+    IN p_identifier VARCHAR(255),
+    IN p_entity_type VARCHAR(20),
+    OUT p_result JSON
+)
+BEGIN
+    DECLARE v_found BOOLEAN DEFAULT FALSE;
+    DECLARE v_entity_id CHAR(25);
+    DECLARE v_identifier_type VARCHAR(20);
+    
+    -- Try to find the entity by any identifier
+    SELECT
+        eim.entity_id,
+        eim.identifier_type
+    INTO v_entity_id, v_identifier_type
+    FROM entity_id_mappings eim
+    WHERE eim.identifier_value = p_identifier
+    AND eim.entity_type = p_entity_type
+    AND eim.is_active = TRUE
+    LIMIT 1;
+    
+    -- If found, return the entity data
+    IF v_entity_id IS NOT NULL THEN
+        CASE p_entity_type
+            WHEN 'student' THEN
+                SELECT JSON_OBJECT(
+                    'success', TRUE,
+                    'data', JSON_OBJECT(
+                        'id', s.id,
+                        'studentId', s.student_id,
+                        'firstName', s.first_name,
+                        'lastName', s.last_name,
+                        'gradeLevel', s.grade_level,
+                        'gradeCategory', s.grade_category,
+                        'section', s.section,
+                        'barcode', s.barcode,
+                        'isActive', s.is_active
+                    ),
+                    'identifierType', v_identifier_type
+                ) INTO p_result
+                FROM students s
+                WHERE s.id = v_entity_id;
+            
+            WHEN 'book' THEN
+                SELECT JSON_OBJECT(
+                    'success', TRUE,
+                    'data', JSON_OBJECT(
+                        'id', b.id,
+                        'accessionNo', b.accession_no,
+                        'title', b.title,
+                        'author', b.author,
+                        'isbn', b.isbn,
+                        'publisher', b.publisher,
+                        'publicationYear', b.publication_year,
+                        'category', b.category,
+                        'location', b.location,
+                        'status', b.status,
+                        'barcode', b.barcode,
+                        'isActive', b.is_active
+                    ),
+                    'identifierType', v_identifier_type
+                ) INTO p_result
+                FROM books b
+                WHERE b.id = v_entity_id;
+            
+            WHEN 'equipment' THEN
+                SELECT JSON_OBJECT(
+                    'success', TRUE,
+                    'data', JSON_OBJECT(
+                        'id', e.id,
+                        'equipmentId', e.equipment_id,
+                        'type', e.type,
+                        'name', e.name,
+                        'status', e.status,
+                        'location', e.location,
+                        'maxTimeMinutes', e.max_time_minutes,
+                        'requiresSupervision', e.requires_supervision,
+                        'description', e.description,
+                        'barcode', e.barcode,
+                        'isActive', e.is_active
+                    ),
+                    'identifierType', v_identifier_type
+                ) INTO p_result
+                FROM equipment e
+                WHERE e.id = v_entity_id;
+        END CASE;
+        
+        SET v_found = TRUE;
+    ELSE
+        -- Entity not found
+        SELECT JSON_OBJECT(
+            'success', FALSE,
+            'error', CONCAT(p_entity_type, ' not found'),
+            'identifier', p_identifier
+        ) INTO p_result;
+    END IF;
+END//
+DELIMITER ;
+```
+
+### Database Performance Optimization
+
+#### Indexes for Flexible ID Resolution
+```sql
+-- Optimized indexes for ID resolution queries
+CREATE INDEX idx_entity_id_mappings_composite ON entity_id_mappings(
+    entity_type,
+    identifier_type,
+    identifier_value,
+    is_active
+);
+
+-- Full-text search indexes for better text-based ID resolution
+CREATE FULLTEXT INDEX idx_books_title_author ON books(title, author);
+CREATE FULLTEXT INDEX idx_students_name ON students(first_name, last_name);
+```
+
+#### Partitioning for Large Tables
+```sql
+-- Partition student_activities table by date for better performance
+ALTER TABLE student_activities
+PARTITION BY RANGE (YEAR(start_time)) (
+    PARTITION p2023 VALUES LESS THAN (2024),
+    PARTITION p2024 VALUES LESS THAN (2025),
+    PARTITION p2025 VALUES LESS THAN (2026),
+    PARTITION p_future VALUES LESS THAN MAXVALUE
+);
+```
+
+### Database Migration for Repository Pattern
+
+#### Migration Script
+```sql
+-- Migration script to add repository pattern support
+-- Run this script to update existing database to support repository pattern
+
+-- Step 1: Create entity_id_mappings table
+CREATE TABLE IF NOT EXISTS entity_id_mappings (
+    id CHAR(25) PRIMARY KEY,
+    entity_type ENUM('student', 'book', 'equipment', 'user') NOT NULL,
+    entity_id CHAR(25) NOT NULL,
+    identifier_type ENUM('database_id', 'external_id', 'barcode', 'qr_code', 'isbn') NOT NULL,
+    identifier_value VARCHAR(255) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    INDEX idx_entity_type (entity_type),
+    INDEX idx_entity_id (entity_id),
+    INDEX idx_identifier (identifier_type, identifier_value),
+    INDEX idx_is_active (is_active),
+    
+    UNIQUE KEY unique_entity_identifier (entity_type, entity_id, identifier_type, identifier_value)
+);
+
+-- Step 2: Populate ID mappings for existing students
+INSERT IGNORE INTO entity_id_mappings (
+    id, entity_type, entity_id, identifier_type, identifier_value
+)
+SELECT
+    UUID() as id,
+    'student' as entity_type,
+    s.id as entity_id,
+    'external_id' as identifier_type,
+    s.student_id as identifier_value
+FROM students s;
+
+-- Step 3: Populate ID mappings for existing books
+INSERT IGNORE INTO entity_id_mappings (
+    id, entity_type, entity_id, identifier_type, identifier_value
+)
+SELECT
+    UUID() as id,
+    'book' as entity_type,
+    b.id as entity_id,
+    'external_id' as identifier_type,
+    b.accession_no as identifier_value
+FROM books b;
+
+-- Step 4: Populate ID mappings for existing equipment
+INSERT IGNORE INTO entity_id_mappings (
+    id, entity_type, entity_id, identifier_type, identifier_value
+)
+SELECT
+    UUID() as id,
+    'equipment' as entity_type,
+    e.id as entity_id,
+    'external_id' as identifier_type,
+    e.equipment_id as identifier_value
+FROM equipment e;
+
+-- Step 5: Create ID resolution views
+CREATE OR REPLACE VIEW v_student_id_resolution AS
+SELECT
+    s.id as database_id,
+    s.student_id as external_id,
+    s.barcode as barcode,
+    CONCAT('{"type":"student","id":"', s.student_id, '"}') as qr_code,
+    s.first_name,
+    s.last_name,
+    s.grade_level,
+    s.grade_category,
+    s.section,
+    s.is_active
+FROM students s
+WHERE s.is_active = TRUE;
+
+CREATE OR REPLACE VIEW v_book_id_resolution AS
+SELECT
+    b.id as database_id,
+    b.accession_no as external_id,
+    b.barcode as barcode,
+    CASE
+        WHEN b.isbn IS NOT NULL THEN CONCAT('{"type":"book","id":"', b.accession_no, '","isbn":"', b.isbn, '"}')
+        ELSE CONCAT('{"type":"book","id":"', b.accession_no, '"}')
+    END as qr_code,
+    b.title,
+    b.author,
+    b.isbn,
+    b.publisher,
+    b.publication_year,
+    b.category,
+    b.location,
+    b.status,
+    b.is_active
+FROM books b
+WHERE b.is_active = TRUE;
+
+CREATE OR REPLACE VIEW v_equipment_id_resolution AS
+SELECT
+    e.id as database_id,
+    e.equipment_id as external_id,
+    e.barcode as barcode,
+    CONCAT('{"type":"equipment","id":"', e.equipment_id, '"}') as qr_code,
+    e.type,
+    e.name,
+    e.status,
+    e.location,
+    e.max_time_minutes,
+    e.requires_supervision,
+    e.description,
+    e.is_active
+FROM equipment e
+WHERE e.is_active = TRUE;
+
+-- Step 6: Create stored procedures for ID resolution
+DELIMITER //
+CREATE PROCEDURE IF NOT EXISTS sp_resolve_entity_by_id(
+    IN p_identifier VARCHAR(255),
+    IN p_entity_type VARCHAR(20),
+    OUT p_result JSON
+)
+BEGIN
+    -- Implementation as shown above
+END//
+DELIMITER ;
+```
+
+### Using the Repository Pattern with Database
+
+#### Example Queries
+```sql
+-- Find student by any identifier
+CALL sp_resolve_entity_by_id('STU001', 'student', @result);
+SELECT @result;
+
+-- Find book by any identifier
+CALL sp_resolve_entity_by_id('ACC-001', 'book', @result);
+SELECT @result;
+
+-- Find equipment by any identifier
+CALL sp_resolve_entity_by_id('PC001', 'equipment', @result);
+SELECT @result;
+
+-- Query all identifiers for a student
+SELECT
+    database_id,
+    external_id,
+    barcode,
+    qr_code
+FROM v_student_id_resolution
+WHERE database_id = 'student-uuid-here';
+
+-- Get ID mapping statistics
+SELECT
+    entity_type,
+    identifier_type,
+    COUNT(*) as count
+FROM entity_id_mappings
+WHERE is_active = TRUE
+GROUP BY entity_type, identifier_type
+ORDER BY entity_type, identifier_type;
+```
+
+This enhanced database setup provides the foundation for the flexible ID handling system used by the repository pattern in the CLMS application.

@@ -1,0 +1,61 @@
+{
+  "name": "clms-import-tests",
+  "version": "1.0.0",
+  "description": "Test suite for flexible import functionality in CLMS",
+  "main": "runImportTests.ts",
+  "scripts": {
+    "test": "ts-node runImportTests.ts",
+    "test:students": "jest --testNamePattern=\"Student Import Tests\"",
+    "test:books": "jest --testNamePattern=\"Book Import Tests\"",
+    "test:equipment": "jest --testNamePattern=\"Equipment Import Tests\"",
+    "test:type-inference": "jest --testNamePattern=\"Type Inference Tests\"",
+    "test:pipeline": "jest --testNamePattern=\"Data Transformation Pipeline Tests\"",
+    "test:error-handling": "jest --testNamePattern=\"Error Handling Tests\"",
+    "test:performance": "jest --testNamePattern=\"Performance Tests\"",
+    "test:enum": "jest --testNamePattern=\"Enum Validation Tests\"",
+    "test:integration": "jest --testNamePattern=\"Import Service Integration Tests\"",
+    "test:coverage": "jest --coverage --coverageReporters=text-lcov | coveralls",
+    "test:watch": "jest --watch",
+    "test:verbose": "jest --verbose",
+    "clean": "rimraf reports/* coverage/*",
+    "prepare": "npm run clean"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "roots": ["<rootDir>"],
+    "testMatch": ["**/*.test.ts"],
+    "collectCoverageFrom": [
+      "../../src/services/importService.ts",
+      "../../src/utils/dataTransformationPipeline.ts",
+      "../../src/utils/typeInference.ts",
+      "../../src/repositories/base.repository.ts",
+      "../../src/repositories/students.repository.ts",
+      "../../src/repositories/books.repository.ts",
+      "../../src/repositories/equipment.repository.ts"
+    ],
+    "coverageDirectory": "./coverage",
+    "coverageReporters": ["json", "text", "lcov", "html"],
+    "setupFilesAfterEnv": ["./jest.setup.ts"],
+    "testTimeout": 30000,
+    "verbose": true,
+    "detectOpenHandles": true,
+    "forceExit": true
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.5.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.15.0",
+    "coveralls": "^3.1.1",
+    "jest": "^29.5.0",
+    "rimraf": "^4.4.1",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@prisma/client": "^4.15.0",
+    "csv-parse": "^5.3.0",
+    "xlsx": "^0.18.5"
+  }
+}

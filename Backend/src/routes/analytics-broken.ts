@@ -9,62 +9,70 @@ const prisma = new PrismaClient();
 router.get('/metrics', async (req: Request, res: Response) => {
   try {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     // Get student counts
-    const [totalStudents, activeStudents, newStudentsThisMonth] = await Promise.all([
-      prisma.student.count(),
-      prisma.student.count({ where: { isActive: true } }),
-      prisma.student.count({
-        where: {
-          createdAt: { gte: monthStart }
-        }
-      })
-    ]);
+    const [totalStudents, activeStudents, newStudentsThisMonth] =
+      await Promise.all([
+        prisma.students.count(),
+        prisma.students.count({ where: { is_active: true } }),
+        prisma.students.count({
+          where: {
+            created_at: { gte: monthStart },
+          },
+        }),
+      ]);
 
     // Get activity counts
-    const [totalActivities, todayActivities, weekActivities, activeSessions] = await Promise.all([
-      prisma.activity.count(),
-      prisma.activity.count({
-        where: {
-          startTime: { gte: todayStart }
-        }
-      }),
-      prisma.activity.count({
-        where: {
-          startTime: { gte: weekStart }
-        }
-      }),
-      prisma.activity.count({
-        where: {
-          status: 'active',
-          startTime: { gte: todayStart }
-        }
-      })
-    ]);
+    const [totalActivities, todayActivities, weekActivities, activeSessions] =
+      await Promise.all([
+        prisma.student_activities.count(),
+        prisma.student_activities.count({
+          where: {
+            start_time: { gte: todayStart },
+          },
+        }),
+        prisma.student_activities.count({
+          where: {
+            start_time: { gte: weekStart },
+          },
+        }),
+        prisma.student_activities.count({
+          where: {
+            status: 'ACTIVE',
+            start_time: { gte: todayStart },
+          },
+        }),
+      ]);
 
     // Get equipment counts
-    const [totalEquipment, availableEquipment, inUseEquipment] = await Promise.all([
-      prisma.equipment.count(),
-      prisma.equipment.count({ where: { status: 'available' } }),
-      prisma.equipment.count({ where: { status: 'in_use' } })
-    ]);
+    const [totalEquipment, availableEquipment, inUseEquipment] =
+      await Promise.all([
+        prisma.equipment.count(),
+        prisma.equipment.count({ where: { status: 'AVAILABLE' } }),
+        prisma.equipment.count({ where: { status: 'IN_USE' } }),
+      ]);
 
     // Get book counts
-    const [totalBooks, availableBooks, borrowedBooks] = await Promise.all([
-      prisma.book.count(),
-      prisma.book.count({ where: { status: 'available' } }),
-      prisma.book.count({ where: { status: 'borrowed' } })
+    const [totalBooks, availableBooks] = await Promise.all([
+      prisma.books.count(),
+      prisma.books.count({ where: { available_copies: { gt: 0 } } }),
     ]);
+    const borrowedBooks = totalBooks - availableBooks;
 
     // Calculate today's usage statistics
     const usageMetrics = {
       totalVisitors: todayActivities,
       averageSessionDuration: 0, // Would need calculation from actual session data
       peakHour: 14, // Would need calculation from actual data
-      equipmentUtilization: totalEquipment > 0 ? (inUseEquipment / totalEquipment) * 100 : 0
+      equipmentUtilization:
+        totalEquipment > 0 ? (inUseEquipment / totalEquipment) * 100 : 0,
     };
 
     const metrics = {
@@ -75,40 +83,43 @@ router.get('/metrics', async (req: Request, res: Response) => {
         totalActivities,
         todayActivities,
         weekActivities,
-        activeSessions
+        activeSessions,
       },
       equipment: {
         total: totalEquipment,
         available: availableEquipment,
         inUse: inUseEquipment,
-        utilizationRate: totalEquipment > 0 ? (inUseEquipment / totalEquipment) * 100 : 0
+        utilizationRate:
+          totalEquipment > 0 ? (inUseEquipment / totalEquipment) * 100 : 0,
       },
       books: {
         total: totalBooks,
         available: availableBooks,
         borrowed: borrowedBooks,
-        circulationRate: totalBooks > 0 ? (borrowedBooks / totalBooks) * 100 : 0
+        circulationRate:
+          totalBooks > 0 ? (borrowedBooks / totalBooks) * 100 : 0,
       },
       usage: usageMetrics,
       system: {
         uptime: process.uptime(),
         memoryUsage: process.memoryUsage(),
-        lastUpdated: new Date().toISOString()
-      }
+        lastUpdated: new Date().toISOString(),
+      },
     };
 
     res.json({
       success: true,
       data: metrics,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
-    logger.error('Failed to get analytics metrics', { error: (error as Error).message });
+    logger.error('Failed to get analytics metrics', {
+      error: (error as Error).message,
+    });
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve analytics metrics',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -137,52 +148,37 @@ router.get('/usage', async (req: Request, res: Response) => {
     }
 
     // Get activities within the period
-    const activities = await prisma.activity.findMany({
+    const activities = await prisma.student_activities.findMany({
       where: {
-        startTime: { gte: startDate }
+        start_time: { gte: startDate },
       },
-      include: {
-        student: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            grade: true
-          }
-        },
-        equipment: {
-          select: {
-            id: true,
-            name: true,
-            type: true
-          }
-        }
-      },
-      orderBy: { startTime: 'desc' }
+      orderBy: { start_time: 'desc' },
     });
 
     // Group activities by day
-    const dailyStats = activities.reduce((acc, activity) => {
-      const day = activity.startTime.toISOString().split('T')[0];
+    const dailyStats = activities.reduce((acc: any, activity: any) => {
+      const day = activity.start_time.toISOString().split('T')[0];
       if (!acc[day]) {
         acc[day] = {
           date: day,
           totalVisits: 0,
           uniqueStudents: new Set(),
           equipmentUsage: {},
-          activityTypes: {}
+          activityTypes: {},
         };
       }
 
       acc[day].totalVisits++;
-      acc[day].uniqueStudents.add(activity.studentId);
+      acc[day].uniqueStudents.add(activity.student_id);
 
-      const activityType = activity.activityType || 'unknown';
-      acc[day].activityTypes[activityType] = (acc[day].activityTypes[activityType] || 0) + 1;
+      const activityType = activity.activity_type || 'unknown';
+      acc[day].activityTypes[activityType] =
+        (acc[day].activityTypes[activityType] || 0) + 1;
 
-      if (activity.equipment) {
-        const equipmentType = activity.equipment.type;
-        acc[day].equipmentUsage[equipmentType] = (acc[day].equipmentUsage[equipmentType] || 0) + 1;
+      if (activity.equipment_id) {
+        const equipmentType = activity.equipment_id;
+        acc[day].equipmentUsage[equipmentType] =
+          (acc[day].equipmentUsage[equipmentType] || 0) + 1;
       }
 
       return acc;
@@ -194,7 +190,7 @@ router.get('/usage', async (req: Request, res: Response) => {
       totalVisits: stat.totalVisits,
       uniqueStudents: stat.uniqueStudents.size,
       equipmentUsage: stat.equipmentUsage,
-      activityTypes: stat.activityTypes
+      activityTypes: stat.activityTypes,
     }));
 
     const usage = {
@@ -204,35 +200,49 @@ router.get('/usage', async (req: Request, res: Response) => {
       totalActivities: activities.length,
       dailyStats: formattedStats,
       summary: {
-        averageDailyVisits: formattedStats.length > 0
-          ? Math.round(activities.length / formattedStats.length)
-          : 0,
-        peakDay: formattedStats.length > 0
-          ? formattedStats.reduce((max, day) => day.totalVisits > max.totalVisits ? day : max, formattedStats[0])?.date
-          : null,
-        mostUsedEquipment: Object.entries(
-          formattedStats.reduce((acc, day) => {
-            Object.entries(day.equipmentUsage).forEach(([type, count]) => {
-              acc[type] = (acc[type] || 0) + count;
-            });
-            return acc;
-          }, {} as Record<string, number>)
-        ).sort(([,a], [,b]) => b - a)[0]?.[0] || null
-      }
+        averageDailyVisits:
+          formattedStats.length > 0
+            ? Math.round(activities.length / formattedStats.length)
+            : 0,
+        peakDay:
+          formattedStats.length > 0 && formattedStats[0]
+            ? (formattedStats.reduce(
+                (max, day) => (day.totalVisits > max.totalVisits ? day : max),
+                formattedStats[0],
+              )?.date ?? null)
+            : null,
+        mostUsedEquipment: (() => {
+          const entries = Object.entries(
+            formattedStats.reduce(
+              (acc, day) => {
+                Object.entries(day.equipmentUsage).forEach(
+                  ([type, count]: [string, any]) => {
+                    acc[type] = (acc[type] || 0) + count;
+                  },
+                );
+                return acc;
+              },
+              {} as Record<string, number>,
+            ),
+          ).sort(([, a], [, b]) => b - a);
+          return entries.length > 0 && entries[0] ? entries[0][0] : null;
+        })(),
+      },
     };
 
     res.json({
       success: true,
       data: usage,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
-    logger.error('Failed to get usage statistics', { error: (error as Error).message });
+    logger.error('Failed to get usage statistics', {
+      error: (error as Error).message,
+    });
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve usage statistics',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -244,44 +254,30 @@ router.get('/timeline', async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const skip = (page - 1) * limit;
 
-    const activities = await prisma.activity.findMany({
+    const activities = await prisma.student_activities.findMany({
       skip,
       take: limit,
-      include: {
-        student: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            grade: true
-          }
-        },
-        equipment: {
-          select: {
-            id: true,
-            name: true,
-            type: true
-          }
-        }
-      },
-      orderBy: { startTime: 'desc' }
+      orderBy: { start_time: 'desc' },
     });
 
-    const total = await prisma.activity.count();
+    const total = await prisma.student_activities.count();
 
-    const timeline = activities.map(activity => ({
+    const timeline = activities.map((activity: any) => ({
       id: activity.id,
-      timestamp: activity.startTime.toISOString(),
-      studentName: `${activity.student.firstName} ${activity.student.lastName}`,
-      studentGrade: activity.student.grade,
-      activityType: activity.activityType,
+      timestamp: activity.start_time.toISOString(),
+      studentName: activity.student_name || 'Unknown',
+      studentGrade: activity.grade_level || 'N/A',
+      activityType: activity.activity_type,
       status: activity.status,
-      equipmentId: activity.equipment?.name || 'No equipment',
-      equipmentType: activity.equipment?.type || null,
-      duration: activity.endTime
-        ? Math.round((activity.endTime.getTime() - activity.startTime.getTime()) / 60000) // minutes
+      equipmentId: activity.equipment_id || 'No equipment',
+      equipmentType: null,
+      duration: activity.end_time
+        ? Math.round(
+            (activity.end_time.getTime() - activity.start_time.getTime()) /
+              60000,
+          ) // minutes
         : null,
-      notes: activity.notes
+      notes: activity.notes,
     }));
 
     res.json({
@@ -294,18 +290,19 @@ router.get('/timeline', async (req: Request, res: Response) => {
           total,
           pages: Math.ceil(total / limit),
           hasNext: page * limit < total,
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
-    logger.error('Failed to get activity timeline', { error: (error as Error).message });
+    logger.error('Failed to get activity timeline', {
+      error: (error as Error).message,
+    });
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve activity timeline',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -314,27 +311,28 @@ router.get('/timeline', async (req: Request, res: Response) => {
 router.get('/notifications', async (req: Request, res: Response) => {
   try {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
 
     // Get recent activities that might need attention
-    const [overdueSessions, recentActivities, systemAlerts] = await Promise.all([
+    const [overdueSessions, recentActivities] = await Promise.all([
       // Find activities that have been active for too long (over 2 hours)
-      prisma.activity.count({
+      prisma.student_activities.count({
         where: {
-          status: 'active',
-          startTime: { lt: new Date(now.getTime() - 2 * 60 * 60 * 1000) }
-        }
+          status: 'ACTIVE',
+          start_time: { lt: new Date(now.getTime() - 2 * 60 * 60 * 1000) },
+        },
       }),
 
       // Get today's activity count
-      prisma.activity.count({
+      prisma.student_activities.count({
         where: {
-          startTime: { gte: todayStart }
-        }
+          start_time: { gte: todayStart },
+        },
       }),
-
-      // Check for any system issues (could be expanded)
-      Promise.resolve([])
     ]);
 
     // Generate notifications based on system state
@@ -349,7 +347,7 @@ router.get('/notifications', async (req: Request, res: Response) => {
         message: `${overdueSessions} session(s) have been active for over 2 hours`,
         timestamp: new Date().toISOString(),
         actionable: true,
-        action: '/activities'
+        action: '/activities',
       });
     }
 
@@ -361,13 +359,14 @@ router.get('/notifications', async (req: Request, res: Response) => {
         title: 'Daily Activity',
         message: `${recentActivities} activities recorded today`,
         timestamp: new Date().toISOString(),
-        actionable: false
+        actionable: false,
       });
     }
 
     // System health notifications (placeholder for future expansion)
     const memoryUsage = process.memoryUsage();
-    const memoryUsagePercent = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
+    const memoryUsagePercent =
+      (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
 
     if (memoryUsagePercent > 80) {
       notifications.push({
@@ -377,7 +376,7 @@ router.get('/notifications', async (req: Request, res: Response) => {
         message: `Memory usage is at ${Math.round(memoryUsagePercent)}%`,
         timestamp: new Date().toISOString(),
         actionable: true,
-        action: '/admin/system'
+        action: '/admin/system',
       });
     }
 
@@ -388,26 +387,30 @@ router.get('/notifications', async (req: Request, res: Response) => {
       title: 'System Status',
       message: 'All systems operational',
       timestamp: new Date().toISOString(),
-      actionable: false
+      actionable: false,
     });
 
     res.json({
       success: true,
       data: {
-        notifications: notifications.sort((a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        notifications: notifications.sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
         ),
-        unreadCount: notifications.filter(n => n.type === 'warning' || n.type === 'error').length
+        unreadCount: notifications.filter(
+          n => n.type === 'warning' || n.type === 'error',
+        ).length,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
-    logger.error('Failed to get notifications', { error: (error as Error).message });
+    logger.error('Failed to get notifications', {
+      error: (error as Error).message,
+    });
     res.status(500).json({
       success: false,
       error: 'Failed to retrieve notifications',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -415,11 +418,7 @@ router.get('/notifications', async (req: Request, res: Response) => {
 // Export analytics data
 router.get('/export', async (req: Request, res: Response) => {
   try {
-    const {
-      format = 'json',
-      period = '30d',
-      type = 'activities'
-    } = req.query;
+    const { format = 'json', period = '30d', type = 'activities' } = req.query;
 
     let startDate: Date;
     switch (period) {
@@ -440,36 +439,18 @@ router.get('/export', async (req: Request, res: Response) => {
 
     switch (type) {
       case 'activities':
-        data = await prisma.activity.findMany({
-          where: { startTime: { gte: startDate } },
-          include: {
-            student: { select: { firstName: true, lastName: true, grade: true } },
-            equipment: { select: { name: true, type: true } }
-          },
-          orderBy: { startTime: 'desc' }
+        data = await prisma.student_activities.findMany({
+          where: { start_time: { gte: startDate } },
+          orderBy: { start_time: 'desc' },
         });
         break;
 
       case 'students':
-        data = await prisma.student.findMany({
-          include: {
-            activities: {
-              where: { startTime: { gte: startDate } },
-              select: { id: true, startTime: true, endTime: true, activityType: true }
-            }
-          }
-        });
+        data = await prisma.students.findMany();
         break;
 
       case 'equipment':
-        data = await prisma.equipment.findMany({
-          include: {
-            activities: {
-              where: { startTime: { gte: startDate } },
-              select: { id: true, startTime: true, endTime: true }
-            }
-          }
-        });
+        data = await prisma.equipment.findMany();
         break;
 
       default:
@@ -482,7 +463,10 @@ router.get('/export', async (req: Request, res: Response) => {
     if (format === 'csv') {
       // Convert to CSV (simplified implementation)
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${filename}.csv"`,
+      );
 
       // Simple CSV conversion - would need proper CSV library for production
       const csv = JSON.stringify(data, null, 2);
@@ -490,7 +474,10 @@ router.get('/export', async (req: Request, res: Response) => {
     } else {
       // Default to JSON
       res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${filename}.json"`,
+      );
 
       res.json({
         success: true,
@@ -499,18 +486,19 @@ router.get('/export', async (req: Request, res: Response) => {
           period,
           type,
           format,
-          recordCount: Array.isArray(data) ? data.length : 1
+          recordCount: Array.isArray(data) ? data.length : 1,
         },
-        data
+        data,
       });
     }
-
   } catch (error) {
-    logger.error('Failed to export analytics data', { error: (error as Error).message });
+    logger.error('Failed to export analytics data', {
+      error: (error as Error).message,
+    });
     res.status(500).json({
       success: false,
       error: 'Failed to export analytics data',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });

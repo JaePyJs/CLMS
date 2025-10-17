@@ -433,6 +433,26 @@ model users {
   @@index([role], map: "idx_users_role")
 }
 
+model id_mappings {
+  id            String   @id
+  entity_type   String   // student, book, equipment, user, checkout
+  external_id   String   // Original ID from import/external system
+  internal_id   String   // UUID in our system
+  created_at    DateTime @default(now())
+  updated_at    DateTime
+  last_accessed DateTime @default(now())
+  access_count  Int      @default(0)
+  is_active     Boolean  @default(true)
+  metadata      Json?    // Additional information about the mapping
+
+  @@unique([entity_type, external_id])
+  @@index([entity_type], map: "idx_id_mappings_entity_type")
+  @@index([external_id], map: "idx_id_mappings_external_id")
+  @@index([internal_id], map: "idx_id_mappings_internal_id")
+  @@index([is_active], map: "idx_id_mappings_is_active")
+  @@index([last_accessed], map: "idx_id_mappings_last_accessed")
+}
+
 enum automation_logs_status {
   IDLE
   RUNNING

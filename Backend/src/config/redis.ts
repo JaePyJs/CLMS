@@ -48,7 +48,7 @@ interface RedisConfig {
 }
 
 class EnhancedRedisManager {
-  private redis: Redis | Redis.Cluster;
+  private redis: import('ioredis').Redis | import('ioredis').Cluster;
   private config: RedisConfig;
   private subscriber: Redis;
   private publisher: Redis;
@@ -57,8 +57,8 @@ class EnhancedRedisManager {
   constructor() {
     this.config = this.loadConfig();
     this.redis = this.createRedisInstance();
-    this.subscriber = this.createRedisInstance();
-    this.publisher = this.createRedisInstance();
+    this.subscriber = this.createRedisInstance() as import('ioredis').Redis;
+    this.publisher = this.createRedisInstance() as import('ioredis').Redis;
     this.setupEventListeners();
   }
 
@@ -130,17 +130,17 @@ class EnhancedRedisManager {
     const nodesString = process.env.REDIS_CLUSTER_NODES || '';
     if (!nodesString) {
       return [
-        { host: this.config.host, port: this.config.port },
+        { host: this.config.host || 'localhost', port: this.config.port || 6379 },
       ];
     }
 
     return nodesString.split(',').map(node => {
       const [host, port] = node.trim().split(':');
-      return { host, port: parseInt(port) };
+      return { host: host || 'localhost', port: parseInt(port || '6379') };
     });
   }
 
-  private createRedisInstance(): Redis | Redis.Cluster {
+  private createRedisInstance(): import('ioredis').Redis | import('ioredis').Cluster {
     if (this.config.enableCluster && this.config.clusterNodes.length > 1) {
       logger.info('Initializing Redis cluster', {
         nodes: this.config.clusterNodes,
@@ -158,10 +158,10 @@ class EnhancedRedisManager {
     return new Redis({
       host: this.config.host,
       port: this.config.port,
-      password: this.config.password,
+      ...(this.config.password && { password: this.config.password }),
       db: this.config.db,
       maxRetriesPerRequest: this.config.maxRetriesPerRequest,
-      retryDelayOnFailover: this.config.retryDelayOnFailover,
+      // retryDelayOnFailover is not a valid ioredis option, removed
       enableOfflineQueue: this.config.enableOfflineQueue,
       lazyConnect: this.config.lazyConnect,
       keepAlive: this.config.keepAlive,
@@ -181,7 +181,7 @@ class EnhancedRedisManager {
       this.configureRedisSettings();
     });
 
-    this.redis.on('error', (error) => {
+    this.redis.on('error', (error: Error) => {
       logger.error('Redis connection error', {
         error: error.message,
       });
@@ -191,7 +191,7 @@ class EnhancedRedisManager {
       logger.warn('Redis connection closed');
     });
 
-    this.redis.on('reconnecting', (delay) => {
+    this.redis.on('reconnecting', (delay: number) => {
       logger.info('Redis reconnecting', { delay });
     });
 
@@ -269,7 +269,7 @@ class EnhancedRedisManager {
       }
     } catch (error) {
       logger.error('Failed to clear cache', {
-        pattern: data.pattern,
+        pattern: data.scope || '*',
         error: (error as Error).message,
       });
     }
@@ -527,6 +527,7 @@ class EnhancedRedisManager {
 
   private updateStats(key: string, operation: 'hit' | 'miss' | 'set'): void {
     const prefix = key.split(':')[0];
+    if (!prefix) return;
     const stats = this.cacheStats.get(prefix) || { hits: 0, misses: 0, sets: 0 };
 
     switch (operation) {
@@ -560,8 +561,8 @@ class EnhancedRedisManager {
 
     const totalRequests = totalStats.hits + totalStats.misses;
     totalStats.hitRate = totalRequests > 0
-      ? ((totalStats.hits / totalRequests) * 100).toFixed(2) + '%'
-      : '0%';
+      ? Number(((totalStats.hits / totalRequests) * 100).toFixed(2))
+      : 0;
 
     return {
       ...totalStats,
@@ -581,7 +582,7 @@ class EnhancedRedisManager {
       }
     } catch (error) {
       logger.error('Failed to clear cache', {
-        pattern,
+        pattern: pattern || '',
         error: (error as Error).message,
       });
     }
@@ -602,7 +603,7 @@ class EnhancedRedisManager {
     }
   }
 
-  getClient(): Redis | Redis.Cluster {
+  getClient(): import('ioredis').Redis | import('ioredis').Cluster {
     return this.redis;
   }
 

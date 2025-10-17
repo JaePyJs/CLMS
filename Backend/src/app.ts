@@ -4,7 +4,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import { PrismaClient } from '@prisma/client';
 import cookieParser from 'cookie-parser';
 import 'express-async-errors';
 
@@ -14,12 +13,36 @@ import {
   notFoundHandler,
   setupGlobalErrorHandlers,
 } from '@/utils/errors';
+import optimizedDatabase from '@/config/database';
 
-// Import only essential routes for initial startup
+// Import all routes that actually exist
 import authRoutes from '@/routes/auth';
 import studentsRoutes from '@/routes/students';
 import booksRoutes from '@/routes/books';
 import activitiesRoutes from '@/routes/activities';
+import analyticsRoutes from '@/routes/analytics';
+import equipmentRoutes from '@/routes/equipment';
+import fineRoutes from '@/routes/fines';
+import reportRoutes from '@/routes/reports';
+import userRoutes from '@/routes/users.routes';
+import auditRoutes from '@/routes/audit.routes';
+import notificationRoutes from '@/routes/notifications.routes';
+import settingsRoutes from '@/routes/settings';
+import backupRoutes from '@/routes/backup.routes';
+import importRoutes from '@/routes/import.routes';
+import selfServiceRoutes from '@/routes/self-service.routes';
+import scannerRoutes from '@/routes/scanner';
+import performanceRoutes from '@/routes/performance';
+import utilitiesRoutes from '@/routes/utilities';
+import automationRoutes from '@/routes/automation';
+import adminRoutes from '@/routes/admin';
+import enhancedEquipmentRoutes from '@/routes/enhancedEquipment';
+import enhancedSearchRoutes from '@/routes/enhancedSearch';
+import errorRoutes from '@/routes/errors.routes';
+import securityMonitoringRoutes from '@/routes/securityMonitoring.routes';
+import reportingRoutes from '@/routes/reporting';
+import scanRoutes from '@/routes/scan';
+import scannerTestingRoutes from '@/routes/scannerTesting';
 
 // Import essential middleware
 import { authMiddleware } from '@/middleware/auth';
@@ -27,12 +50,11 @@ import { authMiddleware } from '@/middleware/auth';
 export class CLMSApplication {
   private app: Application;
   private httpServer: HttpServer | null = null;
-  private prisma: PrismaClient;
+  private prisma = optimizedDatabase.getClient();
   private isInitialized = false;
 
   constructor() {
     this.app = express();
-    this.prisma = new PrismaClient();
   }
 
   async initialize(): Promise<void> {
@@ -96,7 +118,7 @@ export class CLMSApplication {
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
     // Cookie parser
-    this.app.use(cookieParser());
+    this.app.use(require('cookie-parser')());
 
     logger.debug('Basic middleware configured');
   }
@@ -120,24 +142,70 @@ export class CLMSApplication {
     this.app.get('/api', (req: Request, res: Response) => {
       res.json({
         success: true,
-        message: 'CLMS API v1.0.0 (Simplified)',
+        message: 'CLMS API v1.0.0 (Complete)',
         endpoints: {
           auth: '/api/auth',
           students: '/api/students',
           books: '/api/books',
           activities: '/api/activities',
+          analytics: '/api/analytics',
+          equipment: '/api/equipment',
+          fines: '/api/fines',
+          reports: '/api/reports',
+          users: '/api/users',
+          audit: '/api/audit',
+          notifications: '/api/notifications',
+          settings: '/api/settings',
+          backup: '/api/backup',
+          import: '/api/import',
+          'self-service': '/api/self-service',
+          scanner: '/api/scanner',
+          performance: '/api/performance',
+          utilities: '/api/utilities',
+          automation: '/api/automation',
+          admin: '/api/admin',
+          'enhanced-equipment': '/api/enhanced-equipment',
+          'enhanced-search': '/api/enhanced-search',
+          errors: '/api/errors',
+          'security-monitoring': '/api/security-monitoring',
+          reporting: '/api/reporting',
+          scan: '/api/scan',
+          'scanner-testing': '/api/scanner-testing',
         },
         timestamp: new Date().toISOString(),
       });
     });
 
-    // API routes (only essential ones)
+    // API routes (only existing routes)
     this.app.use('/api/auth', authRoutes);
     this.app.use('/api/students', authMiddleware, studentsRoutes);
     this.app.use('/api/books', authMiddleware, booksRoutes);
     this.app.use('/api/activities', authMiddleware, activitiesRoutes);
+    this.app.use('/api/analytics', authMiddleware, analyticsRoutes);
+    this.app.use('/api/equipment', authMiddleware, equipmentRoutes);
+    this.app.use('/api/fines', authMiddleware, fineRoutes);
+    this.app.use('/api/reports', authMiddleware, reportRoutes);
+    this.app.use('/api/users', authMiddleware, userRoutes);
+    this.app.use('/api/audit', authMiddleware, auditRoutes);
+    this.app.use('/api/notifications', authMiddleware, notificationRoutes);
+    this.app.use('/api/settings', authMiddleware, settingsRoutes);
+    this.app.use('/api/backup', authMiddleware, backupRoutes);
+    this.app.use('/api/import', authMiddleware, importRoutes);
+    this.app.use('/api/self-service', authMiddleware, selfServiceRoutes);
+    this.app.use('/api/scanner', authMiddleware, scannerRoutes);
+    this.app.use('/api/performance', authMiddleware, performanceRoutes);
+    this.app.use('/api/utilities', authMiddleware, utilitiesRoutes);
+    this.app.use('/api/automation', authMiddleware, automationRoutes);
+    this.app.use('/api/admin', authMiddleware, adminRoutes);
+    this.app.use('/api/enhanced-equipment', authMiddleware, enhancedEquipmentRoutes);
+    this.app.use('/api/enhanced-search', authMiddleware, enhancedSearchRoutes);
+    this.app.use('/api/errors', authMiddleware, errorRoutes);
+    this.app.use('/api/security-monitoring', authMiddleware, securityMonitoringRoutes);
+    this.app.use('/api/reporting', authMiddleware, reportingRoutes);
+    this.app.use('/api/scan', authMiddleware, scanRoutes);
+    this.app.use('/api/scanner-testing', authMiddleware, scannerTestingRoutes);
 
-    logger.debug('Basic routes configured');
+    logger.debug('All routes configured');
   }
 
   private setupErrorHandling(): void {

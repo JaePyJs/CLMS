@@ -4,11 +4,12 @@ import { toast } from 'sonner'
 
 import {
   apiClient,
-  LoginResponse,
   setAccessTokenProvider,
   setUnauthorizedHandler,
 } from '@/lib/api'
-import { AuthUser, authKeys, clearAuthState, fetchCurrentUser, primeAuthState } from '@/lib/auth-queries'
+import type { LoginResponse } from '@/lib/api'
+import type { AuthUser } from '@/lib/auth-queries'
+import { authKeys, clearAuthState, fetchCurrentUser, primeAuthState } from '@/lib/auth-queries'
 
 interface AuthContextType {
   user: AuthUser | null

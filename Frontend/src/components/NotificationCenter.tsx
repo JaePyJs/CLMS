@@ -15,7 +15,8 @@ import {
   RefreshCw,
   Filter,
 } from 'lucide-react';
-import notificationApi, { Notification } from '../services/notificationApi';
+import notificationApi from '../services/notificationApi';
+import type { Notification } from '../services/notificationApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationWebSocket } from '@/hooks/useWebSocket';
 import { toast } from 'sonner';

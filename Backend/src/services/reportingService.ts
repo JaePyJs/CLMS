@@ -1,12 +1,12 @@
-import { PrismaClient, student_activities_activity_type, equipment_status, students_grade_category } from '@prisma/client';
+import { student_activities_activity_type, equipment_status, students_grade_category } from '@prisma/client';
 import { logger } from '@/utils/logger';
 import { analyticsService } from './analyticsService';
 import { transporter } from '@/utils/email';
+import { StudentsRepository, BooksRepository, EquipmentRepository, UsersRepository } from '@/repositories';
+import { prisma } from '@/utils/prisma';
 import fs from 'fs/promises';
 import path from 'path';
 import * as XLSX from 'xlsx';
-
-const prisma = new PrismaClient();
 
 export interface ReportConfig {
   id: string;
@@ -205,6 +205,12 @@ export interface GeneratedReport {
 class ReportingService {
   private activeReports: Map<string, NodeJS.Timeout> = new Map();
   private alertCooldowns: Map<string, Date> = new Map();
+  
+  // Initialize repositories
+  private studentsRepository = new StudentsRepository();
+  private booksRepository = new BooksRepository();
+  private equipmentRepository = new EquipmentRepository();
+  private usersRepository = new UsersRepository();
 
   /**
    * Initialize scheduled reports
@@ -410,16 +416,19 @@ class ReportingService {
 
     // Get financial data (mock implementation - would connect to financial systems)
     const totalInvestment = 150000; // Annual library budget
-    const [totalStudents, totalActivities, totalBooks] = await Promise.all([
-      prisma.student.count({ where: { isActive: true } }),
+    const [userStats, totalActivities, booksResult] = await Promise.all([
+      this.usersRepository.getUserStatistics(),
       prisma.student_activities.count({
         where: {
           start_time: { gte: startDate },
           ...(filters?.activityType && { activity_type: filters.activityType })
         }
       }),
-      prisma.book.count({ where: { isActive: true } })
+      this.booksRepository.getBooks({ isActive: true, limit: 1000 }) // Use a high limit to get all books
     ]);
+    
+    const totalStudents = userStats.active;
+    const totalBooks = booksResult.pagination.total;
 
     // Calculate value based on usage and outcomes
     const valuePerActivity = 35; // Estimated value per library activity
@@ -1000,6 +1009,22 @@ class ReportingService {
   private calculateAverageStayDuration(areaName: string, startDate: Date, endDate: Date): number {
     // Mock calculation - would track actual session durations
     return 30 + Math.random() * 60; // 30-90 minutes
+  }
+
+  private calculateHourlyUsage(sessions: any[]): any[] {
+    // Create hourly usage data
+    const hourlyData = Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      occupancy: 0,
+      activities: 0
+    }));
+
+    // Fill with mock data
+    return hourlyData.map(hour => ({
+      ...hour,
+      occupancy: Math.floor(Math.random() * 10),
+      activities: Math.floor(Math.random() * 5)
+    }));
   }
 
   private async getPopularActivities(areaName: string, startDate: Date, endDate: Date): Promise<string[]> {

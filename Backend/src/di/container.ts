@@ -2,17 +2,11 @@ import 'reflect-metadata';
 import { Container } from 'inversify';
 import { PrismaClient } from '@prisma/client';
 import Redis from 'ioredis';
-import { logger } from '@/utils/logger';
-import {
-  AuthService,
-  BookService,
-  StudentService,
-  EquipmentService,
-  NotificationService,
-  AnalyticsService,
-  AutomationService,
-  FERPAService
-} from '@/services';
+import { logger } from '../utils/logger';
+import { AuthService } from '../services/authService';
+import { AutomationService } from '../services/automation';
+import { EquipmentService } from '../services/enhancedEquipmentService';
+import { FERPAService } from '../services/ferpaService';
 
 // Dependency injection symbols
 export const TYPES = {
@@ -21,13 +15,9 @@ export const TYPES = {
   RedisClient: Symbol.for('RedisClient'),
   Logger: Symbol.for('Logger'),
 
-  // Services
+  // Services (only class-based services for DI)
   AuthService: Symbol.for('AuthService'),
-  BookService: Symbol.for('BookService'),
-  StudentService: Symbol.for('StudentService'),
   EquipmentService: Symbol.for('EquipmentService'),
-  NotificationService: Symbol.for('NotificationService'),
-  AnalyticsService: Symbol.for('AnalyticsService'),
   AutomationService: Symbol.for('AutomationService'),
   FERPAService: Symbol.for('FERPAService'),
 
@@ -53,7 +43,7 @@ function createDatabaseClient(): PrismaClient {
   });
 
   // Log database events
-  client.$on('query', (e) => {
+  client.$on('query', e => {
     logger.debug('Database Query', {
       query: e.query,
       params: e.params,
@@ -61,7 +51,7 @@ function createDatabaseClient(): PrismaClient {
     });
   });
 
-  client.$on('error', (e) => {
+  client.$on('error', e => {
     logger.error('Database Error', e);
   });
 
@@ -73,7 +63,6 @@ function createRedisClient(): Redis {
   const redis = new Redis({
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379'),
-    retryDelayOnFailover: 100,
     enableReadyCheck: false,
     maxRetriesPerRequest: null,
   });
@@ -82,7 +71,7 @@ function createRedisClient(): Redis {
     logger.info('Redis client connected');
   });
 
-  redis.on('error', (err) => {
+  redis.on('error', err => {
     logger.error('Redis connection error', err);
   });
 
@@ -90,19 +79,36 @@ function createRedisClient(): Redis {
 }
 
 // Bind dependencies
-diContainer.bind<PrismaClient>(TYPES.DatabaseClient).toDynamicValue(createDatabaseClient).inSingletonScope();
-diContainer.bind<Redis>(TYPES.RedisClient).toDynamicValue(createRedisClient).inSingletonScope();
+diContainer
+  .bind<PrismaClient>(TYPES.DatabaseClient)
+  .toDynamicValue(createDatabaseClient)
+  .inSingletonScope();
+diContainer
+  .bind<Redis>(TYPES.RedisClient)
+  .toDynamicValue(createRedisClient)
+  .inSingletonScope();
 diContainer.bind<typeof logger>(TYPES.Logger).toConstantValue(logger);
 
 // Service bindings
-diContainer.bind<AuthService>(TYPES.AuthService).to(AuthService).inSingletonScope();
-diContainer.bind<BookService>(TYPES.BookService).to(BookService).inSingletonScope();
-diContainer.bind<StudentService>(TYPES.StudentService).to(StudentService).inSingletonScope();
-diContainer.bind<EquipmentService>(TYPES.EquipmentService).to(EquipmentService).inSingletonScope();
-diContainer.bind<NotificationService>(TYPES.NotificationService).to(NotificationService).inSingletonScope();
-diContainer.bind<AnalyticsService>(TYPES.AnalyticsService).to(AnalyticsService).inSingletonScope();
-diContainer.bind<AutomationService>(TYPES.AutomationService).to(AutomationService).inSingletonScope();
-diContainer.bind<FERPAService>(TYPES.FERPAService).to(FERPAService).inSingletonScope();
+// Only bind class-based services
+// Note: BookService, StudentService, AnalyticsService, NotificationService are function-based
+// and should be imported directly where needed
+diContainer
+  .bind<AuthService>(TYPES.AuthService)
+  .to(AuthService)
+  .inSingletonScope();
+diContainer
+  .bind<EquipmentService>(TYPES.EquipmentService)
+  .to(EquipmentService)
+  .inSingletonScope();
+diContainer
+  .bind<AutomationService>(TYPES.AutomationService)
+  .to(AutomationService)
+  .inSingletonScope();
+diContainer
+  .bind<FERPAService>(TYPES.FERPAService)
+  .to(FERPAService)
+  .inSingletonScope();
 
 // Health check for DI container
 export function initializeDIContainer(): Promise<void> {
@@ -112,11 +118,16 @@ export function initializeDIContainer(): Promise<void> {
       const db = diContainer.get<PrismaClient>(TYPES.DatabaseClient);
       db.$connect()
         .then(() => {
-          logger.info('Dependency injection container initialized successfully');
+          logger.info(
+            'Dependency injection container initialized successfully',
+          );
           resolve();
         })
-        .catch((error) => {
-          logger.error('Failed to connect to database during DI initialization', error);
+        .catch(error => {
+          logger.error(
+            'Failed to connect to database during DI initialization',
+            error,
+          );
           reject(error);
         });
     } catch (error) {
@@ -132,10 +143,7 @@ export async function shutdownDIContainer(): Promise<void> {
     const db = diContainer.get<PrismaClient>(TYPES.DatabaseClient);
     const redis = diContainer.get<Redis>(TYPES.RedisClient);
 
-    await Promise.all([
-      db.$disconnect(),
-      redis.quit(),
-    ]);
+    await Promise.all([db.$disconnect(), redis.quit()]);
 
     logger.info('Dependency injection container shutdown successfully');
   } catch (error) {

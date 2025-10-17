@@ -384,13 +384,13 @@ export const AllTheProviders = ({ children }: { children: React.ReactNode }) => 
   const queryClient = createTestQueryClient();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    React.createElement(QueryClientProvider, { client: queryClient },
+      React.createElement(AuthProvider, null,
+        React.createElement(ThemeProvider, null,
+          children
+        )
+      )
+    )
   );
 };
 

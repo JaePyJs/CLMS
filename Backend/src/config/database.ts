@@ -7,6 +7,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { logger } from '@/utils/logger';
+import { applyMiddlewareToClient } from '@/middleware/prisma.middleware';
 
 interface DatabaseConfig {
   // Connection pool settings
@@ -65,27 +66,20 @@ class OptimizedDatabase {
   private createOptimizedClient(): PrismaClient {
     const isProduction = process.env.NODE_ENV === 'production';
 
-    return new PrismaClient({
+    const client = new PrismaClient({
       datasources: {
         db: {
-          url: process.env.DATABASE_URL,
+          url: process.env.DATABASE_URL || 'mysql://user:password@localhost:3306/clms',
         },
       },
       log: isProduction ? ['error', 'warn'] : ['query', 'info', 'warn', 'error'],
       errorFormat: 'pretty',
-
-      // Connection pool optimization
-      __internal: {
-        engine: {
-          // Enable connection pooling
-          connectionLimit: this.config.connectionLimit,
-          // Connection timeout
-          connectTimeout: this.config.acquireTimeout,
-          // Query timeout
-          queryTimeout: this.config.queryTimeout,
-        },
-      },
     });
+
+    // Apply middleware for automatic ID and timestamp management
+    applyMiddlewareToClient(client);
+
+    return client;
   }
 
   private setupQueryMonitoring(): void {
@@ -100,11 +94,11 @@ class OptimizedDatabase {
         const duration = Date.now() - startTime;
 
         // Track query statistics
-        this.trackQuery(params.model, params.action, duration);
+        this.trackQuery(params.model || 'unknown', params.action || 'unknown', duration);
 
         // Log slow queries
         if (duration > this.config.slowQueryThreshold) {
-          this.logSlowQuery(params.model, params.action, duration, params.args);
+          this.logSlowQuery(params.model || 'unknown', params.action || 'unknown', duration, params.args);
         }
 
         return result;

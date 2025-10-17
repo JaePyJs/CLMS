@@ -4,6 +4,45 @@
 
 The CLMS API provides comprehensive RESTful endpoints for managing library operations, including student tracking, equipment management, book checkouts, automation workflows, real-time features, advanced analytics, and security monitoring.
 
+### 🚀 Recent Architecture Updates (October 2025)
+
+The API has been enhanced with a **Repository Pattern Implementation** that provides:
+
+- **Type-Safe Data Access**: Full TypeScript support with generic repositories
+- **Flexible ID Handling**: Support for multiple identifier types (database IDs, external identifiers)
+- **Enhanced Error Handling**: Consistent error management across all endpoints
+- **Improved Performance**: Optimized database operations with better query efficiency
+- **Better Maintainability**: Separation of concerns between business logic and data access
+
+#### Repository Pattern Benefits
+
+1. **Consistent API Responses**: All endpoints now return standardized responses
+2. **Flexible Entity Resolution**: Find entities by any identifier type
+3. **Enhanced Validation**: Comprehensive input validation with detailed error reporting
+4. **Better Testing**: Improved testability with mockable repository layer
+5. **Performance Optimization**: Efficient database operations with proper indexing
+
+#### New ID Handling Features
+
+The API now supports flexible ID resolution for all major entities:
+
+```typescript
+// Students can be found by any of these identifiers
+GET /api/students/12345              // Database ID
+GET /api/students/STU001            // Student ID
+GET /api/students/scan/STU001       // Barcode scan
+
+// Books support multiple identifier types
+GET /api/books/12345                 // Database ID
+GET /api/books/ACC-001              // Accession number
+GET /api/books/scan/ACC-001         // Barcode scan
+
+// Equipment supports flexible identification
+GET /api/equipment/12345            // Database ID
+GET /api/equipment/PC001            // Equipment ID
+GET /api/equipment/scan/PC001       // Barcode scan
+```
+
 ### 🎉 Interactive API Documentation
 
 **Swagger UI is now available!** For a complete, interactive API documentation with "Try it out" functionality, visit:
@@ -43,26 +82,54 @@ Authorization: Bearer <jwt_token>
 
 ## Response Format
 
-All responses follow a consistent format:
+All responses follow a consistent format with enhanced error handling from the repository pattern:
 
+### Success Response
 ```json
 {
   "success": true,
   "data": { ... },
-  "message": "Success message",
-  "timestamp": "2024-01-01T12:00:00.000Z"
+  "message": "Operation completed successfully",
+  "timestamp": "2025-10-17T01:30:00.000Z",
+  "requestId": "req_12345",
+  "metadata": {
+    "executionTime": 150,
+    "entityType": "student",
+    "operation": "create"
+  }
 }
 ```
 
-Error responses:
+### Error Response (Enhanced)
 ```json
 {
   "success": false,
-  "error": "Error message",
-  "code": "ERROR_CODE",
-  "timestamp": "2024-01-01T12:00:00.000Z"
+  "error": "Validation failed",
+  "code": "VALIDATION_ERROR",
+  "timestamp": "2025-10-17T01:30:00.000Z",
+  "requestId": "req_12345",
+  "details": {
+    "field": "gradeCategory",
+    "value": "INVALID",
+    "allowedValues": ["PRIMARY", "GRADE_SCHOOL", "JUNIOR_HIGH", "SENIOR_HIGH"]
+  },
+  "suggestions": [
+    "Use one of the allowed grade category values",
+    "Check the API documentation for valid field values"
+  ]
 }
 ```
+
+### Repository Pattern Error Types
+
+| Error Code | Description | Repository Context |
+|------------|-------------|-------------------|
+| `ENTITY_NOT_FOUND` | Entity not found by any identifier | BaseRepository |
+| `INVALID_IDENTIFIER` | Invalid identifier format | BaseRepository |
+| `DUPLICATE_IDENTIFIER` | Duplicate external identifier | Specific Repositories |
+| `VALIDATION_ERROR` | Field validation failed | BaseRepository |
+| `CONSTRAINT_VIOLATION` | Database constraint violation | BaseRepository |
+| `OPERATION_NOT_ALLOWED` | Operation not permitted | Specific Repositories |
 
 ## Endpoints
 
@@ -411,6 +478,92 @@ Get system configuration settings.
 
 #### GET /api/settings/backup
 Get backup configuration.
+
+### Enhanced Import System (v2.0)
+
+The enhanced import system provides flexible data import capabilities with automatic field mapping, validation, and progress tracking.
+
+#### POST /api/import/students
+Bulk import students with flexible field mapping.
+
+**Request:**
+```json
+{
+  "data": [
+    {
+      "studentId": "STU001",
+      "firstName": "John",
+      "lastName": "Doe",
+      "gradeLevel": "Grade 7",
+      "gradeCategory": "JUNIOR_HIGH",
+      "section": "7-A"
+    }
+  ],
+  "options": {
+    "skipDuplicates": true,
+    "updateExisting": false,
+    "validateOnly": false,
+    "fieldMapping": {
+      "student_id": "studentId",
+      "first_name": "firstName",
+      "last_name": "lastName"
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "importId": "import_12345",
+    "totalRecords": 100,
+    "processedRecords": 95,
+    "failedRecords": 5,
+    "duplicatesSkipped": 10,
+    "errors": [
+      {
+        "row": 5,
+        "field": "gradeCategory",
+        "message": "Invalid grade category value"
+      }
+    ],
+    "duration": 2500
+  }
+}
+```
+
+#### POST /api/import/books
+Bulk import books with flexible field mapping.
+
+#### POST /api/import/equipment
+Bulk import equipment with flexible field mapping.
+
+#### GET /api/import/status/:importId
+Get import operation status and progress.
+
+#### POST /api/import/validate
+Validate import data without processing.
+
+#### POST /api/import/rollback
+Rollback a failed import operation.
+
+### Repository Pattern Endpoints
+
+These endpoints demonstrate the repository pattern capabilities with flexible ID handling.
+
+#### GET /api/repository/students/:identifier
+Get student by any identifier (database ID, student ID, or barcode).
+
+#### GET /api/repository/books/:identifier
+Get book by any identifier (database ID, accession number, or barcode).
+
+#### GET /api/repository/equipment/:identifier
+Get equipment by any identifier (database ID, equipment ID, or barcode).
+
+#### GET /api/repository/users/:identifier
+Get user by any identifier (database ID, username, or email).
 
 ### Security & Audit
 

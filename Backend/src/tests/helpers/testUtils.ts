@@ -15,7 +15,7 @@ export const createTestUser = async (overrides = {}) => {
     ...overrides
   };
 
-  return prisma.user.create({
+  return prisma.users.create({
     data: defaultUser
   });
 };
@@ -31,7 +31,7 @@ export const createTestStudent = async (overrides = {}) => {
     ...overrides
   };
 
-  return prisma.student.create({
+  return prisma.students.create({
     data: defaultStudent
   });
 };
@@ -47,7 +47,7 @@ export const createTestBook = async (overrides = {}) => {
     ...overrides
   };
 
-  return prisma.book.create({
+  return prisma.books.create({
     data: defaultBook
   });
 };
@@ -75,7 +75,7 @@ export const createTestActivity = async (studentId: string, overrides = {}) => {
     ...overrides
   };
 
-  return prisma.studentActivity.create({
+  return prisma.student_activities.create({
     data: defaultActivity
   });
 };
@@ -94,7 +94,7 @@ export const createTestEquipmentSession = async (
     ...overrides
   };
 
-  return prisma.equipmentSession.create({
+  return prisma.equipment_sessions.create({
     data: defaultSession
   });
 };

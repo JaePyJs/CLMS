@@ -4,6 +4,14 @@
 
 This guide provides developers with quick start instructions and integration examples for working with the CLMS (Comprehensive Library Management System) API, WebSocket connections, and advanced features.
 
+### 🚀 New in Version 2.0 (October 2025)
+
+- **Enhanced TypeScript Support**: Full TypeScript 5.0+ with advanced type inference
+- **Repository Pattern**: New data access layer with flexible ID handling
+- **Flexible Import System**: Revolutionary data import capabilities
+- **Type-Safe Development**: Comprehensive type safety across the entire stack
+- **Enhanced Developer Experience**: Better IntelliSense and error handling
+
 ## Prerequisites
 
 ### Development Environment
@@ -18,6 +26,70 @@ This guide provides developers with quick start instructions and integration exa
 - **API Client**: Postman, Insomnia, or similar
 - **Database Client**: MySQL Workbench, DBeaver, or similar
 - **Git Client**: Git CLI, GitHub Desktop, or similar
+
+## Enhanced TypeScript Development
+
+### TypeScript 5.0+ Features
+
+The CLMS system leverages TypeScript 5.0+ features for enhanced developer experience:
+
+- **Strict Type Checking**: Comprehensive type safety with strict mode enabled
+- **Advanced Type Inference**: Smart type deduction reduces boilerplate code
+- **Generic Repository Pattern**: Type-safe data access with flexible querying
+- **Branded Types**: Type-safe identifier handling
+- **Template Literal Types**: Type-safe string manipulation and validation
+
+### Repository Pattern Development
+
+The new repository pattern provides a clean separation between business logic and data access:
+
+```typescript
+// Example: Using the StudentsRepository
+import { StudentsRepository } from './repositories/students.repository';
+import { StudentService } from './services/studentService';
+
+// Initialize repository
+const studentsRepository = new StudentsRepository(prisma);
+
+// Use flexible ID handling
+const student = await studentsRepository.findByAnyId('STU001'); // Works with any ID type
+
+// Create new student with type safety
+const newStudent = await studentsRepository.create({
+  studentId: 'STU002',
+  firstName: 'Jane',
+  lastName: 'Smith',
+  gradeLevel: 'Grade 8',
+  gradeCategory: 'JUNIOR_HIGH',
+  section: '8-B'
+});
+```
+
+### Type-Safe API Development
+
+All API endpoints now provide full TypeScript support:
+
+```typescript
+// Example: Type-safe API client
+import { apiClient } from './lib/api';
+import type { Student, CreateStudentData } from './types';
+
+// Type-safe student creation
+const studentData: CreateStudentData = {
+  studentId: 'STU003',
+  firstName: 'John',
+  lastName: 'Doe',
+  gradeLevel: 'Grade 9',
+  gradeCategory: 'JUNIOR_HIGH',
+  section: '9-A'
+};
+
+const response = await apiClient.post<Student>('/students', studentData);
+if (response.success && response.data) {
+  // response.data is fully typed as Student
+  console.log(response.data.firstName); // TypeScript knows this is a string
+}
+```
 
 ## Quick Setup
 
@@ -1845,6 +1917,491 @@ fi
 
 echo "✅ Deployment completed successfully!"
 echo "🌐 Application is available at: http://$SERVER_IP"
+```
+
+## Enhanced Import System Development
+
+### Working with the Flexible Import System
+
+The new flexible import system provides powerful data import capabilities with automatic field mapping, validation, and progress tracking.
+
+### Import Client Implementation
+
+```typescript
+// Enhanced import client with progress tracking
+import { ImportClient } from './lib/import-client';
+
+class EnhancedImportClient {
+  private client: ImportClient;
+
+  constructor(baseURL: string) {
+    this.client = new ImportClient(baseURL);
+  }
+
+  // Validate import data before processing
+  async validateImport<T>(
+    entityType: string,
+    data: any[],
+    options: {
+      fieldMapping?: Record<string, string>;
+      strictValidation?: boolean;
+    } = {}
+  ) {
+    return await this.client.validateImport(entityType, data, options);
+  }
+
+  // Execute import with real-time progress tracking
+  async executeImport<T>(
+    entityType: string,
+    data: any[],
+    options: {
+      skipDuplicates?: boolean;
+      updateExisting?: boolean;
+      fieldMapping?: Record<string, string>;
+      batchSize?: number;
+      onProgress?: (progress: ImportProgress) => void;
+    } = {}
+  ) {
+    return await this.client.executeImport(entityType, data, options);
+  }
+
+  // Monitor import status
+  async getImportStatus(importId: string) {
+    return await this.client.getImportStatus(importId);
+  }
+
+  // Rollback failed import
+  async rollbackImport(importId: string, reason: string) {
+    return await this.client.rollbackImport(importId, reason);
+  }
+}
+```
+
+### Import Progress Tracking
+
+```typescript
+// Import progress interface
+interface ImportProgress {
+  importId: string;
+  status: 'validating' | 'processing' | 'completed' | 'failed' | 'rolling_back';
+  progress: number; // 0-100
+  totalRecords: number;
+  processedRecords: number;
+  failedRecords: number;
+  errors: ImportError[];
+  startTime: string;
+  estimatedCompletion?: string;
+}
+
+// Progress tracking hook for React
+function useImportProgress(importId: string | null) {
+  const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [loading, setLoading] = useState(false);
+  const importClient = new EnhancedImportClient('/api');
+
+  useEffect(() => {
+    if (!importId) return;
+
+    setLoading(true);
+    const interval = setInterval(async () => {
+      try {
+        const status = await importClient.getImportStatus(importId);
+        setProgress(status);
+        
+        if (status.status === 'completed' || status.status === 'failed') {
+          clearInterval(interval);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error fetching import status:', error);
+        clearInterval(interval);
+        setLoading(false);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [importId]);
+
+  return { progress, loading };
+}
+```
+
+### Import UI Component
+
+```typescript
+// Import component with progress tracking
+import React, { useState } from 'react';
+import { useImportProgress } from './hooks/useImportProgress';
+import { EnhancedImportClient } from './lib/import-client';
+
+const DataImport: React.FC = () => {
+  const [file, setFile] = useState<File | null>(null);
+  const [importId, setImportId] = useState<string | null>(null);
+  const [importOptions, setImportOptions] = useState({
+    skipDuplicates: true,
+    updateExisting: false,
+    fieldMapping: {}
+  });
+  
+  const { progress, loading } = useImportProgress(importId);
+  const importClient = new EnhancedImportClient('/api');
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!file) return;
+
+    try {
+      // Parse file data
+      const fileContent = await file.text();
+      const data = parseCSV(fileContent);
+      
+      // Validate first
+      const validation = await importClient.validateImport('students', data, importOptions);
+      if (!validation.isValid) {
+        alert(`Validation failed: ${validation.errors.length} errors`);
+        return;
+      }
+
+      // Start import
+      const result = await importClient.executeImport('students', data, {
+        ...importOptions,
+        onProgress: (progress) => {
+          console.log(`Import progress: ${progress.progress}%`);
+        }
+      });
+
+      if (result.importId) {
+        setImportId(result.importId);
+      }
+    } catch (error) {
+      console.error('Import failed:', error);
+      alert('Import failed. Please try again.');
+    }
+  };
+
+  return (
+    <div className="import-container">
+      <h2>Import Students</h2>
+      
+      <div className="import-form">
+        <input type="file" accept=".csv,.xlsx,.json" onChange={handleFileSelect} />
+        
+        <div className="import-options">
+          <label>
+            <input
+              type="checkbox"
+              checked={importOptions.skipDuplicates}
+              onChange={(e) => setImportOptions({
+                ...importOptions,
+                skipDuplicates: e.target.checked
+              })}
+            />
+            Skip duplicate records
+          </label>
+          
+          <label>
+            <input
+              type="checkbox"
+              checked={importOptions.updateExisting}
+              onChange={(e) => setImportOptions({
+                ...importOptions,
+                updateExisting: e.target.checked
+              })}
+            />
+            Update existing records
+          </label>
+        </div>
+        
+        <button onClick={handleImport} disabled={!file || loading}>
+          Import Data
+        </button>
+      </div>
+
+      {progress && (
+        <div className="import-progress">
+          <h3>Import Progress</h3>
+          <div className="progress-bar">
+            <div
+              className="progress-fill"
+              style={{ width: `${progress.progress}%` }}
+            />
+          </div>
+          <p>
+            Status: {progress.status}<br />
+            Progress: {progress.processedRecords} / {progress.totalRecords}<br />
+            Failed: {progress.failedRecords}
+          </p>
+          
+          {progress.errors.length > 0 && (
+            <div className="import-errors">
+              <h4>Errors:</h4>
+              <ul>
+                {progress.errors.slice(0, 10).map((error, index) => (
+                  <li key={index}>
+                    Row {error.row}: {error.message}
+                  </li>
+                ))}
+                {progress.errors.length > 10 && (
+                  <li>... and {progress.errors.length - 10} more errors</li>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### Field Mapping Configuration
+
+```typescript
+// Field mapping configuration component
+const FieldMappingConfig: React.FC<{
+  entityType: string;
+  mapping: Record<string, string>;
+  onChange: (mapping: Record<string, string>) => void;
+}> = ({ entityType, mapping, onChange }) => {
+  const [availableFields, setAvailableFields] = useState<string[]>([]);
+  const [sourceFields, setSourceFields] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Load available fields for entity type
+    const loadFields = async () => {
+      try {
+        const response = await fetch(`/api/import/fields/${entityType}`);
+        const data = await response.json();
+        setAvailableFields(data.fields);
+      } catch (error) {
+        console.error('Error loading fields:', error);
+      }
+    };
+
+    loadFields();
+  }, [entityType]);
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // Parse first few rows to detect source fields
+      const fileContent = await file.text();
+      const rows = fileContent.split('\n').slice(0, 5);
+      const headers = rows[0].split(',');
+      
+      setSourceFields(headers);
+    } catch (error) {
+      console.error('Error parsing file:', error);
+    }
+  };
+
+  const handleMappingChange = (sourceField: string, targetField: string) => {
+    onChange({
+      ...mapping,
+      [sourceField]: targetField
+    });
+  };
+
+  return (
+    <div className="field-mapping-config">
+      <h3>Field Mapping Configuration</h3>
+      
+      <div className="mapping-source">
+        <input
+          type="file"
+          accept=".csv,.xlsx"
+          onChange={handleFileSelect}
+        />
+        {sourceFields.length > 0 && (
+          <div className="source-fields">
+            <h4>Source Fields:</h4>
+            <ul>
+              {sourceFields.map((field, index) => (
+                <li key={index}>{field}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {sourceFields.length > 0 && (
+        <div className="mapping-target">
+          <h4>Target Fields:</h4>
+          <table className="mapping-table">
+            <thead>
+              <tr>
+                <th>Source Field</th>
+                <th>Target Field</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sourceFields.map((sourceField) => (
+                <tr key={sourceField}>
+                  <td>{sourceField}</td>
+                  <td>
+                    <select
+                      value={mapping[sourceField] || ''}
+                      onChange={(e) => handleMappingChange(sourceField, e.target.value)}
+                    >
+                      <option value="">-- Select Field --</option>
+                      {availableFields.map((field) => (
+                        <option key={field} value={field}>
+                          {field}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### Testing Import Functionality
+
+```typescript
+// Import testing utilities
+import { ImportClient } from './lib/import-client';
+
+class ImportTester {
+  private client: ImportClient;
+  private testResults: TestResult[] = [];
+
+  constructor(baseURL: string) {
+    this.client = new ImportClient(baseURL);
+  }
+
+  // Test validation with invalid data
+  async testValidation() {
+    const invalidData = [
+      { invalidField: 'value' },
+      { studentId: '123' } // Missing required fields
+    ];
+
+    const result = await this.client.validateImport('students', invalidData);
+    
+    this.addTestResult('Validation Test', !result.isValid, 'Should fail validation');
+    
+    return result;
+  }
+
+  // Test import with valid data
+  async testImport() {
+    const validData = [
+      {
+        studentId: 'TEST001',
+        firstName: 'Test',
+        lastName: 'Student',
+        gradeLevel: 'Grade 7',
+        gradeCategory: 'JUNIOR_HIGH',
+        section: '7-A'
+      }
+    ];
+
+    const result = await this.client.executeImport('students', validData);
+    
+    this.addTestResult('Import Test', result.success, 'Should import successfully');
+    
+    return result;
+  }
+
+  // Test duplicate handling
+  async testDuplicateHandling() {
+    const duplicateData = [
+      {
+        studentId: 'TEST001', // Same ID as previous test
+        firstName: 'Test',
+        lastName: 'Student',
+        gradeLevel: 'Grade 7',
+        gradeCategory: 'JUNIOR_HIGH',
+        section: '7-A'
+      }
+    ];
+
+    const result = await this.client.executeImport('students', duplicateData, {
+      skipDuplicates: true
+    });
+    
+    this.addTestResult('Duplicate Test', result.duplicatesSkipped > 0, 'Should skip duplicates');
+    
+    return result;
+  }
+
+  // Test rollback functionality
+  async testRollback(importId: string) {
+    const result = await this.client.rollbackImport(importId, 'Test rollback');
+    
+    this.addTestResult('Rollback Test', result.success, 'Should rollback successfully');
+    
+    return result;
+  }
+
+  // Run all tests
+  async runAllTests() {
+    console.log('🧪 Running Import System Tests...');
+    
+    await this.testValidation();
+    const importResult = await this.testImport();
+    
+    if (importResult.importId) {
+      await this.testDuplicateHandling();
+      await this.testRollback(importResult.importId);
+    }
+    
+    this.printResults();
+    return this.testResults;
+  }
+
+  private addTestResult(name: string, passed: boolean, description: string) {
+    this.testResults.push({
+      name,
+      passed,
+      description,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  private printResults() {
+    console.log('\n📊 Test Results:');
+    console.log('================');
+    
+    this.testResults.forEach((result) => {
+      const status = result.passed ? '✅' : '❌';
+      console.log(`${status} ${result.name}: ${result.description}`);
+    });
+    
+    const passed = this.testResults.filter(r => r.passed).length;
+    const total = this.testResults.length;
+    
+    console.log(`\nSummary: ${passed}/${total} tests passed (${Math.round(passed/total*100)}%)`);
+  }
+}
+
+interface TestResult {
+  name: string;
+  passed: boolean;
+  description: string;
+  timestamp: string;
+}
+
+// Usage
+const tester = new ImportTester('http://localhost:3001/api');
+tester.runAllTests().then(results => {
+  console.log('Test completed:', results);
+});
 ```
 
 This comprehensive Developer Quick Start Guide provides everything developers need to integrate with and extend the CLMS system, including API clients, WebSocket integration, testing examples, and deployment configurations.

@@ -1,10 +1,10 @@
-import { PrismaClient, notifications_type, notifications_priority } from '@prisma/client';
+import { notifications_type, notifications_priority } from '@prisma/client';
 import nodemailer from 'nodemailer';
 import { logger } from '../utils/logger';
 import { websocketServer } from '../websocket/websocketServer';
+import { NotificationsRepository, UsersRepository } from '@/repositories';
+import { prisma } from '@/utils/prisma';
 import Bull from 'bull';
-
-const prisma = new PrismaClient();
 
 // Create notification processing queue
 const notificationQueue = new Bull('notification processing', {
@@ -40,8 +40,8 @@ interface CreateNotificationInput {
   expiresAt?: Date;
   sendEmail?: boolean;
   emailTo?: string;
-  userId?: string;
-  scheduledFor?: Date;
+  user_id?: string;
+  scheduled_for?: Date;
   templateId?: string;
   templateData?: Record<string, any>;
 }
@@ -66,52 +66,64 @@ interface CreateNotificationInput {
   title: string;
   message: string;
   priority?: notifications_priority;
-  actionUrl?: string;
+  action_url?: string;
   metadata?: any;
-  expiresAt?: Date;
+  expires_at?: Date;
   sendEmail?: boolean;
-  emailTo?: string;
+  email_to?: string;
 }
+
+// Create repository instances
+const notificationsRepository = new NotificationsRepository();
+const usersRepository = new UsersRepository();
 
 export const notificationService = {
   // Create a new notification with enhanced capabilities
   async createNotification(data: CreateNotificationInput) {
     // Check if notification should be scheduled
-    if (data.scheduledFor && data.scheduledFor > new Date()) {
+    if (data.scheduled_for && data.scheduled_for > new Date()) {
       return this.scheduleNotification(data);
     }
 
-    const notification = await prisma.notifications.create({
-      data: {
-        id: data.id || crypto.randomUUID(),
-        updated_at: new Date(),
-        user_id: data.userId,
-        type: data.type,
-        title: data.title,
-        message: data.message,
-        priority: data.priority || 'NORMAL',
-        action_url: data.actionUrl,
-        metadata: data.metadata,
-        expires_at: data.expiresAt,
-      },
-    });
+    const notificationData: any = {
+      type: data.type,
+      title: data.title,
+      message: data.message,
+    };
+
+    if (data.priority !== undefined) notificationData.priority = data.priority;
+    if (data.action_url !== undefined)
+      notificationData.action_url = data.action_url;
+    if (data.metadata !== undefined) notificationData.metadata = data.metadata;
+    if (data.expires_at !== undefined)
+      notificationData.expires_at = data.expires_at;
+    if (data.user_id !== undefined) notificationData.user_id = data.user_id;
+
+    const notification =
+      await notificationsRepository.createNotification(notificationData);
 
     // Send real-time notification via WebSocket
-    if (data.userId) {
-      this.sendRealTimeNotification(data.userId, notification);
+    if (data.user_id) {
+      this.sendRealTimeNotification(data.user_id, notification);
     }
 
     // Check user preferences before sending email
-    if (data.userId) {
-      const preferences = await this.getUserNotificationPreferences(data.userId);
-      if (preferences.emailNotifications && this.shouldSendEmailForType(data.type, preferences)) {
-        const user = await prisma.users.findUnique({
-          where: { id: data.userId },
-          select: { email: true, full_name: true }
-        });
+    if (data.user_id) {
+      const preferences = await this.getUserNotificationPreferences(
+        data.user_id,
+      );
+      if (
+        preferences.emailNotifications &&
+        this.shouldSendEmailForType(data.type, preferences)
+      ) {
+        const user = await usersRepository.findById(data.user_id);
 
         if (user?.email) {
-          await this.sendEmailNotification(user.email, notification, user.full_name);
+          await this.sendEmailNotification(
+            user.email,
+            notification,
+            user.full_name || undefined,
+          );
         }
       }
     } else if (data.sendEmail && data.emailTo) {
@@ -122,7 +134,7 @@ export const notificationService = {
     logger.info('Notification created', {
       notificationId: notification.id,
       type: data.type,
-      userId: data.userId,
+      userId: data.user_id,
       priority: data.priority,
     });
 
@@ -131,28 +143,27 @@ export const notificationService = {
 
   // Schedule a notification for future delivery
   async scheduleNotification(data: CreateNotificationInput) {
-    const delay = data.scheduledFor!.getTime() - Date.now();
+    const delay = data.scheduled_for!.getTime() - Date.now();
 
-    notificationQueue.add(
-      'send-scheduled-notification',
-      data,
-      {
-        delay,
-        attempts: 3,
-        backoff: 'exponential',
-      }
-    );
+    notificationQueue.add('send-scheduled-notification', data, {
+      delay: delay,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 2000,
+      },
+    });
 
     logger.info('Notification scheduled', {
       type: data.type,
-      scheduledFor: data.scheduledFor,
-      userId: data.userId,
+      scheduledFor: data.scheduled_for,
+      userId: data.user_id,
     });
 
     return {
       id: data.id,
       scheduled: true,
-      scheduledFor: data.scheduledFor
+      scheduledFor: data.scheduled_for,
     };
   },
 
@@ -176,13 +187,15 @@ export const notificationService = {
       logger.error('Failed to send real-time notification', {
         error,
         userId,
-        notificationId: notification.id
+        notificationId: notification.id,
       });
     }
   },
 
   // Get user notification preferences
-  async getUserNotificationPreferences(userId: string): Promise<NotificationPreferences> {
+  async getUserNotificationPreferences(
+    userId: string,
+  ): Promise<NotificationPreferences> {
     // Default preferences
     const defaultPreferences: NotificationPreferences = {
       userId,
@@ -209,13 +222,19 @@ export const notificationService = {
 
       return defaultPreferences;
     } catch (error) {
-      logger.error('Error fetching user notification preferences', { error, userId });
+      logger.error('Error fetching user notification preferences', {
+        error,
+        userId,
+      });
       return defaultPreferences;
     }
   },
 
   // Update user notification preferences
-  async updateUserNotificationPreferences(userId: string, preferences: Partial<NotificationPreferences>) {
+  async updateUserNotificationPreferences(
+    userId: string,
+    preferences: Partial<NotificationPreferences>,
+  ) {
     try {
       const currentPrefs = await this.getUserNotificationPreferences(userId);
       const updatedPrefs = { ...currentPrefs, ...preferences };
@@ -232,19 +251,29 @@ export const notificationService = {
           value: JSON.stringify(updatedPrefs),
           category: 'NOTIFICATIONS',
           description: `User ${userId} notification preferences`,
+          updated_at: new Date(),
         },
       });
 
-      logger.info('User notification preferences updated', { userId, preferences });
+      logger.info('User notification preferences updated', {
+        userId,
+        preferences,
+      });
       return updatedPrefs;
     } catch (error) {
-      logger.error('Error updating user notification preferences', { error, userId });
+      logger.error('Error updating user notification preferences', {
+        error,
+        userId,
+      });
       throw error;
     }
   },
 
   // Check if email should be sent for notification type
-  shouldSendEmailForType(type: notifications_type, preferences: NotificationPreferences): boolean {
+  shouldSendEmailForType(
+    type: notifications_type,
+    preferences: NotificationPreferences,
+  ): boolean {
     switch (type) {
       case 'BOOK_DUE_SOON':
         return preferences.dueDateReminders;
@@ -261,113 +290,75 @@ export const notificationService = {
   },
 
   // Get all notifications for a user
-  async getUserNotifications(id?: string, options?: {
-    unreadOnly?: boolean;
-    limit?: number;
-    offset?: number;
-    type?: notifications_type;
-  }) {
-    const where: any = {};
-    
-    if (id) {
-      where.id = id;
-    }
-    
-    if (options?.unreadOnly) {
-      where.read = false;
-    }
-    
-    if (options?.type) {
-      where.type = options.type;
-    }
+  async getUserNotifications(
+    id?: string,
+    options?: {
+      unreadOnly?: boolean;
+      limit?: number;
+      offset?: number;
+      type?: notifications_type;
+    },
+  ) {
+    const queryOptions: any = {
+      limit: options?.limit || 50,
+      offset: options?.offset || 0,
+    };
 
-    // Filter out expired notifications
-    where.OR = [
-      { expires_at: null },
-      { expires_at: { gt: new Date() } }
-    ];
+    if (id !== undefined) queryOptions.userId = id;
+    if (options?.unreadOnly !== undefined)
+      queryOptions.unreadOnly = options.unreadOnly;
+    if (options?.type !== undefined) queryOptions.type = options.type;
 
-    const [notifications, total] = await Promise.all([
-      prisma.notifications.findMany({
-        where,
-        orderBy: [
-          { priority: 'desc' },
-          { created_at: 'desc' }
-        ],
-        take: options?.limit || 50,
-        skip: options?.offset || 0,
-      }),
-      prisma.notifications.count({ where })
-    ]);
+    const result = await notificationsRepository.getNotifications(queryOptions);
 
     return {
-      notifications,
-      total,
-      unreadCount: await prisma.notifications.count({
-        where: { ...where, read: false }
-      })
+      notifications: result.notifications,
+      total: result.total,
+      unreadCount: result.unreadCount,
     };
   },
 
   // Mark notification as read
   async markAsRead(notificationId: string) {
-    return await prisma.notifications.update({
-      where: { id: notificationId },
-      data: { id: crypto.randomUUID(), updated_at: new Date(), 
-        read: true,
-        read_at: new Date(),
-      },
-    });
+    return await notificationsRepository.markAsRead(notificationId);
   },
 
   // Mark all notifications as read for a user
   async markAllAsRead(id?: string) {
-    const where: any = { read: false };
-    if (id) {
-      where.id = id;
-    }
-
-    return await prisma.notifications.updateMany({
-      where,
-      data: { id: crypto.randomUUID(), updated_at: new Date(), 
-        read: true,
-        read_at: new Date(),
-      },
-    });
+    await notificationsRepository.markAllAsRead(id);
+    return { success: true };
   },
 
   // Delete a notification
   async deleteNotification(notificationId: string) {
-    return await prisma.notifications.delete({
-      where: { id: notificationId },
-    });
+    const success =
+      await notificationsRepository.deleteNotification(notificationId);
+    if (!success) {
+      throw new Error('Notification not found');
+    }
+    return { success: true };
   },
 
   // Delete all read notifications
   async deleteReadNotifications(id?: string) {
-    const where: any = { read: true };
-    if (id) {
-      where.id = id;
-    }
-
-    return await prisma.notifications.deleteMany({
-      where,
-    });
+    const deletedCount =
+      await notificationsRepository.deleteReadNotifications(id);
+    return { deletedCount };
   },
 
   // Clean up expired notifications
   async cleanupExpiredNotifications() {
-    return await prisma.notifications.deleteMany({
-      where: {
-        expires_at: {
-          lt: new Date(),
-        },
-      },
-    });
+    const deletedCount =
+      await notificationsRepository.cleanupExpiredNotifications();
+    return { deletedCount };
   },
 
   // Send email notification with enhanced templates
-  async sendEmailNotification(to: string, notification: any, userName?: string) {
+  async sendEmailNotification(
+    to: string,
+    notification: any,
+    userName?: string,
+  ) {
     try {
       const transporter = createEmailTransporter();
 
@@ -402,9 +393,12 @@ export const notificationService = {
 
   // Generate email subject with priority and type
   generateEmailSubject(notification: any): string {
-    const priorityPrefix = notification.priority === 'URGENT' ? '🚨 URGENT: '
-                         : notification.priority === 'HIGH' ? '⚠️ IMPORTANT: '
-                         : '';
+    const priorityPrefix =
+      notification.priority === 'URGENT'
+        ? '🚨 URGENT: '
+        : notification.priority === 'HIGH'
+          ? '⚠️ IMPORTANT: '
+          : '';
 
     const typePrefix = this.getTypeDisplayName(notification.type);
 
@@ -447,11 +441,15 @@ export const notificationService = {
             <div class="priority-badge">${notification.priority}</div>
             <p style="font-size: 16px; margin-bottom: 20px;">${notification.message}</p>
 
-            ${notification.action_url ? `
+            ${
+              notification.action_url
+                ? `
               <a href="${notification.action_url}" class="action-button">
                 View Details →
               </a>
-            ` : ''}
+            `
+                : ''
+            }
           </div>
 
           <div style="background: #e3f2fd; padding: 15px; border-radius: 6px; margin-top: 20px;">
@@ -477,7 +475,9 @@ export const notificationService = {
   // Generate plain text template
   generateTextTemplate(notification: any, userName?: string): string {
     const greeting = userName ? `Dear ${userName},` : '';
-    const actionText = notification.action_url ? `\nAction required: ${notification.action_url}` : '';
+    const actionText = notification.action_url
+      ? `\nAction required: ${notification.action_url}`
+      : '';
 
     return `
 ${greeting}
@@ -501,16 +501,16 @@ This is an automated message. Please do not reply to this email.
   // Get display name for notification type
   getTypeDisplayName(type: notifications_type): string {
     const typeNames = {
-      'OVERDUE_BOOK': 'Overdue Book',
-      'FINE_ADDED': 'Fine Added',
-      'FINE_WAIVED': 'Fine Waived',
-      'BOOK_DUE_SOON': 'Book Due Soon',
-      'EQUIPMENT_EXPIRING': 'Equipment Expiring',
-      'SYSTEM_ALERT': 'System Alert',
-      'INFO': 'Information',
-      'WARNING': 'Warning',
-      'ERROR': 'Error',
-      'SUCCESS': 'Success',
+      OVERDUE_BOOK: 'Overdue Book',
+      FINE_ADDED: 'Fine Added',
+      FINE_WAIVED: 'Fine Waived',
+      BOOK_DUE_SOON: 'Book Due Soon',
+      EQUIPMENT_EXPIRING: 'Equipment Expiring',
+      SYSTEM_ALERT: 'System Alert',
+      INFO: 'Information',
+      WARNING: 'Warning',
+      ERROR: 'Error',
+      SUCCESS: 'Success',
     };
 
     return typeNames[type] || type;
@@ -519,16 +519,16 @@ This is an automated message. Please do not reply to this email.
   // Get icon for notification type
   getTypeIcon(type: notifications_type): string {
     const icons = {
-      'OVERDUE_BOOK': '📚',
-      'FINE_ADDED': '💰',
-      'FINE_WAIVED': '✅',
-      'BOOK_DUE_SOON': '⏰',
-      'EQUIPMENT_EXPIRING': '🖥️',
-      'SYSTEM_ALERT': '🔔',
-      'INFO': 'ℹ️',
-      'WARNING': '⚠️',
-      'ERROR': '❌',
-      'SUCCESS': '✅',
+      OVERDUE_BOOK: '📚',
+      FINE_ADDED: '💰',
+      FINE_WAIVED: '✅',
+      BOOK_DUE_SOON: '⏰',
+      EQUIPMENT_EXPIRING: '🖥️',
+      SYSTEM_ALERT: '🔔',
+      INFO: 'ℹ️',
+      WARNING: '⚠️',
+      ERROR: '❌',
+      SUCCESS: '✅',
     };
 
     return icons[type] || '📢';
@@ -537,10 +537,10 @@ This is an automated message. Please do not reply to this email.
   // Get color for priority level
   getPriorityColor(priority: notifications_priority): string {
     const colors = {
-      'URGENT': '#dc3545',
-      'HIGH': '#fd7e14',
-      'NORMAL': '#007bff',
-      'LOW': '#6c757d',
+      URGENT: '#dc3545',
+      HIGH: '#fd7e14',
+      NORMAL: '#007bff',
+      LOW: '#6c757d',
     };
 
     return colors[priority] || '#6c757d';
@@ -549,16 +549,21 @@ This is an automated message. Please do not reply to this email.
   // Bulk create notifications
   async createBulkNotifications(notifications: CreateNotificationInput[]) {
     const created = await prisma.notifications.createMany({
-      data: notifications.map(n => ({
-        id: n.id,
-        type: n.type,
-        title: n.title,
-        message: n.message,
-        priority: n.priority || 'NORMAL',
-        action_url: n.action_url,
-        metadata: n.metadata,
-        expires_at: n.expires_at,
-      })),
+      data: notifications.map(n => {
+        const notifData: any = {
+          id: n.id || crypto.randomUUID(),
+          type: n.type,
+          title: n.title,
+          message: n.message,
+          priority: n.priority || 'NORMAL',
+          created_at: new Date(),
+        };
+        if (n.action_url !== undefined) notifData.action_url = n.action_url;
+        if (n.metadata !== undefined) notifData.metadata = n.metadata;
+        if (n.expires_at !== undefined) notifData.expires_at = n.expires_at;
+        if (n.user_id !== undefined) notifData.user_id = n.user_id;
+        return notifData;
+      }),
     });
 
     return created;

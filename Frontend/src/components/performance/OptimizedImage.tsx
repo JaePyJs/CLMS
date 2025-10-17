@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, memo, ComponentType, ReactNode } from 'react';
+import React, { useState, useRef, useEffect, memo, ComponentType, ReactNode, forwardRef, useImperativeHandle } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 interface OptimizedImageProps {
@@ -58,30 +58,31 @@ const generatePlaceholder = (width: number, height: number): string => {
   return canvas.toDataURL('image/jpeg', 0.1);
 };
 
-const OptimizedImage: ComponentType<OptimizedImageProps> = memo(({
-  src,
-  alt,
-  width,
-  height,
-  className = '',
-  placeholder,
-  blurDataURL,
-  priority = false,
-  quality = 75,
-  format = 'webp',
-  sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
-  srcSet,
-  onLoad,
-  onError,
-  lazy = true,
-  fadeDuration = 300,
-  style,
-  aspectRatio,
-  objectFit = 'cover',
-  decoding = 'async',
-  loading = 'lazy',
-  fetchPriority = 'auto',
-}) => {
+const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>((props, ref) => {
+  const {
+    src,
+    alt,
+    width,
+    height,
+    className = '',
+    placeholder,
+    blurDataURL,
+    priority = false,
+    quality = 75,
+    format = 'webp',
+    sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
+    srcSet,
+    onLoad,
+    onError,
+    lazy = true,
+    fadeDuration = 300,
+    style,
+    aspectRatio,
+    objectFit = 'cover',
+    decoding = 'async',
+    loading = 'lazy',
+    fetchPriority = 'auto',
+  } = props;
   const [imageState, setImageState] = useState<ImageState>({
     isLoading: true,
     isLoaded: false,
@@ -92,6 +93,9 @@ const OptimizedImage: ComponentType<OptimizedImageProps> = memo(({
   const imgRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // Expose ref to parent component
+  useImperativeHandle(ref, () => imgRef.current!);
 
   // Generate placeholder if not provided
   const placeholderSrc = placeholder || (width && height ? generatePlaceholder(width, height) : '');
@@ -156,7 +160,7 @@ const OptimizedImage: ComponentType<OptimizedImageProps> = memo(({
       link.rel = 'preload';
       link.as = 'image';
       link.href = src;
-      link.fetchPriority = 'high';
+      // link.fetchPriority = 'high'; // fetchPriority not supported on link elements
       document.head.appendChild(link);
 
       return () => {
@@ -219,7 +223,7 @@ const OptimizedImage: ComponentType<OptimizedImageProps> = memo(({
         height={height}
         loading={priority ? 'eager' : loading}
         decoding={decoding}
-        fetchPriority={priority ? 'high' : fetchPriority}
+        fetchpriority={priority ? 'high' : fetchPriority}
         className={`w-full h-full object-${objectFit} transition-opacity duration-${fadeDuration} ${
           imageState.isLoaded ? 'opacity-100' : 'opacity-0'
         }`}
@@ -263,7 +267,7 @@ export const preloadImage = (src: string, priority: 'high' | 'low' = 'low'): Pro
     link.rel = 'preload';
     link.as = 'image';
     link.href = src;
-    link.fetchPriority = priority;
+    // link.fetchPriority = priority; // fetchPriority not supported on link elements
     link.onload = () => resolve();
     link.onerror = () => reject(new Error(`Failed to preload image: ${src}`));
     document.head.appendChild(link);

