@@ -92,16 +92,9 @@ export default function QRScannerComponent({
     try {
       codeReaderRef.current = new BrowserMultiFormatReader();
 
-      // Configure reader
-      codeReaderRef.current.hints.setResultPointCallback, (point) => {
-        // Custom result point callback for visualization
-        if (settings.showOverlay) {
-          // This would be used for drawing scan overlay
-        }
-      };
-
-      // Set up event listeners
-      codeReaderRef.current.addEventListener('result', handleQRResult);
+      // Configure reader - ZXing library type definitions don't match actual API
+      // These features are library-specific and handled internally
+      // The reader will automatically process results through decode methods
     } catch (error) {
       console.error('Failed to initialize QR reader:', error);
       toast.error('Failed to initialize QR scanner');
@@ -324,13 +317,16 @@ export default function QRScannerComponent({
     try {
       if (streamRef.current) {
         const track = streamRef.current.getVideoTracks()[0];
-        if (track.getCapabilities().torch) {
-          await track.applyConstraints({
-            advanced: [{ torch: !settings.torchEnabled }]
-          } as MediaTrackConstraints);
-          setSettings(prev => ({ ...prev, torchEnabled: !prev.torchEnabled }));
-        } else {
-          toast.error('Torch not supported on this device');
+        if (track) {
+          const capabilities = track.getCapabilities() as any;
+          if (capabilities.torch) {
+            await track.applyConstraints({
+              advanced: [{ torch: !settings.torchEnabled } as any]
+            } as MediaTrackConstraints);
+            setSettings(prev => ({ ...prev, torchEnabled: !prev.torchEnabled }));
+          } else {
+            toast.error('Torch not supported on this device');
+          }
         }
       }
     } catch (error) {
@@ -342,7 +338,7 @@ export default function QRScannerComponent({
   const cleanup = () => {
     stopScanning();
     if (codeReaderRef.current) {
-      codeReaderRef.current.removeEventListener('result', handleQRResult);
+      // ZXing library doesn't have removeEventListener in types, but reset handles cleanup
       codeReaderRef.current.reset();
     }
   };
@@ -522,7 +518,7 @@ export default function QRScannerComponent({
               <Switch
                 id="auto-start"
                 checked={settings.autoStart}
-                onCheckedChange={(checked) => setSettings(prev => ({ ...prev, autoStart: checked }))}
+                onCheckedChange={(checked: boolean) => setSettings(prev => ({ ...prev, autoStart: checked }))}
               />
             </div>
 
@@ -531,7 +527,7 @@ export default function QRScannerComponent({
               <Switch
                 id="continuous"
                 checked={settings.continuous}
-                onCheckedChange={(checked) => {
+                onCheckedChange={(checked: boolean) => {
                   setSettings(prev => ({ ...prev, continuous: checked }));
                   if (checked && isScanning) {
                     startContinuousScanning();
@@ -545,7 +541,7 @@ export default function QRScannerComponent({
               <Switch
                 id="beep-on-scan"
                 checked={settings.beepOnScan}
-                onCheckedChange={(checked) => setSettings(prev => ({ ...prev, beepOnScan: checked }))}
+                onCheckedChange={(checked: boolean) => setSettings(prev => ({ ...prev, beepOnScan: checked }))}
               />
             </div>
 
@@ -554,7 +550,7 @@ export default function QRScannerComponent({
               <Switch
                 id="vibrate-on-scan"
                 checked={settings.vibrateOnScan}
-                onCheckedChange={(checked) => setSettings(prev => ({ ...prev, vibrateOnScan: checked }))}
+                onCheckedChange={(checked: boolean) => setSettings(prev => ({ ...prev, vibrateOnScan: checked }))}
               />
             </div>
 
@@ -563,7 +559,7 @@ export default function QRScannerComponent({
               <Switch
                 id="show-overlay"
                 checked={settings.showOverlay}
-                onCheckedChange={(checked) => setSettings(prev => ({ ...prev, showOverlay: checked }))}
+                onCheckedChange={(checked: boolean) => setSettings(prev => ({ ...prev, showOverlay: checked }))}
               />
             </div>
 
@@ -572,7 +568,7 @@ export default function QRScannerComponent({
               <Switch
                 id="max-resolution"
                 checked={settings.maxResolutions}
-                onCheckedChange={(checked) => setSettings(prev => ({ ...prev, maxResolutions: checked }))}
+                onCheckedChange={(checked: boolean) => setSettings(prev => ({ ...prev, maxResolutions: checked }))}
               />
             </div>
 
@@ -597,7 +593,7 @@ export default function QRScannerComponent({
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center">
-              <BarChart3 className="h-5 w-5 mr-2" />
+              <Activity className="h-4 w-4 mr-2" />
               Scan Statistics
             </span>
             <Button variant="outline" size="sm" onClick={resetStatistics}>
