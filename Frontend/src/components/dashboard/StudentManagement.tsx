@@ -33,45 +33,7 @@ import {
 import { StudentBarcodeDialog } from './StudentBarcodeDialog';
 import { StudentImportDialog } from './StudentImportDialog';
 import { toast } from 'sonner';
-import {
-  Users,
-  UserPlus,
-  Search,
-  Download,
-  Printer,
-  Filter,
-  MoreHorizontal,
-  Eye,
-  Edit,
-  Trash2,
-  Settings,
-  QrCode,
-  Award,
-  Bell,
-  Phone,
-  Mail,
-  Calendar,
-  BookOpen,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  AlertCircle,
-  Shield,
-  FileText,
-  Upload,
-  UserMinus,
-  UserCheck,
-  MessageSquare,
-  History,
-  CreditCard,
-  RefreshCw,
-  ExternalLink,
-  Star,
-  TrendingUp,
-  Activity,
-  UserX,
-  X
-} from 'lucide-react';
+import { Users, UserPlus, Search, Download, Eye, Edit, Trash2, Settings, QrCode, Award, Phone, Mail, Calendar, AlertTriangle, FileText, Upload, UserMinus, UserCheck, MessageSquare, History, CreditCard, ExternalLink, TrendingUp, Activity } from 'lucide-react';
 
 interface Student {
   id: string;

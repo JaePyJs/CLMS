@@ -10,17 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  QrCode,
-  Download,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
-  Loader2,
-  Printer,
-  Eye,
-  FileText,
-} from 'lucide-react';
+import { QrCode, Download, CheckCircle2, XCircle, Loader2, Printer, Eye, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { utilitiesApi } from '@/lib/api';
 

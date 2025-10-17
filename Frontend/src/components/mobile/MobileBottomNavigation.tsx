@@ -5,21 +5,7 @@ import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useAppStore } from '@/store/useAppStore';
 import { useTouchOptimization } from '@/hooks/useMobileOptimization';
-import {
-  Home,
-  Camera,
-  Users,
-  BookOpen,
-  Library,
-  Laptop,
-  BarChart,
-  Settings,
-  Wifi,
-  WifiOff,
-  AlertCircle,
-  ChevronUp,
-  X,
-} from 'lucide-react';
+import { Wifi, WifiOff, AlertCircle, ChevronUp, X } from 'lucide-react';
 
 interface NavigationItem {
   id: string;

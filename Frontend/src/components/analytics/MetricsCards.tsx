@@ -3,21 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import {
-  Users,
-  BookOpen,
-  Monitor,
-  TrendingUp,
-  TrendingDown,
-  Clock,
-  DollarSign,
-  AlertTriangle,
-  CheckCircle,
-  Activity,
-  BarChart,
-  Target,
-  Calendar
-} from 'lucide-react'
+import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Activity, BarChart, Target, Calendar } from 'lucide-react';
 
 interface MetricsCardsProps {
   timeframe: 'day' | 'week' | 'month'

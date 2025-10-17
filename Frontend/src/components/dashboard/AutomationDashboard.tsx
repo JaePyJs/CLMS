@@ -8,23 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useAutomationJobs, useTriggerJob, useGoogleSheetsTest } from '@/hooks/api-hooks'
 import { useAppStore } from '@/store/useAppStore'
 import { DashboardCardSkeleton, CardSkeleton, ButtonLoading, LoadingSpinner } from '@/components/LoadingStates'
-import {
-  Bot,
-  Play,
-  Square,
-  RotateCcw,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Database,
-  FileSpreadsheet,
-  Calendar,
-  Activity,
-  Wifi,
-  WifiOff,
-  Settings,
-  RefreshCw
-} from 'lucide-react'
+import { Bot, Play, Square, RotateCcw, CheckCircle, AlertCircle, Clock, Database, FileSpreadsheet, Calendar, Activity, Settings, RefreshCw } from 'lucide-react';
 
 interface AutomationJob {
   id: string

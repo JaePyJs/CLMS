@@ -20,20 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  BookOpen,
-  User,
-  Calendar,
-  AlertCircle,
-  Clock,
-  CheckCircle,
-  Search,
-  Filter,
-  Download,
-  RefreshCw,
-  TrendingUp,
-  TrendingDown,
-} from 'lucide-react';
+import { BookOpen, Calendar, AlertCircle, Clock, CheckCircle, Search, Filter, Download, RefreshCw, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -98,7 +85,7 @@ export default function CheckoutHistory() {
       const token = localStorage.getItem('clms_token');
       const params = new URLSearchParams();
       if (status && status !== 'ALL') {
-        params.append('status', status);
+        params.append('status', status ?? '');
       }
       
       const response = await axios.get(

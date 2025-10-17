@@ -28,47 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import {
-  BarChart3,
-  PieChart,
-  TrendingUp,
-  FileText,
-  Download,
-  Printer,
-  Mail,
-  Calendar,
-  Filter,
-  Settings,
-  Save,
-  Play,
-  Eye,
-  Edit,
-  Trash2,
-  Plus,
-  Clock,
-  Users,
-  BookOpen,
-  Monitor,
-  Award,
-  AlertTriangle,
-  CheckCircle,
-  Activity,
-  Target,
-  Zap,
-  Database,
-  RefreshCw,
-  Share2,
-  Star,
-  FileDown,
-  CalendarClock,
-  Bell,
-  BarChart,
-  LineChart,
-  AreaChart,
-  ScatterChart,
-  XCircle,
-  HelpCircle
-} from 'lucide-react';
+import { PieChart, TrendingUp, FileText, Download, Printer, Mail, Calendar, Settings, Save, Play, Eye, Edit, Trash2, Plus, Users, BookOpen, Monitor, Activity, RefreshCw, Share2, Star, CalendarClock, BarChart, LineChart, AreaChart, ScatterChart } from 'lucide-react';
 
 interface ReportTemplate {
   id: string;

@@ -36,31 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import {
-  BookOpen,
-  Plus,
-  Search,
-  Filter,
-  Download,
-  Upload,
-  Edit,
-  Trash2,
-  Eye,
-  MoreHorizontal,
-  BookMarked,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Barcode,
-  RefreshCw,
-  Printer,
-  FileText,
-  Calendar,
-  User,
-  MapPin,
-  Award,
-  TrendingUp,
-} from 'lucide-react';
+import { BookOpen, Plus, Search, Download, Edit, Trash2, Eye, BookMarked, CheckCircle, XCircle, AlertCircle, RefreshCw, MapPin, Award } from 'lucide-react';
 import { TableSkeleton, ButtonLoading, EmptyState } from '@/components/LoadingStates';
 
 interface Book {

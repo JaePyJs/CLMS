@@ -7,21 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import {
-  Camera,
-  CameraOff,
-  QrCode,
-  Scan,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Barcode,
-  Zap,
-  Smartphone,
-  Monitor,
-  Settings
-} from 'lucide-react';
+import { Camera, CameraOff, QrCode, Scan, RefreshCw, CheckCircle, Zap, Settings } from 'lucide-react';
 import { BrowserMultiFormatReader, Result } from '@zxing/library';
 
 interface QRScanResult {

@@ -31,27 +31,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Calendar,
-  Download,
-  Filter,
-  Search,
-  Eye,
-  Shield,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Database,
-  FileText,
-  RefreshCw,
-  ChevronDown,
-  User,
-  MapPin,
-  Activity,
-  Settings,
-  Export
-} from 'lucide-react';
+import { Download, Filter, Search, Eye, Shield, AlertTriangle, CheckCircle, XCircle, Database, FileText, RefreshCw, ChevronDown, Activity, Export } from 'lucide-react';
 
 // Types
 interface AuditLogEntry {

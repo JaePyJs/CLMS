@@ -6,22 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useMobileOptimization, useTouchOptimization } from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { toast } from 'sonner';
-import {
-  Camera,
-  CameraOff,
-  Zap,
-  History,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  RotateCcw,
-  Flashlight,
-  FlashlightOff,
-  Keyboard,
-  X,
-  ChevronDown,
-  Search,
-} from 'lucide-react';
+import { Camera, CameraOff, Zap, History, CheckCircle, XCircle, AlertCircle, RotateCcw, Flashlight, FlashlightOff, Keyboard, X, Search } from 'lucide-react';
 
 interface ScanResult {
   id: string;

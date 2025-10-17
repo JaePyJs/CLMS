@@ -17,18 +17,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  BookOpen,
-  User,
-  Calendar,
-  CheckCircle,
-  AlertCircle,
-  RotateCcw,
-  Scan,
-  Clock,
-  DollarSign,
-  History,
-} from 'lucide-react';
+import { BookOpen, User, CheckCircle, AlertCircle, RotateCcw, Scan, History } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 

@@ -4,17 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
-import {
-  Download,
-  X,
-  Smartphone,
-  Zap,
-  Shield,
-  Wifi,
-  Check,
-  Info,
-  ExternalLink,
-} from 'lucide-react';
+import { Download, X, Zap, Shield, Wifi, Check, Info } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];

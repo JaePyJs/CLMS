@@ -5,18 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  CheckCircle,
-  AlertCircle,
-  XCircle,
-  RefreshCw,
-  FileText,
-  GitBranch,
-  Clock,
-  Database,
-  TestTube,
-  Package
-} from 'lucide-react';
+import { CheckCircle, AlertCircle, XCircle, RefreshCw, FileText, GitBranch, Database, TestTube, Package } from 'lucide-react';
 import { utilitiesApi } from '@/lib/api';
 import { toast } from 'sonner';
 

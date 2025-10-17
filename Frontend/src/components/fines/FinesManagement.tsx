@@ -27,18 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DollarSign,
-  Search,
-  CheckCircle2,
-  AlertCircle,
-  Download,
-  XCircle,
-  Clock,
-  User,
-  BookOpen,
-  Calendar,
-} from 'lucide-react';
+import { DollarSign, Search, CheckCircle2, AlertCircle, Download, XCircle, Clock, BookOpen } from 'lucide-react';
 import { finesApi } from '@/lib/api';
 import { exportFinesToCSV } from '@/lib/export-utils';
 

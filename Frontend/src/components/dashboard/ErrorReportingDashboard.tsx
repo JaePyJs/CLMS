@@ -25,30 +25,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import {
-  AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Activity,
-  Bug,
-  Clock,
-  Users,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  RefreshCw,
-  Download,
-  Filter,
-  Search,
-  ChevronDown,
-  ChevronUp,
-  Eye,
-  Edit,
-  Trash2,
-  User,
-  Calendar,
-} from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Minus, Activity, Bug, CheckCircle, XCircle, AlertCircle, RefreshCw, Download, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -155,8 +132,8 @@ export const ErrorReportingDashboard: React.FC = () => {
     queryKey: ['error-reports', filterCategory, filterSeverity, showResolved],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filterCategory !== 'all') params.append('category', filterCategory);
-      if (filterSeverity !== 'all') params.append('severity', filterSeverity);
+      if (filterCategory !== 'all') params.append('category', filterCategory ?? '');
+      if (filterSeverity !== 'all') params.append('severity', filterSeverity ?? '');
       if (!showResolved) params.append('resolved', 'false');
 
       const response = await api.get(`/api/errors/reports?${params}`);
@@ -187,9 +164,9 @@ export const ErrorReportingDashboard: React.FC = () => {
   const handleExportData = async (format: 'json' | 'csv') => {
     try {
       const params = new URLSearchParams();
-      params.append('format', format);
-      if (filterCategory !== 'all') params.append('category', filterCategory);
-      if (filterSeverity !== 'all') params.append('severity', filterSeverity);
+      params.append('format', format ?? '');
+      if (filterCategory !== 'all') params.append('category', filterCategory ?? '');
+      if (filterSeverity !== 'all') params.append('severity', filterSeverity ?? '');
 
       const response = await api.get(`/api/errors/reports/export?${params}`);
       const blob = new Blob([response.data], {

@@ -26,27 +26,7 @@ import {
 import {
   Switch,
 } from '@/components/ui/switch';
-import {
-  Search,
-  Star,
-  Bookmark,
-  Edit,
-  Trash2,
-  Eye,
-  Users,
-  BookOpen,
-  Monitor,
-  Settings,
-  Plus,
-  X,
-  Copy,
-  Share2,
-  Bell,
-  BellOff,
-  Clock,
-  TrendingUp,
-  Filter,
-} from 'lucide-react';
+import { Search, Star, Bookmark, Edit, Trash2, Eye, Users, BookOpen, Monitor, Plus, Copy, Share2, Bell, Clock, TrendingUp } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 

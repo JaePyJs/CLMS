@@ -6,25 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import {
-  Wifi,
-  WifiOff,
-  Settings,
-  Play,
-  Square,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-  Plus,
-  Trash2,
-  Edit,
-  BarChart3,
-  Volume2,
-  VolumeX,
-  Eye,
-  EyeOff
-} from 'lucide-react';
+import { Wifi, Settings, Play, Square, AlertCircle, CheckCircle, XCircle, RefreshCw, Plus, Trash2 } from 'lucide-react';
 
 interface ScannerDevice {
   path: string;

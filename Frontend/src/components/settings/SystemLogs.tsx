@@ -21,21 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  FileText,
-  Search,
-  Download,
-  Trash2,
-  RefreshCw,
-  CheckCircle2,
-  AlertCircle,
-  Info,
-  AlertTriangle,
-  XCircle,
-  Loader2,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+import { FileText, Search, Download, Trash2, RefreshCw, AlertCircle, Info, AlertTriangle, XCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { settingsApi } from '@/lib/api';
 
 interface SystemLog {

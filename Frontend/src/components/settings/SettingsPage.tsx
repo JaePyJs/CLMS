@@ -1,14 +1,7 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
-import {
-  Settings as SettingsIcon,
-  Users,
-  Sheet,
-  Bot,
-  Database,
-  FileText,
-} from 'lucide-react';
+import { Users, Sheet, Bot, Database, FileText } from 'lucide-react';
 
 // Import setting tab components
 const SystemSettings = React.lazy(() => import('./SystemSettings'));

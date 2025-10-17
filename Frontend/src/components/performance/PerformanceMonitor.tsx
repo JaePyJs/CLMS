@@ -16,25 +16,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import {
-  Activity,
-  TrendingUp,
-  TrendingDown,
-  Zap,
-  Clock,
-  Database,
-  AlertTriangle,
-  CheckCircle,
-  Download,
-  RefreshCw,
-  Play,
-  Pause,
-  FileText,
-  BarChart3,
-  Monitor,
-  Gauge,
-  Target,
-} from 'lucide-react';
+import { Activity, Zap, Clock, Database, AlertTriangle, CheckCircle, Download, RefreshCw, Play, Pause, FileText, BarChart3, Monitor, Gauge, Target } from 'lucide-react';
 import { performanceMonitoringService } from '@/services/performanceMonitoringService';
 import type { PerformanceReport, ComponentPerformance } from '@/services/performanceMonitoringService';
 

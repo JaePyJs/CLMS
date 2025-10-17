@@ -5,16 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import {
-  TrendingUp,
-  Users,
-  BookOpen,
-  Download,
-  CheckCircle2,
-  AlertCircle,
-  Calendar,
-  Star,
-} from 'lucide-react';
+import { TrendingUp, Users, BookOpen, Download, CheckCircle2, AlertCircle, Star } from 'lucide-react';
 import { reportsApi } from '@/lib/api';
 import { exportReportToCSV } from '@/lib/export-utils';
 

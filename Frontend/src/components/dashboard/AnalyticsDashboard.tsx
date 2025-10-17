@@ -32,19 +32,7 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts'
-import {
-  TrendingUp,
-  Users,
-  Monitor,
-  Gamepad2,
-  BookOpen,
-  Clock,
-  Download,
-  Calendar,
-  Filter,
-  FileText,
-  Activity
-} from 'lucide-react'
+import { Clock, Activity } from 'lucide-react';
 
 export function AnalyticsDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month'>('week')

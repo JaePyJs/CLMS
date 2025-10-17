@@ -9,28 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { LoadingSpinner, ButtonLoading } from '@/components/LoadingStates';
-import {
-  FileText,
-  Download,
-  Calendar,
-  TrendingUp,
-  BarChart3,
-  PieChart,
-  Target,
-  Users,
-  BookOpen,
-  Activity,
-  Settings,
-  Mail,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Filter,
-  Plus,
-  Eye,
-  Trash2,
-  Edit
-} from 'lucide-react';
+import { FileText, Download, TrendingUp, BarChart3, Target, Users, Settings, AlertTriangle, CheckCircle, Clock, Plus, Trash2, Edit } from 'lucide-react';
 
 interface ReportTemplate {
   id: string;

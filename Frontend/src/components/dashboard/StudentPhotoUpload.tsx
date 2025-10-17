@@ -6,18 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useMobileOptimization, getOptimalImageSize } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
-import {
-  Upload,
-  Camera,
-  Image as ImageIcon,
-  X,
-  CheckCircle,
-  AlertCircle,
-  RefreshCw,
-  Download,
-  Trash2,
-  ZoomIn
-} from 'lucide-react';
+import { Upload, Camera, X, CheckCircle, AlertCircle, RefreshCw, Trash2, ZoomIn } from 'lucide-react';
 
 interface StudentPhotoUploadProps {
   studentId: string;

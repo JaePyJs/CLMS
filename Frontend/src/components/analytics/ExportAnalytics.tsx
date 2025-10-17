@@ -14,18 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Download,
-  FileText,
-  FileSpreadsheet,
-  File,
-  Calendar,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  Settings,
-  BarChart
-} from 'lucide-react'
+import { Download, Clock } from 'lucide-react';
 
 interface ExportAnalyticsProps {
   timeframe: 'day' | 'week' | 'month'

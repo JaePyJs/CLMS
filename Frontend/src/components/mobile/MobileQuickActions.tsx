@@ -6,22 +6,7 @@ import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useTouchOptimization } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
-import {
-  Camera,
-  BookOpen,
-  Users,
-  Library,
-  Plus,
-  Search,
-  Clock,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  BarChart3,
-  Settings,
-  Zap,
-  ArrowRight,
-} from 'lucide-react';
+import { Zap, ArrowRight } from 'lucide-react';
 
 interface QuickAction {
   id: string;
