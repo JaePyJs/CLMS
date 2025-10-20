@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea'
 import { useMobileOptimization, useTouchOptimization, useAccessibility, getResponsiveClasses } from '@/hooks/useMobileOptimization'
 import { useAppStore } from '@/store/useAppStore'
-import { DashboardCardSkeleton, EmptyState } from '@/components/LoadingStates'
+import { DashboardCardSkeleton } from '@/components/LoadingStates'
 import { Monitor, Gamepad2, Cpu, Play, Square, RotateCcw, CheckCircle, Clock, User, WifiOff, Calendar, Tool, TrendingUp, Search, Plus, Edit, MapPin, Tag, RefreshCw, Eye } from 'lucide-react';
 
 interface EquipmentItem {

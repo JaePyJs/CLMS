@@ -53,7 +53,6 @@ export function EquipmentDashboard() {
 
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const { equipment: equipmentData, isOnline } = useAppStore()
-  const { mutate: startSession } = useStartSession()
   const { mutate: endSession } = useEndSession()
 
   // Mock equipment data for now
