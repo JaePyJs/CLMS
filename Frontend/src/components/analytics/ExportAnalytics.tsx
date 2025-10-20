@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, type ComponentType } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Download, Clock } from 'lucide-react';
+import { Download, Clock, BarChart, FileText, Settings, FileSpreadsheet, Calendar, File } from 'lucide-react'
 
 interface ExportAnalyticsProps {
   timeframe: 'day' | 'week' | 'month'
@@ -26,7 +26,7 @@ interface ExportSection {
   id: string
   name: string
   description: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: ComponentType<{ className?: string }>
   defaultIncluded: boolean
 }
 
@@ -34,7 +34,7 @@ interface ExportFormat {
   id: 'csv' | 'json' | 'pdf'
   name: string
   description: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: ComponentType<{ className?: string }>
   fileSize: string
   processingTime: string
 }

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, type ComponentType } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
-import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Activity, BarChart, Target, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Activity, BarChart, Target, Calendar, Users, BookOpen, Monitor, DollarSign, Clock } from 'lucide-react'
 
 interface MetricsCardsProps {
   timeframe: 'day' | 'week' | 'month'
@@ -17,7 +17,7 @@ interface MetricCard {
   value: string | number
   change?: number
   changeType?: 'increase' | 'decrease' | 'neutral'
-  icon: React.ComponentType<{ className?: string }>
+  icon: ComponentType<{ className?: string }>
   description: string
   status?: 'success' | 'warning' | 'error' | 'info'
   progress?: number
