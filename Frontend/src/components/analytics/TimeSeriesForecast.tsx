@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -121,20 +120,6 @@ export function TimeSeriesForecast({
       minValue: Math.min(...data.map(d => Math.min(d.value, d.predicted || d.value, d.lowerBound || d.value)))
     }
   }, [data])
-
-  // Format tooltip content
-  const formatTooltip = (value: any, name: string, props: any) => {
-    if (name === 'Actual' || name === 'Historical') {
-      return [`${value} ${config.unit}`, name]
-    }
-    if (name === 'Predicted') {
-      return [`${value} ${config.unit}`, name]
-    }
-    if (name === 'Upper Bound' || name === 'Lower Bound') {
-      return [`${value} ${config.unit}`, name]
-    }
-    return [value, name]
-  }
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {

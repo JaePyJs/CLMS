@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  BarChart,
-  Bar,
   LineChart,
   Line,
   PieChart,
@@ -59,7 +57,7 @@ export function FineCollectionAnalytics({ timeframe, data, isLoading = false }: 
   const [selectedView, setSelectedView] = useState<'overview' | 'trends' | 'categories' | 'patterns'>('overview')
   const [paymentTrends, setPaymentTrends] = useState<PaymentTrend[]>([])
   const [fineCategories, setFineCategories] = useState<FineCategory[]>([])
-  const [overduePatterns, setOverduePatterns] = useState<OverduePattern[]>([])
+
 
   useEffect(() => {
     if (data) {
@@ -235,7 +233,7 @@ export function FineCollectionAnalytics({ timeframe, data, isLoading = false }: 
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ category, percentage, amount }) => `${category}: $${amount.toFixed(0)}`}
+                label={({ category, amount }) => `${category}: $${amount.toFixed(0)}`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="amount"

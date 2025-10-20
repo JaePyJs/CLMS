@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,7 @@ import {
   PieChart,
   RefreshCw,
 } from 'lucide-react';
-import { reportsApi, analyticsApi } from '@/lib/api';
+import { reportsApi } from '@/lib/api';
 
 interface DashboardStats {
   today: {
