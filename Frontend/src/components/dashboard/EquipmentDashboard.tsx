@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useMobileOptimization, useTouchOptimization, useAccessibility, getResponsiveClasses } from '@/hooks/useMobileOptimization'
+import { useMobileOptimization, useTouchOptimization, getResponsiveClasses } from '@/hooks/useMobileOptimization'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -52,8 +52,6 @@ export function EquipmentDashboard() {
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
 
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
-  const [isStartingSession, setIsStartingSession] = useState<string | null>(null)
-  const [isEndingSession, setIsEndingSession] = useState<string | null>(null)
   const { equipment: equipmentData, isOnline } = useAppStore()
   const { mutate: startSession } = useStartSession()
   const { mutate: endSession } = useEndSession()
@@ -122,14 +120,6 @@ export function EquipmentDashboard() {
     if (selectedFilter === 'avr') return item.type === 'avr'
     return true
   })
-
-  const handleStartSession = async (equipmentId: string, studentId: string, timeLimitMinutes: number) => {
-    if (isOnline) {
-      startSession({ equipmentId, studentId, timeLimitMinutes })
-    } else {
-      await offlineActions.startSession(equipmentId, studentId, timeLimitMinutes)
-    }
-  }
 
   const handleEndSession = async (sessionId: string) => {
     if (isOnline) {
