@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,16 +22,14 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Download, Filter, Search, Eye, Shield, AlertTriangle, CheckCircle, XCircle, Database, FileText, RefreshCw, ChevronDown, Activity, Export } from 'lucide-react';
+import { Download, Filter, Search, Eye, Shield, AlertTriangle, CheckCircle, XCircle, Database, FileText, RefreshCw, ChevronDown, Activity } from 'lucide-react';
 
 // Types
 interface AuditLogEntry {

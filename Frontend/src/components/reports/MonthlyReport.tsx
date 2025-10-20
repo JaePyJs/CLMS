@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,14 +10,12 @@ export default function MonthlyReport() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchMonthlyReport();
   }, [month, year]);
 
   const fetchMonthlyReport = async () => {
-    setLoading(true);
     try {
       const response = await reportsApi.getMonthlyReport(month, year);
       if (response.success && response.data) {
@@ -25,8 +23,6 @@ export default function MonthlyReport() {
       }
     } catch (error) {
       console.error('Failed to fetch monthly report:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

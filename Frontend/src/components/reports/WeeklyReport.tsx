@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, Users, BookOpen, Download, CheckCircle2, AlertCircle, Star } from 'lucide-react';
@@ -45,7 +43,7 @@ export default function WeeklyReport() {
       
       const response = await reportsApi.getWeeklyReport(dateStr);
       if (response.success && response.data) {
-        setStats(response.data);
+        setStats(response.data as WeeklyStats);
       } else {
         showMessage('error', 'Failed to load weekly report');
       }
