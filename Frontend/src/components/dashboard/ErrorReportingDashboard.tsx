@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   BarChart,
@@ -114,7 +111,6 @@ const CATEGORY_COLORS = {
 
 export const ErrorReportingDashboard: React.FC = () => {
   const [timeframe, setTimeframe] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
-  const [selectedError, setSelectedError] = useState<ErrorReport | null>(null);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [showResolved, setShowResolved] = useState(false);
