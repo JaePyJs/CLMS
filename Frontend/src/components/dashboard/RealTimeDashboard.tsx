@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 import { Monitor, Activity, Wifi, WifiOff, AlertTriangle, CheckCircle, Clock, Zap, MessageSquare, Bell, RefreshCw, Settings, TrendingUp } from 'lucide-react';
 
 interface RealTimeDashboardProps {
@@ -12,7 +11,6 @@ interface RealTimeDashboardProps {
 }
 
 export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
-  const { user } = useAuth();
   const {
     isConnected,
     isConnecting,
@@ -26,7 +24,6 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
     refreshDashboard
   } = useWebSocketContext();
 
-  const [selectedTimeRange, setSelectedTimeRange] = useState<'hour' | 'day' | 'week'>('day');
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Auto-refresh dashboard data

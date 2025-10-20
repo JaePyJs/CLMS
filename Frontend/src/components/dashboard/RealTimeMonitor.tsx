@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { useScannerMonitor } from '@/hooks/useUSBScanner';
 import { toast } from 'sonner';
-import { Activity, Users, Monitor, Wifi, WifiOff, AlertCircle, CheckCircle, TrendingUp, Zap, RefreshCw, Bell, Camera, Radio } from 'lucide-react';
+import { Activity, Users, Monitor, WifiOff, AlertCircle, CheckCircle, TrendingUp, Zap, RefreshCw, Bell, Camera, Radio } from 'lucide-react';
 
 interface RealTimeMonitorProps {
   showScanner?: boolean;
@@ -20,10 +20,9 @@ interface RealTimeMonitorProps {
 export function RealTimeMonitor({
   showScanner = true,
   showActivities = true,
-  showEquipment = true,
-  compact = false
+  showEquipment = true
 }: RealTimeMonitorProps) {
-  const { isMobile, isTablet } = useMobileOptimization();
+  const { isMobile } = useMobileOptimization();
   const {
     isConnected,
     recentActivities,
