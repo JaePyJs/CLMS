@@ -51,7 +51,7 @@ export function CSVImportDialog({
   onImport,
   entityName = 'records'
 }: CSVImportDialogProps) {
-  const { isMobile, isTablet } = useMobileOptimization();
+  const { isMobile } = useMobileOptimization();
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);

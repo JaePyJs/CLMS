@@ -95,7 +95,6 @@ export function BookCatalog() {
   const [isAddingBook, setIsAddingBook] = useState(false);
   const [isUpdatingBook, setIsUpdatingBook] = useState(false);
   const [isDeletingBook, setIsDeletingBook] = useState(false);
-  const [isGeneratingBarcodes, setIsGeneratingBarcodes] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
   // Form state
