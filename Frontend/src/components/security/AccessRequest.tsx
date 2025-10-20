@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Clock, CheckCircle, XCircle, AlertTriangle, FileText, Send, Eye, Users, Info, Loader2 } from 'lucide-react';
 
@@ -670,8 +669,6 @@ interface AccessRequestTableProps {
 
 const AccessRequestTable: React.FC<AccessRequestTableProps> = ({
   requests,
-  currentUser,
-  isApprover,
   onApprove,
   onDeny,
   onSelect,
