@@ -163,7 +163,6 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   }
 
   // Use error boundaries for API calls to prevent crashes
-  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics()
   const { data: timeline, isLoading: timelineLoading } = useActivityTimeline(10)
   const { data: healthData } = useHealthCheck()
 
@@ -178,12 +177,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const runningJobs = automationJobs?.filter(job => job.status === 'running').length || 0
 
   // Additional real metrics (initialized to 0)
-  const totalStudents = 0
-  const pendingTasks = 0
   const equipmentInUse = 0
   const availableComputers = 3 // Total computers in library
-  const availablePrinters = 1 // Total printers
-  const availableRecreational = 1 // Total recreational stations
 
   return (
     <div className={`space-y-8 ${isFullscreen ? 'fixed inset-0 z-50 bg-white dark:bg-gray-900 p-6 overflow-auto' : ''}`}>
@@ -504,7 +499,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                 </div>
               ) : timeline && Array.isArray(timeline) && timeline.length > 0 ? (
                 <div className="space-y-4">
-                  {(timeline as any[]).map((activity: any, index) => (
+                  {(timeline as any[]).map((activity: any, _) => (
                     <div key={activity.id} className="flex items-start space-x-4 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50/30 dark:from-gray-800/50 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 shadow-sm">
                       <div className="flex-shrink-0 mt-1">
                         <div className={`h-3 w-3 rounded-full shadow-sm ${activity.status === 'active' ? 'bg-green-500 shadow-green-500/50' : activity.status === 'completed' ? 'bg-blue-500 shadow-blue-500/50' : activity.status === 'expired' ? 'bg-yellow-500 shadow-yellow-500/50' : 'bg-gray-500 shadow-gray-500/50'}`}></div>
