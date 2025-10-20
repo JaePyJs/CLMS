@@ -9,7 +9,6 @@ import React, {
 } from 'react';
 import type { ComponentType, ReactNode, ProfilerOnRenderCallback } from 'react';
 import { VariableSizeList as List } from 'react-window';
-import { fixedSizeListStyles } from 'react-window/dist/umd/ReactWindow';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Activity, BarChart3 } from 'lucide-react';
@@ -85,12 +84,12 @@ export const withPerformanceMonitoring = <P extends object>(
     const renderStartTime = useRef<number>(Date.now());
 
     const onRender: ProfilerOnRenderCallback = (
-      id,
-      phase,
+      _id,
+      _phase,
       actualDuration,
-      baseDuration,
-      startTime,
-      commitTime
+      _baseDuration,
+      _startTime,
+      _commitTime
     ) => {
       const renderTime = actualDuration;
       renderStartTime.current = Date.now();
@@ -152,7 +151,6 @@ interface VirtualizedListProps<T> {
 
 export const VirtualizedList = <T,>({
   items,
-  itemHeight,
   itemSize,
   renderItem,
   height,
