@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useMobileOptimization, useTouchOptimization, useAccessibility, getResponsiveClasses } from '@/hooks/useMobileOptimization'
 import { Button } from '@/components/ui/button'
@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useEquipment, useStartSession, useEndSession } from '@/hooks/api-hooks'
+import { useStartSession, useEndSession } from '@/hooks/api-hooks'
 import { useAppStore } from '@/store/useAppStore'
 import { offlineActions } from '@/lib/offline-queue'
 import { DashboardCardSkeleton, CardSkeleton, ButtonLoading, EmptyState } from '@/components/LoadingStates'
@@ -22,7 +22,6 @@ import {
   Clock,
   User,
   Settings,
-  Wifi,
   WifiOff
 } from 'lucide-react'
 
@@ -48,12 +47,11 @@ interface EquipmentItem {
 
 export function EquipmentDashboard() {
   // Mobile optimization
-  const { isMobile, isTablet, isDesktop } = useMobileOptimization();
-  const { handleTouchStart, handleTouchEnd, gesture } = useTouchOptimization();
-  const { prefersReducedMotion } = useAccessibility();
+  const mobileState = useMobileOptimization();
+  const { isMobile } = mobileState;
+  const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
 
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
-  const [isLoading, setIsLoading] = useState(false)
   const [isStartingSession, setIsStartingSession] = useState<string | null>(null)
   const [isEndingSession, setIsEndingSession] = useState<string | null>(null)
   const { equipment: equipmentData, isOnline } = useAppStore()
@@ -181,17 +179,11 @@ export function EquipmentDashboard() {
     return (elapsed / session.timeLimitMinutes) * 100
   }
 
-  // Handle double-tap to refresh on mobile
-  useEffect(() => {
-    if (isMobile && gesture === 'double-tap') {
-      // Refresh equipment data
-      window.location.reload();
-    }
-  }, [gesture, isMobile]);
+  // Handle double-tap to refresh on mobile - removed gesture functionality
 
   return (
     <div 
-      className={getResponsiveClasses('space-y-6', { isMobile, isTablet })}
+      className={getResponsiveClasses('space-y-6', mobileState)}
       onTouchStart={isMobile ? handleTouchStart : undefined}
       onTouchEnd={isMobile ? handleTouchEnd : undefined}
     >

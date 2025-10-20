@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useMobileOptimization, useTouchOptimization, useAccessibility, getResponsiveClasses } from '@/hooks/useMobileOptimization'
 import { useAppStore } from '@/store/useAppStore'
 import { DashboardCardSkeleton, EmptyState } from '@/components/LoadingStates'
-import { Monitor, Gamepad2, Cpu, Play, Square, RotateCcw, CheckCircle, Clock, User, Wifi, WifiOff, Calendar, Tool, TrendingUp, Search, Filter, Plus, Edit, MapPin, Tag, Check, RefreshCw, Eye } from 'lucide-react';
+import { Monitor, Gamepad2, Cpu, Play, Square, RotateCcw, CheckCircle, Clock, User, Wifi, WifiOff, Calendar, Tool, TrendingUp, Search, Plus, Edit, MapPin, Tag, RefreshCw, Eye } from 'lucide-react';
 
 interface EquipmentItem {
   id: string
@@ -89,9 +89,8 @@ interface EquipmentMetrics {
 
 export function EnhancedEquipmentDashboard() {
   // Mobile optimization
-  const { isMobile, isTablet, isDesktop } = useMobileOptimization()
-  const { handleTouchStart, handleTouchEnd, gesture } = useTouchOptimization()
-  const { prefersReducedMotion } = useAccessibility()
+  const { isMobile, isTablet } = useMobileOptimization()
+  const { handleTouchStart, handleTouchEnd } = useTouchOptimization()
 
   // State management
   const [equipment, setEquipment] = useState<EquipmentItem[]>([])
@@ -100,7 +99,7 @@ export function EnhancedEquipmentDashboard() {
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [selectedLocation, setSelectedLocation] = useState('all')
+  const [selectedLocation] = useState('all')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false)
   const [showReservationDialog, setShowReservationDialog] = useState(false)
@@ -333,13 +332,6 @@ export function EnhancedEquipmentDashboard() {
   const formatTimeRemaining = (minutes: number) => {
     if (minutes <= 0) return 'Expired'
     return `${minutes}m remaining`
-  }
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount)
   }
 
   // Action handlers
