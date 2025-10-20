@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -67,7 +67,7 @@ interface BookStats {
 
 export function BookCatalog() {
   // Mobile optimization
-  const { isMobile, isTablet, isDesktop } = useMobileOptimization();
+  const { isMobile } = useMobileOptimization();
 
   // State management
   const [books, setBooks] = useState<Book[]>([]);

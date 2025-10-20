@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useAutomationJobs, useTriggerJob, useGoogleSheetsTest } from '@/hooks/api-hooks'
+import { useTriggerJob, useGoogleSheetsTest } from '@/hooks/api-hooks'
 import { useAppStore } from '@/store/useAppStore'
 import { DashboardCardSkeleton, CardSkeleton, ButtonLoading, LoadingSpinner } from '@/components/LoadingStates'
 import { Bot, Play, Square, RotateCcw, CheckCircle, AlertCircle, Clock, Database, FileSpreadsheet, Calendar, Activity, Settings, RefreshCw } from 'lucide-react';
@@ -24,8 +24,8 @@ interface AutomationJob {
 
 export function AutomationDashboard() {
   const [selectedTab, setSelectedTab] = useState('jobs')
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [triggeringJobId, setTriggeringJobId] = useState<string | null>(null)
+
+
   const { automationJobs } = useAppStore()
   const { mutate: triggerJob } = useTriggerJob()
   const { data: googleSheetsStatus } = useGoogleSheetsTest()
