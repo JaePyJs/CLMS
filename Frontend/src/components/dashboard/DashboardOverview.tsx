@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,14 +11,14 @@ import { AddStudentDialog } from './AddStudentDialog'
 import { RealTimeDashboard } from './RealTimeDashboard'
 import { utilitiesApi } from '@/lib/api'
 import { toast } from 'sonner'
-import { DashboardCardSkeleton, ButtonLoading } from '@/components/LoadingStates'
+import { DashboardCardSkeleton } from '@/components/LoadingStates'
 import { Users, Monitor, Clock, TrendingUp, AlertCircle, CheckCircle, Activity, Wifi, CalendarDays, FileText, Shield, Download, Printer, Maximize2, Minimize2, AlertTriangle, Settings, BarChart3, Eye, Edit, ExternalLink, Bell } from 'lucide-react';
 
 interface DashboardOverviewProps {
   onTabChange?: (tab: string) => void;
 }
 
-export function DashboardOverview({ onTabChange }: DashboardOverviewProps = {}) {
+export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const { user } = useAuth()
   const { isOnline, connectedToBackend, activities, automationJobs } = useAppStore()
   const { isConnected: wsConnected, notifications } = useWebSocketContext()
@@ -31,13 +31,11 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps = {}) 
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false)
   
   // Quick Actions loading states
-  const [isAddingStudent, setIsAddingStudent] = useState(false)
-  const [isStartingSession, setIsStartingSession] = useState(false)
+  const [isStartingSession] = useState(false)
   const [isViewingReport, setIsViewingReport] = useState(false)
   const [isRunningBackup, setIsRunningBackup] = useState(false)
 
   // New loading states for enhanced functionality
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [isPrinting, setIsPrinting] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -72,7 +70,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps = {}) 
         console.log('Quick Report:', response.data)
 
         // Show key metrics in toast
-        const report = response.data
+        const report = response.data as { summary: { totalStudents: number; todayActivities: number; equipmentUtilization: number } }
         toast(`${report.summary.totalStudents} students, ${report.summary.todayActivities} activities today, ${report.summary.equipmentUtilization}% equipment utilization`)
       } else {
         toast.error(response.error || 'Failed to generate report')
@@ -91,7 +89,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps = {}) 
       const response = await utilitiesApi.quickBackup()
 
       if (response.success) {
-        toast.success(`Backup initiated! ${response.data.estimatedDuration} estimated duration.`)
+        const data = response.data as { estimatedDuration?: string }
+        toast.success(`Backup initiated! ${data?.estimatedDuration ?? 'Unknown'} estimated duration.`)
       } else {
         toast.error(response.error || 'Failed to initiate backup')
       }
@@ -104,16 +103,6 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps = {}) 
   }
 
   // Enhanced functionality handlers
-  const handleRefresh = async () => {
-    try {
-      setIsRefreshing(true)
-      window.location.reload()
-    } catch (error) {
-      toast.error('Failed to refresh dashboard')
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
 
   const handleExport = async () => {
     try {

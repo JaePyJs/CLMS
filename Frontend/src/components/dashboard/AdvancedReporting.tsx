@@ -77,11 +77,8 @@ export function AdvancedReporting() {
   const [reportConfigs, setReportConfigs] = useState<ReportConfig[]>([]);
   const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>([]);
   const [alertConfigs, setAlertConfigs] = useState<AlertConfig[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [editingConfig, setEditingConfig] = useState<ReportConfig | null>(null);
-  const isLargeScreen = useBreakpoint('lg');
 
   // Mock data for demonstration
   const reportTemplates: ReportTemplate[] = [
