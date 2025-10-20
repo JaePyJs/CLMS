@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { Monitor, Activity, Wifi, WifiOff, AlertTriangle, CheckCircle, Clock, Zap, MessageSquare, Bell, RefreshCw, Settings, TrendingUp } from 'lucide-react';
 
 interface RealTimeDashboardProps {

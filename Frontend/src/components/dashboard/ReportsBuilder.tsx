@@ -18,7 +18,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -28,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { PieChart, TrendingUp, FileText, Download, Printer, Mail, Calendar, Settings, Save, Play, Eye, Edit, Trash2, Plus, Users, BookOpen, Monitor, Activity, RefreshCw, Share2, Star, CalendarClock, BarChart, LineChart, AreaChart, ScatterChart } from 'lucide-react';
+import { PieChart, TrendingUp, FileText, Download, Printer, Mail, Settings, Save, Play, Eye, Edit, Trash2, Plus, Users, BookOpen, Monitor, Activity, RefreshCw, Share2, Star, CalendarClock, BarChart, LineChart, AreaChart, ScatterChart } from 'lucide-react';
 
 interface ReportTemplate {
   id: string;
@@ -86,7 +85,7 @@ export function ReportsBuilder() {
   const [reportTemplates, setReportTemplates] = useState<ReportTemplate[]>([]);
   const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
-  const [reportConfig, setReportConfig] = useState<ReportConfig | null>(null);
+  const [reportConfig] = useState<ReportConfig | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
 
@@ -94,15 +93,9 @@ export function ReportsBuilder() {
   const [showCreateReport, setShowCreateReport] = useState(false);
   const [showEditTemplate, setShowEditTemplate] = useState(false);
   const [showScheduleReport, setShowScheduleReport] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-
   // Loading states
   const [isExporting, setIsExporting] = useState(false);
-  const [isEmailing, setIsEmailing] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
-  const [isLoadingReports, setIsLoadingReports] = useState(true);
-
   // Mock data
   const mockTemplates: ReportTemplate[] = [
     {
@@ -268,19 +261,6 @@ export function ReportsBuilder() {
       toast.error('Failed to export report');
     } finally {
       setIsExporting(false);
-    }
-  };
-
-  const handleEmailReport = async (report: GeneratedReport, email: string) => {
-    setIsEmailing(true);
-    try {
-      // Simulate email sending
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      toast.success(`Report emailed to ${email} successfully!`);
-    } catch (error) {
-      toast.error('Failed to email report');
-    } finally {
-      setIsEmailing(false);
     }
   };
 
