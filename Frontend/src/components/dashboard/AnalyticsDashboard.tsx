@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useUsageStats, useActivityTimeline, useExportData } from '@/hooks/api-hooks'
-import { useAppStore } from '@/store/useAppStore'
-import { DashboardCardSkeleton, LoadingSpinner, ButtonLoading } from '@/components/LoadingStates'
+import { useUsageStats, useActivityTimeline } from '@/hooks/api-hooks'
+
+import { DashboardCardSkeleton, LoadingSpinner } from '@/components/LoadingStates'
 import { useBreakpoint } from '@/hooks/useBreakpoint'
 import PredictiveInsights from '@/components/analytics/PredictiveInsights'
 import UsageHeatMap from '@/components/analytics/UsageHeatMap'
@@ -32,7 +32,7 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts'
-import { Clock, Activity } from 'lucide-react';
+import { Clock, Activity, RefreshCw } from 'lucide-react';
 
 export function AnalyticsDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month'>('week')
@@ -45,8 +45,8 @@ export function AnalyticsDashboard() {
   const [selectedMetric, setSelectedMetric] = useState<'student_visits' | 'equipment_usage' | 'book_circulation'>('student_visits')
   const [comprehensiveData, setComprehensiveData] = useState<any>(null)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
-  const { activities } = useAppStore()
-  const { mutate: exportData } = useExportData()
+
+
   const isLargeScreen = useBreakpoint('lg')
 
   // Mock data for charts
@@ -198,22 +198,6 @@ export function AnalyticsDashboard() {
     fetchComprehensiveData()
   }
 
-  const calculateTotalStudents = () => {
-    return currentUsageData.reduce((sum, item) => sum + item.students, 0)
-  }
-
-  const calculatePeakTime = () => {
-    const maxItem = currentUsageData.reduce((max, item) =>
-      item.students > max.students ? item : max, currentUsageData[0])
-    return 'time' in maxItem ? maxItem.time :
-           'day' in maxItem ? maxItem.day :
-           'week' in maxItem ? maxItem.week : 'Unknown'
-  }
-
-  const calculateAverageSessionTime = () => {
-    // Mock calculation
-    return '32 minutes'
-  }
 
   return (
     <div className="space-y-6">
