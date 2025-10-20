@@ -1,8 +1,7 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { Activity, Users, Monitor, Gamepad2, BookOpen } from 'lucide-react'
+import { Activity, Users, Monitor } from 'lucide-react'
 
 interface HeatMapData {
   hour: number
@@ -27,13 +26,6 @@ const ACTIVITY_COLORS = {
   BOOK_BORROW: '#f59e0b',
   BOOK_RETURN: '#ef4444',
   VR_SESSION: '#06b6d4'
-}
-
-const GRADE_COLORS = {
-  PRIMARY: '#22c55e',
-  GRADE_SCHOOL: '#3b82f6',
-  JUNIOR_HIGH: '#8b5cf6',
-  SENIOR_HIGH: '#f59e0b'
 }
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -105,17 +97,6 @@ export function UsageHeatMap({
     if (normalizedIntensity < 0.6) return 'bg-blue-300'
     if (normalizedIntensity < 0.8) return 'bg-blue-400'
     return 'bg-blue-500'
-  }
-
-  // Get activity icon
-  const getActivityIcon = (activityType?: string) => {
-    switch (activityType) {
-      case 'COMPUTER_USE': return <Monitor className="h-4 w-4" />
-      case 'GAMING': return <Gamepad2 className="h-4 w-4" />
-      case 'BOOK_BORROW':
-      case 'BOOK_RETURN': return <BookOpen className="h-4 w-4" />
-      default: return <Activity className="h-4 w-4" />
-    }
   }
 
   // Format cell tooltip

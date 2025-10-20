@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 interface SearchAnalytics {
   totalSearches: number;
   averageResponseTime: number;
+  averageSearchesPerDay?: number;
   popularSearchTerms: Array<{
     term: string;
     count: number;
@@ -112,15 +113,15 @@ export default function SearchAnalytics() {
       ]);
 
       if (analyticsRes.success) {
-        setAnalytics(analyticsRes.data);
+        setAnalytics(analyticsRes.data as SearchAnalytics);
       }
 
       if (performanceRes.success) {
-        setPerformanceMetrics(performanceRes.data);
+        setPerformanceMetrics(performanceRes.data as PerformanceMetrics);
       }
 
       if (behaviorRes.success) {
-        setUserBehavior(behaviorRes.data);
+        setUserBehavior(behaviorRes.data as UserBehavior);
       }
     } catch (error) {
       console.error('Failed to load analytics data:', error);
@@ -308,7 +309,7 @@ export default function SearchAnalytics() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <PieChartIcon className="w-5 h-5" />
+                      <PieChart className="w-5 h-5" />
                       Search Distribution
                     </CardTitle>
                     <CardDescription>
@@ -328,7 +329,7 @@ export default function SearchAnalytics() {
                           fill="#8884d8"
                           dataKey="count"
                         >
-                          {analytics.entityBreakdown.map((entry, index) => (
+                          {analytics.entityBreakdown.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
