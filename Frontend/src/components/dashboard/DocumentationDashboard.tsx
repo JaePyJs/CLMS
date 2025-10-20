@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle, AlertCircle, XCircle, RefreshCw, FileText, GitBranch, Database, TestTube, Package } from 'lucide-react';
@@ -151,7 +150,6 @@ export function DocumentationDashboard() {
     );
   }
 
-  const totalTests = docsInfo.features.backend.tests + docsInfo.features.frontend.tests;
   const totalEndpoints = docsInfo.features.backend.apiEndpoints;
   const totalServices = docsInfo.features.backend.services;
   const totalTables = docsInfo.features.backend.databaseTables;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,9 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { useBreakpoint } from '@/hooks/useBreakpoint';
-import { LoadingSpinner, ButtonLoading } from '@/components/LoadingStates';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ButtonLoading } from '@/components/LoadingStates';
 import { FileText, Download, TrendingUp, BarChart3, Target, Users, Settings, AlertTriangle, CheckCircle, Clock, Plus, Trash2, Edit } from 'lucide-react';
 
 interface ReportTemplate {
@@ -73,7 +72,6 @@ interface AlertConfig {
 
 export function AdvancedReporting() {
   const [activeTab, setActiveTab] = useState('templates');
-  const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
   const [reportConfigs, setReportConfigs] = useState<ReportConfig[]>([]);
   const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>([]);
   const [alertConfigs, setAlertConfigs] = useState<AlertConfig[]>([]);
