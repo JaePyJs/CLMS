@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,7 +66,7 @@ export default function GoogleSheetsConfig() {
     queryFn: async () => {
       try {
         const response = await settingsApi.getGoogleSheetsConfig();
-        const data = response.data || DEFAULT_CONFIG;
+        const data = (response.data as GoogleSheetsConfig) || DEFAULT_CONFIG;
         setLocalConfig(data);
         return data;
       } catch (err: any) {
@@ -115,7 +115,8 @@ export default function GoogleSheetsConfig() {
       settingsApi.testGoogleSheetsConnection(spreadsheetId),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['google-sheets-config'] });
-      toast.success(response.data?.message || 'Successfully connected to Google Sheets!');
+      const data = response.data as { message?: string };
+      toast.success(data?.message || 'Successfully connected to Google Sheets!');
       setLocalConfig((prev) => ({ ...prev, connectionStatus: 'connected' }));
     },
     onError: (error: any) => {
@@ -129,7 +130,8 @@ export default function GoogleSheetsConfig() {
     mutationFn: () => settingsApi.syncGoogleSheets(),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['google-sheets-config'] });
-      const recordCount = response.data?.recordCount || 0;
+      const data = response.data as { recordCount?: number };
+      const recordCount = data?.recordCount || 0;
       toast.success(`Successfully synced ${recordCount} records!`);
     },
     onError: (error: any) => {

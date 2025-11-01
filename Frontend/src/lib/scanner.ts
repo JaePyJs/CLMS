@@ -1,25 +1,7 @@
-import { BrowserMultiFormatReader, BarcodeFormat } from '@zxing/browser';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAppStore } from '@/store/useAppStore';
-
-// Scanner configuration
-const SCANNER_CONFIG = {
-  formats: [
-    BarcodeFormat.QR_CODE,
-    BarcodeFormat.CODE_128,
-    BarcodeFormat.CODE_39,
-    BarcodeFormat.EAN_13,
-    BarcodeFormat.EAN_8,
-    BarcodeFormat.UPC_A,
-    BarcodeFormat.UPC_E,
-  ],
-  constraints: {
-    facingMode: 'environment', // Use back camera if available
-    width: { ideal: 640 },
-    height: { ideal: 480 },
-  },
-};
 
 // Types for scanner
 export interface ScannerResult {

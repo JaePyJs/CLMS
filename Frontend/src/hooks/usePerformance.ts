@@ -5,7 +5,7 @@
  * for tracking render performance, API calls, and user interactions.
  */
 
-import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { UseQueryOptions } from '@tanstack/react-query';
 
@@ -436,7 +436,7 @@ export const useLazyLoad = <T>(
       async (entries) => {
         const [entry] = entries;
 
-        if (entry.isIntersecting) {
+        if (entry && entry.isIntersecting) {
           setLoading(true);
           setError(null);
 
@@ -516,7 +516,7 @@ export const useOptimizedImage = (src: string, options: {
       async (entries) => {
         const [entry] = entries;
 
-        if (entry.isIntersecting) {
+        if (entry && entry.isIntersecting) {
           const startTime = performance.now();
 
           try {

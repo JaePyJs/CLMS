@@ -1,16 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
 import DOMPurify from 'isomorphic-dompurify';
+import type { Config as DOMPurifyConfig } from 'dompurify';
+import type { ParsedQs } from 'qs';
 import { z } from 'zod';
 import { logger } from '@/utils/logger';
 import { ValidationError } from '@/errors/error-types';
-import { SecurityMonitoringService, SecurityEventType } from './securityMonitoringService';
+import {
+  SecurityMonitoringService,
+  SecurityEventType,
+} from './securityMonitoringService';
 
 // Input validation levels
 export enum ValidationLevel {
   BASIC = 'basic',
   STANDARD = 'standard',
   STRICT = 'strict',
-  PARANOID = 'paranoid'
+  PARANOID = 'paranoid',
 }
 
 // Input types
@@ -29,17 +34,17 @@ export enum InputType {
   LDAP = 'ldap',
   COMMAND = 'command',
   FILENAME = 'filename',
-  PATH = 'path'
+  PATH = 'path',
 }
 
 // Validation result interface
 export interface ValidationResult {
   isValid: boolean;
-  sanitizedValue?: any;
+  sanitizedValue?: unknown;
   errors: string[];
   warnings: string[];
   metadata: {
-    originalValue: any;
+    originalValue: unknown;
     validationLevel: ValidationLevel;
     inputType: InputType;
     processingTime: number;
@@ -73,9 +78,9 @@ const SECURITY_PATTERNS = {
     /(\b(LOAD_FILE|INTO\s+OUTFILE|INTO\s+DUMPFILE)\b)/i,
     /(\b(GRANT|REVOKE|ALL\s+PRIVILEGES)\b)/i,
     /(\b(INFORMATION_SCHEMA|MYSQL|PG_|SYS\.|MASTER\.)\b)/i,
-    /(--|\#|\/\*|\*\/)/,
+    /( --|#|\/\*|\*\/)/,
     /(\bWAITFOR\s+DELAY\b)/i,
-    /(\b(BENCHMARK|SLEEP)\s*\()/i
+    /(\b(BENCHMARK|SLEEP)\s*\()/i,
   ],
 
   // XSS patterns
@@ -94,7 +99,7 @@ const SECURITY_PATTERNS = {
     /data:text\/html/i,
     /<img[^>]*src[^>]*javascript:/gi,
     /<\s*!\[CDATA\[/gi,
-    /<\!\[endif\]>/gi
+    /<!\[endif\]>/gi,
   ],
 
   // Command injection patterns
@@ -109,28 +114,28 @@ const SECURITY_PATTERNS = {
     /\/etc\/passwd/i,
     /\/bin\/sh/i,
     /cmd\.exe/i,
-    /powershell/i
+    /powershell/i,
   ],
 
   // Path traversal patterns
   PATH_TRAVERSAL: [
-    /(\.\.[\/\\])/g,
-    /(%2e%2e[\/\\])/gi,
+    /(\.\.[/\\])/g,
+    /(%2e%2e[/\\])/gi,
     /(\.\.%2f|\.\.%5c)/gi,
-    /(%252e%252e[\/\\])/gi,
+    /(%252e%252e[/\\])/gi,
     /(\/proc\/|\/sys\/|\/dev\/)/i,
     /(windows\\system32|c:\\\\)/i,
-    /(\/var\/log|\/tmp\/|\/temp\/)/i
+    /(\/var\/log|\/tmp\/|\/temp\/)/i,
   ],
 
   // LDAP injection patterns
   LDAP_INJECTION: [
     /(\*|\(|\)|\\|\||&|!|=)/gi,
-    /(\*\)\(\)\(uid)/gi,
-    /(\*\)\(\)\(|\(\&\)|\(\|))/gi,
-    /(\*\)\(uid=\*)/gi,
-    /(\*\)\(\)/gi,
-    /(objectClass|cn|ou|dc)=/gi
+    new RegExp(String.raw`\*\)\(\)\(uid`, 'gi'),
+    new RegExp(String.raw`\*\)\(\)\(|\(\&\)|\(\|\))`, 'gi'),
+    new RegExp(String.raw`\*\)\(uid=\*`, 'gi'),
+    new RegExp(String.raw`\*\)\(\)`, 'gi'),
+    /(objectClass|cn|ou|dc)=/gi,
   ],
 
   // NoSQL injection patterns
@@ -139,17 +144,17 @@ const SECURITY_PATTERNS = {
     /(\$where|\$ne|\$gt|\$lt|\$in|\$nin)/gi,
     /(\$regex|\$exists|\$type)/gi,
     /(mapReduce|group|aggregate)/gi,
-    /(\$eval|\$function)/gi
+    /(\$eval|\$function)/gi,
   ],
 
   // XXE injection patterns
   XXE_INJECTION: [
     /<!DOCTYPE[^>]*>/gi,
-    /<\!ENTITY[^>]*>/gi,
-    /<\!ATTLIST[^>]*>/gi,
-    /<\!ELEMENT[^>]*>/gi,
+    /<!ENTITY[^>]*>/gi,
+    /<!ATTLIST[^>]*>/gi,
+    /<!ELEMENT[^>]*>/gi,
     /(&[a-zA-Z]+;|&#\d+;)/gi,
-    /(SYSTEM|PUBLIC)\s+"[^"]*"/gi
+    /(SYSTEM|PUBLIC)\s+"[^"]*"/gi,
   ],
 
   // SSRF patterns
@@ -158,7 +163,7 @@ const SECURITY_PATTERNS = {
     /(169\.254\.|10\.|172\.1[6-9]\.|172\.2[0-9]\.|172\.3[0-1]\.)/gi,
     /(192\.168\.|::ffff:)/gi,
     /(file:\/\/|gopher:\/\/|dict:\/\/)/gi,
-    /(\.internal|\.local|\.localhost)/gi
+    /(\.internal|\.local|\.localhost)/gi,
   ],
 
   // Cryptographic patterns
@@ -166,12 +171,19 @@ const SECURITY_PATTERNS = {
     /(private[_\s]?key|secret[_\s]?key|password|passwd)/gi,
     /(api[_\s]?key|token|jwt|session)/gi,
     /(aes|des|rsa|sha|md5|bcrypt)/gi,
-    /(encrypt|decrypt|hash|cipher)/gi
-  ]
+    /(encrypt|decrypt|hash|cipher)/gi,
+  ],
 };
 
+const CONTROL_CHAR_PATTERN = new RegExp(
+  String.raw`[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]`,
+);
+
 // Default sanitization configurations
-const DEFAULT_SANITIZATION_CONFIGS: Record<ValidationLevel, SanitizationConfig> = {
+const DEFAULT_SANITIZATION_CONFIGS: Record<
+  ValidationLevel,
+  SanitizationConfig
+> = {
   [ValidationLevel.BASIC]: {
     removeHTML: true,
     removeScripts: true,
@@ -181,7 +193,7 @@ const DEFAULT_SANITIZATION_CONFIGS: Record<ValidationLevel, SanitizationConfig> 
     strictAttributeFiltering: false,
     maxStringLength: 10000,
     allowUnicode: true,
-    normalizeWhitespace: false
+    normalizeWhitespace: false,
   },
 
   [ValidationLevel.STANDARD]: {
@@ -193,7 +205,7 @@ const DEFAULT_SANITIZATION_CONFIGS: Record<ValidationLevel, SanitizationConfig> 
     strictAttributeFiltering: true,
     maxStringLength: 5000,
     allowUnicode: true,
-    normalizeWhitespace: true
+    normalizeWhitespace: true,
   },
 
   [ValidationLevel.STRICT]: {
@@ -206,11 +218,11 @@ const DEFAULT_SANITIZATION_CONFIGS: Record<ValidationLevel, SanitizationConfig> 
     allowedTags: ['p', 'br', 'strong', 'em', 'u'],
     allowedAttributes: {
       '*': ['class'],
-      'a': ['href']
+      a: ['href'],
     },
     maxStringLength: 2000,
     allowUnicode: false,
-    normalizeWhitespace: true
+    normalizeWhitespace: true,
   },
 
   [ValidationLevel.PARANOID]: {
@@ -224,8 +236,8 @@ const DEFAULT_SANITIZATION_CONFIGS: Record<ValidationLevel, SanitizationConfig> 
     allowedAttributes: {},
     maxStringLength: 1000,
     allowUnicode: false,
-    normalizeWhitespace: true
-  }
+    normalizeWhitespace: true,
+  },
 };
 
 export class InputValidationService {
@@ -239,10 +251,10 @@ export class InputValidationService {
    * Main validation method
    */
   public async validateInput(
-    value: any,
+    value: unknown,
     inputType: InputType,
     validationLevel: ValidationLevel = ValidationLevel.STANDARD,
-    customConfig?: Partial<SanitizationConfig>
+    customConfig?: Partial<SanitizationConfig>,
   ): Promise<ValidationResult> {
     const startTime = Date.now();
     const result: ValidationResult = {
@@ -254,8 +266,8 @@ export class InputValidationService {
         validationLevel,
         inputType,
         processingTime: 0,
-        suspiciousPatterns: []
-      }
+        suspiciousPatterns: [],
+      },
     };
 
     try {
@@ -278,14 +290,24 @@ export class InputValidationService {
 
       // Apply sanitization
       if (result.isValid) {
-        const config = { ...DEFAULT_SANITIZATION_CONFIGS[validationLevel], ...customConfig };
-        result.sanitizedValue = await this.sanitizeValue(value, inputType, config);
+        const config = {
+          ...DEFAULT_SANITIZATION_CONFIGS[validationLevel],
+          ...customConfig,
+        };
+        result.sanitizedValue = await this.sanitizeValue(
+          value,
+          inputType,
+          config,
+        );
       }
 
       result.metadata.processingTime = Date.now() - startTime;
 
       // Log security events if suspicious patterns detected
-      if (result.metadata.suspiciousPatterns && result.metadata.suspiciousPatterns.length > 0) {
+      if (
+        result.metadata.suspiciousPatterns &&
+        result.metadata.suspiciousPatterns.length > 0
+      ) {
         await this.securityMonitor.recordSecurityEvent(
           SecurityEventType.SUSPICIOUS_INPUT,
           {} as Request,
@@ -293,14 +315,18 @@ export class InputValidationService {
             suspiciousPatterns: result.metadata.suspiciousPatterns,
             inputType,
             validationLevel,
-            originalValue: this.maskSensitiveData(stringValue)
-          }
+            originalValue: this.maskSensitiveData(stringValue),
+          },
         );
       }
 
       return result;
     } catch (error) {
-      logger.error('Input validation error', { error, inputType, validationLevel });
+      logger.error('Input validation error', {
+        error,
+        inputType,
+        validationLevel,
+      });
       result.isValid = false;
       result.errors.push('Validation processing failed');
       result.metadata.processingTime = Date.now() - startTime;
@@ -311,7 +337,10 @@ export class InputValidationService {
   /**
    * Check for suspicious patterns
    */
-  private async checkSuspiciousPatterns(value: string, result: ValidationResult): Promise<void> {
+  private async checkSuspiciousPatterns(
+    value: string,
+    result: ValidationResult,
+  ): Promise<void> {
     const suspiciousPatterns: string[] = [];
 
     // Check each security pattern category
@@ -322,9 +351,13 @@ export class InputValidationService {
           result.warnings.push(`Suspicious pattern detected: ${category}`);
 
           // Critical patterns that immediately invalidate input
-          if (['SQL_INJECTION', 'COMMAND_INJECTION', 'XSS'].includes(category)) {
+          if (
+            ['SQL_INJECTION', 'COMMAND_INJECTION', 'XSS'].includes(category)
+          ) {
             result.isValid = false;
-            result.errors.push(`Input contains malicious ${category.toLowerCase()} pattern`);
+            result.errors.push(
+              `Input contains malicious ${category.toLowerCase()} pattern`,
+            );
           }
         }
       }
@@ -333,11 +366,14 @@ export class InputValidationService {
     // Check for encoding-based attacks
     if (this.isEncodedAttack(value)) {
       suspiciousPatterns.push('ENCODED_ATTACK');
-      result.warnings.push('Input appears to be encoded, possible attack attempt');
+      result.warnings.push(
+        'Input appears to be encoded, possible attack attempt',
+      );
     }
 
     // Check for excessive length
-    if (value.length > 100000) { // 100KB
+    if (value.length > 100000) {
+      // 100KB
       suspiciousPatterns.push('EXCESSIVE_LENGTH');
       result.warnings.push('Input length exceeds reasonable limits');
     }
@@ -355,9 +391,9 @@ export class InputValidationService {
    * Validate by input type
    */
   private async validateByType(
-    value: any,
+    value: unknown,
     inputType: InputType,
-    result: ValidationResult
+    result: ValidationResult,
   ): Promise<void> {
     switch (inputType) {
       case InputType.STRING:
@@ -401,7 +437,10 @@ export class InputValidationService {
   /**
    * String validation
    */
-  private async validateString(value: any, result: ValidationResult): Promise<void> {
+  private async validateString(
+    value: unknown,
+    result: ValidationResult,
+  ): Promise<void> {
     if (typeof value !== 'string') {
       result.isValid = false;
       result.errors.push('Value must be a string');
@@ -409,7 +448,7 @@ export class InputValidationService {
     }
 
     // Check for control characters
-    if (/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(value)) {
+    if (CONTROL_CHAR_PATTERN.test(value)) {
       result.isValid = false;
       result.errors.push('String contains invalid control characters');
     }
@@ -423,7 +462,10 @@ export class InputValidationService {
   /**
    * Number validation
    */
-  private async validateNumber(value: any, result: ValidationResult): Promise<void> {
+  private async validateNumber(
+    value: unknown,
+    result: ValidationResult,
+  ): Promise<void> {
     const num = Number(value);
     if (isNaN(num) || !isFinite(num)) {
       result.isValid = false;
@@ -440,7 +482,10 @@ export class InputValidationService {
   /**
    * Email validation
    */
-  private async validateEmail(value: any, result: ValidationResult): Promise<void> {
+  private async validateEmail(
+    value: unknown,
+    result: ValidationResult,
+  ): Promise<void> {
     const emailSchema = z.string().email();
     const validationResult = emailSchema.safeParse(value);
 
@@ -467,7 +512,10 @@ export class InputValidationService {
   /**
    * URL validation
    */
-  private async validateURL(value: any, result: ValidationResult): Promise<void> {
+  private async validateURL(
+    value: unknown,
+    result: ValidationResult,
+  ): Promise<void> {
     const urlSchema = z.string().url();
     const validationResult = urlSchema.safeParse(value);
 
@@ -481,7 +529,13 @@ export class InputValidationService {
     const url = new URL(String(value));
 
     // Check for dangerous protocols
-    const dangerousProtocols = ['javascript:', 'data:', 'vbscript:', 'file:', 'ftp:'];
+    const dangerousProtocols = [
+      'javascript:',
+      'data:',
+      'vbscript:',
+      'file:',
+      'ftp:',
+    ];
     if (dangerousProtocols.includes(url.protocol)) {
       result.isValid = false;
       result.errors.push(`Dangerous URL protocol: ${url.protocol}`);
@@ -497,8 +551,11 @@ export class InputValidationService {
   /**
    * Phone validation
    */
-  private async validatePhone(value: any, result: ValidationResult): Promise<void> {
-    const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
+  private async validatePhone(
+    value: unknown,
+    result: ValidationResult,
+  ): Promise<void> {
+    const phoneRegex = /^\+?[-\d\s()]{10,}$/;
     if (!phoneRegex.test(String(value))) {
       result.isValid = false;
       result.errors.push('Invalid phone number format');
@@ -508,8 +565,17 @@ export class InputValidationService {
   /**
    * Date validation
    */
-  private async validateDate(value: any, result: ValidationResult): Promise<void> {
-    const date = new Date(value);
+  private async validateDate(
+    value: unknown,
+    result: ValidationResult,
+  ): Promise<void> {
+    const dateInput =
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      value instanceof Date
+        ? value
+        : String(value);
+    const date = new Date(dateInput as string | number | Date);
     if (isNaN(date.getTime())) {
       result.isValid = false;
       result.errors.push('Invalid date format');
@@ -517,7 +583,6 @@ export class InputValidationService {
     }
 
     // Check for reasonable date ranges
-    const now = new Date();
     const minDate = new Date('1900-01-01');
     const maxDate = new Date('2100-12-31');
 
@@ -529,8 +594,12 @@ export class InputValidationService {
   /**
    * UUID validation
    */
-  private async validateUUID(value: any, result: ValidationResult): Promise<void> {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  private async validateUUID(
+    value: unknown,
+    result: ValidationResult,
+  ): Promise<void> {
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(String(value))) {
       result.isValid = false;
       result.errors.push('Invalid UUID format');
@@ -540,14 +609,17 @@ export class InputValidationService {
   /**
    * JSON validation
    */
-  private async validateJSON(value: any, result: ValidationResult): Promise<void> {
+  private async validateJSON(
+    value: unknown,
+    result: ValidationResult,
+  ): Promise<void> {
     try {
       if (typeof value === 'string') {
         JSON.parse(value);
       } else {
         JSON.stringify(value);
       }
-    } catch (error) {
+    } catch (_error) {
       result.isValid = false;
       result.errors.push('Invalid JSON format');
     }
@@ -562,7 +634,10 @@ export class InputValidationService {
   /**
    * HTML validation
    */
-  private async validateHTML(value: any, result: ValidationResult): Promise<void> {
+  private async validateHTML(
+    value: unknown,
+    result: ValidationResult,
+  ): Promise<void> {
     if (typeof value !== 'string') {
       result.isValid = false;
       result.errors.push('HTML value must be a string');
@@ -578,7 +653,10 @@ export class InputValidationService {
   /**
    * Filename validation
    */
-  private async validateFilename(value: any, result: ValidationResult): Promise<void> {
+  private async validateFilename(
+    value: unknown,
+    result: ValidationResult,
+  ): Promise<void> {
     const filename = String(value);
 
     // Check for dangerous characters
@@ -588,23 +666,42 @@ export class InputValidationService {
     }
 
     // Check path traversal
-    if (SECURITY_PATTERNS.PATH_TRAVERSAL.some(pattern => pattern.test(filename))) {
+    if (
+      SECURITY_PATTERNS.PATH_TRAVERSAL.some(pattern => pattern.test(filename))
+    ) {
       result.isValid = false;
       result.errors.push('Filename contains path traversal patterns');
     }
 
     // Check for dangerous extensions
-    const dangerousExtensions = ['.exe', '.bat', '.cmd', '.scr', '.pif', '.com', '.vbs', '.js', '.jar'];
-    const extension = filename.toLowerCase().substring(filename.lastIndexOf('.'));
+    const dangerousExtensions = [
+      '.exe',
+      '.bat',
+      '.cmd',
+      '.scr',
+      '.pif',
+      '.com',
+      '.vbs',
+      '.js',
+      '.jar',
+    ];
+    const extension = filename
+      .toLowerCase()
+      .substring(filename.lastIndexOf('.'));
     if (dangerousExtensions.includes(extension)) {
-      result.warnings.push(`Filename has potentially dangerous extension: ${extension}`);
+      result.warnings.push(
+        `Filename has potentially dangerous extension: ${extension}`,
+      );
     }
   }
 
   /**
    * Path validation
    */
-  private async validatePath(value: any, result: ValidationResult): Promise<void> {
+  private async validatePath(
+    value: unknown,
+    result: ValidationResult,
+  ): Promise<void> {
     const path = String(value);
 
     // Check path traversal
@@ -614,7 +711,7 @@ export class InputValidationService {
     }
 
     // Check for absolute paths (usually not allowed in user input)
-    if (/^([a-zA-Z]:)?[\/\\]/.test(path)) {
+    if (/^([a-zA-Z]:)?[/\\]/.test(path)) {
       result.warnings.push('Path appears to be absolute');
     }
   }
@@ -623,25 +720,38 @@ export class InputValidationService {
    * Sanitize value based on type and configuration
    */
   private async sanitizeValue(
-    value: any,
+    value: unknown,
     inputType: InputType,
-    config: SanitizationConfig
-  ): Promise<any> {
+    config: SanitizationConfig,
+  ): Promise<unknown> {
     let sanitized = value;
 
     // Convert to string for HTML sanitization
     const stringValue = String(value);
 
     // HTML sanitization
-    if (config.removeHTML && [InputType.HTML, InputType.STRING].includes(inputType)) {
-      sanitized = DOMPurify.sanitize(stringValue, {
-        ALLOWED_TAGS: config.allowedTags || [],
-        ALLOWED_ATTR: this.flattenAttributes(config.allowedAttributes || {}),
-        REMOVE_SCRIPTS: config.removeScripts,
-        REMOVE_STYLES: config.removeStyles,
-        REMOVE_COMMENTS: config.removeComments,
-        REMOVE_EMPTY_TAGS: config.removeEmptyTags
-      });
+    if (
+      config.removeHTML &&
+      [InputType.HTML, InputType.STRING].includes(inputType)
+    ) {
+      sanitized = DOMPurify.sanitize(
+        stringValue,
+        this.buildDomPurifyConfig(config),
+      );
+
+      if (typeof sanitized === 'string') {
+        let sanitizedHtml = sanitized;
+
+        if (config.removeComments) {
+          sanitizedHtml = this.stripHtmlComments(sanitizedHtml);
+        }
+
+        if (config.removeEmptyTags) {
+          sanitizedHtml = this.removeEmptyHtmlTags(sanitizedHtml);
+        }
+
+        sanitized = sanitizedHtml;
+      }
     }
 
     // String length validation
@@ -651,7 +761,7 @@ export class InputValidationService {
 
     // Unicode normalization
     if (!config.allowUnicode && typeof sanitized === 'string') {
-      sanitized = sanitized.replace(/[^\x00-\x7F]/g, '');
+      sanitized = sanitized.replace(/[\u0080-\uFFFF]/g, '');
     }
 
     // Whitespace normalization
@@ -674,10 +784,71 @@ export class InputValidationService {
     }
   }
 
+  private buildDomPurifyConfig(config: SanitizationConfig): DOMPurifyConfig {
+    const domPurifyConfig: DOMPurifyConfig = {};
+
+    if (config.allowedTags) {
+      domPurifyConfig.ALLOWED_TAGS = config.allowedTags;
+    }
+
+    const allowedAttributes = this.flattenAttributes(
+      config.allowedAttributes || {},
+    );
+    if (allowedAttributes.length > 0) {
+      domPurifyConfig.ALLOWED_ATTR = allowedAttributes;
+    }
+
+    domPurifyConfig.ALLOW_DATA_ATTR = !config.strictAttributeFiltering;
+    domPurifyConfig.ALLOW_ARIA_ATTR = !config.strictAttributeFiltering;
+
+    const forbidTags = new Set<string>();
+    const forbidAttrs = new Set<string>();
+
+    if (config.removeScripts) {
+      forbidTags.add('script');
+    }
+
+    if (config.removeStyles) {
+      forbidTags.add('style');
+      forbidAttrs.add('style');
+    }
+
+    if (forbidTags.size > 0) {
+      domPurifyConfig.FORBID_TAGS = Array.from(forbidTags);
+    }
+
+    if (forbidAttrs.size > 0) {
+      domPurifyConfig.FORBID_ATTR = Array.from(forbidAttrs);
+    }
+
+    if (!config.removeEmptyTags) {
+      domPurifyConfig.KEEP_CONTENT = true;
+    }
+
+    return domPurifyConfig;
+  }
+
+  private stripHtmlComments(value: string): string {
+    return value.replace(/<!--[\s\S]*?-->/g, '');
+  }
+
+  private removeEmptyHtmlTags(value: string): string {
+    const emptyTagPattern = /<(\w+)(?:\s[^>]*)?>\s*<\/\1>/g;
+    let sanitized = value;
+    let previous = '';
+
+    while (sanitized !== previous) {
+      previous = sanitized;
+      sanitized = sanitized.replace(emptyTagPattern, '');
+    }
+
+    return sanitized;
+  }
+
   /**
    * Sanitize number
    */
-  private sanitizeNumber(value: any): number | null {
+  private sanitizeNumber(value: unknown): number | null {
     const num = Number(value);
     return isNaN(num) || !isFinite(num) ? null : num;
   }
@@ -685,14 +856,14 @@ export class InputValidationService {
   /**
    * Sanitize email
    */
-  private sanitizeEmail(value: any): string {
+  private sanitizeEmail(value: unknown): string {
     return String(value).toLowerCase().trim();
   }
 
   /**
    * Sanitize URL
    */
-  private sanitizeURL(value: any): string {
+  private sanitizeURL(value: unknown): string {
     try {
       const url = new URL(String(value));
       return url.toString();
@@ -704,7 +875,7 @@ export class InputValidationService {
   /**
    * Sanitize JSON
    */
-  private sanitizeJSON(value: any): any {
+  private sanitizeJSON(value: unknown): unknown {
     try {
       if (typeof value === 'string') {
         return JSON.parse(value);
@@ -748,19 +919,19 @@ export class InputValidationService {
     return normalized !== value;
   }
 
-  private getJSONDepth(value: any, currentDepth = 0): number {
-    if (currentDepth > 100) return currentDepth; // Prevent infinite recursion
+  private getJSONDepth(value: unknown, currentDepth = 0): number {
+    if (currentDepth > 100) {
+      return currentDepth;
+    }
 
-    if (typeof value !== 'object' || value === null) {
+    if (!this.isRecord(value)) {
       return currentDepth;
     }
 
     let maxDepth = currentDepth;
-    for (const key in value) {
-      if (value.hasOwnProperty(key)) {
-        const depth = this.getJSONDepth(value[key], currentDepth + 1);
-        maxDepth = Math.max(maxDepth, depth);
-      }
+    for (const childValue of Object.values(value)) {
+      const depth = this.getJSONDepth(childValue, currentDepth + 1);
+      maxDepth = Math.max(maxDepth, depth);
     }
 
     return maxDepth;
@@ -778,21 +949,35 @@ export class InputValidationService {
     return result;
   }
 
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+  }
+
   private maskSensitiveData(value: string): string {
     // Mask potentially sensitive data for logging
     if (value.length > 100) {
-      return value.substring(0, 50) + '...[MASKED]...' + value.substring(value.length - 20);
+      return `${value.substring(0, 50)}...[MASKED]...${value.substring(value.length - 20)}`;
     }
-    return value.replace(/([a-zA-Z0-9]{4})[a-zA-Z0-9]+([a-zA-Z0-9]{4})/g, '$1***$2');
+    return value.replace(
+      /([a-zA-Z0-9]{4})[a-zA-Z0-9]+([a-zA-Z0-9]{4})/g,
+      '$1***$2',
+    );
   }
 
   /**
    * Express middleware for automatic input validation
    */
   public createValidationMiddleware(
-    fieldMappings: Record<string, { type: InputType; level: ValidationLevel; required?: boolean }>
+    fieldMappings: Record<
+      string,
+      { type: InputType; level: ValidationLevel; required?: boolean }
+    >,
   ) {
-    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    return async (
+      req: Request,
+      res: Response,
+      next: NextFunction,
+    ): Promise<void> => {
       try {
         const validationErrors: string[] = [];
 
@@ -803,7 +988,7 @@ export class InputValidationService {
               const result = await this.validateInput(
                 req.body[field],
                 config.type,
-                config.level
+                config.level,
               );
 
               if (!result.isValid) {
@@ -825,20 +1010,37 @@ export class InputValidationService {
               const result = await this.validateInput(
                 req.query[param],
                 config.type,
-                config.level
+                config.level,
               );
 
               if (!result.isValid) {
                 validationErrors.push(`${param}: ${result.errors.join(', ')}`);
               } else {
-                req.query[param] = result.sanitizedValue;
+                const sanitizedQueryValue = result.sanitizedValue;
+                if (sanitizedQueryValue !== undefined) {
+                  if (Array.isArray(sanitizedQueryValue)) {
+                    req.query[param] = sanitizedQueryValue.map(item =>
+                      String(item),
+                    );
+                  } else if (
+                    typeof sanitizedQueryValue === 'string' ||
+                    typeof sanitizedQueryValue === 'number' ||
+                    typeof sanitizedQueryValue === 'boolean'
+                  ) {
+                    req.query[param] = String(sanitizedQueryValue);
+                  } else if (this.isRecord(sanitizedQueryValue)) {
+                    req.query[param] = sanitizedQueryValue as ParsedQs;
+                  }
+                }
               }
             }
           }
         }
 
         if (validationErrors.length > 0) {
-          throw new ValidationError(`Input validation failed: ${validationErrors.join('; ')}`);
+          throw new ValidationError(
+            `Input validation failed: ${validationErrors.join('; ')}`,
+          );
         }
 
         next();

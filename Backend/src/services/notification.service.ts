@@ -35,11 +35,11 @@ interface CreateNotificationInput {
   title: string;
   message: string;
   priority?: notifications_priority;
-  actionUrl?: string;
+  action_url?: string;
   metadata?: any;
-  expiresAt?: Date;
+  expires_at?: Date;
   sendEmail?: boolean;
-  emailTo?: string;
+  email_to?: string;
   user_id?: string;
   scheduled_for?: Date;
   templateId?: string;
@@ -58,19 +58,6 @@ const createEmailTransporter = () => {
       pass: process.env.SMTP_PASS,
     },
   });
-};
-
-interface CreateNotificationInput {
-  id?: string;
-  type: notifications_type;
-  title: string;
-  message: string;
-  priority?: notifications_priority;
-  action_url?: string;
-  metadata?: any;
-  expires_at?: Date;
-  sendEmail?: boolean;
-  email_to?: string;
 }
 
 // Create repository instances
@@ -81,43 +68,64 @@ export const notificationService = {
   // Create a new notification with enhanced capabilities
   async createNotification(data: CreateNotificationInput) {
     // Check if notification should be scheduled
-    if (data.scheduled_for && data.scheduled_for > new Date()) {
+    if (this.isScheduledNotification(data)) {
       return this.scheduleNotification(data);
     }
 
+    const notificationData = this.buildNotificationData(data);
+    const notification = await notificationsRepository.createNotification(notificationData);
+
+    // Handle post-creation actions
+    await this.handlePostCreationActions(data, notification);
+
+    // Log notification creation for analytics
+    this.logNotificationCreation(notification, data);
+
+    return notification;
+  },
+
+  // Helper method to check if notification should be scheduled
+  isScheduledNotification(data: CreateNotificationInput): boolean {
+    return !!(data.scheduled_for && data.scheduled_for > new Date());
+  },
+
+  // Helper method to build notification data object
+  buildNotificationData(data: CreateNotificationInput): any {
     const notificationData: any = {
       type: data.type,
       title: data.title,
       message: data.message,
     };
 
+    // Use conditional assignment pattern for exactOptionalPropertyTypes compliance
     if (data.priority !== undefined) notificationData.priority = data.priority;
-    if (data.action_url !== undefined)
-      notificationData.action_url = data.action_url;
+    if (data.action_url !== undefined) notificationData.action_url = data.action_url;
     if (data.metadata !== undefined) notificationData.metadata = data.metadata;
-    if (data.expires_at !== undefined)
-      notificationData.expires_at = data.expires_at;
+    if (data.expires_at !== undefined) notificationData.expires_at = data.expires_at;
     if (data.user_id !== undefined) notificationData.user_id = data.user_id;
 
-    const notification =
-      await notificationsRepository.createNotification(notificationData);
+    return notificationData;
+  },
 
+  // Helper method to handle post-creation actions
+  async handlePostCreationActions(data: CreateNotificationInput, notification: any): Promise<void> {
     // Send real-time notification via WebSocket
     if (data.user_id) {
       this.sendRealTimeNotification(data.user_id, notification);
     }
 
-    // Check user preferences before sending email
-    if (data.user_id) {
-      const preferences = await this.getUserNotificationPreferences(
-        data.user_id,
-      );
-      if (
-        preferences.emailNotifications &&
-        this.shouldSendEmailForType(data.type, preferences)
-      ) {
-        const user = await usersRepository.findById(data.user_id);
+    // Handle email sending based on user preferences or direct email
+    await this.handleEmailSending(data, notification);
+  },
 
+  // Helper method to handle email sending logic
+  async handleEmailSending(data: CreateNotificationInput, notification: any): Promise<void> {
+    if (data.user_id) {
+      const preferences = await this.getUserNotificationPreferences(data.user_id);
+      
+      if (this.shouldSendEmailForType(data.type, preferences)) {
+        const user = await usersRepository.findById(data.user_id);
+        
         if (user?.email) {
           await this.sendEmailNotification(
             user.email,
@@ -126,19 +134,19 @@ export const notificationService = {
           );
         }
       }
-    } else if (data.sendEmail && data.emailTo) {
-      await this.sendEmailNotification(data.emailTo, notification);
+    } else if (data.sendEmail && data.email_to) {
+      await this.sendEmailNotification(data.email_to, notification);
     }
+  },
 
-    // Log notification creation for analytics
+  // Helper method to log notification creation
+  logNotificationCreation(notification: any, data: CreateNotificationInput): void {
     logger.info('Notification created', {
       notificationId: notification.id,
       type: data.type,
       userId: data.user_id,
       priority: data.priority,
     });
-
-    return notification;
   },
 
   // Schedule a notification for future delivery
@@ -148,22 +156,19 @@ export const notificationService = {
     notificationQueue.add('send-scheduled-notification', data, {
       delay: delay,
       attempts: 3,
-      backoff: {
-        type: 'exponential',
-        delay: 2000,
-      },
+      backoff: 2000,
     });
 
     logger.info('Notification scheduled', {
       type: data.type,
-      scheduledFor: data.scheduled_for,
+      scheduled_for: data.scheduled_for,
       userId: data.user_id,
     });
 
     return {
       id: data.id,
       scheduled: true,
-      scheduledFor: data.scheduled_for,
+      scheduled_for: data.scheduled_for,
     };
   },
 
@@ -305,8 +310,7 @@ export const notificationService = {
     };
 
     if (id !== undefined) queryOptions.userId = id;
-    if (options?.unreadOnly !== undefined)
-      queryOptions.unreadOnly = options.unreadOnly;
+    if (options?.unreadOnly !== undefined) queryOptions.unreadOnly = options.unreadOnly;
     if (options?.type !== undefined) queryOptions.type = options.type;
 
     const result = await notificationsRepository.getNotifications(queryOptions);
@@ -548,25 +552,33 @@ This is an automated message. Please do not reply to this email.
 
   // Bulk create notifications
   async createBulkNotifications(notifications: CreateNotificationInput[]) {
+    const notificationData = notifications.map(n => this.buildBulkNotificationData(n));
+    
     const created = await prisma.notifications.createMany({
-      data: notifications.map(n => {
-        const notifData: any = {
-          id: n.id || crypto.randomUUID(),
-          type: n.type,
-          title: n.title,
-          message: n.message,
-          priority: n.priority || 'NORMAL',
-          created_at: new Date(),
-        };
-        if (n.action_url !== undefined) notifData.action_url = n.action_url;
-        if (n.metadata !== undefined) notifData.metadata = n.metadata;
-        if (n.expires_at !== undefined) notifData.expires_at = n.expires_at;
-        if (n.user_id !== undefined) notifData.user_id = n.user_id;
-        return notifData;
-      }),
+      data: notificationData,
     });
 
     return created;
+  },
+
+  // Helper method to build notification data for bulk operations
+  buildBulkNotificationData(notification: CreateNotificationInput): any {
+    const notifData: any = {
+      id: notification.id || crypto.randomUUID(),
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      priority: notification.priority || 'NORMAL',
+      created_at: new Date(),
+    };
+
+    // Use conditional assignment pattern for exactOptionalPropertyTypes compliance
+    if (notification.action_url !== undefined) notifData.action_url = notification.action_url;
+    if (notification.metadata !== undefined) notifData.metadata = notification.metadata;
+    if (notification.expires_at !== undefined) notifData.expires_at = notification.expires_at;
+    if (notification.user_id !== undefined) notifData.user_id = notification.user_id;
+
+    return notifData;
   },
 
   // Get notification statistics

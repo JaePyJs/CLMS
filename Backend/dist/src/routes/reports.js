@@ -22,9 +22,9 @@ router.get('/daily', async (req, res) => {
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(targetDate);
         endOfDay.setHours(23, 59, 59, 999);
-        const activities = await prisma_1.default.activity.findMany({
+        const activities = await prisma_1.default.student_activities.findMany({
             where: {
-                startTime: {
+                start_time: {
                     gte: startOfDay,
                     lte: endOfDay
                 }
@@ -49,10 +49,10 @@ router.get('/daily', async (req, res) => {
                 }
             }
         });
-        const checkIns = activities.filter(a => a.activityType === 'GENERAL_VISIT' ||
-            a.activityType === 'STUDY' ||
-            a.activityType === 'RECREATION').length;
-        const uniqueStudents = new Set(activities.map(a => a.studentId)).size;
+        const checkIns = activities.filter(a => a.activity_type === 'GENERAL_VISIT' ||
+            a.activity_type === 'STUDY' ||
+            a.activity_type === 'RECREATION').length;
+        const uniqueStudents = new Set(activities.map(a => a.student_id)).size;
         const completedActivities = activities.filter(a => a.status === 'COMPLETED' && a.durationMinutes);
         const avgDuration = completedActivities.length > 0
             ? Math.round(completedActivities.reduce((sum, a) => sum + (a.durationMinutes || 0), 0) / completedActivities.length)
@@ -86,9 +86,9 @@ router.get('/daily', async (req, res) => {
                 details: {
                     bookCheckouts: checkouts.length,
                     bookReturns: returns.length,
-                    computerUse: activities.filter(a => a.activityType === 'COMPUTER_USE').length,
-                    gamingSessions: activities.filter(a => a.activityType === 'GAMING_SESSION').length,
-                    avrSessions: activities.filter(a => a.activityType === 'AVR_SESSION').length
+                    computerUse: activities.filter(a => a.activity_type === 'COMPUTER_USE').length,
+                    gamingSessions: activities.filter(a => a.activity_type === 'GAMING_SESSION').length,
+                    avrSessions: activities.filter(a => a.activity_type === 'AVR_SESSION').length
                 },
                 gradeLevelBreakdown
             },
@@ -116,15 +116,15 @@ router.get('/weekly', async (req, res) => {
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
         endOfWeek.setHours(23, 59, 59, 999);
-        const activities = await prisma_1.default.activity.findMany({
+        const activities = await prisma_1.default.student_activities.findMany({
             where: {
-                startTime: {
+                start_time: {
                     gte: startOfWeek,
                     lte: endOfWeek
                 }
             },
             include: {
-                student: true
+                students: true
             }
         });
         const checkouts = await prisma_1.default.bookCheckout.findMany({
@@ -139,7 +139,7 @@ router.get('/weekly', async (req, res) => {
             }
         });
         const totalVisits = activities.length;
-        const uniqueStudents = new Set(activities.map(a => a.studentId)).size;
+        const uniqueStudents = new Set(activities.map(a => a.student_id)).size;
         const totalCheckouts = checkouts.length;
         const bookCheckoutCounts = {};
         checkouts.forEach(c => {
@@ -181,7 +181,7 @@ router.get('/weekly', async (req, res) => {
                 dayOfWeek: dayStart.toLocaleDateString('en-US', { weekday: 'short' }),
                 visits: dayActivities.length,
                 checkouts: dayCheckouts.length,
-                uniqueStudents: new Set(dayActivities.map(a => a.studentId)).size
+                uniqueStudents: new Set(dayActivities.map(a => a.student_id)).size
             });
         }
         const response = {
@@ -221,15 +221,15 @@ router.get('/monthly', async (req, res) => {
         startOfMonth.setHours(0, 0, 0, 0);
         const endOfMonth = new Date(targetYear, targetMonth + 1, 0);
         endOfMonth.setHours(23, 59, 59, 999);
-        const activities = await prisma_1.default.activity.findMany({
+        const activities = await prisma_1.default.student_activities.findMany({
             where: {
-                startTime: {
+                start_time: {
                     gte: startOfMonth,
                     lte: endOfMonth
                 }
             },
             include: {
-                student: true
+                students: true
             }
         });
         const checkouts = await prisma_1.default.bookCheckout.findMany({
@@ -252,12 +252,12 @@ router.get('/monthly', async (req, res) => {
             }
         });
         const totalVisits = activities.length;
-        const uniqueStudents = new Set(activities.map(a => a.studentId)).size;
+        const uniqueStudents = new Set(activities.map(a => a.student_id)).size;
         const booksBorrowed = checkouts.length;
         const booksReturned = returns.length;
         const activityBreakdown = {};
         activities.forEach(a => {
-            activityBreakdown[a.activityType] = (activityBreakdown[a.activityType] || 0) + 1;
+            activityBreakdown[a.activity_type] = (activityBreakdown[a.activity_type] || 0) + 1;
         });
         const gradeLevelBreakdown = {};
         activities.forEach(a => {
@@ -285,7 +285,7 @@ router.get('/monthly', async (req, res) => {
                 weekStart: currentWeekStart.toISOString().split('T')[0],
                 weekEnd: finalWeekEnd.toISOString().split('T')[0],
                 visits: weekActivities.length,
-                uniqueStudents: new Set(weekActivities.map(a => a.studentId)).size
+                uniqueStudents: new Set(weekActivities.map(a => a.student_id)).size
             });
             currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         }
@@ -343,15 +343,15 @@ router.get('/custom', async (req, res) => {
             };
             return res.status(400).json(response);
         }
-        const activities = await prisma_1.default.activity.findMany({
+        const activities = await prisma_1.default.student_activities.findMany({
             where: {
-                startTime: {
+                start_time: {
                     gte: startDate,
                     lte: endDate
                 }
             },
             include: {
-                student: true
+                students: true
             }
         });
         const checkouts = await prisma_1.default.bookCheckout.findMany({
@@ -373,15 +373,15 @@ router.get('/custom', async (req, res) => {
                 }
             }
         });
-        const totalCheckIns = activities.filter(a => a.activityType === 'GENERAL_VISIT' ||
-            a.activityType === 'STUDY' ||
-            a.activityType === 'RECREATION').length;
-        const uniqueStudents = new Set(activities.map(a => a.studentId)).size;
+        const totalCheckIns = activities.filter(a => a.activity_type === 'GENERAL_VISIT' ||
+            a.activity_type === 'STUDY' ||
+            a.activity_type === 'RECREATION').length;
+        const uniqueStudents = new Set(activities.map(a => a.student_id)).size;
         const booksBorrowed = checkouts.length;
         const booksReturned = returns.length;
         const activityBreakdown = {};
         activities.forEach(a => {
-            activityBreakdown[a.activityType] = (activityBreakdown[a.activityType] || 0) + 1;
+            activityBreakdown[a.activity_type] = (activityBreakdown[a.activity_type] || 0) + 1;
         });
         const gradeLevelBreakdown = {};
         activities.forEach(a => {
@@ -391,9 +391,9 @@ router.get('/custom', async (req, res) => {
         });
         const studentActivityCounts = {};
         activities.forEach(a => {
-            const studentId = a.studentId;
+            const studentId = a.student_id;
             if (!studentActivityCounts[studentId]) {
-                const fullName = a.student ? `${a.student.firstName} ${a.student.lastName}` : 'Unknown';
+                const fullName = a.students ? `${a.students.first_name} ${a.students.last_name}` : 'Unknown';
                 studentActivityCounts[studentId] = { name: fullName, count: 0 };
             }
             studentActivityCounts[studentId].count++;

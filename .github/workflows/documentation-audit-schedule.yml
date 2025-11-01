@@ -1,0 +1,641 @@
+name: Documentation Audit Schedule
+
+on:
+  schedule:
+    # Run quarterly on the first day of the quarter at 9:00 AM UTC
+    # January 1, April 1, July 1, October 1
+    - cron: '0 9 1 1,4,7,10 *'
+  workflow_dispatch:
+    inputs:
+      audit_type:
+        description: 'Type of audit to run'
+        required: true
+        default: 'quarterly'
+        type: choice
+        options:
+          - quarterly
+          - monthly
+          - weekly
+          - custom
+      quarter:
+        description: 'Quarter (1-4)'
+        required: false
+        default: '1'
+        type: string
+      year:
+        description: 'Year'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  create-audit-issue:
+    runs-on: ubuntu-latest
+    name: Create Documentation Audit Issue
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Get current date and quarter
+        id: date-info
+        run: |
+          # Get current date
+          CURRENT_DATE=$(date -u +"%Y-%m-%d")
+          CURRENT_YEAR=$(date -u +"%Y")
+          CURRENT_MONTH=$(date -u +"%m")
+          
+          # Calculate current quarter
+          if [ "$CURRENT_MONTH" -le 3 ]; then
+            CURRENT_QUARTER=1
+            QUARTER_START="January 1"
+            QUARTER_END="March 31"
+          elif [ "$CURRENT_MONTH" -le 6 ]; then
+            CURRENT_QUARTER=2
+            QUARTER_START="April 1"
+            QUARTER_END="June 30"
+          elif [ "$CURRENT_MONTH" -le 9 ]; then
+            CURRENT_QUARTER=3
+            QUARTER_START="July 1"
+            QUARTER_END="September 30"
+          else
+            CURRENT_QUARTER=4
+            QUARTER_START="October 1"
+            QUARTER_END="December 31"
+          fi
+          
+          # Handle manual input
+          AUDIT_TYPE="${{ github.event.inputs.audit_type || 'quarterly' }}"
+          MANUAL_QUARTER="${{ github.event.inputs.quarter || '' }}"
+          MANUAL_YEAR="${{ github.event.inputs.year || '' }}"
+          
+          if [ "$AUDIT_TYPE" = "custom" ] && [ -n "$MANUAL_QUARTER" ]; then
+            CURRENT_QUARTER="$MANUAL_QUARTER"
+            if [ -n "$MANUAL_YEAR" ]; then
+              CURRENT_YEAR="$MANUAL_YEAR"
+            fi
+          fi
+          
+          echo "current_date=$CURRENT_DATE" >> $GITHUB_OUTPUT
+          echo "current_year=$CURRENT_YEAR" >> $GITHUB_OUTPUT
+          echo "current_quarter=$CURRENT_QUARTER" >> $GITHUB_OUTPUT
+          echo "quarter_start=$QUARTER_START" >> $GITHUB_OUTPUT
+          echo "quarter_end=$QUARTER_END" >> $GITHUB_OUTPUT
+          echo "audit_type=$AUDIT_TYPE" >> $GITHUB_OUTPUT
+          
+      - name: Generate audit issue content
+        id: issue-content
+        run: |
+          CURRENT_DATE="${{ steps.date-info.outputs.current_date }}"
+          CURRENT_YEAR="${{ steps.date-info.outputs.current_year }}"
+          CURRENT_QUARTER="${{ steps.date-info.outputs.current_quarter }}"
+          QUARTER_START="${{ steps.date-info.outputs.quarter_start }}"
+          QUARTER_END="${{ steps.date-info.outputs.quarter_end }}"
+          AUDIT_TYPE="${{ steps.date-info.outputs.audit_type }}"
+          
+          # Generate issue content
+          cat > audit-issue.md << EOF
+          # 📚 Documentation Audit - $AUDIT_TYPE_TITLE ($CURRENT_YEAR Q$CURRENT_QUARTER)
+          
+          **Audit Period**: $QUARTER_START - $QUARTER_END  
+          **Audit Date**: $CURRENT_DATE  
+          **Audit Type**: $AUDIT_TYPE  
+          **Audit Owner**: @clms-documentation-team  
+          
+          ## 📋 Audit Overview
+          
+          This is a scheduled documentation audit to ensure the CLMS documentation remains accurate, up-to-date, and aligned with the current system state.
+          
+          ## 🎯 Audit Objectives
+          
+          - [ ] **Content Accuracy**: Verify all documentation content is accurate and current
+          - [ ] **Link Validation**: Check all internal and external links are working
+          - [ ] **Structure Consistency**: Ensure documentation structure follows standards
+          - [ ] **Quality Standards**: Verify documentation meets quality standards
+          - [ ] **User Feedback**: Review and address user feedback from the audit period
+          - [ ] **Usage Analytics**: Analyze documentation usage statistics
+          - [ ] **Security Review**: Ensure security documentation is current
+          - [ ] **Performance Review**: Ensure performance documentation is current
+          - [ ] **Compliance Check**: Verify documentation meets compliance requirements
+          
+          ## 📊 Audit Checklist
+          
+          ### Content Review
+          
+          #### Core Documentation
+          - [ ] [Main README](README.md) - Review for accuracy and completeness
+          - [ ] [Documentation Hub](Docs/README.md) - Review navigation and structure
+          - [ ] [User Guide](Docs/USER_GUIDE.md) - Review user procedures and examples
+          - [ ] [API Documentation](Docs/API_DOCUMENTATION.md) - Review API endpoints and examples
+          - [ ] [Developer Guide](Docs/DEVELOPER_QUICK_START_GUIDE.md) - Review setup and procedures
+          
+          #### Specialized Guides
+          - [ ] [Deployment Guide](Docs/DEPLOYMENT_COMPREHENSIVE_GUIDE.md) - Review deployment procedures
+          - [ ] [Performance Guide](Docs/PERFORMANCE_COMPREHENSIVE_GUIDE.md) - Review performance information
+          - [ ] [Security Guide](Docs/SECURITY_COMPREHENSIVE_GUIDE.md) - Review security procedures
+          - [ ] [Incident Response](Docs/INCIDENT_RESPONSE_PLAN.md) - Review incident procedures
+          
+          #### Feature Guides
+          - [ ] [Advanced Analytics](Docs/ADVANCED_ANALYTICS_GUIDE.md) - Review analytics features
+          - [ ] [Flexible Import](Docs/FLEXIBLE_IMPORT_SYSTEM_GUIDE.md) - Review import system
+          - [ ] [ID Mapping](Docs/ID_MAPPING_SYSTEM_GUIDE.md) - Review ID mapping features
+          - [ ] [WebSocket Realtime](Docs/WEBSOCKET_REALTIME_GUIDE.md) - Review realtime features
+          - [ ] [Type Inference](Docs/TYPE_INFERENCE_SYSTEM_GUIDE.md) - Review TypeScript features
+          
+          ### Technical Review
+          
+          - [ ] **Link Validation**: Run automated link checking on all documentation
+          - [ ] **Markdown Validation**: Run markdownlint on all documentation files
+          - [ ] **Spell Check**: Run spell checking on all documentation files
+          - [ ] **Format Validation**: Verify consistent formatting across all files
+          - [ ] **Metadata Validation**: Verify frontmatter metadata is complete and accurate
+          
+          ### Quality Review
+          
+          - [ ] **Clarity**: Verify documentation is clear and understandable
+          - [ ] **Completeness**: Verify documentation covers all necessary topics
+          - [ ] **Consistency**: Verify terminology and formatting are consistent
+          - [ ] **Accessibility**: Verify documentation is accessible to all users
+          - [ ] **Searchability**: Verify documentation is easily searchable
+          
+          ### User Experience Review
+          
+          - [ ] **Navigation**: Test navigation flows and user journeys
+          - [ ] **Search Functionality**: Test search capabilities and results
+          - [ ] **Mobile Compatibility**: Test documentation on mobile devices
+          - [ ] **Print Compatibility**: Test documentation printing capabilities
+          - [ ] **Download Functionality**: Test PDF download capabilities
+          
+          ## 📈 Metrics and Analytics
+          
+          ### Documentation Usage
+          
+          - [ ] **Page Views**: Analyze most viewed documentation pages
+          - [ ] **Search Queries**: Review most common search queries
+          - [ ] **User Feedback**: Review user feedback and ratings
+          - [ ] **Issue Reports**: Review documentation-related issues
+          - [ ] **PR References**: Review PR documentation references
+          
+          ### Quality Metrics
+          
+          - [ ] **Link Validation Results**: Document link validation results
+          - [ ] **Quality Score**: Calculate overall documentation quality score
+          - [ ] **Error Rate**: Track documentation errors and corrections
+          - [ ] **Update Frequency**: Track documentation update frequency
+          - [ ] **Review Time**: Track documentation review and approval time
+          
+          ## 🔍 Findings and Recommendations
+          
+          ### Issues Found
+          
+          <!-- Add issues found during audit -->
+          
+          ### Recommendations
+          
+          <!-- Add recommendations for improvements -->
+          
+          ### Action Items
+          
+          <!-- Add specific action items with owners and due dates -->
+          
+          ## 📅 Audit Timeline
+          
+          - **Audit Start**: $CURRENT_DATE
+          - **Content Review Due**: $(date -d "$CURRENT_DATE + 7 days" -u +"%Y-%m-%d")
+          - **Technical Review Due**: $(date -d "$CURRENT_DATE + 14 days" -u +"%Y-%m-%d")
+          - **Quality Review Due**: $(date -d "$CURRENT_DATE + 21 days" -u +"%Y-%m-%d")
+          - **Audit Complete**: $(date -d "$CURRENT_DATE + 30 days" -u +"%Y-%m-%d")
+          
+          ## 👥 Audit Team
+          
+          - **Audit Owner**: @clms-documentation-team
+          - **Content Reviewers**: @clms-content-team
+          - **Technical Reviewers**: @clms-technical-team
+          - **Quality Reviewers**: @clms-quality-team
+          - **Stakeholders**: @clms-stakeholders
+          
+          ## 📚 Resources
+          
+          - [Documentation Maintenance Playbook](DOCUMENTATION_MAINTENANCE_PLAYBOOK.md)
+          - [Documentation Workflow Guide](Docs/DOCUMENTATION_WORKFLOW_GUIDE.md)
+          - [Documentation Quality Standards](Docs/DOCUMENTATION_QUALITY_STANDARDS.md)
+          - [Documentation Inventory](DOCUMENTATION_INVENTORY.md)
+          - [Security Access Policy](Docs/SEC_DOCUMENTATION_ACCESS_POLICY.md)
+          
+          ## 🔄 Previous Audit Results
+          
+          <!-- Link to previous audit results -->
+          
+          ---
+          
+          **📝 Notes**: This audit is automatically scheduled and created. Please update the issue with findings, recommendations, and action items as the audit progresses.
+          
+          **🏷️ Labels**: documentation-audit, $AUDIT_TYPE, $CURRENT_YEAR-Q$CURRENT_QUARTER
+          
+          **📊 Automation**: This issue was created by GitHub Actions workflow [documentation-audit-schedule.yml](.github/workflows/documentation-audit-schedule.yml)
+          EOF
+          
+          # Set audit type title
+          if [ "$AUDIT_TYPE" = "quarterly" ]; then
+            AUDIT_TYPE_TITLE="Quarterly Audit"
+          elif [ "$AUDIT_TYPE" = "monthly" ]; then
+            AUDIT_TYPE_TITLE="Monthly Audit"
+          elif [ "$AUDIT_TYPE" = "weekly" ]; then
+            AUDIT_TYPE_TITLE="Weekly Audit"
+          else
+            AUDIT_TYPE_TITLE="Custom Audit"
+          fi
+          
+          # Update issue content with audit type title
+          sed -i "s/\$AUDIT_TYPE_TITLE/$AUDIT_TYPE_TITLE/g" audit-issue.md
+          
+          echo "issue_content<<EOF" >> $GITHUB_OUTPUT
+          cat audit-issue.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          echo "audit_title=📚 Documentation Audit - $AUDIT_TYPE_TITLE ($CURRENT_YEAR Q$CURRENT_QUARTER)" >> $GITHUB_OUTPUT
+          echo "audit_labels=documentation-audit,$AUDIT_TYPE,$CURRENT_YEAR-Q$CURRENT_QUARTER" >> $GITHUB_OUTPUT
+          
+      - name: Create audit issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const title = '${{ steps.issue-content.outputs.audit_title }}';
+            const body = `${{ steps.issue-content.outputs.issue_content }}`;
+            const labels = '${{ steps.issue-content.outputs.audit_labels }}'.split(',');
+            
+            // Create the issue
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: labels
+            });
+            
+            console.log(`Created issue #${issue.data.number}: ${issue.data.title}`);
+            
+            // Assign to documentation team
+            try {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.data.number,
+                assignees: ['clms-documentation-team']
+              });
+            } catch (error) {
+              console.log('Could not assign to documentation team:', error.message);
+            }
+            
+            // Add to project board if available
+            try {
+              await github.rest.projects.createCard({
+                column_id: process.env.DOCUMENTATION_PROJECT_COLUMN_ID,
+                content_id: issue.data.id,
+                content_type: 'Issue'
+              });
+            } catch (error) {
+              console.log('Could not add to project board:', error.message);
+            }
+            
+            return issue.data.number;
+            
+      - name: Schedule follow-up reminders
+        run: |
+          AUDIT_TYPE="${{ steps.date-info.outputs.audit_type }}"
+          CURRENT_DATE="${{ steps.date-info.outputs.current_date }}"
+          
+          # Calculate reminder dates
+          REVIEW_REMINDER=$(date -d "$CURRENT_DATE + 7 days" -u +"%Y-%m-%d")
+          TECHNICAL_REMINDER=$(date -d "$CURRENT_DATE + 14 days" -u +"%Y-%m-%d")
+          QUALITY_REMINDER=$(date -d "$CURRENT_DATE + 21 days" -u +"%Y-%m-%d")
+          FINAL_REMINDER=$(date -d "$CURRENT_DATE + 28 days" -u +"%Y-%m-%d")
+          
+          echo "📅 Audit Reminder Schedule:"
+          echo "  - Content Review Reminder: $REVIEW_REMINDER"
+          echo "  - Technical Review Reminder: $TECHNICAL_REMINDER"
+          echo "  - Quality Review Reminder: $QUALITY_REMINDER"
+          echo "  - Final Reminder: $FINAL_REMINDER"
+          
+          # Create reminder file for reference
+          cat > audit-reminders.md << EOF
+          # Documentation Audit Reminders - $AUDIT_TYPE
+          
+          **Audit Date**: $CURRENT_DATE  
+          **Audit Type**: $AUDIT_TYPE  
+          
+          ## Reminder Schedule
+          
+          - **Content Review Reminder**: $REVIEW_REMINDER
+          - **Technical Review Reminder**: $TECHNICAL_REMINDER
+          - **Quality Review Reminder**: $QUALITY_REMINDER
+          - **Final Reminder**: $FINAL_REMINDER
+          
+          ## Reminder Actions
+          
+          ### Content Review Reminder ($REVIEW_REMINDER)
+          - [ ] Review all documentation content for accuracy
+          - [ ] Check for outdated information
+          - [ ] Verify examples and procedures work correctly
+          - [ ] Update content as needed
+          
+          ### Technical Review Reminder ($TECHNICAL_REMINDER)
+          - [ ] Run automated link validation
+          - [ ] Run markdownlint checks
+          - [ ] Run spell checking
+          - [ ] Validate formatting and structure
+          
+          ### Quality Review Reminder ($QUALITY_REMINDER)
+          - [ ] Review documentation quality metrics
+          - [ ] Check user feedback and issues
+          - [ ] Verify accessibility standards
+          - [ ] Assess overall documentation quality
+          
+          ### Final Reminder ($FINAL_REMINDER)
+          - [ ] Complete any remaining audit tasks
+          - [ ] Document audit findings and recommendations
+          - [ ] Create action items for improvements
+          - [ ] Close audit issue and report results
+          
+          ---
+          
+          *This reminder schedule was automatically generated*
+          EOF
+          
+      - name: Upload audit reminders
+        uses: actions/upload-artifact@v3
+        with:
+          name: audit-reminders
+          path: audit-reminders.md
+          retention-days: 90
+          
+      - name: Notify teams
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const auditType = '${{ steps.date-info.outputs.audit_type }}';
+            const currentQuarter = '${{ steps.date-info.outputs.current_quarter }}';
+            const currentYear = '${{ steps.date-info.outputs.current_year }}';
+            
+            // Create notification message
+            const message = `
+            ## 📚 Documentation Audit Scheduled
+            
+            **Audit Type**: ${auditType.charAt(0).toUpperCase() + auditType.slice(1)} Audit  
+            **Period**: ${currentYear} Q${currentQuarter}  
+            **Date**: ${new Date().toISOString().split('T')[0]}
+            
+            A documentation audit issue has been automatically created and assigned to the documentation team.
+            
+            **Next Steps**:
+            1. Review the audit issue for detailed checklist
+            2. Assign team members to specific audit areas
+            3. Begin content review and validation
+            4. Document findings and recommendations
+            5. Create action items for improvements
+            
+            **Resources**:
+            - [Documentation Maintenance Playbook](DOCUMENTATION_MAINTENANCE_PLAYBOOK.md)
+            - [Documentation Workflow Guide](Docs/DOCUMENTATION_WORKFLOW_GUIDE.md)
+            - [Documentation Quality Standards](Docs/DOCUMENTATION_QUALITY_STANDARDS.md)
+            
+            Please review the audit issue and begin the audit process.
+            `;
+            
+            // Post to discussions if available
+            try {
+              await github.rest.repos.createOrUpdateDiscussion({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Documentation Audit - ${auditType.charAt(0).toUpperCase() + auditType.slice(1)} (${currentYear} Q${currentQuarter})`,
+                body: message
+              });
+            } catch (error) {
+              console.log('Could not create discussion:', error.message);
+            }
+            
+            console.log('Audit notification sent');
+
+  run-audit-checks:
+    runs-on: ubuntu-latest
+    name: Run Automated Audit Checks
+    needs: create-audit-issue
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          npm install -g markdownlint-cli2
+          npm install -g markdown-link-check
+          npm install -g cspell
+          
+      - name: Run link validation
+        run: |
+          echo "🔗 Running link validation for audit..."
+          
+          # Create link check report
+          mkdir -p audit-reports
+          
+          # Check all documentation files
+          find Docs/ -name "*.md" -exec markdown-link-check {} \; > audit-reports/link-check-results.txt 2>&1 || true
+          find . -maxdepth 1 -name "*.md" -exec markdown-link-check {} \; >> audit-reports/link-check-results.txt 2>&1 || true
+          
+          # Count results
+          TOTAL_LINKS=$(grep -c "✓" audit-reports/link-check-results.txt || echo "0")
+          BROKEN_LINKS=$(grep -c "✗" audit-reports/link-check-results.txt || echo "0")
+          
+          echo "Link Validation Results:" > audit-reports/link-check-summary.txt
+          echo "Total Links Checked: $TOTAL_LINKS" >> audit-reports/link-check-summary.txt
+          echo "Broken Links Found: $BROKEN_LINKS" >> audit-reports/link-check-summary.txt
+          echo "Link Validation Score: $(( ($TOTAL_LINKS - $BROKEN_LINKS) * 100 / $TOTAL_LINKS ))%" >> audit-reports/link-check-summary.txt
+          
+          echo "✅ Link validation completed"
+          
+      - name: Run markdown linting
+        run: |
+          echo "📝 Running markdown linting for audit..."
+          
+          # Create markdownlint config
+          cat > .markdownlint.json << 'EOF'
+          {
+            "default": true,
+            "MD001": true,
+            "MD003": { "style": "atx" },
+            "MD004": { "style": "dash" },
+            "MD007": { "indent": 2 },
+            "MD013": { "line_length": 120, "code_blocks": false, "tables": false },
+            "MD022": { "lines_above": 1, "lines_below": 1 },
+            "MD024": { "allow_different_nesting": true },
+            "MD025": { "front_matter_title": "^\\s*title\\s*[:=]" },
+            "MD029": { "style": "ordered" },
+            "MD033": { "allowed_elements": ["br", "sub", "sup", "kbd", "mark", "details", "summary"] },
+            "MD034": false,
+            "MD036": { "punctuation": ".,;:!。，；：！" },
+            "MD041": false,
+            "MD046": { "style": "fenced" }
+          }
+          EOF
+          
+          # Run markdownlint
+          find Docs/ -name "*.md" -exec markdownlint-cli2 {} \; > audit-reports/markdownlint-results.txt 2>&1 || true
+          find . -maxdepth 1 -name "*.md" -exec markdownlint-cli2 {} \; >> audit-reports/markdownlint-results.txt 2>&1 || true
+          
+          # Count results
+          TOTAL_FILES=$(find Docs/ -name "*.md" | wc -l)
+          LINT_ERRORS=$(grep -c "error" audit-reports/markdownlint-results.txt || echo "0")
+          
+          echo "Markdown Linting Results:" > audit-reports/markdownlint-summary.txt
+          echo "Total Files Checked: $TOTAL_FILES" >> audit-reports/markdownlint-summary.txt
+          echo "Lint Errors Found: $LINT_ERRORS" >> audit-reports/markdownlint-summary.txt
+          echo "Linting Score: $(( ($TOTAL_FILES - $LINT_ERRORS) * 100 / $TOTAL_FILES ))%" >> audit-reports/markdownlint-summary.txt
+          
+          echo "✅ Markdown linting completed"
+          
+      - name: Run spell checking
+        run: |
+          echo "🔤 Running spell checking for audit..."
+          
+          # Create cspell config
+          cat > .cspell.json << 'EOF'
+          {
+            "version": "0.2",
+            "language": "en,en-US",
+            "words": [
+              "CLMS", "markdownlint", "prettier", "cspell", "trivy", "CODEOWNERS",
+              "FERPA", "GDPR", "RBAC", "JWT", "MFA", "TOTP", "SSO", "API", "REST",
+              "CRUD", "CI/CD", "Docker", "Kubernetes", "Redis", "MySQL", "Nginx",
+              "SSL", "TLS", "HTTPS", "HTTP", "URL", "URI", "JSON", "YAML", "XML",
+              "HTML", "CSS", "JavaScript", "TypeScript", "Nodejs", "React", "GitHub",
+              "GitLab", "Jenkins", "Prometheus", "Grafana", "Lunr", "Algolia",
+              "Netlify", "Vercel", "Plausible", "Atlassian", "GitBook"
+            ]
+          }
+          EOF
+          
+          # Run spell check
+          find Docs/ -name "*.md" -exec cspell {} \; > audit-reports/spell-check-results.txt 2>&1 || true
+          find . -maxdepth 1 -name "*.md" -exec cspell {} \; >> audit-reports/spell-check-results.txt 2>&1 || true
+          
+          # Count results
+          TOTAL_WORDS=$(grep -c "Found" audit-reports/spell-check-results.txt || echo "0")
+          SPELL_ERRORS=$(grep -c "❌" audit-reports/spell-check-results.txt || echo "0")
+          
+          echo "Spell Check Results:" > audit-reports/spell-check-summary.txt
+          echo "Total Words Checked: $TOTAL_WORDS" >> audit-reports/spell-check-summary.txt
+          echo "Spell Errors Found: $SPELL_ERRORS" >> audit-reports/spell-check-summary.txt
+          echo "Spell Check Score: $(( ($TOTAL_WORDS - $SPELL_ERRORS) * 100 / $TOTAL_WORDS ))%" >> audit-reports/spell-check-summary.txt
+          
+          echo "✅ Spell checking completed"
+          
+      - name: Generate audit report
+        run: |
+          echo "📊 Generating audit report..."
+          
+          # Create comprehensive audit report
+          cat > audit-reports/automated-audit-report.md << EOF
+          # Automated Documentation Audit Report
+          
+          **Generated**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")  
+          **Audit Type**: ${{ steps.date-info.outputs.audit_type }}  
+          **Period**: ${{ steps.date-info.outputs.quarter_start }} - ${{ steps.date-info.outputs.quarter_end }}  
+          
+          ## Executive Summary
+          
+          $(cat audit-reports/link-check-summary.txt)
+          
+          $(cat audit-reports/markdownlint-summary.txt)
+          
+          $(cat audit-reports/spell-check-summary.txt)
+          
+          ## Detailed Results
+          
+          ### Link Validation
+          
+          \`\`\`
+          $(cat audit-reports/link-check-results.txt)
+          \`\`\`
+          
+          ### Markdown Linting
+          
+          \`\`\`
+          $(cat audit-reports/markdownlint-results.txt)
+          \`\`\`
+          
+          ### Spell Checking
+          
+          \`\`\`
+          $(cat audit-reports/spell-check-results.txt)
+          \`\`\`
+          
+          ## Recommendations
+          
+          ### High Priority
+          - [ ] Fix broken links found during validation
+          - [ ] Address markdown linting errors
+          - [ ] Correct spelling errors
+          
+          ### Medium Priority
+          - [ ] Improve documentation structure
+          - [ ] Enhance content quality
+          - [ ] Update outdated information
+          
+          ### Low Priority
+          - [ ] Optimize documentation for search
+          - [ ] Improve accessibility
+          - [ ] Enhance user experience
+          
+          ---
+          
+          *This report was automatically generated by GitHub Actions*
+          EOF
+          
+          echo "✅ Audit report generated"
+          
+      - name: Upload audit reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: documentation-audit-reports
+          path: audit-reports/
+          retention-days: 90
+          
+      - name: Comment on audit issue with results
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // Read audit report
+            const report = fs.readFileSync('audit-reports/automated-audit-report.md', 'utf8');
+            
+            // Find the audit issue (most recent documentation audit issue)
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'documentation-audit',
+              state: 'open',
+              sort: 'created',
+              direction: 'desc'
+            });
+            
+            if (issues.length > 0) {
+              const auditIssue = issues[0];
+              
+              // Add comment with audit results
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: auditIssue.number,
+                body: report
+              });
+              
+              console.log(`Added audit results comment to issue #${auditIssue.number}`);
+            } else {
+              console.log('No open audit issue found');
+            }

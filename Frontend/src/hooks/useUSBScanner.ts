@@ -227,9 +227,9 @@ export function useQRScanner() {
 
     // Extract QR code (you would use a QR code library like jsQR here)
     // For now, this is a placeholder
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     
     // TODO: Integrate jsQR library
+    // const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     // const code = jsQR(imageData.data, imageData.width, imageData.height);
     // if (code) {
     //   setResult(code.data);
@@ -292,13 +292,6 @@ export function useScannerMonitor(onScan: (code: string, type: 'barcode' | 'qr')
     timeout: 100,
     onScan: handleUSBScan
   });
-
-  const handleQRScan = useCallback((code: string) => {
-    setScanCount(prev => prev + 1);
-    setLastScanTime(new Date());
-    setScanHistory(prev => [...prev.slice(-9), { code, timestamp: new Date(), type: 'qr' }]);
-    onScan(code, 'qr');
-  }, [onScan]);
 
   const clearHistory = useCallback(() => {
     setScanHistory([]);

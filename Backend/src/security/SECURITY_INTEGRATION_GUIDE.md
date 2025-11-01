@@ -5,12 +5,12 @@ This guide provides comprehensive instructions for implementing the enhanced sec
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Installation & Setup](#installation--setup)
+2. [Installation & Setup](#installation-setup)
 3. [Security Components](#security-components)
 4. [Integration Steps](#integration-steps)
 5. [Configuration](#configuration)
 6. [Testing](#testing)
-7. [Monitoring & Maintenance](#monitoring--maintenance)
+7. [Monitoring & Maintenance](#monitoring-maintenance)
 8. [Troubleshooting](#troubleshooting)
 
 ## Overview
@@ -95,7 +95,7 @@ import {
   IncidentResponse,
   APISecurity,
   DatabaseSecurity,
-  EnvSecurity
+  EnvSecurity,
 } from '@/security';
 
 // Initialize Redis client
@@ -120,7 +120,10 @@ const envSecurity = new EnvSecurity();
 #### Redis-based Rate Limiting
 
 ```typescript
-import { createRateLimiter, createAuthRateLimiter } from '@/security/redis-rate-limiter';
+import {
+  createRateLimiter,
+  createAuthRateLimiter,
+} from '@/security/redis-rate-limiter';
 
 // Apply to your app
 const authLimiter = createAuthRateLimiter(redis);
@@ -128,7 +131,7 @@ app.use('/api/auth/login', authLimiter.createMiddleware());
 
 const apiLimiter = createRateLimiter(redis, {
   windowMs: 15 * 60 * 1000,
-  maxRequests: 100
+  maxRequests: 100,
 });
 app.use('/api', apiLimiter.createMiddleware());
 ```
@@ -152,14 +155,14 @@ router.post('/login', async (req, res) => {
       authResult.user.username,
       authResult.user.role,
       req.ip,
-      req.get('User-Agent') || 'unknown'
+      req.get('User-Agent') || 'unknown',
     );
 
     res.json({
       success: true,
       accessToken: session.accessToken,
       refreshToken: session.refreshToken,
-      sessionId: session.sessionId
+      sessionId: session.sessionId,
     });
   }
 });
@@ -171,14 +174,14 @@ router.post('/refresh', async (req, res) => {
   const session = await sessionManager.refreshSession(
     refreshToken,
     req.ip,
-    req.get('User-Agent') || 'unknown'
+    req.get('User-Agent') || 'unknown',
   );
 
   if (session) {
     res.json({
       success: true,
       accessToken: session.accessToken,
-      refreshToken: session.refreshToken
+      refreshToken: session.refreshToken,
     });
   } else {
     res.status(401).json({ success: false, error: 'Invalid refresh token' });
@@ -202,7 +205,7 @@ router.post('/mfa/setup', async (req, res) => {
       success: true,
       qrCodeUrl: mfaSetup.qrCodeUrl,
       manualEntryKey: mfaSetup.manualEntryKey,
-      backupCodes: mfaSetup.backupCodes
+      backupCodes: mfaSetup.backupCodes,
     });
   }
 });
@@ -211,7 +214,11 @@ router.post('/mfa/setup', async (req, res) => {
 router.post('/mfa/verify', async (req, res) => {
   const { userId, token, backupCodes } = req.body;
 
-  const result = await mfaService.verifyAndEnableMFA(userId, token, backupCodes);
+  const result = await mfaService.verifyAndEnableMFA(
+    userId,
+    token,
+    backupCodes,
+  );
 
   res.json(result);
 });
@@ -232,7 +239,7 @@ router.post('/login-with-mfa', async (req, res) => {
       const mfaResult = await mfaService.verifyMFAToken(
         authResult.user.id,
         'session-id',
-        mfaToken
+        mfaToken,
       );
 
       if (mfaResult.success) {
@@ -242,13 +249,13 @@ router.post('/login-with-mfa', async (req, res) => {
           authResult.user.username,
           authResult.user.role,
           req.ip,
-          req.get('User-Agent') || 'unknown'
+          req.get('User-Agent') || 'unknown',
         );
 
         res.json({
           success: true,
           accessToken: session.accessToken,
-          refreshToken: session.refreshToken
+          refreshToken: session.refreshToken,
         });
       } else {
         res.status(401).json({ success: false, error: 'Invalid MFA token' });
@@ -261,19 +268,22 @@ router.post('/login-with-mfa', async (req, res) => {
 ### 2. Real-time Security Monitoring
 
 ```typescript
-import { securityMonitor, SecurityEventType } from '@/security/security-monitor';
+import {
+  securityMonitor,
+  SecurityEventType,
+} from '@/security/security-monitor';
 
 // Initialize security monitoring
-securityMonitor.on('securityEvent', (event) => {
+securityMonitor.on('securityEvent', event => {
   console.log('Security event detected:', event);
 });
 
-securityMonitor.on('securityAlert', (alert) => {
+securityMonitor.on('securityAlert', alert => {
   // Send notifications to admins
   sendAdminNotification(alert);
 });
 
-securityMonitor.on('forceLogout', (data) => {
+securityMonitor.on('forceLogout', data => {
   // Force logout user session
   sessionManager.destroySession(data.sessionId, 'Security policy violation');
 });
@@ -289,7 +299,7 @@ router.post('/suspicious-activity', async (req, res) => {
     userAgent: req.get('User-Agent') || 'unknown',
     timestamp: new Date(),
     details: req.body.details,
-    resolved: false
+    resolved: false,
   });
 
   res.json({ success: true });
@@ -307,19 +317,19 @@ const userCreationRules = [
     field: 'username',
     schema: InputValidator.schemas.username,
     required: true,
-    sanitize: true
+    sanitize: true,
   },
   {
     field: 'email',
     schema: InputValidator.schemas.email,
     required: true,
-    sanitize: true
+    sanitize: true,
   },
   {
     field: 'password',
     schema: InputValidator.schemas.password,
-    required: true
-  }
+    required: true,
+  },
 ];
 
 // Apply validation middleware
@@ -337,13 +347,14 @@ router.post('/users', validateBody(userCreationRules), async (req, res) => {
 ### 4. CSRF Protection
 
 ```typescript
-import { csrfProtection, generateCSRFToken, validateCSRFToken } from '@/security/csrf-protection';
+import {
+  csrfProtection,
+  generateCSRFToken,
+  validateCSRFToken,
+} from '@/security/csrf-protection';
 
 // Apply CSRF protection to state-changing routes
-app.use('/api', [
-  generateCSRFToken(),
-  validateCSRFToken()
-]);
+app.use('/api', [generateCSRFToken(), validateCSRFToken()]);
 
 // For SPA support
 app.get('/api/csrf-token', (req, res) => {
@@ -367,7 +378,10 @@ app.post('/api/security/csp-report', securityHeaders.cspViolationHandler());
 ### 6. API Endpoint Security
 
 ```typescript
-import { apiSecurityMiddleware, sensitiveEndpointProtection } from '@/security/api-security';
+import {
+  apiSecurityMiddleware,
+  sensitiveEndpointProtection,
+} from '@/security/api-security';
 
 // Apply general API security
 app.use('/api', apiSecurityMiddleware());
@@ -392,8 +406,8 @@ router.get('/secure-data', async (req, res) => {
       userId: req.user.id,
       sessionId: req.sessionId,
       ipAddress: req.ip,
-      userAgent: req.get('User-Agent')
-    }
+      userAgent: req.get('User-Agent'),
+    },
   );
 
   res.json({ success: true, data: result });
@@ -470,7 +484,11 @@ model UserMFA {
 import { Request, Response, NextFunction } from 'express';
 import { sessionManager } from '@/security/session-manager';
 
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+export const authenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -488,7 +506,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     // Get session data
     const session = await sessionManager.getSession(decoded.sessionId);
     if (!session || !session.totpVerified) {
-      return res.status(401).json({ success: false, message: 'Invalid session' });
+      return res
+        .status(401)
+        .json({ success: false, message: 'Invalid session' });
     }
 
     req.user = decoded;
@@ -496,7 +516,9 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
 
     next();
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Authentication error' });
+    return res
+      .status(500)
+      .json({ success: false, message: 'Authentication error' });
   }
 };
 ```
@@ -536,7 +558,7 @@ router.get('/audit/compliance', async (req, res) => {
   const { startDate, endDate } = req.query;
   const report = await auditTrail.generateComplianceReport(
     new Date(startDate as string),
-    new Date(endDate as string)
+    new Date(endDate as string),
   );
   res.json({ success: true, report });
 });
@@ -548,7 +570,8 @@ router.get('/incidents', async (req, res) => {
 });
 
 router.post('/incidents', async (req, res) => {
-  const { type, severity, title, description, indicators, affectedAssets } = req.body;
+  const { type, severity, title, description, indicators, affectedAssets } =
+    req.body;
 
   const incidentId = await incidentResponse.createIncident(
     type,
@@ -557,7 +580,7 @@ router.post('/incidents', async (req, res) => {
     description,
     req.user.id,
     indicators,
-    affectedAssets
+    affectedAssets,
   );
 
   res.json({ success: true, incidentId });
@@ -603,7 +626,10 @@ app.use('/api/security', authMiddleware, securityRoutes);
 // Error handling
 app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
   // Log security incidents
-  if (error.message.includes('security') || error.message.includes('authentication')) {
+  if (
+    error.message.includes('security') ||
+    error.message.includes('authentication')
+  ) {
     await securityMonitor.recordSecurityEvent({
       type: SecurityEventType.SECURITY_POLICY_VIOLATION,
       severity: SecuritySeverity.HIGH,
@@ -613,7 +639,7 @@ app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
       userAgent: req.get('User-Agent') || 'unknown',
       timestamp: new Date(),
       details: { error: error.message, path: req.path },
-      resolved: false
+      resolved: false,
     });
   }
 
@@ -692,9 +718,13 @@ describe('Security Features', () => {
 
   test('should enforce rate limiting', async () => {
     // Make multiple rapid requests
-    const requests = Array(10).fill(null).map(() =>
-      request(app).post('/api/auth/login').send({ username: 'test', password: 'wrong' })
-    );
+    const requests = Array(10)
+      .fill(null)
+      .map(() =>
+        request(app)
+          .post('/api/auth/login')
+          .send({ username: 'test', password: 'wrong' }),
+      );
 
     const responses = await Promise.all(requests);
 
@@ -718,7 +748,7 @@ describe('Security Features', () => {
       .send({
         username: 'invalid username with spaces!',
         email: 'not-an-email',
-        password: '123' // too short
+        password: '123', // too short
       })
       .expect(400);
 
@@ -757,24 +787,20 @@ describe('Security Features', () => {
 // src/services/security-dashboard.ts
 export class SecurityDashboard {
   async getDashboardData() {
-    const [
-      securityStats,
-      incidentStats,
-      auditStats,
-      databaseHealth
-    ] = await Promise.all([
-      securityMonitor.getSecurityStats(),
-      incidentResponse.getIncidentStats(),
-      auditTrail.getRecentEvents(24),
-      databaseSecurity.checkSecurityHealth()
-    ]);
+    const [securityStats, incidentStats, auditStats, databaseHealth] =
+      await Promise.all([
+        securityMonitor.getSecurityStats(),
+        incidentResponse.getIncidentStats(),
+        auditTrail.getRecentEvents(24),
+        databaseSecurity.checkSecurityHealth(),
+      ]);
 
     return {
       security: securityStats,
       incidents: incidentStats,
       audit: auditStats,
       database: databaseHealth,
-      lastUpdated: new Date()
+      lastUpdated: new Date(),
     };
   }
 
@@ -782,7 +808,7 @@ export class SecurityDashboard {
     return await securityMonitor.getSecurityEvents({
       severity: ['high', 'critical'],
       startDate: new Date(Date.now() - 60 * 60 * 1000), // Last hour
-      limit: 50
+      limit: 50,
     });
   }
 }
@@ -807,21 +833,27 @@ export class SecurityDashboard {
 ### Common Issues
 
 1. **Redis Connection Issues**
+
    ```
    Error: Redis connection failed
    ```
+
    **Solution**: Check Redis configuration and ensure Redis server is running
 
 2. **JWT Token Issues**
+
    ```
    Error: Invalid JWT token
    ```
+
    **Solution**: Verify JWT_SECRET is consistent across all services
 
 3. **Rate Limiting Too Strict**
+
    ```
    Error: Too many requests
    ```
+
    **Solution**: Adjust rate limiting configuration based on traffic patterns
 
 4. **MFA Setup Issues**
@@ -839,7 +871,7 @@ Enable security debugging in development:
 export const securityDebug = {
   enabled: process.env.NODE_ENV === 'development',
   logLevel: 'debug',
-  includeSensitiveData: false
+  includeSensitiveData: false,
 };
 ```
 

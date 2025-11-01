@@ -626,7 +626,7 @@ class EnhancedCacheService {
     return nextVersion;
   }
 
-  private updateResponseTime(start_time: number): void {
+  private updateResponseTime(startTime: number): void {
     const responseTime = Date.now() - startTime;
     const totalOps = this.stats.hits + this.stats.misses + this.stats.sets;
 

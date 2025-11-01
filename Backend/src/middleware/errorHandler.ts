@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { CLMSError, ErrorFactory, getErrorResponse } from '@/errors/error-types';
+import { CLMSError, ErrorFactory, getErrorResponse, NotFoundError, ValidationError, RateLimitError } from '@/errors/error-types';
 import { logger } from '@/utils/logger';
 
 // Request interface extension
@@ -8,7 +8,7 @@ declare global {
   namespace Express {
     interface Request {
       requestId?: string;
-      user?: any;
+      // Remove user property declaration to avoid conflicts with auth.ts
     }
   }
 }
@@ -59,10 +59,11 @@ export function asyncHandler<T>(
 
 // 404 handler
 export function notFoundHandler(req: Request, res: Response, next: NextFunction): void {
-  const error = new CLMSError(`Route ${req.method} ${req.path} not found`) as any;
-  error.statusCode = 404;
-  error.code = 'NOT_FOUND';
-  error.isOperational = true;
+  const error = new NotFoundError(`Route ${req.method} ${req.path}`, undefined, {
+    requestId: req.requestId,
+    method: req.method,
+    path: req.path
+  });
   next(error);
 }
 
@@ -85,7 +86,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
 
   // Override res.end to log response
   const originalEnd = res.end;
-  res.end = function(chunk?: any, encoding?: any) {
+  res.end = function(chunk?: any, encoding?: any): any {
     const duration = Date.now() - startTime;
 
     logger.info('Request completed', {
@@ -115,7 +116,7 @@ export function validateRequest(schema: {
         if (!result.success) {
           throw new ValidationError(
             'Request body validation failed',
-            result.error.issues.map(issue => ({
+            result.error.issues.map((issue: any) => ({
               field: issue.path.join('.'),
               message: issue.message,
               code: issue.code,
@@ -132,7 +133,7 @@ export function validateRequest(schema: {
         if (!result.success) {
           throw new ValidationError(
             'Query parameters validation failed',
-            result.error.issues.map(issue => ({
+            result.error.issues.map((issue: any) => ({
               field: issue.path.join('.'),
               message: issue.message,
               code: issue.code,
@@ -149,7 +150,7 @@ export function validateRequest(schema: {
         if (!result.success) {
           throw new ValidationError(
             'URL parameters validation failed',
-            result.error.issues.map(issue => ({
+            result.error.issues.map((issue: any) => ({
               field: issue.path.join('.'),
               message: issue.message,
               code: issue.code,
@@ -177,7 +178,7 @@ export function createRateLimiter(options: {
   const requests = new Map<string, { count: number; resetTime: number }>();
 
   return (req: Request, res: Response, next: NextFunction): void => {
-    const key = req.ip;
+    const key = req.ip || 'unknown';
     const now = Date.now();
     const windowStart = now - options.windowMs;
 

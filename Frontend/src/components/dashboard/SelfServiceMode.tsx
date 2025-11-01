@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,7 +42,6 @@ export default function SelfServiceMode() {
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const successTimeoutRef = useRef<NodeJS.Timeout>();
 
   // Auto-focus input on mount and after each scan
   useEffect(() => {
@@ -60,6 +59,7 @@ export default function SelfServiceMode() {
       
       return () => clearTimeout(timeout);
     }
+    return undefined;
   }, [showSuccess]);
 
   // Play sound feedback
@@ -70,6 +70,7 @@ export default function SelfServiceMode() {
       // Fallback to system beep if sound file not found
       console.log(success ? '✓ Success' : '✗ Error');
     });
+    return undefined;
   };
 
   const handleScan = async (scannedId: string) => {
@@ -121,14 +122,15 @@ export default function SelfServiceMode() {
       }
 
       // Map the API response to our component state
-      setLastScan({
+      const scanResult: ScanResult = {
         success: result.success,
         action,
-        student,
         message,
-        isDuplicate,
-        duration,
-      });
+        ...(student && { student }),
+        ...(isDuplicate !== undefined && { isDuplicate }),
+        ...(duration !== undefined && { duration }),
+      };
+      setLastScan(scanResult);
 
       // Play appropriate sound and show feedback
       if (result.success) {

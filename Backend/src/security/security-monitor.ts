@@ -116,7 +116,7 @@ export class SecurityMonitor extends EventEmitter {
       await this.redis.ltrim('recent_security_events', 0, 999); // Keep last 1000 events
 
       // Store in database for permanent record
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
           userId: securityEvent.userId,
           action: `security_${securityEvent.type}`,
@@ -192,7 +192,7 @@ export class SecurityMonitor extends EventEmitter {
         }
       }
 
-      const auditLogs = await prisma.auditLog.findMany({
+      const auditLogs = await prisma.audit_logs.findMany({
         where: {
           action: {
             startsWith: 'security_'

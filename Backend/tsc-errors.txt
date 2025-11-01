@@ -1,0 +1,1205 @@
+src/app.ts(18,10): error TS2300: Duplicate identifier 'authMiddleware'.
+src/app.ts(50,10): error TS2300: Duplicate identifier 'authMiddleware'.
+src/app.ts(135,18): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'RequestHandler<ParamsDictionary, any, any, ParsedQs, Record<string, any>>' is not assignable to parameter of type 'PathParams'.
+src/app.ts(153,59): error TS2304: Cannot find name 'checkoutRoutes'.
+src/app.ts(221,37): error TS2339: Property 'connected' does not exist on type 'boolean'.
+src/app.ts(222,38): error TS2339: Property 'responseTime' does not exist on type 'boolean'.
+src/middleware/dataAccessAudit.ts(116,21): error TS2304: Cannot find name 'generateAuditId'.
+src/middleware/errorMiddleware.ts(274,5): error TS2322: Type 'string' is not assignable to type 'Date'.
+src/middleware/errorMiddleware.ts(473,24): error TS2339: Property 'createLog' does not exist on type 'AuditService'.
+src/middleware/ferpa.middleware.ts(117,34): error TS2552: Cannot find name 'ferpaComplianceService'. Did you mean 'ferpaComplianceCheck'?
+src/middleware/ferpa.middleware.ts(188,30): error TS2552: Cannot find name 'ferpaComplianceService'. Did you mean 'ferpaComplianceCheck'?
+src/middleware/ferpa.middleware.ts(232,37): error TS2552: Cannot find name 'ferpaComplianceService'. Did you mean 'ferpaComplianceCheck'?
+src/middleware/ferpa.middleware.ts(283,21): error TS2552: Cannot find name 'ferpaComplianceService'. Did you mean 'ferpaComplianceCheck'?
+src/middleware/ferpaCompliance.ts(10,7): error TS2717: Subsequent property declarations must have the same type.  Property 'ferpaContext' must be of type '{ accessGranted: boolean; maskedFields: string[]; dataCategories: string[]; accessLevel: string; requestId?: string; expiresAt?: Date; } | undefined', but here has type '{ accessGranted: boolean; maskedFields: string[]; dataCategories: string[]; accessLevel: string; requestId?: string; expiresAt?: Date; requiresJustification?: boolean; complianceLevel?: FERPAComplianceLevel; accessRequestId?: string; } | undefined'.
+src/middleware/ferpaCompliance.ts(45,37): error TS2339: Property 'accessGranted' does not exist on type '{ requiresJustification: boolean; complianceLevel: FERPAComplianceLevel; maskedFields: string[]; }'.
+src/middleware/ferpaCompliance.ts(47,38): error TS2339: Property 'dataCategories' does not exist on type '{ requiresJustification: boolean; complianceLevel: FERPAComplianceLevel; maskedFields: string[]; }'.
+src/middleware/ferpaCompliance.ts(48,35): error TS2339: Property 'accessLevel' does not exist on type '{ requiresJustification: boolean; complianceLevel: FERPAComplianceLevel; maskedFields: string[]; }'.
+src/middleware/ferpaCompliance.ts(49,33): error TS2339: Property 'requestId' does not exist on type '{ requiresJustification: boolean; complianceLevel: FERPAComplianceLevel; maskedFields: string[]; }'.
+src/middleware/ferpaCompliance.ts(50,33): error TS2339: Property 'expiresAt' does not exist on type '{ requiresJustification: boolean; complianceLevel: FERPAComplianceLevel; maskedFields: string[]; }'.
+src/middleware/ferpaCompliance.ts(51,9): error TS2353: Object literal may only specify known properties, and 'requiresJustification' does not exist in type '{ accessGranted: boolean; maskedFields: string[]; dataCategories: string[]; accessLevel: string; requestId?: string; expiresAt?: Date; }'.
+src/middleware/ferpaCompliance.ts(53,39): error TS2339: Property 'accessRequestId' does not exist on type '{ requiresJustification: boolean; complianceLevel: FERPAComplianceLevel; maskedFields: string[]; }'.
+src/middleware/ferpaCompliance.ts(59,52): error TS2339: Property 'checkValidAccessRequest' does not exist on type 'FERPAService'.
+src/middleware/ferpaCompliance.ts(88,28): error TS2339: Property 'accessRequestId' does not exist on type '{ accessGranted: boolean; maskedFields: string[]; dataCategories: string[]; accessLevel: string; requestId?: string; expiresAt?: Date; }'.
+src/middleware/ferpaCompliance.ts(138,7): error TS2379: Argument of type '{ requestId: any; ipAddress: string | undefined; userAgent: string | undefined; sessionId: any; entityId: string | undefined; }' is not assignable to parameter of type 'FERPAAccessMetadata' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'ipAddress' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/middleware/ferpaCompliance.ts(190,61): error TS18049: 'maskedBody' is possibly 'null' or 'undefined'.
+src/middleware/ferpaCompliance.ts(205,45): error TS2339: Property 'complianceLevel' does not exist on type '{ accessGranted: boolean; maskedFields: string[]; dataCategories: string[]; accessLevel: string; requestId?: string; expiresAt?: Date; }'.
+src/middleware/ferpaCompliance.ts(206,45): error TS2339: Property 'accessRequestId' does not exist on type '{ accessGranted: boolean; maskedFields: string[]; dataCategories: string[]; accessLevel: string; requestId?: string; expiresAt?: Date; }'.
+src/middleware/securityMiddleware.ts(105,5): error TS2322: Type '{ success: false; error: string; timestamp: string; retryAfter: number; }' is not assignable to type 'string'.
+src/middleware/securityMiddleware.ts(161,10): error TS7030: Not all code paths return a value.
+src/middleware/securityMiddleware.ts(299,60): error TS2339: Property 'join' does not exist on type 'boolean | string[]'.
+  Property 'join' does not exist on type 'false'.
+src/middleware/securityMiddleware.ts(342,10): error TS7030: Not all code paths return a value.
+src/middleware/securityMiddleware.ts(370,10): error TS7030: Not all code paths return a value.
+src/middleware/selfHealingMiddleware.ts(192,19): error TS2339: Property 'timeout' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+src/middleware/selfHealingMiddleware.ts(192,34): error TS2339: Property 'timeout' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+src/middleware/selfHealingMiddleware.ts(225,73): error TS2345: Argument of type 'string | number | string[]' is not assignable to parameter of type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/middleware/selfHealingMiddleware.ts(335,38): error TS2345: Argument of type 'any[]' is not assignable to parameter of type '[chunk: any, encoding: BufferEncoding, cb?: (() => void) | undefined]'.
+  Target requires 2 element(s) but source may have fewer.
+src/middleware/selfHealingMiddleware.ts(347,25): error TS2339: Property 'category' does not exist on type 'BaseError'.
+src/middleware/selfHealingMiddleware.ts(348,25): error TS2339: Property 'severity' does not exist on type 'BaseError'.
+src/middleware/selfHealingMiddleware.ts(417,22): error TS2379: Argument of type '{ type: "RETRY" | "FALLBACK" | "DEGRADE" | "RESTART" | "RECONNECT"; success: boolean; duration: number; error: string | undefined; }' is not assignable to parameter of type '{ type: string; success: boolean; duration: number; error?: string; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'error' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/middleware/selfHealingMiddleware.ts(450,36): error TS2339: Property 'severity' does not exist on type 'BaseError'.
+src/middleware/selfHealingMiddleware.ts(479,57): error TS2339: Property 'category' does not exist on type 'BaseError'.
+src/middleware/selfHealingMiddleware.ts(482,62): error TS2339: Property 'severity' does not exist on type 'BaseError'.
+src/middleware/selfHealingMiddleware.ts(552,60): error TS2345: Argument of type '{ requestId: string; userId: any; ip: string | undefined; userAgent: string; method: string; url: string; timestamp: Date; duration: number; }' is not assignable to parameter of type 'ErrorContextData'.
+  Types of property 'ip' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/middleware/selfHealingMiddleware.ts(582,58): error TS2345: Argument of type '{ requestId: string; userId: any; ip: string | undefined; userAgent: string; method: string; url: string; timestamp: Date; duration: number; }' is not assignable to parameter of type 'ErrorContextData'.
+  Types of property 'ip' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/middleware/tls.middleware.ts(5,27): error TS2307: Cannot find module '@/config' or its corresponding type declarations.
+src/middleware/tls.middleware.ts(43,9): error TS2375: Type '{ enabled: true; certPath: string; keyPath: string; caPath: string | undefined; options: { cert: NonSharedBuffer; key: NonSharedBuffer; ca: NonSharedBuffer | undefined; ... 5 more ...; requestCert: boolean; }; }' is not assignable to type '{ enabled: boolean; certPath?: string; keyPath?: string; caPath?: string; options?: any; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'caPath' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/middleware/tls.middleware.ts(265,9): error TS2322: Type 'Response<any, Record<string, any>>' is not assignable to type 'void'.
+src/middleware/tls.middleware.ts(370,51): error TS2339: Property 'getProtocol' does not exist on type 'Socket'.
+src/middleware/tls.middleware.ts(371,50): error TS2339: Property 'getCipher' does not exist on type 'Socket'.
+src/routes/analytics.ts(123,37): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/routes/analytics.ts(145,37): error TS7006: Parameter 'activity' implicitly has an 'any' type.
+src/routes/analytics.ts(185,14): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/routes/analytics.ts(187,19): error TS2304: Cannot find name 'ActivityStatus'.
+src/routes/analytics.ts(193,14): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/routes/analytics.ts(573,70): error TS7030: Not all code paths return a value.
+src/routes/analytics.ts(621,12): error TS2551: Property 'student' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'students'?
+src/routes/analytics.ts(622,12): error TS2551: Property 'student' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'students'?
+src/routes/analytics.ts(623,12): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/routes/analytics.ts(624,12): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/routes/audit.routes.ts(89,16): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/audit.routes.ts(110,16): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/audit.routes.ts(150,3): error TS7030: Not all code paths return a value.
+src/routes/audit.routes.ts(154,32): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/audit.routes.ts(213,33): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/audit.routes.ts(234,29): error TS7006: Parameter 'log' implicitly has an 'any' type.
+src/routes/audit.routes.ts(251,21): error TS7006: Parameter 'row' implicitly has an 'any' type.
+src/routes/audit.routes.ts(251,36): error TS7006: Parameter 'cell' implicitly has an 'any' type.
+src/routes/audit.routes.ts(300,33): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/audit.routes.ts(335,20): error TS7006: Parameter 'log' implicitly has an 'any' type.
+src/routes/audit.routes.ts(404,16): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/audit.routes.ts(405,16): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/audit.routes.ts(406,16): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/audit.routes.ts(407,16): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/audit.routes.ts(412,16): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/audit.routes.ts(419,16): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/audit.routes.ts(444,41): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/audit.routes.ts(544,32): error TS2339: Property 'AUDIT_LOGS_CREATE' does not exist on type 'typeof Permission'.
+src/routes/audit.routes.ts(545,3): error TS7030: Not all code paths return a value.
+src/routes/audit.routes.ts(565,30): error TS2379: Argument of type '{ action: any; entity: any; entityId: any; userName: string; ipAddress: string | undefined; userAgent: string | undefined; requestId: any; success: true; newValues: any; metadata: any; }' is not assignable to parameter of type 'AuditLogEntry' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'ipAddress' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/routes/audit.routes.ts(572,24): error TS2339: Property 'id' does not exist on type 'Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>'.
+src/routes/auth.ts(58,48): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/auth.ts(69,24): error TS2551: Property 'isActive' does not exist on type 'UserSummary'. Did you mean 'is_active'?
+src/routes/auth.ts(70,27): error TS2551: Property 'lastLoginAt' does not exist on type 'UserSummary'. Did you mean 'last_login_at'?
+src/routes/auth.ts(71,25): error TS2551: Property 'createdAt' does not exist on type 'UserSummary'. Did you mean 'created_at'?
+src/routes/auth.ts(435,7): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/auth.ts(502,48): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/auth.ts(532,49): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/auth.ts(566,49): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/backup.routes.ts(21,53): error TS2379: Argument of type '{ type: any; status: string; limit: number | undefined; }' is not assignable to parameter of type '{ type?: "FULL" | "INCREMENTAL"; status?: string; limit?: number; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'limit' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+src/routes/backup.routes.ts(69,20): error TS7030: Not all code paths return a value.
+src/routes/books.ts(18,10): error TS2305: Module '"@prisma/client"' has no exported member 'CheckoutStatus'.
+src/routes/books.ts(82,20): error TS7030: Not all code paths return a value.
+src/routes/books.ts(124,18): error TS7030: Not all code paths return a value.
+src/routes/books.ts(149,7): error TS2561: Object literal may only specify known properties, but 'accessionNo' does not exist in type '{ isbn?: string; accession_no: string; title: string; author: string; publisher?: string; category: string; subcategory?: string; location?: string; totalCopies?: number; availableCopies?: number; }'. Did you mean to write 'accession_no'?
+src/routes/books.ts(182,20): error TS7030: Not all code paths return a value.
+src/routes/books.ts(209,7): error TS2561: Object literal may only specify known properties, but 'accessionNo' does not exist in type '{ isbn?: string; accession_no?: string; title?: string; author?: string; publisher?: string; category?: string; subcategory?: string; location?: string; total_copies?: number; available_copies?: number; is_active?: boolean; }'. Did you mean to write 'accession_no'?
+src/routes/books.ts(244,23): error TS7030: Not all code paths return a value.
+src/routes/books.ts(278,22): error TS7030: Not all code paths return a value.
+src/routes/books.ts(330,3): error TS7030: Not all code paths return a value.
+src/routes/books.ts(343,7): error TS2561: Object literal may only specify known properties, but 'bookId' does not exist in type '{ book_id: string; student_id: string; due_date: Date; notes?: string; }'. Did you mean to write 'book_id'?
+src/routes/books.ts(373,3): error TS7030: Not all code paths return a value.
+src/routes/books.ts(429,15): error TS2551: Property 'bookId' does not exist on type 'GetBookCheckoutsOptions'. Did you mean 'book_id'?
+src/routes/books.ts(433,15): error TS2551: Property 'studentId' does not exist on type 'GetBookCheckoutsOptions'. Did you mean 'student_id'?
+src/routes/enhancedEquipment.ts(5,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentStatus'. Did you mean 'equipment_status'?
+src/routes/enhancedEquipment.ts(6,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentType'. Did you mean 'equipment_type'?
+src/routes/enhancedEquipment.ts(7,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentConditionRating'. Did you mean 'equipment_condition_rating'?
+src/routes/enhancedEquipment.ts(8,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentReservationStatus'. Did you mean 'equipment_reservations_status'?
+src/routes/enhancedEquipment.ts(9,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentMaintenanceType'. Did you mean 'equipment_maintenance'?
+src/routes/enhancedEquipment.ts(10,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentMaintenanceStatus'. Did you mean 'equipment_maintenance_status'?
+src/routes/enhancedEquipment.ts(11,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentMaintenancePriority'. Did you mean 'equipment_maintenance_priority'?
+src/routes/enhancedEquipment.ts(12,3): error TS2305: Module '"@prisma/client"' has no exported member 'EquipmentAssessmentType'.
+src/routes/enhancedEquipment.ts(13,3): error TS2305: Module '"@prisma/client"' has no exported member 'EquipmentDamageSeverity'.
+src/routes/enhancedEquipment.ts(14,3): error TS2305: Module '"@prisma/client"' has no exported member 'ActivityType'.
+src/routes/enhancedEquipment.ts(55,56): error TS2379: Argument of type '{ type: EquipmentType; status: EquipmentStatus; category: string; location: string; page: number; limit: number; search: string; includeReservations: boolean; includeMaintenance: boolean; includeStats: boolean; conditionRating: EquipmentConditionRating; tags: string[] | undefined; }' is not assignable to parameter of type 'GetEquipmentOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'tags' are incompatible.
+    Type 'string[] | undefined' is not assignable to type 'string[]'.
+      Type 'undefined' is not assignable to type 'string[]'.
+src/routes/enhancedEquipment.ts(78,66): error TS7030: Not all code paths return a value.
+src/routes/enhancedEquipment.ts(120,66): error TS7030: Not all code paths return a value.
+src/routes/enhancedEquipment.ts(149,62): error TS2379: Argument of type '{ equipmentId: any; name: any; type: any; location: any; maxTimeMinutes: any; requiresSupervision: any; description: any; category: any; specifications: any; purchaseDate: Date | undefined; ... 5 more ...; tags: any; }' is not assignable to parameter of type 'CreateEquipmentData' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'purchaseDate' are incompatible.
+    Type 'Date | undefined' is not assignable to type 'Date'.
+      Type 'undefined' is not assignable to type 'Date'.
+src/routes/enhancedEquipment.ts(190,68): error TS7030: Not all code paths return a value.
+src/routes/enhancedEquipment.ts(227,66): error TS2379: Argument of type '{ equipmentId: any; name: any; type: any; location: any; maxTimeMinutes: any; requiresSupervision: any; description: any; status: any; category: any; specifications: any; purchaseDate: Date | undefined; ... 11 more ...; tags: any; }' is not assignable to parameter of type 'UpdateEquipmentData' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'lastMaintenance' are incompatible.
+    Type 'Date | undefined' is not assignable to type 'Date'.
+      Type 'undefined' is not assignable to type 'Date'.
+src/routes/enhancedEquipment.ts(276,71): error TS7030: Not all code paths return a value.
+src/routes/enhancedEquipment.ts(310,68): error TS7030: Not all code paths return a value.
+src/routes/enhancedEquipment.ts(322,46): error TS2339: Property 'getEquipmentByEquipmentId' does not exist on type 'EquipmentService'.
+src/routes/enhancedEquipment.ts(354,69): error TS7030: Not all code paths return a value.
+src/routes/enhancedEquipment.ts(366,45): error TS2551: Property 'useEquipment' does not exist on type 'EquipmentService'. Did you mean 'getEquipment'?
+src/routes/enhancedEquipment.ts(396,73): error TS7030: Not all code paths return a value.
+src/routes/enhancedEquipment.ts(408,45): error TS2551: Property 'releaseEquipment' does not exist on type 'EquipmentService'. Did you mean 'createEquipment'?
+src/routes/enhancedEquipment.ts(432,59): error TS2339: Property 'EQUIPMENT_RESERVE' does not exist on type 'typeof Permission'.
+src/routes/enhancedEquipment.ts(432,79): error TS7030: Not all code paths return a value.
+src/routes/enhancedEquipment.ts(475,92): error TS7030: Not all code paths return a value.
+src/routes/enhancedEquipment.ts(515,58): error TS2339: Property 'EQUIPMENT_MAINTENANCE' does not exist on type 'typeof Permission'.
+src/routes/enhancedEquipment.ts(515,82): error TS7030: Not all code paths return a value.
+src/routes/enhancedEquipment.ts(537,66): error TS2379: Argument of type '{ equipmentId: any; maintenanceType: EquipmentMaintenanceType; description: any; cost: any; vendor: any; scheduledDate: Date | undefined; priority: EquipmentMaintenancePriority; estimatedDuration: any; warrantyClaim: any; }' is not assignable to parameter of type 'CreateMaintenanceData' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'scheduledDate' are incompatible.
+    Type 'Date | undefined' is not assignable to type 'Date'.
+      Type 'undefined' is not assignable to type 'Date'.
+src/routes/enhancedEquipment.ts(571,64): error TS2551: Property 'EQUIPMENT_ASSESS' does not exist on type 'typeof Permission'. Did you mean 'EQUIPMENT_ASSIGN'?
+src/routes/enhancedEquipment.ts(571,83): error TS7030: Not all code paths return a value.
+src/routes/enhancedEquipment.ts(651,43): error TS2339: Property 'getEquipmentUsageHistory' does not exist on type 'EquipmentService'.
+src/routes/enhancedEquipment.ts(705,30): error TS2304: Cannot find name 'prisma'.
+src/routes/enhancedEquipment.ts(719,41): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/routes/enhancedEquipment.ts(746,29): error TS2304: Cannot find name 'prisma'.
+src/routes/enhancedEquipment.ts(757,40): error TS7006: Parameter 'l' implicitly has an 'any' type.
+src/routes/enhancedSearch.ts(89,28): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(161,65): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(200,3): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(455,42): error TS2379: Argument of type '{ query: string; type: string; status: string; location: string; category: string; isAvailable: boolean; requiresSupervision: boolean; maintenanceDue: boolean; conditionRating: string; ... 5 more ...; limit: number; }' is not assignable to parameter of type 'EquipmentSearchOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'minUsageHours' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+src/routes/enhancedSearch.ts(487,23): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(554,64): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(609,37): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(657,38): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(710,3): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(766,3): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(810,3): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(815,69): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/enhancedSearch.ts(828,55): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/enhancedSearch.ts(859,3): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(874,68): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/enhancedSearch.ts(910,3): error TS7030: Not all code paths return a value.
+src/routes/enhancedSearch.ts(923,48): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/equipment.ts(5,8): error TS2724: '"@/services/enhancedEquipmentService"' has no exported member named 'GetEquipmentUsageHistoryOptions'. Did you mean 'getEquipmentUsageHistory'?
+src/routes/equipment.ts(23,10): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentStatus'. Did you mean 'equipment_status'?
+src/routes/equipment.ts(23,27): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentType'. Did you mean 'equipment_type'?
+src/routes/equipment.ts(23,42): error TS2305: Module '"@prisma/client"' has no exported member 'ActivityType'.
+src/routes/equipment.ts(23,56): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentConditionRating'. Did you mean 'equipment_condition_rating'?
+src/routes/equipment.ts(75,66): error TS7030: Not all code paths return a value.
+src/routes/equipment.ts(117,66): error TS7030: Not all code paths return a value.
+src/routes/equipment.ts(170,68): error TS7030: Not all code paths return a value.
+src/routes/equipment.ts(226,71): error TS7030: Not all code paths return a value.
+src/routes/equipment.ts(260,68): error TS7030: Not all code paths return a value.
+src/routes/equipment.ts(304,69): error TS7030: Not all code paths return a value.
+src/routes/equipment.ts(318,7): error TS2561: Object literal may only specify known properties, but 'equipmentId' does not exist in type '{ equipment_id: string; student_id: string; activity_type: ActivityType; timeLimitMinutes?: number; notes?: string; }'. Did you mean to write 'equipment_id'?
+src/routes/equipment.ts(347,73): error TS7030: Not all code paths return a value.
+src/routes/equipment.ts(474,59): error TS2339: Property 'EQUIPMENT_RESERVE' does not exist on type 'typeof Permission'.
+src/routes/equipment.ts(474,79): error TS7030: Not all code paths return a value.
+src/routes/equipment.ts(517,92): error TS7030: Not all code paths return a value.
+src/routes/equipment.ts(557,58): error TS2339: Property 'EQUIPMENT_MAINTENANCE' does not exist on type 'typeof Permission'.
+src/routes/equipment.ts(557,82): error TS7030: Not all code paths return a value.
+src/routes/equipment.ts(579,66): error TS2379: Argument of type '{ equipmentId: any; maintenanceType: any; description: any; cost: any; vendor: any; scheduledDate: Date | undefined; priority: any; estimatedDuration: any; warrantyClaim: any; }' is not assignable to parameter of type 'CreateMaintenanceData' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'scheduledDate' are incompatible.
+    Type 'Date | undefined' is not assignable to type 'Date'.
+      Type 'undefined' is not assignable to type 'Date'.
+src/routes/equipment.ts(613,64): error TS2551: Property 'EQUIPMENT_ASSESS' does not exist on type 'typeof Permission'. Did you mean 'EQUIPMENT_ASSIGN'?
+src/routes/equipment.ts(613,83): error TS7030: Not all code paths return a value.
+src/routes/equipment.ts(700,74): error TS7030: Not all code paths return a value.
+src/routes/errors.routes.ts(47,65): error TS2379: Argument of type '{ category: string; severity: string; resolved: boolean; startDate: Date | undefined; endDate: Date | undefined; search: string; tags: string[] | undefined; }' is not assignable to parameter of type 'ErrorReportFilter' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'startDate' are incompatible.
+    Type 'Date | undefined' is not assignable to type 'Date'.
+      Type 'undefined' is not assignable to type 'Date'.
+src/routes/errors.routes.ts(66,44): error TS7030: Not all code paths return a value.
+src/routes/errors.routes.ts(101,46): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/errors.routes.ts(104,24): error TS2339: Property 'createLog' does not exist on type 'AuditService'.
+src/routes/errors.routes.ts(136,45): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/errors.routes.ts(139,24): error TS2339: Property 'createLog' does not exist on type 'AuditService'.
+src/routes/errors.routes.ts(176,71): error TS2379: Argument of type '{ category: string; severity: string; resolved: boolean; startDate: Date | undefined; endDate: Date | undefined; }' is not assignable to parameter of type 'ErrorReportFilter' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'startDate' are incompatible.
+    Type 'Date | undefined' is not assignable to type 'Date'.
+      Type 'undefined' is not assignable to type 'Date'.
+src/routes/errors.routes.ts(221,58): error TS2345: Argument of type '{ requestId: any; userId: any; ip: string | undefined; userAgent: string; method: string; url: any; timestamp: Date; duration: number; }' is not assignable to parameter of type 'ErrorContextData'.
+  Types of property 'ip' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/routes/errors.routes.ts(225,58): error TS2345: Argument of type '{ requestId: any; userId: any; ip: string | undefined; userAgent: string; method: string; url: any; timestamp: Date; duration: number; }' is not assignable to parameter of type 'ErrorContextData'.
+  Types of property 'ip' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/routes/errors.routes.ts(296,63): error TS7030: Not all code paths return a value.
+src/routes/errors.routes.ts(304,60): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/errors.routes.ts(306,61): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/errors.routes.ts(317,24): error TS2339: Property 'createLog' does not exist on type 'AuditService'.
+src/routes/errors.routes.ts(377,65): error TS7030: Not all code paths return a value.
+src/routes/errors.routes.ts(380,64): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/errors.routes.ts(473,24): error TS2339: Property 'createLog' does not exist on type 'AuditService'.
+src/routes/errors.routes.ts(503,24): error TS2339: Property 'createLog' does not exist on type 'AuditService'.
+src/routes/fines.ts(27,32): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/fines.ts(55,15): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/routes/fines.ts(56,16): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/routes/fines.ts(56,21): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/routes/fines.ts(59,15): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/routes/fines.ts(60,16): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/routes/fines.ts(60,21): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/routes/fines.ts(68,42): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/routes/fines.ts(69,35): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/routes/fines.ts(95,32): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/fines.ts(122,15): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/routes/fines.ts(123,16): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/routes/fines.ts(123,21): error TS7006: Parameter 'f' implicitly has an 'any' type.
+src/routes/fines.ts(147,29): error TS7030: Not all code paths return a value.
+src/routes/fines.ts(163,35): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/fines.ts(190,42): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/fines.ts(201,18): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/fines.ts(238,27): error TS7030: Not all code paths return a value.
+src/routes/fines.ts(253,35): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/fines.ts(278,42): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/fines.ts(288,18): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/fines.ts(328,29): error TS7030: Not all code paths return a value.
+src/routes/fines.ts(342,35): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/fines.ts(357,42): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/fines.ts(365,18): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/routes/import.routes.ts(48,49): error TS7030: Not all code paths return a value.
+src/routes/import.routes.ts(107,46): error TS7030: Not all code paths return a value.
+src/routes/import.routes.ts(232,48): error TS7030: Not all code paths return a value.
+src/routes/import.routes.ts(285,58): error TS7030: Not all code paths return a value.
+src/routes/import.routes.ts(373,55): error TS7030: Not all code paths return a value.
+src/routes/performance.ts(28,7): error TS2554: Expected 0 arguments, but got 1.
+src/routes/performance.ts(88,51): error TS2341: Property 'getSystemMetrics' is private and only accessible within class 'MonitoringService'.
+src/routes/performance.ts(118,31): error TS2339: Property 'uptime' does not exist on type '{ cpu: { usage: number; loadAverage: number[]; }; memory: { used: number; total: number; percentage: number; heapUsed: number; heapTotal: number; external: number; }; disk: { used: number; total: number; percentage: number; }; network: { ...; }; }'.
+src/routes/performance.ts(184,9): error TS2322: Type 'string' is not assignable to type 'null'.
+src/routes/performance.ts(217,9): error TS2322: Type 'string' is not assignable to type 'null'.
+src/routes/performance.ts(230,9): error TS2322: Type 'string' is not assignable to type 'null'.
+src/routes/performance.ts(307,53): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/performance.ts(309,9): error TS1345: An expression of type 'void' cannot be tested for truthiness.
+src/routes/performance.ts(343,44): error TS2339: Property 'generatePerformanceReport' does not exist on type 'MonitoringService'.
+src/routes/performance.ts(382,25): error TS2339: Property 'getConnectionPoolStats' does not exist on type 'OptimizedDatabase'.
+src/routes/performance.ts(389,35): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/routes/performance.ts(389,40): error TS7006: Parameter 'stat' implicitly has an 'any' type.
+src/routes/performance.ts(391,41): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/routes/performance.ts(391,46): error TS7006: Parameter 'stat' implicitly has an 'any' type.
+src/routes/reporting.ts(11,24): error TS7030: Not all code paths return a value.
+src/routes/reporting.ts(46,26): error TS7030: Not all code paths return a value.
+src/routes/reporting.ts(121,31): error TS7030: Not all code paths return a value.
+src/routes/reporting.ts(156,29): error TS7030: Not all code paths return a value.
+src/routes/reporting.ts(331,91): error TS7030: Not all code paths return a value.
+src/routes/reporting.ts(431,83): error TS7030: Not all code paths return a value.
+src/routes/reports.ts(30,37): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/routes/reports.ts(43,36): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/reports.ts(52,34): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/reports.ts(62,40): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(68,51): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(71,51): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(73,48): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/routes/reports.ts(73,53): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(78,24): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(88,24): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(100,40): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(109,42): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(110,45): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(111,42): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(146,37): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/routes/reports.ts(159,36): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/reports.ts(173,51): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(178,23): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/routes/reports.ts(192,23): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/routes/reports.ts(212,47): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(217,45): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/routes/reports.ts(227,51): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(275,37): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/routes/reports.ts(288,36): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/reports.ts(301,34): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/reports.ts(312,51): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(318,24): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(324,24): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(332,23): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/routes/reports.ts(348,48): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(357,52): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(396,23): error TS7030: Not all code paths return a value.
+src/routes/reports.ts(426,37): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/routes/reports.ts(439,36): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/reports.ts(452,34): error TS2551: Property 'bookCheckout' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'book_checkouts'?
+src/routes/reports.ts(462,45): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(468,51): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(474,24): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(480,24): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(488,24): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/routes/reports.ts(503,23): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/routes/reports.ts(517,23): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/routes/scan.ts(18,10): error TS2305: Module '"@prisma/client"' has no exported member 'ActivityType'.
+src/routes/scan.ts(24,18): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(56,33): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(89,34): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(122,31): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(155,29): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(188,31): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(221,35): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(254,35): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(285,32): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(316,37): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(347,34): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(360,7): error TS2561: Object literal may only specify known properties, but 'studentId' does not exist in type 'StudentRegistrationData'. Did you mean to write 'student_id'?
+src/routes/scan.ts(387,30): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(419,51): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(451,38): error TS7030: Not all code paths return a value.
+src/routes/scan.ts(477,9): error TS2561: Object literal may only specify known properties, but 'studentId' does not exist in type 'StudentRegistrationData'. Did you mean to write 'student_id'?
+src/routes/scan.ts(514,39): error TS7030: Not all code paths return a value.
+src/routes/securityMonitoring.routes.ts(12,19): error TS2769: No overload matches this call.
+  Overload 1 of 8, '(options: RedisOptions): Redis', gave the following error.
+    Object literal may only specify known properties, and 'retryDelayOnFailover' does not exist in type 'RedisOptions'.
+  Overload 2 of 8, '(port: number): Redis', gave the following error.
+    Argument of type '{ host: string; port: number; retryDelayOnFailover: number; maxRetriesPerRequest: number; }' is not assignable to parameter of type 'number'.
+  Overload 3 of 8, '(path: string): Redis', gave the following error.
+    Argument of type '{ host: string; port: number; retryDelayOnFailover: number; maxRetriesPerRequest: number; }' is not assignable to parameter of type 'string'.
+src/routes/securityMonitoring.routes.ts(28,32): error TS2339: Property 'SECURITY_MONITORING_VIEW' does not exist on type 'typeof Permission'.
+src/routes/securityMonitoring.routes.ts(43,13): error TS2741: Property 'timestamp' is missing in type '{ success: true; data: { metrics: SecurityMetrics; timestamp: string; timeframe: string | QueryString.ParsedQs | (string | QueryString.ParsedQs)[]; }; }' but required in type 'ApiResponse<unknown>'.
+src/routes/securityMonitoring.routes.ts(74,32): error TS2339: Property 'SECURITY_MONITORING_VIEW' does not exist on type 'typeof Permission'.
+src/routes/securityMonitoring.routes.ts(79,13): error TS2741: Property 'timestamp' is missing in type '{ success: true; data: { alerts: SecurityAlert[]; count: number; timestamp: string; }; }' but required in type 'ApiResponse<unknown>'.
+src/routes/securityMonitoring.routes.ts(109,32): error TS2339: Property 'SECURITY_ALERTS_MANAGE' does not exist on type 'typeof Permission'.
+src/routes/securityMonitoring.routes.ts(115,58): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/securityMonitoring.routes.ts(153,32): error TS2339: Property 'SECURITY_MONITORING_VIEW' does not exist on type 'typeof Permission'.
+src/routes/securityMonitoring.routes.ts(154,3): error TS7030: Not all code paths return a value.
+src/routes/securityMonitoring.routes.ts(175,13): error TS2741: Property 'timestamp' is missing in type '{ success: true; data: { ip: string | QueryString.ParsedQs | (string | QueryString.ParsedQs)[]; events: SecurityEvent[]; count: number; timeframe: string | ... 1 more ... | (string | QueryString.ParsedQs)[]; timestamp: string; }; }' but required in type 'ApiResponse<unknown>'.
+src/routes/securityMonitoring.routes.ts(208,32): error TS2339: Property 'SECURITY_MONITORING_VIEW' does not exist on type 'typeof Permission'.
+src/routes/securityMonitoring.routes.ts(228,11): error TS2741: Property 'timestamp' is missing in type '{ success: true; data: { eventTypes: { value: SecurityEventType; label: string; category: string; }[]; severityLevels: { value: AlertSeverity; label: string; priority: number; }[]; timestamp: string; }; }' but required in type 'ApiResponse<unknown>'.
+src/routes/securityMonitoring.routes.ts(258,32): error TS2339: Property 'SECURITY_MONITORING_MANAGE' does not exist on type 'typeof Permission'.
+src/routes/securityMonitoring.routes.ts(259,3): error TS7030: Not all code paths return a value.
+src/routes/securityMonitoring.routes.ts(314,32): error TS2339: Property 'SECURITY_MONITORING_CONFIGURE' does not exist on type 'typeof Permission'.
+src/routes/securityMonitoring.routes.ts(365,32): error TS2339: Property 'SECURITY_MONITORING_CONFIGURE' does not exist on type 'typeof Permission'.
+src/routes/securityMonitoring.routes.ts(366,3): error TS7030: Not all code paths return a value.
+src/routes/securityMonitoring.routes.ts(380,52): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SecurityEventType'.
+src/routes/securityMonitoring.routes.ts(419,32): error TS2339: Property 'SECURITY_MONITORING_VIEW' does not exist on type 'typeof Permission'.
+src/routes/securityMonitoring.routes.ts(458,32): error TS2339: Property 'SECURITY_EXPORT' does not exist on type 'typeof Permission'.
+src/routes/securityMonitoring.routes.ts(481,27): error TS2304: Cannot find name 'b'.
+src/routes/securityMonitoring.routes.ts(496,15): error TS2339: Property 'recentTrends' does not exist on type '{ timeframe: string | ParsedQs | (string | ParsedQs)[]; generatedAt: string; summary: { totalEvents: number; activeThreats: number; resolvedThreats: number; topEventTypes: { ...; }[]; topOffenders: { ...; }[]; recentTrends: { ...; }[]; criticalAlerts: SecurityAlert[]; }; }'.
+src/routes/securityMonitoring.routes.ts(496,36): error TS7006: Parameter 'trend' implicitly has an 'any' type.
+src/routes/self-service.routes.ts(15,22): error TS7030: Not all code paths return a value.
+src/routes/self-service.routes.ts(81,26): error TS7030: Not all code paths return a value.
+src/routes/self-service.routes.ts(109,27): error TS7030: Not all code paths return a value.
+src/routes/settings.ts(40,43): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/routes/settings.ts(193,41): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/routes/settings.ts(220,3): error TS7030: Not all code paths return a value.
+src/routes/settings.ts(517,3): error TS7030: Not all code paths return a value.
+src/routes/settings.ts(673,32): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/routes/settings.ts(705,23): error TS7030: Not all code paths return a value.
+src/routes/settings.ts(719,39): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/routes/settings.ts(735,31): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/routes/settings.ts(788,31): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/routes/settings.ts(820,29): error TS7030: Not all code paths return a value.
+src/routes/settings.ts(825,31): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/routes/settings.ts(827,39): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/routes/settings.ts(839,18): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/routes/settings.ts(861,43): error TS7030: Not all code paths return a value.
+src/routes/settings.ts(878,18): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/routes/students.ts(16,10): error TS2305: Module '"@prisma/client"' has no exported member 'GradeCategory'.
+src/routes/students.ts(16,25): error TS2305: Module '"@prisma/client"' has no exported member 'ActivityType'.
+src/routes/students.ts(16,39): error TS2305: Module '"@prisma/client"' has no exported member 'ActivityStatus'.
+src/routes/students.ts(27,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'string[]'.
+src/routes/students.ts(70,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'string[]'.
+src/routes/students.ts(73,3): error TS7030: Not all code paths return a value.
+src/routes/students.ts(117,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'string[]'.
+src/routes/students.ts(119,3): error TS7030: Not all code paths return a value.
+src/routes/students.ts(145,7): error TS2561: Object literal may only specify known properties, but 'studentId' does not exist in type '{ student_id: string; first_name: string; last_name: string; grade_level: string; grade_category: students_grade_category; section?: string; }'. Did you mean to write 'student_id'?
+src/routes/students.ts(177,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'string[]'.
+src/routes/students.ts(179,3): error TS7030: Not all code paths return a value.
+src/routes/students.ts(233,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'string[]'.
+src/routes/students.ts(235,3): error TS7030: Not all code paths return a value.
+src/routes/students.ts(271,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'string[]'.
+src/routes/students.ts(291,15): error TS2551: Property 'studentId' does not exist on type 'GetStudentActivitiesOptions'. Did you mean 'student_id'?
+src/routes/students.ts(363,3): error TS7030: Not all code paths return a value.
+src/routes/students.ts(377,7): error TS2561: Object literal may only specify known properties, but 'studentId' does not exist in type '{ student_id: string; activity_type: student_activities_activity_type; equipment_id?: string; timeLimitMinutes?: number; notes?: string; }'. Did you mean to write 'student_id'?
+src/routes/students.ts(409,3): error TS7030: Not all code paths return a value.
+src/routes/students.ts(446,20): error TS2345: Argument of type 'string' is not assignable to parameter of type 'string[]'.
+src/routes/students.ts(448,3): error TS7030: Not all code paths return a value.
+src/routes/users.routes.ts(26,50): error TS2379: Argument of type '{ role: any; isActive: boolean | undefined; search: string; limit: number | undefined; offset: number | undefined; }' is not assignable to parameter of type '{ role?: users_role; isActive?: boolean; search?: string; limit?: number; offset?: number; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'isActive' are incompatible.
+    Type 'boolean | undefined' is not assignable to type 'boolean'.
+      Type 'undefined' is not assignable to type 'boolean'.
+src/routes/users.routes.ts(74,62): error TS7030: Not all code paths return a value.
+src/routes/users.routes.ts(76,48): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/users.routes.ts(105,62): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/users.routes.ts(149,47): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/users.routes.ts(169,46): error TS7030: Not all code paths return a value.
+src/routes/users.routes.ts(180,51): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/users.routes.ts(200,53): error TS7030: Not all code paths return a value.
+src/routes/users.routes.ts(211,58): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/users.routes.ts(233,49): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/users.routes.ts(255,51): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/users.routes.ts(275,68): error TS7030: Not all code paths return a value.
+src/routes/users.routes.ts(286,38): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/users.routes.ts(306,50): error TS7030: Not all code paths return a value.
+src/routes/users.routes.ts(317,37): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/users.routes.ts(339,34): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/routes/utilities.ts(96,37): error TS2551: Property 'successCount' does not exist on type 'QRGenerationSummary'. Did you mean 'success_count'?
+src/routes/utilities.ts(114,3): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(147,37): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(177,35): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(210,38): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(243,3): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(278,31): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(309,37): error TS2551: Property 'successCount' does not exist on type 'BarcodeGenerationSummary'. Did you mean 'success_count'?
+src/routes/utilities.ts(327,3): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(362,3): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(393,35): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(426,38): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(459,3): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(495,31): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(519,35): error TS7030: Not all code paths return a value.
+src/routes/utilities.ts(596,37): error TS7030: Not all code paths return a value.
+src/scripts/clear-all-data.ts(15,34): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/scripts/clear-all-data.ts(26,18): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/scripts/clear-all-data.ts(29,18): error TS2551: Property 'automationJob' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'automation_jobs'?
+src/scripts/clear-all-data.ts(32,18): error TS2551: Property 'systemConfig' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'system_config'?
+src/scripts/clear-all-data.ts(35,18): error TS2551: Property 'book' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'books'?
+src/scripts/clear-all-data.ts(41,18): error TS2551: Property 'student' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'students'?
+src/scripts/clear-all-data.ts(44,18): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/scripts/clear-all-data.ts(56,14): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/scripts/clear-all-data.ts(57,14): error TS2551: Property 'automationJob' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'automation_jobs'?
+src/scripts/clear-all-data.ts(58,14): error TS2551: Property 'systemConfig' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'system_config'?
+src/scripts/clear-all-data.ts(59,14): error TS2551: Property 'book' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'books'?
+src/scripts/clear-all-data.ts(61,14): error TS2551: Property 'student' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'students'?
+src/scripts/clear-all-data.ts(62,14): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/scripts/clear-all-data.ts(83,5): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/scripts/generate-sample-data.ts(17,34): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/scripts/generate-sample-data.ts(68,3): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/scripts/generate-sample-data.ts(90,30): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/scripts/generate-sample-data.ts(111,31): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/scripts/generate-sample-data.ts(144,34): error TS2551: Property 'student' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'students'?
+src/scripts/generate-sample-data.ts(177,9): error TS2820: Type '"Computer"' is not assignable to type 'equipment_type'. Did you mean '"COMPUTER"'?
+src/scripts/generate-sample-data.ts(178,9): error TS2322: Type '"available" | "maintenance" | "in_use"' is not assignable to type 'equipment_status'.
+  Type '"available"' is not assignable to type 'equipment_status'. Did you mean '"AVAILABLE"'?
+src/scripts/generate-sample-data.ts(196,9): error TS2820: Type '"Printer"' is not assignable to type 'equipment_type'. Did you mean '"PRINTER"'?
+src/scripts/generate-sample-data.ts(197,9): error TS2322: Type '"available" | "maintenance"' is not assignable to type 'equipment_status'.
+  Type '"available"' is not assignable to type 'equipment_status'. Did you mean '"AVAILABLE"'?
+src/scripts/generate-sample-data.ts(215,9): error TS2322: Type '"Tablet"' is not assignable to type 'equipment_type'.
+src/scripts/generate-sample-data.ts(216,9): error TS2322: Type '"available" | "in_use"' is not assignable to type 'equipment_status'.
+  Type '"available"' is not assignable to type 'equipment_status'. Did you mean '"AVAILABLE"'?
+src/scripts/generate-sample-data.ts(252,31): error TS2551: Property 'book' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'books'?
+src/scripts/generate-sample-data.ts(303,7): error TS2322: Type '"scheduled" | "active"' is not assignable to type '"active" | "expired" | "completed"'.
+  Type '"scheduled"' is not assignable to type '"active" | "expired" | "completed"'.
+src/scripts/generate-sample-data.ts(308,35): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/scripts/generate-sample-data.ts(310,28): error TS2339: Property 'id' does not exist on type 'string'.
+src/scripts/generate-sample-data.ts(317,72): error TS2339: Property 'id' does not exist on type 'string'.
+src/scripts/generate-sample-data.ts(387,18): error TS2551: Property 'systemConfig' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'system_config'?
+src/scripts/generate-sample-data.ts(444,18): error TS2551: Property 'automationJob' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'automation_jobs'?
+src/scripts/generate-sample-data.ts(464,18): error TS2339: Property 'activity' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/scripts/generate-sample-data.ts(465,18): error TS2551: Property 'automationJob' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'automation_jobs'?
+src/scripts/generate-sample-data.ts(466,18): error TS2551: Property 'systemConfig' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'system_config'?
+src/scripts/generate-sample-data.ts(467,18): error TS2551: Property 'book' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'books'?
+src/scripts/generate-sample-data.ts(469,18): error TS2551: Property 'student' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'students'?
+src/scripts/generate-sample-data.ts(470,18): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/scripts/generate-sample-data.ts(507,5): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/scripts/scheduledDocumentationUpdate.ts(238,40): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+src/scripts/setup-library-rooms.ts(18,34): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/scripts/setup-library-rooms.ts(31,18): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/scripts/setup-library-rooms.ts(46,18): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/scripts/setup-library-rooms.ts(135,20): error TS2551: Property 'systemConfig' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'system_config'?
+src/scripts/setup-library-rooms.ts(186,9): error TS2322: Type '{ name: string; }' is not assignable to type 'equipmentWhereUniqueInput'.
+  Type '{ name: string; }' is not assignable to type '{ id: string; equipment_id: string; } & { id?: string; equipment_id?: string; AND?: equipmentWhereInput | equipmentWhereInput[]; OR?: equipmentWhereInput[]; ... 36 more ...; equipment_usage_stats?: Equipment_usage_statsListRelationFilter; }'.
+    Type '{ name: string; }' is missing the following properties from type '{ id: string; equipment_id: string; }': id, equipment_id
+src/scripts/setup-library-rooms.ts(187,9): error TS2322: Type '{ name: string; type: string; status: string; location: string; specifications: string; purchaseDate: Date; lastMaintenanceDate: Date; warrantyExpiry: Date; notes: string; isActive: boolean; }' is not assignable to type '(Without<equipmentUpdateInput, equipmentUncheckedUpdateInput> & equipmentUncheckedUpdateInput) | (Without<...> & equipmentUpdateInput)'.
+  Type '{ name: string; type: string; status: string; location: string; specifications: string; purchaseDate: Date; lastMaintenanceDate: Date; warrantyExpiry: Date; notes: string; isActive: boolean; }' is not assignable to type 'Without<equipmentUncheckedUpdateInput, equipmentUpdateInput> & equipmentUpdateInput'.
+    Types of property 'type' are incompatible.
+      Type 'string' is not assignable to type 'equipment_type | Enumequipment_typeFieldUpdateOperationsInput'.
+src/scripts/setup-library-rooms.ts(188,9): error TS2322: Type '{ name: string; type: string; status: string; location: string; specifications: string; purchaseDate: Date; lastMaintenanceDate: Date; warrantyExpiry: Date; notes: string; isActive: boolean; }' is not assignable to type '(Without<equipmentCreateInput, equipmentUncheckedCreateInput> & equipmentUncheckedCreateInput) | (Without<...> & equipmentCreateInput)'.
+  Type '{ name: string; type: string; status: string; location: string; specifications: string; purchaseDate: Date; lastMaintenanceDate: Date; warrantyExpiry: Date; notes: string; isActive: boolean; }' is not assignable to type 'Without<equipmentUncheckedCreateInput, equipmentCreateInput> & equipmentCreateInput'.
+    Type '{ name: string; type: string; status: string; location: string; specifications: string; purchaseDate: Date; lastMaintenanceDate: Date; warrantyExpiry: Date; notes: string; isActive: boolean; }' is missing the following properties from type 'equipmentCreateInput': id, equipment_id, max_time_minutes, updated_at
+src/scripts/setup-library-rooms.ts(224,9): error TS2322: Type '{ name: string; }' is not assignable to type 'equipmentWhereUniqueInput'.
+  Type '{ name: string; }' is not assignable to type '{ id: string; equipment_id: string; } & { id?: string; equipment_id?: string; AND?: equipmentWhereInput | equipmentWhereInput[]; OR?: equipmentWhereInput[]; ... 36 more ...; equipment_usage_stats?: Equipment_usage_statsListRelationFilter; }'.
+    Type '{ name: string; }' is missing the following properties from type '{ id: string; equipment_id: string; }': id, equipment_id
+src/scripts/setup-library-rooms.ts(225,9): error TS2322: Type '{ name: string; type: string; status: string; location: string; specifications: string; purchaseDate: Date; lastMaintenanceDate: Date; warrantyExpiry: Date; notes: string; isActive: boolean; }' is not assignable to type '(Without<equipmentUpdateInput, equipmentUncheckedUpdateInput> & equipmentUncheckedUpdateInput) | (Without<...> & equipmentUpdateInput)'.
+  Type '{ name: string; type: string; status: string; location: string; specifications: string; purchaseDate: Date; lastMaintenanceDate: Date; warrantyExpiry: Date; notes: string; isActive: boolean; }' is not assignable to type 'Without<equipmentUncheckedUpdateInput, equipmentUpdateInput> & equipmentUpdateInput'.
+    Types of property 'type' are incompatible.
+      Type 'string' is not assignable to type 'equipment_type | Enumequipment_typeFieldUpdateOperationsInput'.
+src/scripts/setup-library-rooms.ts(226,9): error TS2322: Type '{ name: string; type: string; status: string; location: string; specifications: string; purchaseDate: Date; lastMaintenanceDate: Date; warrantyExpiry: Date; notes: string; isActive: boolean; }' is not assignable to type '(Without<equipmentCreateInput, equipmentUncheckedCreateInput> & equipmentUncheckedCreateInput) | (Without<...> & equipmentCreateInput)'.
+  Type '{ name: string; type: string; status: string; location: string; specifications: string; purchaseDate: Date; lastMaintenanceDate: Date; warrantyExpiry: Date; notes: string; isActive: boolean; }' is not assignable to type 'Without<equipmentUncheckedCreateInput, equipmentCreateInput> & equipmentCreateInput'.
+    Type '{ name: string; type: string; status: string; location: string; specifications: string; purchaseDate: Date; lastMaintenanceDate: Date; warrantyExpiry: Date; notes: string; isActive: boolean; }' is missing the following properties from type 'equipmentCreateInput': id, equipment_id, max_time_minutes, updated_at
+src/scripts/setup-library-rooms.ts(269,20): error TS2551: Property 'automationJob' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'automation_jobs'?
+src/scripts/setup-library-rooms.ts(381,20): error TS2551: Property 'book' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'books'?
+src/scripts/setup-library-rooms.ts(422,5): error TS1343: The 'import.meta' meta-property is only allowed when the '--module' option is 'es2020', 'es2022', 'esnext', 'system', 'node16', 'node18', 'node20', or 'nodenext'.
+src/scripts/updateDocumentation.ts(408,32): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+src/scripts/verifyDocumentation.ts(547,33): error TS1205: Re-exporting a type when 'isolatedModules' is enabled requires using 'export type'.
+src/security/api-security.ts(4,10): error TS2724: '"./security-monitor"' has no exported member named 'securityMonitor'. Did you mean 'SecurityMonitor'?
+src/security/api-security.ts(123,63): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/api-security.ts(371,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/api-security.ts(372,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/api-security.ts(373,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/api-security.ts(375,29): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/api-security.ts(377,29): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
+src/security/api-security.ts(483,5): error TS2375: Type '{ ipAddress: string; userAgent: string; requestId: string; timestamp: Date; endpoint: string; method: string; userId: any; sessionId: any; apiKey: string | undefined; isBlocked: boolean; isRateLimited: false; isSuspicious: false; riskScore: number; }' is not assignable to type 'SecurityContext' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'apiKey' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/security/api-security.ts(797,35): error TS2379: Argument of type '{ userId: string | undefined; action: string; resourceType: string; details: { method: string; path: string; statusCode: number; duration: number; requestId: string; riskScore: number; isSuspicious: boolean; ipAddress: string; userAgent: string; }; ... 5 more ...; source: "api"; }' is not assignable to parameter of type 'Omit<AuditEvent, "timestamp" | "id">' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'userId' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/security/audit-trail.ts(133,7): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/audit-trail.ts(255,16): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/audit-trail.ts(263,16): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/audit-trail.ts(267,52): error TS7006: Parameter 'log' implicitly has an 'any' type.
+src/security/audit-trail.ts(316,32): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/audit-trail.ts(512,42): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/audit-trail.ts(550,34): error TS2339: Property 'getRouteResourceType' does not exist on type 'Response<any, Record<string, any>>'.
+src/security/audit-trail.ts(551,32): error TS2339: Property 'getResourceId' does not exist on type 'Response<any, Record<string, any>>'.
+src/security/audit-trail.ts(557,44): error TS18048: 'req.startTime' is possibly 'undefined'.
+src/security/audit-trail.ts(560,31): error TS2339: Property 'getClientIP' does not exist on type 'Response<any, Record<string, any>>'.
+src/security/audit-trail.ts(562,30): error TS2339: Property 'getSeverityFromStatusCode' does not exist on type 'Response<any, Record<string, any>>'.
+src/security/audit-trail.ts(563,30): error TS2339: Property 'getCategoryFromRequest' does not exist on type 'Response<any, Record<string, any>>'.
+src/security/audit-trail.ts(575,41): error TS2345: Argument of type 'any[]' is not assignable to parameter of type '[body?: any]'.
+  Target allows only 1 element(s) but source may have more.
+src/security/audit-trail.ts(596,53): error TS2769: No overload matches this call.
+  Argument of type '[string | undefined]' is not assignable to parameter of type '[...elements: (string | number | Buffer<ArrayBufferLike>)[], callback: Callback<number>]'.
+    Type at position 0 in source is not compatible with type at position 1 in target.
+      Type 'string | undefined' is not assignable to type 'Callback<number>'.
+        Type 'undefined' is not assignable to type 'Callback<number>'.
+  Overload 2 of 2, '(key: RedisKey, ...elements: (string | number | Buffer<ArrayBufferLike>)[]): Promise<number>', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number | Buffer<ArrayBufferLike>'.
+      Type 'undefined' is not assignable to type 'string | number | Buffer<ArrayBufferLike>'.
+src/security/audit-trail.ts(616,20): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/csrf-protection.ts(305,50): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(arrayBuffer: WithImplicitCoercion<ArrayBufferLike>, byteOffset?: number | undefined, length?: number | undefined): Buffer<ArrayBufferLike>', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'WithImplicitCoercion<ArrayBufferLike>'.
+      Type 'undefined' is not assignable to type 'WithImplicitCoercion<ArrayBufferLike>'.
+  Overload 2 of 4, '(string: WithImplicitCoercion<string>, encoding?: BufferEncoding | undefined): Buffer<ArrayBuffer>', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'WithImplicitCoercion<string>'.
+      Type 'undefined' is not assignable to type 'WithImplicitCoercion<string>'.
+src/security/database-security.ts(145,11): error TS2561: Object literal may only specify known properties, but 'queryId' does not exist in type 'Omit<QueryAuditLog, "id">'. Did you mean to write 'query'?
+src/security/database-security.ts(173,11): error TS2561: Object literal may only specify known properties, but 'queryId' does not exist in type 'Omit<QueryAuditLog, "id">'. Did you mean to write 'query'?
+src/security/database-security.ts(235,30): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(arrayBuffer: WithImplicitCoercion<ArrayBufferLike>, byteOffset?: number | undefined, length?: number | undefined): Buffer<ArrayBufferLike>', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'WithImplicitCoercion<ArrayBufferLike>'.
+      Type 'undefined' is not assignable to type 'WithImplicitCoercion<ArrayBufferLike>'.
+  Overload 2 of 4, '(string: WithImplicitCoercion<string>, encoding?: BufferEncoding | undefined): Buffer<ArrayBuffer>', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'WithImplicitCoercion<string>'.
+      Type 'undefined' is not assignable to type 'WithImplicitCoercion<string>'.
+src/security/database-security.ts(240,39): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(data: ArrayBufferView<ArrayBufferLike>, inputEncoding: undefined, outputEncoding: Encoding): string', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'ArrayBufferView<ArrayBufferLike>'.
+      Type 'undefined' is not assignable to type 'ArrayBufferView<ArrayBufferLike>'.
+  Overload 2 of 4, '(data: string, inputEncoding: Encoding | undefined, outputEncoding: Encoding): string', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/security/database-security.ts(241,7): error TS2322: Type 'string' is not assignable to type 'Buffer<ArrayBufferLike> & string'.
+  Type 'string' is not assignable to type 'Buffer<ArrayBufferLike>'.
+src/security/database-security.ts(526,20): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/database-security.ts(586,25): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/incident-response.ts(530,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/incident-response.ts(533,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/incident-response.ts(534,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/incident-response.ts(538,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/incident-response.ts(539,29): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
+src/security/incident-response.ts(540,29): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
+src/security/incident-response.ts(684,17): error TS2345: Argument of type '"authentication"' is not assignable to parameter of type 'SecurityEventType | SecuritySeverity'.
+src/security/incident-response.ts(687,17): error TS2345: Argument of type '"authorization"' is not assignable to parameter of type 'SecurityEventType | SecuritySeverity'.
+src/security/incident-response.ts(690,17): error TS2345: Argument of type '"data-protection"' is not assignable to parameter of type 'SecurityEventType | SecuritySeverity'.
+src/security/incident-response.ts(693,17): error TS2345: Argument of type '"session-management"' is not assignable to parameter of type 'SecurityEventType | SecuritySeverity'.
+src/security/incident-response.ts(754,17): error TS2353: Object literal may only specify known properties, and 'parameters' does not exist in type 'Omit<MitigationAction, "id" | "performedAt">'.
+src/security/incident-response.ts(769,17): error TS2353: Object literal may only specify known properties, and 'parameters' does not exist in type 'Omit<MitigationAction, "id" | "performedAt">'.
+src/security/incident-response.ts(784,17): error TS2353: Object literal may only specify known properties, and 'parameters' does not exist in type 'Omit<MitigationAction, "id" | "performedAt">'.
+src/security/incident-response.ts(833,9): error TS2353: Object literal may only specify known properties, and 'parameters' does not exist in type 'Omit<MitigationAction, "id" | "performedAt">'.
+src/security/incident-response.ts(872,14): error TS2678: Type '"notify_admin"' is not comparable to type '"block_ip" | "terminate_session" | "disable_account" | "isolate_system" | "patch_vulnerability" | "update_permissions"'.
+src/security/incident-response.ts(943,9): error TS2322: Type 'string[]' is not assignable to type '"resolved" | "new" | "investigating" | "contained" | "closed" | undefined'.
+src/security/incident-response.ts(1079,13): error TS2322: Type '"isolate_system"' is not assignable to type '"block_ip" | "notify_admin" | "terminate_session" | "disable_account" | "create_ticket" | "run_script"'.
+src/security/input-validator.ts(24,11): error TS2564: Property 'sqlInjectionPatterns' has no initializer and is not definitely assigned in the constructor.
+src/security/input-validator.ts(25,11): error TS2564: Property 'xssPatterns' has no initializer and is not definitely assigned in the constructor.
+src/security/input-validator.ts(119,44): error TS2532: Object is possibly 'undefined'.
+src/security/input-validator.ts(206,44): error TS2532: Object is possibly 'undefined'.
+src/security/input-validator.ts(442,48): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/security/mfa-service.ts(1,23): error TS2307: Cannot find module 'speakeasy' or its corresponding type declarations.
+src/security/mfa-service.ts(55,40): error TS2339: Property 'userMFA' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/security/mfa-service.ts(147,20): error TS2339: Property 'userMFA' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/security/mfa-service.ts(162,20): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/mfa-service.ts(222,36): error TS2339: Property 'userMFA' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/security/mfa-service.ts(248,24): error TS2339: Property 'userMFA' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/security/mfa-service.ts(277,24): error TS2339: Property 'userMFA' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/security/mfa-service.ts(298,20): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/mfa-service.ts(342,33): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/security/mfa-service.ts(364,20): error TS2339: Property 'userMFA' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/security/mfa-service.ts(373,20): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/mfa-service.ts(410,33): error TS2551: Property 'user' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'users'?
+src/security/mfa-service.ts(435,20): error TS2339: Property 'userMFA' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/security/mfa-service.ts(444,20): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/mfa-service.ts(478,36): error TS2339: Property 'userMFA' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/security/mfa-service.ts(540,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/mfa-service.ts(541,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/mfa-service.ts(611,25): error TS2339: Property 'randomBytes' does not exist on type 'Crypto'.
+src/security/mfa-service.ts(624,41): error TS2339: Property 'userMFA' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/security/mfa-service.ts(631,41): error TS2339: Property 'userMFA' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/security/mfa-service.ts(640,49): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/redis-rate-limiter.ts(67,31): error TS2532: Object is possibly 'undefined'.
+src/security/redis-rate-limiter.ts(68,19): error TS2532: Object is possibly 'undefined'.
+src/security/redis-rate-limiter.ts(222,31): error TS2532: Object is possibly 'undefined'.
+src/security/redis-rate-limiter.ts(223,19): error TS2532: Object is possibly 'undefined'.
+src/security/redis-rate-limiter.ts(259,7): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type '(req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>) => any'.
+src/security/redis-rate-limiter.ts(272,7): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type '(req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>) => any'.
+src/security/redis-rate-limiter.ts(285,7): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type '(req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>) => any'.
+src/security/redis-rate-limiter.ts(298,7): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type '(req: Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>>) => any'.
+src/security/security-headers.ts(301,19): error TS2503: Cannot find namespace 'helmet'.
+src/security/security-monitor.ts(119,20): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/security-monitor.ts(195,38): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/security/security-monitor.ts(215,36): error TS2367: This comparison appears to be unintentional because the types 'boolean' and 'SecuritySeverity | undefined' have no overlap.
+src/security/security-monitor.ts(216,35): error TS2367: This comparison appears to be unintentional because the types 'boolean' and 'SecuritySeverity' have no overlap.
+src/security/security-monitor.ts(218,23): error TS2379: Argument of type '{ id: any; type: SecurityEventType; severity: any; userId: any; sessionId: any; ipAddress: any; userAgent: any; timestamp: any; details: any; resolved: any; resolvedAt: Date | undefined; resolvedBy: any; }' is not assignable to parameter of type 'SecurityEvent' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'resolvedAt' are incompatible.
+    Type 'Date | undefined' is not assignable to type 'Date'.
+      Type 'undefined' is not assignable to type 'Date'.
+src/security/security-monitor.ts(375,24): error TS2538: Type 'undefined' cannot be used as an index type.
+src/security/security-monitor.ts(375,56): error TS2538: Type 'undefined' cannot be used as an index type.
+src/security/session-manager.ts(78,13): error TS2375: Type '{ userId: string; username: string; role: string; loginTime: Date; lastActivity: Date; ipAddress: string; userAgent: string; deviceId: string | undefined; mfaVerified: false; sessionFlags: { ...; }; }' is not assignable to type 'SessionData' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'deviceId' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/security/session-manager.ts(199,60): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/session-manager.ts(287,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/session-manager.ts(288,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/session-manager.ts(289,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/session-manager.ts(290,29): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
+src/security/session-manager.ts(291,32): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
+src/security/session-manager.ts(292,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/session-manager.ts(293,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/security/session-manager.ts(522,20): error TS2551: Property 'auditLog' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'audit_logs'?
+src/services/auditService.ts(89,9): error TS2322: Type '{ id: string; entity: AuditEntity; action: AuditAction; entity_id: string; performed_by: string; ip_address: string | null; user_agent: string; new_values: Record<...> | null; old_values: Record<...> | null; created_at: Date; ip_address_enc: any; metadata: { ...; }; }' is not assignable to type '(Without<audit_logsCreateInput, audit_logsUncheckedCreateInput> & audit_logsUncheckedCreateInput) | (Without<...> & audit_logsCreateInput)'.
+  Type '{ id: string; entity: AuditEntity; action: AuditAction; entity_id: string; performed_by: string; ip_address: string | null; user_agent: string; new_values: Record<...> | null; old_values: Record<...> | null; created_at: Date; ip_address_enc: any; metadata: { ...; }; }' is not assignable to type 'Without<audit_logsUncheckedCreateInput, audit_logsCreateInput> & audit_logsCreateInput'.
+    Type '{ id: string; entity: AuditEntity; action: AuditAction; entity_id: string; performed_by: string; ip_address: string | null; user_agent: string; new_values: Record<...> | null; old_values: Record<...> | null; created_at: Date; ip_address_enc: any; metadata: { ...; }; }' is not assignable to type 'audit_logsCreateInput'.
+      Types of property 'new_values' are incompatible.
+        Type 'Record<string, any> | null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
+          Type 'null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
+src/services/auditService.ts(131,7): error TS2561: Object literal may only specify known properties, but 'entity_id' does not exist in type 'AuditLogEntry'. Did you mean to write 'entityId'?
+src/services/auditService.ts(149,52): error TS2552: Cannot find name 'newValues'. Did you mean 'new_values'?
+src/services/auditService.ts(155,7): error TS2561: Object literal may only specify known properties, but 'entity_id' does not exist in type 'AuditLogEntry'. Did you mean to write 'entityId'?
+src/services/auditService.ts(156,39): error TS2552: Cannot find name 'oldValues'. Did you mean 'old_values'?
+src/services/auditService.ts(157,39): error TS2304: Cannot find name 'newValues'.
+src/services/auditService.ts(178,7): error TS2561: Object literal may only specify known properties, but 'entity_id' does not exist in type 'AuditLogEntry'. Did you mean to write 'entityId'?
+src/services/auditService.ts(198,7): error TS2561: Object literal may only specify known properties, but 'entity_id' does not exist in type 'AuditLogEntry'. Did you mean to write 'entityId'?
+src/services/auditService.ts(214,20): error TS2379: Argument of type '{ id: string | undefined; action: AuditAction.EXPORT; entity: AuditEntity; success: true; metadata: { recordCount: number; format: string; id: `${string}-${string}-${string}-${string}-${string}`; updated_at: Date; }; }' is not assignable to parameter of type 'AuditLogEntry' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/auditService.ts(243,7): error TS2561: Object literal may only specify known properties, but 'ip_address' does not exist in type 'AuditLogEntry'. Did you mean to write 'ipAddress'?
+src/services/auditService.ts(246,7): error TS18004: No value exists in scope for the shorthand property 'error_message'. Either declare one or provide an initializer.
+src/services/auditService.ts(264,7): error TS2561: Object literal may only specify known properties, but 'ip_address' does not exist in type 'AuditLogEntry'. Did you mean to write 'ipAddress'?
+src/services/auditService.ts(285,7): error TS2561: Object literal may only specify known properties, but 'entity_id' does not exist in type 'AuditLogEntry'. Did you mean to write 'entityId'?
+src/services/auditService.ts(304,22): error TS2304: Cannot find name 'oldValues'.
+src/services/auditService.ts(305,22): error TS2304: Cannot find name 'newValues'.
+src/services/auditService.ts(309,24): error TS2304: Cannot find name 'oldValues'.
+src/services/auditService.ts(310,24): error TS2304: Cannot find name 'newValues'.
+src/services/auditService.ts(625,11): error TS2561: Object literal may only specify known properties, but 'entity_id' does not exist in type 'AuditLogEntry'. Did you mean to write 'entityId'?
+src/services/authService.ts(173,11): error TS1117: An object literal cannot have multiple properties with the same name.
+src/services/authService.ts(177,31): error TS2551: Property 'is_active' does not exist on type '{ username: string; password: string; role: string; isActive?: boolean; }'. Did you mean 'isActive'?
+src/services/authService.ts(177,66): error TS2551: Property 'is_active' does not exist on type '{ username: string; password: string; role: string; isActive?: boolean; }'. Did you mean 'isActive'?
+src/services/authService.ts(181,11): error TS1117: An object literal cannot have multiple properties with the same name.
+src/services/authService.ts(406,9): error TS2375: Type '{ id: `${string}-${string}-${string}-${string}-${string}`; updated_at: Date; username: string | undefined; role: any; is_active: any; }' is not assignable to type '(Without<usersUpdateInput, usersUncheckedUpdateInput> & usersUncheckedUpdateInput) | (Without<...> & usersUpdateInput)' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type '{ id: `${string}-${string}-${string}-${string}-${string}`; updated_at: Date; username: string | undefined; role: any; is_active: any; }' is not assignable to type 'Without<usersUncheckedUpdateInput, usersUpdateInput> & usersUpdateInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Type '{ id: `${string}-${string}-${string}-${string}-${string}`; updated_at: Date; username: string | undefined; role: any; is_active: any; }' is not assignable to type 'usersUpdateInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Types of property 'username' are incompatible.
+        Type 'string | undefined' is not assignable to type 'string | StringFieldUpdateOperationsInput'.
+          Type 'undefined' is not assignable to type 'string | StringFieldUpdateOperationsInput'.
+src/services/authService.ts(409,33): error TS2551: Property 'is_active' does not exist on type '{ username?: string; role?: string; isActive?: boolean; }'. Did you mean 'isActive'?
+src/services/automation.ts(7,3): error TS2724: '"@prisma/client"' has no exported member named 'AutomationJob'. Did you mean 'automation_jobs'?
+src/services/automation.ts(8,3): error TS2724: '"@prisma/client"' has no exported member named 'AutomationLog'. Did you mean 'automation_logs'?
+src/services/automation.ts(13,3): error TS2305: Module '"@prisma/client"' has no exported member 'SessionStatus'.
+src/services/automation.ts(212,12): error TS2339: Property 'setupJobProcessors' does not exist on type 'AutomationService'.
+src/services/automation.ts(215,12): error TS2339: Property 'setupQueueEventListeners' does not exist on type 'AutomationService'.
+src/services/automation.ts(293,11): error TS2393: Duplicate function implementation.
+src/services/automation.ts(322,9): error TS2393: Duplicate function implementation.
+src/services/automation.ts(348,3): error TS2393: Duplicate function implementation.
+src/services/automation.ts(435,46): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(457,9): error TS2561: Object literal may only specify known properties, but 'error_message' does not exist in type 'JobExecutionResult'. Did you mean to write 'errorMessage'?
+src/services/automation.ts(463,46): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(488,9): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(489,32): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(495,9): error TS2561: Object literal may only specify known properties, but 'error_message' does not exist in type 'JobExecutionResult'. Did you mean to write 'errorMessage'?
+src/services/automation.ts(497,32): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(518,32): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(524,9): error TS2561: Object literal may only specify known properties, but 'error_message' does not exist in type 'JobExecutionResult'. Did you mean to write 'errorMessage'?
+src/services/automation.ts(526,32): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(542,11): error TS2561: Object literal may only specify known properties, but 'student' does not exist in type 'student_activitiesInclude<DefaultArgs>'. Did you mean to write 'students'?
+src/services/automation.ts(551,11): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(552,34): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(566,9): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(567,32): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(573,9): error TS2561: Object literal may only specify known properties, but 'error_message' does not exist in type 'JobExecutionResult'. Did you mean to write 'errorMessage'?
+src/services/automation.ts(575,32): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(596,11): error TS2561: Object literal may only specify known properties, but 'student' does not exist in type 'equipment_sessionsInclude<DefaultArgs>'. Did you mean to write 'students'?
+src/services/automation.ts(619,26): error TS2339: Property 'student' does not exist on type '{ id: string; student_id: string; status: equipment_sessions_status; notes: string | null; created_at: Date; updated_at: Date; equipment_id: string; ... 5 more ...; session_start: Date; }'.
+src/services/automation.ts(619,56): error TS2339: Property 'student' does not exist on type '{ id: string; student_id: string; status: equipment_sessions_status; notes: string | null; created_at: Date; updated_at: Date; equipment_id: string; ... 5 more ...; session_start: Date; }'.
+src/services/automation.ts(620,13): error TS2353: Object literal may only specify known properties, and 'studentGradeLevel' does not exist in type 'Without<student_activitiesCreateInput, student_activitiesUncheckedCreateInput> & student_activitiesUncheckedCreateInput'.
+src/services/automation.ts(620,40): error TS2339: Property 'student' does not exist on type '{ id: string; student_id: string; status: equipment_sessions_status; notes: string | null; created_at: Date; updated_at: Date; equipment_id: string; ... 5 more ...; session_start: Date; }'.
+src/services/automation.ts(621,43): error TS2339: Property 'student' does not exist on type '{ id: string; student_id: string; status: equipment_sessions_status; notes: string | null; created_at: Date; updated_at: Date; equipment_id: string; ... 5 more ...; session_start: Date; }'.
+src/services/automation.ts(649,9): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(650,32): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(656,9): error TS2561: Object literal may only specify known properties, but 'error_message' does not exist in type 'JobExecutionResult'. Did you mean to write 'errorMessage'?
+src/services/automation.ts(658,32): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(690,34): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(698,9): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(699,32): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(724,34): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(725,37): error TS2551: Property 'records_processed' does not exist on type '{ success: boolean; recordsProcessed?: number; error?: string; }'. Did you mean 'recordsProcessed'?
+src/services/automation.ts(733,9): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(733,35): error TS2551: Property 'records_processed' does not exist on type '{ success: boolean; recordsProcessed?: number; error?: string; }'. Did you mean 'recordsProcessed'?
+src/services/automation.ts(734,32): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(738,19): error TS2551: Property 'error_message' does not exist on type 'JobExecutionResult'. Did you mean 'errorMessage'?
+src/services/automation.ts(763,34): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(771,9): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(772,32): error TS2304: Cannot find name 'start_time'.
+src/services/automation.ts(786,7): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(797,7): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(808,7): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(819,7): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(830,7): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(841,7): error TS2561: Object literal may only specify known properties, but 'records_processed' does not exist in type 'JobExecutionResult'. Did you mean to write 'recordsProcessed'?
+src/services/automation.ts(897,42): error TS2353: Object literal may only specify known properties, and 'updated_at' does not exist in type '(Without<automation_logsCreateInput, automation_logsUncheckedCreateInput> & automation_logsUncheckedCreateInput) | (Without<...> & automation_logsCreateInput)'.
+src/services/automation.ts(905,37): error TS2551: Property 'records_processed' does not exist on type 'JobExecutionResult'. Did you mean 'recordsProcessed'?
+src/services/automation.ts(906,33): error TS2551: Property 'error_message' does not exist on type 'JobExecutionResult'. Did you mean 'errorMessage'?
+src/services/automation.ts(930,11): error TS2393: Duplicate function implementation.
+src/services/automation.ts(989,9): error TS2322: Type '{ AutomationLog: { take: number; orderBy: { started_at: string; }; }; }' is not assignable to type 'never'.
+src/services/automation.ts(1040,9): error TS2393: Duplicate function implementation.
+src/services/automation.ts(1064,3): error TS2393: Duplicate function implementation.
+src/services/backup.service.ts(70,11): error TS2375: Type '{ id: `${string}-${string}-${string}-${string}-${string}`; filename: string; size: number; checksum: string; created_at: Date; type: "FULL"; status: "IN_PROGRESS"; verified: false; description: string | undefined; }' is not assignable to type 'BackupMetadata' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'description' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/backup.service.ts(130,11): error TS2375: Type '{ id: `${string}-${string}-${string}-${string}-${string}`; filename: string; size: number; checksum: string; created_at: Date; type: "INCREMENTAL"; status: "IN_PROGRESS"; verified: false; description: string | undefined; }' is not assignable to type 'BackupMetadata' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'description' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/barcodeService.ts(163,32): error TS2304: Cannot find name 'barcode_data'.
+src/services/barcodeService.ts(167,39): error TS2304: Cannot find name 'barcode_data'.
+src/services/barcodeService.ts(179,9): error TS2304: Cannot find name 'barcode_data'.
+src/services/barcodeService.ts(183,49): error TS2304: Cannot find name 'barcode_data'.
+src/services/barcodeService.ts(227,37): error TS2304: Cannot find name 'barcode_data'.
+src/services/barcodeService.ts(231,39): error TS2304: Cannot find name 'barcode_data'.
+src/services/barcodeService.ts(233,54): error TS2304: Cannot find name 'barcode_data'.
+src/services/barcodeService.ts(281,45): error TS2304: Cannot find name 'success_count'.
+src/services/barcodeService.ts(287,16): error TS2304: Cannot find name 'success_count'.
+src/services/barcodeService.ts(326,45): error TS2304: Cannot find name 'success_count'.
+src/services/barcodeService.ts(332,16): error TS2304: Cannot find name 'success_count'.
+src/services/barcodeService.ts(369,45): error TS2304: Cannot find name 'success_count'.
+src/services/barcodeService.ts(375,16): error TS2304: Cannot find name 'success_count'.
+src/services/barcodeService.ts(420,17): error TS2304: Cannot find name 'full_name'.
+src/services/barcodeService.ts(428,62): error TS2304: Cannot find name 'full_name'.
+src/services/barcodeService.ts(435,17): error TS2304: Cannot find name 'full_name'.
+src/services/barcodeService.ts(453,7): error TS18004: No value exists in scope for the shorthand property 'success_count'. Either declare one or provide an initializer.
+src/services/barcodeService.ts(469,39): error TS2304: Cannot find name 'success_count'.
+src/services/barcodeService.ts(807,42): error TS2353: Object literal may only specify known properties, and 'updated_at' does not exist in type '(Without<barcode_historyCreateInput, barcode_historyUncheckedCreateInput> & barcode_historyUncheckedCreateInput) | (Without<...> & barcode_historyCreateInput)'.
+src/services/documentationService.ts(88,5): error TS2375: Type '{ version: string; lastUpdated: string; lastCommitHash: string | undefined; environment: string; features: { backend: { tests: number; apiEndpoints: number; services: number; databaseTables: number; }; frontend: { ...; }; }; documentation: { ...; }; health: { ...; }; }' is not assignable to type 'DocumentationInfo' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'lastCommitHash' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/emailService.ts(144,5): error TS2375: Type '{ host: string; port: number; secure: boolean; auth: { user: string; pass: string; }; from: string; replyTo: string | undefined; pool: boolean; maxConnections: number; maxMessages: number; }' is not assignable to type 'EmailConfig' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'replyTo' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/emailService.ts(162,45): error TS7006: Parameter 'job' implicitly has an 'any' type.
+src/services/emailService.ts(167,50): error TS7006: Parameter 'job' implicitly has an 'any' type.
+src/services/emailService.ts(173,30): error TS7006: Parameter 'job' implicitly has an 'any' type.
+src/services/emailService.ts(173,35): error TS7006: Parameter 'err' implicitly has an 'any' type.
+src/services/emailService.ts(182,33): error TS7006: Parameter 'job' implicitly has an 'any' type.
+src/services/emailService.ts(182,38): error TS7006: Parameter 'result' implicitly has an 'any' type.
+src/services/emailService.ts(210,41): error TS18048: 'options' is possibly 'undefined'.
+src/services/emailService.ts(242,41): error TS18048: 'options' is possibly 'undefined'.
+src/services/emailService.ts(412,7): error TS2322: Type '{ host: string; port: number; from: string; pool: boolean | undefined; } | null' is not assignable to type 'Partial<EmailConfig> | null'.
+  Type '{ host: string; port: number; from: string; pool: boolean | undefined; }' is not assignable to type 'Partial<EmailConfig>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Types of property 'pool' are incompatible.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'.
+src/services/encryptionService.ts(274,24): error TS2341: Property 'backupKeys' is private and only accessible within class 'KeyManager'.
+src/services/encryptionService.ts(389,11): error TS2532: Object is possibly 'undefined'.
+src/services/encryptionService.ts(472,35): error TS2339: Property 'age' does not exist on type '{ context: string; created: Date; version: string; }'.
+src/services/enhancedAuthService.ts(8,25): error TS2769: No overload matches this call.
+  Overload 1 of 8, '(options: RedisOptions): Redis', gave the following error.
+    Argument of type '{ host: string; port: number; password: string | undefined; db: number; retryStrategy: (times: number) => number; }' is not assignable to parameter of type 'RedisOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Type '{ host: string; port: number; password: string | undefined; db: number; retryStrategy: (times: number) => number; }' is not assignable to type 'CommonRedisOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+        Types of property 'password' are incompatible.
+          Type 'string | undefined' is not assignable to type 'string'.
+            Type 'undefined' is not assignable to type 'string'.
+  Overload 2 of 8, '(port: number): Redis', gave the following error.
+    Argument of type '{ host: string; port: number; password: string | undefined; db: number; retryStrategy: (times: number) => number; }' is not assignable to parameter of type 'number'.
+  Overload 3 of 8, '(path: string): Redis', gave the following error.
+    Argument of type '{ host: string; port: number; password: string | undefined; db: number; retryStrategy: (times: number) => number; }' is not assignable to parameter of type 'string'.
+src/services/enhancedAuthService.ts(158,28): error TS2339: Property 'revokeSession' does not exist on type 'SessionManager'.
+src/services/enhancedAuthService.ts(191,42): error TS2339: Property 'revokeAllUserSessions' does not exist on type 'SessionManager'.
+src/services/enhancedAuthService.ts(234,35): error TS2551: Property 'validateSession' does not exist on type 'SessionManager'. Did you mean 'updateSession'?
+src/services/enhancedCacheService.ts(193,13): error TS2375: Type '{ data: T; timestamp: number; ttl: number; version: number; etag: string | undefined; compressed: false; }' is not assignable to type 'CacheEntry<T>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'etag' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/enhancedCacheService.ts(280,32): error TS2304: Cannot find name 'start_time'.
+src/services/enhancedCacheService.ts(305,25): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/services/enhancedCacheService.ts(308,25): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/services/enhancedCacheService.ts(314,23): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/services/enhancedCacheService.ts(367,32): error TS2304: Cannot find name 'start_time'.
+src/services/enhancedCacheService.ts(452,11): error TS2353: Object literal may only specify known properties, and 'lrn' does not exist in type 'studentsSelect<DefaultArgs>'.
+src/services/enhancedCacheService.ts(484,20): error TS2353: Object literal may only specify known properties, and 'lastAccessedAt' does not exist in type 'booksOrderByWithRelationInput | booksOrderByWithRelationInput[]'.
+src/services/enhancedCacheService.ts(490,11): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type 'booksSelect<DefaultArgs>'.
+src/services/enhancedCacheService.ts(567,11): error TS2353: Object literal may only specify known properties, and 'lrn' does not exist in type 'studentsSelect<DefaultArgs>'.
+src/services/enhancedCacheService.ts(595,11): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type 'booksSelect<DefaultArgs>'.
+src/services/enhancedEquipmentService.ts(4,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentStatus'. Did you mean 'equipment_status'?
+src/services/enhancedEquipmentService.ts(5,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentType'. Did you mean 'equipment_type'?
+src/services/enhancedEquipmentService.ts(6,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentConditionRating'. Did you mean 'equipment_condition_rating'?
+src/services/enhancedEquipmentService.ts(7,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentReservationStatus'. Did you mean 'equipment_reservations_status'?
+src/services/enhancedEquipmentService.ts(8,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentMaintenanceType'. Did you mean 'equipment_maintenance'?
+src/services/enhancedEquipmentService.ts(9,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentMaintenanceStatus'. Did you mean 'equipment_maintenance_status'?
+src/services/enhancedEquipmentService.ts(10,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentMaintenancePriority'. Did you mean 'equipment_maintenance_priority'?
+src/services/enhancedEquipmentService.ts(11,3): error TS2305: Module '"@prisma/client"' has no exported member 'EquipmentAssessmentType'.
+src/services/enhancedEquipmentService.ts(12,3): error TS2305: Module '"@prisma/client"' has no exported member 'EquipmentDamageSeverity'.
+src/services/enhancedEquipmentService.ts(13,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentReportType'. Did you mean 'equipment_reports'?
+src/services/enhancedEquipmentService.ts(14,3): error TS2305: Module '"@prisma/client"' has no exported member 'ActivityType'.
+src/services/enhancedEquipmentService.ts(15,3): error TS2724: '"@prisma/client"' has no exported member named 'StudentActivitiesStatus'. Did you mean 'student_activities_status'?
+src/services/enhancedEquipmentService.ts(165,27): error TS2724: '"C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Backend/node_modules/.prisma/client/index".Prisma' has no exported member named 'EquipmentWhereInput'. Did you mean 'equipmentWhereInput'?
+src/services/enhancedEquipmentService.ts(188,29): error TS2724: '"C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Backend/node_modules/.prisma/client/index".Prisma' has no exported member named 'EquipmentInclude'. Did you mean 'equipmentInclude'?
+src/services/enhancedEquipmentService.ts(257,15): error TS2561: Object literal may only specify known properties, but 'student' does not exist in type 'equipment_reservationsInclude<DefaultArgs>'. Did you mean to write 'students'?
+src/services/enhancedEquipmentService.ts(329,11): error TS2322: Type 'Record<string, any> | null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
+  Type 'null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
+src/services/enhancedEquipmentService.ts(339,11): error TS2322: Type '{ tags: any; } | null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
+  Type 'null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
+src/services/enhancedEquipmentService.ts(339,31): error TS18004: No value exists in scope for the shorthand property 'tags'. Either declare one or provide an initializer.
+src/services/enhancedEquipmentService.ts(502,9): error TS2322: Type '{ equipment_id: string; student_id: string; start_time: Date; end_time: Date; purpose: string | null; notes: string | null; status: any; }' is not assignable to type '(Without<equipment_reservationsCreateInput, equipment_reservationsUncheckedCreateInput> & equipment_reservationsUncheckedCreateInput) | (Without<...> & equipment_reservationsCreateInput)'.
+  Type '{ equipment_id: string; student_id: string; start_time: Date; end_time: Date; purpose: string | null; notes: string | null; status: any; }' is not assignable to type 'Without<equipment_reservationsCreateInput, equipment_reservationsUncheckedCreateInput> & equipment_reservationsUncheckedCreateInput'.
+    Type '{ equipment_id: string; student_id: string; start_time: Date; end_time: Date; purpose: string | null; notes: string | null; status: any; }' is missing the following properties from type 'equipment_reservationsUncheckedCreateInput': id, updated_at
+src/services/enhancedEquipmentService.ts(519,11): error TS2561: Object literal may only specify known properties, but 'student' does not exist in type 'equipment_reservationsInclude<DefaultArgs>'. Did you mean to write 'students'?
+src/services/enhancedEquipmentService.ts(556,27): error TS2724: '"C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Backend/node_modules/.prisma/client/index".Prisma' has no exported member named 'EquipmentReservationsWhereInput'. Did you mean 'equipment_reservationsWhereInput'?
+src/services/enhancedEquipmentService.ts(582,11): error TS2561: Object literal may only specify known properties, but 'student' does not exist in type 'equipment_reservationsInclude<DefaultArgs>'. Did you mean to write 'students'?
+src/services/enhancedEquipmentService.ts(593,37): error TS2339: Property 'student' does not exist on type '{ id: string; student_id: string; status: equipment_reservations_status; notes: string | null; purpose: string | null; created_at: Date; updated_at: Date; ... 6 more ...; cancelled_at: Date | null; }'.
+src/services/enhancedEquipmentService.ts(593,71): error TS2339: Property 'student' does not exist on type '{ id: string; student_id: string; status: equipment_reservations_status; notes: string | null; purpose: string | null; created_at: Date; updated_at: Date; ... 6 more ...; cancelled_at: Date | null; }'.
+src/services/enhancedEquipmentService.ts(613,9): error TS2322: Type '{ equipment_id: string; maintenance_type: EquipmentMaintenanceType; description: string | null; cost: number | null; vendor: string | null; scheduled_date: Date | null; priority: any; estimated_duration: number | null; warranty_claim: boolean; status: any; }' is not assignable to type '(Without<equipment_maintenanceCreateInput, equipment_maintenanceUncheckedCreateInput> & equipment_maintenanceUncheckedCreateInput) | (Without<...> & equipment_maintenanceCreateInput)'.
+  Type '{ equipment_id: string; maintenance_type: EquipmentMaintenanceType; description: string | null; cost: number | null; vendor: string | null; scheduled_date: Date | null; priority: any; estimated_duration: number | null; warranty_claim: boolean; status: any; }' is not assignable to type 'Without<equipment_maintenanceCreateInput, equipment_maintenanceUncheckedCreateInput> & equipment_maintenanceUncheckedCreateInput'.
+    Type '{ equipment_id: string; maintenance_type: EquipmentMaintenanceType; description: string | null; cost: number | null; vendor: string | null; scheduled_date: Date | null; priority: any; estimated_duration: number | null; warranty_claim: boolean; status: any; }' is missing the following properties from type 'equipment_maintenanceUncheckedCreateInput': id, updated_at
+src/services/enhancedEquipmentService.ts(679,11): error TS2322: Type '{ urls: string[]; } | null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
+  Type 'null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
+src/services/enhancedEquipmentService.ts(680,11): error TS2322: Type '{ names: string[]; } | null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
+  Type 'null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
+src/services/enhancedEquipmentService.ts(764,48): error TS2379: Argument of type '{ where: { date: { gte: Date; lte: Date; }; } | undefined; _sum: { total_sessions: true; total_minutes: true; }; _avg: { utilization_rate: true; average_session: true; }; }' is not assignable to parameter of type 'Subset<Equipment_usage_statsAggregateArgs<DefaultArgs>, Equipment_usage_statsAggregateArgs<DefaultArgs>>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'where' are incompatible.
+    Type '{ date: { gte: Date; lte: Date; }; } | undefined' is not assignable to type 'equipment_usage_statsWhereInput'.
+      Type 'undefined' is not assignable to type 'equipment_usage_statsWhereInput'.
+src/services/enhancedEquipmentService.ts(791,25): error TS2353: Object literal may only specify known properties, and 'activities' does not exist in type 'EquipmentCountOutputTypeSelect<DefaultArgs>'.
+src/services/enhancedEquipmentService.ts(797,31): error TS18048: 'usageStats._sum' is possibly 'undefined'.
+src/services/enhancedEquipmentService.ts(797,74): error TS18048: 'usageStats._sum' is possibly 'undefined'.
+src/services/enhancedEquipmentService.ts(798,36): error TS18048: 'usageStats._avg' is possibly 'undefined'.
+src/services/enhancedEquipmentService.ts(799,31): error TS18048: 'usageStats._avg' is possibly 'undefined'.
+src/services/enhancedEquipmentService.ts(826,26): error TS2339: Property '_count' does not exist on type '{ type: equipment_type; id: string; status: equipment_status; tags: JsonValue; notes: string | null; category: string | null; location: string; ... 23 more ...; asset_tag_enc: JsonValue; }'.
+src/services/enhancedEquipmentService.ts(918,9): error TS2353: Object literal may only specify known properties, and 'activities' does not exist in type 'equipmentInclude<DefaultArgs>'.
+src/services/enhancedEquipmentService.ts(998,9): error TS2353: Object literal may only specify known properties, and 'studentGradeLevel' does not exist in type 'Without<student_activitiesCreateInput, student_activitiesUncheckedCreateInput> & student_activitiesUncheckedCreateInput'.
+src/services/enhancedEquipmentService.ts(1010,9): error TS2561: Object literal may only specify known properties, but 'student' does not exist in type 'student_activitiesInclude<DefaultArgs>'. Did you mean to write 'students'?
+src/services/enhancedEquipmentService.ts(1082,9): error TS2561: Object literal may only specify known properties, but 'student' does not exist in type 'student_activitiesInclude<DefaultArgs>'. Did you mean to write 'students'?
+src/services/enhancedEquipmentService.ts(1182,11): error TS2561: Object literal may only specify known properties, but 'student' does not exist in type 'student_activitiesInclude<DefaultArgs>'. Did you mean to write 'students'?
+src/services/enhancedSearchService.ts(8,19): error TS2769: No overload matches this call.
+  Overload 1 of 8, '(options: RedisOptions): Redis', gave the following error.
+    Object literal may only specify known properties, and 'retryDelayOnFailover' does not exist in type 'RedisOptions'.
+  Overload 2 of 8, '(port: number): Redis', gave the following error.
+    Argument of type '{ host: string; port: number; retryDelayOnFailover: number; enableReadyCheck: boolean; maxRetriesPerRequest: null; }' is not assignable to parameter of type 'number'.
+  Overload 3 of 8, '(path: string): Redis', gave the following error.
+    Argument of type '{ host: string; port: number; retryDelayOnFailover: number; enableReadyCheck: boolean; maxRetriesPerRequest: null; }' is not assignable to parameter of type 'string'.
+src/services/enhancedSearchService.ts(279,16): error TS2322: Type 'string' is not assignable to type 'SortOrder'.
+src/services/enhancedSearchService.ts(281,16): error TS2322: Type 'string' is not assignable to type 'SortOrder'.
+src/services/enhancedSearchService.ts(290,16): error TS2322: Type 'string' is not assignable to type 'SortOrder'.
+src/services/enhancedSearchService.ts(819,16): error TS2322: Type 'string' is not assignable to type 'SortOrder'.
+src/services/enhancedSearchService.ts(819,38): error TS2322: Type 'string' is not assignable to type 'SortOrder'.
+src/services/enhancedSearchService.ts(821,16): error TS2322: Type 'string' is not assignable to type 'SortOrder'.
+src/services/enhancedSearchService.ts(821,43): error TS2322: Type 'string' is not assignable to type 'SortOrder'.
+src/services/enhancedSearchService.ts(826,16): error TS2322: Type 'string' is not assignable to type 'SortOrder'.
+src/services/enhancedSearchService.ts(831,16): error TS2322: Type 'string' is not assignable to type 'SortOrder'.
+src/services/enhancedSearchService.ts(831,38): error TS2322: Type 'string' is not assignable to type 'SortOrder'.
+src/services/enhancedSearchService.ts(886,13): error TS2412: Type '{ gte: Date | undefined; lte: Date | undefined; } | undefined' is not assignable to type 'string | Date | DateTimeFilter<"student_activities"> | undefined' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the type of the target.
+src/services/enhancedSearchService.ts(907,68): error TS18048: 'stat._count' is possibly 'undefined'.
+src/services/enhancedSearchService.ts(907,80): error TS2339: Property 'activity_type' does not exist on type 'true | { id?: number; student_id?: number; student_name?: number; grade_level?: number; grade_category?: number; activity_type?: number; equipment_id?: number; checkout_id?: number; start_time?: number; ... 10 more ...; _all?: number; }'.
+  Property 'activity_type' does not exist on type 'true'.
+src/services/enhancedSearchService.ts(1191,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/services/enhancedSearchService.ts(1224,45): error TS7006: Parameter 'book' implicitly has an 'any' type.
+src/services/enhancedSearchService.ts(1333,11): error TS2375: Type '{ is_active: true | undefined; }' is not assignable to type 'booksWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'is_active' are incompatible.
+    Type 'true | undefined' is not assignable to type 'boolean | BoolFilter<"books">'.
+      Type 'undefined' is not assignable to type 'boolean | BoolFilter<"books">'.
+src/services/enhancedSearchService.ts(1371,11): error TS2375: Type '{ is_active: true | undefined; }' is not assignable to type 'studentsWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'is_active' are incompatible.
+    Type 'true | undefined' is not assignable to type 'boolean | BoolFilter<"students">'.
+      Type 'undefined' is not assignable to type 'boolean | BoolFilter<"students">'.
+src/services/enhancedSearchService.ts(1410,9): error TS2375: Type '{ id: { in: string[]; }; is_active: true | undefined; }' is not assignable to type 'equipmentWhereInput' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'is_active' are incompatible.
+    Type 'true | undefined' is not assignable to type 'boolean | BoolFilter<"equipment">'.
+      Type 'undefined' is not assignable to type 'boolean | BoolFilter<"equipment">'.
+src/services/equipmentAnalyticsService.ts(4,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentStatus'. Did you mean 'equipment_status'?
+src/services/equipmentAnalyticsService.ts(5,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentType'. Did you mean 'equipment_type'?
+src/services/equipmentAnalyticsService.ts(6,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentConditionRating'. Did you mean 'equipment_condition_rating'?
+src/services/equipmentAnalyticsService.ts(7,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentMaintenanceType'. Did you mean 'equipment_maintenance'?
+src/services/equipmentAnalyticsService.ts(8,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentMaintenanceStatus'. Did you mean 'equipment_maintenance_status'?
+src/services/equipmentAnalyticsService.ts(9,3): error TS2724: '"@prisma/client"' has no exported member named 'StudentActivitiesStatus'. Did you mean 'student_activities_status'?
+src/services/equipmentAnalyticsService.ts(10,3): error TS2305: Module '"@prisma/client"' has no exported member 'ActivityType'.
+src/services/equipmentAnalyticsService.ts(337,11): error TS2561: Object literal may only specify known properties, but 'student' does not exist in type 'student_activitiesInclude<DefaultArgs>'. Did you mean to write 'students'?
+src/services/equipmentAnalyticsService.ts(507,11): error TS2322: Type '{ usageAnalytics: EquipmentUsageAnalytics; performanceMetrics: EquipmentPerformanceMetrics; studentAnalytics: StudentEquipmentAnalytics; costAnalytics: EquipmentCostAnalytics; recommendations: { ...; }[]; generatedAt: string; }' is not assignable to type 'JsonNull | InputJsonValue'.
+  Types of property 'usageAnalytics' are incompatible.
+    Type 'EquipmentUsageAnalytics' is not assignable to type 'InputJsonValue | null | undefined'.
+      Type 'EquipmentUsageAnalytics' is not assignable to type 'InputJsonObject'.
+        Index signature for type 'string' is missing in type 'EquipmentUsageAnalytics'.
+src/services/equipmentAnalyticsService.ts(564,84): error TS2724: '"C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Backend/node_modules/.prisma/client/index".Prisma' has no exported member named 'EquipmentWhereInput'. Did you mean 'equipmentWhereInput'?
+src/services/equipmentAnalyticsService.ts(565,26): error TS2724: '"C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Backend/node_modules/.prisma/client/index".Prisma' has no exported member named 'EquipmentWhereInput'. Did you mean 'equipmentWhereInput'?
+src/services/equipmentAnalyticsService.ts(672,97): error TS2724: '"C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Backend/node_modules/.prisma/client/index".Prisma' has no exported member named 'EquipmentWhereInput'. Did you mean 'equipmentWhereInput'?
+src/services/equipmentAnalyticsService.ts(693,23): error TS2532: Object is possibly 'undefined'.
+src/services/equipmentAnalyticsService.ts(793,31): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/services/equipmentAnalyticsService.ts(970,21): error TS2304: Cannot find name 'EquipmentAnalytics'.
+src/services/equipmentSchedulingService.ts(1,31): error TS2307: Cannot find module 'bullmq' or its corresponding type declarations.
+src/services/equipmentSchedulingService.ts(4,10): error TS2614: Module '"@/utils/redis"' has no exported member 'redis'. Did you mean to use 'import redis from "@/utils/redis"' instead?
+src/services/equipmentSchedulingService.ts(6,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentStatus'. Did you mean 'equipment_status'?
+src/services/equipmentSchedulingService.ts(7,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentMaintenanceType'. Did you mean 'equipment_maintenance'?
+src/services/equipmentSchedulingService.ts(8,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentMaintenanceStatus'. Did you mean 'equipment_maintenance_status'?
+src/services/equipmentSchedulingService.ts(9,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentMaintenancePriority'. Did you mean 'equipment_maintenance_priority'?
+src/services/equipmentSchedulingService.ts(10,3): error TS2724: '"@prisma/client"' has no exported member named 'EquipmentConditionRating'. Did you mean 'equipment_condition_rating'?
+src/services/equipmentSchedulingService.ts(11,3): error TS2724: '"@prisma/client"' has no exported member named 'StudentActivitiesStatus'. Did you mean 'student_activities_status'?
+src/services/equipmentSchedulingService.ts(14,10): error TS2724: '"@/websocket/equipmentWebSocket"' has no exported member named 'equipmentWebSocketService'. Did you mean 'EquipmentWebSocketService'?
+src/services/equipmentSchedulingService.ts(89,14): error TS7006: Parameter 'job' implicitly has an 'any' type.
+src/services/equipmentSchedulingService.ts(98,45): error TS7006: Parameter 'job' implicitly has an 'any' type.
+src/services/equipmentSchedulingService.ts(106,42): error TS7006: Parameter 'job' implicitly has an 'any' type.
+src/services/equipmentSchedulingService.ts(106,47): error TS7006: Parameter 'err' implicitly has an 'any' type.
+src/services/equipmentSchedulingService.ts(117,14): error TS7006: Parameter 'job' implicitly has an 'any' type.
+src/services/equipmentSchedulingService.ts(126,41): error TS7006: Parameter 'job' implicitly has an 'any' type.
+src/services/equipmentSchedulingService.ts(134,38): error TS7006: Parameter 'job' implicitly has an 'any' type.
+src/services/equipmentSchedulingService.ts(134,43): error TS7006: Parameter 'err' implicitly has an 'any' type.
+src/services/equipmentSchedulingService.ts(177,66): error TS2379: Argument of type '{ equipmentId: string; maintenanceType: EquipmentMaintenanceType; description: string | undefined; cost: number | undefined; vendor: string | undefined; scheduledDate: Date; priority: EquipmentMaintenancePriority; estimatedDuration: number | undefined; warrantyClaim: boolean; }' is not assignable to parameter of type 'CreateMaintenanceData' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'description' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/equipmentSchedulingService.ts(374,9): error TS2353: Object literal may only specify known properties, and 'extensions' does not exist in type '(Without<student_activitiesUpdateInput, student_activitiesUncheckedUpdateInput> & student_activitiesUncheckedUpdateInput) | (Without<...> & student_activitiesUpdateInput)'.
+src/services/equipmentSchedulingService.ts(433,35): error TS2561: Object literal may only specify known properties, but 'student' does not exist in type 'student_activitiesInclude<DefaultArgs>'. Did you mean to write 'students'?
+src/services/equipmentSchedulingService.ts(489,35): error TS2561: Object literal may only specify known properties, but 'student' does not exist in type 'student_activitiesInclude<DefaultArgs>'. Did you mean to write 'students'?
+src/services/equipmentSchedulingService.ts(498,7): error TS2322: Type '{ type: "SYSTEM_ALERT"; title: string; message: string; priority: "NORMAL"; user_id: string; created_at: Date; expires_at: Date; action_url: string; }' is not assignable to type '(Without<notificationsCreateInput, notificationsUncheckedCreateInput> & notificationsUncheckedCreateInput) | (Without<...> & notificationsCreateInput)'.
+  Type '{ type: "SYSTEM_ALERT"; title: string; message: string; priority: "NORMAL"; user_id: string; created_at: Date; expires_at: Date; action_url: string; }' is not assignable to type 'Without<notificationsUncheckedCreateInput, notificationsCreateInput> & notificationsCreateInput'.
+    Property 'id' is missing in type '{ type: "SYSTEM_ALERT"; title: string; message: string; priority: "NORMAL"; user_id: string; created_at: Date; expires_at: Date; action_url: string; }' but required in type 'notificationsCreateInput'.
+src/services/equipmentSchedulingService.ts(501,47): error TS2551: Property 'equipment' does not exist on type '{ id: string; student_id: string; status: student_activities_status; notes: string | null; created_at: Date; updated_at: Date; grade_category: student_activities_grade_category | null; ... 11 more ...; sync_attempts: number; }'. Did you mean 'equipment_id'?
+src/services/importPipelineService.ts(301,106): error TS2379: Argument of type '{ customMappings: Record<string, string> | undefined; validationRules: any[] | undefined; dryRun: boolean | undefined; }' is not assignable to parameter of type 'ProcessOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'customMappings' are incompatible.
+    Type 'Record<string, string> | undefined' is not assignable to type 'Record<string, string>'.
+      Type 'undefined' is not assignable to type 'Record<string, string>'.
+src/services/recoveryService.ts(270,38): error TS18046: 'recoveryError' is of type 'unknown'.
+src/services/recoveryService.ts(297,36): error TS2304: Cannot find name 'start_time'.
+src/services/recoveryService.ts(313,44): error TS2304: Cannot find name 'start_time'.
+src/services/recoveryService.ts(335,34): error TS2304: Cannot find name 'start_time'.
+src/services/recoveryService.ts(346,30): error TS2304: Cannot find name 'start_time'.
+src/services/recoveryService.ts(357,15): error TS2339: Property 'category' does not exist on type 'BaseError'.
+src/services/recoveryService.ts(360,18): error TS2339: Property 'category' does not exist on type 'BaseError'.
+src/services/recoveryService.ts(378,32): error TS2304: Cannot find name 'start_time'.
+src/services/recoveryService.ts(382,56): error TS18046: 'error' is of type 'unknown'.
+src/services/recoveryService.ts(401,32): error TS2304: Cannot find name 'start_time'.
+src/services/recoveryService.ts(404,56): error TS18046: 'error' is of type 'unknown'.
+src/services/recoveryService.ts(430,32): error TS2304: Cannot find name 'start_time'.
+src/services/recoveryService.ts(433,57): error TS18046: 'error' is of type 'unknown'.
+src/services/recoveryService.ts(464,32): error TS2304: Cannot find name 'start_time'.
+src/services/recoveryService.ts(467,49): error TS18046: 'error' is of type 'unknown'.
+src/services/recoveryService.ts(486,32): error TS2304: Cannot find name 'start_time'.
+src/services/recoveryService.ts(489,54): error TS18046: 'error' is of type 'unknown'.
+src/services/recoveryService.ts(642,40): error TS2304: Cannot find name 'start_time'.
+src/services/recoveryService.ts(648,40): error TS2304: Cannot find name 'start_time'.
+src/services/scannerConfigService.ts(430,13): error TS2375: Type '{ name: string; enabled: boolean; bufferSize: number; timeout: number; minLength: number; maxLength: number; beepOnScan: boolean; visualFeedback: boolean; duplicatePrevention: boolean; duplicateWindow: number; ... 4 more ...; devicePath: string | undefined; }' is not assignable to type 'ScannerConfig' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'vendorId' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+src/services/scannerConfigService.ts(519,19): error TS2375: Type '{ name: string; vendorId: number; productId: number; devicePath: string; enabled?: boolean; bufferSize?: number; timeout?: number; prefix?: string; suffix?: string; minLength?: number; maxLength?: number; beepOnScan?: boolean; visualFeedback?: boolean; duplicatePrevention?: boolean; duplicateWindow?: number; }' is not assignable to type 'ScannerConfig' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Property 'enabled' is optional in type '{ name: string; vendorId: number; productId: number; devicePath: string; enabled?: boolean; bufferSize?: number; timeout?: number; prefix?: string; suffix?: string; minLength?: number; maxLength?: number; beepOnScan?: boolean; visualFeedback?: boolean; duplicatePrevention?: boolean; duplicateWindow?: number; }' but required in type 'ScannerConfig'.
+src/services/usbScannerService.ts(130,13): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/services/usbScannerService.ts(163,19): error TS2339: Property 'vendorId' does not exist on type '{ vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { usagePage: number; usage: number; }'.
+  Property 'vendorId' does not exist on type '{ usagePage: number; usage: number; }'.
+src/services/usbScannerService.ts(163,37): error TS2339: Property 'productId' does not exist on type '{ vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { usagePage: number; usage: number; }'.
+  Property 'productId' does not exist on type '{ usagePage: number; usage: number; }'.
+src/services/usbScannerService.ts(164,41): error TS2339: Property 'vendorId' does not exist on type '{ vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { usagePage: number; usage: number; }'.
+  Property 'vendorId' does not exist on type '{ usagePage: number; usage: number; }'.
+src/services/usbScannerService.ts(164,80): error TS2339: Property 'productId' does not exist on type '{ vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { usagePage: number; usage: number; }'.
+  Property 'productId' does not exist on type '{ usagePage: number; usage: number; }'.
+src/services/usbScannerService.ts(170,19): error TS2339: Property 'usagePage' does not exist on type '{ vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { usagePage: number; usage: number; }'.
+  Property 'usagePage' does not exist on type '{ vendorId: number; productId: number; }'.
+src/services/usbScannerService.ts(170,38): error TS2339: Property 'usage' does not exist on type '{ vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { usagePage: number; usage: number; }'.
+  Property 'usage' does not exist on type '{ vendorId: number; productId: number; }'.
+src/services/usbScannerService.ts(171,42): error TS2339: Property 'usagePage' does not exist on type '{ vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { usagePage: number; usage: number; }'.
+  Property 'usagePage' does not exist on type '{ vendorId: number; productId: number; }'.
+src/services/usbScannerService.ts(171,78): error TS2339: Property 'usage' does not exist on type '{ vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { vendorId: number; productId: number; } | { usagePage: number; usage: number; }'.
+  Property 'usage' does not exist on type '{ vendorId: number; productId: number; }'.
+src/services/usbScannerService.ts(601,62): error TS2339: Property 'path' does not exist on type 'HID'.
+src/services/usbScannerService.ts(608,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/services/user.service.ts(40,51): error TS2379: Argument of type '{ role: $Enums.users_role | undefined; isActive: boolean | undefined; search: string | undefined; page: number; limit: number; sortBy: "created_at"; sortOrder: "desc"; }' is not assignable to parameter of type '{ role?: users_role; isActive?: boolean; search?: string; page?: number; limit?: number; sortBy?: "email" | "username" | "role" | "created_at" | "last_login_at" | "full_name"; sortOrder?: "asc" | "desc"; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'role' are incompatible.
+    Type 'users_role | undefined' is not assignable to type 'users_role'.
+      Type 'undefined' is not assignable to type 'users_role'.
+src/services/user.service.ts(72,51): error TS2379: Argument of type '{ username: string; password: string; email: string | undefined; full_name: string | undefined; role: $Enums.users_role; permissions: string[]; }' is not assignable to parameter of type '{ username: string; password: string; email?: string; full_name?: string; role?: users_role; permissions?: string[]; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'email' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/services/user.service.ts(166,40): error TS2561: Object literal may only specify known properties, but 'is_active' does not exist in type 'UpdateUserInput'. Did you mean to write 'isActive'?
+src/services/user.service.ts(171,40): error TS2561: Object literal may only specify known properties, but 'is_active' does not exist in type 'UpdateUserInput'. Did you mean to write 'isActive'?
+src/services/user.service.ts(177,24): error TS2552: Cannot find name 'prisma'. Did you mean '__prisma'?
+src/services/user.service.ts(182,37): error TS2552: Cannot find name 'prisma'. Did you mean '__prisma'?
+src/utils/databaseQueryOptimizer.ts(138,45): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/utils/databaseQueryOptimizer.ts(258,39): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(arg: PrismaPromise<any>[], options?: { isolationLevel?: TransactionIsolationLevel; } | undefined): Promise<any[]>', gave the following error.
+    Argument of type '(() => Promise<T>)[]' is not assignable to parameter of type 'PrismaPromise<any>[]'.
+      Type '() => Promise<T>' is not assignable to type 'PrismaPromise<any>'.
+  Overload 2 of 2, '(fn: (prisma: Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">) => Promise<...>, options?: { ...; } | undefined): Promise<...>', gave the following error.
+    Argument of type '(() => Promise<T>)[]' is not assignable to parameter of type '(prisma: Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">) => Promise<...>'.
+      Type '(() => Promise<T>)[]' provides no match for the signature '(prisma: Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">): Promise<...>'.
+src/utils/databaseQueryOptimizer.ts(345,17): error TS2322: Type 'PrismaPromise<number>' is not assignable to type 'Promise<{ id: string; student_id: string; section: string | null; created_at: Date; first_name: string; grade_category: students_grade_category; grade_level: string; last_name: string; }[]>'.
+  Types of property 'then' are incompatible.
+    Type '<TResult1 = number, TResult2 = never>(onfulfilled?: ((value: number) => TResult1 | PromiseLike<TResult1>) | null | undefined, onrejected?: ((reason: any) => TResult2 | PromiseLike<...>) | null | undefined) => Promise<...>' is not assignable to type '<TResult1 = { id: string; student_id: string; section: string | null; created_at: Date; first_name: string; grade_category: students_grade_category; grade_level: string; last_name: string; }[], TResult2 = never>(onfulfilled?: ((value: { ...; }[]) => TResult1 | PromiseLike<...>) | ... 1 more ... | undefined, onreject...'.
+      Types of parameters 'onfulfilled' and 'onfulfilled' are incompatible.
+        Types of parameters 'value' and 'value' are incompatible.
+          Type 'number' is not assignable to type '{ id: string; student_id: string; section: string | null; created_at: Date; first_name: string; grade_category: students_grade_category; grade_level: string; last_name: string; }[]'.
+src/utils/databaseQueryOptimizer.ts(354,30): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/utils/databaseQueryOptimizer.ts(354,30): error TS18048: 'total' is possibly 'undefined'.
+src/utils/databaseQueryOptimizer.ts(417,17): error TS2322: Type 'PrismaPromise<number>' is not assignable to type 'Promise<{ id: string; title: string; author: string; isbn: string | null; category: string; subcategory: string | null; accession_no: string; available_copies: number; total_copies: number; }[]>'.
+  Types of property 'then' are incompatible.
+    Type '<TResult1 = number, TResult2 = never>(onfulfilled?: ((value: number) => TResult1 | PromiseLike<TResult1>) | null | undefined, onrejected?: ((reason: any) => TResult2 | PromiseLike<...>) | null | undefined) => Promise<...>' is not assignable to type '<TResult1 = { id: string; title: string; author: string; isbn: string | null; category: string; subcategory: string | null; accession_no: string; available_copies: number; total_copies: number; }[], TResult2 = never>(onfulfilled?: ((value: { ...; }[]) => TResult1 | PromiseLike<...>) | ... 1 more ... | undefined, onr...'.
+      Types of parameters 'onfulfilled' and 'onfulfilled' are incompatible.
+        Types of parameters 'value' and 'value' are incompatible.
+          Type 'number' is not assignable to type '{ id: string; title: string; author: string; isbn: string | null; category: string; subcategory: string | null; accession_no: string; available_copies: number; total_copies: number; }[]'.
+src/utils/databaseQueryOptimizer.ts(435,30): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/utils/databaseQueryOptimizer.ts(435,30): error TS18048: 'total' is possibly 'undefined'.
+src/utils/databaseQueryOptimizer.ts(488,17): error TS2322: Type 'PrismaPromise<number>' is not assignable to type 'Promise<{ type: equipment_type; id: string; status: equipment_status; location: string; name: string; equipment_id: string; max_time_minutes: number; }[]>'.
+  Types of property 'then' are incompatible.
+    Type '<TResult1 = number, TResult2 = never>(onfulfilled?: ((value: number) => TResult1 | PromiseLike<TResult1>) | null | undefined, onrejected?: ((reason: any) => TResult2 | PromiseLike<...>) | null | undefined) => Promise<...>' is not assignable to type '<TResult1 = { type: equipment_type; id: string; status: equipment_status; location: string; name: string; equipment_id: string; max_time_minutes: number; }[], TResult2 = never>(onfulfilled?: ((value: { ...; }[]) => TResult1 | PromiseLike<...>) | ... 1 more ... | undefined, onrejected?: ((reason: any) => TResult2 | P...'.
+      Types of parameters 'onfulfilled' and 'onfulfilled' are incompatible.
+        Types of parameters 'value' and 'value' are incompatible.
+          Type 'number' is not assignable to type '{ type: equipment_type; id: string; status: equipment_status; location: string; name: string; equipment_id: string; max_time_minutes: number; }[]'.
+src/utils/databaseQueryOptimizer.ts(497,30): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/utils/databaseQueryOptimizer.ts(497,30): error TS18048: 'total' is possibly 'undefined'.
+src/utils/databaseQueryOptimizer.ts(542,23): error TS18048: 'totalStudents' is possibly 'undefined'.
+src/utils/databaseQueryOptimizer.ts(542,39): error TS18048: 'activeStudents' is possibly 'undefined'.
+src/utils/databaseQueryOptimizer.ts(547,25): error TS18048: 'totalBooks' is possibly 'undefined'.
+src/utils/databaseQueryOptimizer.ts(547,38): error TS18048: 'availableBooks' is possibly 'undefined'.
+src/utils/databaseQueryOptimizer.ts(552,20): error TS18048: 'totalEquipment' is possibly 'undefined'.
+src/utils/databaseQueryOptimizer.ts(552,37): error TS18048: 'availableEquipment' is possibly 'undefined'.
+src/utils/errorHandler.ts(172,60): error TS2379: Argument of type '{ logLevel: "error"; context: ErrorContext | undefined; }' is not assignable to parameter of type 'ErrorHandlerOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'context' are incompatible.
+    Type 'ErrorContext | undefined' is not assignable to type 'ErrorContext'.
+      Type 'undefined' is not assignable to type 'ErrorContext'.
+src/utils/errorHandler.ts(298,22): error TS2379: Argument of type '{ error: unknown; operation: string; context: ErrorContext | undefined; }' is not assignable to parameter of type '{ error: unknown; operation: string; context?: ErrorContext; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'context' are incompatible.
+    Type 'ErrorContext | undefined' is not assignable to type 'ErrorContext'.
+      Type 'undefined' is not assignable to type 'ErrorContext'.
+src/utils/importTransactionManager.ts(135,22): error TS18048: 'batch' is possibly 'undefined'.
+src/utils/importTransactionManager.ts(141,11): error TS2345: Argument of type 'any[] | undefined' is not assignable to parameter of type 'any[]'.
+  Type 'undefined' is not assignable to type 'any[]'.
+src/utils/importTransactionManager.ts(146,41): error TS18048: 'batch' is possibly 'undefined'.
+src/utils/importTransactionManager.ts(146,47): error TS2339: Property 'records' does not exist on type 'any[]'.
+src/utils/importTransactionManager.ts(414,16): error TS18004: No value exists in scope for the shorthand property 'student_id'. Either declare one or provide an initializer.
+src/utils/importTransactionManager.ts(512,16): error TS18004: No value exists in scope for the shorthand property 'equipment_id'. Either declare one or provide an initializer.
+src/utils/performanceDecorators.ts(147,49): error TS2379: Argument of type '{ category: any; operation: string; duration: number; success: true; metadata: Record<string, any> | undefined; }' is not assignable to parameter of type 'Omit<PerformanceMetric, "timestamp">' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'metadata' are incompatible.
+    Type 'Record<string, any> | undefined' is not assignable to type 'Record<string, unknown>'.
+      Type 'undefined' is not assignable to type 'Record<string, unknown>'.
+src/utils/performanceDecorators.ts(408,49): error TS2379: Argument of type '{ category: any; operation: string; duration: number; success: boolean; metadata: Record<string, any> | undefined; }' is not assignable to parameter of type 'Omit<PerformanceMetric, "timestamp">' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'metadata' are incompatible.
+    Type 'Record<string, any> | undefined' is not assignable to type 'Record<string, unknown>'.
+      Type 'undefined' is not assignable to type 'Record<string, unknown>'.
+src/utils/typeInference.ts(554,5): error TS2375: Type '{ type: "date"; confidence: number; format: string | undefined; errors: string[]; sampleValues: unknown[]; }' is not assignable to type 'TypeInferenceResult' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'format' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/websocket/equipmentWebSocket.ts(23,11): error TS2564: Property 'heartbeatInterval' has no initializer and is not definitely assigned in the constructor.
+src/websocket/eventTypes.ts(1192,3): error TS2375: Type '{ id: string; type: string; timestamp: Date; userId: string | undefined; sessionId: string | undefined; payload: TPayload; metadata: { source: "client" | "server"; version: string; correlationId?: string; retryCount?: number; priority?: "low" | "medium" | "high" | "critical"; tags?: string[]; }; }' is not assignable to type 'BaseWebSocketEvent<TPayload>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'userId' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/websocket/eventTypes.ts(1216,3): error TS2375: Type '{ eventId: string; success: boolean; timestamp: Date; payload: NonNullable<TPayload> | undefined; error: EventError | undefined; }' is not assignable to type 'EventResponse<TPayload>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'payload' are incompatible.
+    Type 'NonNullable<TPayload> | undefined' is not assignable to type 'TPayload'.
+      'TPayload' could be instantiated with an arbitrary type which could be unrelated to 'NonNullable<TPayload> | undefined'.
+src/websocket/realtimeService.ts(125,44): error TS2339: Property 'max_time_minutes' does not exist on type '{ students: { id: string; student_id: string; section: string | null; created_at: Date; is_active: boolean; updated_at: Date; barcode_image: string | null; first_name: string; ... 11 more ...; section_enc: JsonValue; }; equipment: { ...; }; } & { ...; }'.
+src/websocket/realtimeService.ts(134,34): error TS2339: Property 'max_time_minutes' does not exist on type '{ students: { id: string; student_id: string; section: string | null; created_at: Date; is_active: boolean; updated_at: Date; barcode_image: string | null; first_name: string; ... 11 more ...; section_enc: JsonValue; }; equipment: { ...; }; } & { ...; }'.

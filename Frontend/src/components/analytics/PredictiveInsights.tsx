@@ -199,7 +199,7 @@ export function PredictiveInsights({
                     <div className="mt-3 pt-3 border-t">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">
-                          {insight.recommendations[0].substring(0, 60)}...
+                          {insight.recommendations[0]?.substring(0, 60)}...
                         </span>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>

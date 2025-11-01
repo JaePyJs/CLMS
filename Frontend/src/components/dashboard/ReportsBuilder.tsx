@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { LoadingSpinner, TableSkeleton, ButtonLoading, CardSkeleton, GridSkeleton, EmptyState } from '@/components/LoadingStates';
 import {
   Card,
   CardContent,
@@ -10,7 +9,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -251,7 +249,7 @@ export function ReportsBuilder() {
     }
   };
 
-  const handleExportReport = async (report: GeneratedReport, format: 'pdf' | 'excel' | 'csv') => {
+  const handleExportReport = async (_report: GeneratedReport, format: 'pdf' | 'excel' | 'csv') => {
     setIsExporting(true);
     try {
       // Simulate export
@@ -441,7 +439,7 @@ export function ReportsBuilder() {
                       <div className="flex gap-1">
                         {template.chartTypes.slice(0, 3).map(chartType => (
                           <Badge key={chartType} variant="outline" className="text-xs">
-                            {getChartIcon(chartType)}
+                            {getChartIcon(selectedTemplate?.chartTypes[0] ?? 'bar')}
                           </Badge>
                         ))}
                         {template.chartTypes.length > 3 && (
@@ -533,7 +531,7 @@ export function ReportsBuilder() {
                     </div>
                     <div>
                       <label className="text-sm font-medium">Chart Type</label>
-                      <Select defaultValue={selectedTemplate.chartTypes[0]}>
+                      <Select defaultValue={selectedTemplate.chartTypes[0] ?? 'bar'}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -648,16 +646,16 @@ export function ReportsBuilder() {
                         {/* Mock Chart Preview */}
                         <div className="h-64 bg-muted rounded-lg flex items-center justify-center">
                           <div className="text-center">
-                            {getChartIcon(selectedTemplate.chartTypes[0])}
+                            {getChartIcon(selectedTemplate.chartTypes[0] ?? 'bar')}
                             <p className="mt-2 text-muted-foreground">
-                              {selectedTemplate.chartTypes[0].charAt(0).toUpperCase() + selectedTemplate.chartTypes[0].slice(1)} Chart Preview
+                              {(selectedTemplate.chartTypes[0] ?? 'bar').charAt(0).toUpperCase() + (selectedTemplate.chartTypes[0] ?? 'bar').slice(1)} Chart Preview
                             </p>
                           </div>
                         </div>
                         {/* Mock Data Table */}
                         <div className="border rounded-lg">
                           <div className="grid grid-cols-3 gap-4 p-3 bg-muted font-medium text-sm">
-                            {selectedTemplate.columns.slice(0, 3).map(column => (
+                            {(selectedTemplate.columns?.slice(0, 3) ?? []).map(column => (
                               <div key={column}>{column.replace('_', ' ').toUpperCase()}</div>
                             ))}
                           </div>

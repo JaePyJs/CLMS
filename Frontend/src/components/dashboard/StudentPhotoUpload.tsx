@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useMobileOptimization, getOptimalImageSize } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
-import { Upload, Camera, X, CheckCircle, AlertCircle, RefreshCw, Trash2, ZoomIn } from 'lucide-react';
+import { Upload, Camera, X, CheckCircle, AlertCircle, RefreshCw, Trash2, ZoomIn, Image as ImageIcon } from 'lucide-react';
 
 interface StudentPhotoUploadProps {
   studentId: string;
@@ -21,7 +21,8 @@ export function StudentPhotoUpload({
   currentPhotoUrl,
   onUploadComplete
 }: StudentPhotoUploadProps) {
-  const { isMobile, isTablet, width } = useMobileOptimization();
+  const mobileState = useMobileOptimization();
+  const { isMobile, isTablet, width } = mobileState;
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(currentPhotoUrl || null);
   const [showCamera, setShowCamera] = useState(false);
@@ -64,14 +65,15 @@ export function StudentPhotoUpload({
     setIsUploading(true);
     try {
       // Calculate optimal image size based on device
-      const targetSize = getOptimalImageSize({ isMobile, isTablet, width }, 400);
+      const targetSizeObj = getOptimalImageSize(mobileState, 400, 400);
+      const targetSize = targetSizeObj.width;
 
       // Create image element
       const img = new Image();
       img.src = dataUrl;
 
-      await new Promise((resolve) => {
-        img.onload = resolve;
+      await new Promise<void>((resolve) => {
+        img.onload = () => resolve();
       });
 
       // Create canvas and resize image
@@ -81,8 +83,8 @@ export function StudentPhotoUpload({
 
       // Calculate dimensions maintaining aspect ratio
       const aspectRatio = img.width / img.height;
-      let newWidth = targetSize;
-      let newHeight = targetSize / aspectRatio;
+      let newWidth: number = targetSize;
+      let newHeight: number = targetSize / aspectRatio;
 
       if (newHeight > targetSize) {
         newHeight = targetSize;
@@ -94,7 +96,7 @@ export function StudentPhotoUpload({
 
       // Draw and compress
       ctx.drawImage(img, 0, 0, newWidth, newHeight);
-      const compressedDataUrl = canvas.toBlob(
+      canvas.toBlob(
         (blob) => {
           if (blob) {
             const compressedUrl = URL.createObjectURL(blob);

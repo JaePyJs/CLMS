@@ -16,10 +16,15 @@ import {
 import {
   getEquipmentByEquipmentId,
   getEquipmentById,
+  getEquipmentUsageHistory,
   useEquipment,
   releaseEquipment,
 } from './equipmentService';
 import { logger } from '@/utils/logger';
+import { createServiceErrorHandler, ErrorPatterns } from '@/utils/errorHandler';
+
+// Create service-specific error handler
+const errorHandler = createServiceErrorHandler('scanService');
 import {
   student_activities_activity_type,
   student_activities_status,
@@ -76,8 +81,7 @@ export async function registerStudent(
 
     return student;
   } catch (error) {
-    logger.error('Error registering student', {
-      error: (error as Error).message,
+    errorHandler.handleDatabaseError(error, 'registerStudent', {
       registrationData,
     });
     throw error;
@@ -103,11 +107,9 @@ export async function checkDuplicateScan(student_id: string): Promise<boolean> {
 
     return recentActivities.length > 0;
   } catch (error) {
-    logger.error('Error checking duplicate scan', {
-      error: (error as Error).message,
+    return ErrorPatterns.duplicateCheck(error, 'checkDuplicateScan', {
       student_id,
     });
-    return false;
   }
 }
 
@@ -122,7 +124,7 @@ export async function scanStudentBarcode(
     if (!student) {
       return {
         type: 'student',
-        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        data: {
           requiresRegistration: true,
           student: null,
         },
@@ -138,7 +140,7 @@ export async function scanStudentBarcode(
     if (isDuplicate) {
       return {
         type: 'student',
-        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        data: {
           student,
           isDuplicate: true,
           canCheckOut: true, // Allow checkout even for duplicates
@@ -156,7 +158,7 @@ export async function scanStudentBarcode(
 
     return {
       type: 'student',
-      data: { id: crypto.randomUUID(), updated_at: new Date(), 
+      data: {
         student,
         isDuplicate: false,
         canCheckOut: hasActiveSession,
@@ -168,13 +170,12 @@ export async function scanStudentBarcode(
       canCheckOut: hasActiveSession,
     };
   } catch (error) {
-    logger.error('Error scanning student barcode', {
-      error: (error as Error).message,
+    errorHandler.handleBusinessError(error, 'scanStudentBarcode', {
       student_id,
     });
     return {
       type: 'student',
-      data: { id: crypto.randomUUID(), updated_at: new Date(), 
+      data: {
         student: null,
         requiresRegistration: false,
         isDuplicate: false,
@@ -235,10 +236,7 @@ export async function scanBarcode(barcode: string): Promise<ScanResult> {
       timestamp: new Date().toISOString(),
     };
   } catch (error) {
-    logger.error('Error scanning barcode', {
-      error: (error as Error).message,
-      barcode,
-    });
+    errorHandler.handleBusinessError(error, 'scanBarcode', { barcode });
     return {
       type: 'unknown',
       data: null,
@@ -255,10 +253,16 @@ export async function processStudentCheckIn(
   notes?: string,
 ) {
   try {
+    const studentRecord = await getStudentByBarcode(student_id);
+
+    if (!studentRecord) {
+      throw new Error('Student not found');
+    }
+
     // Check if student has an active session
     const activeSessions = await getActiveSessions();
     const existingSession = activeSessions.find(
-      session => session.student?.student_id === student_id,
+      session => session.student_id === studentRecord.id,
     );
 
     if (existingSession) {
@@ -288,8 +292,7 @@ export async function processStudentCheckIn(
     });
     return activity;
   } catch (error) {
-    logger.error('Error processing student check-in', {
-      error: (error as Error).message,
+    errorHandler.handleDatabaseError(error, 'processStudentCheckIn', {
       student_id,
       activity_type,
     });
@@ -300,10 +303,16 @@ export async function processStudentCheckIn(
 // Process student check-out
 export async function processStudentCheckOut(student_id: string) {
   try {
+    const studentRecord = await getStudentByBarcode(student_id);
+
+    if (!studentRecord) {
+      throw new Error('Student not found');
+    }
+
     // Check if student has an active session
     const activeSessions = await getActiveSessions();
     const existingSession = activeSessions.find(
-      session => session.student?.student_id === student_id,
+      session => session.student_id === studentRecord.id,
     );
 
     if (!existingSession) {
@@ -318,8 +327,7 @@ export async function processStudentCheckOut(student_id: string) {
     });
     return activity;
   } catch (error) {
-    logger.error('Error processing student check-out', {
-      error: (error as Error).message,
+    errorHandler.handleDatabaseError(error, 'processStudentCheckOut', {
       student_id,
     });
     throw error;
@@ -335,13 +343,16 @@ export async function processBookCheckout(
 ) {
   try {
     // Check if student has already checked out this book
-    const activeCheckouts = await getBookCheckouts({
+    const existingCheckouts = await getBookCheckouts({
       book_id,
       student_id,
-      status: book_checkouts_status.ACTIVE,
     });
 
-    if (activeCheckouts.checkouts.length > 0) {
+    const hasActiveCheckout = existingCheckouts.checkouts.some(
+      checkout => checkout.status === book_checkouts_status.ACTIVE,
+    );
+
+    if (hasActiveCheckout) {
       throw new Error('Student has already checked out this book');
     }
 
@@ -365,8 +376,7 @@ export async function processBookCheckout(
     });
     return checkout;
   } catch (error) {
-    logger.error('Error processing book checkout', {
-      error: (error as Error).message,
+    errorHandler.handleDatabaseError(error, 'processBookCheckout', {
       book_id,
       student_id,
     });
@@ -378,12 +388,11 @@ export async function processBookCheckout(
 export async function processBookReturn(checkout_id: string) {
   try {
     // Process return
-    const checkout = await returnBook(checkoutId);
+    const checkout = await returnBook(checkout_id);
     logger.info('Book return processed', { checkout_id });
     return checkout;
   } catch (error) {
-    logger.error('Error processing book return', {
-      error: (error as Error).message,
+    errorHandler.handleDatabaseError(error, 'processBookReturn', {
       checkout_id,
     });
     throw error;
@@ -418,8 +427,7 @@ export async function processEquipmentUse(
     });
     return activity;
   } catch (error) {
-    logger.error('Error processing equipment use', {
-      error: (error as Error).message,
+    errorHandler.handleDatabaseError(error, 'processEquipmentUse', {
       equipment_id,
       student_id,
     });
@@ -435,8 +443,7 @@ export async function processEquipmentRelease(activityId: string) {
     logger.info('Equipment release processed', { activityId });
     return activity;
   } catch (error) {
-    logger.error('Error processing equipment release', {
-      error: (error as Error).message,
+    errorHandler.handleDatabaseError(error, 'processEquipmentRelease', {
       activityId,
     });
     throw error;
@@ -451,38 +458,45 @@ export async function getStudentStatus(student_id: string) {
       throw new Error('Student not found');
     }
 
+    const studentInternalId = student.id;
+
     // Get active sessions
     const activeSessions = await getActiveSessions();
     const studentActiveSession = activeSessions.find(
-      session => session.student.student_id === student_id,
+      session => session.student_id === studentInternalId,
     );
 
     // Get active book checkouts
-    const activeCheckouts = await getBookCheckouts({
-      student_id,
-      status: book_checkouts_status.ACTIVE,
+    const studentCheckouts = await getBookCheckouts({
+      student_id: studentInternalId,
     });
+
+    const activeCheckouts = studentCheckouts.checkouts.filter(
+      checkout => checkout.status === book_checkouts_status.ACTIVE,
+    );
 
     // Get equipment usage
-    const equipmentUsage = await getBookCheckouts({
-      student_id,
-      status: student_activities_status.ACTIVE,
+    const equipmentUsageHistory = await getEquipmentUsageHistory({
+      student_id: studentInternalId,
     });
 
+    const activeEquipmentUsage = equipmentUsageHistory.activities.filter(
+      activity => activity.status === student_activities_status.ACTIVE,
+    );
+
     return {
-      student,
-      hasActiveSession: !!studentActiveSession,
+      student: {
+        ...student,
+        hasActiveSession: !!studentActiveSession,
+      },
       activeSession: studentActiveSession || null,
-      activeBookCheckouts: activeCheckouts.checkouts.length,
-      activeBookCheckoutsData: activeCheckouts.checkouts,
-      equipmentUsage: equipmentUsage.checkouts.length,
-      equipmentUsageData: equipmentUsage.checkouts,
+      activeBookCheckouts: activeCheckouts.length,
+      activeBookCheckoutsData: activeCheckouts,
+      equipmentUsage: activeEquipmentUsage.length,
+      equipmentUsageData: activeEquipmentUsage,
     };
   } catch (error) {
-    logger.error('Error getting student status', {
-      error: (error as Error).message,
-      student_id,
-    });
+    errorHandler.handleDatabaseError(error, 'getStudentStatus', { student_id });
     throw error;
   }
 }
@@ -496,18 +510,18 @@ export async function getBookStatus(book_id: string) {
     }
 
     // Get active checkout
-    const activeCheckouts = await getBookCheckouts({
+    const bookCheckouts = await getBookCheckouts({
       book_id,
-      status: book_checkouts_status.ACTIVE,
     });
+
+    const activeCheckouts = bookCheckouts.checkouts.filter(
+      checkout => checkout.status === book_checkouts_status.ACTIVE,
+    );
 
     return {
       book,
       isAvailable: book.available_copies > 0,
-      activeCheckout:
-        activeCheckouts.checkouts.length > 0
-          ? activeCheckouts.checkouts[0]
-          : null,
+      activeCheckout: activeCheckouts.length > 0 ? activeCheckouts[0] : null,
     };
   } catch (error) {
     logger.error('Error getting book status', {
@@ -529,9 +543,7 @@ export async function getEquipmentStatus(equipment_id: string) {
     // Get active session
     const activeSessions = await getActiveSessions();
     const equipmentActiveSession = activeSessions.find(
-      session =>
-        session.equipment &&
-        session.equipment.equipment_id === equipment.equipment_id,
+      session => session.equipment_id === equipment.id,
     );
 
     return {

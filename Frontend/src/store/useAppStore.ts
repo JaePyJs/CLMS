@@ -53,6 +53,22 @@ export interface AutomationJob {
   errorMessage?: string
 }
 
+export interface AppNotification {
+  id: string
+  userId?: string
+  type: 'OVERDUE_BOOK' | 'FINE_ADDED' | 'FINE_WAIVED' | 'BOOK_DUE_SOON' | 
+        'EQUIPMENT_EXPIRING' | 'SYSTEM_ALERT' | 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS'
+  title: string
+  message: string
+  priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'
+  read: boolean
+  readAt?: string
+  actionUrl?: string
+  metadata?: any
+  createdAt: string
+  expiresAt?: string
+}
+
 // App store interface
 interface AppStore {
   // UI State
@@ -70,6 +86,7 @@ interface AppStore {
   equipment: Equipment[]
   activities: Activity[]
   automationJobs: AutomationJob[]
+  notifications: AppNotification[]
 
   // Scanning State
   isScanning: boolean
@@ -88,6 +105,7 @@ interface AppStore {
   setEquipment: (equipment: Equipment[]) => void
   setActivities: (activities: Activity[]) => void
   setAutomationJobs: (jobs: AutomationJob[]) => void
+  setNotifications: (notifications: AppNotification[]) => void
   setScanning: (scanning: boolean) => void
   setLastScanResult: (result: string) => void
   addToScanQueue: (item: any) => void
@@ -97,7 +115,7 @@ interface AppStore {
 // Create the store
 export const useAppStore = create<AppStore>()(
   devtools(
-    (set, get) => ({
+    (set) => ({
       // Initial state
       isOnline: navigator.onLine,
       connectedToBackend: false,
@@ -109,6 +127,7 @@ export const useAppStore = create<AppStore>()(
       equipment: [],
       activities: [],
       automationJobs: [],
+      notifications: [],
       isScanning: false,
       lastScanResult: '',
       scanQueue: [],
@@ -125,6 +144,7 @@ export const useAppStore = create<AppStore>()(
       setEquipment: (equipment) => set({ equipment }),
       setActivities: (activities) => set({ activities }),
       setAutomationJobs: (automationJobs) => set({ automationJobs }),
+      setNotifications: (notifications) => set({ notifications }),
       setScanning: (scanning) => set({ isScanning: scanning }),
       setLastScanResult: (result) => set({ lastScanResult: result }),
       addToScanQueue: (item) => set((state) => ({

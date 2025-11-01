@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
     const backups = await backupService.listBackups({
       type: type as any,
       status: status as string,
-      limit: limit ? parseInt(limit as string) : undefined,
+      ...(limit ? { limit: parseInt(limit as string) } : {}),
     });
 
     res.json({
@@ -71,10 +71,11 @@ router.get('/:id', async (req, res) => {
     const backup = await backupService.getBackupMetadata(req.params.id);
 
     if (!backup) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Backup not found',
       });
+      return;
     }
 
     res.json({

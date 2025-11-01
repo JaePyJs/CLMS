@@ -1,7 +1,8 @@
+import { randomUUID } from 'crypto';
+import { Prisma, id_mappings as IdMappingsModel } from '@prisma/client';
 import { prisma } from './prisma';
-import { logger } from './logger';
+import { logger, performanceLogger } from './logger';
 import { getCacheManager, CacheManager } from './redis';
-import { performanceLogger } from './logger';
 
 /**
  * Entity types supported by the ID mapping system
@@ -11,7 +12,7 @@ export enum EntityType {
   BOOK = 'book',
   EQUIPMENT = 'equipment',
   USER = 'user',
-  CHECKOUT = 'checkout'
+  CHECKOUT = 'checkout',
 }
 
 /**
@@ -19,7 +20,7 @@ export enum EntityType {
  */
 export enum MappingDirection {
   EXTERNAL_TO_INTERNAL = 'external_to_internal',
-  INTERNAL_TO_EXTERNAL = 'internal_to_external'
+  INTERNAL_TO_EXTERNAL = 'internal_to_external',
 }
 
 /**
@@ -35,7 +36,7 @@ export interface IDMapping {
   lastAccessed: Date;
   accessCount: number;
   isActive: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -120,14 +121,14 @@ export class IDMappingManager {
       cleanupInterval: config.cleanupInterval || 60 * 60 * 1000, // 1 hour
       maxCacheSize: config.maxCacheSize || 10000,
       batchSize: config.batchSize || 100,
-      enableMetrics: config.enableMetrics !== false
+      enableMetrics: config.enableMetrics !== false,
     };
 
     logger.info('IDMappingManager initialized', {
       redisKeyPrefix: this.config.redisKeyPrefix,
       defaultTTL: this.config.defaultTTL,
       enableAnalytics: this.config.enableAnalytics,
-      enableValidation: this.config.enableValidation
+      enableValidation: this.config.enableValidation,
     });
   }
 
@@ -143,7 +144,7 @@ export class IDMappingManager {
     try {
       // Initialize cache manager
       this.cacheManager = await getCacheManager();
-      
+
       // Start cleanup timer
       if (this.config.cleanupInterval > 0) {
         this.startCleanupTimer();
@@ -153,7 +154,7 @@ export class IDMappingManager {
       logger.info('IDMappingManager initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize IDMappingManager', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -166,41 +167,49 @@ export class IDMappingManager {
     entityType: EntityType,
     externalId: string,
     internalId: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>,
   ): Promise<IDMapping> {
     this.ensureInitialized();
-    const startTime = performanceLogger.start('create_mapping', { entityType, externalId });
+    const startTime = performanceLogger.start('create_mapping', {
+      entityType,
+      externalId,
+    });
 
     try {
       // Validate inputs
       this.validateMappingInputs(entityType, externalId, internalId);
 
       // Check if mapping already exists
-      const existingMapping = await this.getMappingByExternalId(entityType, externalId);
+      const existingMapping = await this.getMappingByExternalId(
+        entityType,
+        externalId,
+      );
       if (existingMapping) {
         logger.warn('Mapping already exists, updating instead', {
           entityType,
           externalId,
           existingInternalId: existingMapping.internalId,
-          newInternalId: internalId
+          newInternalId: internalId,
         });
         return this.updateMapping(entityType, externalId, internalId, metadata);
       }
 
       // Create mapping in database
-      const mapping = await prisma.id_mappings.create({
-        data: {
-          entityType,
-          externalId,
-          internalId,
-          metadata: metadata ? JSON.stringify(metadata) : null,
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          lastAccessed: new Date(),
-          accessCount: 0
-        }
-      });
+      const metadataValue = this.serializeMetadata(metadata);
+      const data: Prisma.id_mappingsCreateInput = {
+        id: randomUUID(),
+        entityType,
+        externalId,
+        internalId,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastAccessed: new Date(),
+        accessCount: 0,
+        ...(metadataValue !== undefined ? { metadata: metadataValue } : {}),
+      };
+
+      const mapping = await prisma.id_mappings.create({ data });
 
       // Cache the mapping
       await this.cacheMapping(entityType, externalId, internalId);
@@ -211,20 +220,26 @@ export class IDMappingManager {
           entityType,
           externalId,
           internalId,
-          mappingId: mapping.id
+          mappingId: mapping.id,
         });
       }
 
-      performanceLogger.end('create_mapping', startTime, { entityType, success: true });
-      
+      performanceLogger.end('create_mapping', startTime, {
+        entityType,
+        success: true,
+      });
+
       return this.formatMapping(mapping);
     } catch (error) {
-      performanceLogger.end('create_mapping', startTime, { entityType, success: false });
+      performanceLogger.end('create_mapping', startTime, {
+        entityType,
+        success: false,
+      });
       logger.error('Failed to create mapping', {
         entityType,
         externalId,
         internalId,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -233,16 +248,29 @@ export class IDMappingManager {
   /**
    * Get internal ID from external ID
    */
-  async getInternalId(entityType: EntityType, externalId: string): Promise<string | null> {
+  async getInternalId(
+    entityType: EntityType,
+    externalId: string,
+  ): Promise<string | null> {
     this.ensureInitialized();
-    const startTime = performanceLogger.start('get_internal_id', { entityType, externalId });
+    const startTime = performanceLogger.start('get_internal_id', {
+      entityType,
+      externalId,
+    });
 
     try {
       // Try cache first
-      const cachedId = await this.getCachedMapping(entityType, externalId, MappingDirection.EXTERNAL_TO_INTERNAL);
+      const cachedId = await this.getCachedMapping(
+        entityType,
+        externalId,
+        MappingDirection.EXTERNAL_TO_INTERNAL,
+      );
       if (cachedId) {
         await this.updateAccessStats(entityType, externalId);
-        performanceLogger.end('get_internal_id', startTime, { entityType, cacheHit: true });
+        performanceLogger.end('get_internal_id', startTime, {
+          entityType,
+          cacheHit: true,
+        });
         return cachedId;
       }
 
@@ -251,26 +279,36 @@ export class IDMappingManager {
         where: {
           entityType,
           externalId,
-          isActive: true
-        }
+          isActive: true,
+        },
       });
 
       if (mapping) {
         // Cache the result
         await this.cacheMapping(entityType, externalId, mapping.internalId);
         await this.updateAccessStats(entityType, externalId);
-        performanceLogger.end('get_internal_id', startTime, { entityType, cacheHit: false });
+        performanceLogger.end('get_internal_id', startTime, {
+          entityType,
+          cacheHit: false,
+        });
         return mapping.internalId;
       }
 
-      performanceLogger.end('get_internal_id', startTime, { entityType, cacheHit: false, found: false });
+      performanceLogger.end('get_internal_id', startTime, {
+        entityType,
+        cacheHit: false,
+        found: false,
+      });
       return null;
     } catch (error) {
-      performanceLogger.end('get_internal_id', startTime, { entityType, success: false });
+      performanceLogger.end('get_internal_id', startTime, {
+        entityType,
+        success: false,
+      });
       logger.error('Failed to get internal ID', {
         entityType,
         externalId,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       return null;
     }
@@ -279,15 +317,28 @@ export class IDMappingManager {
   /**
    * Get external ID from internal ID
    */
-  async getExternalId(entityType: EntityType, internalId: string): Promise<string | null> {
+  async getExternalId(
+    entityType: EntityType,
+    internalId: string,
+  ): Promise<string | null> {
     this.ensureInitialized();
-    const startTime = performanceLogger.start('get_external_id', { entityType, internalId });
+    const startTime = performanceLogger.start('get_external_id', {
+      entityType,
+      internalId,
+    });
 
     try {
       // Try cache first
-      const cachedId = await this.getCachedMapping(entityType, internalId, MappingDirection.INTERNAL_TO_EXTERNAL);
+      const cachedId = await this.getCachedMapping(
+        entityType,
+        internalId,
+        MappingDirection.INTERNAL_TO_EXTERNAL,
+      );
       if (cachedId) {
-        performanceLogger.end('get_external_id', startTime, { entityType, cacheHit: true });
+        performanceLogger.end('get_external_id', startTime, {
+          entityType,
+          cacheHit: true,
+        });
         return cachedId;
       }
 
@@ -296,25 +347,35 @@ export class IDMappingManager {
         where: {
           entityType,
           internalId,
-          isActive: true
-        }
+          isActive: true,
+        },
       });
 
       if (mapping) {
         // Cache the result
         await this.cacheMapping(entityType, mapping.externalId, internalId);
-        performanceLogger.end('get_external_id', startTime, { entityType, cacheHit: false });
+        performanceLogger.end('get_external_id', startTime, {
+          entityType,
+          cacheHit: false,
+        });
         return mapping.externalId;
       }
 
-      performanceLogger.end('get_external_id', startTime, { entityType, cacheHit: false, found: false });
+      performanceLogger.end('get_external_id', startTime, {
+        entityType,
+        cacheHit: false,
+        found: false,
+      });
       return null;
     } catch (error) {
-      performanceLogger.end('get_external_id', startTime, { entityType, success: false });
+      performanceLogger.end('get_external_id', startTime, {
+        entityType,
+        success: false,
+      });
       logger.error('Failed to get external ID', {
         entityType,
         internalId,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       return null;
     }
@@ -325,45 +386,54 @@ export class IDMappingManager {
    */
   async bulkCreateMappings(
     entityType: EntityType,
-    mappings: Array<{ externalId: string; internalId: string; metadata?: Record<string, any> }>
+    mappings: Array<{
+      externalId: string;
+      internalId: string;
+      metadata?: Record<string, unknown>;
+    }>,
   ): Promise<BulkMappingResult> {
     this.ensureInitialized();
-    const startTime = performanceLogger.start('bulk_create_mappings', { 
-      entityType, 
-      count: mappings.length 
+    const startTime = performanceLogger.start('bulk_create_mappings', {
+      entityType,
+      count: mappings.length,
     });
 
     const result: BulkMappingResult = {
       success: 0,
       failed: 0,
       errors: [],
-      duration: 0
+      duration: 0,
     };
 
     try {
       // Process in batches
       for (let i = 0; i < mappings.length; i += this.config.batchSize) {
         const batch = mappings.slice(i, i + this.config.batchSize);
-        
+
         for (const { externalId, internalId, metadata } of batch) {
           try {
-            await this.createMapping(entityType, externalId, internalId, metadata);
+            await this.createMapping(
+              entityType,
+              externalId,
+              internalId,
+              metadata,
+            );
             result.success++;
           } catch (error) {
             result.failed++;
             result.errors.push({
               externalId,
-              error: error instanceof Error ? error.message : String(error)
+              error: error instanceof Error ? error.message : String(error),
             });
           }
         }
       }
 
       result.duration = Date.now() - startTime;
-      performanceLogger.end('bulk_create_mappings', startTime, { 
-        entityType, 
-        success: result.success, 
-        failed: result.failed 
+      performanceLogger.end('bulk_create_mappings', startTime, {
+        entityType,
+        success: result.success,
+        failed: result.failed,
       });
 
       logger.info('Bulk mapping creation completed', {
@@ -371,17 +441,20 @@ export class IDMappingManager {
         total: mappings.length,
         success: result.success,
         failed: result.failed,
-        duration: result.duration
+        duration: result.duration,
       });
 
       return result;
     } catch (error) {
       result.duration = Date.now() - startTime;
-      performanceLogger.end('bulk_create_mappings', startTime, { entityType, success: false });
+      performanceLogger.end('bulk_create_mappings', startTime, {
+        entityType,
+        success: false,
+      });
       logger.error('Bulk mapping creation failed', {
         entityType,
         count: mappings.length,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       return result;
     }
@@ -392,7 +465,9 @@ export class IDMappingManager {
    */
   async getMappingStats(entityType: EntityType): Promise<MappingStats> {
     this.ensureInitialized();
-    const startTime = performanceLogger.start('get_mapping_stats', { entityType });
+    const startTime = performanceLogger.start('get_mapping_stats', {
+      entityType,
+    });
 
     try {
       const stats = await prisma.id_mappings.groupBy({
@@ -400,12 +475,16 @@ export class IDMappingManager {
         where: { entityType },
         _count: { id: true },
         _avg: { accessCount: true },
-        _max: { lastAccessed: true, createdAt: true }
+        _max: { lastAccessed: true, createdAt: true },
       });
 
-      const totalMappings = stats.reduce((sum, stat) => sum + stat._count.id, 0);
+      const totalMappings = stats.reduce(
+        (sum, stat) => sum + stat._count.id,
+        0,
+      );
       const activeMappings = stats.find(stat => stat.isActive)?._count.id || 0;
-      const inactiveMappings = stats.find(stat => !stat.isActive)?._count.id || 0;
+      const inactiveMappings =
+        stats.find(stat => !stat.isActive)?._count.id || 0;
       const averageAccessCount = stats[0]?._avg.accessCount || 0;
 
       // Get most accessed mappings
@@ -416,8 +495,8 @@ export class IDMappingManager {
         select: {
           externalId: true,
           internalId: true,
-          accessCount: true
-        }
+          accessCount: true,
+        },
       });
 
       // Get stale mappings (not accessed in 30 days)
@@ -427,8 +506,8 @@ export class IDMappingManager {
         where: {
           entityType,
           isActive: true,
-          lastAccessed: { lt: thirtyDaysAgo }
-        }
+          lastAccessed: { lt: thirtyDaysAgo },
+        },
       });
 
       const result: MappingStats = {
@@ -440,16 +519,19 @@ export class IDMappingManager {
         averageAccessCount,
         mostAccessedMappings,
         lastAccessed: stats[0]?._max.lastAccessed || null,
-        createdAt: stats[0]?._max.createdAt || new Date()
+        createdAt: stats[0]?._max.createdAt || new Date(),
       };
 
       performanceLogger.end('get_mapping_stats', startTime, { entityType });
       return result;
     } catch (error) {
-      performanceLogger.end('get_mapping_stats', startTime, { entityType, success: false });
+      performanceLogger.end('get_mapping_stats', startTime, {
+        entityType,
+        success: false,
+      });
       logger.error('Failed to get mapping stats', {
         entityType,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -460,20 +542,22 @@ export class IDMappingManager {
    */
   async validateMappings(entityType: EntityType): Promise<ValidationResult> {
     this.ensureInitialized();
-    const startTime = performanceLogger.start('validate_mappings', { entityType });
+    const startTime = performanceLogger.start('validate_mappings', {
+      entityType,
+    });
 
     const result: ValidationResult = {
       isValid: true,
       issues: [],
       totalChecked: 0,
       validMappings: 0,
-      invalidMappings: 0
+      invalidMappings: 0,
     };
 
     try {
       // Get all mappings for the entity type
       const mappings = await prisma.id_mappings.findMany({
-        where: { entityType }
+        where: { entityType },
       });
 
       result.totalChecked = mappings.length;
@@ -491,7 +575,7 @@ export class IDMappingManager {
             type: 'duplicate',
             externalId,
             description: `External ID ${externalId} has ${count} mappings`,
-            severity: 'high'
+            severity: 'high',
           });
           result.isValid = false;
         }
@@ -500,31 +584,31 @@ export class IDMappingManager {
       // Check for orphaned mappings (internal ID doesn't exist in actual entity table)
       for (const mapping of mappings) {
         let entityExists = false;
-        
+
         switch (entityType) {
           case EntityType.STUDENT:
             entityExists = !!(await prisma.students.findUnique({
-              where: { id: mapping.internalId }
+              where: { id: mapping.internalId },
             }));
             break;
           case EntityType.BOOK:
             entityExists = !!(await prisma.books.findUnique({
-              where: { id: mapping.internalId }
+              where: { id: mapping.internalId },
             }));
             break;
           case EntityType.EQUIPMENT:
             entityExists = !!(await prisma.equipment.findUnique({
-              where: { id: mapping.internalId }
+              where: { id: mapping.internalId },
             }));
             break;
           case EntityType.USER:
             entityExists = !!(await prisma.users.findUnique({
-              where: { id: mapping.internalId }
+              where: { id: mapping.internalId },
             }));
             break;
           case EntityType.CHECKOUT:
             entityExists = !!(await prisma.book_checkouts.findUnique({
-              where: { id: mapping.internalId }
+              where: { id: mapping.internalId },
             }));
             break;
         }
@@ -535,7 +619,7 @@ export class IDMappingManager {
             externalId: mapping.externalId,
             internalId: mapping.internalId,
             description: `Internal ID ${mapping.internalId} does not exist in ${entityType} table`,
-            severity: 'medium'
+            severity: 'medium',
           });
           result.isValid = false;
         } else {
@@ -545,11 +629,11 @@ export class IDMappingManager {
 
       result.invalidMappings = result.totalChecked - result.validMappings;
 
-      performanceLogger.end('validate_mappings', startTime, { 
-        entityType, 
+      performanceLogger.end('validate_mappings', startTime, {
+        entityType,
         totalChecked: result.totalChecked,
         validMappings: result.validMappings,
-        invalidMappings: result.invalidMappings
+        invalidMappings: result.invalidMappings,
       });
 
       logger.info('Mapping validation completed', {
@@ -557,15 +641,18 @@ export class IDMappingManager {
         totalChecked: result.totalChecked,
         validMappings: result.validMappings,
         invalidMappings: result.invalidMappings,
-        issuesFound: result.issues.length
+        issuesFound: result.issues.length,
       });
 
       return result;
     } catch (error) {
-      performanceLogger.end('validate_mappings', startTime, { entityType, success: false });
+      performanceLogger.end('validate_mappings', startTime, {
+        entityType,
+        success: false,
+      });
       logger.error('Failed to validate mappings', {
         entityType,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -574,11 +661,14 @@ export class IDMappingManager {
   /**
    * Clean up stale mappings
    */
-  async cleanupStaleMappings(entityType: EntityType, olderThan: Date): Promise<number> {
+  async cleanupStaleMappings(
+    entityType: EntityType,
+    olderThan: Date,
+  ): Promise<number> {
     this.ensureInitialized();
-    const startTime = performanceLogger.start('cleanup_stale_mappings', { 
-      entityType, 
-      olderThan: olderThan.toISOString() 
+    const startTime = performanceLogger.start('cleanup_stale_mappings', {
+      entityType,
+      olderThan: olderThan.toISOString(),
     });
 
     try {
@@ -587,32 +677,35 @@ export class IDMappingManager {
         where: {
           entityType,
           lastAccessed: { lt: olderThan },
-          isActive: true
-        }
+          isActive: true,
+        },
       });
 
       // Clear cache for this entity type
       await this.clearEntityTypeCache(entityType);
 
       const deletedCount = deleteResult.count;
-      performanceLogger.end('cleanup_stale_mappings', startTime, { 
-        entityType, 
-        deletedCount 
+      performanceLogger.end('cleanup_stale_mappings', startTime, {
+        entityType,
+        deletedCount,
       });
 
       logger.info('Stale mappings cleanup completed', {
         entityType,
         olderThan: olderThan.toISOString(),
-        deletedCount
+        deletedCount,
       });
 
       return deletedCount;
     } catch (error) {
-      performanceLogger.end('cleanup_stale_mappings', startTime, { entityType, success: false });
+      performanceLogger.end('cleanup_stale_mappings', startTime, {
+        entityType,
+        success: false,
+      });
       logger.error('Failed to cleanup stale mappings', {
         entityType,
         olderThan: olderThan.toISOString(),
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -625,26 +718,33 @@ export class IDMappingManager {
     entityType: EntityType,
     externalId: string,
     internalId: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>,
   ): Promise<IDMapping> {
-    const mapping = await prisma.id_mappings.updateMany({
+    const metadataValue = this.serializeMetadata(metadata);
+
+    await prisma.id_mappings.update({
       where: {
-        entityType,
-        externalId
+        entityType_externalId: {
+          entityType,
+          externalId,
+        },
       },
       data: {
         internalId,
-        metadata: metadata ? JSON.stringify(metadata) : null,
         updatedAt: new Date(),
-        isActive: true
-      }
+        isActive: true,
+        ...(metadataValue !== undefined ? { metadata: metadataValue } : {}),
+      },
     });
 
     // Update cache
     await this.cacheMapping(entityType, externalId, internalId);
 
     // Get the updated mapping
-    const updatedMapping = await this.getMappingByExternalId(entityType, externalId);
+    const updatedMapping = await this.getMappingByExternalId(
+      entityType,
+      externalId,
+    );
     if (!updatedMapping) {
       throw new Error('Failed to retrieve updated mapping');
     }
@@ -657,13 +757,13 @@ export class IDMappingManager {
    */
   private async getMappingByExternalId(
     entityType: EntityType,
-    externalId: string
+    externalId: string,
   ): Promise<IDMapping | null> {
     const mapping = await prisma.id_mappings.findFirst({
       where: {
         entityType,
-        externalId
-      }
+        externalId,
+      },
     });
 
     return mapping ? this.formatMapping(mapping) : null;
@@ -675,7 +775,7 @@ export class IDMappingManager {
   private async cacheMapping(
     entityType: EntityType,
     externalId: string,
-    internalId: string
+    internalId: string,
   ): Promise<void> {
     if (!this.cacheManager) return;
 
@@ -685,14 +785,14 @@ export class IDMappingManager {
 
       await Promise.all([
         this.cacheManager.set(externalKey, internalId, this.config.defaultTTL),
-        this.cacheManager.set(internalKey, externalId, this.config.defaultTTL)
+        this.cacheManager.set(internalKey, externalId, this.config.defaultTTL),
       ]);
     } catch (error) {
       logger.warn('Failed to cache mapping', {
         entityType,
         externalId,
         internalId,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }
@@ -703,14 +803,15 @@ export class IDMappingManager {
   private async getCachedMapping(
     entityType: EntityType,
     id: string,
-    direction: MappingDirection
+    direction: MappingDirection,
   ): Promise<string | null> {
     if (!this.cacheManager) return null;
 
     try {
-      const key = direction === MappingDirection.EXTERNAL_TO_INTERNAL
-        ? `${this.config.redisKeyPrefix}${entityType}:external:${id}`
-        : `${this.config.redisKeyPrefix}${entityType}:internal:${id}`;
+      const key =
+        direction === MappingDirection.EXTERNAL_TO_INTERNAL
+          ? `${this.config.redisKeyPrefix}${entityType}:external:${id}`
+          : `${this.config.redisKeyPrefix}${entityType}:internal:${id}`;
 
       return await this.cacheManager.get(key);
     } catch (error) {
@@ -718,7 +819,7 @@ export class IDMappingManager {
         entityType,
         id,
         direction,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       return null;
     }
@@ -729,24 +830,24 @@ export class IDMappingManager {
    */
   private async updateAccessStats(
     entityType: EntityType,
-    externalId: string
+    externalId: string,
   ): Promise<void> {
     try {
       await prisma.id_mappings.updateMany({
         where: {
           entityType,
-          externalId
+          externalId,
         },
         data: {
           lastAccessed: new Date(),
-          accessCount: { increment: 1 }
-        }
+          accessCount: { increment: 1 },
+        },
       });
     } catch (error) {
       logger.warn('Failed to update access stats', {
         entityType,
         externalId,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }
@@ -766,7 +867,7 @@ export class IDMappingManager {
     } catch (error) {
       logger.warn('Failed to clear entity type cache', {
         entityType,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }
@@ -777,7 +878,7 @@ export class IDMappingManager {
   private validateMappingInputs(
     entityType: EntityType,
     externalId: string,
-    internalId: string
+    internalId: string,
   ): void {
     if (!Object.values(EntityType).includes(entityType)) {
       throw new Error(`Invalid entity type: ${entityType}`);
@@ -795,7 +896,9 @@ export class IDMappingManager {
   /**
    * Format mapping from database record
    */
-  private formatMapping(record: any): IDMapping {
+  private formatMapping(record: IdMappingsModel): IDMapping {
+    const metadata = this.deserializeMetadata(record.metadata);
+
     return {
       id: record.id,
       entityType: record.entityType as EntityType,
@@ -806,8 +909,28 @@ export class IDMappingManager {
       lastAccessed: record.lastAccessed,
       accessCount: record.accessCount,
       isActive: record.isActive,
-      metadata: record.metadata ? JSON.parse(record.metadata) : undefined
+      ...(metadata !== undefined ? { metadata } : {}),
     };
+  }
+
+  private serializeMetadata(
+    metadata?: Record<string, unknown>,
+  ): Prisma.InputJsonValue | undefined {
+    if (metadata === undefined) {
+      return undefined;
+    }
+
+    return metadata as Prisma.InputJsonValue;
+  }
+
+  private deserializeMetadata(
+    metadata: IdMappingsModel['metadata'],
+  ): Record<string, unknown> | undefined {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+      return undefined;
+    }
+
+    return metadata as Record<string, unknown>;
   }
 
   /**
@@ -828,7 +951,7 @@ export class IDMappingManager {
         }
       } catch (error) {
         logger.error('Automatic cleanup failed', {
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         });
       }
     }, this.config.cleanupInterval);
@@ -839,7 +962,9 @@ export class IDMappingManager {
    */
   private ensureInitialized(): void {
     if (!this.isInitialized) {
-      throw new Error('IDMappingManager is not initialized. Call initialize() first.');
+      throw new Error(
+        'IDMappingManager is not initialized. Call initialize() first.',
+      );
     }
   }
 
@@ -863,7 +988,9 @@ let idMappingManager: IDMappingManager | null = null;
 /**
  * Get or create the ID mapping manager singleton
  */
-export const getIDMappingManager = async (config?: IDMappingConfig): Promise<IDMappingManager> => {
+export const getIDMappingManager = async (
+  config?: IDMappingConfig,
+): Promise<IDMappingManager> => {
   if (!idMappingManager) {
     idMappingManager = new IDMappingManager(config);
     await idMappingManager.initialize();

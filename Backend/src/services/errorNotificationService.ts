@@ -1,15 +1,20 @@
-import { PrismaClient } from '@prisma/client';
+import { randomUUID } from 'crypto';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { logger } from '@/utils/logger';
 import { BaseError } from '@/utils/errors';
-import { ErrorSeverity, ErrorCategory } from '@/middleware/errorMiddleware';
-import { ErrorContext } from '@/middleware/errorMiddleware';
+import {
+  categorizeError,
+  ErrorSeverity,
+  ErrorCategory,
+} from '@/middleware/errorMiddleware';
+import type { ErrorContextData } from '@/services/errorReportingService';
 
 export interface NotificationChannel {
   id: string;
   name: string;
   type: 'EMAIL' | 'SLACK' | 'WEBHOOK' | 'SMS' | 'PUSH';
   enabled: boolean;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
   filters: {
     severity?: ErrorSeverity[];
     category?: ErrorCategory[];
@@ -48,7 +53,7 @@ export interface ErrorNotification {
   category: ErrorCategory;
   title: string;
   message: string;
-  context: ErrorContext;
+  context: ErrorContextData;
   sent: boolean;
   sentAt?: Date;
   attempts: number;
@@ -68,7 +73,7 @@ export interface NotificationDigest {
     totalErrors: number;
     criticalErrors: number;
     highErrors: number;
-    categories: Record<ErrorCategory, number>;
+    categories: Partial<Record<ErrorCategory, number>>;
     topErrors: Array<{
       message: string;
       count: number;
@@ -80,6 +85,347 @@ export interface NotificationDigest {
   sentAt?: Date;
   created_at: Date;
 }
+
+type ErrorMetadata = {
+  severity: ErrorSeverity;
+  category: ErrorCategory;
+};
+
+const ERROR_CATEGORY_VALUES = new Set<ErrorCategory>(
+  Object.values(ErrorCategory) as ErrorCategory[],
+);
+const ERROR_SEVERITY_VALUES = new Set<ErrorSeverity>(
+  Object.values(ErrorSeverity) as ErrorSeverity[],
+);
+
+const isErrorCategoryValue = (value: unknown): value is ErrorCategory =>
+  typeof value === 'string' &&
+  ERROR_CATEGORY_VALUES.has(value as ErrorCategory);
+
+const isErrorSeverityValue = (value: unknown): value is ErrorSeverity =>
+  typeof value === 'string' &&
+  ERROR_SEVERITY_VALUES.has(value as ErrorSeverity);
+
+const asJsonObject = (
+  value: Prisma.JsonValue | null | undefined,
+): Prisma.JsonObject | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  return value as Prisma.JsonObject;
+};
+
+const getStringFromJson = (
+  obj: Prisma.JsonObject | null,
+  key: string,
+): string | undefined => {
+  if (!obj) {
+    return undefined;
+  }
+
+  const value = obj[key];
+  return typeof value === 'string' ? value : undefined;
+};
+
+interface ErrorReportDetails {
+  message?: string;
+  severity?: ErrorSeverity;
+  category?: ErrorCategory;
+}
+
+const parseErrorReportDetails = (
+  value: Prisma.JsonValue | null,
+): ErrorReportDetails => {
+  const root = asJsonObject(value);
+  if (!root) {
+    return {};
+  }
+
+  const details: ErrorReportDetails = {};
+  const errorJson = asJsonObject(root['error']);
+
+  const directMessage = getStringFromJson(root, 'message');
+  if (directMessage) {
+    details.message = directMessage;
+  } else {
+    const nestedMessage = getStringFromJson(errorJson, 'message');
+    if (nestedMessage) {
+      details.message = nestedMessage;
+    }
+  }
+
+  const severityValue = getStringFromJson(root, 'severity');
+  if (isErrorSeverityValue(severityValue)) {
+    details.severity = severityValue;
+  } else {
+    const nestedSeverity = getStringFromJson(errorJson, 'severity');
+    if (isErrorSeverityValue(nestedSeverity)) {
+      details.severity = nestedSeverity;
+    }
+  }
+
+  const categoryValue = getStringFromJson(root, 'category');
+  if (isErrorCategoryValue(categoryValue)) {
+    details.category = categoryValue;
+  } else {
+    const nestedCategory = getStringFromJson(errorJson, 'category');
+    if (isErrorCategoryValue(nestedCategory)) {
+      details.category = nestedCategory;
+    }
+  }
+
+  return details;
+};
+
+const extractMetadataFromRecord = (
+  value: unknown,
+): Partial<ErrorMetadata> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const metadata: Partial<ErrorMetadata> = {};
+
+  const severityValue = record['severity'];
+  if (isErrorSeverityValue(severityValue)) {
+    metadata.severity = severityValue;
+  }
+
+  const categoryValue = record['category'];
+  if (isErrorCategoryValue(categoryValue)) {
+    metadata.category = categoryValue;
+  }
+
+  return Object.keys(metadata).length > 0 ? metadata : null;
+};
+
+const deriveErrorMetadata = (error: BaseError): ErrorMetadata => {
+  const directMetadata = extractMetadataFromRecord(error);
+  const detailsMetadata = extractMetadataFromRecord(error.details);
+  const categorized = categorizeError(error);
+
+  return {
+    severity:
+      directMetadata?.severity ??
+      detailsMetadata?.severity ??
+      categorized.severity,
+    category:
+      directMetadata?.category ??
+      detailsMetadata?.category ??
+      categorized.category,
+  };
+};
+
+const jsonPath = (...segments: string[]): string => `$.${segments.join('.')}`;
+
+const toInputJson = (value: unknown): Prisma.InputJsonValue => {
+  try {
+    return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+  } catch (error) {
+    logger.debug('Failed to convert value to JSON input', { value, error });
+    return String(value) as Prisma.InputJsonValue;
+  }
+};
+
+const jsonEquals = (segments: string[], value: unknown): Prisma.JsonFilter => ({
+  path: jsonPath(...segments),
+  equals: toInputJson(value),
+});
+
+const serializeContext = (
+  context: ErrorContextData,
+): Record<string, unknown> => {
+  const serialized: Record<string, unknown> = {
+    requestId: context.requestId,
+    ip: context.ip,
+    userAgent: context.userAgent,
+    method: context.method,
+    url: context.url,
+    timestamp: context.timestamp.toISOString(),
+    duration: context.duration,
+  };
+
+  if (context.userId) {
+    serialized.userId = context.userId;
+  }
+  if (context.body !== undefined) {
+    serialized.body = context.body;
+  }
+  if (context.query !== undefined) {
+    serialized.query = context.query;
+  }
+  if (context.params !== undefined) {
+    serialized.params = context.params;
+  }
+
+  return serialized;
+};
+
+const serializeNotification = (
+  notification: ErrorNotification,
+): Record<string, unknown> => {
+  const serialized: Record<string, unknown> = {
+    id: notification.id,
+    errorId: notification.errorId,
+    channelId: notification.channelId,
+    type: notification.type,
+    severity: notification.severity,
+    category: notification.category,
+    title: notification.title,
+    message: notification.message,
+    sent: notification.sent,
+    attempts: notification.attempts,
+    createdAt: notification.created_at.toISOString(),
+    context: serializeContext(notification.context),
+  };
+
+  if (notification.ruleId) {
+    serialized.ruleId = notification.ruleId;
+  }
+  if (notification.sentAt) {
+    serialized.sentAt = notification.sentAt.toISOString();
+  }
+  if (notification.lastAttempt) {
+    serialized.lastAttempt = notification.lastAttempt.toISOString();
+  }
+  if (notification.error) {
+    serialized.error = notification.error;
+  }
+
+  return serialized;
+};
+
+const deserializeContext = (
+  value: Prisma.JsonValue | null | undefined,
+): ErrorContextData | null => {
+  const obj = asJsonObject(value);
+  if (!obj) {
+    return null;
+  }
+
+  const requestId = getStringFromJson(obj, 'requestId');
+  const method = getStringFromJson(obj, 'method');
+  const url = getStringFromJson(obj, 'url');
+
+  if (!requestId || !method || !url) {
+    return null;
+  }
+
+  const timestampValue = obj['timestamp'];
+  const durationValue = obj['duration'];
+
+  const context: ErrorContextData = {
+    requestId,
+    ip: getStringFromJson(obj, 'ip') ?? '',
+    userAgent: getStringFromJson(obj, 'userAgent') ?? '',
+    method,
+    url,
+    timestamp:
+      typeof timestampValue === 'string'
+        ? new Date(timestampValue)
+        : new Date(),
+    duration: typeof durationValue === 'number' ? durationValue : 0,
+  };
+
+  const userId = getStringFromJson(obj, 'userId');
+  if (userId) {
+    context.userId = userId;
+  }
+
+  if (obj['body'] !== undefined) {
+    context.body = obj['body'];
+  }
+  if (obj['query'] !== undefined) {
+    context.query = obj['query'];
+  }
+  if (obj['params'] !== undefined) {
+    context.params = obj['params'];
+  }
+
+  return context;
+};
+
+const deserializeNotification = (
+  value: Prisma.JsonValue | null,
+): ErrorNotification | null => {
+  const root = asJsonObject(value);
+  if (!root) {
+    return null;
+  }
+
+  const notificationJson = asJsonObject(root['notification']) ?? root;
+
+  const id = getStringFromJson(notificationJson, 'id');
+  if (!id) {
+    return null;
+  }
+
+  const typeValue = getStringFromJson(notificationJson, 'type');
+  const type: ErrorNotification['type'] =
+    typeValue === 'DIGEST' || typeValue === 'ESCALATION'
+      ? typeValue
+      : 'IMMEDIATE';
+
+  const severityValue = getStringFromJson(notificationJson, 'severity');
+  const severity = isErrorSeverityValue(severityValue)
+    ? severityValue
+    : ErrorSeverity.MEDIUM;
+
+  const categoryValue = getStringFromJson(notificationJson, 'category');
+  const category = isErrorCategoryValue(categoryValue)
+    ? categoryValue
+    : ErrorCategory.SYSTEM;
+
+  const context = deserializeContext(notificationJson['context']);
+  if (!context) {
+    return null;
+  }
+
+  const createdAtValue = notificationJson['createdAt'];
+  const attemptsValue = notificationJson['attempts'];
+  const sentValue = notificationJson['sent'];
+  const sentAtValue = notificationJson['sentAt'];
+  const lastAttemptValue = notificationJson['lastAttempt'];
+  const errorValue = notificationJson['error'];
+
+  const notification: ErrorNotification = {
+    id,
+    errorId:
+      getStringFromJson(notificationJson, 'errorId') ?? context.requestId,
+    channelId: getStringFromJson(notificationJson, 'channelId') ?? 'unknown',
+    type,
+    severity,
+    category,
+    title: getStringFromJson(notificationJson, 'title') ?? '',
+    message: getStringFromJson(notificationJson, 'message') ?? '',
+    context,
+    sent: typeof sentValue === 'boolean' ? sentValue : Boolean(sentValue),
+    attempts: typeof attemptsValue === 'number' ? attemptsValue : 0,
+    created_at:
+      typeof createdAtValue === 'string'
+        ? new Date(createdAtValue)
+        : new Date(),
+  };
+
+  const ruleId = getStringFromJson(notificationJson, 'ruleId');
+  if (ruleId) {
+    notification.ruleId = ruleId;
+  }
+
+  if (typeof sentAtValue === 'string') {
+    notification.sentAt = new Date(sentAtValue);
+  }
+  if (typeof lastAttemptValue === 'string') {
+    notification.lastAttempt = new Date(lastAttemptValue);
+  }
+  if (typeof errorValue === 'string') {
+    notification.error = errorValue;
+  }
+
+  return notification;
+};
 
 export class ErrorNotificationService {
   private prisma: PrismaClient;
@@ -188,17 +534,24 @@ export class ErrorNotificationService {
     });
   }
 
-  async processError(error: BaseError, context: ErrorContext): Promise<void> {
+  async processError(
+    error: BaseError,
+    context: ErrorContextData,
+  ): Promise<void> {
     try {
-      const matchingRules = await this.findMatchingRules(error, context);
+      const metadata = deriveErrorMetadata(error);
+      const matchingRules = await this.findMatchingRules(
+        error,
+        metadata,
+        context,
+      );
 
       for (const rule of matchingRules) {
-        if (this.shouldNotify(rule, error, context)) {
-          await this.createNotifications(rule, error, context);
+        if (this.shouldNotify(rule, metadata)) {
+          await this.createNotifications(rule, error, metadata, context);
         }
       }
 
-      // Process notification queue
       this.processNotificationQueue();
     } catch (notificationError) {
       logger.error('Failed to process error notification', {
@@ -210,35 +563,37 @@ export class ErrorNotificationService {
 
   private async findMatchingRules(
     error: BaseError,
-    context: ErrorContext,
+    metadata: ErrorMetadata,
+    context: ErrorContextData,
   ): Promise<NotificationRule[]> {
     const matchingRules: NotificationRule[] = [];
 
     for (const rule of this.rules.values()) {
-      if (!rule.enabled) continue;
+      if (!rule.enabled) {
+        continue;
+      }
 
       let matches = true;
 
-      // Check severity
       if (rule.conditions.severity) {
-        matches = matches && rule.conditions.severity.includes(error.severity!);
+        matches =
+          matches && rule.conditions.severity.includes(metadata.severity);
       }
 
-      // Check category
       if (rule.conditions.category) {
-        matches = matches && rule.conditions.category.includes(error.category!);
+        matches =
+          matches && rule.conditions.category.includes(metadata.category);
       }
 
-      // Check keywords
       if (rule.conditions.keywords) {
+        const message = error.message.toLowerCase();
         matches =
           matches &&
           rule.conditions.keywords.some(keyword =>
-            error.message.toLowerCase().includes(keyword.toLowerCase()),
+            message.includes(keyword.toLowerCase()),
           );
       }
 
-      // Check endpoints
       if (rule.conditions.endpoints) {
         matches =
           matches &&
@@ -247,9 +602,8 @@ export class ErrorNotificationService {
           );
       }
 
-      // Check threshold
       if (rule.conditions.threshold && rule.conditions.timePeriod) {
-        matches = matches && (await this.checkThreshold(rule, context));
+        matches = matches && (await this.checkThreshold(rule));
       }
 
       if (matches) {
@@ -260,26 +614,46 @@ export class ErrorNotificationService {
     return matchingRules;
   }
 
-  private async checkThreshold(
-    rule: NotificationRule,
-    context: ErrorContext,
-  ): Promise<boolean> {
+  private async checkThreshold(rule: NotificationRule): Promise<boolean> {
+    const threshold = rule.conditions.threshold;
+    const timePeriod = rule.conditions.timePeriod;
+
+    if (!threshold || !timePeriod) {
+      return true;
+    }
+
     try {
-      const timePeriod = rule.conditions.timePeriod! * 60 * 1000; // convert to milliseconds
-      const startTime = new Date(Date.now() - timePeriod);
+      const startTime = new Date(Date.now() - timePeriod * 60 * 1000);
+      const where: Prisma.audit_logsWhereInput = {
+        action: 'ERROR_REPORT',
+        created_at: { gte: startTime },
+      };
 
-      const errorCount = await this.prisma.audit_logs.count({
-        where: {
-          action: 'ERROR_REPORT',
-          created_at: { gte: start_time },
-          details: {
-            path: ['error', 'severity'],
-            in: rule.conditions.severity,
-          },
-        },
-      });
+      const andConditions: Prisma.audit_logsWhereInput[] = [];
 
-      return errorCount >= rule.conditions.threshold!;
+      if (rule.conditions.severity?.length) {
+        andConditions.push({
+          OR: rule.conditions.severity.map(severity => ({
+            new_values: jsonEquals(['error', 'severity'], severity),
+          })),
+        });
+      }
+
+      if (rule.conditions.category?.length) {
+        andConditions.push({
+          OR: rule.conditions.category.map(category => ({
+            new_values: jsonEquals(['error', 'category'], category),
+          })),
+        });
+      }
+
+      if (andConditions.length > 0) {
+        where.AND = andConditions;
+      }
+
+      const errorCount = await this.prisma.audit_logs.count({ where });
+
+      return errorCount >= threshold;
     } catch (error) {
       logger.error('Failed to check notification threshold', { error });
       return false;
@@ -288,26 +662,26 @@ export class ErrorNotificationService {
 
   private shouldNotify(
     rule: NotificationRule,
-    error: BaseError,
-    context: ErrorContext,
+    metadata: ErrorMetadata,
   ): boolean {
-    // Check cooldown
-    if (rule.cooldown) {
-      const cooldownKey = `${rule.id}-${error.category}-${error.severity}`;
-      const lastNotification = this.getLastNotificationTime(cooldownKey);
+    if (!rule.cooldown) {
+      return true;
+    }
 
-      if (
-        lastNotification &&
-        Date.now() - lastNotification.getTime() < rule.cooldown * 60 * 1000
-      ) {
-        return false;
-      }
+    const cooldownKey = `${rule.id}-${metadata.category}-${metadata.severity}`;
+    const lastNotification = this.getLastNotificationTime(cooldownKey);
+
+    if (
+      lastNotification &&
+      Date.now() - lastNotification.getTime() < rule.cooldown * 60 * 1000
+    ) {
+      return false;
     }
 
     return true;
   }
 
-  private getLastNotificationTime(key: string): Date | null {
+  private getLastNotificationTime(_key: string): Date | null {
     // In a real implementation, this would check a cache or database
     // For now, return null to always allow notifications
     return null;
@@ -316,24 +690,30 @@ export class ErrorNotificationService {
   private async createNotifications(
     rule: NotificationRule,
     error: BaseError,
-    context: ErrorContext,
+    metadata: ErrorMetadata,
+    context: ErrorContextData,
   ): Promise<void> {
-    const notificationId = `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
     for (const channelId of rule.channels) {
       const channel = this.channels.get(channelId);
-      if (!channel || !channel.enabled) continue;
+      if (!channel || !channel.enabled) {
+        continue;
+      }
 
       const notification: ErrorNotification = {
-        id: notificationId,
+        id: `notif_${randomUUID()}`,
         errorId: context.requestId,
         ruleId: rule.id,
         channelId,
         type: 'IMMEDIATE',
-        severity: error.severity!,
-        category: error.category!,
-        title: this.generateNotificationTitle(error, rule),
-        message: this.generateNotificationMessage(error, context, rule),
+        severity: metadata.severity,
+        category: metadata.category,
+        title: this.generateNotificationTitle(error, metadata, rule),
+        message: this.generateNotificationMessage(
+          error,
+          metadata,
+          context,
+          rule,
+        ),
         context,
         sent: false,
         attempts: 0,
@@ -342,26 +722,40 @@ export class ErrorNotificationService {
 
       this.notificationQueue.push(notification);
 
-      // Store in database for tracking
       await this.prisma.audit_logs.create({
-        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        data: {
+          id: randomUUID(),
+          entity: 'ERROR_NOTIFICATION',
+          entity_id: notification.id,
           action: 'ERROR_NOTIFICATION_CREATED',
-          details: {
-            notificationId: notification.id,
-            ruleId: rule.id,
-            channelId,
-            severity: error.severity,
-            category: error.category,
-          },
+          performed_by: 'SYSTEM',
+          ip_address: context.ip || null,
+          user_agent: context.userAgent || null,
+          new_values: toInputJson({
+            notification: serializeNotification(notification),
+            metadata: {
+              ruleId: rule.id,
+              channelId,
+            },
+            error: {
+              message: error.message,
+              severity: metadata.severity,
+              category: metadata.category,
+            },
+          }),
         },
       });
     }
 
-    // Schedule escalation if configured
     if (rule.escalation) {
       setTimeout(
         () => {
-          this.createEscalationNotifications(rule, error, context);
+          void this.createEscalationNotifications(
+            rule,
+            error,
+            metadata,
+            context,
+          );
         },
         rule.escalation.delay * 60 * 1000,
       );
@@ -371,28 +765,30 @@ export class ErrorNotificationService {
   private async createEscalationNotifications(
     rule: NotificationRule,
     error: BaseError,
-    context: ErrorContext,
+    metadata: ErrorMetadata,
+    context: ErrorContextData,
   ): Promise<void> {
-    // Check if original error was resolved
     const wasResolved = await this.checkIfErrorResolved(context.requestId);
-    if (wasResolved) return;
-
-    const notificationId = `escal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    if (wasResolved) {
+      return;
+    }
 
     for (const channelId of rule.escalation!.channels) {
       const channel = this.channels.get(channelId);
-      if (!channel || !channel.enabled) continue;
+      if (!channel || !channel.enabled) {
+        continue;
+      }
 
       const notification: ErrorNotification = {
-        id: notificationId,
+        id: `escal_${randomUUID()}`,
         errorId: context.requestId,
         ruleId: rule.id,
         channelId,
         type: 'ESCALATION',
-        severity: error.severity!,
-        category: error.category!,
-        title: `ESCALATED: ${this.generateNotificationTitle(error, rule)}`,
-        message: this.generateEscalationMessage(error, context, rule),
+        severity: metadata.severity,
+        category: metadata.category,
+        title: `ESCALATED: ${this.generateNotificationTitle(error, metadata, rule)}`,
+        message: this.generateEscalationMessage(error, metadata, context, rule),
         context,
         sent: false,
         attempts: 0,
@@ -410,10 +806,7 @@ export class ErrorNotificationService {
       const log = await this.prisma.audit_logs.findFirst({
         where: {
           action: 'ERROR_RESOLVED',
-          details: {
-            path: ['errorId'],
-            equals: errorId,
-          },
+          new_values: jsonEquals(['errorId'], errorId),
         },
       });
 
@@ -426,30 +819,32 @@ export class ErrorNotificationService {
 
   private generateNotificationTitle(
     error: BaseError,
+    metadata: ErrorMetadata,
     rule: NotificationRule,
   ): string {
-    const severityEmoji = {
+    const severityEmoji: Record<ErrorSeverity, string> = {
       [ErrorSeverity.CRITICAL]: '🚨',
       [ErrorSeverity.HIGH]: '⚠️',
       [ErrorSeverity.MEDIUM]: '⚡',
       [ErrorSeverity.LOW]: 'ℹ️',
     };
 
-    return `${severityEmoji[error.severity!]} ${rule.name}: ${error.category}`;
+    return `${severityEmoji[metadata.severity]} ${rule.name}: ${metadata.category}`;
   }
 
   private generateNotificationMessage(
     error: BaseError,
-    context: ErrorContext,
+    metadata: ErrorMetadata,
+    context: ErrorContextData,
     rule: NotificationRule,
   ): string {
     return `
 Error Details:
 - Message: ${error.message}
-- Category: ${error.category}
-- Severity: ${error.severity}
+- Category: ${metadata.category}
+- Severity: ${metadata.severity}
 - Endpoint: ${context.method} ${context.url}
-- User ID: ${context.id || 'Anonymous'}
+- User ID: ${context.userId ?? 'Anonymous'}
 - Timestamp: ${context.timestamp.toISOString()}
 - Request ID: ${context.requestId}
 
@@ -461,7 +856,8 @@ ${rule.escalation ? '\n⚠️ This error will escalate if not resolved.' : ''}
 
   private generateEscalationMessage(
     error: BaseError,
-    context: ErrorContext,
+    metadata: ErrorMetadata,
+    context: ErrorContextData,
     rule: NotificationRule,
   ): string {
     return `
@@ -469,7 +865,7 @@ ${rule.escalation ? '\n⚠️ This error will escalate if not resolved.' : ''}
 
 This error has not been resolved and has been escalated.
 
-${this.generateNotificationMessage(error, context, rule)}
+${this.generateNotificationMessage(error, metadata, context, rule)}
 
 IMMEDIATE ATTENTION REQUIRED
     `.trim();
@@ -537,7 +933,8 @@ IMMEDIATE ATTENTION REQUIRED
         throw new Error('Notification delivery failed');
       }
     } catch (error) {
-      notification.error = error.message;
+      notification.error =
+        error instanceof Error ? error.message : String(error);
 
       logger.error('Failed to send notification', {
         notificationId: notification.id,
@@ -587,13 +984,20 @@ IMMEDIATE ATTENTION REQUIRED
     notification: ErrorNotification,
   ): Promise<boolean> {
     try {
-      const webhookUrl = channel.config.webhook;
-      if (!webhookUrl) {
+      const webhookUrlValue = channel.config.webhook;
+      if (typeof webhookUrlValue !== 'string' || webhookUrlValue.length === 0) {
         throw new Error('Slack webhook URL not configured');
       }
 
+      const slackChannel = channel.config.channel;
+      if (typeof slackChannel !== 'string' || slackChannel.length === 0) {
+        throw new Error('Slack channel not configured');
+      }
+
+      const webhookUrl = webhookUrlValue;
+
       const payload = {
-        channel: channel.config.channel,
+        channel: slackChannel,
         username: 'CLMS Error Bot',
         icon_emoji: ':warning:',
         text: notification.title,
@@ -651,10 +1055,12 @@ IMMEDIATE ATTENTION REQUIRED
     notification: ErrorNotification,
   ): Promise<boolean> {
     try {
-      const webhookUrl = channel.config.url;
-      if (!webhookUrl) {
+      const webhookUrlValue = channel.config.url;
+      if (typeof webhookUrlValue !== 'string' || webhookUrlValue.length === 0) {
         throw new Error('Webhook URL not configured');
       }
+
+      const webhookUrl = webhookUrlValue;
 
       const payload = {
         id: notification.id,
@@ -685,17 +1091,19 @@ IMMEDIATE ATTENTION REQUIRED
   ): Promise<void> {
     try {
       await this.prisma.audit_logs.create({
-        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        data: {
+          id: randomUUID(),
+          entity: 'ERROR_NOTIFICATION',
+          entity_id: notification.id,
           action: notification.sent
             ? 'ERROR_NOTIFICATION_SENT'
             : 'ERROR_NOTIFICATION_FAILED',
-          details: {
-            notificationId: notification.id,
-            channelId: notification.channelId,
-            sent: notification.sent,
-            attempts: notification.attempts,
-            error: notification.error,
-          },
+          performed_by: 'SYSTEM',
+          ip_address: notification.context.ip || null,
+          user_agent: notification.context.userAgent || null,
+          new_values: toInputJson({
+            notification: serializeNotification(notification),
+          }),
         },
       });
     } catch (error) {
@@ -763,19 +1171,22 @@ IMMEDIATE ATTENTION REQUIRED
     type: 'HOURLY' | 'DAILY' | 'WEEKLY',
     start: Date,
     end: Date,
-    errorLogs: any[],
+    errorLogs: Array<{ new_values: Prisma.JsonValue | null; created_at: Date }>,
   ): Promise<NotificationDigest> {
     const digestId = `digest_${type.toLowerCase()}_${Date.now()}`;
+    const reports = errorLogs.map(log =>
+      parseErrorReportDetails(log.new_values),
+    );
 
     const summary = {
       totalErrors: errorLogs.length,
-      criticalErrors: errorLogs.filter(
-        log => log.details?.error?.severity === ErrorSeverity.CRITICAL,
+      criticalErrors: reports.filter(
+        report => report.severity === ErrorSeverity.CRITICAL,
       ).length,
-      highErrors: errorLogs.filter(
-        log => log.details?.error?.severity === ErrorSeverity.HIGH,
+      highErrors: reports.filter(
+        report => report.severity === ErrorSeverity.HIGH,
       ).length,
-      categories: {} as Record<ErrorCategory, number>,
+      categories: {} as Partial<Record<ErrorCategory, number>>,
       topErrors: [] as Array<{
         message: string;
         count: number;
@@ -783,31 +1194,34 @@ IMMEDIATE ATTENTION REQUIRED
       }>,
     };
 
-    // Count by category
-    errorLogs.forEach(log => {
-      const category = log.details?.error?.category;
-      if (category) {
-        summary.categories[category] = (summary.categories[category] || 0) + 1;
-      }
-    });
+    const errorGroups = new Map<
+      string,
+      { message: string; count: number; severity: ErrorSeverity }
+    >();
 
-    // Group by message to find top errors
-    const errorGroups = errorLogs.reduce((groups, log) => {
-      const message = log.details?.error?.message;
-      if (message) {
-        if (!groups[message]) {
-          groups[message] = {
-            message,
-            count: 0,
-            severity: log.details?.error?.severity,
-          };
+    for (const report of reports) {
+      if (report.category) {
+        summary.categories[report.category] =
+          (summary.categories[report.category] ?? 0) + 1;
+      }
+
+      if (report.message) {
+        const severity = report.severity ?? ErrorSeverity.MEDIUM;
+        const key = `${report.message}::${severity}`;
+        const existing = errorGroups.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          errorGroups.set(key, {
+            message: report.message,
+            count: 1,
+            severity,
+          });
         }
-        groups[message].count++;
       }
-      return groups;
-    }, {});
+    }
 
-    summary.topErrors = Object.values(errorGroups)
+    summary.topErrors = Array.from(errorGroups.values())
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
@@ -863,9 +1277,9 @@ ${digest.summary.topErrors
             context: {
               requestId: digest.id,
               ip: '',
-              user_agent: '',
-              method: '',
-              url: '',
+              userAgent: 'system',
+              method: 'DIGEST',
+              url: '/digest',
               timestamp: digest.created_at,
               duration: 0,
             },
@@ -938,23 +1352,28 @@ ${digest.summary.topErrors
         take: limit,
       });
 
-      return logs.map(log => ({
-        id: log.details?.notificationId,
-        errorId: log.details?.errorId,
-        channelId: log.details?.channelId,
-        type: 'IMMEDIATE',
-        severity: log.details?.severity,
-        category: log.details?.category,
-        title: '',
-        message: '',
-        context: {} as ErrorContext,
-        sent: log.action === 'ERROR_NOTIFICATION_SENT',
-        sentAt: log.created_at,
-        attempts: log.details?.attempts || 1,
-        lastAttempt: log.created_at,
-        error: log.details?.error,
-        created_at: log.created_at,
-      }));
+      const notifications = logs
+        .map(log => {
+          const notification = deserializeNotification(log.new_values);
+          if (!notification) {
+            return null;
+          }
+
+          notification.sent = log.action === 'ERROR_NOTIFICATION_SENT';
+          if (notification.sent && !notification.sentAt) {
+            notification.sentAt = log.created_at;
+          }
+          notification.lastAttempt = notification.lastAttempt ?? log.created_at;
+          notification.created_at = notification.created_at ?? log.created_at;
+
+          return notification;
+        })
+        .filter(
+          (notification): notification is ErrorNotification =>
+            notification !== null,
+        );
+
+      return notifications;
     } catch (error) {
       logger.error('Failed to get notification history', { error });
       return [];
@@ -981,7 +1400,7 @@ ${digest.summary.topErrors
         context: {
           requestId: 'test-request',
           ip: '127.0.0.1',
-          user_agent: 'test-client',
+          userAgent: 'test-client',
           method: 'GET',
           url: '/test',
           timestamp: new Date(),
@@ -992,7 +1411,8 @@ ${digest.summary.topErrors
         created_at: new Date(),
       };
 
-      return await this.sendNotification(testNotification);
+      await this.sendNotification(testNotification);
+      return testNotification.sent;
     } catch (error) {
       logger.error('Failed to test notification channel', { channelId, error });
       return false;

@@ -1,6 +1,16 @@
-import { PrismaClient } from '@prisma/client';
+import {
+  Prisma,
+  PrismaClient,
+  equipment_sessions_status,
+  equipment_status,
+  student_activities_status,
+} from '@prisma/client';
 import { logger } from './logger';
 import { cacheManager } from './caching';
+import {
+  DatabaseQueryOptimizer,
+  getQueryOptimizer,
+} from './databaseQueryOptimizer';
 
 interface QueryStats {
   query: string;
@@ -16,27 +26,37 @@ interface OptimizationConfig {
   slowQueryThreshold?: number;
 }
 
+/**
+ * Legacy QueryOptimizer - Backward compatibility wrapper
+ * @deprecated Use DatabaseQueryOptimizer instead
+ */
 class QueryOptimizer {
   private prisma: PrismaClient;
   private queryLog: QueryStats[] = [];
   private config: Required<OptimizationConfig>;
+  private advancedOptimizer: DatabaseQueryOptimizer;
 
   constructor(prisma: PrismaClient, config: OptimizationConfig = {}) {
     this.prisma = prisma;
     this.config = {
       enableCache: config.enableCache ?? true,
       cacheTTL: config.cacheTTL ?? 300,
-      enableQueryLogging: config.enableQueryLogging ?? process.env.NODE_ENV === 'development',
-      slowQueryThreshold: config.slowQueryThreshold ?? 1000
+      enableQueryLogging:
+        config.enableQueryLogging ?? process.env.NODE_ENV === 'development',
+      slowQueryThreshold: config.slowQueryThreshold ?? 1000,
     };
 
-    this.setupQueryLogging();
+    // Initialize the advanced optimizer
+    this.advancedOptimizer = getQueryOptimizer(prisma);
+
+    logger.warn(
+      'QueryOptimizer is deprecated. Use DatabaseQueryOptimizer instead.',
+    );
   }
 
   private setupQueryLogging() {
     if (!this.config.enableQueryLogging) return;
 
-    // @ts-ignore - Prisma middleware
     this.prisma.$use(async (params, next) => {
       const start = Date.now();
       const result = await next(params);
@@ -46,7 +66,7 @@ class QueryOptimizer {
         query: `${params.model}.${params.action}`,
         duration,
         timestamp: new Date(),
-        cached: false
+        cached: false,
       };
 
       this.queryLog.push(queryInfo);
@@ -62,7 +82,7 @@ class QueryOptimizer {
           model: params.model,
           action: params.action,
           duration: `${duration}ms`,
-          args: params.args
+          args: params.args,
         });
       }
 
@@ -73,7 +93,7 @@ class QueryOptimizer {
   async cachedQuery<T>(
     cacheKey: string,
     query: () => Promise<T>,
-    ttl?: number
+    ttl?: number,
   ): Promise<T> {
     if (!this.config.enableCache) {
       return query();
@@ -81,7 +101,7 @@ class QueryOptimizer {
 
     const start = Date.now();
     const result = await cacheManager.getOrSet(cacheKey, query, {
-      ttl: ttl || this.config.cacheTTL
+      ttl: ttl || this.config.cacheTTL,
     });
     const duration = Date.now() - start;
 
@@ -90,7 +110,7 @@ class QueryOptimizer {
         query: cacheKey,
         duration,
         timestamp: new Date(),
-        cached: duration < 10 // If very fast, likely from cache
+        cached: duration < 10, // If very fast, likely from cache
       });
     }
 
@@ -105,21 +125,22 @@ class QueryOptimizer {
         return this.prisma.students.findUnique({
           where: { id: studentId },
           include: {
-            activities: {
+            student_activities: {
               select: {
                 id: true,
                 activity_type: true,
                 start_time: true,
                 end_time: true,
-                status: true
+                status: true,
               },
-              orderBy: { start_time: 'desc' as const },
-              take: 10
-            }
-          }
+              where: { status: student_activities_status.ACTIVE },
+              orderBy: { start_time: 'desc' },
+              take: 10,
+            },
+          },
         });
       },
-      300 // 5 minutes
+      300, // 5 minutes
     );
   }
 
@@ -135,11 +156,11 @@ class QueryOptimizer {
             first_name: true,
             last_name: true,
             grade_level: true,
-            grade_category: true
-          }
+            grade_category: true,
+          },
         });
       },
-      600 // 10 minutes
+      600, // 10 minutes
     );
   }
 
@@ -149,17 +170,17 @@ class QueryOptimizer {
       'equipment:available',
       async () => {
         return this.prisma.equipment.findMany({
-          where: { status: 'AVAILABLE' },
+          where: { status: equipment_status.AVAILABLE },
           select: {
             id: true,
             equipment_id: true,
             name: true,
             type: true,
-            status: true
-          }
+            status: true,
+          },
         });
       },
-      60 // 1 minute
+      60, // 1 minute
     );
   }
 
@@ -170,13 +191,13 @@ class QueryOptimizer {
         return this.prisma.equipment_sessions.findMany({
           where: { equipment_id: equipmentId },
           include: {
-            students: true
+            students: true,
           },
           orderBy: { session_start: 'desc' },
-          take: limit
+          take: limit,
         });
       },
-      300 // 5 minutes
+      300, // 5 minutes
     );
   }
 
@@ -191,48 +212,52 @@ class QueryOptimizer {
           totalEquipment,
           availableEquipment,
           activeSessions,
-          todayActivities
+          todayActivities,
         ] = await Promise.all([
           this.prisma.students.count(),
           this.prisma.students.count({ where: { is_active: true } }),
           this.prisma.equipment.count(),
-          this.prisma.equipment.count({ where: { status: 'AVAILABLE' } }),
-          this.prisma.equipment_sessions.count({ where: { status: 'ACTIVE' } }),
+          this.prisma.equipment.count({
+            where: { status: equipment_status.AVAILABLE },
+          }),
+          this.prisma.equipment_sessions.count({
+            where: { status: equipment_sessions_status.ACTIVE },
+          }),
           this.prisma.student_activities.count({
             where: {
               start_time: {
-                gte: new Date(new Date().setHours(0, 0, 0, 0))
-              }
-            }
-          })
+                gte: new Date(new Date().setHours(0, 0, 0, 0)),
+              },
+            },
+          }),
         ]);
 
         return {
           students: {
             total: totalStudents,
             active: activeStudents,
-            inactive: totalStudents - activeStudents
+            inactive: totalStudents - activeStudents,
           },
           equipment: {
             total: totalEquipment,
             available: availableEquipment,
-            inUse: totalEquipment - availableEquipment
+            inUse: totalEquipment - availableEquipment,
           },
           sessions: {
-            active: activeSessions
+            active: activeSessions,
           },
           activities: {
-            today: todayActivities
-          }
+            today: todayActivities,
+          },
         };
       },
-      60 // 1 minute
+      60, // 1 minute
     );
   }
 
   async getActivityStatsByDateRange(startDate: Date, endDate: Date) {
     const cacheKey = `activities:stats:${startDate.toISOString()}:${endDate.toISOString()}`;
-    
+
     return this.cachedQuery(
       cacheKey,
       async () => {
@@ -241,31 +266,33 @@ class QueryOptimizer {
           where: {
             start_time: {
               gte: startDate,
-              lte: endDate
-            }
+              lte: endDate,
+            },
           },
-          _count: true
+          _count: true,
         });
       },
-      1800 // 30 minutes
+      1800, // 30 minutes
     );
   }
 
   // Batch operations
-  async batchCreateStudents(students: any[]) {
+  async batchCreateStudents(students: Prisma.studentsCreateManyInput[]) {
     // No caching for write operations
     return this.prisma.students.createMany({
       data: students,
-      skipDuplicates: true
+      skipDuplicates: true,
     });
   }
 
-  async batchUpdateStudents(updates: Array<{ id: string; data: any }>) {
+  async batchUpdateStudents(
+    updates: Array<{ id: string; data: Prisma.studentsUpdateInput }>,
+  ) {
     const transaction = updates.map(({ id, data }) =>
       this.prisma.students.update({
         where: { id },
-        data
-      })
+        data,
+      }),
     );
 
     const result = await this.prisma.$transaction(transaction);
@@ -285,8 +312,8 @@ class QueryOptimizer {
         OR: [
           { first_name: { contains: query } },
           { last_name: { contains: query } },
-          { student_id: { contains: query } }
-        ]
+          { student_id: { contains: query } },
+        ],
       },
       select: {
         id: true,
@@ -294,9 +321,9 @@ class QueryOptimizer {
         first_name: true,
         last_name: true,
         grade_level: true,
-        is_active: true
+        is_active: true,
       },
-      take: limit
+      take: limit,
     });
   }
 
@@ -307,8 +334,8 @@ class QueryOptimizer {
           { title: { contains: query } },
           { author: { contains: query } },
           { isbn: { contains: query } },
-          { accession_no: { contains: query } }
-        ]
+          { accession_no: { contains: query } },
+        ],
       },
       select: {
         id: true,
@@ -316,9 +343,9 @@ class QueryOptimizer {
         author: true,
         isbn: true,
         accession_no: true,
-        is_active: true
+        is_active: true,
       },
-      take: limit
+      take: limit,
     });
   }
 
@@ -341,22 +368,27 @@ class QueryOptimizer {
 
   // Query statistics
   getQueryStats() {
-    const slowQueries = this.queryLog.filter(q => q.duration > this.config.slowQueryThreshold);
+    const slowQueries = this.queryLog.filter(
+      q => q.duration > this.config.slowQueryThreshold,
+    );
     const cachedQueries = this.queryLog.filter(q => q.cached);
-    
-    const avgDuration = this.queryLog.length > 0
-      ? this.queryLog.reduce((sum, q) => sum + q.duration, 0) / this.queryLog.length
-      : 0;
+
+    const avgDuration =
+      this.queryLog.length > 0
+        ? this.queryLog.reduce((sum, q) => sum + q.duration, 0) /
+          this.queryLog.length
+        : 0;
 
     return {
       totalQueries: this.queryLog.length,
       slowQueries: slowQueries.length,
       cachedQueries: cachedQueries.length,
       averageDuration: Math.round(avgDuration * 100) / 100,
-      cacheHitRate: this.queryLog.length > 0
-        ? Math.round((cachedQueries.length / this.queryLog.length) * 100)
-        : 0,
-      recentSlowQueries: slowQueries.slice(-10)
+      cacheHitRate:
+        this.queryLog.length > 0
+          ? Math.round((cachedQueries.length / this.queryLog.length) * 100)
+          : 0,
+      recentSlowQueries: slowQueries.slice(-10),
     };
   }
 

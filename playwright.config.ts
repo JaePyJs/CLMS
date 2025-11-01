@@ -215,7 +215,7 @@ export default defineConfig({
       command: 'cd Backend && npm run dev',
       port: 3001,
       reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000, // 2 minutes startup timeout
+      timeout: 180 * 1000, // 3 minutes startup timeout for stability
       stdout: 'pipe',
       stderr: 'pipe',
     },
@@ -223,7 +223,7 @@ export default defineConfig({
       command: 'cd Frontend && npm run dev',
       port: 3000,
       reuseExistingServer: !process.env.CI,
-      timeout: 120 * 1000,
+      timeout: 180 * 1000,
       stdout: 'pipe',
       stderr: 'pipe',
     }

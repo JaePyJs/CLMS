@@ -12,7 +12,6 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
-import notificationApi from '@/services/notificationApi';
 
 interface NotificationPreferences {
   userId: string;

@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { logger } from '@/utils/logger';
-import { fieldEncryption } from '@/utils/fieldEncryption';
-import { SecurityMonitoringService, SecurityEventType, AlertSeverity } from '@/services/securityMonitoringService';
+import { logger } from '../utils/logger';
+import { fieldEncryption } from '../utils/fieldEncryption';
+import { SecurityMonitoringService, SecurityEventType, AlertSeverity } from '../services/securityMonitoringService';
+import { generateAuditId } from '../utils/common';
 
 // Audit log entry interface
 interface DataAccessAuditEntry {
@@ -33,7 +34,6 @@ interface DataAccessAuditEntry {
   ferpaCompliance: {
     required: boolean;
     verified: boolean;
-    accessRequestId?: string;
     justificationProvided: boolean;
   };
   securityFlags: {
@@ -132,14 +132,14 @@ export const createDataAccessAuditMiddleware = (
       endpoint: req.path,
       method: req.method,
       ipAddress: req.ip || req.connection.remoteAddress || 'unknown',
-      userAgent: req.get('User-Agent'),
+      userAgent: req.get('User-Agent') || 'unknown',
       action: getActionFromMethod(req.method),
       fieldsAccessed: [],
       sensitiveFieldsAccessed: [],
       encryptedFieldsAccessed: [],
       recordsAffected: 0,
       dataSize: 0,
-      responseStatus: null,
+      responseStatus: 0,
       success: false,
       duration: 0,
       ferpaCompliance: {
@@ -186,7 +186,9 @@ export const createDataAccessAuditMiddleware = (
       auditData.responseStatus = res.statusCode;
       auditData.duration = duration;
       auditData.success = res.statusCode < 400;
-      auditData.metadata.responseSize = JSON.stringify(body).length;
+      if (auditData.metadata) {
+        auditData.metadata.responseSize = JSON.stringify(body).length;
+      }
 
       // Analyze response for sensitive data
       if (auditData.success && body) {
@@ -200,7 +202,7 @@ export const createDataAccessAuditMiddleware = (
       storeAuditLog(auditData as DataAccessAuditEntry, prisma, auditConfig);
 
       // Call original method
-      return originalSend.call(this, body);
+      return originalSend.call(res, body);
     };
 
     next();
@@ -253,7 +255,10 @@ function analyzeRequestForSecurity(req: Request, auditData: Partial<DataAccessAu
 
   // Determine entity type from path
   auditData.entityType = getEntityTypeFromPath(req.path);
-  auditData.entityId = getEntityIdFromRequest(req);
+  const entityId = getEntityIdFromRequest(req);
+  if (entityId) {
+    auditData.entityId = entityId;
+  }
 }
 
 /**
@@ -294,8 +299,9 @@ function analyzeResponseForDataAccess(
     // Check FERPA compliance requirements
     auditData.ferpaCompliance!.required = analysis.sensitiveFields.length > 0;
     auditData.ferpaCompliance!.verified = !!(req as any).ferpaContext;
-    auditData.ferpaCompliance!.accessRequestId = (req as any).ferpaContext?.accessRequestId;
-    auditData.ferpaCompliance!.justificationProvided = !!(req as any).ferpaContext?.requiresJustification;
+    // Note: accessRequestId is no longer part of the interface
+    // auditData.ferpaCompliance!.accessRequestId = (req as any).ferpaContext?.accessRequestId;
+    auditData.ferpaCompliance!.justificationProvided = !!(req as any).ferpaContext?.accessGranted;
 
   } catch (error) {
     logger.error('Failed to analyze response for audit', { error });
@@ -369,9 +375,9 @@ function analyzeDataStructure(data: any, path: string): {
   analyze(data);
 
   return {
-    fields: [...new Set(fields)],
-    sensitiveFields: [...new Set(sensitiveFields)],
-    encryptedFields: [...new Set(encryptedFields)],
+    fields: Array.from(new Set(fields)),
+    sensitiveFields: Array.from(new Set(sensitiveFields)),
+    encryptedFields: Array.from(new Set(encryptedFields)),
     recordCount
   };
 }
@@ -433,7 +439,39 @@ function checkSecurityViolations(
   if (violations.length > 0) {
     securityService.recordSecurityEvent(
       SecurityEventType.SUSPICIOUS_USER_AGENT,
-      { ip: auditData.ipAddress!, get: () => auditData.userAgent } as Request,
+      {
+        ip: auditData.ipAddress!,
+        get: (header: string) => header === 'user-agent' ? auditData.userAgent : undefined,
+        header: (name: string) => name === 'user-agent' ? auditData.userAgent : undefined,
+        accepts: () => [],
+        acceptsCharsets: () => [],
+        acceptsEncodings: () => [],
+        acceptsLanguages: () => [],
+        range: undefined,
+        param: () => undefined,
+        query: {},
+        body: {},
+        cookies: {},
+        signedCookies: {},
+        fresh: false,
+        stale: true,
+        protocol: 'https',
+        secure: true,
+        xhr: false,
+        url: '/audit',
+        method: 'POST',
+        path: '/audit',
+        hostname: 'localhost',
+        port: 443,
+        subdomains: [],
+        originalUrl: '/audit',
+        originalMethod: 'POST',
+        baseUrl: '',
+        app: {} as any,
+        res: {} as any,
+        next: () => {},
+        route: { path: '/audit' }
+      } as any,
       {
         userId: auditData.userId,
         userRole: auditData.userRole,
@@ -465,7 +503,7 @@ async function storeAuditLog(
         entity_id: auditEntry.entityId || 'unknown',
         performed_by: auditEntry.userId,
         ip_address: auditEntry.ipAddress,
-        user_agent: auditEntry.userAgent,
+        user_agent: auditEntry.userAgent || null,
         new_values: {
           audit: {
             timestamp: auditEntry.timestamp,
@@ -514,9 +552,7 @@ async function storeAuditLog(
 
 // Helper functions
 
-function generateAuditId(): string {
-  return `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
+// generateAuditId is now imported from common utilities
 
 function getActionFromMethod(method: string): 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'EXPORT' | 'SEARCH' {
   switch (method.toUpperCase()) {

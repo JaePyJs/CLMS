@@ -11,7 +11,7 @@ export default defineConfig({
   plugins: [
     react(),
     // PWA plugin for service worker and caching (temporarily disabled due to workbox validation issues)
-    ...(false ? [VitePWA({
+    ...(process.env.ENABLE_PWA === 'true' ? [VitePWA({
       registerType: 'autoUpdate',
       includeAssets: [
         'favicon.ico',
@@ -341,16 +341,14 @@ export default defineConfig({
       'react-dom',
       'lucide-react',
       '@tanstack/react-query',
-      'axios',
       'date-fns',
       'framer-motion'
     ],
     exclude: [
-      '@tanstack/react-query-devtools' // Exclude dev tools from production bundle
+      'axios',
+      '@tanstack/react-query-devtools'
     ],
-    // Pre-bundle dependencies for faster dev server
     force: false,
-    // Optimize for production builds
     includeBuilds: true
   },
 

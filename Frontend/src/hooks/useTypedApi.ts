@@ -331,8 +331,7 @@ export function useTypedRealTime<T>(
   config: {
     url: string;
     interval?: number;
-  },
-  options: UseTypedApiOptions<T> = {}
+  }
 ) {
   const { interval = 30000, ...apiOptions } = config;
   const [isPolling, setIsPolling] = useState(false);

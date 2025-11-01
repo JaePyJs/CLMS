@@ -8,10 +8,9 @@ import React, {
 } from 'react';
 import type { ComponentType, ReactNode, Key } from 'react';
 import { FixedSizeList as List, VariableSizeList as VariableList } from 'react-window';
-import { FixedSizeList as ListInfiniteLoader } from 'react-window-infinite-loader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Search, Filter, ChevronDown, ChevronUp } from 'lucide-react';
 
 // Types

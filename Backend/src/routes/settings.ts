@@ -222,11 +222,12 @@ router.post(
       const file = req.file;
 
       if (!file) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'No file uploaded',
           timestamp: new Date().toISOString(),
         });
+        return;
       }
 
       // Validate JSON
@@ -519,11 +520,12 @@ router.post(
       const file = req.file;
 
       if (!file) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'No file uploaded',
           timestamp: new Date().toISOString(),
         });
+        return;
       }
 
       // TODO: Implement restore logic
@@ -708,11 +710,12 @@ router.post('/users', async (req: Request, res: Response) => {
 
     // Validate required fields
     if (!username || !password) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Username and password are required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     // Check if username already exists
@@ -721,11 +724,12 @@ router.post('/users', async (req: Request, res: Response) => {
     });
 
     if (existingUser) {
-      return res.status(409).json({
+      res.status(409).json({
         success: false,
         error: 'Username already exists',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     // Hash password
@@ -828,11 +832,12 @@ router.delete('/users/:id', async (req: Request, res: Response) => {
         where: { role: 'ADMIN', isActive: true },
       });
       if (adminCount <= 1) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Cannot delete the last active admin user',
           timestamp: new Date().toISOString(),
         });
+        return;
       }
     }
 
@@ -864,11 +869,12 @@ router.post('/users/:id/change-password', async (req: Request, res: Response) =>
     const { password, newPassword } = req.body;
 
     if (!newPassword) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'New password is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     // Hash new password

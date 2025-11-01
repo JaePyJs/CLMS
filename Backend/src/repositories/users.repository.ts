@@ -5,7 +5,7 @@ import { BaseRepository } from './base.repository';
 
 /**
  * Users Repository
- * 
+ *
  * Extends BaseRepository to provide user-specific operations with flexible
  * ID handling for username (external user identifier).
  */
@@ -88,10 +88,11 @@ export class UsersRepository extends BaseRepository<
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        const target = (error.meta?.target as any)?.find((field: string) => 
-          field.includes('username') || field.includes('email')
+        const target = (error.meta?.target as any)?.find(
+          (field: string) =>
+            field.includes('username') || field.includes('email'),
         );
-        
+
         if (target) {
           if (target.includes('username')) {
             throw new Error(`Username '${data.username}' already exists`);
@@ -121,7 +122,7 @@ export class UsersRepository extends BaseRepository<
       role?: users_role;
       permissions?: string[];
       is_active?: boolean;
-    }
+    },
   ): Promise<users> {
     try {
       const whereClause = { username };
@@ -140,9 +141,13 @@ export class UsersRepository extends BaseRepository<
       const updateData = {
         ...(data.password !== undefined && { password: data.password }),
         ...(data.email !== undefined && { email: data.email?.trim() || null }),
-        ...(data.full_name !== undefined && { full_name: data.full_name?.trim() || null }),
+        ...(data.full_name !== undefined && {
+          full_name: data.full_name?.trim() || null,
+        }),
         ...(data.role !== undefined && { role: data.role }),
-        ...(data.permissions !== undefined && { permissions: data.permissions }),
+        ...(data.permissions !== undefined && {
+          permissions: data.permissions,
+        }),
         ...(data.is_active !== undefined && { is_active: data.is_active }),
         updated_at: new Date(),
       };
@@ -154,12 +159,15 @@ export class UsersRepository extends BaseRepository<
       });
 
       const isCreated = user.created_at.getTime() === user.updated_at.getTime();
-      
-      logger.info(`User ${isCreated ? 'created' : 'updated'} successfully via upsert`, {
-        id: user.id,
-        username: user.username,
-        action: isCreated ? 'created' : 'updated',
-      });
+
+      logger.info(
+        `User ${isCreated ? 'created' : 'updated'} successfully via upsert`,
+        {
+          id: user.id,
+          username: user.username,
+          action: isCreated ? 'created' : 'updated',
+        },
+      );
 
       return user;
     } catch (error) {
@@ -173,15 +181,23 @@ export class UsersRepository extends BaseRepository<
   /**
    * Get users with flexible filtering options
    */
-  async getUsers(options: {
-    role?: users_role;
-    isActive?: boolean;
-    search?: string;
-    page?: number;
-    limit?: number;
-    sortBy?: 'username' | 'email' | 'full_name' | 'role' | 'created_at' | 'last_login_at';
-    sortOrder?: 'asc' | 'desc';
-  } = {}): Promise<{
+  async getUsers(
+    options: {
+      role?: users_role;
+      isActive?: boolean;
+      search?: string;
+      page?: number;
+      limit?: number;
+      sortBy?:
+        | 'username'
+        | 'email'
+        | 'full_name'
+        | 'role'
+        | 'created_at'
+        | 'last_login_at';
+      sortOrder?: 'asc' | 'desc';
+    } = {},
+  ): Promise<{
     users: users[];
     pagination: {
       page: number;
@@ -216,9 +232,9 @@ export class UsersRepository extends BaseRepository<
       // Apply search across multiple fields
       if (search) {
         where.OR = [
-          { username: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { full_name: { contains: search, mode: 'insensitive' } },
+          { username: { contains: search } },
+          { email: { contains: search } },
+          { full_name: { contains: search } },
         ];
       }
 
@@ -261,7 +277,10 @@ export class UsersRepository extends BaseRepository<
   /**
    * Update user password
    */
-  async updatePassword(userId: string, hashedPassword: string): Promise<users | null> {
+  async updatePassword(
+    userId: string,
+    hashedPassword: string,
+  ): Promise<users | null> {
     try {
       const user = await this.getModel().update({
         where: { id: userId },
@@ -282,7 +301,9 @@ export class UsersRepository extends BaseRepository<
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2025'
       ) {
-        logger.warn('Attempted to update password for non-existent user', { userId });
+        logger.warn('Attempted to update password for non-existent user', {
+          userId,
+        });
         return null;
       }
 
@@ -309,7 +330,9 @@ export class UsersRepository extends BaseRepository<
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2025'
       ) {
-        logger.warn('Attempted to update last login for non-existent user', { userId });
+        logger.warn('Attempted to update last login for non-existent user', {
+          userId,
+        });
         return null;
       }
 
@@ -350,74 +373,33 @@ export class UsersRepository extends BaseRepository<
   /**
    * Create method override to exclude sensitive fields from logging
    */
-  async create(data: Prisma.usersCreateInput): Promise<users> {
-    try {
-      const sanitizedData = { ...data };
-      delete sanitizedData.password; // Remove password from logging
-
-      const processedData = this.populateMissingFields(data);
-
-      const user = await this.getModel().create({
-        data: processedData,
-      });
-
-      logger.info('User created successfully', {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-      });
-
-      return user;
-    } catch (error) {
-      logger.error(`Error creating user`, {
-        error: (error as Error).message,
-        username: data.username,
-      });
-      throw error;
-    }
+  override async create(data: Prisma.usersCreateInput): Promise<users> {
+    // Handle sensitive fields safely
+    const { password, ...sanitizedData } = data;
+    const createData: Prisma.usersCreateInput = password ? { ...sanitizedData, password } : { ...sanitizedData, password: '' };
+    
+    logger.info('Creating user', { 
+      username: createData.username,
+      role: createData.role 
+    });
+    
+    return super.create(createData);
   }
 
-  /**
-   * Update method override to exclude sensitive fields from logging
-   */
-  async updateById(id: string, data: Prisma.usersUpdateInput): Promise<users | null> {
-    try {
-      const sanitizedData = { ...data };
-      delete sanitizedData.password; // Remove password from logging
-
-      const processedData = {
-        ...sanitizedData,
-        updated_at: new Date(),
-      };
-
-      const user = await this.getModel().update({
-        where: { id },
-        data: processedData,
-      });
-
-      logger.info('User updated successfully', {
-        id,
-        username: user.username,
-      });
-
-      return user;
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        logger.warn(`Attempted to update non-existent user`, { id });
-        return null;
-      }
-
-      logger.error(`Error updating user`, {
-        error: (error as Error).message,
-        id,
-      });
-      throw error;
-    }
+  override async updateById(id: string, data: Prisma.usersUpdateInput): Promise<users | null> {
+    // Handle sensitive fields safely
+    const { password, ...sanitizedData } = data;
+    const updateData = password ? { ...sanitizedData, password } : sanitizedData;
+    
+    logger.info('Updating user by ID', { 
+      id,
+      fieldsUpdated: Object.keys(updateData)
+    });
+    
+    return super.updateById(id, updateData);
   }
 }
 
 // Export repository instance
 export const usersRepository = new UsersRepository();
+

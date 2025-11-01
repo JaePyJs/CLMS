@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit, Trash2, Shield, ShieldAlert, ShieldCheck, Key, Search, Filter, RefreshCw, CheckCircle, XCircle, Eye } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Shield, ShieldAlert, ShieldCheck, Key, Search, RefreshCw, CheckCircle, XCircle, Eye } from 'lucide-react';
 import userApi from '../../services/userApi';
 import type { User, UserRole, CreateUserInput } from '../../services/userApi';
 import { useToast } from '../ToastContainer';
@@ -12,7 +12,6 @@ const UserManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [statistics, setStatistics] = useState<any>(null);
 

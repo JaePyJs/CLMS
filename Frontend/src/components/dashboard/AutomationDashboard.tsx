@@ -7,7 +7,6 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTriggerJob, useGoogleSheetsTest } from '@/hooks/api-hooks'
 import { useAppStore } from '@/store/useAppStore'
-import { DashboardCardSkeleton, CardSkeleton, ButtonLoading, LoadingSpinner } from '@/components/LoadingStates'
 import { Bot, Play, Square, RotateCcw, CheckCircle, AlertCircle, Clock, Database, FileSpreadsheet, Calendar, Activity, Settings, RefreshCw } from 'lucide-react';
 
 interface AutomationJob {

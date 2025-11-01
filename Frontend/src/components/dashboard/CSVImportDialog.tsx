@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -99,8 +99,12 @@ export function CSVImportDialog({
         throw new Error('CSV file is empty');
       }
 
-      // Extract headers
-      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      // Extract headers - we know lines[0] exists because we checked length > 0
+      const firstLine = lines[0];
+      if (!firstLine) {
+        throw new Error('CSV file has no valid header row');
+      }
+      const headers = firstLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
       setProgress(50);
 
       // Validate headers
@@ -157,7 +161,7 @@ export function CSVImportDialog({
       // Check for empty required fields
       const hasEmptyRequired = row.some((cell, cellIndex) => {
         const header = headers[cellIndex];
-        return templateColumns.includes(header) && !cell.trim();
+        return header && templateColumns.includes(header) && !cell?.trim();
       });
 
       if (hasEmptyRequired) {
@@ -185,7 +189,16 @@ export function CSVImportDialog({
     try {
       const text = await file.text();
       const lines = text.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      if (lines.length === 0) {
+        setPreview(null);
+        return;
+      }
+      const firstLine = lines[0];
+      if (!firstLine) {
+        setPreview(null);
+        return;
+      }
+      const headers = firstLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
 
       // Parse all rows into objects
       const data = lines.slice(1).map(line => {

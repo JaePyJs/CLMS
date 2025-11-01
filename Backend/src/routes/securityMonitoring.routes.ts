@@ -156,11 +156,12 @@ router.get(
       const { ip, timeframe = '24h' } = req.query;
 
       if (!ip) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'IP address is required',
           timestamp: new Date().toISOString(),
         });
+        return;
       }
 
       let timeRange = 24 * 60 * 60 * 1000; // Default 24 hours
@@ -261,20 +262,22 @@ router.post(
       const { eventType, details } = req.body;
 
       if (!eventType) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Event type is required',
           timestamp: new Date().toISOString(),
         });
+        return;
       }
 
       // Validate event type
       if (!Object.values(SecurityEventType).includes(eventType)) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Invalid event type',
           timestamp: new Date().toISOString(),
         });
+        return;
       }
 
       await securityService.recordSecurityEvent(
@@ -369,20 +372,22 @@ router.put(
     const { config } = req.body;
 
     if (!eventType || !config) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Event type and configuration are required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     // Validate event type
     if (!Object.values(SecurityEventType).includes(eventType)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Invalid event type',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     securityService.updateAlertConfig(eventType as SecurityEventType, config);

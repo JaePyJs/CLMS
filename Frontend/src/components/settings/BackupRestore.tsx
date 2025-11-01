@@ -1,4 +1,3 @@
-import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,9 +39,9 @@ export default function BackupRestore() {
   // Fetch backups
   const { data: backups = [], isLoading, error } = useQuery({
     queryKey: ['backups'],
-    queryFn: async () => {
+    queryFn: async (): Promise<Backup[]> => {
       const response = await settingsApi.getBackups();
-      return response.data || [];
+      return (response.data as Backup[]) || [];
     },
     staleTime: 30 * 1000, // 30 seconds
   });
@@ -50,7 +49,7 @@ export default function BackupRestore() {
   // Create backup mutation
   const createMutation = useMutation({
     mutationFn: () => settingsApi.createBackup(),
-    onSuccess: (response) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['backups'] });
       toast.success('Backup created successfully!');
     },

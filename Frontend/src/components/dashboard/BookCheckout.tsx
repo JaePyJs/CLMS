@@ -1,4 +1,4 @@
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect, lazy } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Lazy load CheckoutHistory component
-const CheckoutHistory = React.lazy(() => import('./CheckoutHistory'));
+const CheckoutHistory = lazy(() => import('./CheckoutHistory'));
 import {
   Dialog,
   DialogContent,
@@ -82,7 +82,7 @@ export default function BookCheckout() {
   };
 
   // Initialize due date
-  React.useEffect(() => {
+  useEffect(() => {
     setDueDate(getDefaultDueDate());
   }, []);
 

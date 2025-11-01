@@ -215,8 +215,7 @@ export function usePersistedState<T>(
  * Hook to use state with optimistic updates
  */
 export function useOptimisticState<T>(
-  store: EnhancedStateStore<T>,
-  optimistcUpdater: (state: T) => T
+  store: EnhancedStateStore<T>
 ): [T, StateUpdater<T>, StateUpdater<T>] {
   const [state, setState] = useEnhancedState(store);
   const [optimisticState, setOptimisticState] = React.useState<T>(state);
@@ -397,7 +396,6 @@ export function useCachedState<T>(
   cacheTimeout: number = 5 * 60 * 1000 // 5 minutes
 ): [T, StateUpdater<T>, () => void] {
   const [state, setState] = useEnhancedState(store);
-  const [lastUpdate, setLastUpdate] = React.useState<number>(Date.now());
 
   const getFromCache = useCallback((): T | null => {
     try {

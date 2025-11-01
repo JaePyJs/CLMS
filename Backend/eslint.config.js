@@ -78,7 +78,7 @@ module.exports = [
     rules: sharedRules,
   },
   {
-    files: ['src/cli/**/*.{ts,js}', 'src/scripts/**/*.{ts,js}'],
+    files: ['src/cli/**/*.{ts,js}', 'src/scripts/**/*.{ts,js}', 'scripts/**/*.{ts,js}'],
     rules: {
       'no-console': 'off',
     },

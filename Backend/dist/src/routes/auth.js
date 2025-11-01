@@ -23,9 +23,9 @@ router.get('/me', auth_1.authMiddleware, (0, asyncHandler_1.asyncHandler)(async 
             id: user.id,
             username: user.username,
             role: user.role,
-            isActive: user.isActive,
-            lastLoginAt: user.lastLoginAt,
-            createdAt: user.createdAt,
+            isActive: user.is_active,
+            lastLoginAt: user.last_login_at,
+            createdAt: user.created_at,
         },
     });
 }));
@@ -172,10 +172,10 @@ router.put('/users/:id', [
         .notEmpty()
         .withMessage('Username cannot be empty'),
     (0, express_validator_1.body)('role').optional().notEmpty().withMessage('Role cannot be empty'),
-    (0, express_validator_1.body)('isActive')
+    (0, express_validator_1.body)('is_active')
         .optional()
         .isBoolean()
-        .withMessage('isActive must be a boolean'),
+        .withMessage('is_active must be a boolean'),
     validation_1.validationMiddleware,
 ], (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { id } = req.params;

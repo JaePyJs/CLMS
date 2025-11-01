@@ -1,0 +1,385 @@
+name: Documentation Enforcement
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  check-documentation-references:
+    runs-on: ubuntu-latest
+    name: Check Documentation References
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Get PR body
+        if: github.event_name == 'pull_request'
+        id: pr-body
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            return pr.body || '';
+            
+      - name: Get issue body
+        if: github.event_name == 'issue_comment'
+        id: issue-body
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            return issue.body || '';
+            
+      - name: Check for documentation references
+        id: doc-check
+        run: |
+          # Get the body content
+          BODY="${{ steps.pr-body.outputs.result || steps.issue-body.outputs.result }}"
+          
+          # Check for documentation references
+          DOC_REFERENCES=0
+          
+          # Check for markdown links to documentation
+          if echo "$BODY" | grep -q "\[.*\](Docs/"; then
+            DOC_REFERENCES=$((DOC_REFERENCES + 1))
+            echo "Found documentation link reference"
+          fi
+          
+          # Check for documentation checklist items
+          if echo "$BODY" | grep -q "\[x\].*Documentation"; then
+            DOC_REFERENCES=$((DOC_REFERENCES + 1))
+            echo "Found documentation checklist item"
+          fi
+          
+          # Check for documentation sections
+          if echo "$BODY" | grep -q "## Documentation"; then
+            DOC_REFERENCES=$((DOC_REFERENCES + 1))
+            echo "Found documentation section"
+          fi
+          
+          # Check for documentation impact
+          if echo "$BODY" | grep -q "Documentation Impact\|Documentation Changes\|Documentation Updated"; then
+            DOC_REFERENCES=$((DOC_REFERENCES + 1))
+            echo "Found documentation impact section"
+          fi
+          
+          # Check for issue type
+          if echo "$BODY" | grep -q "\[BUG\]"; then
+            ISSUE_TYPE="bug"
+          elif echo "$BODY" | grep -q "\[FEATURE\]"; then
+            ISSUE_TYPE="feature"
+          else
+            ISSUE_TYPE="other"
+          fi
+          
+          echo "doc_references=$DOC_REFERENCES" >> $GITHUB_OUTPUT
+          echo "issue_type=$ISSUE_TYPE" >> $GITHUB_OUTPUT
+          
+      - name: Validate documentation requirements
+        run: |
+          DOC_REFERENCES="${{ steps.doc-check.outputs.doc_references }}"
+          ISSUE_TYPE="${{ steps.doc-check.outputs.issue_type }}"
+          
+          echo "Documentation references found: $DOC_REFERENCES"
+          echo "Issue type: $ISSUE_TYPE"
+          
+          # Bug reports require documentation references
+          if [ "$ISSUE_TYPE" = "bug" ] && [ "$DOC_REFERENCES" -eq 0 ]; then
+            echo "❌ Bug reports must include documentation references"
+            echo "Please add links to relevant documentation that describes the expected behavior"
+            exit 1
+          fi
+          
+          # Feature requests require documentation planning
+          if [ "$ISSUE_TYPE" = "feature" ] && [ "$DOC_REFERENCES" -eq 0 ]; then
+            echo "❌ Feature requests must include documentation planning"
+            echo "Please add documentation impact and planning sections"
+            exit 1
+          fi
+          
+          # PRs require documentation changes for most cases
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Check if PR body has documentation checklist
+            BODY="${{ steps.pr-body.outputs.result }}"
+            
+            if ! echo "$BODY" | grep -q "### Documentation Changes"; then
+              echo "❌ Pull requests must include documentation changes section"
+              echo "Please add documentation changes checklist to the PR description"
+              exit 1
+            fi
+            
+            # Check if at least one documentation item is checked
+            if ! echo "$BODY" | grep -q "\[x\].*Documentation"; then
+              echo "❌ Pull requests must include documentation changes"
+              echo "Please check at least one documentation item in the checklist"
+              exit 1
+            fi
+          fi
+          
+          echo "✅ Documentation requirements validated"
+          
+      - name: Request documentation review
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            // Check if documentation team is already requested
+            const requestedReviewers = pr.requested_reviewers || [];
+            const hasDocReviewer = requestedReviewers.some(reviewer => 
+              reviewer.login === 'clms-documentation-team'
+            );
+            
+            if (!hasDocReviewer) {
+              // Request documentation team review
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.issue.number,
+                  reviewers: ['clms-documentation-team']
+                });
+                console.log('Requested documentation team review');
+              } catch (error) {
+                console.log('Could not request documentation team review:', error.message);
+              }
+            }
+            
+      - name: Add documentation reminder comment
+        if: github.event_name == 'pull_request' && steps.doc-check.outputs.doc_references == '0'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const comment = `
+            ## 📚 Documentation Reminder
+            
+            This pull request appears to be missing documentation references. Please ensure:
+            
+            - [ ] Documentation has been updated for any user-facing changes
+            - [ ] API documentation has been updated for any API changes
+            - [ ] Configuration documentation has been updated for any config changes
+            - [ ] Security documentation has been updated for any security changes
+            - [ ] Performance documentation has been updated for any performance changes
+            
+            **Documentation Resources:**
+            - [User Guide](Docs/USER_GUIDE.md)
+            - [API Documentation](Docs/API_DOCUMENTATION.md)
+            - [Deployment Guide](Docs/DEPLOYMENT_COMPREHENSIVE_GUIDE.md)
+            - [Security Guide](Docs/SECURITY_COMPREHENSIVE_GUIDE.md)
+            - [Performance Guide](Docs/PERFORMANCE_COMPREHENSIVE_GUIDE.md)
+            
+            If you need help with documentation, please tag the @clms-documentation-team.
+            `;
+            
+            // Add comment if it doesn't exist already
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            const hasDocComment = comments.some(comment => 
+              comment.body.includes('📚 Documentation Reminder')
+            );
+            
+            if (!hasDocComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
+            
+      - name: Check issue for documentation requirements
+        if: github.event_name == 'issue_comment'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            
+            // Check if issue is a bug report or feature request
+            const isBug = issue.title.includes('[BUG]') || issue.labels.some(label => label.name === 'bug');
+            const isFeature = issue.title.includes('[FEATURE]') || issue.labels.some(label => label.name === 'enhancement');
+            
+            if (isBug || isFeature) {
+              const body = issue.body || '';
+              const hasDocReferences = body.includes('Documentation Reference') || 
+                                       body.includes('Documentation Impact') ||
+                                       body.includes('Documentation Plan');
+              
+              if (!hasDocReferences) {
+                const comment = `
+                ## 📋 Documentation Requirements
+                
+                This ${isBug ? 'bug report' : 'feature request'} appears to be missing documentation requirements. Please ensure:
+                
+                ${isBug ? `
+                - [ ] Reference the documentation that describes expected behavior
+                - [ ] Check if documentation is incorrect or outdated
+                - [ ] Note if documentation is missing for this feature
+                ` : `
+                - [ ] Outline the documentation impact of this feature
+                - [ ] Plan what documentation needs to be created or updated
+                - [ ] Consider user guide, API docs, and deployment guide updates
+                `}
+                
+                **Documentation Resources:**
+                - [Documentation Hub](Docs/README.md)
+                - [User Guide](Docs/USER_GUIDE.md)
+                - [API Documentation](Docs/API_DOCUMENTATION.md)
+                
+                Please update the issue description to include the appropriate documentation sections.
+                `;
+                
+                // Add comment if it doesn't exist already
+                const { data: comments } = await github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number
+                });
+                
+                const hasDocComment = comments.some(comment => 
+                  comment.body.includes('📋 Documentation Requirements')
+                );
+                
+                if (!hasDocComment) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    body: comment
+                  });
+                }
+              }
+            }
+
+  validate-code-comments:
+    runs-on: ubuntu-latest
+    name: Validate Code Comments
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v40
+        with:
+          files: |
+            Backend/src/**
+            Frontend/src/**
+            
+      - name: Check for documentation comments
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "🔍 Checking for documentation comments in changed files..."
+          
+          # Create array of changed files
+          files=(${{ steps.changed-files.outputs.all_changed_files }})
+          
+          missing_docs=0
+          
+          # Check each changed file for documentation comments
+          for file in "${files[@]}"; do
+            if [[ "$file" == *.ts || "$file" == *.tsx || "$file" == *.js || "$file" == *.jsx ]]; then
+              echo "Checking $file for documentation comments..."
+              
+              # Check for JSDoc comments on functions/classes
+              if grep -q "function\|class\|interface\|export" "$file"; then
+                if ! grep -q "/\*\*" "$file"; then
+                  echo "⚠️  $file may be missing JSDoc comments"
+                  missing_docs=$((missing_docs + 1))
+                fi
+              fi
+              
+              # Check for TODO/FIXME comments with documentation references
+              if grep -q "TODO\|FIXME" "$file"; then
+                if ! grep -q "TODO.*documentation\|FIXME.*documentation\|TODO.*docs\|FIXME.*docs" "$file"; then
+                  echo "⚠️  $file has TODO/FIXME comments without documentation references"
+                  missing_docs=$((missing_docs + 1))
+                fi
+              fi
+            fi
+          done
+          
+          if [ $missing_docs -gt 0 ]; then
+            echo "⚠️  Found $missing_docs files with potential documentation issues"
+            echo "Please review and add appropriate documentation comments"
+          else
+            echo "✅ All changed files have appropriate documentation comments"
+          fi
+          
+      - name: Create documentation comment report
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "📊 Creating documentation comment report..."
+          
+          # Create array of changed files
+          files=(${{ steps.changed-files.outputs.all_changed_files }})
+          
+          cat > documentation-comment-report.md << EOF
+          # Documentation Comment Report
+          
+          **Generated**: $(date -u +"%Y-%m-%dT%H:%M:%SZ")  
+          **Commit**: ${{ github.sha }}  
+          **Branch**: ${{ github.ref_name }}  
+          **Actor**: ${{ github.actor }}  
+          
+          ## Files Checked
+          
+          ${{ steps.changed-files.outputs.all_changed_files_count }}
+          
+          ## Documentation Comment Guidelines
+          
+          - **Functions/Classes**: Should have JSDoc comments
+          - **Complex Logic**: Should have inline comments
+          - **TODO/FIXME**: Should reference documentation
+          - **API Changes**: Should update API documentation
+          - **UI Changes**: Should update user guide
+          
+          ## Best Practices
+          
+          - Use JSDoc format for function documentation
+          - Include parameter and return type information
+          - Add usage examples for complex functions
+          - Reference related documentation in comments
+          - Keep comments up-to-date with code changes
+          
+          ---
+          
+          *This report was automatically generated by GitHub Actions*
+          EOF
+          
+          echo "✅ Documentation comment report generated"
+          
+      - name: Upload documentation comment report
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: actions/upload-artifact@v3
+        with:
+          name: documentation-comment-report
+          path: documentation-comment-report.md
+          retention-days: 30

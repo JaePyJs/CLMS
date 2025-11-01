@@ -73,7 +73,6 @@ const Image: ComponentType<ImageProps> = forwardRef<HTMLDivElement, ImageProps>(
   breakpoints,
   trackPerformance = true,
   fallbackSrc,
-  retryCount = 0,
   maxRetries = 3,
 }, ref) => {
   const [imageState, setImageState] = useState({
@@ -97,10 +96,10 @@ const Image: ComponentType<ImageProps> = forwardRef<HTMLDivElement, ImageProps>(
     }
 
     return imageOptimizationService.generateOptimizedUrl(src, {
-      width,
-      height,
       quality,
       format: format || imageOptimizationService.getOptimalFormat(),
+      ...(width !== undefined ? { width } : {}),
+      ...(height !== undefined ? { height } : {}),
     });
   }, [src, useCase, size, width, height, quality, format]);
 
@@ -302,8 +301,8 @@ const Image: ComponentType<ImageProps> = forwardRef<HTMLDivElement, ImageProps>(
         ref={imageRef}
         src={imageState.currentSrc}
         alt={alt}
-        width={width}
-        height={height}
+        {...(width !== undefined ? { width } : {})}
+        {...(height !== undefined ? { height } : {})}
         priority={priority}
         quality={quality}
         format={format}

@@ -59,11 +59,12 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
     if (!videoRef.current) return;
 
     try {
-      const constraints = {
+      const constraints: MediaStreamConstraints = {
         video: {
           facingMode: isMobile ? 'environment' : 'user',
           width: { ideal: 1280 },
           height: { ideal: 720 },
+          // @ts-ignore - torch is not in standard MediaTrackConstraints but supported by browsers
           torch: flashlightEnabled,
         },
       };
@@ -100,10 +101,13 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
 
     try {
       const track = streamRef.current.getVideoTracks()[0];
+      if (!track) return;
+      
       const capabilities = track.getCapabilities() as any;
 
       if (capabilities.torch) {
         await track.applyConstraints({
+          // @ts-ignore - torch is not in standard MediaTrackConstraints but supported by browsers
           advanced: [{ torch: !flashlightEnabled }],
         });
         setFlashlightEnabled(!flashlightEnabled);

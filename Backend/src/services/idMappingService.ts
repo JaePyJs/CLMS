@@ -1,15 +1,13 @@
-import { 
-  IDMappingManager, 
-  EntityType, 
-  MappingDirection, 
+import {
+  IDMappingManager,
+  EntityType,
   IDMappingConfig,
   getIDMappingManager,
   BulkMappingResult,
   MappingStats,
-  ValidationResult
+  ValidationResult,
 } from '../utils/idMappingSystem';
-import { logger } from '../utils/logger';
-import { performanceLogger } from '../utils/logger';
+import { logger, performanceLogger } from '../utils/logger';
 
 /**
  * Service wrapper for ID mapping system with additional business logic
@@ -38,7 +36,7 @@ export class IDMappingService {
       logger.info('IDMappingService initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize IDMappingService', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -47,45 +45,90 @@ export class IDMappingService {
   /**
    * Create or update a student ID mapping
    */
-  async createStudentMapping(studentId: string, internalId: string, metadata?: Record<string, any>): Promise<void> {
+  async createStudentMapping(
+    studentId: string,
+    internalId: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
     this.ensureInitialized();
-    await this.manager!.createMapping(EntityType.STUDENT, studentId, internalId, metadata);
+    await this.manager!.createMapping(
+      EntityType.STUDENT,
+      studentId,
+      internalId,
+      metadata,
+    );
     logger.info('Student mapping created', { studentId, internalId });
   }
 
   /**
    * Create or update a book ID mapping
    */
-  async createBookMapping(accessionNo: string, internalId: string, metadata?: Record<string, any>): Promise<void> {
+  async createBookMapping(
+    accessionNo: string,
+    internalId: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
     this.ensureInitialized();
-    await this.manager!.createMapping(EntityType.BOOK, accessionNo, internalId, metadata);
+    await this.manager!.createMapping(
+      EntityType.BOOK,
+      accessionNo,
+      internalId,
+      metadata,
+    );
     logger.info('Book mapping created', { accessionNo, internalId });
   }
 
   /**
    * Create or update an equipment ID mapping
    */
-  async createEquipmentMapping(equipmentId: string, internalId: string, metadata?: Record<string, any>): Promise<void> {
+  async createEquipmentMapping(
+    equipmentId: string,
+    internalId: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
     this.ensureInitialized();
-    await this.manager!.createMapping(EntityType.EQUIPMENT, equipmentId, internalId, metadata);
+    await this.manager!.createMapping(
+      EntityType.EQUIPMENT,
+      equipmentId,
+      internalId,
+      metadata,
+    );
     logger.info('Equipment mapping created', { equipmentId, internalId });
   }
 
   /**
    * Create or update a user ID mapping
    */
-  async createUserMapping(username: string, internalId: string, metadata?: Record<string, any>): Promise<void> {
+  async createUserMapping(
+    username: string,
+    internalId: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
     this.ensureInitialized();
-    await this.manager!.createMapping(EntityType.USER, username, internalId, metadata);
+    await this.manager!.createMapping(
+      EntityType.USER,
+      username,
+      internalId,
+      metadata,
+    );
     logger.info('User mapping created', { username, internalId });
   }
 
   /**
    * Create or update a checkout ID mapping
    */
-  async createCheckoutMapping(checkoutId: string, internalId: string, metadata?: Record<string, any>): Promise<void> {
+  async createCheckoutMapping(
+    checkoutId: string,
+    internalId: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
     this.ensureInitialized();
-    await this.manager!.createMapping(EntityType.CHECKOUT, checkoutId, internalId, metadata);
+    await this.manager!.createMapping(
+      EntityType.CHECKOUT,
+      checkoutId,
+      internalId,
+      metadata,
+    );
     logger.info('Checkout mapping created', { checkoutId, internalId });
   }
 
@@ -173,37 +216,50 @@ export class IDMappingService {
    * Bulk create student mappings (for import scenarios)
    */
   async bulkCreateStudentMappings(
-    mappings: Array<{ studentId: string; internalId: string; metadata?: Record<string, any> }>
+    mappings: Array<{
+      studentId: string;
+      internalId: string;
+      metadata?: Record<string, unknown>;
+    }>,
   ): Promise<BulkMappingResult> {
     this.ensureInitialized();
-    const startTime = performanceLogger.start('bulk_create_student_mappings', { count: mappings.length });
+    const startTime = performanceLogger.start('bulk_create_student_mappings', {
+      count: mappings.length,
+    });
 
     try {
-      const formattedMappings = mappings.map(m => ({
-        externalId: m.studentId,
-        internalId: m.internalId,
-        metadata: m.metadata
-      }));
+      const formattedMappings = mappings.map(
+        ({ studentId, internalId, metadata }) => ({
+          externalId: studentId,
+          internalId,
+          ...(metadata !== undefined ? { metadata } : {}),
+        }),
+      );
 
-      const result = await this.manager!.bulkCreateMappings(EntityType.STUDENT, formattedMappings);
-      
-      performanceLogger.end('bulk_create_student_mappings', startTime, { 
-        success: result.success, 
-        failed: result.failed 
+      const result = await this.manager!.bulkCreateMappings(
+        EntityType.STUDENT,
+        formattedMappings,
+      );
+
+      performanceLogger.end('bulk_create_student_mappings', startTime, {
+        success: result.success,
+        failed: result.failed,
       });
 
       logger.info('Bulk student mappings created', {
         total: mappings.length,
         success: result.success,
-        failed: result.failed
+        failed: result.failed,
       });
 
       return result;
     } catch (error) {
-      performanceLogger.end('bulk_create_student_mappings', startTime, { success: false });
+      performanceLogger.end('bulk_create_student_mappings', startTime, {
+        success: false,
+      });
       logger.error('Failed to bulk create student mappings', {
         count: mappings.length,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -213,37 +269,50 @@ export class IDMappingService {
    * Bulk create book mappings (for import scenarios)
    */
   async bulkCreateBookMappings(
-    mappings: Array<{ accessionNo: string; internalId: string; metadata?: Record<string, any> }>
+    mappings: Array<{
+      accessionNo: string;
+      internalId: string;
+      metadata?: Record<string, unknown>;
+    }>,
   ): Promise<BulkMappingResult> {
     this.ensureInitialized();
-    const startTime = performanceLogger.start('bulk_create_book_mappings', { count: mappings.length });
+    const startTime = performanceLogger.start('bulk_create_book_mappings', {
+      count: mappings.length,
+    });
 
     try {
-      const formattedMappings = mappings.map(m => ({
-        externalId: m.accessionNo,
-        internalId: m.internalId,
-        metadata: m.metadata
-      }));
+      const formattedMappings = mappings.map(
+        ({ accessionNo, internalId, metadata }) => ({
+          externalId: accessionNo,
+          internalId,
+          ...(metadata !== undefined ? { metadata } : {}),
+        }),
+      );
 
-      const result = await this.manager!.bulkCreateMappings(EntityType.BOOK, formattedMappings);
-      
-      performanceLogger.end('bulk_create_book_mappings', startTime, { 
-        success: result.success, 
-        failed: result.failed 
+      const result = await this.manager!.bulkCreateMappings(
+        EntityType.BOOK,
+        formattedMappings,
+      );
+
+      performanceLogger.end('bulk_create_book_mappings', startTime, {
+        success: result.success,
+        failed: result.failed,
       });
 
       logger.info('Bulk book mappings created', {
         total: mappings.length,
         success: result.success,
-        failed: result.failed
+        failed: result.failed,
       });
 
       return result;
     } catch (error) {
-      performanceLogger.end('bulk_create_book_mappings', startTime, { success: false });
+      performanceLogger.end('bulk_create_book_mappings', startTime, {
+        success: false,
+      });
       logger.error('Failed to bulk create book mappings', {
         count: mappings.length,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -253,37 +322,51 @@ export class IDMappingService {
    * Bulk create equipment mappings (for import scenarios)
    */
   async bulkCreateEquipmentMappings(
-    mappings: Array<{ equipmentId: string; internalId: string; metadata?: Record<string, any> }>
+    mappings: Array<{
+      equipmentId: string;
+      internalId: string;
+      metadata?: Record<string, unknown>;
+    }>,
   ): Promise<BulkMappingResult> {
     this.ensureInitialized();
-    const startTime = performanceLogger.start('bulk_create_equipment_mappings', { count: mappings.length });
+    const startTime = performanceLogger.start(
+      'bulk_create_equipment_mappings',
+      { count: mappings.length },
+    );
 
     try {
-      const formattedMappings = mappings.map(m => ({
-        externalId: m.equipmentId,
-        internalId: m.internalId,
-        metadata: m.metadata
-      }));
+      const formattedMappings = mappings.map(
+        ({ equipmentId, internalId, metadata }) => ({
+          externalId: equipmentId,
+          internalId,
+          ...(metadata !== undefined ? { metadata } : {}),
+        }),
+      );
 
-      const result = await this.manager!.bulkCreateMappings(EntityType.EQUIPMENT, formattedMappings);
-      
-      performanceLogger.end('bulk_create_equipment_mappings', startTime, { 
-        success: result.success, 
-        failed: result.failed 
+      const result = await this.manager!.bulkCreateMappings(
+        EntityType.EQUIPMENT,
+        formattedMappings,
+      );
+
+      performanceLogger.end('bulk_create_equipment_mappings', startTime, {
+        success: result.success,
+        failed: result.failed,
       });
 
       logger.info('Bulk equipment mappings created', {
         total: mappings.length,
         success: result.success,
-        failed: result.failed
+        failed: result.failed,
       });
 
       return result;
     } catch (error) {
-      performanceLogger.end('bulk_create_equipment_mappings', startTime, { success: false });
+      performanceLogger.end('bulk_create_equipment_mappings', startTime, {
+        success: false,
+      });
       logger.error('Failed to bulk create equipment mappings', {
         count: mappings.length,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -297,23 +380,31 @@ export class IDMappingService {
     const startTime = performanceLogger.start('get_all_mapping_stats');
 
     try {
-      const statsPromises = Object.values(EntityType).map(entityType => 
-        this.manager!.getMappingStats(entityType)
+      const statsPromises = Object.values(EntityType).map(entityType =>
+        this.manager!.getMappingStats(entityType),
       );
 
       const statsResults = await Promise.all(statsPromises);
-      const statsMap: Record<EntityType, MappingStats> = {} as Record<EntityType, MappingStats>;
+      const statsMap: Record<EntityType, MappingStats> = {} as Record<
+        EntityType,
+        MappingStats
+      >;
 
       Object.values(EntityType).forEach((entityType, index) => {
-        statsMap[entityType] = statsResults[index];
+        const stats = statsResults[index];
+        if (stats) {
+          statsMap[entityType] = stats;
+        }
       });
 
       performanceLogger.end('get_all_mapping_stats', startTime);
       return statsMap;
     } catch (error) {
-      performanceLogger.end('get_all_mapping_stats', startTime, { success: false });
+      performanceLogger.end('get_all_mapping_stats', startTime, {
+        success: false,
+      });
       logger.error('Failed to get all mapping stats', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -327,23 +418,31 @@ export class IDMappingService {
     const startTime = performanceLogger.start('validate_all_mappings');
 
     try {
-      const validationPromises = Object.values(EntityType).map(entityType => 
-        this.manager!.validateMappings(entityType)
+      const validationPromises = Object.values(EntityType).map(entityType =>
+        this.manager!.validateMappings(entityType),
       );
 
       const validationResults = await Promise.all(validationPromises);
-      const validationMap: Record<EntityType, ValidationResult> = {} as Record<EntityType, ValidationResult>;
+      const validationMap: Record<EntityType, ValidationResult> = {} as Record<
+        EntityType,
+        ValidationResult
+      >;
 
       Object.values(EntityType).forEach((entityType, index) => {
-        validationMap[entityType] = validationResults[index];
+        const validation = validationResults[index];
+        if (validation) {
+          validationMap[entityType] = validation;
+        }
       });
 
       performanceLogger.end('validate_all_mappings', startTime);
       return validationMap;
     } catch (error) {
-      performanceLogger.end('validate_all_mappings', startTime, { success: false });
+      performanceLogger.end('validate_all_mappings', startTime, {
+        success: false,
+      });
       logger.error('Failed to validate all mappings', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -352,31 +451,41 @@ export class IDMappingService {
   /**
    * Clean up stale mappings for all entity types
    */
-  async cleanupAllStaleMappings(olderThan: Date): Promise<Record<EntityType, number>> {
+  async cleanupAllStaleMappings(
+    olderThan: Date,
+  ): Promise<Record<EntityType, number>> {
     this.ensureInitialized();
-    const startTime = performanceLogger.start('cleanup_all_stale_mappings', { 
-      olderThan: olderThan.toISOString() 
+    const startTime = performanceLogger.start('cleanup_all_stale_mappings', {
+      olderThan: olderThan.toISOString(),
     });
 
     try {
-      const cleanupPromises = Object.values(EntityType).map(entityType => 
-        this.manager!.cleanupStaleMappings(entityType, olderThan)
+      const cleanupPromises = Object.values(EntityType).map(entityType =>
+        this.manager!.cleanupStaleMappings(entityType, olderThan),
       );
 
       const cleanupResults = await Promise.all(cleanupPromises);
-      const cleanupMap: Record<EntityType, number> = {} as Record<EntityType, number>;
+      const cleanupMap: Record<EntityType, number> = {} as Record<
+        EntityType,
+        number
+      >;
 
       Object.values(EntityType).forEach((entityType, index) => {
-        cleanupMap[entityType] = cleanupResults[index];
+        const cleaned = cleanupResults[index];
+        if (typeof cleaned === 'number') {
+          cleanupMap[entityType] = cleaned;
+        }
       });
 
       performanceLogger.end('cleanup_all_stale_mappings', startTime);
       return cleanupMap;
     } catch (error) {
-      performanceLogger.end('cleanup_all_stale_mappings', startTime, { success: false });
+      performanceLogger.end('cleanup_all_stale_mappings', startTime, {
+        success: false,
+      });
       logger.error('Failed to cleanup all stale mappings', {
         olderThan: olderThan.toISOString(),
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       throw error;
     }
@@ -396,26 +505,29 @@ export class IDMappingService {
         return {
           isInitialized: false,
           entityTypes: [],
-          totalMappings: 0
+          totalMappings: 0,
         };
       }
 
       const stats = await this.getAllMappingStats();
-      const totalMappings = Object.values(stats).reduce((sum, stat) => sum + stat.totalMappings, 0);
+      const totalMappings = Object.values(stats).reduce(
+        (sum, stat) => sum + stat.totalMappings,
+        0,
+      );
 
       return {
         isInitialized: true,
         entityTypes: Object.values(EntityType),
-        totalMappings
+        totalMappings,
       };
     } catch (error) {
       logger.error('Failed to get health status', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       return {
         isInitialized: false,
         entityTypes: [],
-        totalMappings: 0
+        totalMappings: 0,
       };
     }
   }
@@ -425,7 +537,9 @@ export class IDMappingService {
    */
   private ensureInitialized(): void {
     if (!this.initialized || !this.manager) {
-      throw new Error('IDMappingService is not initialized. Call initialize() first.');
+      throw new Error(
+        'IDMappingService is not initialized. Call initialize() first.',
+      );
     }
   }
 
@@ -448,7 +562,9 @@ let idMappingService: IDMappingService | null = null;
 /**
  * Get or create the ID mapping service singleton
  */
-export const getIDMappingService = async (config?: IDMappingConfig): Promise<IDMappingService> => {
+export const getIDMappingService = async (
+  config?: IDMappingConfig,
+): Promise<IDMappingService> => {
   if (!idMappingService) {
     idMappingService = new IDMappingService(config);
   }

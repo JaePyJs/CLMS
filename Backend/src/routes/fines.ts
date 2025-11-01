@@ -156,7 +156,8 @@ router.post('/:id/payment', async (req: Request, res: Response) => {
         error: 'Invalid payment amount',
         timestamp: new Date().toISOString()
       }
-      return res.status(400).json(response)
+      res.status(400).json(response)
+      return;
     }
 
     // Get the checkout record
@@ -174,7 +175,8 @@ router.post('/:id/payment', async (req: Request, res: Response) => {
         error: 'Fine record not found',
         timestamp: new Date().toISOString()
       }
-      return res.status(404).json(response)
+      res.status(404).json(response)
+      return;
     }
 
     if (checkout.finePaid) {
@@ -183,7 +185,8 @@ router.post('/:id/payment', async (req: Request, res: Response) => {
         error: 'Fine has already been paid',
         timestamp: new Date().toISOString()
       }
-      return res.status(400).json(response)
+      res.status(400).json(response)
+      return;
     }
 
     // Update the checkout record
@@ -198,7 +201,7 @@ router.post('/:id/payment', async (req: Request, res: Response) => {
     })
 
     // Create audit log
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         entity: 'BookCheckout',
         entityId: id as string,
@@ -246,7 +249,8 @@ router.post('/:id/waive', async (req: Request, res: Response) => {
         error: 'Reason for waiving fine is required',
         timestamp: new Date().toISOString()
       }
-      return res.status(400).json(response)
+      res.status(400).json(response)
+      return;
     }
 
     // Get the checkout record
@@ -260,7 +264,8 @@ router.post('/:id/waive', async (req: Request, res: Response) => {
         error: 'Fine record not found',
         timestamp: new Date().toISOString()
       }
-      return res.status(404).json(response)
+      res.status(404).json(response)
+      return;
     }
 
     if (checkout.finePaid) {
@@ -269,7 +274,8 @@ router.post('/:id/waive', async (req: Request, res: Response) => {
         error: 'Cannot waive a fine that has already been paid',
         timestamp: new Date().toISOString()
       }
-      return res.status(400).json(response)
+      res.status(400).json(response)
+      return;
     }
 
     const originalFine = checkout.fineAmount
@@ -285,7 +291,7 @@ router.post('/:id/waive', async (req: Request, res: Response) => {
     })
 
     // Create audit log
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         entity: 'BookCheckout',
         entityId: id as string,
@@ -336,7 +342,8 @@ router.patch('/:id/amount', async (req: Request, res: Response) => {
         error: 'Invalid amount',
         timestamp: new Date().toISOString()
       }
-      return res.status(400).json(response)
+      res.status(400).json(response)
+      return;
     }
 
     const checkout = await prisma.bookCheckout.findUnique({
@@ -349,7 +356,8 @@ router.patch('/:id/amount', async (req: Request, res: Response) => {
         error: 'Fine record not found',
         timestamp: new Date().toISOString()
       }
-      return res.status(404).json(response)
+      res.status(404).json(response)
+      return;
     }
 
     const oldAmount = checkout.fineAmount
@@ -362,7 +370,7 @@ router.patch('/:id/amount', async (req: Request, res: Response) => {
     })
 
     // Create audit log
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         entity: 'BookCheckout',
         entityId: id as string,

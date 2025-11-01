@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -25,13 +24,13 @@ import {
   Users,
   Activity,
   Filter,
-  History,
+  History as HistoryIcon,
   Star,
   X,
   Download,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
-import { exportFinesToCSV, downloadCSV } from '@/lib/export-utils';
+import { downloadCSV } from '@/lib/export-utils';
 
 interface SearchResult {
   type: 'book' | 'student' | 'activity';
@@ -96,7 +95,8 @@ export default function AdvancedSearch() {
         });
         
         if (booksResponse.success && booksResponse.data) {
-          const books = Array.isArray(booksResponse.data) ? booksResponse.data : booksResponse.data.books || [];
+          const data = booksResponse.data as any;
+          const books = Array.isArray(data) ? data : data.books || [];
           books.forEach((book: any) => {
             if (book.title?.toLowerCase().includes(query.toLowerCase()) ||
                 book.author?.toLowerCase().includes(query.toLowerCase())) {
@@ -117,7 +117,8 @@ export default function AdvancedSearch() {
         const studentsResponse = await apiClient.get('/api/students');
         
         if (studentsResponse.success && studentsResponse.data) {
-          const students = Array.isArray(studentsResponse.data) ? studentsResponse.data : studentsResponse.data.students || [];
+          const data = studentsResponse.data as any;
+          const students = Array.isArray(data) ? data : data.students || [];
           students.forEach((student: any) => {
             const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
             if (fullName.includes(query.toLowerCase()) ||
@@ -141,7 +142,8 @@ export default function AdvancedSearch() {
         });
         
         if (activitiesResponse.success && activitiesResponse.data) {
-          const activities = Array.isArray(activitiesResponse.data) ? activitiesResponse.data : activitiesResponse.data.activities || [];
+          const data = activitiesResponse.data as any;
+          const activities = Array.isArray(data) ? data : data.activities || [];
           activities.forEach((activity: any) => {
             if (activity.studentName?.toLowerCase().includes(query.toLowerCase())) {
               searchResults.push({
@@ -349,7 +351,7 @@ export default function AdvancedSearch() {
             Results ({results.length})
           </TabsTrigger>
           <TabsTrigger value="history">
-            <History className="w-4 h-4 mr-2" />
+            <HistoryIcon className="w-4 h-4 mr-2" />
             History
           </TabsTrigger>
           <TabsTrigger value="saved">
@@ -426,7 +428,7 @@ export default function AdvancedSearch() {
                       }}
                     >
                       <span className="text-sm">{term}</span>
-                      <History className="w-4 h-4 text-muted-foreground" />
+                      <HistoryIcon className="w-4 h-4 text-muted-foreground" />
                     </div>
                   ))}
                 </div>

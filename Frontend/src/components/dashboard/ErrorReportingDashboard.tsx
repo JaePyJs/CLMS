@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -24,7 +24,20 @@ import {
 } from 'recharts';
 import { AlertTriangle, TrendingUp, TrendingDown, Minus, Activity, Bug, CheckCircle, XCircle, AlertCircle, RefreshCw, Download, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import api from '@/services/api';
+
+// Add ErrorCategory enum definition
+enum ErrorCategory {
+  AUTHENTICATION = 'AUTHENTICATION',
+  AUTHORIZATION = 'AUTHORIZATION',
+  VALIDATION = 'VALIDATION',
+  DATABASE = 'DATABASE',
+  NETWORK = 'NETWORK',
+  EXTERNAL_SERVICE = 'EXTERNAL_SERVICE',
+  BUSINESS_LOGIC = 'BUSINESS_LOGIC',
+  SYSTEM = 'SYSTEM',
+  PERFORMANCE = 'PERFORMANCE',
+}
 
 interface ErrorReport {
   id: string;
@@ -119,7 +132,7 @@ export const ErrorReportingDashboard: React.FC = () => {
     queryKey: ['error-dashboard', timeframe],
     queryFn: async () => {
       const response = await api.get(`/api/errors/dashboard?timeframe=${timeframe}`);
-      return response.data;
+      return response.data as ErrorDashboard;
     },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
@@ -133,7 +146,7 @@ export const ErrorReportingDashboard: React.FC = () => {
       if (!showResolved) params.append('resolved', 'false');
 
       const response = await api.get(`/api/errors/reports?${params}`);
-      return response.data;
+      return response.data as ErrorReport[];
     },
   });
 
@@ -165,7 +178,7 @@ export const ErrorReportingDashboard: React.FC = () => {
       if (filterSeverity !== 'all') params.append('severity', filterSeverity ?? '');
 
       const response = await api.get(`/api/errors/reports/export?${params}`);
-      const blob = new Blob([response.data], {
+      const blob = new Blob([response.data as string], {
         type: format === 'json' ? 'application/json' : 'text/csv',
       });
       const url = URL.createObjectURL(blob);

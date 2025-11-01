@@ -173,11 +173,10 @@ export class AdvancedCachingService extends EventEmitter {
       // If not in memory or expired, try to get from distributed cache
       if (entry && this.isExpired(entry)) {
         this.memoryCache.delete(key);
-        entry = undefined;
       }
 
-      if (!entry) {
-        let value: string | null = null;
+      if (!entry || this.isExpired(entry!)) {
+        let value: string | null | undefined = undefined;
 
         try {
           value = await this.cacheManager.get(key);

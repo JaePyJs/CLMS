@@ -3,10 +3,15 @@ import { logger } from '@/utils/logger';
 import { Redis } from 'ioredis';
 import { USBScannerService, ScanData } from './usbScannerService';
 import { scanBarcode, scanStudentBarcode, ScanResult } from './scanService';
-import { WebSocketServer } from '@/websocket/websocketServer';
+import websocketServer from '@/websocket/websocketServer';
 
 // Scan event types
-export type ScanEventType = 'scan_start' | 'scan_success' | 'scan_error' | 'scan_duplicate' | 'scan_invalid';
+export type ScanEventType =
+  | 'scan_start'
+  | 'scan_success'
+  | 'scan_error'
+  | 'scan_duplicate'
+  | 'scan_invalid';
 
 // Real-time scan event
 export interface RealtimeScanEvent {
@@ -19,7 +24,7 @@ export interface RealtimeScanEvent {
   processingTime: number;
   result?: ScanResult;
   error?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Scan processor configuration
@@ -34,6 +39,10 @@ export interface ScanProcessorConfig {
   batchTimeoutMs: number;
 }
 
+type WebsocketServerInstance = typeof websocketServer;
+type WebsocketMessage = Parameters<
+  WebsocketServerInstance['broadcastToRoom']
+>[1];
 // Scan statistics
 export interface ScanStatistics {
   totalScans: number;
@@ -50,7 +59,7 @@ export interface ScanStatistics {
 export class RealtimeScanProcessor extends EventEmitter {
   private redis: Redis;
   private scannerService: USBScannerService;
-  private websocketServer: WebSocketServer;
+  private websocketServer: WebsocketServerInstance;
   private config: ScanProcessorConfig;
   private processingQueue: ScanData[] = [];
   private processingTimer: NodeJS.Timeout | null = null;
@@ -60,14 +69,14 @@ export class RealtimeScanProcessor extends EventEmitter {
   constructor(
     redis: Redis,
     scannerService: USBScannerService,
-    websocketServer: WebSocketServer,
-    config: Partial<ScanProcessorConfig> = {}
+    websocketServerInstance: WebsocketServerInstance = websocketServer,
+    config: Partial<ScanProcessorConfig> = {},
   ) {
     super();
 
     this.redis = redis;
     this.scannerService = scannerService;
-    this.websocketServer = websocketServer;
+    this.websocketServer = websocketServerInstance;
 
     // Default configuration
     this.config = {
@@ -105,9 +114,18 @@ export class RealtimeScanProcessor extends EventEmitter {
 
       // Set up scanner service event listeners
       this.scannerService.on('scan', this.handleScannerScan.bind(this));
-      this.scannerService.on('scannerConnected', this.handleScannerConnected.bind(this));
-      this.scannerService.on('scannerDisconnected', this.handleScannerDisconnected.bind(this));
-      this.scannerService.on('scannerError', this.handleScannerError.bind(this));
+      this.scannerService.on(
+        'scannerConnected',
+        this.handleScannerConnected.bind(this),
+      );
+      this.scannerService.on(
+        'scannerDisconnected',
+        this.handleScannerDisconnected.bind(this),
+      );
+      this.scannerService.on(
+        'scannerError',
+        this.handleScannerError.bind(this),
+      );
 
       // Start batch processing timer
       this.startBatchProcessing();
@@ -124,15 +142,14 @@ export class RealtimeScanProcessor extends EventEmitter {
   // Handle incoming scan from scanner service
   private async handleScannerScan(scanData: ScanData) {
     try {
-      const startTime = Date.now();
-
       // Add to processing queue
       this.processingQueue.push(scanData);
 
       // Update statistics
       this.statistics.totalScans++;
       this.statistics.lastScanTime = new Date();
-      const deviceCount = this.statistics.scansByDevice.get(scanData.deviceId) || 0;
+      const deviceCount =
+        this.statistics.scansByDevice.get(scanData.deviceId) || 0;
       this.statistics.scansByDevice.set(scanData.deviceId, deviceCount + 1);
 
       // Emit scan start event
@@ -147,7 +164,10 @@ export class RealtimeScanProcessor extends EventEmitter {
       });
 
       // Process immediately if batch size reached or if batch processing is disabled
-      if (this.config.batchSize <= 1 || this.processingQueue.length >= this.config.batchSize) {
+      if (
+        this.config.batchSize <= 1 ||
+        this.processingQueue.length >= this.config.batchSize
+      ) {
         this.processBatch();
       }
 
@@ -156,7 +176,6 @@ export class RealtimeScanProcessor extends EventEmitter {
         data: scanData.data,
         queueSize: this.processingQueue.length,
       });
-
     } catch (error) {
       logger.error('Error handling scanner scan', {
         error: (error as Error).message,
@@ -182,6 +201,7 @@ export class RealtimeScanProcessor extends EventEmitter {
   private async processSingleScan(scanData: ScanData): Promise<void> {
     const startTime = Date.now();
     const deviceId = scanData.deviceId;
+    const eventId = this.generateEventId();
 
     try {
       // Check if already processing for this device
@@ -192,9 +212,6 @@ export class RealtimeScanProcessor extends EventEmitter {
       }
 
       this.activeProcessing.set(deviceId, true);
-
-      // Create scan event
-      const eventId = this.generateEventId();
 
       // Check for duplicates if enabled
       if (this.config.enableDuplicatePrevention) {
@@ -213,16 +230,19 @@ export class RealtimeScanProcessor extends EventEmitter {
       } else {
         await this.handleInvalidScan(scanData, eventId, startTime);
       }
-
     } catch (error) {
-      await this.handleScanError(scanData, error as Error, eventId, startTime);
+      const handledError =
+        error instanceof Error ? error : new Error(String(error));
+      await this.handleScanError(scanData, handledError, eventId, startTime);
     } finally {
       this.activeProcessing.set(deviceId, false);
     }
   }
 
   // Process scan data using existing scan service
-  private async processScanData(scanData: ScanData): Promise<ScanResult | null> {
+  private async processScanData(
+    scanData: ScanData,
+  ): Promise<ScanResult | null> {
     try {
       let result: ScanResult;
 
@@ -252,7 +272,7 @@ export class RealtimeScanProcessor extends EventEmitter {
     scanData: ScanData,
     result: ScanResult,
     eventId: string,
-    startTime: number
+    startTime: number,
   ) {
     const processingTime = Date.now() - startTime;
 
@@ -306,7 +326,7 @@ export class RealtimeScanProcessor extends EventEmitter {
   private async handleDuplicateScan(
     scanData: ScanData,
     eventId: string,
-    startTime: number
+    startTime: number,
   ) {
     const processingTime = Date.now() - startTime;
 
@@ -350,7 +370,7 @@ export class RealtimeScanProcessor extends EventEmitter {
   private async handleInvalidScan(
     scanData: ScanData,
     eventId: string,
-    startTime: number
+    startTime: number,
   ) {
     const processingTime = Date.now() - startTime;
 
@@ -396,7 +416,7 @@ export class RealtimeScanProcessor extends EventEmitter {
     scanData: ScanData,
     error: Error,
     eventId: string,
-    startTime: number
+    startTime: number,
   ) {
     const processingTime = Date.now() - startTime;
 
@@ -443,19 +463,27 @@ export class RealtimeScanProcessor extends EventEmitter {
   private async emitScanEvent(event: RealtimeScanEvent) {
     try {
       if (this.config.enableWebSocketBroadcast) {
-        // Broadcast to all connected clients
-        this.websocketServer.broadcast('scan_event', event);
+        this.broadcastScannerMessage('scan_event', event);
       }
 
       // Emit locally
       this.emit('scanEvent', event);
-
     } catch (error) {
       logger.error('Error emitting scan event', {
         error: (error as Error).message,
         eventId: event.id,
       });
     }
+  }
+
+  private broadcastScannerMessage(eventType: string, payload: unknown) {
+    const message: WebsocketMessage = {
+      type: eventType,
+      payload,
+      timestamp: new Date(),
+    };
+
+    this.websocketServer.broadcastToRoom('scanner', message);
   }
 
   // Check for duplicate scan in Redis
@@ -465,7 +493,9 @@ export class RealtimeScanProcessor extends EventEmitter {
       const exists = await this.redis.exists(key);
       return exists === 1;
     } catch (error) {
-      logger.error('Error checking duplicate in Redis', { error: (error as Error).message });
+      logger.error('Error checking duplicate in Redis', {
+        error: (error as Error).message,
+      });
       return false;
     }
   }
@@ -474,9 +504,15 @@ export class RealtimeScanProcessor extends EventEmitter {
   private async storeScanInRedis(data: string) {
     try {
       const key = `scan:dup:${this.hashScanData(data)}`;
-      await this.redis.setex(key, Math.ceil(this.config.duplicateWindowMs / 1000), '1');
+      await this.redis.setex(
+        key,
+        Math.ceil(this.config.duplicateWindowMs / 1000),
+        '1',
+      );
     } catch (error) {
-      logger.error('Error storing scan in Redis', { error: (error as Error).message });
+      logger.error('Error storing scan in Redis', {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -485,7 +521,7 @@ export class RealtimeScanProcessor extends EventEmitter {
     let hash = 0;
     for (let i = 0; i < data.length; i++) {
       const char = data.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return Math.abs(hash).toString();
@@ -495,7 +531,8 @@ export class RealtimeScanProcessor extends EventEmitter {
   private updateAverageProcessingTime(processingTime: number) {
     const total = this.statistics.totalScans;
     const current = this.statistics.averageProcessingTime;
-    this.statistics.averageProcessingTime = ((current * (total - 1)) + processingTime) / total;
+    this.statistics.averageProcessingTime =
+      (current * (total - 1) + processingTime) / total;
   }
 
   // Generate unique event ID
@@ -517,12 +554,12 @@ export class RealtimeScanProcessor extends EventEmitter {
   }
 
   // Handle scanner connection events
-  private handleScannerConnected(data: { deviceId: string; status: any }) {
+  private handleScannerConnected(data: { deviceId: string; status: unknown }) {
     logger.info('Scanner connected', { deviceId: data.deviceId });
     this.emit('scannerConnected', data);
 
     if (this.config.enableWebSocketBroadcast) {
-      this.websocketServer.broadcast('scanner_connected', data);
+      this.broadcastScannerMessage('scanner_connected', data);
     }
   }
 
@@ -532,17 +569,20 @@ export class RealtimeScanProcessor extends EventEmitter {
     this.emit('scannerDisconnected', data);
 
     if (this.config.enableWebSocketBroadcast) {
-      this.websocketServer.broadcast('scanner_disconnected', data);
+      this.broadcastScannerMessage('scanner_disconnected', data);
     }
   }
 
   // Handle scanner error events
   private handleScannerError(data: { deviceId: string; error: string }) {
-    logger.error('Scanner error', { deviceId: data.deviceId, error: data.error });
+    logger.error('Scanner error', {
+      deviceId: data.deviceId,
+      error: data.error,
+    });
     this.emit('scannerError', data);
 
     if (this.config.enableWebSocketBroadcast) {
-      this.websocketServer.broadcast('scanner_error', data);
+      this.broadcastScannerMessage('scanner_error', data);
     }
   }
 
@@ -552,7 +592,9 @@ export class RealtimeScanProcessor extends EventEmitter {
       // System beep for success
       process.stdout.write('\x07');
     } catch (error) {
-      logger.debug('Failed to play success sound', { error: (error as Error).message });
+      logger.debug('Failed to play success sound', {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -561,7 +603,9 @@ export class RealtimeScanProcessor extends EventEmitter {
       // Different beep pattern for warning
       process.stdout.write('\x07\x07');
     } catch (error) {
-      logger.debug('Failed to play warning sound', { error: (error as Error).message });
+      logger.debug('Failed to play warning sound', {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -570,7 +614,9 @@ export class RealtimeScanProcessor extends EventEmitter {
       // Longer beep pattern for error
       process.stdout.write('\x07\x07\x07');
     } catch (error) {
-      logger.debug('Failed to play error sound', { error: (error as Error).message });
+      logger.debug('Failed to play error sound', {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -616,63 +662,51 @@ export class RealtimeScanProcessor extends EventEmitter {
   }
 
   // Process manual scan (for testing or manual input)
-  async processManualScan(data: string, deviceId: string = 'manual'): Promise<ScanResult> {
-    try {
-      const scanData: ScanData = {
-        deviceId,
-        data,
-        timestamp: new Date(),
-        rawData: Buffer.from(data),
-        deviceInfo: {
-          path: 'manual',
-          vendorId: 0,
-          productId: 0,
-          product: 'Manual Input',
-          manufacturer: 'System',
-          interface: 0,
-          usagePage: 0,
-          usage: 0,
-        },
-      };
+  async processManualScan(
+    data: string,
+    deviceId: string = 'manual',
+  ): Promise<ScanResult> {
+    const scanData: ScanData = {
+      deviceId,
+      data,
+      timestamp: new Date(),
+      rawData: Buffer.from(data),
+      deviceInfo: {
+        path: 'manual',
+        vendorId: 0,
+        productId: 0,
+        product: 'Manual Input',
+        manufacturer: 'System',
+        interface: 0,
+        usagePage: 0,
+        usage: 0,
+      },
+    };
 
+    const eventId = this.generateEventId();
+    const startTime = Date.now();
+
+    try {
       const result = await this.processScanData(scanData);
 
       if (result) {
-        await this.handleSuccessfulScan(scanData, result, this.generateEventId(), Date.now());
-      } else {
-        await this.handleInvalidScan(scanData, this.generateEventId(), Date.now());
+        await this.handleSuccessfulScan(scanData, result, eventId, startTime);
+        return result;
       }
 
-      return result || {
+      await this.handleInvalidScan(scanData, eventId, startTime);
+
+      return {
         type: 'unknown',
         data: null,
         message: 'Invalid scan data',
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
-      await this.handleScanError(
-        {
-          deviceId,
-          data,
-          timestamp: new Date(),
-          rawData: Buffer.from(data),
-          deviceInfo: {
-            path: 'manual',
-            vendorId: 0,
-            productId: 0,
-            product: 'Manual Input',
-            manufacturer: 'System',
-            interface: 0,
-            usagePage: 0,
-            usage: 0,
-          },
-        },
-        error as Error,
-        this.generateEventId(),
-        Date.now()
-      );
-
-      throw error;
+      const handledError =
+        error instanceof Error ? error : new Error(String(error));
+      await this.handleScanError(scanData, handledError, eventId, startTime);
+      throw handledError;
     }
   }
 
@@ -702,3 +736,16 @@ export class RealtimeScanProcessor extends EventEmitter {
 }
 
 export default RealtimeScanProcessor;
+
+export const getRealtimeScanProcessor = (
+  redis: Redis,
+  scannerService: USBScannerService,
+  websocketServerInstance: WebsocketServerInstance = websocketServer,
+  config: Partial<ScanProcessorConfig> = {},
+): RealtimeScanProcessor =>
+  new RealtimeScanProcessor(
+    redis,
+    scannerService,
+    websocketServerInstance,
+    config,
+  );

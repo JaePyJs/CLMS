@@ -16,11 +16,12 @@ router.post('/config', async (req: Request, res: Response) => {
     const requiredFields = ['name', 'type', 'recipients', 'format'];
     for (const field of requiredFields) {
       if (!config[field]) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: `Missing required field: ${field}`,
           timestamp: new Date().toISOString()
         });
+        return;
       }
     }
 
@@ -48,11 +49,12 @@ router.post('/generate', async (req: Request, res: Response) => {
     const { configId, config } = req.body;
 
     if (!config && !configId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Either configId or config object must be provided',
         timestamp: new Date().toISOString()
       });
+      return;
     }
 
     let reportConfig;
@@ -126,11 +128,12 @@ router.post('/alerts/config', async (req: Request, res: Response) => {
     const requiredFields = ['name', 'type', 'threshold', 'operators', 'recipients'];
     for (const field of requiredFields) {
       if (config[field] === undefined) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: `Missing required field: ${field}`,
           timestamp: new Date().toISOString()
         });
+        return;
       }
     }
 
@@ -158,11 +161,12 @@ router.post('/alerts/test', async (req: Request, res: Response) => {
     const { type, recipients } = req.body;
 
     if (!type || !recipients) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Type and recipients are required',
         timestamp: new Date().toISOString()
       });
+      return;
     }
 
     // Create a test alert configuration
@@ -400,11 +404,12 @@ router.get('/analytics/:type', requirePermission(Permission.ANALYTICS_VIEW), asy
         break;
 
       default:
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: `Unknown analytics type: ${type}`,
           timestamp: new Date().toISOString()
         });
+        return;
     }
 
     res.json({
@@ -433,11 +438,12 @@ router.post('/export', requirePermission(Permission.REPORTS_EXPORT), asyncHandle
     const { dataType, format, filters, dateRange } = req.body;
 
     if (!dataType || !format) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: dataType, format',
         timestamp: new Date().toISOString()
       });
+      return;
     }
 
     const exportData = {

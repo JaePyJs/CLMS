@@ -1,11 +1,17 @@
-import { Prisma, equipment, equipment_status, equipment_type, equipment_condition_rating } from '@prisma/client';
+import {
+  Prisma,
+  equipment,
+  equipment_status,
+  equipment_type,
+  equipment_condition_rating,
+} from '@prisma/client';
 import { prisma } from '@/utils/prisma';
 import { logger } from '@/utils/logger';
 import { BaseRepository } from './base.repository';
 
 /**
  * Equipment Repository
- * 
+ *
  * Extends BaseRepository to provide equipment-specific operations with flexible
  * ID handling for equipment_id (external equipment identifier).
  */
@@ -128,11 +134,15 @@ export class EquipmentRepository extends BaseRepository<
         serial_number: data.serial_number?.trim() || null,
         asset_tag: data.asset_tag?.trim() || null,
         warranty_expiry: data.warranty_expiry || null,
-        condition_rating: data.condition_rating || equipment_condition_rating.EXCELLENT,
+        condition_rating:
+          data.condition_rating || equipment_condition_rating.EXCELLENT,
         maintenance_interval: data.maintenance_interval || null,
         last_maintenance: data.maintenance_interval ? new Date() : null,
-        next_maintenance: data.maintenance_interval ? 
-          new Date(Date.now() + data.maintenance_interval * 24 * 60 * 60 * 1000) : null,
+        next_maintenance: data.maintenance_interval
+          ? new Date(
+              Date.now() + data.maintenance_interval * 24 * 60 * 60 * 1000,
+            )
+          : null,
         category: data.category?.trim() || null,
         tags: data.tags || null,
         specifications: data.specifications || null,
@@ -162,12 +172,14 @@ export class EquipmentRepository extends BaseRepository<
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        const target = (error.meta?.target as any)?.find((field: string) => 
-          field.includes('equipment_id')
+        const target = (error.meta?.target as any)?.find((field: string) =>
+          field.includes('equipment_id'),
         );
-        
+
         if (target) {
-          throw new Error(`Equipment with equipment_id '${data.equipment_id}' already exists`);
+          throw new Error(
+            `Equipment with equipment_id '${data.equipment_id}' already exists`,
+          );
         }
       }
 
@@ -204,7 +216,7 @@ export class EquipmentRepository extends BaseRepository<
       specifications?: any;
       notes?: string;
       is_active?: boolean;
-    }
+    },
   ): Promise<equipment> {
     try {
       const whereClause = { equipment_id };
@@ -223,11 +235,15 @@ export class EquipmentRepository extends BaseRepository<
         serial_number: data.serial_number?.trim() || null,
         asset_tag: data.asset_tag?.trim() || null,
         warranty_expiry: data.warranty_expiry || null,
-        condition_rating: data.condition_rating || equipment_condition_rating.EXCELLENT,
+        condition_rating:
+          data.condition_rating || equipment_condition_rating.EXCELLENT,
         maintenance_interval: data.maintenance_interval || null,
         last_maintenance: data.maintenance_interval ? new Date() : null,
-        next_maintenance: data.maintenance_interval ? 
-          new Date(Date.now() + data.maintenance_interval * 24 * 60 * 60 * 1000) : null,
+        next_maintenance: data.maintenance_interval
+          ? new Date(
+              Date.now() + data.maintenance_interval * 24 * 60 * 60 * 1000,
+            )
+          : null,
         category: data.category?.trim() || null,
         tags: data.tags || null,
         specifications: data.specifications || null,
@@ -244,25 +260,49 @@ export class EquipmentRepository extends BaseRepository<
         ...(data.type && { type: data.type }),
         ...(data.location && { location: data.location.trim() }),
         ...(data.status !== undefined && { status: data.status }),
-        ...(data.description !== undefined && { description: data.description?.trim() || null }),
-        ...(data.max_time_minutes !== undefined && { max_time_minutes: data.max_time_minutes }),
-        ...(data.requires_supervision !== undefined && { requires_supervision: data.requires_supervision }),
-        ...(data.purchase_date !== undefined && { purchase_date: data.purchase_date || null }),
-        ...(data.purchase_cost !== undefined && { purchase_cost: data.purchase_cost || null }),
-        ...(data.serial_number !== undefined && { serial_number: data.serial_number?.trim() || null }),
-        ...(data.asset_tag !== undefined && { asset_tag: data.asset_tag?.trim() || null }),
-        ...(data.warranty_expiry !== undefined && { warranty_expiry: data.warranty_expiry || null }),
-        ...(data.condition_rating !== undefined && { condition_rating: data.condition_rating }),
-        ...(data.maintenance_interval !== undefined && { 
+        ...(data.description !== undefined && {
+          description: data.description?.trim() || null,
+        }),
+        ...(data.max_time_minutes !== undefined && {
+          max_time_minutes: data.max_time_minutes,
+        }),
+        ...(data.requires_supervision !== undefined && {
+          requires_supervision: data.requires_supervision,
+        }),
+        ...(data.purchase_date !== undefined && {
+          purchase_date: data.purchase_date || null,
+        }),
+        ...(data.purchase_cost !== undefined && {
+          purchase_cost: data.purchase_cost || null,
+        }),
+        ...(data.serial_number !== undefined && {
+          serial_number: data.serial_number?.trim() || null,
+        }),
+        ...(data.asset_tag !== undefined && {
+          asset_tag: data.asset_tag?.trim() || null,
+        }),
+        ...(data.warranty_expiry !== undefined && {
+          warranty_expiry: data.warranty_expiry || null,
+        }),
+        ...(data.condition_rating !== undefined && {
+          condition_rating: data.condition_rating,
+        }),
+        ...(data.maintenance_interval !== undefined && {
           maintenance_interval: data.maintenance_interval || null,
           // Update next maintenance if interval changed
           ...(data.maintenance_interval && {
-            next_maintenance: new Date(Date.now() + data.maintenance_interval * 24 * 60 * 60 * 1000)
-          })
+            next_maintenance: new Date(
+              Date.now() + data.maintenance_interval * 24 * 60 * 60 * 1000,
+            ),
+          }),
         }),
-        ...(data.category !== undefined && { category: data.category?.trim() || null }),
+        ...(data.category !== undefined && {
+          category: data.category?.trim() || null,
+        }),
         ...(data.tags !== undefined && { tags: data.tags || null }),
-        ...(data.specifications !== undefined && { specifications: data.specifications || null }),
+        ...(data.specifications !== undefined && {
+          specifications: data.specifications || null,
+        }),
         ...(data.notes !== undefined && { notes: data.notes?.trim() || null }),
         ...(data.is_active !== undefined && { is_active: data.is_active }),
         updated_at: new Date(),
@@ -274,15 +314,19 @@ export class EquipmentRepository extends BaseRepository<
         update: updateData,
       });
 
-      const isCreated = equipment.created_at.getTime() === equipment.updated_at.getTime();
-      
-      logger.info(`Equipment ${isCreated ? 'created' : 'updated'} successfully via upsert`, {
-        id: equipment.id,
-        equipment_id: equipment.equipment_id,
-        name: equipment.name,
-        type: equipment.type,
-        action: isCreated ? 'created' : 'updated',
-      });
+      const isCreated =
+        equipment.created_at.getTime() === equipment.updated_at.getTime();
+
+      logger.info(
+        `Equipment ${isCreated ? 'created' : 'updated'} successfully via upsert`,
+        {
+          id: equipment.id,
+          equipment_id: equipment.equipment_id,
+          name: equipment.name,
+          type: equipment.type,
+          action: isCreated ? 'created' : 'updated',
+        },
+      );
 
       return equipment;
     } catch (error) {
@@ -300,7 +344,7 @@ export class EquipmentRepository extends BaseRepository<
   async updateStatus(
     equipment_id: string,
     status: equipment_status,
-    notes?: string
+    notes?: string,
   ): Promise<equipment | null> {
     try {
       const updateData: Prisma.equipmentUpdateInput = {
@@ -335,7 +379,9 @@ export class EquipmentRepository extends BaseRepository<
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2025'
       ) {
-        logger.warn(`Attempted to update status for non-existent equipment`, { equipment_id });
+        logger.warn(`Attempted to update status for non-existent equipment`, {
+          equipment_id,
+        });
         return null;
       }
 
@@ -346,19 +392,27 @@ export class EquipmentRepository extends BaseRepository<
   /**
    * Get equipment with flexible filtering options
    */
-  async getEquipment(options: {
-    type?: equipment_type;
-    status?: equipment_status;
-    location?: string;
-    category?: string;
-    isActive?: boolean;
-    availableOnly?: boolean;
-    page?: number;
-    limit?: number;
-    search?: string;
-    sortBy?: 'name' | 'type' | 'location' | 'status' | 'created_at' | 'next_maintenance';
-    sortOrder?: 'asc' | 'desc';
-  } = {}): Promise<{
+  async getEquipment(
+    options: {
+      type?: equipment_type;
+      status?: equipment_status;
+      location?: string;
+      category?: string;
+      isActive?: boolean;
+      availableOnly?: boolean;
+      page?: number;
+      limit?: number;
+      search?: string;
+      sortBy?:
+        | 'name'
+        | 'type'
+        | 'location'
+        | 'status'
+        | 'created_at'
+        | 'next_maintenance';
+      sortOrder?: 'asc' | 'desc';
+    } = {},
+  ): Promise<{
     equipment: equipment[];
     pagination: {
       page: number;
@@ -395,11 +449,11 @@ export class EquipmentRepository extends BaseRepository<
       }
 
       if (location) {
-        where.location = { contains: location, mode: 'insensitive' };
+        where.location = { contains: location };
       }
 
       if (category) {
-        where.category = { contains: category, mode: 'insensitive' };
+        where.category = { contains: category };
       }
 
       if (isActive !== undefined) {
@@ -413,13 +467,13 @@ export class EquipmentRepository extends BaseRepository<
       // Apply search across multiple fields
       if (search) {
         where.OR = [
-          { name: { contains: search, mode: 'insensitive' } },
-          { equipment_id: { contains: search, mode: 'insensitive' } },
-          { serial_number: { contains: search, mode: 'insensitive' } },
-          { asset_tag: { contains: search, mode: 'insensitive' } },
-          { location: { contains: search, mode: 'insensitive' } },
-          { category: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
+          { name: { contains: search } },
+          { equipment_id: { contains: search } },
+          { serial_number: { contains: search } },
+          { asset_tag: { contains: search } },
+          { location: { contains: search } },
+          { category: { contains: search } },
+          { description: { contains: search } },
         ];
       }
 
@@ -465,7 +519,13 @@ export class EquipmentRepository extends BaseRepository<
     requiresMaintenance?: boolean;
     page?: number;
     limit?: number;
-    sortBy?: 'name' | 'type' | 'location' | 'status' | 'created_at' | 'next_maintenance';
+    sortBy?:
+      | 'name'
+      | 'type'
+      | 'location'
+      | 'status'
+      | 'created_at'
+      | 'next_maintenance';
     sortOrder?: 'asc' | 'desc';
   }): Promise<{
     equipment: equipment[];
@@ -501,11 +561,11 @@ export class EquipmentRepository extends BaseRepository<
       if (query) {
         andConditions.push({
           OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { equipment_id: { contains: query, mode: 'insensitive' } },
-            { serial_number: { contains: query, mode: 'insensitive' } },
-            { asset_tag: { contains: query, mode: 'insensitive' } },
-            { description: { contains: query, mode: 'insensitive' } },
+            { name: { contains: query } },
+            { equipment_id: { contains: query } },
+            { serial_number: { contains: query } },
+            { asset_tag: { contains: query } },
+            { description: { contains: query } },
           ],
         });
       }
@@ -520,13 +580,13 @@ export class EquipmentRepository extends BaseRepository<
 
       if (location) {
         andConditions.push({
-          location: { contains: location, mode: 'insensitive' }
+          location: { contains: location },
         });
       }
 
       if (category) {
         andConditions.push({
-          category: { contains: category, mode: 'insensitive' }
+          category: { contains: category },
         });
       }
 
@@ -536,7 +596,7 @@ export class EquipmentRepository extends BaseRepository<
 
       if (availableOnly) {
         andConditions.push({
-          status: equipment_status.AVAILABLE
+          status: equipment_status.AVAILABLE,
         });
       }
 
@@ -545,7 +605,7 @@ export class EquipmentRepository extends BaseRepository<
           OR: [
             { status: equipment_status.MAINTENANCE },
             { next_maintenance: { lte: new Date() } },
-          ]
+          ],
         });
       }
 
@@ -584,7 +644,9 @@ export class EquipmentRepository extends BaseRepository<
   /**
    * Get equipment types with counts
    */
-  async getTypesWithCounts(): Promise<{ type: equipment_type; count: number }[]> {
+  async getTypesWithCounts(): Promise<
+    { type: equipment_type; count: number }[]
+  > {
     try {
       const types = await this.getModel().groupBy({
         by: ['type'],
@@ -596,7 +658,7 @@ export class EquipmentRepository extends BaseRepository<
         },
       });
 
-      return types.map(item => ({
+      return types.map((item: any) => ({
         type: item.type,
         count: item._count.type,
       }));
@@ -608,7 +670,9 @@ export class EquipmentRepository extends BaseRepository<
   /**
    * Get locations with equipment counts
    */
-  async getLocationsWithCounts(): Promise<{ location: string; count: number }[]> {
+  async getLocationsWithCounts(): Promise<
+    { location: string; count: number }[]
+  > {
     try {
       const locations = await this.getModel().groupBy({
         by: ['location'],
@@ -620,7 +684,7 @@ export class EquipmentRepository extends BaseRepository<
         },
       });
 
-      return locations.map(item => ({
+      return locations.map((item: any) => ({
         location: item.location,
         count: item._count.location,
       }));
@@ -634,7 +698,7 @@ export class EquipmentRepository extends BaseRepository<
    */
   async updateUsageStats(
     equipment_id: string,
-    sessionMinutes: number
+    sessionMinutes: number,
   ): Promise<equipment | null> {
     try {
       const equipment = await this.getModel().update({
@@ -662,11 +726,17 @@ export class EquipmentRepository extends BaseRepository<
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2025'
       ) {
-        logger.warn(`Attempted to update usage stats for non-existent equipment`, { equipment_id });
+        logger.warn(
+          `Attempted to update usage stats for non-existent equipment`,
+          { equipment_id },
+        );
         return null;
       }
 
-      this.handleDatabaseError(error, 'updateUsageStats', { equipment_id, sessionMinutes });
+      this.handleDatabaseError(error, 'updateUsageStats', {
+        equipment_id,
+        sessionMinutes,
+      });
     }
   }
 
@@ -694,7 +764,7 @@ export class EquipmentRepository extends BaseRepository<
       tags?: any;
       specifications?: any;
       notes?: string;
-    }>
+    }>,
   ): Promise<{ created: number; updated: number; errors: string[] }> {
     const results = {
       created: 0,
@@ -705,7 +775,7 @@ export class EquipmentRepository extends BaseRepository<
     for (const data of equipmentData) {
       try {
         const existing = await this.findByEquipmentId(data.equipment_id);
-        
+
         if (existing) {
           await this.upsertByEquipmentId(data.equipment_id, data);
           results.updated++;
@@ -714,7 +784,8 @@ export class EquipmentRepository extends BaseRepository<
           results.created++;
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
         results.errors.push(`Equipment ${data.equipment_id}: ${errorMessage}`);
         logger.error(`Failed to upsert equipment ${data.equipment_id}`, {
           error: errorMessage,
@@ -746,53 +817,51 @@ export class EquipmentRepository extends BaseRepository<
     }
 
     if (!data.type || !Object.values(equipment_type).includes(data.type)) {
-      throw new Error(`Equipment type is required and must be one of: ${Object.values(equipment_type).join(', ')}`);
+      throw new Error(
+        `Equipment type is required and must be one of: ${Object.values(equipment_type).join(', ')}`,
+      );
     }
 
     if (!data.location || typeof data.location !== 'string') {
       throw new Error('Equipment location is required and must be a string');
     }
 
-    if (data.max_time_minutes !== undefined && (typeof data.max_time_minutes !== 'number' || data.max_time_minutes <= 0)) {
+    if (
+      data.max_time_minutes !== undefined &&
+      (typeof data.max_time_minutes !== 'number' || data.max_time_minutes <= 0)
+    ) {
       throw new Error('Max time minutes must be a positive number');
     }
 
     if (data.status && !Object.values(equipment_status).includes(data.status)) {
-      throw new Error(`Equipment status must be one of: ${Object.values(equipment_status).join(', ')}`);
+      throw new Error(
+        `Equipment status must be one of: ${Object.values(equipment_status).join(', ')}`,
+      );
     }
 
-    if (data.condition_rating && !Object.values(equipment_condition_rating).includes(data.condition_rating)) {
-      throw new Error(`Equipment condition rating must be one of: ${Object.values(equipment_condition_rating).join(', ')}`);
+    if (
+      data.condition_rating &&
+      !Object.values(equipment_condition_rating).includes(data.condition_rating)
+    ) {
+      throw new Error(
+        `Equipment condition rating must be one of: ${Object.values(equipment_condition_rating).join(', ')}`,
+      );
     }
   }
 
-  /**
-   * Override create method to use equipment-specific validation
-   */
-  async create(data: Prisma.equipmentCreateInput): Promise<equipment> {
+  override async create(data: Prisma.equipmentCreateInput): Promise<equipment> {
     this.validateEquipmentData(data);
     return super.create(data);
   }
 
-  /**
-   * Override updateByExternalId to use equipment-specific validation
-   */
-  async updateByExternalId(equipment_id: string, data: Prisma.equipmentUpdateInput): Promise<equipment | null> {
-    if (data.type && !Object.values(equipment_type).includes(data.type as equipment_type)) {
-      throw new Error(`Equipment type must be one of: ${Object.values(equipment_type).join(', ')}`);
-    }
-
-    if (data.status && !Object.values(equipment_status).includes(data.status as equipment_status)) {
-      throw new Error(`Equipment status must be one of: ${Object.values(equipment_status).join(', ')}`);
-    }
-
-    if (data.condition_rating && !Object.values(equipment_condition_rating).includes(data.condition_rating as equipment_condition_rating)) {
-      throw new Error(`Equipment condition rating must be one of: ${Object.values(equipment_condition_rating).join(', ')}`);
-    }
-
-    return super.updateByExternalId(equipment_id, data);
+  override async updateByExternalId(
+    externalId: string,
+    data: Prisma.equipmentUpdateInput,
+  ): Promise<equipment | null> {
+    this.validateEquipmentData(data);
+    return super.updateByExternalId(externalId, data);
   }
 }
 
 // Export singleton instance
-export const equipmentRepository = new EquipmentRepository();
+export const equipmentRepository = new EquipmentRepository();

@@ -115,11 +115,12 @@ router.post(
     try {
       const { studentId } = req.params;
       if (!studentId) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Student ID is required',
           timestamp: new Date().toISOString(),
         });
+        return;
       }
 
       const result = await qrCodeService.generateQRCodeForStudent(studentId);
@@ -154,7 +155,8 @@ router.get('/qr-generation-report', async (req: Request, res: Response) => {
         error: 'No generation report found. Generate QR codes first.',
         timestamp: new Date().toISOString(),
       };
-      return res.status(404).json(response);
+      res.status(404).json(response);
+      return;
     }
 
     const response: ApiResponse = {
@@ -178,21 +180,23 @@ router.get('/qr-code/:studentId', async (req: Request, res: Response) => {
   try {
     const studentId = req.params.studentId as string;
     if (!studentId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Student ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const qrPath = await qrCodeService.getQRCodeForStudent(studentId);
 
     if (!qrPath || !fs.existsSync(qrPath)) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'QR code not found for this student',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     res.sendFile(qrPath);
@@ -211,11 +215,12 @@ router.delete('/qr-code/:studentId', async (req: Request, res: Response) => {
   try {
     const studentId = req.params.studentId as string;
     if (!studentId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Student ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const deleted = await qrCodeService.deleteQRCode(studentId);
@@ -244,11 +249,12 @@ router.post(
     try {
       const studentId = req.params.studentId as string;
       if (!studentId) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Student ID is required',
           timestamp: new Date().toISOString(),
         });
+        return;
       }
 
       const result = await qrCodeService.regenerateQRCode(studentId);
@@ -284,11 +290,12 @@ router.get('/qr-codes-sheet', (req: Request, res: Response) => {
   );
 
   if (!fs.existsSync(htmlPath)) {
-    return res.status(404).json({
+    res.status(404).json({
       success: false,
       error: 'Printable sheet not found. Generate QR codes first.',
       timestamp: new Date().toISOString(),
     });
+    return;
   }
 
   res.sendFile(htmlPath);
@@ -328,11 +335,12 @@ router.post(
     try {
       const { studentId } = req.params;
       if (!studentId) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Student ID is required',
           timestamp: new Date().toISOString(),
         });
+        return;
       }
 
       const result = await barcodeService.generateBarcodeForStudent(studentId);
@@ -369,7 +377,8 @@ router.get(
           error: 'No generation report found. Generate barcodes first.',
           timestamp: new Date().toISOString(),
         };
-        return res.status(404).json(response);
+        res.status(404).json(response);
+        return;
       }
 
       const response: ApiResponse = {
@@ -394,21 +403,23 @@ router.get('/barcode/:studentId', async (req: Request, res: Response) => {
   try {
     const studentId = req.params.studentId as string;
     if (!studentId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Student ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const barcodePath = barcodeService.getBarcodePath(studentId);
 
     if (!barcodePath || !fs.existsSync(barcodePath)) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Barcode not found for this student',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     res.sendFile(barcodePath);
@@ -427,11 +438,12 @@ router.delete('/barcode/:studentId', async (req: Request, res: Response) => {
   try {
     const studentId = req.params.studentId as string;
     if (!studentId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Student ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     await barcodeService.deleteBarcodeForStudent(studentId);
@@ -460,11 +472,12 @@ router.post(
     try {
       const studentId = req.params.studentId as string;
       if (!studentId) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Student ID is required',
           timestamp: new Date().toISOString(),
         });
+        return;
       }
 
       const result =
@@ -501,11 +514,12 @@ router.get('/barcodes-sheet', (req: Request, res: Response) => {
   );
 
   if (!fs.existsSync(htmlPath)) {
-    return res.status(404).json({
+    res.status(404).json({
       success: false,
       error: 'Printable sheet not found. Generate barcodes first.',
       timestamp: new Date().toISOString(),
     });
+    return;
   }
 
   res.sendFile(htmlPath);
@@ -521,11 +535,12 @@ router.post('/quick-add-student', async (req: Request, res: Response) => {
     const { firstName, lastName, grade, section } = req.body;
 
     if (!firstName || !lastName || !grade) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'First name, last name, and grade are required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const { PrismaClient } = require('@prisma/client');
@@ -598,11 +613,12 @@ router.post('/quick-start-session', async (req: Request, res: Response) => {
     const { studentId, equipmentId, timeLimitMinutes = 60 } = req.body;
 
     if (!studentId || !equipmentId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Student ID and Equipment ID are required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const { PrismaClient } = require('@prisma/client');
@@ -615,29 +631,31 @@ router.post('/quick-start-session', async (req: Request, res: Response) => {
     ]);
 
     if (!student || !equipment) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Student or equipment not found',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     if (equipment.status !== 'available') {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Equipment is not available',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     // Create activity
-    const activity = await prisma.activity.create({
+    const activity = await prisma.student_activities.create({
       data: {
-        studentId,
-        equipmentId,
-        startTime: new Date(),
-        endTime: new Date(Date.now() + timeLimitMinutes * 60 * 1000),
-        activityType: 'computer_usage',
+        student_id: studentId,
+        equipment_id: equipmentId,
+        start_time: new Date(),
+        end_time: new Date(Date.now() + timeLimitMinutes * 60 * 1000),
+        activity_type: 'computer_usage',
         status: 'active',
       }
     });
@@ -655,11 +673,11 @@ router.post('/quick-start-session', async (req: Request, res: Response) => {
       data: {
         activity: {
           id: activity.id,
-          studentId: activity.studentId,
-          equipmentId: activity.equipmentId,
-          startTime: activity.startTime,
-          endTime: activity.endTime,
-          activityType: activity.activityType,
+          studentId: activity.student_id,
+          equipmentId: activity.equipment_id,
+          startTime: activity.start_time,
+          endTime: activity.end_time,
+          activityType: activity.activity_type,
           status: activity.status,
         }
       },
@@ -689,8 +707,8 @@ router.get('/quick-report', async (req: Request, res: Response) => {
     const [totalStudents, activeStudents, todayActivities, totalEquipment, availableEquipment] = await Promise.all([
       prisma.student.count(),
       prisma.student.count({ where: { isActive: true } }),
-      prisma.activity.count({
-        where: { startTime: { gte: todayStart } }
+      prisma.student_activities.count({
+        where: { start_time: { gte: todayStart } }
       }),
       prisma.equipment.count(),
       prisma.equipment.count({ where: { status: 'available' } })

@@ -11,10 +11,14 @@ exports.getStudentActivities = getStudentActivities;
 exports.getActiveSessions = getActiveSessions;
 exports.createStudentActivity = createStudentActivity;
 exports.endStudentActivity = endStudentActivity;
-const prisma_1 = require("@/utils/prisma");
 const logger_1 = require("@/utils/logger");
+const errorHandler_1 = require("@/utils/errorHandler");
 const client_1 = require("@prisma/client");
 const performanceOptimizationService_1 = require("./performanceOptimizationService");
+const repositories_1 = require("@/repositories");
+const prisma_1 = require("@/utils/prisma");
+const errorHandler = (0, errorHandler_1.createServiceErrorHandler)('studentService');
+const studentsRepository = new repositories_1.StudentsRepository();
 function getDefaultTimeLimit(grade_category) {
     const timeLimits = {
         PRIMARY: parseInt(process.env.PRIMARY_TIME_LIMIT || '30'),
@@ -22,20 +26,11 @@ function getDefaultTimeLimit(grade_category) {
         JUNIOR_HIGH: parseInt(process.env.JUNIOR_HIGH_TIME_LIMIT || '90'),
         SENIOR_HIGH: parseInt(process.env.SENIOR_HIGH_TIME_LIMIT || '120'),
     };
-    return timeLimits[gradeCategory] || 60;
+    return timeLimits[grade_category] || 60;
 }
 async function getStudentByBarcode(barcode) {
     return performanceOptimizationService_1.performanceOptimizationService.executeQuery('student_by_barcode', async () => {
-        const student = await prisma_1.prisma.students.findUnique({
-            where: { student_id: barcode },
-            include: {
-                activities: {
-                    where: { status: client_1.student_activities_status.ACTIVE },
-                    orderBy: { start_time: 'desc' },
-                    take: 1,
-                },
-            },
-        });
+        const student = await studentsRepository.findByStudentId(barcode);
         if (!student) {
             return null;
         }
@@ -43,7 +38,7 @@ async function getStudentByBarcode(barcode) {
         return {
             ...student,
             defaultTimeLimit,
-            hasActiveSession: student.activities.length > 0,
+            hasActiveSession: false,
         };
     }, {
         key: `student:barcode:${barcode}`,
@@ -53,16 +48,7 @@ async function getStudentByBarcode(barcode) {
 }
 async function getStudentById(id) {
     return performanceOptimizationService_1.performanceOptimizationService.executeQuery('student_by_id', async () => {
-        const student = await prisma_1.prisma.students.findUnique({
-            where: { id },
-            include: {
-                activities: {
-                    where: { status: client_1.student_activities_status.ACTIVE },
-                    orderBy: { start_time: 'desc' },
-                    take: 1,
-                },
-            },
-        });
+        const student = await studentsRepository.findById(id);
         if (!student) {
             return null;
         }
@@ -70,7 +56,7 @@ async function getStudentById(id) {
         return {
             ...student,
             defaultTimeLimit,
-            hasActiveSession: student.activities.length > 0,
+            hasActiveSession: false,
         };
     }, {
         key: `student:id:${id}`,
@@ -79,35 +65,26 @@ async function getStudentById(id) {
     });
 }
 async function getStudents(options = {}) {
-    const { grade_category, is_active, page = 1, limit = 50 } = options;
-    const cacheKey = `students:list:${JSON.stringify({ grade_category, is_active, page, limit })}`;
+    const { gradeCategory, isActive, page = 1, limit = 50 } = options;
+    const cacheKey = `students:list:${JSON.stringify({ gradeCategory, isActive, page, limit })}`;
     return performanceOptimizationService_1.performanceOptimizationService.executeQuery('students_list', async () => {
-        const skip = (page - 1) * limit;
-        const where = {};
-        if (grade_category) {
-            where.grade_category = grade_category;
+        const queryOptions = {
+            page,
+            limit,
+            sortBy: 'last_name',
+            sortOrder: 'asc',
+        };
+        if (gradeCategory !== undefined) {
+            queryOptions.grade_category = gradeCategory;
         }
         if (isActive !== undefined) {
-            where.is_active = isActive;
+            queryOptions.isActive = isActive;
         }
-        const [students, total] = await Promise.all([
-            prisma_1.prisma.students.findMany({
-                where,
-                skip,
-                take: limit,
-                orderBy: { last_name: 'asc' },
-            }),
-            prisma_1.prisma.students.count({ where }),
-        ]);
+        const result = await studentsRepository.getStudents(queryOptions);
         return {
-            students,
-            total,
-            pagination: {
-                page,
-                limit,
-                total,
-                pages: Math.ceil(total / limit),
-            },
+            students: result.students,
+            total: result.pagination.total,
+            pagination: result.pagination,
         };
     }, {
         key: cacheKey,
@@ -117,20 +94,13 @@ async function getStudents(options = {}) {
 }
 async function createStudent(data) {
     try {
-        const existing = await prisma_1.prisma.students.findUnique({
-            where: { student_id: data.student_id },
-        });
-        if (existing) {
-            logger_1.logger.warn('Attempted to create duplicate student', {
-                student_id: data.student_id,
-            });
-            throw new Error('Student ID already exists');
-        }
-        const student = await prisma_1.prisma.students.create({
-            data,
-        });
-        logger_1.logger.info('Student created successfully', {
-            student_id: student.student_id,
+        const student = await studentsRepository.createStudent({
+            student_id: data.student_id,
+            first_name: data.first_name,
+            last_name: data.last_name,
+            grade_level: data.grade_level,
+            grade_category: data.grade_category,
+            section: data.section || '',
         });
         return student;
     }
@@ -138,38 +108,41 @@ async function createStudent(data) {
         if (error.message === 'Student ID already exists') {
             throw error;
         }
-        logger_1.logger.error('Error creating student', {
-            error: error.message,
-            data,
-        });
+        errorHandler.handleDatabaseError(error, 'createStudent', { data });
         throw error;
     }
 }
 async function updateStudent(identifier, data) {
     try {
         const isDatabaseId = identifier.length >= 25 && /^[a-z0-9]{25}$/.test(identifier);
-        const whereClause = isDatabaseId
-            ? { id: identifier }
-            : { student_id: identifier };
-        const existing = await prisma_1.prisma.students.findUnique({
-            where: whereClause,
-        });
-        if (!existing) {
+        const updateData = {};
+        if (data.firstName !== undefined)
+            updateData.first_name = data.firstName;
+        if (data.lastName !== undefined)
+            updateData.last_name = data.lastName;
+        if (data.gradeLevel !== undefined)
+            updateData.grade_level = data.gradeLevel;
+        if (data.gradeCategory !== undefined)
+            updateData.grade_category = data.gradeCategory;
+        if (data.section !== undefined)
+            updateData.section = data.section;
+        if (data.isActive !== undefined)
+            updateData.is_active = data.isActive;
+        let student;
+        if (isDatabaseId) {
+            student = await studentsRepository.updateById(identifier, updateData);
+        }
+        else {
+            student = await studentsRepository.updateByExternalId(identifier, updateData);
+        }
+        if (!student) {
             logger_1.logger.warn('Attempted to update non-existent student', { identifier });
             return null;
         }
-        const student = await prisma_1.prisma.students.update({
-            where: whereClause,
-            data,
-        });
         logger_1.logger.info('Student updated successfully', { identifier });
         return student;
     }
     catch (error) {
-        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2025') {
-            return null;
-        }
         logger_1.logger.error('Error updating student', {
             error: error.message,
             identifier,
@@ -181,27 +154,21 @@ async function updateStudent(identifier, data) {
 async function deleteStudent(identifier) {
     try {
         const isDatabaseId = identifier.length >= 25 && /^[a-z0-9]{25}$/.test(identifier);
-        const whereClause = isDatabaseId
-            ? { id: identifier }
-            : { student_id: identifier };
-        const existing = await prisma_1.prisma.students.findUnique({
-            where: whereClause,
-        });
-        if (!existing) {
+        let success;
+        if (isDatabaseId) {
+            success = await studentsRepository.deleteById(identifier);
+        }
+        else {
+            success = await studentsRepository.deleteByExternalId(identifier);
+        }
+        if (!success) {
             logger_1.logger.warn('Attempted to delete non-existent student', { identifier });
             return null;
         }
-        const student = await prisma_1.prisma.students.delete({
-            where: whereClause,
-        });
         logger_1.logger.info('Student deleted successfully', { identifier });
-        return student;
+        return { success: true };
     }
     catch (error) {
-        if (error instanceof client_1.Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2025') {
-            return null;
-        }
         logger_1.logger.error('Error deleting student', {
             error: error.message,
             identifier,
@@ -211,7 +178,7 @@ async function deleteStudent(identifier) {
 }
 async function getStudentActivities(options = {}) {
     try {
-        const { student_id, startDate, endDate, activity_type, status, page = 1, limit = 50, } = options;
+        const { student_id, startDate, endDate, activityType, status, page = 1, limit = 50, } = options;
         const skip = (page - 1) * limit;
         const where = {};
         if (student_id) {
@@ -239,24 +206,6 @@ async function getStudentActivities(options = {}) {
                 skip,
                 take: limit,
                 orderBy: { start_time: 'desc' },
-                include: {
-                    student: {
-                        select: {
-                            student_id: true,
-                            first_name: true,
-                            last_name: true,
-                            grade_level: true,
-                            grade_category: true,
-                        },
-                    },
-                    equipment: {
-                        select: {
-                            equipment_id: true,
-                            name: true,
-                            type: true,
-                        },
-                    },
-                },
             }),
             prisma_1.prisma.student_activities.count({ where }),
         ]);
@@ -283,77 +232,37 @@ async function getActiveSessions() {
         const activities = await prisma_1.prisma.student_activities.findMany({
             where: { status: client_1.student_activities_status.ACTIVE },
             orderBy: { start_time: 'desc' },
-            include: {
-                student: {
-                    select: {
-                        student_id: true,
-                        first_name: true,
-                        last_name: true,
-                        grade_level: true,
-                        grade_category: true,
-                    },
-                },
-                equipment: {
-                    select: {
-                        equipment_id: true,
-                        name: true,
-                        type: true,
-                    },
-                },
-            },
         });
         return activities;
     }
     catch (error) {
-        logger_1.logger.error('Error fetching active sessions', {
-            error: error.message,
-        });
+        errorHandler.handleDatabaseError(error, 'getActiveSessions', {});
         throw error;
     }
 }
 async function createStudentActivity(data) {
     try {
-        const student = await prisma_1.prisma.students.findUnique({
-            where: { student_id: data.student_id },
-        });
+        const student = await studentsRepository.findByStudentId(data.student_id);
         if (!student) {
             throw new Error('Student not found');
         }
-        const timeLimitMinutes = data.time_limit_minutes || getDefaultTimeLimit(student.grade_category);
+        const timeLimitMinutes = data.timeLimitMinutes || getDefaultTimeLimit(student.grade_category);
         const startTime = new Date();
-        const endTime = new Date(startTime.getTime() + timeLimitMinutes * 60000);
         const activity = await prisma_1.prisma.student_activities.create({
             data: {
+                id: `activity-${Date.now()}-${student.id}`,
                 student_id: student.id,
                 student_name: `${student.first_name} ${student.last_name}`.trim(),
-                studentGradeLevel: student.grade_level,
-                studentGradeCategory: student.grade_category,
+                grade_level: student.grade_level,
+                grade_category: student.grade_category,
                 activity_type: data.activity_type,
                 equipment_id: data.equipment_id || null,
-                start_time,
-                end_time,
-                time_limit_minutes,
+                start_time: startTime,
+                time_limit_minutes: timeLimitMinutes,
                 notes: data.notes || null,
                 status: client_1.student_activities_status.ACTIVE,
                 processed_by: 'System',
-            },
-            include: {
-                student: {
-                    select: {
-                        student_id: true,
-                        first_name: true,
-                        last_name: true,
-                        grade_level: true,
-                        grade_category: true,
-                    },
-                },
-                equipment: {
-                    select: {
-                        equipment_id: true,
-                        name: true,
-                        type: true,
-                    },
-                },
+                updated_at: new Date(),
             },
         });
         logger_1.logger.info('Student activity created successfully', {
@@ -379,27 +288,22 @@ async function endStudentActivity(activityId) {
             data: {
                 end_time: now,
                 status: client_1.student_activities_status.COMPLETED,
-            },
-            include: {
-                student: {
-                    select: {
-                        student_id: true,
-                        first_name: true,
-                        last_name: true,
-                    },
-                },
+                updated_at: now,
             },
         });
         if (activity.start_time) {
-            const duration = Math.floor((now.getTime() - activity.start_time.getTime()) / 60000);
-            await prisma_1.prisma.student_activities.update({
-                where: { id: activityId },
-                data: { duration_minutes: duration },
-            });
+            if (activity.end_time && activity.start_time) {
+                const duration = Math.round((activity.end_time.getTime() - activity.start_time.getTime()) / 60000);
+                await prisma_1.prisma.student_activities.update({
+                    where: { id: activityId },
+                    data: { duration_minutes: duration },
+                });
+            }
         }
         logger_1.logger.info('Student activity ended successfully', {
             activityId,
-            student_id: activity.student.student_id,
+            student_id: activity.student_id,
+            duration: activity.duration_minutes,
         });
         return activity;
     }

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Activity, Users, Monitor } from 'lucide-react'
@@ -38,8 +38,8 @@ export function UsageHeatMap({
   onCellClick,
   filterType = 'all'
 }: UsageHeatMapProps) {
-  const [selectedActivity, setSelectedActivity] = React.useState<string>('all')
-  const [selectedGrade, setSelectedGrade] = React.useState<string>('all')
+  const [selectedActivity, setSelectedActivity] = useState<string>('all')
+  const [selectedGrade, setSelectedGrade] = useState<string>('all')
 
   // Process and aggregate data for heat map
   const heatMapData = useMemo(() => {
@@ -61,12 +61,12 @@ export function UsageHeatMap({
           hour: item.hour,
           dayOfWeek: item.dayOfWeek,
           intensity: 0,
-          activityType: item.activityType,
-          gradeLevel: item.gradeLevel
+          ...(item.activityType && { activityType: item.activityType }),
+          ...(item.gradeLevel && { gradeLevel: item.gradeLevel })
         }
       }
 
-      processed[key].intensity += item.intensity
+      processed[key]!.intensity += item.intensity
     })
 
     return Object.values(processed)

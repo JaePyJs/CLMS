@@ -1,18 +1,27 @@
+import { EventEmitter } from 'events';
 import Redis from 'ioredis';
-import { InMemoryCache, MemoryCacheConfig, EvictionPolicy } from './memoryCache';
+import {
+  InMemoryCache,
+  MemoryCacheConfig,
+  EvictionPolicy,
+} from './memoryCache';
 import { logger } from '../utils/logger';
 import { RedisConfigurationFactory } from '../config/redis.config';
+
+type RedisEnvironment = Parameters<
+  typeof RedisConfigurationFactory.getRedisClient
+>[1];
 
 // Cache provider types
 export enum CacheProvider {
   REDIS = 'redis',
-  MEMORY = 'memory'
+  MEMORY = 'memory',
 }
 
 // Cache manager configuration
 export interface CacheManagerConfig {
   redisInstanceName?: string;
-  redisEnvironment?: string;
+  redisEnvironment?: RedisEnvironment;
   memoryCacheConfig?: MemoryCacheConfig;
   healthCheckInterval?: number;
   failoverTimeout?: number;
@@ -40,11 +49,16 @@ export interface SyncStats {
   syncInProgress: boolean;
 }
 
+type CacheEventMap = {
+  get: { key: string; hit: boolean; responseTime: number };
+  set: { key: string; responseTime: number };
+};
+
 /**
  * Cache manager that seamlessly switches between Redis and in-memory cache
  * Provides automatic failover and recovery mechanisms
  */
-export class CacheManager {
+export class CacheManager extends EventEmitter {
   private redisClient: Redis | null = null;
   private memoryCache: InMemoryCache;
   private currentProvider: CacheProvider;
@@ -56,49 +70,67 @@ export class CacheManager {
   private isInitialized = false;
 
   constructor(config: CacheManagerConfig = {}) {
+    super();
     this.config = {
       redisInstanceName: config.redisInstanceName || 'default',
       redisEnvironment: config.redisEnvironment || 'development',
       memoryCacheConfig: {
         maxSize: config.memoryCacheConfig?.maxSize || 2000,
-        evictionPolicy: config.memoryCacheConfig?.evictionPolicy || EvictionPolicy.LRU,
+        evictionPolicy:
+          config.memoryCacheConfig?.evictionPolicy || EvictionPolicy.LRU,
         defaultTTL: config.memoryCacheConfig?.defaultTTL || 3600000,
         cleanupInterval: config.memoryCacheConfig?.cleanupInterval || 60000,
         enableMetrics: config.memoryCacheConfig?.enableMetrics !== false,
-        persistCriticalData: config.memoryCacheConfig?.persistCriticalData || true,
-        persistKeyPrefix: config.memoryCacheConfig?.persistKeyPrefix || 'critical:'
+        persistCriticalData:
+          config.memoryCacheConfig?.persistCriticalData || true,
+        persistKeyPrefix:
+          config.memoryCacheConfig?.persistKeyPrefix || 'critical:',
       },
       healthCheckInterval: config.healthCheckInterval || 30000, // 30 seconds
       failoverTimeout: config.failoverTimeout || 5000, // 5 seconds
       enableDataSync: config.enableDataSync !== false,
       syncBatchSize: config.syncBatchSize || 100,
       syncRetryAttempts: config.syncRetryAttempts || 3,
-      criticalKeys: config.criticalKeys || []
+      criticalKeys: config.criticalKeys || [],
     };
 
     this.memoryCache = new InMemoryCache(this.config.memoryCacheConfig);
     this.currentProvider = CacheProvider.REDIS; // Start with Redis by default
-    
+
     this.healthStatus = {
       provider: CacheProvider.REDIS,
       isHealthy: false,
       lastCheck: 0,
-      consecutiveFailures: 0
+      consecutiveFailures: 0,
     };
 
     this.syncStats = {
       totalSynced: 0,
       syncErrors: 0,
       lastSyncTime: 0,
-      syncInProgress: false
+      syncInProgress: false,
     };
 
     logger.info('CacheManager initialized', {
       redisInstanceName: this.config.redisInstanceName,
       healthCheckInterval: this.config.healthCheckInterval,
       failoverTimeout: this.config.failoverTimeout,
-      enableDataSync: this.config.enableDataSync
+      enableDataSync: this.config.enableDataSync,
     });
+  }
+
+  override on<T extends keyof CacheEventMap>(
+    event: T,
+    listener: (payload: CacheEventMap[T]) => void,
+  ): this {
+    return super.on(event, listener);
+  }
+
+  override emit<T extends keyof CacheEventMap>(
+    event: T,
+    payload: CacheEventMap[T],
+  ): boolean {
+    return super.emit(event, payload);
   }
 
   /**
@@ -113,27 +145,30 @@ export class CacheManager {
     try {
       // Try to connect to Redis
       await this.connectToRedis();
-      
+
       // Start health checks
       this.startHealthChecks();
-      
+
       this.isInitialized = true;
       logger.info('CacheManager initialized successfully', {
-        provider: this.currentProvider
+        provider: this.currentProvider,
       });
     } catch (error) {
-      logger.error('Failed to initialize CacheManager with Redis, falling back to memory cache', {
-        error: error instanceof Error ? error.message : String(error)
-      });
-      
+      logger.error(
+        'Failed to initialize CacheManager with Redis, falling back to memory cache',
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
+
       // Fallback to memory cache
       this.currentProvider = CacheProvider.MEMORY;
       this.healthStatus.provider = CacheProvider.MEMORY;
       this.healthStatus.isHealthy = true;
-      
+
       // Start health checks to monitor Redis recovery
       this.startHealthChecks();
-      
+
       this.isInitialized = true;
       logger.info('CacheManager initialized with memory cache fallback');
     }
@@ -144,35 +179,45 @@ export class CacheManager {
    */
   async get(key: string): Promise<string | null> {
     this.ensureInitialized();
-    
+    const startTime = Date.now();
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
-        const startTime = Date.now();
         const result = await this.redisClient.get(key);
-        
+        const responseTime = Date.now() - startTime;
+
         if (this.healthStatus.isHealthy) {
-          this.healthStatus.responseTime = Date.now() - startTime;
+          this.healthStatus.responseTime = responseTime;
         }
-        
+
+        this.emit('get', { key, hit: result !== null, responseTime });
         return result;
       } else {
         // Use memory cache
-        return await this.memoryCache.get(key);
+        const result = await this.memoryCache.get(key);
+        const responseTime = Date.now() - startTime;
+        this.emit('get', { key, hit: result !== null, responseTime });
+        return result;
       }
     } catch (error) {
       logger.error('Cache get operation failed', {
         provider: this.currentProvider,
         key,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       // If Redis operation failed, try to failover
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         // Retry with memory cache
-        return await this.memoryCache.get(key);
+        const fallbackResult = await this.memoryCache.get(key);
+        const responseTime = Date.now() - startTime;
+        this.emit('get', { key, hit: fallbackResult !== null, responseTime });
+        return fallbackResult;
       }
-      
+
+      const responseTime = Date.now() - startTime;
+      this.emit('get', { key, hit: false, responseTime });
       return null;
     }
   }
@@ -180,45 +225,65 @@ export class CacheManager {
   /**
    * Set value in cache (transparent provider switching)
    */
-  async set(key: string, value: string | any, ttl?: number): Promise<'OK'> {
+  async set(key: string, value: unknown, ttl?: number): Promise<'OK'> {
     this.ensureInitialized();
-    
+    const stringValue =
+      typeof value === 'string' ? value : JSON.stringify(value);
+    const startTime = Date.now();
+
     try {
-      const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
-      
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
-        const startTime = Date.now();
         let result: 'OK';
-        
+
         if (ttl) {
-          result = await this.redisClient.set(key, stringValue, 'EX', Math.ceil(ttl / 1000));
+          result = await this.redisClient.set(
+            key,
+            stringValue,
+            'EX',
+            Math.ceil(ttl / 1000),
+          );
         } else {
           result = await this.redisClient.set(key, stringValue);
         }
-        
+
+        const responseTime = Date.now() - startTime;
+
         if (this.healthStatus.isHealthy) {
-          this.healthStatus.responseTime = Date.now() - startTime;
+          this.healthStatus.responseTime = responseTime;
         }
-        
+
+        this.emit('set', { key, responseTime });
         return result;
       } else {
         // Use memory cache
-        return await this.memoryCache.set(key, stringValue, ttl);
+        const result = await this.memoryCache.set(key, stringValue, ttl);
+        const responseTime = Date.now() - startTime;
+        this.emit('set', { key, responseTime });
+        return result;
       }
     } catch (error) {
       logger.error('Cache set operation failed', {
         provider: this.currentProvider,
         key,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       // If Redis operation failed, try to failover
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         // Retry with memory cache
-        return await this.memoryCache.set(key, value, ttl);
+        const fallbackResult = await this.memoryCache.set(
+          key,
+          stringValue,
+          ttl,
+        );
+        const responseTime = Date.now() - startTime;
+        this.emit('set', { key, responseTime });
+        return fallbackResult;
       }
-      
+
+      const responseTime = Date.now() - startTime;
+      this.emit('set', { key, responseTime });
       throw error;
     }
   }
@@ -228,7 +293,7 @@ export class CacheManager {
    */
   async del(key: string): Promise<number> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.del(key);
@@ -239,14 +304,14 @@ export class CacheManager {
       logger.error('Cache delete operation failed', {
         provider: this.currentProvider,
         key,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.del(key);
       }
-      
+
       return 0;
     }
   }
@@ -256,7 +321,7 @@ export class CacheManager {
    */
   async exists(key: string): Promise<number> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.exists(key);
@@ -267,14 +332,14 @@ export class CacheManager {
       logger.error('Cache exists operation failed', {
         provider: this.currentProvider,
         key,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.exists(key);
       }
-      
+
       return 0;
     }
   }
@@ -284,7 +349,7 @@ export class CacheManager {
    */
   async expire(key: string, ttl: number): Promise<number> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.expire(key, Math.ceil(ttl / 1000));
@@ -296,14 +361,14 @@ export class CacheManager {
         provider: this.currentProvider,
         key,
         ttl,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.expire(key, ttl);
       }
-      
+
       return 0;
     }
   }
@@ -313,7 +378,7 @@ export class CacheManager {
    */
   async ttl(key: string): Promise<number> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.ttl(key);
@@ -324,14 +389,14 @@ export class CacheManager {
       logger.error('Cache TTL operation failed', {
         provider: this.currentProvider,
         key,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.ttl(key);
       }
-      
+
       return -2;
     }
   }
@@ -341,7 +406,7 @@ export class CacheManager {
    */
   async hget(key: string, field: string): Promise<string | null> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.hget(key, field);
@@ -353,14 +418,14 @@ export class CacheManager {
         provider: this.currentProvider,
         key,
         field,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.hget(key, field);
       }
-      
+
       return null;
     }
   }
@@ -370,7 +435,7 @@ export class CacheManager {
    */
   async hset(key: string, field: string, value: string): Promise<number> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.hset(key, field, value);
@@ -382,14 +447,14 @@ export class CacheManager {
         provider: this.currentProvider,
         key,
         field,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.hset(key, field, value);
       }
-      
+
       return 0;
     }
   }
@@ -399,7 +464,7 @@ export class CacheManager {
    */
   async hdel(key: string, field: string): Promise<number> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.hdel(key, field);
@@ -411,14 +476,14 @@ export class CacheManager {
         provider: this.currentProvider,
         key,
         field,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.hdel(key, field);
       }
-      
+
       return 0;
     }
   }
@@ -428,7 +493,7 @@ export class CacheManager {
    */
   async hexists(key: string, field: string): Promise<number> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.hexists(key, field);
@@ -440,14 +505,14 @@ export class CacheManager {
         provider: this.currentProvider,
         key,
         field,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.hexists(key, field);
       }
-      
+
       return 0;
     }
   }
@@ -457,7 +522,7 @@ export class CacheManager {
    */
   async mget(...keys: string[]): Promise<(string | null)[]> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.mget(...keys);
@@ -468,14 +533,14 @@ export class CacheManager {
       logger.error('Cache mget operation failed', {
         provider: this.currentProvider,
         keys,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.mget(...keys);
       }
-      
+
       return keys.map(() => null);
     }
   }
@@ -485,7 +550,7 @@ export class CacheManager {
    */
   async mset(keyValues: [string, string][]): Promise<'OK'> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         const flatArgs: string[] = [];
@@ -500,14 +565,14 @@ export class CacheManager {
       logger.error('Cache mset operation failed', {
         provider: this.currentProvider,
         keyValues,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.mset(keyValues);
       }
-      
+
       throw error;
     }
   }
@@ -517,7 +582,7 @@ export class CacheManager {
    */
   async incr(key: string): Promise<number> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.incr(key);
@@ -528,14 +593,14 @@ export class CacheManager {
       logger.error('Cache incr operation failed', {
         provider: this.currentProvider,
         key,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.incr(key);
       }
-      
+
       throw error;
     }
   }
@@ -545,7 +610,7 @@ export class CacheManager {
    */
   async incrby(key: string, increment: number): Promise<number> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.incrby(key, increment);
@@ -557,14 +622,14 @@ export class CacheManager {
         provider: this.currentProvider,
         key,
         increment,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.incrby(key, increment);
       }
-      
+
       throw error;
     }
   }
@@ -574,7 +639,7 @@ export class CacheManager {
    */
   async decr(key: string): Promise<number> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.decr(key);
@@ -585,14 +650,14 @@ export class CacheManager {
       logger.error('Cache decr operation failed', {
         provider: this.currentProvider,
         key,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.decr(key);
       }
-      
+
       throw error;
     }
   }
@@ -602,7 +667,7 @@ export class CacheManager {
    */
   async decrby(key: string, decrement: number): Promise<number> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.decrby(key, decrement);
@@ -614,14 +679,14 @@ export class CacheManager {
         provider: this.currentProvider,
         key,
         decrement,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.decrby(key, decrement);
       }
-      
+
       throw error;
     }
   }
@@ -631,7 +696,7 @@ export class CacheManager {
    */
   async flushall(): Promise<'OK'> {
     this.ensureInitialized();
-    
+
     try {
       if (this.currentProvider === CacheProvider.REDIS && this.redisClient) {
         return await this.redisClient.flushall();
@@ -641,14 +706,14 @@ export class CacheManager {
     } catch (error) {
       logger.error('Cache flushall operation failed', {
         provider: this.currentProvider,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
-      
+
       if (this.currentProvider === CacheProvider.REDIS) {
         await this.handleRedisFailure(error);
         return await this.memoryCache.flushall();
       }
-      
+
       throw error;
     }
   }
@@ -691,21 +756,21 @@ export class CacheManager {
 
     try {
       await this.connectToRedis();
-      
+
       if (this.config.enableDataSync) {
         await this.syncToRedis();
       }
-      
+
       this.currentProvider = CacheProvider.REDIS;
       this.healthStatus.provider = CacheProvider.REDIS;
       this.healthStatus.isHealthy = true;
       this.healthStatus.consecutiveFailures = 0;
-      
+
       logger.info('Switched to Redis provider');
       return true;
     } catch (error) {
       logger.error('Failed to switch to Redis', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
       return false;
     }
@@ -721,7 +786,7 @@ export class CacheManager {
 
     this.currentProvider = CacheProvider.MEMORY;
     this.healthStatus.provider = CacheProvider.MEMORY;
-    
+
     logger.info('Switched to memory cache provider');
   }
 
@@ -744,7 +809,7 @@ export class CacheManager {
         await this.redisClient.disconnect();
       } catch (error) {
         logger.error('Error disconnecting Redis client', {
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         });
       }
       this.redisClient = null;
@@ -752,7 +817,7 @@ export class CacheManager {
 
     await this.memoryCache.disconnect();
     this.isInitialized = false;
-    
+
     logger.info('CacheManager disconnected');
   }
 
@@ -768,12 +833,12 @@ export class CacheManager {
     try {
       this.redisClient = await RedisConfigurationFactory.getRedisClient(
         this.config.redisInstanceName,
-        this.config.redisEnvironment as any
+        this.config.redisEnvironment,
       );
 
       // Test connection
       await this.redisClient.ping();
-      
+
       logger.info('Redis connection established');
     } catch (error) {
       this.redisClient = null;
@@ -796,17 +861,17 @@ export class CacheManager {
 
   private async performHealthCheck(): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       if (this.redisClient) {
         await this.redisClient.ping();
-        
+
         // Redis is healthy
         this.healthStatus.isHealthy = true;
         this.healthStatus.lastCheck = Date.now();
         this.healthStatus.consecutiveFailures = 0;
         this.healthStatus.responseTime = Date.now() - startTime;
-        this.healthStatus.lastError = undefined as any;
+        delete this.healthStatus.lastError;
 
         // If we're currently using memory cache, try to switch back to Redis
         if (this.currentProvider === CacheProvider.MEMORY) {
@@ -823,38 +888,44 @@ export class CacheManager {
       this.healthStatus.isHealthy = false;
       this.healthStatus.lastCheck = Date.now();
       this.healthStatus.consecutiveFailures++;
-      this.healthStatus.lastError = error instanceof Error ? error.message : String(error);
+      this.healthStatus.lastError =
+        error instanceof Error ? error.message : String(error);
       this.healthStatus.responseTime = Date.now() - startTime;
 
       logger.warn('Redis health check failed', {
         consecutiveFailures: this.healthStatus.consecutiveFailures,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
 
       // Failover to memory cache if needed
-      if (this.currentProvider === CacheProvider.REDIS && 
-          this.healthStatus.consecutiveFailures >= 3) {
+      if (
+        this.currentProvider === CacheProvider.REDIS &&
+        this.healthStatus.consecutiveFailures >= 3
+      ) {
         await this.handleRedisFailure(error);
       }
     }
   }
 
-  private async handleRedisFailure(error: any): Promise<void> {
+  private async handleRedisFailure(error: unknown): Promise<void> {
     logger.error('Redis failure detected, switching to memory cache', {
       error: error instanceof Error ? error.message : String(error),
-      consecutiveFailures: this.healthStatus.consecutiveFailures
+      consecutiveFailures: this.healthStatus.consecutiveFailures,
     });
 
     this.currentProvider = CacheProvider.MEMORY;
     this.healthStatus.provider = CacheProvider.MEMORY;
-    
+
     // Close Redis connection
     if (this.redisClient) {
       try {
         await this.redisClient.disconnect();
       } catch (disconnectError) {
         logger.error('Error disconnecting Redis during failover', {
-          error: disconnectError instanceof Error ? disconnectError.message : String(disconnectError)
+          error:
+            disconnectError instanceof Error
+              ? disconnectError.message
+              : String(disconnectError),
         });
       }
       this.redisClient = null;
@@ -872,22 +943,22 @@ export class CacheManager {
 
     try {
       await this.connectToRedis();
-      
+
       // Sync data from memory cache to Redis
       if (this.config.enableDataSync) {
         await this.syncToRedis();
       }
-      
+
       // Switch back to Redis
       this.currentProvider = CacheProvider.REDIS;
       this.healthStatus.provider = CacheProvider.REDIS;
       this.healthStatus.isHealthy = true;
       this.healthStatus.consecutiveFailures = 0;
-      
+
       logger.info('Redis recovery successful, switched back to Redis');
     } catch (error) {
       logger.error('Redis recovery failed', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }
@@ -898,30 +969,31 @@ export class CacheManager {
     }
 
     this.syncStats.syncInProgress = true;
-    
+
     try {
       const memoryKeys = this.memoryCache.keys();
-      const criticalKeys = memoryKeys.filter(key => 
-        this.config.criticalKeys.includes(key) || 
-        key.startsWith('critical:') ||
-        key.startsWith('session:') ||
-        key.startsWith('auth:')
+      const criticalKeys = memoryKeys.filter(
+        key =>
+          this.config.criticalKeys.includes(key) ||
+          key.startsWith('critical:') ||
+          key.startsWith('session:') ||
+          key.startsWith('auth:'),
       );
 
       logger.info('Syncing critical data to Redis', {
         totalKeys: memoryKeys.length,
-        criticalKeys: criticalKeys.length
+        criticalKeys: criticalKeys.length,
       });
 
       let syncedCount = 0;
       for (let i = 0; i < criticalKeys.length; i += this.config.syncBatchSize) {
         const batch = criticalKeys.slice(i, i + this.config.syncBatchSize);
-        
+
         for (const key of batch) {
           try {
             const value = await this.memoryCache.get(key);
             const ttl = await this.memoryCache.ttl(key);
-            
+
             if (value) {
               if (ttl > 0) {
                 await this.redisClient.set(key, value, 'EX', ttl);
@@ -934,7 +1006,7 @@ export class CacheManager {
             this.syncStats.syncErrors++;
             logger.error('Error syncing key to Redis', {
               key,
-              error: error instanceof Error ? error.message : String(error)
+              error: error instanceof Error ? error.message : String(error),
             });
           }
         }
@@ -942,15 +1014,15 @@ export class CacheManager {
 
       this.syncStats.totalSynced += syncedCount;
       this.syncStats.lastSyncTime = Date.now();
-      
+
       logger.info('Data sync to Redis completed', {
         syncedCount,
-        errors: this.syncStats.syncErrors
+        errors: this.syncStats.syncErrors,
       });
     } catch (error) {
       this.syncStats.syncErrors++;
       logger.error('Error during Redis sync', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     } finally {
       this.syncStats.syncInProgress = false;

@@ -180,7 +180,7 @@ class ImageOptimizationService {
       link.rel = 'preload';
       link.as = 'image';
       link.href = url;
-      link.fetchPriority = priority;
+      link.fetchPriority = priority as "auto" | "high" | "low";
 
       link.onload = () => {
         document.head.removeChild(link);
@@ -373,7 +373,8 @@ class ImageOptimizationService {
       const observer = new PerformanceObserver((list) => {
         const entries = list.getEntries();
         entries.forEach((entry) => {
-          if (entry.initiatorType === 'img') {
+          const resourceEntry = entry as PerformanceResourceTiming;
+          if (resourceEntry.initiatorType === 'img') {
             // Track image loading performance
             const url = entry.name;
             const loadTime = entry.duration;

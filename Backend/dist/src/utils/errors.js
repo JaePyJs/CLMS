@@ -272,14 +272,18 @@ const notFoundHandler = (req, res) => {
 };
 exports.notFoundHandler = notFoundHandler;
 const setupGlobalErrorHandlers = () => {
+    const shouldExit = process.env.NODE_ENV === 'production' ||
+        process.env.STRICT_ERROR_EXIT === 'true';
     process.on('uncaughtException', (error) => {
         logger_1.logger.error('UNCAUGHT_EXCEPTION', {
             message: error.message,
             stack: error.stack,
         });
-        setTimeout(() => {
-            process.exit(1);
-        }, 1000);
+        if (shouldExit) {
+            setTimeout(() => {
+                process.exit(1);
+            }, 1000);
+        }
     });
     process.on('unhandledRejection', (reason, promise) => {
         const reasonMessage = reason instanceof Error ? reason.message : String(reason);
@@ -289,9 +293,11 @@ const setupGlobalErrorHandlers = () => {
             stack: reasonStack,
             promise: promise.toString(),
         });
-        setTimeout(() => {
-            process.exit(1);
-        }, 1000);
+        if (shouldExit) {
+            setTimeout(() => {
+                process.exit(1);
+            }, 1000);
+        }
     });
     process.on('warning', (warning) => {
         logger_1.logger.warn('PROCESS_WARNING', {

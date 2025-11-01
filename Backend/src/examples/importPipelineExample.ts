@@ -118,7 +118,7 @@ async function equipmentImportWithValidation() {
       {
         field: 'type',
         required: true,
-        customValidator: (value) => {
+        customValidator: (value: any) => {
           const validTypes = ['COMPUTER', 'GAMING', 'AVR', 'PRINTER', 'SCANNER', 'OTHER'];
           return validTypes.includes(value) || `Must be one of: ${validTypes.join(', ')}`;
         }
@@ -126,7 +126,7 @@ async function equipmentImportWithValidation() {
       {
         field: 'max_time_minutes',
         required: true,
-        customValidator: (value) => {
+        customValidator: (value: any) => {
           const num = parseInt(value);
           return (num > 0 && num <= 480) || 'Must be between 1 and 480 minutes';
         }

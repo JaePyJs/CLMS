@@ -1,0 +1,19 @@
+CLMS Documentation Link Validation Report
+Generated: 2025-10-20T12:24:25.310Z
+Duration: 0.18s
+
+SUMMARY
+────────────────────────────────────────
+Files checked:        100
+Total links found:    48
+External links:       15
+Anchor links:         21
+Valid links:          48
+Broken links:         0
+Link health:          100.00%
+
+BROKEN LINKS
+────────────────────────────────────────
+
+
+END OF REPORT

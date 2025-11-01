@@ -43,7 +43,7 @@ interface WebSocketProviderProps {
 }
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [equipmentStatus, setEquipmentStatus] = useState<any>({});
   const [notifications, setNotifications] = useState<any[]>([]);

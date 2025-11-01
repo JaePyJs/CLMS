@@ -3,7 +3,7 @@
  * Provides APM capabilities, structured logging, and performance metrics
  */
 
-interface PerformanceMetric {
+export interface PerformanceMetric {
   name: string;
   value: number;
   timestamp: number;
@@ -12,7 +12,7 @@ interface PerformanceMetric {
   unit?: string;
 }
 
-interface PerformanceEntry {
+export interface PerformanceEntry {
   name: string;
   startTime: number;
   duration?: number;
@@ -21,7 +21,7 @@ interface PerformanceEntry {
   error?: Error;
 }
 
-interface LogEntry {
+export interface LogEntry {
   level: 'debug' | 'info' | 'warn' | 'error';
   message: string;
   timestamp: number;
@@ -32,7 +32,7 @@ interface LogEntry {
   requestId?: string;
 }
 
-interface PerformanceConfig {
+export interface PerformanceConfig {
   enableConsoleLogging: boolean;
   enableRemoteLogging: boolean;
   remoteEndpoint?: string;
@@ -131,7 +131,7 @@ class PerformanceMonitor {
           this.recordMetric('largest_contentful_paint', lastEntry.startTime, {
             type: 'duration',
             unit: 'ms',
-            tags: { element: lastEntry.id || 'unknown' },
+            tags: { element: (lastEntry as any).element?.tagName || (lastEntry as any).url || 'unknown' },
           });
         });
         lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });

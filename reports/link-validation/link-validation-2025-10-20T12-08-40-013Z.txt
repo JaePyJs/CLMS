@@ -1,0 +1,29 @@
+CLMS Documentation Link Validation Report
+Generated: 2025-10-20T12:08:40.014Z
+Duration: 0.19s
+
+SUMMARY
+────────────────────────────────────────
+Files checked:        100
+Total links found:    48
+External links:       15
+Anchor links:         21
+Valid links:          46
+Broken links:         2
+Link health:          95.83%
+
+BROKEN LINKS
+────────────────────────────────────────
+1. File: README.md
+   Link: [Training & Adoption](#training-adoption-formerly-training-packages)
+   Type: Anchor
+   Error: Anchor #training-adoption-formerly-training-packages not found in document
+   
+
+2. File: README.md
+   Link: [Incident Response & Troubleshooting](#incident-response-troubleshooting-formerly-incident_response_pland)
+   Type: Anchor
+   Error: Anchor #incident-response-troubleshooting-formerly-incident_response_pland not found in document
+   
+
+END OF REPORT

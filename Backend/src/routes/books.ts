@@ -15,7 +15,7 @@ import {
   getBookCheckouts,
   getOverdueBooks,
 } from '@/services/bookService';
-import { CheckoutStatus } from '@prisma/client';
+import { book_checkouts_status } from '@prisma/client';
 import { logger } from '@/utils/logger';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { Permission } from '@/config/permissions';
@@ -24,7 +24,7 @@ import { auditMiddleware } from '@/middleware/ferpa.middleware';
 const router = Router();
 
 // Get all books
-router.get('/', requirePermission(Permission.BOOKS_VIEW), async (req: Request, res: Response) => {
+router.get('/', requirePermission(Permission.BOOKS_VIEW), async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       category,
@@ -79,25 +79,27 @@ router.get('/', requirePermission(Permission.BOOKS_VIEW), async (req: Request, r
 });
 
 // Get book by ID
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Book ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const book = await getBookById(id);
 
     if (!book) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Book not found',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const response: ApiResponse = {
@@ -121,7 +123,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 });
 
 // Create new book
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       isbn,
@@ -137,16 +139,17 @@ router.post('/', async (req: Request, res: Response) => {
     } = req.body;
 
     if (!accessionNo || !title || !author || !category) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: accessionNo, title, author, category',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const book = await createBook({
       isbn,
-      accessionNo,
+      accession_no: accessionNo,
       title,
       author,
       publisher,
@@ -179,15 +182,16 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // Update book
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Book ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const {
@@ -206,16 +210,16 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     const book = await updateBook(id, {
       isbn,
-      accessionNo,
+      accession_no: accessionNo,
       title,
       author,
       publisher,
       category,
       subcategory,
       location,
-      totalCopies,
-      availableCopies,
-      isActive,
+      total_copies: totalCopies,
+      available_copies: availableCopies,
+      is_active: isActive,
     });
 
     const response: ApiResponse = {
@@ -241,15 +245,16 @@ router.put('/:id', async (req: Request, res: Response) => {
 });
 
 // Delete book
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Book ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     await deleteBook(id);
@@ -275,16 +280,17 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 // Search book by barcode (accession number)
-router.post('/scan', async (req: Request, res: Response) => {
+router.post('/scan', async (req: Request, res: Response): Promise<void> => {
   try {
     const { barcode } = req.body;
 
     if (!barcode) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Barcode is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     // Try to find by accession number first
@@ -296,11 +302,12 @@ router.post('/scan', async (req: Request, res: Response) => {
     }
 
     if (!book) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Book not found',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const response: ApiResponse = {
@@ -327,22 +334,23 @@ router.post('/scan', async (req: Request, res: Response) => {
 // Check out book
 router.post('/checkout', 
   auditMiddleware('BOOK_CHECKOUT'),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response): Promise<void> => {
   try {
     const { bookId, studentId, dueDate, notes } = req.body;
 
     if (!bookId || !studentId || !dueDate) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: bookId, studentId, dueDate',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const checkout = await checkoutBook({
-      bookId,
-      studentId,
-      dueDate: new Date(dueDate),
+      book_id: bookId,
+      student_id: studentId,
+      due_date: new Date(dueDate),
       notes,
     });
 
@@ -370,16 +378,17 @@ router.post('/checkout',
 // Return book
 router.post('/return', 
   auditMiddleware('BOOK_RETURN'),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response): Promise<void> => {
   try {
     const { checkoutId } = req.body;
 
     if (!checkoutId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Checkout ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const checkout = await returnBook(checkoutId);
@@ -408,7 +417,7 @@ router.post('/return',
 // Get book checkouts
 router.get('/checkouts/all', 
   auditMiddleware('LIST_BOOK_CHECKOUTS'),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       bookId,
@@ -426,15 +435,15 @@ router.get('/checkouts/all',
     };
 
     if (bookId) {
-      options.bookId = bookId as string;
+      options.book_id = bookId as string;
     }
 
     if (studentId) {
-      options.studentId = studentId as string;
+      options.student_id = studentId as string;
     }
 
     if (status) {
-      options.status = status as CheckoutStatus;
+      options.status = status as book_checkouts_status;
     }
 
     if (startDate) {
@@ -470,7 +479,7 @@ router.get('/checkouts/all',
 // Get overdue books
 router.get('/checkouts/overdue', 
   auditMiddleware('LIST_OVERDUE_BOOKS'),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response): Promise<void> => {
   try {
     const overdueBooks = await getOverdueBooks();
 

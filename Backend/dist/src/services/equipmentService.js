@@ -10,44 +10,31 @@ exports.useEquipment = useEquipment;
 exports.releaseEquipment = releaseEquipment;
 exports.getEquipmentUsageHistory = getEquipmentUsageHistory;
 exports.getEquipmentStatistics = getEquipmentStatistics;
-const prisma_1 = require("@/utils/prisma");
+const crypto_1 = require("crypto");
 const logger_1 = require("@/utils/logger");
 const client_1 = require("@prisma/client");
+const repositories_1 = require("@/repositories");
+const prisma_1 = require("@/utils/prisma");
+const equipmentRepository = new repositories_1.EquipmentRepository();
 async function getEquipment(options = {}) {
     try {
-        const { type, status, page = 1, limit = 50, search } = options;
-        const skip = (page - 1) * limit;
-        const where = {};
-        if (type) {
-            where.type = type;
+        const queryOptions = {
+            page: options.page ?? 1,
+            limit: options.limit ?? 50,
+        };
+        if (options.type !== undefined) {
+            queryOptions.type = options.type;
         }
-        if (status) {
-            where.status = status;
+        if (options.status !== undefined) {
+            queryOptions.status = options.status;
         }
-        if (search) {
-            where.OR = [
-                { name: { contains: search, mode: 'insensitive' } },
-                { equipment_id: { contains: search, mode: 'insensitive' } },
-                { location: { contains: search, mode: 'insensitive' } },
-            ];
+        if (options.search !== undefined) {
+            queryOptions.search = options.search;
         }
-        const [equipment, total] = await Promise.all([
-            prisma_1.prisma.equipment.findMany({
-                where,
-                skip,
-                take: limit,
-                orderBy: { name: 'asc' },
-            }),
-            prisma_1.prisma.equipment.count({ where }),
-        ]);
+        const result = await equipmentRepository.getEquipment(queryOptions);
         return {
-            equipment,
-            pagination: {
-                page,
-                limit,
-                total,
-                pages: Math.ceil(total / limit),
-            },
+            equipment: result.equipment,
+            pagination: result.pagination,
         };
     }
     catch (error) {
@@ -60,25 +47,7 @@ async function getEquipment(options = {}) {
 }
 async function getEquipmentById(id) {
     try {
-        const equipment = await prisma_1.prisma.equipment.findUnique({
-            where: { id },
-            include: {
-                activities: {
-                    where: { status: client_1.student_activities_status.ACTIVE },
-                    orderBy: { start_time: 'desc' },
-                    take: 1,
-                    include: {
-                        student: {
-                            select: {
-                                student_id: true,
-                                first_name: true,
-                                last_name: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
+        const equipment = await equipmentRepository.findById(id);
         return equipment;
     }
     catch (error) {
@@ -91,25 +60,7 @@ async function getEquipmentById(id) {
 }
 async function getEquipmentByEquipmentId(equipment_id) {
     try {
-        const equipment = await prisma_1.prisma.equipment.findUnique({
-            where: { equipment_id },
-            include: {
-                activities: {
-                    where: { status: client_1.student_activities_status.ACTIVE },
-                    orderBy: { start_time: 'desc' },
-                    take: 1,
-                    include: {
-                        student: {
-                            select: {
-                                student_id: true,
-                                first_name: true,
-                                last_name: true,
-                            },
-                        },
-                    },
-                },
-            },
-        });
+        const equipment = await equipmentRepository.findByEquipmentId(equipment_id);
         return equipment;
     }
     catch (error) {
@@ -122,30 +73,20 @@ async function getEquipmentByEquipmentId(equipment_id) {
 }
 async function createEquipment(data) {
     try {
-        const existing = await prisma_1.prisma.equipment.findUnique({
-            where: { equipment_id: data.equipment_id },
-        });
-        if (existing) {
-            logger_1.logger.warn('Attempted to create duplicate equipment', {
-                equipment_id: data.equipment_id,
-            });
-            throw new Error('Equipment ID already exists');
+        const createData = {
+            equipment_id: data.equipment_id,
+            name: data.name,
+            type: data.type,
+            location: data.location,
+            max_time_minutes: data.max_time_minutes,
+        };
+        if (data.requires_supervision !== undefined) {
+            createData.requires_supervision = data.requires_supervision;
         }
-        const equipment = await prisma_1.prisma.equipment.create({
-            data: {
-                equipment_id: data.equipment_id,
-                name: data.name,
-                type: data.type,
-                location: data.location,
-                max_time_minutes: data.max_time_minutes,
-                requires_supervision: data.requires_supervision || false,
-                description: data.description || null,
-                status: client_1.equipment_status.AVAILABLE,
-            },
-        });
-        logger_1.logger.info('Equipment created successfully', {
-            equipment_id: equipment.equipment_id,
-        });
+        if (data.description !== undefined) {
+            createData.description = data.description;
+        }
+        const equipment = await equipmentRepository.createEquipment(createData);
         return equipment;
     }
     catch (error) {
@@ -161,22 +102,32 @@ async function createEquipment(data) {
 }
 async function updateEquipment(id, data) {
     try {
-        const existing = await prisma_1.prisma.equipment.findUnique({ where: { id } });
-        if (!existing) {
+        const updateData = {};
+        if (data.equipment_id !== undefined)
+            updateData.equipment_id = data.equipment_id;
+        if (data.name !== undefined)
+            updateData.name = data.name;
+        if (data.type !== undefined)
+            updateData.type = data.type;
+        if (data.location !== undefined)
+            updateData.location = data.location;
+        if (data.maxTimeMinutes !== undefined)
+            updateData.max_time_minutes = data.maxTimeMinutes;
+        if (data.requiresSupervision !== undefined)
+            updateData.requires_supervision = data.requiresSupervision;
+        if (data.description !== undefined)
+            updateData.description = data.description;
+        if (data.status !== undefined)
+            updateData.status = data.status;
+        const equipment = await equipmentRepository.updateById(id, updateData);
+        if (!equipment) {
             logger_1.logger.warn('Attempted to update non-existent equipment', { id });
-            throw new Error('Equipment not found');
+            return null;
         }
-        const equipment = await prisma_1.prisma.equipment.update({
-            where: { id },
-            data,
-        });
         logger_1.logger.info('Equipment updated successfully', { equipment_id: id });
         return equipment;
     }
     catch (error) {
-        if (error.message === 'Equipment not found') {
-            throw error;
-        }
         logger_1.logger.error('Error updating equipment', {
             error: error.message,
             id,
@@ -187,21 +138,15 @@ async function updateEquipment(id, data) {
 }
 async function deleteEquipment(id) {
     try {
-        const existing = await prisma_1.prisma.equipment.findUnique({ where: { id } });
-        if (!existing) {
+        const success = await equipmentRepository.deleteById(id);
+        if (!success) {
             logger_1.logger.warn('Attempted to delete non-existent equipment', { id });
-            throw new Error('Equipment not found');
+            return false;
         }
-        await prisma_1.prisma.equipment.delete({
-            where: { id },
-        });
         logger_1.logger.info('Equipment deleted successfully', { equipment_id: id });
         return true;
     }
     catch (error) {
-        if (error.message === 'Equipment not found') {
-            throw error;
-        }
         logger_1.logger.error('Error deleting equipment', {
             error: error.message,
             id,
@@ -211,68 +156,56 @@ async function deleteEquipment(id) {
 }
 async function useEquipment(data) {
     try {
-        const equipment = await prisma_1.prisma.equipment.findUnique({
-            where: { id: data.equipment_id },
+        const equipmentRecord = await prisma_1.prisma.equipment.findFirst({
+            where: {
+                OR: [{ id: data.equipment_id }, { equipment_id: data.equipment_id }],
+            },
         });
-        if (!equipment) {
+        if (!equipmentRecord) {
             throw new Error('Equipment not found');
         }
-        if (equipment.status !== client_1.equipment_status.AVAILABLE) {
+        if (equipmentRecord.status !== client_1.equipment_status.AVAILABLE) {
             throw new Error('Equipment is not available for use');
         }
-        const student = await prisma_1.prisma.students.findUnique({
-            where: { id: data.student_id },
+        const student = await prisma_1.prisma.students.findFirst({
+            where: {
+                OR: [{ id: data.student_id }, { student_id: data.student_id }],
+            },
         });
         if (!student) {
             throw new Error('Student not found');
         }
         const startTime = new Date();
         const endTime = new Date(startTime.getTime() +
-            (data.time_limit_minutes || equipment.max_time_minutes) * 60000);
+            (data.time_limit_minutes || equipmentRecord.max_time_minutes) * 60000);
         const activity = await prisma_1.prisma.student_activities.create({
             data: {
-                student_id: data.student_id,
+                id: `activity-${(0, crypto_1.randomUUID)()}`,
+                student_id: student.id,
                 student_name: `${student.first_name} ${student.last_name}`.trim(),
-                studentGradeLevel: student.grade_level,
-                studentGradeCategory: student.grade_category,
+                grade_level: student.grade_level,
+                grade_category: student.grade_category,
                 activity_type: data.activity_type,
-                equipment_id: data.equipment_id,
-                start_time,
-                end_time,
-                time_limit_minutes: data.time_limit_minutes || equipment.max_time_minutes,
+                equipment_id: equipmentRecord.equipment_id,
+                start_time: startTime,
+                end_time: endTime,
+                time_limit_minutes: data.time_limit_minutes || equipmentRecord.max_time_minutes,
                 notes: data.notes || null,
                 status: client_1.student_activities_status.ACTIVE,
                 processed_by: 'System',
-            },
-            include: {
-                student: {
-                    select: {
-                        student_id: true,
-                        first_name: true,
-                        last_name: true,
-                        grade_level: true,
-                        grade_category: true,
-                    },
-                },
-                equipment: {
-                    select: {
-                        equipment_id: true,
-                        name: true,
-                        type: true,
-                    },
-                },
+                updated_at: new Date(),
             },
         });
         await prisma_1.prisma.equipment.update({
-            where: { id: data.equipment_id },
+            where: { id: equipmentRecord.id },
             data: {
                 status: client_1.equipment_status.IN_USE,
             },
         });
         logger_1.logger.info('Equipment used successfully', {
             activityId: activity.id,
-            equipment_id: data.equipment_id,
-            student_id: data.student_id,
+            equipment_id: equipmentRecord.equipment_id,
+            student_id: student.student_id,
         });
         return activity;
     }
@@ -306,7 +239,7 @@ async function releaseEquipment(activityId) {
                 status: client_1.student_activities_status.COMPLETED,
             },
             include: {
-                student: {
+                students: {
                     select: {
                         student_id: true,
                         first_name: true,
@@ -329,12 +262,7 @@ async function releaseEquipment(activityId) {
                 data: { duration_minutes: duration },
             });
         }
-        await prisma_1.prisma.equipment.update({
-            where: { id: activity.equipment_id },
-            data: {
-                status: client_1.equipment_status.AVAILABLE,
-            },
-        });
+        await equipmentRepository.updateStatus(activity.equipment_id, client_1.equipment_status.AVAILABLE);
         logger_1.logger.info('Equipment released successfully', {
             activityId,
             equipment_id: activity.equipment_id,
@@ -351,7 +279,7 @@ async function releaseEquipment(activityId) {
 }
 async function getEquipmentUsageHistory(options = {}) {
     try {
-        const { equipment_id, student_id, activity_type, startDate, endDate, page = 1, limit = 50, } = options;
+        const { equipment_id, student_id, activityType, startDate, endDate, page = 1, limit = 50, } = options;
         const skip = (page - 1) * limit;
         const where = {
             equipment_id: { not: null },
@@ -382,7 +310,7 @@ async function getEquipmentUsageHistory(options = {}) {
                 take: limit,
                 orderBy: { start_time: 'desc' },
                 include: {
-                    student: {
+                    students: {
                         select: {
                             student_id: true,
                             first_name: true,

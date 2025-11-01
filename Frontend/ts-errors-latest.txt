@@ -1,0 +1,680 @@
+﻿src/components/dashboard/AddStudentDialog.tsx(47,61): error TS2638: Type '{}' may represent a primitive value, which is not permitted as the right operand of the 'in' operator.
+src/components/dashboard/AddStudentDialog.tsx(48,34): error TS18046: 'response.data.student' is of type 'unknown'.
+src/components/dashboard/AddStudentDialog.tsx(48,69): error TS18046: 'response.data.student' is of type 'unknown'.
+src/components/dashboard/AnalyticsDashboard.tsx(7,1): error TS6192: All imports in import declaration are unused.
+src/components/dashboard/AutomationDashboard.tsx(10,1): error TS6192: All imports in import declaration are unused.
+src/components/dashboard/BookCatalog.tsx(12,1): error TS6192: All imports in import declaration are unused.
+src/components/dashboard/BookCatalog.tsx(13,1): error TS6192: All imports in import declaration are unused.
+src/components/dashboard/CheckoutHistory.tsx(6,1): error TS6192: All imports in import declaration are unused.
+src/components/dashboard/DashboardOverview.tsx(42,26): error TS6133: 'setMetricsLoading' is declared but its value is never read.
+src/components/dashboard/DocumentationDashboard.tsx(5,1): error TS6192: All imports in import declaration are unused.
+src/components/dashboard/EnhancedDashboard.tsx(66,23): error TS18046: 'dailyData' is of type 'unknown'.
+src/components/dashboard/EnhancedDashboard.tsx(67,29): error TS18046: 'dailyData' is of type 'unknown'.
+src/components/dashboard/EnhancedDashboard.tsx(68,30): error TS18046: 'dailyData' is of type 'unknown'.
+src/components/dashboard/EnhancedDashboard.tsx(69,24): error TS18046: 'dailyData' is of type 'unknown'.
+src/components/dashboard/EnhancedDashboard.tsx(69,53): error TS18046: 'dailyData' is of type 'unknown'.
+src/components/dashboard/EnhancedDashboard.tsx(72,26): error TS18046: 'weeklyData' is of type 'unknown'.
+src/components/dashboard/EnhancedDashboard.tsx(73,38): error TS18046: 'weeklyData' is of type 'unknown'.
+src/components/dashboard/EnhancedDashboard.tsx(74,23): error TS18046: 'weeklyData' is of type 'unknown'.
+src/components/dashboard/EnhancedDashboard.tsx(75,28): error TS18046: 'weeklyData' is of type 'unknown'.
+src/components/dashboard/EnhancedDashboard.tsx(78,41): error TS18046: 'weeklyData' is of type 'unknown'.
+src/components/dashboard/EnhancedDashboard.tsx(283,65): error TS2532: Object is possibly 'undefined'.
+src/components/dashboard/EnhancedEquipmentDashboard.tsx(105,9): error TS2488: Type 'boolean' must have a '[Symbol.iterator]()' method that returns an iterator.
+src/components/dashboard/EnhancedEquipmentDashboard.tsx(363,57): error TS2345: Argument of type '{ isMobile: boolean; isTablet: boolean; }' is not assignable to parameter of type 'MobileOptimizationState'.
+  Type '{ isMobile: boolean; isTablet: boolean; }' is missing the following properties from type 'MobileOptimizationState': isDesktop, isLarge, isExtraLarge, width, and 4 more.
+src/components/dashboard/EnhancedEquipmentDashboard.tsx(372,52): error TS2345: Argument of type '{ isMobile: boolean; isTablet: boolean; }' is not assignable to parameter of type 'MobileOptimizationState'.
+  Type '{ isMobile: boolean; isTablet: boolean; }' is missing the following properties from type 'MobileOptimizationState': isDesktop, isLarge, isExtraLarge, width, and 4 more.
+src/components/dashboard/EnhancedEquipmentDashboard.tsx(396,73): error TS2345: Argument of type '{ isMobile: boolean; isTablet: boolean; }' is not assignable to parameter of type 'MobileOptimizationState'.
+  Type '{ isMobile: boolean; isTablet: boolean; }' is missing the following properties from type 'MobileOptimizationState': isDesktop, isLarge, isExtraLarge, width, and 4 more.
+src/components/dashboard/EnhancedEquipmentDashboard.tsx(502,78): error TS2345: Argument of type '{ isMobile: boolean; isTablet: boolean; }' is not assignable to parameter of type 'MobileOptimizationState'.
+  Type '{ isMobile: boolean; isTablet: boolean; }' is missing the following properties from type 'MobileOptimizationState': isDesktop, isLarge, isExtraLarge, width, and 4 more.
+src/components/dashboard/EnhancedEquipmentDashboard.tsx(515,78): error TS2345: Argument of type '{ isMobile: boolean; isTablet: boolean; }' is not assignable to parameter of type 'MobileOptimizationState'.
+  Type '{ isMobile: boolean; isTablet: boolean; }' is missing the following properties from type 'MobileOptimizationState': isDesktop, isLarge, isExtraLarge, width, and 4 more.
+src/components/dashboard/EnhancedEquipmentDashboard.tsx(630,59): error TS18048: 'item.currentSession' is possibly 'undefined'.
+src/components/dashboard/EnhancedEquipmentDashboard.tsx(804,69): error TS2345: Argument of type '{ isMobile: boolean; isTablet: boolean; }' is not assignable to parameter of type 'MobileOptimizationState'.
+  Type '{ isMobile: boolean; isTablet: boolean; }' is missing the following properties from type 'MobileOptimizationState': isDesktop, isLarge, isExtraLarge, width, and 4 more.
+src/components/dashboard/EnhancedEquipmentDashboard.tsx(821,69): error TS2345: Argument of type '{ isMobile: boolean; isTablet: boolean; }' is not assignable to parameter of type 'MobileOptimizationState'.
+  Type '{ isMobile: boolean; isTablet: boolean; }' is missing the following properties from type 'MobileOptimizationState': isDesktop, isLarge, isExtraLarge, width, and 4 more.
+src/components/dashboard/EquipmentDashboard.tsx(12,1): error TS6192: All imports in import declaration are unused.
+src/components/dashboard/ErrorReportingDashboard.tsx(135,5): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(options: DefinedInitialDataOptions<ErrorDashboard, Error, ErrorDashboard, readonly unknown[]>, queryClient?: QueryClient | undefined): DefinedUseQueryResult<...>', gave the following error.
+    Type '() => Promise<unknown>' is not assignable to type 'QueryFunction<ErrorDashboard, readonly unknown[]>'.
+      Type 'Promise<unknown>' is not assignable to type 'ErrorDashboard | Promise<ErrorDashboard>'.
+        Type 'Promise<unknown>' is not assignable to type 'Promise<ErrorDashboard>'.
+          Type 'unknown' is not assignable to type 'ErrorDashboard'.
+  Overload 2 of 3, '(options: UndefinedInitialDataOptions<ErrorDashboard, Error, ErrorDashboard, readonly unknown[]>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error.
+    Type '() => Promise<unknown>' is not assignable to type 'unique symbol | QueryFunction<ErrorDashboard, readonly unknown[], never>'.
+      Type '() => Promise<unknown>' is not assignable to type 'QueryFunction<ErrorDashboard, readonly unknown[], never>'.
+        Type 'Promise<unknown>' is not assignable to type 'ErrorDashboard | Promise<ErrorDashboard>'.
+          Type 'Promise<unknown>' is not assignable to type 'Promise<ErrorDashboard>'.
+            Type 'unknown' is not assignable to type 'ErrorDashboard'.
+  Overload 3 of 3, '(options: UseQueryOptions<ErrorDashboard, Error, ErrorDashboard, readonly unknown[]>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error.
+    Type '() => Promise<unknown>' is not assignable to type 'unique symbol | QueryFunction<ErrorDashboard, readonly unknown[], never>'.
+      Type '() => Promise<unknown>' is not assignable to type 'QueryFunction<ErrorDashboard, readonly unknown[], never>'.
+        Type 'Promise<unknown>' is not assignable to type 'ErrorDashboard | Promise<ErrorDashboard>'.
+          Type 'Promise<unknown>' is not assignable to type 'Promise<ErrorDashboard>'.
+            Type 'unknown' is not assignable to type 'ErrorDashboard'.
+src/components/dashboard/ErrorReportingDashboard.tsx(144,5): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(options: DefinedInitialDataOptions<ErrorReport[], Error, ErrorReport[], readonly unknown[]>, queryClient?: QueryClient | undefined): DefinedUseQueryResult<...>', gave the following error.
+    Type '() => Promise<unknown>' is not assignable to type 'QueryFunction<ErrorReport[], readonly unknown[]>'.
+      Type 'Promise<unknown>' is not assignable to type 'ErrorReport[] | Promise<ErrorReport[]>'.
+        Type 'Promise<unknown>' is not assignable to type 'Promise<ErrorReport[]>'.
+          Type 'unknown' is not assignable to type 'ErrorReport[]'.
+  Overload 2 of 3, '(options: UndefinedInitialDataOptions<ErrorReport[], Error, ErrorReport[], readonly unknown[]>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error.
+    Type '() => Promise<unknown>' is not assignable to type 'unique symbol | QueryFunction<ErrorReport[], readonly unknown[], never>'.
+      Type '() => Promise<unknown>' is not assignable to type 'QueryFunction<ErrorReport[], readonly unknown[], never>'.
+        Type 'Promise<unknown>' is not assignable to type 'ErrorReport[] | Promise<ErrorReport[]>'.
+          Type 'Promise<unknown>' is not assignable to type 'Promise<ErrorReport[]>'.
+            Type 'unknown' is not assignable to type 'ErrorReport[]'.
+  Overload 3 of 3, '(options: UseQueryOptions<ErrorReport[], Error, ErrorReport[], readonly unknown[]>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error.
+    Type '() => Promise<unknown>' is not assignable to type 'unique symbol | QueryFunction<ErrorReport[], readonly unknown[], never>'.
+      Type '() => Promise<unknown>' is not assignable to type 'QueryFunction<ErrorReport[], readonly unknown[], never>'.
+        Type 'Promise<unknown>' is not assignable to type 'ErrorReport[] | Promise<ErrorReport[]>'.
+          Type 'Promise<unknown>' is not assignable to type 'Promise<ErrorReport[]>'.
+            Type 'unknown' is not assignable to type 'ErrorReport[]'.
+src/components/dashboard/ErrorReportingDashboard.tsx(183,30): error TS2322: Type 'unknown' is not assignable to type 'BlobPart'.
+src/components/dashboard/ErrorReportingDashboard.tsx(286,60): error TS2339: Property 'overview' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(288,26): error TS2339: Property 'overview' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(299,60): error TS2339: Property 'overview' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(301,26): error TS2339: Property 'overview' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(313,27): error TS2339: Property 'overview' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(316,26): error TS2339: Property 'overview' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(327,60): error TS2339: Property 'overview' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(353,46): error TS2339: Property 'trends' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(387,39): error TS2339: Property 'categoryBreakdown' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(395,34): error TS2339: Property 'categoryBreakdown' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(395,57): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/components/dashboard/ErrorReportingDashboard.tsx(395,64): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/components/dashboard/ErrorReportingDashboard.tsx(415,30): error TS2339: Property 'topErrors' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(415,57): error TS7006: Parameter 'error' implicitly has an 'any' type.
+src/components/dashboard/ErrorReportingDashboard.tsx(449,45): error TS2339: Property 'severityBreakdown' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(455,34): error TS2339: Property 'severityBreakdown' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(455,57): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+src/components/dashboard/ErrorReportingDashboard.tsx(455,64): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/components/dashboard/ErrorReportingDashboard.tsx(474,30): error TS2339: Property 'categoryBreakdown' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(474,53): error TS7006: Parameter 'category' implicitly has an 'any' type.
+src/components/dashboard/ErrorReportingDashboard.tsx(553,32): error TS2339: Property 'slice' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(553,50): error TS7006: Parameter 'report' implicitly has an 'any' type.
+src/components/dashboard/ErrorReportingDashboard.tsx(612,28): error TS2339: Property 'recentActivity' does not exist on type 'NonNullable<NoInfer<TQueryFnData>>'.
+src/components/dashboard/ErrorReportingDashboard.tsx(612,48): error TS7006: Parameter 'activity' implicitly has an 'any' type.
+src/components/dashboard/QRScannerComponent.tsx(113,27): error TS2532: Object is possibly 'undefined'.
+src/components/dashboard/RealTimeMonitor.tsx(69,13): error TS7030: Not all code paths return a value.
+src/components/dashboard/ReportsBuilder.tsx(2,1): error TS6192: All imports in import declaration are unused.
+src/components/dashboard/ReportsBuilder.tsx(13,1): error TS6192: All imports in import declaration are unused.
+src/components/dashboard/ReportsBuilder.tsx(536,24): error TS2375: Type '{ children: Element[]; defaultValue: string | undefined; }' is not assignable to type '{ value?: string; defaultValue?: string; onValueChange?(value: string): void; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'defaultValue' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/dashboard/ReportsBuilder.tsx(651,43): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/components/dashboard/ReportsBuilder.tsx(653,32): error TS2532: Object is possibly 'undefined'.
+src/components/dashboard/ReportsBuilder.tsx(653,89): error TS2532: Object is possibly 'undefined'.
+src/components/dashboard/ScanWorkspace.tsx(69,9): error TS6198: All destructured elements are unused.
+src/components/dashboard/ScanWorkspace.tsx(154,11): error TS2412: Type '{ id: string; studentId: string; firstName: string | undefined; lastName: string; gradeLevel: string; gradeCategory: string; section: string; } | undefined' is not assignable to type 'Student | undefined' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the type of the target.
+src/components/dashboard/SelfServiceMode.tsx(51,13): error TS7030: Not all code paths return a value.
+src/components/dashboard/SelfServiceMode.tsx(123,19): error TS2345: Argument of type '{ success: boolean; action: "error" | "check-in" | "check-out" | "duplicate"; student: Student | undefined; message: string; isDuplicate: boolean; duration: number | undefined; }' is not assignable to parameter of type 'SetStateAction<ScanResult | null>'.
+  Type '{ success: boolean; action: "error" | "check-in" | "check-out" | "duplicate"; student: Student | undefined; message: string; isDuplicate: boolean; duration: number | undefined; }' is not assignable to type 'ScanResult' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Types of property 'student' are incompatible.
+      Type 'Student | undefined' is not assignable to type 'Student'.
+        Type 'undefined' is not assignable to type 'Student'.
+src/components/dashboard/StudentBarcodeDialog.tsx(136,71): error TS2345: Argument of type '{ isMobile: boolean; isTablet: boolean; isDesktop: boolean; }' is not assignable to parameter of type 'MobileOptimizationState'.
+  Type '{ isMobile: boolean; isTablet: boolean; isDesktop: boolean; }' is missing the following properties from type 'MobileOptimizationState': isLarge, isExtraLarge, width, height, and 3 more.
+src/components/dashboard/StudentImportDialog.tsx(93,10): error TS6133: 'updateExisting' is declared but its value is never read.
+src/components/dashboard/StudentImportDialog.tsx(159,30): error TS2532: Object is possibly 'undefined'.
+src/components/dashboard/StudentImportDialog.tsx(194,45): error TS2538: Type 'undefined' cannot be used as an index type.
+src/components/dashboard/StudentImportDialog.tsx(203,55): error TS2345: Argument of type '(row: any[]) => any' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => any'.
+  Types of parameters 'row' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type 'any[]'.
+src/components/dashboard/StudentImportDialog.tsx(292,35): error TS2448: Block-scoped variable 'previewImportMutation' used before its declaration.
+src/components/dashboard/StudentImportDialog.tsx(292,35): error TS2454: Variable 'previewImportMutation' is used before being assigned.
+src/components/dashboard/StudentImportDialog.tsx(408,30): error TS2322: Type 'unknown' is not assignable to type 'BlobPart'.
+src/components/dashboard/StudentManagement.tsx(5,1): error TS6192: All imports in import declaration are unused.
+src/components/dashboard/StudentManagement.tsx(101,38): error TS2339: Property 'students' does not exist on type '{}'.
+src/components/dashboard/StudentManagement.tsx(305,34): error TS7006: Parameter 'student' implicitly has an 'any' type.
+src/components/dashboard/StudentManagement.tsx(313,34): error TS7006: Parameter 'student' implicitly has an 'any' type.
+src/components/dashboard/StudentManagement.tsx(319,34): error TS7006: Parameter 'student' implicitly has an 'any' type.
+src/components/dashboard/StudentManagement.tsx(366,35): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/dashboard/StudentManagement.tsx(549,26): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'SetStateAction<string>'.
+  Type 'undefined' is not assignable to type 'SetStateAction<string>'.
+src/components/dashboard/StudentManagement.tsx(556,26): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'SetStateAction<string>'.
+  Type 'undefined' is not assignable to type 'SetStateAction<string>'.
+src/components/dashboard/StudentManagement.tsx(565,52): error TS2345: Argument of type '{ isMobile: boolean; isTablet: boolean; isDesktop: boolean; isLarge: boolean; isExtraLarge: boolean; }' is not assignable to parameter of type 'MobileOptimizationState'.
+  Type '{ isMobile: boolean; isTablet: boolean; isDesktop: boolean; isLarge: boolean; isExtraLarge: boolean; }' is missing the following properties from type 'MobileOptimizationState': width, height, breakpoints, orientation, pixelRatio
+src/components/dashboard/StudentPhotoUpload.tsx(67,26): error TS2554: Expected 3 arguments, but got 2.
+src/components/dashboard/StudentPhotoUpload.tsx(70,19): error TS2554: Expected 1 arguments, but got 0.
+src/components/dashboard/StudentPhotoUpload.tsx(70,19): error TS7009: 'new' expression, whose target lacks a construct signature, implicitly has an 'any' type.
+src/components/dashboard/StudentPhotoUpload.tsx(85,23): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/components/dashboard/StudentPhotoUpload.tsx(87,11): error TS2365: Operator '>' cannot be applied to types 'number' and '{ width: number; height: number; }'.
+src/components/dashboard/StudentPhotoUpload.tsx(88,9): error TS2322: Type '{ width: number; height: number; }' is not assignable to type 'number'.
+src/components/dashboard/StudentPhotoUpload.tsx(89,9): error TS2322: Type 'number' is not assignable to type '{ width: number; height: number; }'.
+src/components/dashboard/StudentPhotoUpload.tsx(89,20): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/components/dashboard/StudentPhotoUpload.tsx(92,7): error TS2322: Type '{ width: number; height: number; }' is not assignable to type 'number'.
+src/components/dashboard/StudentPhotoUpload.tsx(96,32): error TS2769: No overload matches this call.
+  Overload 1 of 6, '(image: CanvasImageSource, dx: number, dy: number, dw: number, dh: number): void', gave the following error.
+    Argument of type '{ width: number; height: number; }' is not assignable to parameter of type 'number'.
+  Overload 2 of 6, '(image: CanvasImageSource, dx: number, dy: number, dw: number, dh: number): void', gave the following error.
+    Argument of type '{ width: number; height: number; }' is not assignable to parameter of type 'number'.
+src/components/ErrorBoundary.class.tsx(98,10): error TS4114: This member must have an 'override' modifier because it overrides a member in the base class 'Component<Props, State, any>'.
+src/components/ErrorBoundary.class.tsx(126,10): error TS4114: This member must have an 'override' modifier because it overrides a member in the base class 'Component<Props, State, any>'.
+src/components/ErrorBoundary.class.tsx(269,9): error TS2412: Type 'string | null | undefined' is not assignable to type 'string | undefined' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the type of the target.
+src/components/ErrorBoundary.class.tsx(439,10): error TS4114: This member must have an 'override' modifier because it overrides a member in the base class 'Component<Props, State, any>'.
+src/components/ErrorBoundaryFallback.tsx(63,10): error TS6133: 'lastRetry' is declared but its value is never read.
+src/components/ErrorBoundaryFallback.tsx(316,13): error TS7030: Not all code paths return a value.
+src/components/ErrorBoundaryWrapper.tsx(6,17): error TS1484: 'ReactNode' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/ErrorBoundaryWrapper.tsx(117,9): error TS2322: Type '(error: Error, errorInfo: { componentStack: string; }) => void' is not assignable to type '(error: Error, info: ErrorInfo) => void'.
+  Types of parameters 'errorInfo' and 'info' are incompatible.
+    Type 'ErrorInfo' is not assignable to type '{ componentStack: string; }'.
+      Types of property 'componentStack' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/components/ErrorBoundaryWrapper.tsx(118,9): error TS2322: Type '(details: { reason: string; args: any[]; }) => void' is not assignable to type '(details: { reason: "imperative-api"; args: any[]; } | { reason: "keys"; prev: any[] | undefined; next: any[] | undefined; }) => void'.
+  Types of parameters 'details' and 'details' are incompatible.
+    Type '{ reason: "imperative-api"; args: any[]; } | { reason: "keys"; prev: any[] | undefined; next: any[] | undefined; }' is not assignable to type '{ reason: string; args: any[]; }'.
+      Property 'args' is missing in type '{ reason: "keys"; prev: any[] | undefined; next: any[] | undefined; }' but required in type '{ reason: string; args: any[]; }'.
+src/components/ErrorBoundaryWrapper.tsx(125,11): error TS2322: Type '(error: Error, errorInfo: { componentStack: string; }) => void' is not assignable to type '(error: Error, info: ErrorInfo) => void'.
+  Types of parameters 'errorInfo' and 'info' are incompatible.
+    Type 'ErrorInfo' is not assignable to type '{ componentStack: string; }'.
+      Types of property 'componentStack' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/components/ErrorBoundaryWrapper.tsx(126,11): error TS2322: Type '(details: { reason: string; args: any[]; }) => void' is not assignable to type '(details: { reason: "imperative-api"; args: any[]; } | { reason: "keys"; prev: any[] | undefined; next: any[] | undefined; }) => void'.
+  Types of parameters 'details' and 'details' are incompatible.
+    Type '{ reason: "imperative-api"; args: any[]; } | { reason: "keys"; prev: any[] | undefined; next: any[] | undefined; }' is not assignable to type '{ reason: string; args: any[]; }'.
+      Property 'args' is missing in type '{ reason: "keys"; prev: any[] | undefined; next: any[] | undefined; }' but required in type '{ reason: string; args: any[]; }'.
+src/components/ErrorBoundaryWrapper.tsx(139,7): error TS2322: Type '(error: Error, errorInfo: { componentStack: string; }) => void' is not assignable to type '(error: Error, info: ErrorInfo) => void'.
+  Types of parameters 'errorInfo' and 'info' are incompatible.
+    Type 'ErrorInfo' is not assignable to type '{ componentStack: string; }'.
+      Types of property 'componentStack' are incompatible.
+        Type 'string | null' is not assignable to type 'string'.
+          Type 'null' is not assignable to type 'string'.
+src/components/ErrorBoundaryWrapper.tsx(140,7): error TS2322: Type '(details: { reason: string; args: any[]; }) => void' is not assignable to type '(details: { reason: "imperative-api"; args: any[]; } | { reason: "keys"; prev: any[] | undefined; next: any[] | undefined; }) => void'.
+  Types of parameters 'details' and 'details' are incompatible.
+    Type '{ reason: "imperative-api"; args: any[]; } | { reason: "keys"; prev: any[] | undefined; next: any[] | undefined; }' is not assignable to type '{ reason: string; args: any[]; }'.
+      Property 'args' is missing in type '{ reason: "keys"; prev: any[] | undefined; next: any[] | undefined; }' but required in type '{ reason: string; args: any[]; }'.
+src/components/ErrorBoundaryWrapper.tsx(158,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: P, context?: any): string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | Promise<...> | Component<...> | null | undefined', gave the following error.
+    Type 'PropsWithoutRef<P> & { ref: ForwardedRef<any>; }' is not assignable to type 'IntrinsicAttributes & P'.
+      Type 'PropsWithoutRef<P> & { ref: ForwardedRef<any>; }' is not assignable to type 'P'.
+        'PropsWithoutRef<P> & { ref: ForwardedRef<any>; }' is assignable to the constraint of type 'P', but 'P' could be instantiated with a different subtype of constraint 'object'.
+  Overload 2 of 2, '(props: P): string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | Promise<...> | Component<...> | null | undefined', gave the following error.
+    Type 'PropsWithoutRef<P> & { ref: ForwardedRef<any>; }' is not assignable to type 'IntrinsicAttributes & P'.
+      Type 'PropsWithoutRef<P> & { ref: ForwardedRef<any>; }' is not assignable to type 'P'.
+        'PropsWithoutRef<P> & { ref: ForwardedRef<any>; }' is assignable to the constraint of type 'P', but 'P' could be instantiated with a different subtype of constraint 'object'.
+src/components/fines/FinesManagement.tsx(77,32): error TS2339: Property 'fines' does not exist on type '{}'.
+src/components/Import/EnhancedImportManager.tsx(11,1): error TS6192: All imports in import declaration are unused.
+src/components/Import/EnhancedImportManager.tsx(34,11): error TS6196: 'StudentRecord' is declared but never used.
+src/components/Import/EnhancedImportManager.tsx(50,11): error TS6196: 'BookRecord' is declared but never used.
+src/components/Import/EnhancedImportManager.tsx(85,21): error TS2554: Expected 2 arguments, but got 1.
+src/components/Import/EnhancedImportManager.tsx(95,54): error TS2532: Object is possibly 'undefined'.
+src/components/Import/EnhancedImportManager.tsx(115,47): error TS2538: Type 'undefined' cannot be used as an index type.
+src/components/Import/EnhancedImportManager.tsx(234,54): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/components/Import/EnhancedImportManager.tsx(460,36): error TS7015: Element implicitly has an 'any' type because index expression is not of type 'number'.
+src/components/ImportData.tsx(4,1): error TS6192: All imports in import declaration are unused.
+src/components/mobile/MobileBottomNavigation.tsx(92,11): error TS2339: Property 'notifications' does not exist on type 'AppStore'.
+src/components/mobile/MobileBottomNavigation.tsx(171,40): error TS7006: Parameter 'n' implicitly has an 'any' type.
+src/components/mobile/MobileQuickActions.tsx(164,23): error TS2345: Argument of type '{ type: "create"; endpoint: string; data: { action: string; bookId: string; studentId: string; timestamp: number; }; }' is not assignable to parameter of type 'Omit<OfflineAction, "id" | "timestamp" | "retryCount">'.
+  Property 'maxRetries' is missing in type '{ type: "create"; endpoint: string; data: { action: string; bookId: string; studentId: string; timestamp: number; }; }' but required in type 'Omit<OfflineAction, "id" | "timestamp" | "retryCount">'.
+src/components/mobile/MobileQuickActions.tsx(200,23): error TS2345: Argument of type '{ type: "create"; endpoint: string; data: { action: string; bookId: string; timestamp: number; }; }' is not assignable to parameter of type 'Omit<OfflineAction, "id" | "timestamp" | "retryCount">'.
+  Property 'maxRetries' is missing in type '{ type: "create"; endpoint: string; data: { action: string; bookId: string; timestamp: number; }; }' but required in type 'Omit<OfflineAction, "id" | "timestamp" | "retryCount">'.
+src/components/mobile/MobileScanner.tsx(36,9): error TS6198: All destructured elements are unused.
+src/components/mobile/MobileScanner.tsx(109,24): error TS2353: Object literal may only specify known properties, and 'torch' does not exist in type 'MediaTrackConstraintSet'.
+src/components/NotificationCenter.tsx(19,15): error TS2724: '"../services/notificationApi"' has no exported member named 'Notification'. Did you mean 'AppNotification'?
+src/components/NotificationCenter.tsx(25,11): error TS2339: Property 'token' does not exist on type 'AuthContextType'.
+src/components/NotificationCenter.tsx(74,13): error TS7030: Not all code paths return a value.
+src/components/NotificationCenter.tsx(98,63): error TS2379: Argument of type '{ unreadOnly: boolean; limit: number; type: string | undefined; }' is not assignable to parameter of type '{ userId?: string; unreadOnly?: boolean; limit?: number; offset?: number; type?: string; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'type' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/OptimizedLazyLoad.tsx(74,3): error TS4114: This member must have an 'override' modifier because it overrides a member in the base class 'Component<{ children: ReactNode; fallback?: ReactNode; }, { hasError: boolean; error?: Error; }, any>'.
+src/components/OptimizedLazyLoad.tsx(78,3): error TS4114: This member must have an 'override' modifier because it overrides a member in the base class 'Component<{ children: ReactNode; fallback?: ReactNode; }, { hasError: boolean; error?: Error; }, any>'.
+src/components/OptimizedLazyLoad.tsx(80,38): error TS2375: Type '{ message: string | undefined; }' is not assignable to type '{ message?: string; onRetry?: () => void; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'message' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/OptimizedLazyLoad.tsx(182,50): error TS2345: Argument of type 'RefObject<HTMLDivElement | null>' is not assignable to parameter of type 'RefObject<Element>'.
+  Type 'HTMLDivElement | null' is not assignable to type 'Element'.
+    Type 'null' is not assignable to type 'Element'.
+src/components/patterns/CompoundComponent.tsx(55,9): error TS2375: Type '{ value: string | undefined; onValueChange: ((value: string) => void) | undefined; disabled: boolean; error: string | undefined; size: "sm" | "lg" | "md"; }' is not assignable to type 'CompoundComponentContextValue' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'value' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/patterns/CompoundComponent.tsx(239,20): error TS2554: Expected 2-3 arguments, but got 1.
+src/components/patterns/CompoundComponent.tsx(258,26): error TS2554: Expected 2-3 arguments, but got 1.
+src/components/patterns/CompoundComponent.tsx(277,21): error TS2554: Expected 2-3 arguments, but got 1.
+src/components/patterns/RenderProps.ts(2,41): error TS6196: 'ReactElement' is declared but never used.
+src/components/patterns/RenderProps.ts(43,71): error TS2352: Conversion of type 'ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<...> | null' to type 'ComponentType<T>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Promise<AwaitedReactNode>' is not comparable to type 'ComponentType<T>'.
+src/components/patterns/RenderProps.ts(50,32): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Argument of type 'ComponentType<T>' is not assignable to parameter of type 'string | FunctionComponent<{}> | ComponentClass<{}, any>'.
+      Type 'ComponentClass<T, any>' is not assignable to type 'string | FunctionComponent<{}> | ComponentClass<{}, any>'.
+        Type 'ComponentClass<T, any>' is not assignable to type 'ComponentClass<{}, any>'.
+          Types of property 'getDerivedStateFromProps' are incompatible.
+            Type 'GetDerivedStateFromProps<T, any> | undefined' is not assignable to type 'GetDerivedStateFromProps<{}, any> | undefined'.
+              Type 'GetDerivedStateFromProps<T, any>' is not assignable to type 'GetDerivedStateFromProps<{}, any>'.
+                Types of parameters 'nextProps' and 'nextProps' are incompatible.
+                  Type 'Readonly<{}>' is not assignable to type 'Readonly<T>'.
+src/components/performance/Image.tsx(98,63): error TS2379: Argument of type '{ width: number | undefined; height: number | undefined; quality: number; format: "webp" | "avif" | "png" | "jpg"; }' is not assignable to parameter of type 'Partial<ImageConfig>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'width' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+src/components/performance/Image.tsx(255,12): error TS2375: Type '{ ref: RefObject<HTMLImageElement | null>; src: string; alt: string; width: number | undefined; height: number | undefined; priority: boolean; quality: number; ... 11 more ...; className: string; }' is not assignable to type 'OptimizedImageProps' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'width' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+src/components/performance/Image.tsx(300,8): error TS2375: Type '{ ref: RefObject<HTMLImageElement | null>; src: string; alt: string; width: number | undefined; height: number | undefined; priority: boolean; quality: number; ... 11 more ...; className: string; }' is not assignable to type 'OptimizedImageProps' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'width' are incompatible.
+    Type 'number | undefined' is not assignable to type 'number'.
+      Type 'undefined' is not assignable to type 'number'.
+src/components/performance/LazyLoad.tsx(185,42): error TS2554: Expected 1 arguments, but got 2.
+src/components/performance/LazyLoad.tsx(393,45): error TS2339: Property 'loadEventEnd' does not exist on type 'PerformanceEntry'.
+src/components/performance/LazyLoad.tsx(393,71): error TS2339: Property 'loadEventStart' does not exist on type 'PerformanceEntry'.
+src/components/performance/LazyLoad.tsx(403,34): error TS2339: Property 'transferSize' does not exist on type 'PerformanceEntry'.
+src/components/performance/OptimizedImage.tsx(2,30): error TS6196: 'ReactNode' is declared but never used.
+src/components/performance/OptimizedImage.tsx(158,13): error TS7030: Not all code paths return a value.
+src/components/performance/OptimizedList.tsx(10,10): error TS2305: Module '"react-window"' has no exported member 'FixedSizeList'.
+src/components/performance/OptimizedList.tsx(10,33): error TS2305: Module '"react-window"' has no exported member 'VariableSizeList'.
+src/components/performance/OptimizedList.tsx(253,30): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(o: { [s: string]: unknown; } | ArrayLike<unknown>): unknown[]', gave the following error.
+    Argument of type 'T' is not assignable to parameter of type '{ [s: string]: unknown; } | ArrayLike<unknown>'.
+      Type 'T' is not assignable to type 'ArrayLike<unknown>'.
+  Overload 2 of 2, '(o: {}): any[]', gave the following error.
+    Argument of type 'T' is not assignable to parameter of type '{}'.
+src/components/performance/OptimizedList.tsx(311,22): error TS2345: Argument of type 'T | undefined' is not assignable to parameter of type 'T'.
+  'T' could be instantiated with an arbitrary type which could be unrelated to 'T | undefined'.
+src/components/performance/OptimizedList.tsx(328,26): error TS2345: Argument of type 'T | undefined' is not assignable to parameter of type 'T'.
+  'T' could be instantiated with an arbitrary type which could be unrelated to 'T | undefined'.
+src/components/performance/OptimizedList.tsx(362,10): error TS2375: Type '{ searchable: boolean; sortable: boolean; filterable: boolean; searchPlaceholder: string | undefined; sortOptions: { key: keyof T; label: string; direction?: "desc" | "asc"; }[] | undefined; ... 5 more ...; filteredCount: number; }' is not assignable to type 'SearchFilterProps<T>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'searchPlaceholder' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/performance/PerformanceDashboard.tsx(69,22): error TS2339: Property 'flush' does not exist on type '{ sessionId: string; userId: string | null; setUserId: (userId: string) => void; clearUserId: () => void; }'.
+src/components/performance/PerformanceDashboard.tsx(69,29): error TS2339: Property 'getSummary' does not exist on type '{ sessionId: string; userId: string | null; setUserId: (userId: string) => void; clearUserId: () => void; }'.
+src/components/performance/PerformanceDashboard.tsx(72,10): error TS6133: 'refreshKey' is declared but its value is never read.
+src/components/performance/PerformanceMonitor.tsx(14,175): error TS6133: 'Timer' is declared but its value is never read.
+src/components/performance/PerformanceMonitor.tsx(125,10): error TS6133: 'historicalReports' is declared but its value is never read.
+src/components/performance/PerformanceProvider.tsx(5,15): error TS2614: Module '"@/lib/performance-monitor"' has no exported member 'PerformanceMetric'. Did you mean to use 'import PerformanceMetric from "@/lib/performance-monitor"' instead?
+src/components/performance/PerformanceProvider.tsx(5,34): error TS2614: Module '"@/lib/performance-monitor"' has no exported member 'LogEntry'. Did you mean to use 'import LogEntry from "@/lib/performance-monitor"' instead?
+src/components/performance/PerformanceProvider.tsx(41,23): error TS2554: Expected 1 arguments, but got 0.
+src/components/performance/ReactPerformanceOptimizer.tsx(11,10): error TS2305: Module '"react-window"' has no exported member 'VariableSizeList'.
+src/components/performance/ReactPerformanceOptimizer.tsx(179,21): error TS2345: Argument of type 'T | undefined' is not assignable to parameter of type 'T'.
+  'T' could be instantiated with an arbitrary type which could be unrelated to 'T | undefined'.
+src/components/PerformanceMonitor.tsx(147,13): error TS2552: Cannot find name 'Clock'. Did you mean 'Lock'?
+src/components/PerformanceMonitor.tsx(154,13): error TS2304: Cannot find name 'Zap'.
+src/components/PerformanceMonitor.tsx(161,13): error TS2304: Cannot find name 'Timer'.
+src/components/PerformanceMonitor.tsx(182,13): error TS2304: Cannot find name 'Zap'.
+src/components/PerformanceMonitor.tsx(196,13): error TS2552: Cannot find name 'Clock'. Did you mean 'Lock'?
+src/components/search/AdvancedStudentSearch.tsx(5,1): error TS6192: All imports in import declaration are unused.
+src/components/search/AdvancedStudentSearch.tsx(98,10): error TS6133: 'loadingSuggestions' is declared but its value is never read.
+src/components/search/AdvancedStudentSearch.tsx(292,20): error TS2552: Cannot find name 'Badge'. Did you mean 'badges'?
+src/components/search/AdvancedStudentSearch.tsx(292,71): error TS2552: Cannot find name 'Badge'. Did you mean 'badges'?
+src/components/search/AdvancedStudentSearch.tsx(297,10): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(300,11): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(306,10): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(309,11): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(315,10): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(317,11): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(323,10): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(326,11): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(332,10): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(335,11): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(638,24): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(640,25): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(665,20): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(667,21): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(731,30): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(731,62): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(733,30): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(733,66): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(736,30): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(739,31): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(745,28): error TS2304: Cannot find name 'Badge'.
+src/components/search/AdvancedStudentSearch.tsx(745,92): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(5,1): error TS6192: All imports in import declaration are unused.
+src/components/search/EnhancedBookSearch.tsx(13,1): error TS6192: All imports in import declaration are unused.
+src/components/search/EnhancedBookSearch.tsx(116,32): error TS2554: Expected 1 arguments, but got 0.
+src/components/search/EnhancedBookSearch.tsx(133,5): error TS2304: Cannot find name 'setLoadingSuggestions'.
+src/components/search/EnhancedBookSearch.tsx(148,7): error TS2304: Cannot find name 'setLoadingSuggestions'.
+src/components/search/EnhancedBookSearch.tsx(328,15): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(328,51): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(331,15): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(331,60): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(334,15): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(334,50): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(336,13): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(336,72): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(343,15): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(343,92): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(345,15): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(345,83): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(713,24): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(715,25): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(813,20): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(815,21): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(874,28): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(876,29): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(878,30): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(880,31): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(958,28): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(960,29): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(972,28): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(974,29): error TS2304: Cannot find name 'Badge'.
+src/components/search/EnhancedBookSearch.tsx(975,49): error TS2379: Argument of type 'Recommendation' is not assignable to parameter of type 'Book' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'Recommendation' is missing the following properties from type 'Book': accession_no, total_copies, available_copies, is_active
+src/components/search/EquipmentAvailabilitySearch.tsx(5,1): error TS6192: All imports in import declaration are unused.
+src/components/search/EquipmentAvailabilitySearch.tsx(109,32): error TS2554: Expected 1 arguments, but got 0.
+src/components/search/EquipmentAvailabilitySearch.tsx(118,5): error TS2304: Cannot find name 'setLoadingSuggestions'.
+src/components/search/EquipmentAvailabilitySearch.tsx(128,24): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<EquipmentSuggestion>'.
+src/components/search/EquipmentAvailabilitySearch.tsx(133,7): error TS2304: Cannot find name 'setLoadingSuggestions'.
+src/components/search/EquipmentAvailabilitySearch.tsx(194,28): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<EquipmentSearchResult | null>'.
+src/components/search/EquipmentAvailabilitySearch.tsx(198,13): error TS2698: Spread types may only be created from object types.
+src/components/search/EquipmentAvailabilitySearch.tsx(199,56): error TS18046: 'response.data' is of type 'unknown'.
+src/components/search/EquipmentAvailabilitySearch.tsx(276,19): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(o: {}): string[]', gave the following error.
+    Argument of type '{ 'Equipment ID': string; Name: string; Type: string; Location: string; Status: string; Condition: string; 'Usage Hours': string; 'Utilization Rate': string; 'Sessions (30d)': number; 'Max Session': string; Supervision: string; 'Next Available': string; } | undefined' is not assignable to parameter of type '{}'.
+      Type 'undefined' is not assignable to type '{}'.
+  Overload 2 of 2, '(o: object): string[]', gave the following error.
+    Argument of type '{ 'Equipment ID': string; Name: string; Type: string; Location: string; Status: string; Condition: string; 'Usage Hours': string; 'Utilization Rate': string; 'Sessions (30d)': number; 'Max Session': string; Supervision: string; 'Next Available': string; } | undefined' is not assignable to parameter of type 'object'.
+      Type 'undefined' is not assignable to type 'object'.
+src/components/search/EquipmentAvailabilitySearch.tsx(293,17): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(293,99): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(295,17): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(295,89): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(297,17): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(297,99): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(299,17): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(299,95): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(301,17): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(301,96): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(303,17): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(303,88): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(305,17): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(305,61): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(320,8): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(322,9): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(329,15): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(329,88): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(331,15): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(331,89): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(333,15): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(333,89): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(335,13): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(335,78): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(493,16): error TS2375: Type '{ children: Element[]; value: "status" | "name" | "type" | "location" | "usageHours" | "condition" | undefined; onValueChange: (value: any) => void; }' is not assignable to type '{ value?: string; defaultValue?: string; onValueChange?(value: string): void; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'value' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/search/EquipmentAvailabilitySearch.tsx(514,16): error TS2375: Type '{ children: Element[]; value: "desc" | "asc" | undefined; onValueChange: (value: any) => void; }' is not assignable to type '{ value?: string; defaultValue?: string; onValueChange?(value: string): void; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'value' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/search/EquipmentAvailabilitySearch.tsx(631,34): error TS2345: Argument of type '{ minUsageHours: number | undefined; query?: string; type?: string; status?: string; location?: string; category?: string; isAvailable?: boolean; requiresSupervision?: boolean; maintenanceDue?: boolean; ... 5 more ...; limit?: number; }' is not assignable to parameter of type 'SetStateAction<EquipmentSearchOptions>'.
+  Type '{ minUsageHours: number | undefined; query?: string; type?: string; status?: string; location?: string; category?: string; isAvailable?: boolean; requiresSupervision?: boolean; maintenanceDue?: boolean; ... 5 more ...; limit?: number; }' is not assignable to type 'EquipmentSearchOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Types of property 'minUsageHours' are incompatible.
+      Type 'number | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+src/components/search/EquipmentAvailabilitySearch.tsx(645,34): error TS2345: Argument of type '{ maxUsageHours: number | undefined; query?: string; type?: string; status?: string; location?: string; category?: string; isAvailable?: boolean; requiresSupervision?: boolean; maintenanceDue?: boolean; ... 5 more ...; limit?: number; }' is not assignable to parameter of type 'SetStateAction<EquipmentSearchOptions>'.
+  Type '{ maxUsageHours: number | undefined; query?: string; type?: string; status?: string; location?: string; category?: string; isAvailable?: boolean; requiresSupervision?: boolean; maintenanceDue?: boolean; ... 5 more ...; limit?: number; }' is not assignable to type 'EquipmentSearchOptions' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Types of property 'maxUsageHours' are incompatible.
+      Type 'number | undefined' is not assignable to type 'number'.
+        Type 'undefined' is not assignable to type 'number'.
+src/components/search/EquipmentAvailabilitySearch.tsx(664,24): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(666,25): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(691,20): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(693,21): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(753,26): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(753,68): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(765,30): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(768,31): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(771,30): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(774,31): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(805,30): error TS2304: Cannot find name 'Badge'.
+src/components/search/EquipmentAvailabilitySearch.tsx(805,76): error TS2304: Cannot find name 'Badge'.
+src/components/search/SavedSearches.tsx(23,8): error TS2307: Cannot find module '@/components/ui/textarea' or its corresponding type declarations.
+src/components/search/SavedSearches.tsx(86,40): error TS2339: Property 'searches' does not exist on type '{}'.
+src/components/search/SavedSearches.tsx(100,28): error TS2345: Argument of type '{}' is not assignable to parameter of type 'SetStateAction<SavedSearch[]>'.
+src/components/search/SavedSearches.tsx(341,30): error TS2304: Cannot find name 'Badge'.
+src/components/search/SavedSearches.tsx(343,31): error TS2304: Cannot find name 'Badge'.
+src/components/search/SavedSearches.tsx(346,32): error TS2304: Cannot find name 'Badge'.
+src/components/search/SavedSearches.tsx(349,33): error TS2304: Cannot find name 'Badge'.
+src/components/search/SavedSearches.tsx(353,32): error TS2304: Cannot find name 'Badge'.
+src/components/search/SavedSearches.tsx(356,33): error TS2304: Cannot find name 'Badge'.
+src/components/search/SavedSearches.tsx(458,30): error TS2304: Cannot find name 'Badge'.
+src/components/search/SavedSearches.tsx(460,31): error TS2304: Cannot find name 'Badge'.
+src/components/search/SavedSearches.tsx(462,30): error TS2304: Cannot find name 'Badge'.
+src/components/search/SavedSearches.tsx(465,31): error TS2304: Cannot find name 'Badge'.
+src/components/search/SavedSearches.tsx(563,28): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/security/AccessRequest.tsx(6,26): error TS2307: Cannot find module '@/components/ui/textarea' or its corresponding type declarations.
+src/components/security/AccessRequest.tsx(477,28): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/security/AuditLogViewer.tsx(9,1): error TS6192: All imports in import declaration are unused.
+src/components/security/AuditLogViewer.tsx(123,13): error TS2322: Type '{ id: string; timestamp: string; userId: string; userRole: string | undefined; sessionId: string; requestId: string; endpoint: string | undefined; method: string | undefined; ipAddress: string; ... 15 more ...; metadata: { ...; }; }[]' is not assignable to type 'AuditLogEntry[]'.
+  Type '{ id: string; timestamp: string; userId: string; userRole: string | undefined; sessionId: string; requestId: string; endpoint: string | undefined; method: string | undefined; ipAddress: string; ... 15 more ...; metadata: { ...; }; }' is not assignable to type 'AuditLogEntry' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+    Types of property 'userRole' are incompatible.
+      Type 'string | undefined' is not assignable to type 'string'.
+        Type 'undefined' is not assignable to type 'string'.
+src/components/security/AuditLogViewer.tsx(404,58): error TS2345: Argument of type '(prev: FilterOptions) => { userRole: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; entityType?: string; ... 10 more ...; maxDuration?: number; }' is not assignable to parameter of type 'SetStateAction<FilterOptions>'.
+  Type '(prev: FilterOptions) => { userRole: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; entityType?: string; ... 10 more ...; maxDuration?: number; }' is not assignable to type '(prevState: FilterOptions) => FilterOptions'.
+    Call signature return types '{ userRole: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; entityType?: string; action?: string; success?: boolean; ... 8 more ...; maxDuration?: number; }' and 'FilterOptions' are incompatible.
+      The types of 'userRole' are incompatible between these types.
+        Type 'string | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+src/components/security/AuditLogViewer.tsx(423,58): error TS2345: Argument of type '(prev: FilterOptions) => { entityType: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; ... 10 more ...; maxDuration?: number; }' is not assignable to parameter of type 'SetStateAction<FilterOptions>'.
+  Type '(prev: FilterOptions) => { entityType: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; ... 10 more ...; maxDuration?: number; }' is not assignable to type '(prevState: FilterOptions) => FilterOptions'.
+    Call signature return types '{ entityType: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; action?: string; success?: boolean; ... 8 more ...; maxDuration?: number; }' and 'FilterOptions' are incompatible.
+      The types of 'entityType' are incompatible between these types.
+        Type 'string | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+src/components/security/AuditLogViewer.tsx(442,58): error TS2345: Argument of type '(prev: FilterOptions) => { action: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; ... 10 more ...; maxDuration?: number; }' is not assignable to parameter of type 'SetStateAction<FilterOptions>'.
+  Type '(prev: FilterOptions) => { action: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; ... 10 more ...; maxDuration?: number; }' is not assignable to type '(prevState: FilterOptions) => FilterOptions'.
+    Call signature return types '{ action: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; entityType?: string; success?: boolean; ... 8 more ...; maxDuration?: number; }' and 'FilterOptions' are incompatible.
+      The types of 'action' are incompatible between these types.
+        Type 'string | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+src/components/security/AuditLogViewer.tsx(463,58): error TS2345: Argument of type '(prev: FilterOptions) => { dataAccessLevel: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; ... 11 more ...; maxDuration?: number; }' is not assignable to parameter of type 'SetStateAction<FilterOptions>'.
+  Type '(prev: FilterOptions) => { dataAccessLevel: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; ... 11 more ...; maxDuration?: number; }' is not assignable to type '(prevState: FilterOptions) => FilterOptions'.
+    Call signature return types '{ dataAccessLevel: string | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; entityType?: string; action?: string; ... 8 more ...; maxDuration?: number; }' and 'FilterOptions' are incompatible.
+      The types of 'dataAccessLevel' are incompatible between these types.
+        Type 'string | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+src/components/security/AuditLogViewer.tsx(483,58): error TS2345: Argument of type '(prev: FilterOptions) => { success: boolean | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; ... 10 more ...; maxDuration?: number; }' is not assignable to parameter of type 'SetStateAction<FilterOptions>'.
+  Type '(prev: FilterOptions) => { success: boolean | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; ... 10 more ...; maxDuration?: number; }' is not assignable to type '(prevState: FilterOptions) => FilterOptions'.
+    Call signature return types '{ success: boolean | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; entityType?: string; action?: string; ... 8 more ...; maxDuration?: number; }' and 'FilterOptions' are incompatible.
+      The types of 'success' are incompatible between these types.
+        Type 'boolean | undefined' is not assignable to type 'boolean'.
+          Type 'undefined' is not assignable to type 'boolean'.
+src/components/security/AuditLogViewer.tsx(504,64): error TS2345: Argument of type '(prev: FilterOptions) => { hasSecurityFlags: true | "indeterminate" | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; ... 12 more ...; maxDuration?: number; }' is not assignable to parameter of type 'SetStateAction<FilterOptions>'.
+  Type '(prev: FilterOptions) => { hasSecurityFlags: true | "indeterminate" | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; ... 12 more ...; maxDuration?: number; }' is not assignable to type '(prevState: FilterOptions) => FilterOptions'.
+    Call signature return types '{ hasSecurityFlags: true | "indeterminate" | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; entityType?: string; ... 9 more ...; maxDuration?: number; }' and 'FilterOptions' are incompatible.
+      The types of 'hasSecurityFlags' are incompatible between these types.
+        Type 'string | boolean | undefined' is not assignable to type 'boolean'.
+          Type 'undefined' is not assignable to type 'boolean'.
+src/components/security/AuditLogViewer.tsx(518,58): error TS2345: Argument of type '(prev: FilterOptions) => { ferpaRequired: boolean | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; ... 11 more ...; maxDuration?: number; }' is not assignable to parameter of type 'SetStateAction<FilterOptions>'.
+  Type '(prev: FilterOptions) => { ferpaRequired: boolean | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; ... 11 more ...; maxDuration?: number; }' is not assignable to type '(prevState: FilterOptions) => FilterOptions'.
+    Call signature return types '{ ferpaRequired: boolean | undefined; dateRange: "custom" | "1h" | "24h" | "7d" | "30d"; startDate?: string; endDate?: string; userId?: string; userRole?: string; entityType?: string; action?: string; ... 8 more ...; maxDuration?: number; }' and 'FilterOptions' are incompatible.
+      The types of 'ferpaRequired' are incompatible between these types.
+        Type 'boolean | undefined' is not assignable to type 'boolean'.
+          Type 'undefined' is not assignable to type 'boolean'.
+src/components/security/SecurityDashboard.tsx(186,13): error TS7030: Not all code paths return a value.
+src/components/server/BookCatalog.tsx(23,32): error TS2379: Argument of type '{ category: string | undefined; limit: number; searchQuery: string | undefined; sortBy: "title" | "author" | "created_at"; sortOrder: "desc" | "asc"; availableOnly: boolean; }' is not assignable to parameter of type 'GetBooksParams' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'category' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/components/Toast.tsx(23,13): error TS7030: Not all code paths return a value.
+src/contexts/AuthContext.tsx(65,5): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(options: DefinedInitialDataOptions<AuthUser, Error, AuthUser, readonly unknown[]>, queryClient?: QueryClient | undefined): DefinedUseQueryResult<...>', gave the following error.
+    Object literal may only specify known properties, and 'onSuccess' does not exist in type 'DefinedInitialDataOptions<AuthUser, Error, AuthUser, readonly unknown[]>'.
+  Overload 2 of 3, '(options: UndefinedInitialDataOptions<AuthUser, Error, AuthUser, readonly unknown[]>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error.
+    Object literal may only specify known properties, and 'onSuccess' does not exist in type 'UndefinedInitialDataOptions<AuthUser, Error, AuthUser, readonly unknown[]>'.
+  Overload 3 of 3, '(options: UseQueryOptions<AuthUser, Error, AuthUser, readonly unknown[]>, queryClient?: QueryClient | undefined): UseQueryResult<AuthUser, Error>', gave the following error.
+    Object literal may only specify known properties, and 'onSuccess' does not exist in type 'UseQueryOptions<AuthUser, Error, AuthUser, readonly unknown[]>'.
+src/contexts/AuthContext.tsx(65,17): error TS7006: Parameter 'currentUser' implicitly has an 'any' type.
+src/contexts/AuthContext.tsx(150,9): error TS2322: Type 'NonNullable<NoInfer<TQueryFnData>> | null' is not assignable to type 'AuthUser | null'.
+  Type 'NonNullable<NoInfer<TQueryFnData>>' is not assignable to type 'AuthUser | null'.
+    Type '{}' is missing the following properties from type 'AuthUser': id, username, role
+src/contexts/ThemeContext.tsx(78,13): error TS7030: Not all code paths return a value.
+src/contexts/WebSocketContext.tsx(62,30): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/contexts/WebSocketContext.tsx(71,28): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/contexts/WebSocketContext.tsx(100,13): error TS7030: Not all code paths return a value.
+src/hooks/perf_hooks.ts(55,7): error TS2739: Type 'PerformanceObserver' is missing the following properties from type 'PerformanceObserver': callback, observer
+src/hooks/perf_hooks.ts(55,54): error TS2345: Argument of type 'import("C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/src/hooks/perf_hooks").PerformanceObserverCallback' is not assignable to parameter of type 'PerformanceObserverCallback'.
+  Types of parameters 'observer' and 'observer' are incompatible.
+    Type 'PerformanceObserver' is missing the following properties from type 'PerformanceObserver': callback, observer
+src/hooks/perf_hooks.ts(56,7): error TS2531: Object is possibly 'null'.
+src/hooks/perf_hooks.ts(69,7): error TS2740: Type 'PerformanceObserverEntryList' is missing the following properties from type 'PerformanceEntry[]': length, pop, push, concat, and 28 more.
+src/hooks/perf_hooks.ts(101,3): error TS2394: This overload signature is not compatible with its implementation signature.
+src/hooks/perf_hooks.ts(156,49): error TS2339: Property 'navigationStart' does not exist on type 'PerformanceNavigationTiming'.
+src/hooks/perf_hooks.ts(165,61): error TS2339: Property 'navigationStart' does not exist on type 'PerformanceNavigationTiming'.
+src/hooks/perf_hooks.ts(215,33): error TS2532: Object is possibly 'undefined'.
+src/hooks/useBreakpoint.ts(16,58): error TS2532: Object is possibly 'undefined'.
+src/hooks/useBreakpoint.ts(21,39): error TS2532: Object is possibly 'undefined'.
+src/hooks/useBreakpoint.ts(43,25): error TS2532: Object is possibly 'undefined'.
+src/hooks/useBreakpoint.ts(43,42): error TS2532: Object is possibly 'undefined'.
+src/hooks/useBreakpoint.ts(45,24): error TS2532: Object is possibly 'undefined'.
+src/hooks/useEnhancedState.ts(256,22): error TS2554: Expected 1 arguments, but got 0.
+src/hooks/useEnhancedState.ts(330,16): error TS2345: Argument of type 'T | undefined' is not assignable to parameter of type 'T | ((prev: T) => T)'.
+  Type 'undefined' is not assignable to type 'T | ((prev: T) => T)'.
+src/hooks/useEnhancedState.ts(338,16): error TS2345: Argument of type 'T | undefined' is not assignable to parameter of type 'T | ((prev: T) => T)'.
+  Type 'undefined' is not assignable to type 'T | ((prev: T) => T)'.
+src/hooks/useEnhancedState.ts(421,7): error TS2304: Cannot find name 'setLastUpdate'.
+src/hooks/useMobileOptimization.ts(88,38): error TS7030: Not all code paths return a value.
+src/hooks/useOfflineSync.ts(16,11): error TS6196: 'SyncQueue' is declared but never used.
+src/hooks/useOfflineSync.ts(182,13): error TS2532: Object is possibly 'undefined'.
+src/hooks/useOfflineSync.ts(183,35): error TS2532: Object is possibly 'undefined'.
+src/hooks/useOfflineSync.ts(212,13): error TS2375: Type '{ method: string; headers: { Authorization?: string; 'Content-Type': string; }; body: string | undefined; }' is not assignable to type 'RequestInit' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'body' are incompatible.
+    Type 'string | undefined' is not assignable to type 'BodyInit | null'.
+      Type 'undefined' is not assignable to type 'BodyInit | null'.
+src/hooks/useOfflineSync.ts(271,16): error TS2339: Property 'retryCount' does not exist on type 'IDBRequest<any>'.
+src/hooks/usePerformance.ts(317,5): error TS2353: Object literal may only specify known properties, and 'onSuccess' does not exist in type 'UseQueryOptions<T, Error, T, readonly unknown[]>'.
+src/hooks/usePerformance.ts(317,17): error TS7006: Parameter 'data' implicitly has an 'any' type.
+src/hooks/usePerformance.ts(331,16): error TS2339: Property 'onSuccess' does not exist on type 'UseQueryOptions<T, Error, T, readonly unknown[]>'.
+src/hooks/usePerformance.ts(333,15): error TS7006: Parameter 'error' implicitly has an 'any' type.
+src/hooks/usePerformance.ts(348,16): error TS2339: Property 'onError' does not exist on type 'UseQueryOptions<T, Error, T, readonly unknown[]>'.
+src/hooks/usePerformance.ts(355,6): error TS2554: Expected 1-2 arguments, but got 3.
+src/hooks/usePerformance.ts(408,22): error TS2559: Type '(variables: V) => Promise<T>' has no properties in common with type 'UseMutationOptions<unknown, Error, void, unknown>'.
+src/hooks/useReactPerformance.ts(162,34): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(initialValue: T): RefObject<T>', gave the following error.
+    Argument of type '() => T' is not assignable to parameter of type 'T'.
+      'T' could be instantiated with an arbitrary type which could be unrelated to '() => T'.
+  Overload 2 of 3, '(initialValue: T | null): RefObject<T | null>', gave the following error.
+    Argument of type '() => T' is not assignable to parameter of type 'T'.
+      'T' could be instantiated with an arbitrary type which could be unrelated to '() => T'.
+  Overload 3 of 3, '(initialValue: T | undefined): RefObject<T | undefined>', gave the following error.
+    Argument of type '() => T' is not assignable to parameter of type 'T'.
+      'T' could be instantiated with an arbitrary type which could be unrelated to '() => T'.
+src/hooks/useReactPerformance.ts(189,13): error TS7030: Not all code paths return a value.
+src/hooks/useTypedApi.ts(3,15): error TS6196: 'ApiResponse' is declared but never used.
+src/hooks/useTypedApi.ts(81,40): error TS2341: Property 'request' is private and only accessible within class 'ApiClient'.
+src/hooks/useTypedApi.ts(278,40): error TS2341: Property 'request' is private and only accessible within class 'ApiClient'.
+src/hooks/useTypedApi.ts(359,13): error TS7030: Not all code paths return a value.
+src/hooks/useUSBScanner.ts(149,13): error TS7030: Not all code paths return a value.
+src/hooks/useWebSocket.ts(45,17): error TS2339: Property 'token' does not exist on type 'AuthContextType'.
+src/hooks/useWebSocket.ts(425,24): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/hooks/useWebSocket.ts(473,26): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/lib/api-client.ts(144,11): error TS2375: Type '{ message: string; status: number; code: string; details: Record<string, unknown> | undefined; }' is not assignable to type 'ApiError' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'details' are incompatible.
+    Type 'Record<string, unknown> | undefined' is not assignable to type 'Record<string, unknown>'.
+      Type 'undefined' is not assignable to type 'Record<string, unknown>'.
+src/lib/api-client.ts(153,5): error TS2741: Property 'data' is missing in type '{ success: false; error: string; }' but required in type 'ApiResponse<never>'.
+src/lib/api-client.ts(162,9): error TS2741: Property 'data' is missing in type '{ success: false; error: string; }' but required in type 'ApiResponse<never>'.
+src/lib/api-client.ts(168,7): error TS2741: Property 'data' is missing in type '{ success: false; error: string; }' but required in type 'ApiResponse<never>'.
+src/lib/api-client.ts(174,5): error TS2741: Property 'data' is missing in type '{ success: false; error: string; }' but required in type 'ApiResponse<never>'.
+src/lib/api-client.ts(182,28): error TS2379: Argument of type '{ method: "GET"; url: string; params: Record<string, string | number> | undefined; }' is not assignable to parameter of type 'ApiRequestConfig' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'params' are incompatible.
+    Type 'Record<string, string | number> | undefined' is not assignable to type 'Record<string, string | number>'.
+      Type 'undefined' is not assignable to type 'Record<string, string | number>'.
+src/lib/api-client.ts(197,28): error TS2379: Argument of type '{ method: "POST"; url: string; data: unknown; headers: Record<string, string> | undefined; params: Record<string, string | number> | undefined; }' is not assignable to parameter of type 'ApiRequestConfig' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'headers' are incompatible.
+    Type 'Record<string, string> | undefined' is not assignable to type 'Record<string, string>'.
+      Type 'undefined' is not assignable to type 'Record<string, string>'.
+src/lib/api-client.ts(214,28): error TS2379: Argument of type '{ method: "PUT"; url: string; data: unknown; headers: Record<string, string> | undefined; params: Record<string, string | number> | undefined; }' is not assignable to parameter of type 'ApiRequestConfig' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'headers' are incompatible.
+    Type 'Record<string, string> | undefined' is not assignable to type 'Record<string, string>'.
+      Type 'undefined' is not assignable to type 'Record<string, string>'.
+src/lib/api-client.ts(231,28): error TS2379: Argument of type '{ method: "PATCH"; url: string; data: unknown; headers: Record<string, string> | undefined; params: Record<string, string | number> | undefined; }' is not assignable to parameter of type 'ApiRequestConfig' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'headers' are incompatible.
+    Type 'Record<string, string> | undefined' is not assignable to type 'Record<string, string>'.
+      Type 'undefined' is not assignable to type 'Record<string, string>'.
+src/lib/api-client.ts(319,59): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(input: string | URL | Request, init?: RequestInit | undefined): Promise<Response>', gave the following error.
+    Argument of type '{ method: HttpMethod; headers: { Authorization: string; }; body: string | undefined; }' is not assignable to parameter of type 'RequestInit' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Types of property 'body' are incompatible.
+        Type 'string | undefined' is not assignable to type 'BodyInit | null'.
+          Type 'undefined' is not assignable to type 'BodyInit | null'.
+  Overload 2 of 2, '(input: URL | RequestInfo, init?: RequestInit | undefined): Promise<Response>', gave the following error.
+    Argument of type '{ method: HttpMethod; headers: { Authorization: string; }; body: string | undefined; }' is not assignable to parameter of type 'RequestInit' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+      Types of property 'body' are incompatible.
+        Type 'string | undefined' is not assignable to type 'BodyInit | null'.
+          Type 'undefined' is not assignable to type 'BodyInit | null'.
+src/lib/api.ts(143,70): error TS2554: Expected 1-2 arguments, but got 3.
+src/lib/api.ts(157,60): error TS2554: Expected 1-2 arguments, but got 3.
+src/lib/api/__tests__/interceptors.test.ts(45,70): error TS7006: Parameter 'err' implicitly has an 'any' type.
+src/lib/api/__tests__/interceptors.test.ts(46,71): error TS7006: Parameter 'err' implicitly has an 'any' type.
+src/lib/api/errors.ts(33,3): error TS2375: Type '{ status: number; message: string; code: string | undefined; timestamp: string | undefined; validationErrors: ValidationErrorDetail[]; raw: ApiErrorPayload | undefined; }' is not assignable to type 'AppApiError' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'code' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/lib/performance-monitor.ts(131,57): error TS18048: 'lastEntry' is possibly 'undefined'.
+src/lib/performance-monitor.ts(351,11): error TS2375: Type '{ name: string; startTime: number; metadata: Record<string, unknown> | undefined; status: "started"; }' is not assignable to type 'PerformanceEntry' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'metadata' are incompatible.
+    Type 'Record<string, unknown> | undefined' is not assignable to type 'Record<string, unknown>'.
+      Type 'undefined' is not assignable to type 'Record<string, unknown>'.
+src/lib/performance-monitor.ts(403,11): error TS2375: Type '{ name: string; value: number; timestamp: number; type: "duration" | "counter" | "gauge" | "histogram"; unit: string | undefined; tags: Record<string, string> | undefined; }' is not assignable to type 'PerformanceMetric' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'tags' are incompatible.
+    Type 'Record<string, string> | undefined' is not assignable to type 'Record<string, string>'.
+      Type 'undefined' is not assignable to type 'Record<string, string>'.
+src/lib/performance-monitor.ts(417,25): error TS2379: Argument of type '{ name: string; value: number; timestamp: number; type: "gauge"; tags: Record<string, string> | undefined; }' is not assignable to parameter of type 'PerformanceMetric' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'tags' are incompatible.
+    Type 'Record<string, string> | undefined' is not assignable to type 'Record<string, string>'.
+      Type 'undefined' is not assignable to type 'Record<string, string>'.
+src/lib/performance-monitor.ts(463,11): error TS2375: Type '{ level: "error" | "info" | "debug" | "warn"; message: string; timestamp: number; context: Record<string, unknown> | undefined; userId: string | undefined; sessionId: string; }' is not assignable to type 'LogEntry' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'context' are incompatible.
+    Type 'Record<string, unknown> | undefined' is not assignable to type 'Record<string, unknown>'.
+      Type 'undefined' is not assignable to type 'Record<string, unknown>'.
+src/lib/scanner.ts(148,22): error TS2554: Expected 1 arguments, but got 0.
+src/lib/scanner.ts(346,36): error TS7030: Not all code paths return a value.
+src/scripts/performanceBenchmark.ts(117,49): error TS2554: Expected 1 arguments, but got 2.
+src/scripts/performanceBenchmark.ts(276,38): error TS2322: Type 'BenchmarkResult | undefined' is not assignable to type 'BenchmarkResult | null'.
+  Type 'undefined' is not assignable to type 'BenchmarkResult | null'.
+src/scripts/performanceBenchmark.ts(299,32): error TS18048: 'latest' is possibly 'undefined'.
+src/scripts/performanceBenchmark.ts(299,47): error TS18048: 'previous' is possibly 'undefined'.
+src/scripts/performanceBenchmark.ts(299,65): error TS18048: 'previous' is possibly 'undefined'.
+src/scripts/performanceTest.ts(8,1): error TS6192: All imports in import declaration are unused.
+src/scripts/performanceTest.ts(82,65): error TS18046: 'error' is of type 'unknown'.
+src/scripts/performanceTest.ts(141,44): error TS18046: 'error' is of type 'unknown'.
+src/scripts/performanceTest.ts(145,56): error TS18046: 'error' is of type 'unknown'.
+src/scripts/performanceTest.ts(362,46): error TS18046: 'error' is of type 'unknown'.
+src/services/performanceMonitoringService.ts(169,88): error TS2339: Property 'navigationStart' does not exist on type 'PerformanceNavigationTiming'.
+src/services/performanceMonitoringService.ts(170,72): error TS2339: Property 'navigationStart' does not exist on type 'PerformanceNavigationTiming'.
+src/services/performanceMonitoringService.ts(491,38): error TS2322: Type 'PerformanceReport | undefined' is not assignable to type 'PerformanceReport | null'.
+  Type 'undefined' is not assignable to type 'PerformanceReport | null'.
+src/services/performanceMonitoringService.ts(508,17): error TS2339: Property 'lighthouse' does not exist on type 'Window & typeof globalThis'.
+src/services/performanceMonitoringService.ts(513,35): error TS2339: Property 'lighthouse' does not exist on type 'Window & typeof globalThis'.
+src/services/performanceMonitoringService.ts(566,29): error TS18048: 'latestReport' is possibly 'undefined'.
+src/services/performanceMonitoringService.ts(576,47): error TS18048: 'latestReport' is possibly 'undefined'.
+src/store/state-manager.ts(101,14): error TS2304: Cannot find name 'subscribe'.
+src/store/state-manager.ts(132,5): error TS2322: Type 'StateCreator<T, [], [["zustand/persist", unknown]]>' is not assignable to type '(set: any, get: any) => { ...; }'.
+  Target signature provides too few arguments. Expected 3 or more, but got 2.
+src/store/state-manager.ts(132,35): error TS2345: Argument of type '(set: any, get: any) => { ...; }' is not assignable to parameter of type 'StateCreator<T, [["zustand/persist", unknown]], []>'.
+  Type '(set: any, get: any) => { ...; }' is not assignable to type '(setState: (partial: T | Partial<T> | ((state: T) => T | Partial<T>), replace?: boolean | undefined) => void, getState: () => T, store: Write<StoreApi<T>, StorePersist<...>>) => T'.
+    Type '{ state: T; setState: (updater: T | ((prev: T) => T)) => void; getState: () => any; resetState: () => any; select: <R>(selector: StateSelector<T, R>) => R; subscribe: (callback: (state: T, previousState: T) => void) => any; batch: (updates: Array<() => void>) => void; actions: Record<string, (...args: any[]) => void...' is not assignable to type 'T'.
+      'T' could be instantiated with an arbitrary type which could be unrelated to '{ state: T; setState: (updater: T | ((prev: T) => T)) => void; getState: () => any; resetState: () => any; select: <R>(selector: StateSelector<T, R>) => R; subscribe: (callback: (state: T, previousState: T) => void) => any; batch: (updates: Array<() => void>) => void; actions: Record<string, (...args: any[]) => void...'.
+src/store/state-manager.ts(141,3): error TS2322: Type 'StateCreator<{ state: T; setState: (updater: T | ((prev: T) => T)) => void; getState: () => any; resetState: () => any; select: <R>(selector: StateSelector<T, R>) => R; ... 4 more ...; computed: Record<...>; }, [], [...]>' is not assignable to type '(set: any, get: any) => { ...; }'.
+  Target signature provides too few arguments. Expected 3 or more, but got 2.
+src/store/state-manager.ts(168,33): error TS2345: Argument of type '(state: T, previousState: T) => void' is not assignable to parameter of type '(state: { state: T; setState: (updater: T | ((prev: T) => T)) => void; getState: () => any; resetState: () => any; select: <R>(selector: StateSelector<T, R>) => R; ... 4 more ...; computed: Record<...>; }, prevState: { ...; }) => void'.
+  Types of parameters 'state' and 'state' are incompatible.
+    Type '{ state: T; setState: (updater: T | ((prev: T) => T)) => void; getState: () => any; resetState: () => any; select: <R>(selector: StateSelector<T, R>) => R; subscribe: (callback: (state: T, previousState: T) => void) => any; batch: (updates: Array<() => void>) => void; actions: Record<string, (...args: any[]) => void...' is not assignable to type 'T'.
+      'T' could be instantiated with an arbitrary type which could be unrelated to '{ state: T; setState: (updater: T | ((prev: T) => T)) => void; getState: () => any; resetState: () => any; select: <R>(selector: StateSelector<T, R>) => R; subscribe: (callback: (state: T, previousState: T) => void) => any; batch: (updates: Array<() => void>) => void; actions: Record<string, (...args: any[]) => void...'.
+src/store/state-manager.ts(349,12): error TS2352: Conversion of type 'T' to type 'R' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  'R' could be instantiated with an arbitrary type which could be unrelated to 'T'.
+src/store/state-manager.ts(349,42): error TS7053: Element implicitly has an 'any' type because expression of type 'string' can't be used to index type '{}'.
+  No index signature with a parameter of type 'string' was found on type '{}'.
+src/test/setup-comprehensive.ts(388,5): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/test/setup-comprehensive.ts(389,7): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/test/setup-comprehensive.ts(390,9): error TS2686: 'React' refers to a UMD global, but the current file is a module. Consider adding an import instead.
+src/test/test-utils.tsx(19,8): error TS2375: Type '{ children: ReactNode; queryClient: QueryClient | undefined; }' is not assignable to type 'TestProvidersProps' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Types of property 'queryClient' are incompatible.
+    Type 'QueryClient | undefined' is not assignable to type 'QueryClient'.
+      Type 'undefined' is not assignable to type 'QueryClient'.
+src/utils/error-utils.ts(107,7): error TS2412: Type 'string | null | undefined' is not assignable to type 'string | undefined' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the type of the target.
+src/utils/imageUtils.ts(124,5): error TS2698: Spread types may only be created from object types.

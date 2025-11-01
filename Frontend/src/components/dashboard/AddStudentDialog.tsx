@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -44,8 +44,8 @@ export function AddStudentDialog({ open: externalOpen, onOpenChange, trigger }: 
     setIsSubmitting(true);
     try {
       const response = await utilitiesApi.quickAddStudent(formData);
-      if (response.success) {
-        toast.success(`Student ${response.data.student.firstName} ${response.data.student.lastName} added successfully!`);
+      if (response.success && (response.data as any)?.student) {
+        toast.success(`Student ${(response.data as any).student.firstName} ${(response.data as any).student.lastName} added successfully!`);
         setOpen(false);
         window.location.reload();
       } else {

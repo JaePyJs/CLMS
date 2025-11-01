@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { randomUUID } from 'crypto';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { logger } from '@/utils/logger';
 
 const prisma = new PrismaClient();
@@ -49,11 +50,11 @@ class SelfServiceService {
   /**
    * Check if a student is currently checked in
    */
-  async isStudentCheckedIn(student_id: string): Promise<boolean> {
+  async isStudentCheckedIn(studentId: string): Promise<boolean> {
     try {
       const activity = await prisma.student_activities.findFirst({
         where: {
-          student_id: student_id,
+          student_id: studentId,
           end_time: null,
           status: 'ACTIVE',
         },
@@ -61,7 +62,7 @@ class SelfServiceService {
 
       return !!activity;
     } catch (error) {
-      logger.error('Error checking student status', { error, student_id });
+      logger.error('Error checking student status', { error, studentId });
       throw new Error('Failed to check student status');
     }
   }
@@ -69,14 +70,14 @@ class SelfServiceService {
   /**
    * Get the last activity for a student
    */
-  async getLastActivity(student_id: string) {
+  async getLastActivity(studentId: string) {
     try {
       return await prisma.student_activities.findFirst({
-        where: { student_id: student_id },
+        where: { student_id: studentId },
         orderBy: { start_time: 'desc' },
       });
     } catch (error) {
-      logger.error('Error getting last activity', { error, student_id });
+      logger.error('Error getting last activity', { error, studentId });
       throw new Error('Failed to get last activity');
     }
   }
@@ -84,9 +85,11 @@ class SelfServiceService {
   /**
    * Check if student is in cooldown period
    */
-  async isInCooldownPeriod(student_id: string): Promise<{ inCooldown: boolean; remainingMs: number }> {
+  async isInCooldownPeriod(
+    studentId: string,
+  ): Promise<{ inCooldown: boolean; remainingMs: number }> {
     try {
-      const lastActivity = await this.getLastActivity(student_id);
+      const lastActivity = await this.getLastActivity(studentId);
 
       if (!lastActivity || !lastActivity.end_time) {
         return { inCooldown: false, remainingMs: 0 };
@@ -101,7 +104,7 @@ class SelfServiceService {
 
       return { inCooldown: false, remainingMs: 0 };
     } catch (error) {
-      logger.error('Error checking cooldown', { error, student_id });
+      logger.error('Error checking cooldown', { error, studentId });
       throw new Error('Failed to check cooldown period');
     }
   }
@@ -109,7 +112,9 @@ class SelfServiceService {
   /**
    * Get student status and check-in eligibility
    */
-  async getStudentStatus(studentIdOrQrCode: string): Promise<SelfServiceStatusResponse> {
+  async getStudentStatus(
+    studentIdOrQrCode: string,
+  ): Promise<SelfServiceStatusResponse> {
     try {
       // Find student by ID (using existing schema)
       const student = await prisma.students.findFirst({
@@ -128,19 +133,21 @@ class SelfServiceService {
       }
 
       // Check if currently checked in
-      const isCheckedIn = await this.isStudentCheckedIn(student.id);
+      const currentActivity = await prisma.student_activities.findFirst({
+        where: {
+          student_id: student.id,
+          end_time: null,
+          status: 'ACTIVE',
+        },
+      });
 
-      if (isCheckedIn) {
-        const currentActivity = await prisma.student_activities.findFirst({
-          where: {
-            student_id: student.id,
-            end_time: null,
-            status: 'ACTIVE',
-          },
-        });
-
-        const timeElapsed = Date.now() - currentActivity!.start_time.getTime();
-        const timeRemaining = Math.max(0, currentActivity!.time_limit_minutes - Math.floor(timeElapsed / 60000));
+      if (currentActivity) {
+        const timeElapsedMs = Date.now() - currentActivity.start_time.getTime();
+        const limitMinutes = currentActivity.time_limit_minutes ?? 60;
+        const timeRemaining = Math.max(
+          0,
+          limitMinutes - Math.floor(timeElapsedMs / 60000),
+        );
 
         return {
           success: true,
@@ -153,9 +160,9 @@ class SelfServiceService {
             section: student.section || '',
           },
           currentActivity: {
-            id: currentActivity!.id,
-            checkInTime: currentActivity!.start_time,
-            timeLimit: currentActivity!.time_limit_minutes || 60,
+            id: currentActivity.id,
+            checkInTime: currentActivity.start_time,
+            timeLimit: limitMinutes,
             timeRemaining,
           },
           canCheckIn: false,
@@ -163,11 +170,12 @@ class SelfServiceService {
       }
 
       // Check cooldown period
-      const { inCooldown, remainingMs } = await this.isInCooldownPeriod(student.id);
+      const { inCooldown, remainingMs } = await this.isInCooldownPeriod(
+        student.id,
+      );
 
       const lastActivity = await this.getLastActivity(student.id);
-
-      return {
+      const status: SelfServiceStatusResponse = {
         success: true,
         isCheckedIn: false,
         student: {
@@ -177,12 +185,20 @@ class SelfServiceService {
           grade_level: student.grade_level,
           section: student.section || '',
         },
-        lastCheckOut: lastActivity?.end_time || undefined,
         canCheckIn: !inCooldown,
         cooldownRemaining: inCooldown ? Math.ceil(remainingMs / 1000) : 0,
       };
+
+      if (lastActivity?.end_time) {
+        status.lastCheckOut = lastActivity.end_time;
+      }
+
+      return status;
     } catch (error) {
-      logger.error('Error getting student status', { error, studentIdOrQrCode });
+      logger.error('Error getting student status', {
+        error,
+        studentIdOrQrCode,
+      });
       throw new Error('Failed to get student status');
     }
   }
@@ -190,7 +206,9 @@ class SelfServiceService {
   /**
    * Process scan with auto check-in/check-out
    */
-  async processScan(studentIdOrQrCode: string): Promise<SelfServiceCheckInResponse> {
+  async processScan(
+    studentIdOrQrCode: string,
+  ): Promise<SelfServiceCheckInResponse> {
     try {
       // Find student
       const student = await prisma.students.findFirst({
@@ -217,7 +235,10 @@ class SelfServiceService {
         return await this.checkIn(studentIdOrQrCode);
       }
     } catch (error) {
-      logger.error('Error during self-service scan', { error, studentIdOrQrCode });
+      logger.error('Error during self-service scan', {
+        error,
+        studentIdOrQrCode,
+      });
       return {
         success: false,
         message: 'An error occurred. Please contact the librarian.',
@@ -228,7 +249,9 @@ class SelfServiceService {
   /**
    * Check in a student
    */
-  async checkIn(studentIdOrQrCode: string): Promise<SelfServiceCheckInResponse> {
+  async checkIn(
+    studentIdOrQrCode: string,
+  ): Promise<SelfServiceCheckInResponse> {
     try {
       // Find student
       const student = await prisma.students.findFirst({
@@ -249,12 +272,15 @@ class SelfServiceService {
       if (isCheckedIn) {
         return {
           success: false,
-          message: 'You are already checked in. Please check out before checking in again.',
+          message:
+            'You are already checked in. Please check out before checking in again.',
         };
       }
 
       // Check cooldown period
-      const { inCooldown, remainingMs } = await this.isInCooldownPeriod(student.id);
+      const { inCooldown, remainingMs } = await this.isInCooldownPeriod(
+        student.id,
+      );
       if (inCooldown) {
         const remainingMinutes = Math.ceil(remainingMs / 60000);
         return {
@@ -268,19 +294,20 @@ class SelfServiceService {
       const timeLimit = this.getTimeLimitForGrade(student.grade_level);
 
       // Create activity record
+      const now = new Date();
       const activity = await prisma.student_activities.create({
-        data: { id: crypto.randomUUID(), updated_at: new Date(), 
-          id: `activity_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        data: {
+          id: randomUUID(),
           student_id: student.id,
           student_name: `${student.first_name} ${student.last_name}`,
           grade_level: student.grade_level,
           grade_category: student.grade_category,
           activity_type: 'GENERAL_VISIT',
-          start_time: new Date(),
+          start_time: now,
           time_limit_minutes: timeLimit,
           status: 'ACTIVE',
           processed_by: 'SELF_SERVICE',
-          updated_at: new Date(),
+          updated_at: now,
         },
       });
 
@@ -307,7 +334,10 @@ class SelfServiceService {
         },
       };
     } catch (error) {
-      logger.error('Error during self-service check-in', { error, studentIdOrQrCode });
+      logger.error('Error during self-service check-in', {
+        error,
+        studentIdOrQrCode,
+      });
       return {
         success: false,
         message: 'An error occurred. Please contact the librarian.',
@@ -318,7 +348,9 @@ class SelfServiceService {
   /**
    * Check out a student
    */
-  async checkOut(studentIdOrQrCode: string): Promise<SelfServiceCheckInResponse> {
+  async checkOut(
+    studentIdOrQrCode: string,
+  ): Promise<SelfServiceCheckInResponse> {
     try {
       // Find student
       const student = await prisma.students.findFirst({
@@ -352,15 +384,18 @@ class SelfServiceService {
 
       // Calculate duration
       const endTime = new Date();
-      const duration = Math.floor((endTime.getTime() - activity.start_time.getTime()) / 60000);
+      const duration = Math.floor(
+        (endTime.getTime() - activity.start_time.getTime()) / 60000,
+      );
 
       // Update activity with check-out time
       await prisma.student_activities.update({
         where: { id: activity.id },
-        data: { id: crypto.randomUUID(), updated_at: new Date(), 
-          end_time: end_time,
+        data: {
+          end_time: endTime,
           duration_minutes: duration,
           status: 'COMPLETED',
+          updated_at: endTime,
         },
       });
 
@@ -383,7 +418,10 @@ class SelfServiceService {
         },
       };
     } catch (error) {
-      logger.error('Error during self-service check-out', { error, studentIdOrQrCode });
+      logger.error('Error during self-service check-out', {
+        error,
+        studentIdOrQrCode,
+      });
       return {
         success: false,
         message: 'An error occurred. Please contact the librarian.',
@@ -394,20 +432,35 @@ class SelfServiceService {
   /**
    * Get time limit based on grade level
    */
-  private getTimeLimitForGrade(grade_level: string): number {
+  private getTimeLimitForGrade(gradeLevel: string): number {
     // Parse grade level
     const grade = gradeLevel.toLowerCase();
 
-    if (grade.includes('kinder') || grade.includes('k') || grade.includes('pre')) {
+    if (
+      grade.includes('kinder') ||
+      grade.includes('k') ||
+      grade.includes('pre')
+    ) {
       return parseInt(process.env.PRIMARY_TIME_LIMIT || '30');
     }
 
-    if (grade.includes('1') || grade.includes('2') || grade.includes('3') ||
-        grade.includes('4') || grade.includes('5') || grade.includes('6')) {
+    if (
+      grade.includes('1') ||
+      grade.includes('2') ||
+      grade.includes('3') ||
+      grade.includes('4') ||
+      grade.includes('5') ||
+      grade.includes('6')
+    ) {
       return parseInt(process.env.GRADE_SCHOOL_TIME_LIMIT || '60');
     }
 
-    if (grade.includes('7') || grade.includes('8') || grade.includes('9') || grade.includes('10')) {
+    if (
+      grade.includes('7') ||
+      grade.includes('8') ||
+      grade.includes('9') ||
+      grade.includes('10')
+    ) {
       return parseInt(process.env.JUNIOR_HIGH_TIME_LIMIT || '90');
     }
 
@@ -424,37 +477,45 @@ class SelfServiceService {
    */
   async getStatistics(startDate?: Date, endDate?: Date) {
     try {
-      const where: any = {};
+      const where: Prisma.student_activitiesWhereInput = {};
 
       if (startDate || endDate) {
-        where.start_time = {};
-        if (startDate) where.start_time.gte = startDate;
-        if (endDate) where.start_time.lte = endDate;
+        const startTimeFilter: Prisma.DateTimeFilter = {};
+        if (startDate) {
+          startTimeFilter.gte = startDate;
+        }
+        if (endDate) {
+          startTimeFilter.lte = endDate;
+        }
+        where.start_time = startTimeFilter;
       }
 
-      const [totalCheckIns, averageTimeSpent, uniqueStudents] = await Promise.all([
-        prisma.student_activities.count({ where }),
-        prisma.student_activities.aggregate({
-          where: {
-            ...where,
-            end_time: { not: null },
-          },
-          _avg: {
-            duration_minutes: true,
-          },
-        }),
-        prisma.student_activities.findMany({
-          where,
-          distinct: ['student_id'],
-          select: { student_id: true },
-        }),
-      ]);
+      const [totalCheckIns, averageTimeSpent, uniqueStudents] =
+        await Promise.all([
+          prisma.student_activities.count({ where }),
+          prisma.student_activities.aggregate({
+            where: {
+              ...where,
+              end_time: { not: null },
+            },
+            _avg: {
+              duration_minutes: true,
+            },
+          }),
+          prisma.student_activities.findMany({
+            where,
+            distinct: ['student_id'],
+            select: { student_id: true },
+          }),
+        ]);
 
       return {
         success: true,
-        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        data: {
           totalCheckIns,
-          averageTimeSpent: Math.round(averageTimeSpent._avg.duration_minutes || 0),
+          averageTimeSpent: Math.round(
+            averageTimeSpent._avg.duration_minutes ?? 0,
+          ),
           uniqueStudents: uniqueStudents.length,
         },
       };

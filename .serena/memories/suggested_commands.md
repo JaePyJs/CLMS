@@ -1,0 +1,11 @@
+# Suggested Commands
+- **Install Workspaces**: `npm run install:all`
+- **Backend Dev Server**: `cd Backend && npm run dev`
+- **Backend Compile Check**: `cd Backend && npm exec -- tsc --noEmit`
+- **Backend Tests**: `cd Backend && npm test` (see package scripts for targeted Vitest suites)
+- **Backend Lint**: `cd Backend && npm run lint:check`
+- **Frontend Dev Server**: `cd Frontend && npm run dev`
+- **Frontend Tests**: `cd Frontend && npm test`
+- **Frontend Lint Fix**: `cd Frontend && npm run lint:fix`
+- **Docker Stack**: `npm start` (local) / `npm run prod` (detached prod compose)
+- **Stop Containers**: `npm run stop` or `npm run stop:prod`

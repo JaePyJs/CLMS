@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -19,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Search, Users, Filter, X, Download, BookOpen, Monitor, AlertTriangle, Calendar, ChevronDown, UserCheck, UserX } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
@@ -106,7 +106,7 @@ export default function AdvancedStudentSearch() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const suggestionTimeoutRef = useRef<NodeJS.Timeout>();
+  const suggestionTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Fetch suggestions with debouncing
   const fetchSuggestions = useCallback(async (searchQuery: string) => {
@@ -125,7 +125,7 @@ export default function AdvancedStudentSearch() {
       });
 
       if (response.success && response.data) {
-        setSuggestions(response.data);
+        setSuggestions(response.data as StudentSuggestion);
       }
     } catch (error) {
       console.error('Failed to fetch student suggestions:', error);
@@ -188,13 +188,14 @@ export default function AdvancedStudentSearch() {
       const response = await apiClient.get('/api/search/students', { params: searchParams });
 
       if (response.success && response.data) {
+        const data = response.data as StudentSearchResult;
         if (resetPagination) {
-          setSearchResults(response.data);
+          setSearchResults(data);
         } else {
           // Append results for pagination
           setSearchResults(prev => ({
-            ...response.data,
-            students: [...(prev?.students || []), ...response.data.students],
+            ...data,
+            students: [...(prev?.students || []), ...data.students],
           }));
         }
         setCurrentPage(page);
@@ -255,7 +256,7 @@ export default function AdvancedStudentSearch() {
 
   // Export results
   const exportResults = () => {
-    if (!searchResults) return;
+    if (!searchResults || searchResults.students.length === 0) return;
 
     const data = searchResults.students.map(student => ({
       'Student ID': student.student_id,
@@ -271,7 +272,7 @@ export default function AdvancedStudentSearch() {
     }));
 
     const csv = [
-      Object.keys(data[0]).join(','),
+      Object.keys(data[0]!).join(','),
       ...data.map(row => Object.values(row).map(v => `"${v}"`).join(','))
     ].join('\n');
 
@@ -494,7 +495,7 @@ export default function AdvancedStudentSearch() {
               </Button>
 
               <Select
-                value={filters.sortBy}
+                value={filters.sortBy ?? 'name'}
                 onValueChange={(value: any) => {
                   setFilters({ ...filters, sortBy: value });
                   setCurrentPage(1);
@@ -514,7 +515,7 @@ export default function AdvancedStudentSearch() {
               </Select>
 
               <Select
-                value={filters.sortOrder}
+                value={filters.sortOrder ?? 'asc'}
                 onValueChange={(value: any) => {
                   setFilters({ ...filters, sortOrder: value });
                   setCurrentPage(1);

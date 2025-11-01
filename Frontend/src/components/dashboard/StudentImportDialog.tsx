@@ -1,19 +1,18 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect, Fragment } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { studentsApi } from '@/lib/api';
-import { Upload, FileText, AlertCircle, CheckCircle2, X, Download, ArrowRight, Settings, File, Users, Loader2, ChevronRight, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle2, Download, ArrowRight, Settings, File, Users, Loader2, ChevronRight, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
@@ -67,16 +66,6 @@ const AVAILABLE_FIELDS: FieldMapping[] = [
   { sourceField: 'notes', targetField: 'notes', required: false },
 ];
 
-const GRADE_CATEGORIES = ['primary', 'gradeSchool', 'juniorHigh', 'seniorHigh'];
-
-const getGradeCategory = (grade: string): string => {
-  if (grade.includes('K') || grade.includes('1') || grade.includes('2') || grade.includes('3')) return 'primary';
-  if (grade.includes('4') || grade.includes('5') || grade.includes('6')) return 'gradeSchool';
-  if (grade.includes('7') || grade.includes('8') || grade.includes('9')) return 'juniorHigh';
-  if (grade.includes('10') || grade.includes('11') || grade.includes('12')) return 'seniorHigh';
-  return 'unknown';
-};
-
 interface StudentImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -101,8 +90,6 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
     errors: string[];
   }>({ success: 0, failed: 0, errors: [] });
   const [skipHeaderRow, setSkipHeaderRow] = useState(true);
-  const [updateExisting, setUpdateExisting] = useState(false);
-
   // Reset state when dialog closes
   const handleClose = () => {
     setCurrentStep('upload');
@@ -115,7 +102,6 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
     setImportProgress(0);
     setImportResults({ success: 0, failed: 0, errors: [] });
     setSkipHeaderRow(true);
-    setUpdateExisting(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -168,7 +154,7 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
       Papa.parse(file, {
         complete: (result) => {
           if (result.errors.length > 0) {
-            reject(new Error(result.errors[0].message));
+            reject(new Error(result.errors[0]?.message || 'Parse error'));
             return;
           }
 
@@ -212,10 +198,13 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
           }
 
           const headers = (jsonData[0] as string[]).map(h => String(h).trim());
-          const processedData = jsonData.slice(1).map((row: any[]) => {
+          const processedData = jsonData.slice(1).map((row: unknown) => {
+            const rowArray = row as any[];
             const obj: any = {};
             headers.forEach((header, index) => {
-              obj[header] = row[index];
+              if (header) {
+                obj[header] = rowArray[index];
+              }
             });
             return obj;
           });
@@ -283,113 +272,6 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
     return aliases[field] || [];
   };
 
-  // Process imported data using backend preview
-  const processImportedData = useCallback(() => {
-    if (!selectedFile) {
-      toast.error('No file selected');
-      return;
-    }
-
-    // Convert field mapping to backend format
-    const mappings = Object.entries(fieldMapping)
-      .filter(([_, targetField]) => targetField)
-      .map(([sourceField, targetField]) => ({
-        sourceField,
-        targetField,
-        required: AVAILABLE_FIELDS.find(f => f.targetField === targetField)?.required || false
-      }));
-
-    setCurrentStep('importing');
-    previewImportMutation.mutate({ file: selectedFile, fieldMappings: mappings });
-  }, [selectedFile, fieldMapping, previewImportMutation]);
-
-  // Validate student data
-  const validateStudent = (student: ImportedStudent) => {
-    // Required fields
-    if (!student.firstName) {
-      student.errors.push('First name is required');
-      student.isValid = false;
-    }
-
-    if (!student.lastName) {
-      student.errors.push('Last name is required');
-      student.isValid = false;
-    }
-
-    if (!student.gradeLevel) {
-      student.errors.push('Grade level is required');
-      student.isValid = false;
-    }
-
-    // Email validation
-    if (student.email && !isValidEmail(student.email)) {
-      student.warnings.push('Email format appears invalid');
-    }
-
-    // Phone validation
-    if (student.phone && !isValidPhone(student.phone)) {
-      student.warnings.push('Phone format appears invalid');
-    }
-
-    // Grade level validation
-    if (student.gradeLevel && !isValidGradeLevel(student.gradeLevel)) {
-      student.warnings.push('Grade level format may be incorrect');
-    }
-  };
-
-  // Validation helpers
-  const isValidEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const isValidPhone = (phone: string): boolean => {
-    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
-    return phoneRegex.test(phone);
-  };
-
-  const isValidGradeLevel = (grade: string): boolean => {
-    const validGrades = [
-      'Kindergarten', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6',
-      'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12',
-      'K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'
-    ];
-    return validGrades.some(valid => grade.toLowerCase().includes(valid.toLowerCase()));
-  };
-
-  // Import students mutation
-  const importStudentsMutation = useMutation({
-    mutationFn: async (data: { file: File; fieldMappings: any[] }) => {
-      try {
-        const result = await studentsApi.importStudents(data.file, data.fieldMappings, false);
-        return result.data;
-      } catch (error: any) {
-        throw new Error(error?.error || error?.message || 'Import failed');
-      }
-    },
-    onSuccess: (result: any) => {
-      setImportResults({
-        success: result.importedRecords || 0,
-        failed: result.errorRecords || 0,
-        errors: result.errors || []
-      });
-      setCurrentStep('complete');
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-
-      if (result.importedRecords > 0) {
-        toast.success(`Successfully imported ${result.importedRecords} students`);
-      }
-
-      if (result.errorRecords > 0) {
-        toast.error(`Failed to import ${result.errorRecords} students`);
-      }
-    },
-    onError: (error: any) => {
-      toast.error(`Import failed: ${error?.message || 'Unknown error'}`);
-      setCurrentStep('preview');
-    }
-  });
-
   // Preview import mutation
   const previewImportMutation = useMutation({
     mutationFn: async (data: { file: File; fieldMappings: any[] }) => {
@@ -440,6 +322,59 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
     }
   });
 
+  // Import students mutation
+  const importStudentsMutation = useMutation({
+    mutationFn: async (data: { file: File; fieldMappings: any[] }) => {
+      try {
+        const result = await studentsApi.importStudents(data.file, data.fieldMappings, false);
+        return result.data;
+      } catch (error: any) {
+        throw new Error(error?.error || error?.message || 'Import failed');
+      }
+    },
+    onSuccess: (result: any) => {
+      setImportResults({
+        success: result.importedRecords || 0,
+        failed: result.errorRecords || 0,
+        errors: result.errors || []
+      });
+      setCurrentStep('complete');
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+
+      if (result.importedRecords > 0) {
+        toast.success(`Successfully imported ${result.importedRecords} students`);
+      }
+
+      if (result.errorRecords > 0) {
+        toast.error(`Failed to import ${result.errorRecords} students`);
+      }
+    },
+    onError: (error: any) => {
+      toast.error(`Import failed: ${error?.message || 'Unknown error'}`);
+      setCurrentStep('preview');
+    }
+  });
+
+  // Process imported data using backend preview
+  const processImportedData = useCallback(() => {
+    if (!selectedFile) {
+      toast.error('No file selected');
+      return;
+    }
+
+    // Convert field mapping to backend format
+    const mappings = Object.entries(fieldMapping)
+      .filter(([_, targetField]) => targetField)
+      .map(([sourceField, targetField]) => ({
+        sourceField,
+        targetField,
+        required: AVAILABLE_FIELDS.find(f => f.targetField === targetField)?.required || false
+      }));
+
+    setCurrentStep('importing');
+    previewImportMutation.mutate({ file: selectedFile, fieldMappings: mappings });
+  }, [selectedFile, fieldMapping, previewImportMutation]);
+
   // Start import
   const handleImport = () => {
     if (!selectedFile) {
@@ -470,7 +405,7 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
   const downloadTemplate = async () => {
     try {
       const response = await studentsApi.downloadTemplate();
-      const blob = new Blob([response.data], { type: 'text/csv' });
+      const blob = new Blob([response.data as string], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -507,7 +442,7 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
   };
 
   // Initialize field mapping when headers are available
-  React.useEffect(() => {
+  useEffect(() => {
     if (headers.length > 0 && Object.keys(fieldMapping).length === 0) {
       autoMapFields();
     }
@@ -531,7 +466,7 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
           <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-lg mb-4">
             <div className="flex items-center gap-2 flex-1">
               {['upload', 'mapping', 'preview', 'importing', 'complete'].map((step, index) => (
-                <React.Fragment key={step}>
+                <Fragment key={step}>
                   <div className={`flex items-center gap-2 ${
                     currentStep === step ? 'text-primary' :
                     ['upload', 'mapping', 'preview', 'importing', 'complete'].indexOf(currentStep) > index ? 'text-green-600' : 'text-muted-foreground'
@@ -549,7 +484,7 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
                     <span className="capitalize text-sm">{step}</span>
                   </div>
                   {index < 4 && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                </React.Fragment>
+                </Fragment>
               ))}
             </div>
           </div>
@@ -626,7 +561,7 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
                       <div className="flex-1">
                         <Label className="text-sm font-medium">{header}</Label>
                         <p className="text-xs text-muted-foreground">
-                          {rawData.slice(0, 3).map((row, i) => row[header] || '(empty)').join(', ')}
+                          {rawData.slice(0, 3).map((row) => row[header] || '(empty)').join(', ')}
                         </p>
                       </div>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />

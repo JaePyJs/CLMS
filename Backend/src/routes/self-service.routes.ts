@@ -17,31 +17,35 @@ router.post('/scan', async (req, res) => {
     const { scanData } = req.body;
 
     if (!scanData) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Scan data is required',
       });
+      return;
     }
 
     // Get student status first
     const status = await selfServiceService.getStudentStatus(scanData);
 
     if (!status.success || !status.student) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'Student not found. Please verify the ID.',
       });
+      return;
     }
 
     // If checked in, check them out
     if (status.isCheckedIn) {
       const result = await selfServiceService.checkOut(scanData);
-      return res.json(result);
+      res.json(result);
+      return;
     }
 
     // If not checked in, check them in
     const result = await selfServiceService.checkIn(scanData);
-    return res.json(result);
+    res.json(result);
+    return;
   } catch (error) {
     console.error('Error processing scan:', error);
     res.status(500).json({
@@ -83,10 +87,11 @@ router.post('/check-in', async (req, res) => {
     const { scanData } = req.body;
 
     if (!scanData) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Scan data is required',
       });
+      return;
     }
 
     const result = await selfServiceService.checkIn(scanData);
@@ -111,10 +116,11 @@ router.post('/check-out', async (req, res) => {
     const { scanData } = req.body;
 
     if (!scanData) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Scan data is required',
       });
+      return;
     }
 
     const result = await selfServiceService.checkOut(scanData);

@@ -11,47 +11,32 @@ exports.checkoutBook = checkoutBook;
 exports.returnBook = returnBook;
 exports.getBookCheckouts = getBookCheckouts;
 exports.getOverdueBooks = getOverdueBooks;
-const prisma_1 = require("@/utils/prisma");
 const logger_1 = require("@/utils/logger");
+const repositories_1 = require("@/repositories");
+const prisma_1 = require("@/utils/prisma");
+const booksRepository = new repositories_1.BooksRepository();
 async function getBooks(options = {}) {
     try {
-        const { category, subcategory, is_active, page = 1, limit = 50, search, } = options;
-        const skip = (page - 1) * limit;
-        const where = {};
-        if (category) {
-            where.category = category;
+        const queryOptions = {
+            page: options.page ?? 1,
+            limit: options.limit ?? 50,
+        };
+        if (options.category !== undefined) {
+            queryOptions.category = options.category;
         }
-        if (subcategory) {
-            where.subcategory = subcategory;
+        if (options.subcategory !== undefined) {
+            queryOptions.subcategory = options.subcategory;
         }
-        if (isActive !== undefined) {
-            where.is_active = isActive;
+        if (options.isActive !== undefined) {
+            queryOptions.isActive = options.isActive;
         }
-        if (search) {
-            where.OR = [
-                { title: { contains: search } },
-                { author: { contains: search } },
-                { accession_no: { contains: search } },
-                { isbn: { contains: search } },
-            ];
+        if (options.search !== undefined) {
+            queryOptions.search = options.search;
         }
-        const [books, total] = await Promise.all([
-            prisma_1.prisma.books.findMany({
-                where,
-                skip,
-                take: limit,
-                orderBy: { title: 'asc' },
-            }),
-            prisma_1.prisma.books.count({ where }),
-        ]);
+        const result = await booksRepository.getBooks(queryOptions);
         return {
-            books,
-            pagination: {
-                page,
-                limit,
-                total,
-                pages: Math.ceil(total / limit),
-            },
+            books: result.books,
+            pagination: result.pagination,
         };
     }
     catch (error) {
@@ -64,16 +49,7 @@ async function getBooks(options = {}) {
 }
 async function getBookById(id) {
     try {
-        const book = await prisma_1.prisma.books.findUnique({
-            where: { id },
-            include: {
-                book_checkouts: {
-                    where: { status: 'ACTIVE' },
-                    orderBy: { checkout_date: 'desc' },
-                    take: 1,
-                },
-            },
-        });
+        const book = await booksRepository.findById(id);
         return book;
     }
     catch (error) {
@@ -88,13 +64,6 @@ async function getBookByAccessionNo(accession_no) {
     try {
         const book = await prisma_1.prisma.books.findUnique({
             where: { accession_no: accession_no },
-            include: {
-                book_checkouts: {
-                    where: { status: 'ACTIVE' },
-                    orderBy: { checkout_date: 'desc' },
-                    take: 1,
-                },
-            },
         });
         return book;
     }
@@ -108,16 +77,7 @@ async function getBookByAccessionNo(accession_no) {
 }
 async function getBookByIsbn(isbn) {
     try {
-        const book = await prisma_1.prisma.books.findFirst({
-            where: { isbn },
-            include: {
-                book_checkouts: {
-                    where: { status: 'ACTIVE' },
-                    orderBy: { checkout_date: 'desc' },
-                    take: 1,
-                },
-            },
-        });
+        const book = await booksRepository.findByIsbn(isbn);
         return book;
     }
     catch (error) {
@@ -130,23 +90,31 @@ async function getBookByIsbn(isbn) {
 }
 async function createBook(data) {
     try {
-        const book = await prisma_1.prisma.books.create({
-            data: {
-                id: `book-${Date.now()}`,
-                updated_at: new Date(),
-                isbn: data.isbn || null,
-                accession_no: data.accession_no,
-                title: data.title,
-                author: data.author,
-                publisher: data.publisher || null,
-                category: data.category,
-                subcategory: data.subcategory || null,
-                location: data.location || null,
-                total_copies: data.total_copies || 1,
-                available_copies: data.available_copies || data.total_copies || 1,
-            },
-        });
-        logger_1.logger.info('Book created successfully', { accession_no: book.accession_no });
+        const bookData = {
+            accession_no: data.accession_no,
+            title: data.title,
+            author: data.author,
+            category: data.category,
+        };
+        if (data.isbn !== undefined) {
+            bookData.isbn = data.isbn;
+        }
+        if (data.publisher !== undefined) {
+            bookData.publisher = data.publisher;
+        }
+        if (data.subcategory !== undefined) {
+            bookData.subcategory = data.subcategory;
+        }
+        if (data.location !== undefined) {
+            bookData.location = data.location;
+        }
+        if (data.totalCopies !== undefined) {
+            bookData.total_copies = data.totalCopies;
+        }
+        if (data.availableCopies !== undefined) {
+            bookData.available_copies = data.availableCopies;
+        }
+        const book = await booksRepository.createBook(bookData);
         return book;
     }
     catch (error) {
@@ -159,10 +127,11 @@ async function createBook(data) {
 }
 async function updateBook(id, data) {
     try {
-        const book = await prisma_1.prisma.books.update({
-            where: { id },
-            data,
-        });
+        const book = await booksRepository.updateById(id, data);
+        if (!book) {
+            logger_1.logger.warn('Attempted to update non-existent book', { book_id: id });
+            return null;
+        }
         logger_1.logger.info('Book updated successfully', { book_id: id });
         return book;
     }
@@ -177,9 +146,11 @@ async function updateBook(id, data) {
 }
 async function deleteBook(id) {
     try {
-        await prisma_1.prisma.books.delete({
-            where: { id },
-        });
+        const success = await booksRepository.deleteById(id);
+        if (!success) {
+            logger_1.logger.warn('Attempted to delete non-existent book', { book_id: id });
+            return false;
+        }
         logger_1.logger.info('Book deleted successfully', { book_id: id });
         return true;
     }
@@ -208,37 +179,12 @@ async function checkoutBook(data) {
                 updated_at: new Date(),
                 book_id: data.book_id,
                 student_id: data.student_id,
-                checkout_date: new Date(),
                 due_date: data.due_date,
                 notes: data.notes || null,
-                status: 'ACTIVE',
-                processed_by: 'System',
-            },
-            include: {
-                books: {
-                    select: {
-                        accession_no: true,
-                        title: true,
-                        author: true,
-                    },
-                },
-                students: {
-                    select: {
-                        student_id: true,
-                        first_name: true,
-                        last_name: true,
-                    },
-                },
+                processed_by: 'Sophia',
             },
         });
-        await prisma_1.prisma.books.update({
-            where: { id: data.book_id },
-            data: {
-                available_copies: {
-                    decrement: 1,
-                },
-            },
-        });
+        await booksRepository.updateAvailability(data.book_id, 1, 'decrement');
         logger_1.logger.info('Book checked out successfully', {
             checkout_id: checkout.id,
             book_id: data.book_id,
@@ -258,9 +204,6 @@ async function returnBook(checkout_id) {
     try {
         const checkout = await prisma_1.prisma.book_checkouts.findUnique({
             where: { id: checkout_id },
-            include: {
-                books: true,
-            },
         });
         if (!checkout) {
             throw new Error('Checkout record not found');
@@ -279,26 +222,11 @@ async function returnBook(checkout_id) {
         const updatedCheckout = await prisma_1.prisma.book_checkouts.update({
             where: { id: checkout_id },
             data: {
-                return_date: return_date,
+                return_date: returnDate,
                 status: 'RETURNED',
-                overdue_days: overdue_days,
-                fine_amount: fine_amount,
-            },
-            include: {
-                books: {
-                    select: {
-                        accession_no: true,
-                        title: true,
-                        author: true,
-                    },
-                },
-                students: {
-                    select: {
-                        student_id: true,
-                        first_name: true,
-                        last_name: true,
-                    },
-                },
+                overdue_days: overdueDays,
+                fine_amount: fineAmount,
+                updated_at: new Date(),
             },
         });
         await prisma_1.prisma.books.update({
@@ -312,8 +240,8 @@ async function returnBook(checkout_id) {
         logger_1.logger.info('Book returned successfully', {
             checkout_id,
             book_id: checkout.book_id,
-            overdue_days,
-            fine_amount,
+            overdue_days: overdueDays,
+            fine_amount: fineAmount,
         });
         return updatedCheckout;
     }
@@ -351,25 +279,6 @@ async function getBookCheckouts(options = {}) {
                 skip,
                 take: limit,
                 orderBy: { checkout_date: 'desc' },
-                include: {
-                    books: {
-                        select: {
-                            accession_no: true,
-                            title: true,
-                            author: true,
-                            category: true,
-                        },
-                    },
-                    students: {
-                        select: {
-                            student_id: true,
-                            first_name: true,
-                            last_name: true,
-                            grade_level: true,
-                            grade_category: true,
-                        },
-                    },
-                },
             }),
             prisma_1.prisma.book_checkouts.count({ where }),
         ]);
@@ -396,29 +305,7 @@ async function getOverdueBooks() {
         const overdueCheckouts = await prisma_1.prisma.book_checkouts.findMany({
             where: {
                 status: 'ACTIVE',
-                due_date: {
-                    lt: new Date(),
-                },
-            },
-            orderBy: { due_date: 'asc' },
-            include: {
-                books: {
-                    select: {
-                        accession_no: true,
-                        title: true,
-                        author: true,
-                        category: true,
-                    },
-                },
-                students: {
-                    select: {
-                        student_id: true,
-                        first_name: true,
-                        last_name: true,
-                        grade_level: true,
-                        grade_category: true,
-                    },
-                },
+                due_date: { lt: new Date() },
             },
         });
         const today = new Date();
@@ -426,7 +313,7 @@ async function getOverdueBooks() {
             const overdueDays = Math.ceil((today.getTime() - checkout.due_date.getTime()) / (1000 * 60 * 60 * 24));
             return {
                 ...checkout,
-                overdue_days,
+                overdue_days: overdueDays,
                 fine_amount: overdueDays * 1.0,
             };
         });

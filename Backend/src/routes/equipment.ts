@@ -20,7 +20,7 @@ import {
   getEquipmentStatistics,
 } from '@/services/enhancedEquipmentService';
 import { equipmentService } from '@/services/enhancedEquipmentService';
-import { EquipmentStatus, EquipmentType, ActivityType, EquipmentConditionRating } from '@prisma/client';
+import { equipment_status, equipment_type, student_activities_activity_type, equipment_condition_rating } from '@prisma/client';
 import { logger } from '@/utils/logger';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { Permission } from '@/config/permissions';
@@ -38,11 +38,11 @@ router.get('/', requirePermission(Permission.EQUIPMENT_VIEW), async (req: Reques
     };
 
     if (type) {
-      options.type = type as EquipmentType;
+      options.type = type as equipment_type;
     }
 
     if (status) {
-      options.status = status as EquipmentStatus;
+      options.status = status as equipment_status;
     }
 
     if (search) {
@@ -76,21 +76,23 @@ router.get('/:id', requirePermission(Permission.EQUIPMENT_VIEW), async (req: Req
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Equipment ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const equipment = await getEquipmentById(id);
 
     if (!equipment) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Equipment not found',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const response: ApiResponse = {
@@ -127,12 +129,13 @@ router.post('/', requirePermission(Permission.EQUIPMENT_CREATE), async (req: Req
     } = req.body;
 
     if (!equipmentId || !name || !type || !location || !maxTimeMinutes) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error:
           'Missing required fields: equipmentId, name, type, location, maxTimeMinutes',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const equipment = await createEquipment({
@@ -171,11 +174,12 @@ router.put('/:id', requirePermission(Permission.EQUIPMENT_UPDATE), async (req: R
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Equipment ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const {
@@ -227,11 +231,12 @@ router.delete('/:id', requirePermission(Permission.EQUIPMENT_DELETE), async (req
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Equipment ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     await deleteEquipment(id);
@@ -262,21 +267,23 @@ router.post('/scan', requirePermission(Permission.EQUIPMENT_VIEW), async (req: R
     const { barcode } = req.body;
 
     if (!barcode) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Barcode is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const equipment = await getEquipmentByEquipmentId(barcode);
 
     if (!equipment) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Equipment not found',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const response: ApiResponse = {
@@ -307,17 +314,18 @@ router.post('/use', requirePermission(Permission.EQUIPMENT_ASSIGN), async (req: 
       req.body;
 
     if (!equipmentId || !studentId || !activityType) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: equipmentId, studentId, activityType',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const activity = await useEquipment({
-      equipmentId,
-      studentId,
-      activityType,
+      equipment_id: equipmentId,
+      student_id: studentId,
+      activity_type: activityType,
       timeLimitMinutes,
       notes,
     });
@@ -349,11 +357,12 @@ router.post('/release', requirePermission(Permission.EQUIPMENT_ASSIGN), async (r
     const { activityId } = req.body;
 
     if (!activityId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Activity ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const activity = await releaseEquipment(activityId);
@@ -406,7 +415,7 @@ router.get('/usage/history', requirePermission(Permission.EQUIPMENT_VIEW), async
     }
 
     if (activityType) {
-      options.activityType = activityType as ActivityType;
+      options.activityType = activityType as student_activities_activity_type;
     }
 
     if (startDate) {
@@ -476,11 +485,12 @@ router.post('/reservations', requirePermission(Permission.EQUIPMENT_RESERVE), as
     const { equipmentId, studentId, startTime, endTime, purpose, notes } = req.body;
 
     if (!equipmentId || !studentId || !startTime || !endTime) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: equipmentId, studentId, startTime, endTime',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const reservation = await equipmentService.createReservation({
@@ -519,11 +529,13 @@ router.post('/reservations/check-conflicts', requirePermission(Permission.EQUIPM
     const { equipmentId, startTime, endTime, excludeReservationId } = req.body;
 
     if (!equipmentId || !startTime || !endTime) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: equipmentId, startTime, endTime',
         timestamp: new Date().toISOString(),
       });
+      return;
+    }
     }
 
     const conflicts = await equipmentService.checkReservationConflicts(
@@ -569,11 +581,12 @@ router.post('/maintenance', requirePermission(Permission.EQUIPMENT_MAINTENANCE),
     } = req.body;
 
     if (!equipmentId || !maintenanceType) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: equipmentId, maintenanceType',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const maintenance = await equipmentService.createMaintenance({
@@ -626,11 +639,12 @@ router.post('/condition-reports', requirePermission(Permission.EQUIPMENT_ASSESS)
     } = req.body;
 
     if (!equipmentId || !conditionBefore || !conditionAfter || !assessmentType) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: equipmentId, conditionBefore, conditionAfter, assessmentType',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const report = await equipmentService.createConditionReport({
@@ -701,21 +715,23 @@ router.get('/:id/details', requirePermission(Permission.EQUIPMENT_VIEW), async (
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Equipment ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const equipment = await equipmentService.getEquipmentById(id);
 
     if (!equipment) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Equipment not found',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const response: ApiResponse = {

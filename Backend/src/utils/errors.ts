@@ -419,6 +419,10 @@ export const notFoundHandler: RequestHandler = (req, res) => {
 
 // Global error handlers for uncaught exceptions
 export const setupGlobalErrorHandlers = (): void => {
+  const shouldExit =
+    process.env.NODE_ENV === 'production' ||
+    process.env.STRICT_ERROR_EXIT === 'true';
+
   // Uncaught exceptions
   process.on('uncaughtException', (error: Error) => {
     logger.error('UNCAUGHT_EXCEPTION', {
@@ -426,10 +430,12 @@ export const setupGlobalErrorHandlers = (): void => {
       stack: error.stack,
     });
 
-    // Give some time to log before exiting
-    setTimeout(() => {
-      process.exit(1);
-    }, 1000);
+    // In production, exit after logging; in dev, keep running
+    if (shouldExit) {
+      setTimeout(() => {
+        process.exit(1);
+      }, 1000);
+    }
   });
 
   // Unhandled promise rejections
@@ -446,10 +452,12 @@ export const setupGlobalErrorHandlers = (): void => {
         promise: promise.toString(),
       });
 
-      // Give some time to log before exiting
-      setTimeout(() => {
-        process.exit(1);
-      }, 1000);
+      // In production, exit after logging; in dev, keep running
+      if (shouldExit) {
+        setTimeout(() => {
+          process.exit(1);
+        }, 1000);
+      }
     },
   );
 

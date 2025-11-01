@@ -36,6 +36,42 @@ interface DashboardStats {
   };
 }
 
+// Add type definitions for API responses
+interface DailyStats {
+  date: string;
+  summary: {
+    checkIns: number;
+    checkOuts: number;
+    uniqueStudents: number;
+    booksCirculated: number;
+    avgDuration: number;
+    peakHour: string;
+  };
+  details: {
+    bookCheckouts: number;
+    bookReturns: number;
+    computerUse: number;
+    gamingSessions: number;
+    avrSessions: number;
+  };
+  gradeLevelBreakdown: {
+    [key: string]: number;
+  };
+}
+
+interface WeeklyStats {
+  weekStart: string;
+  weekEnd: string;
+  summary: {
+    totalVisits: number;
+    uniqueStudents: number;
+    totalCheckouts: number;
+  };
+  popularBooks: Array<{ title: string; count: number }>;
+  popularCategories: Array<{ name: string; count: number }>;
+  dailyBreakdown: Array<{ date: string; dayOfWeek: string; visits: number; checkouts: number; uniqueStudents: number }>;
+}
+
 export default function EnhancedDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,8 +94,8 @@ export default function EnhancedDashboard() {
       const weeklyResponse = await reportsApi.getWeeklyReport();
 
       if (dailyResponse.success && weeklyResponse.success) {
-        const dailyData = dailyResponse.data;
-        const weeklyData = weeklyResponse.data;
+        const dailyData = dailyResponse.data as DailyStats;
+        const weeklyData = weeklyResponse.data as WeeklyStats;
 
         setStats({
           today: {
@@ -280,7 +316,7 @@ export default function EnhancedDashboard() {
                                 <div 
                                   className="bg-primary h-2 rounded-full" 
                                   style={{ 
-                                    width: `${(category.count / stats.thisWeek.topCategories[0].count) * 100}%` 
+                                    width: `${stats.thisWeek.topCategories[0] ? (category.count / stats.thisWeek.topCategories[0].count) * 100 : 0}%` 
                                   }}
                                 ></div>
                               </div>

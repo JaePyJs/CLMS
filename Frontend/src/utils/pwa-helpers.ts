@@ -76,19 +76,19 @@ export const getDeviceInfo = () => {
   if (userAgent.includes('Chrome')) {
     browser = 'chrome';
     const match = userAgent.match(/Chrome\/(\d+)/);
-    version = match ? match[1] : 'unknown';
+    version = match?.[1] || 'unknown';
   } else if (userAgent.includes('Firefox')) {
     browser = 'firefox';
     const match = userAgent.match(/Firefox\/(\d+)/);
-    version = match ? match[1] : 'unknown';
+    version = match?.[1] || 'unknown';
   } else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
     browser = 'safari';
     const match = userAgent.match(/Version\/(\d+)/);
-    version = match ? match[1] : 'unknown';
+    version = match?.[1] || 'unknown';
   } else if (userAgent.includes('Edge')) {
     browser = 'edge';
     const match = userAgent.match(/Edge\/(\d+)/);
-    version = match ? match[1] : 'unknown';
+    version = match?.[1] || 'unknown';
   }
 
   // Detect device capabilities
@@ -110,13 +110,13 @@ export const getDeviceInfo = () => {
   };
 
   // Screen and viewport info
-  const screen = {
-    width: screen.width,
-    height: screen.height,
-    availWidth: screen.availWidth,
-    availHeight: screen.availHeight,
-    colorDepth: screen.colorDepth,
-    pixelDepth: screen.pixelDepth,
+  const screenInfo = {
+    width: window.screen.width,
+    height: window.screen.height,
+    availWidth: window.screen.availWidth,
+    availHeight: window.screen.availHeight,
+    colorDepth: window.screen.colorDepth,
+    pixelDepth: window.screen.pixelDepth,
   };
 
   const viewport = {
@@ -129,7 +129,7 @@ export const getDeviceInfo = () => {
     browser: { name: browser, version },
     platform,
     capabilities,
-    screen,
+    screen: screenInfo,
     viewport,
     userAgent,
   };
@@ -294,7 +294,6 @@ export const notificationUtils = {
       icon: '/pwa-192x192.png',
       badge: '/pwa-192x192.png',
       tag: 'clms-notification',
-      renotify: true,
       requireInteraction: false,
       ...options,
     });
@@ -438,7 +437,7 @@ export const performanceUtils = {
   },
 
   // Create performance observer
-  createObserver(type: PerformanceEntryType, callback: (entries: PerformanceEntryList) => void): PerformanceObserver | null {
+  createObserver(type: string, callback: (entries: PerformanceEntryList) => void): PerformanceObserver | null {
     if (!('PerformanceObserver' in window)) return null;
 
     try {

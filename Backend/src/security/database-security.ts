@@ -583,7 +583,7 @@ export class DatabaseSecurity {
   private async logQuery(auditLog: Omit<QueryAuditLog, 'id'>): Promise<void> {
     try {
       // Store query audit log
-      await this.prisma.auditLog.create({
+      await this.prisma.audit_logs.create({
         data: {
           userId: auditLog.userId,
           action: `database_query_${auditLog.operation}`,

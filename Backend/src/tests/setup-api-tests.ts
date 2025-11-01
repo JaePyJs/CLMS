@@ -1,5 +1,6 @@
 import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import TestDatabaseManager from './utils/testDatabase';
+import { createTestTimeout, wait } from '@/utils/common';
 
 // Global test database instance
 let testDb: TestDatabaseManager;
@@ -160,14 +161,8 @@ export function getTestDatabase(): TestDatabaseManager {
   return testDb;
 }
 
-/**
- * Create test-specific timeout
- */
-export function createTestTimeout(ms: number): Promise<never> {
-  return new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(`Test timed out after ${ms}ms`)), ms);
-  });
-}
+// Re-export utilities from common
+export { createTestTimeout, wait };
 
 /**
  * Retry function for flaky tests
@@ -195,13 +190,6 @@ export async function retry<T>(
   }
 
   throw lastError!;
-}
-
-/**
- * Wait for specified time
- */
-export function wait(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**

@@ -67,7 +67,7 @@ export class QRCodeService {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error';
         logger.error(
-          `Failed to generate QR for student ${student.student_id}: ${error_message}`,
+          `Failed to generate QR for student ${student.student_id}: ${errorMessage}`,
         );
 
         results.push({
@@ -76,14 +76,14 @@ export class QRCodeService {
           qrPath: '',
           qrUrl: '',
           success: false,
-          error: error_message,
+          error: errorMessage,
         });
       }
     }
 
     const summary: QRGenerationSummary = {
       totalStudents: students.length,
-      success_count,
+      success_count: successCount,
       errorCount,
       outputDir: this.qrDir,
       results,
@@ -94,7 +94,7 @@ export class QRCodeService {
     const reportPath = path.join(this.qrDir, '_generation-report.json');
     fs.writeFileSync(reportPath, JSON.stringify(summary, null, 2));
     logger.info(
-      `QR generation complete. Success: ${success_count}, Failed: ${errorCount}`,
+      `QR generation complete. Success: ${successCount}, Failed: ${errorCount}`,
     );
 
     return summary;
@@ -129,7 +129,7 @@ export class QRCodeService {
     // Update database
     await prisma.students.update({
       where: { id: student.id },
-      data: { id: crypto.randomUUID(), updated_at: new Date(),  barcode_image: filePath },
+      data: { updated_at: new Date(), barcode_image: filePath },
     });
 
     return {
@@ -186,7 +186,7 @@ export class QRCodeService {
       if (student) {
         await prisma.students.update({
           where: { id: student.id },
-          data: { id: crypto.randomUUID(), updated_at: new Date(),  barcode_image: null },
+          data: { updated_at: new Date(), barcode_image: null },
         });
       }
 

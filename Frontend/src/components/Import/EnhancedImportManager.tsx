@@ -79,49 +79,8 @@ export default function EnhancedImportManager() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [fieldMapping, setFieldMapping] = useState<FieldMapping[]>([]);
-  const [showMapping, setShowMapping] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Student field mapping templates
-  const studentFieldTemplates = {
-    standard: [
-      { source: 'name', target: 'name', required: true },
-      { source: 'gradeLevel', target: 'gradeLevel', required: true },
-      { source: 'section', target: 'section', required: false },
-      { source: 'barcode', target: 'studentId', required: false },
-    ],
-    detailed: [
-      { source: 'firstName', target: 'firstName', required: true },
-      { source: 'lastName', target: 'lastName', required: true },
-      { source: 'studentId', target: 'studentId', required: true },
-      { source: 'gradeLevel', target: 'gradeLevel', required: true },
-      { source: 'gradeCategory', target: 'gradeCategory', required: true },
-      { source: 'section', target: 'section', required: false },
-      { source: 'email', target: 'email', required: false },
-      { source: 'phone', target: 'phone', required: false },
-    ]
-  };
-
-  // Book field mapping templates
-  const bookFieldTemplates = {
-    basic: [
-      { source: 'accessionNo', target: 'accessionNo', required: true },
-      { source: 'title', target: 'title', required: true },
-      { source: 'author', target: 'author', required: true },
-    ],
-    detailed: [
-      { source: 'accessionNo', target: 'accessionNo', required: true },
-      { source: 'title', target: 'title', required: true },
-      { source: 'author', target: 'author', required: true },
-      { source: 'isbn', target: 'isbn', required: false },
-      { source: 'edition', target: 'edition', required: false },
-      { source: 'category', target: 'category', required: false },
-      { source: 'publisher', target: 'publisher', required: false },
-      { source: 'year', target: 'year', required: false },
-      { source: 'totalCopies', target: 'totalCopies', required: false },
-    ]
-  };
 
   const parseFile = useCallback(async (file: File): Promise<PreviewData> => {
     return new Promise((resolve, reject) => {
@@ -310,7 +269,7 @@ export default function EnhancedImportManager() {
     try {
       // Parse the complete file
       const completeData = await parseFile(file);
-      const mappedData = applyFieldMapping(completeData.rows);
+      applyFieldMapping(completeData.rows);
 
       const formData = new FormData();
       formData.append('file', file);

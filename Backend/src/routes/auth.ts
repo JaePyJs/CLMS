@@ -11,6 +11,7 @@ import {
   BusinessLogicError,
   ConflictError,
   NotFoundError,
+  ValidationError,
 } from '@/utils/errors';
 
 const router = Router();
@@ -50,9 +51,13 @@ const router = Router();
 router.get(
   '/me',
   authMiddleware,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       throw new AuthenticationError('Not authenticated');
+    }
+
+    if (!req.user.userId) {
+      throw new AuthenticationError('User ID not found in token');
     }
 
     const user = await authService.getUserById(req.user.userId);
@@ -61,14 +66,14 @@ router.get(
       throw new NotFoundError('User', req.user.userId);
     }
 
-    return sendSuccess(res, {
+    sendSuccess(res, {
       user: {
         id: user.id,
         username: user.username,
         role: user.role,
-        isActive: user.isActive,
-        lastLoginAt: user.lastLoginAt,
-        createdAt: user.createdAt,
+        isActive: user.is_active,
+        lastLoginAt: user.last_login_at,
+        createdAt: user.created_at,
       },
     });
   }),
@@ -147,7 +152,7 @@ router.post(
     body('password').notEmpty().withMessage('Password is required'),
     validationMiddleware,
   ],
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { username, password } = req.body;
 
     // Use enhancedAuthService for secure session management
@@ -157,7 +162,7 @@ router.post(
       throw new AuthenticationError(result.error || 'Invalid credentials');
     }
 
-    return sendSuccess(
+    sendSuccess(
       res,
       {
         user: result.user,
@@ -210,7 +215,7 @@ router.post(
  */
 router.post(
   '/refresh',
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     // Try to get refresh token from cookie first, then body
     const refreshToken = req.cookies?.refreshToken || req.body.refreshToken;
 
@@ -224,7 +229,7 @@ router.post(
       throw new AuthenticationError(result.error || 'Invalid refresh token');
     }
 
-    return sendSuccess(
+    sendSuccess(
       res,
       {
         accessToken: result.accessToken,
@@ -253,7 +258,7 @@ router.post(
 router.post(
   '/logout',
   authMiddleware,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user?.sessionId) {
       throw new AuthenticationError('Session not found');
     }
@@ -264,7 +269,7 @@ router.post(
       throw new BusinessLogicError(result.error || 'Logout failed');
     }
 
-    return sendSuccess(res, {}, { message: 'Logged out successfully' });
+    sendSuccess(res, {}, { message: 'Logged out successfully' });
   }),
 );
 
@@ -298,7 +303,7 @@ router.post(
 router.post(
   '/logout-all',
   authMiddleware,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       throw new AuthenticationError('Not authenticated');
     }
@@ -309,7 +314,7 @@ router.post(
       throw new BusinessLogicError(result.error || 'Logout all failed');
     }
 
-    return sendSuccess(
+    sendSuccess(
       res,
       { sessionsRevoked: result.sessionsRevoked },
       { message: 'Logged out from all devices' },
@@ -349,14 +354,14 @@ router.post(
 router.get(
   '/sessions',
   authMiddleware,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       throw new AuthenticationError('Not authenticated');
     }
 
     const sessions = await enhancedAuthService.getUserSessions(req.user.id);
 
-    return sendSuccess(res, { sessions });
+    sendSuccess(res, { sessions });
   }),
 );
 
@@ -371,7 +376,7 @@ router.post(
     body('role').notEmpty().withMessage('Role is required'),
     validationMiddleware,
   ],
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { username, password, role, isActive } = req.body;
 
     const result = await authService.createUser({
@@ -392,7 +397,7 @@ router.post(
       );
     }
 
-    return sendSuccess(
+    sendSuccess(
       res,
       {
         user: result.user,
@@ -415,9 +420,13 @@ router.put(
       .withMessage('New password must be at least 6 characters'),
     validationMiddleware,
   ],
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       throw new AuthenticationError('Authentication required');
+    }
+
+    if (!req.user.userId) {
+      throw new AuthenticationError('User ID not found in token');
     }
 
     const { currentPassword, newPassword } = req.body;
@@ -444,7 +453,7 @@ router.put(
       );
     }
 
-    return sendSuccess(res, null, {
+    sendSuccess(res, null, {
       message: 'Password updated successfully',
     });
   }),
@@ -460,7 +469,7 @@ router.put(
       .withMessage('New password must be at least 6 characters'),
     validationMiddleware,
   ],
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { userId, newPassword } = req.body;
 
     const result = await authService.resetPassword(userId, newPassword);
@@ -476,7 +485,7 @@ router.put(
       );
     }
 
-    return sendSuccess(res, null, {
+    sendSuccess(res, null, {
       message: 'Password reset successfully',
     });
   }),
@@ -485,10 +494,10 @@ router.put(
 // Get users endpoint (admin only)
 router.get(
   '/users',
-  asyncHandler(async (_req: Request, res: Response) => {
+  asyncHandler(async (_req: Request, res: Response): Promise<void> => {
     const users = await authService.getUsers();
 
-    return sendSuccess(res, { users });
+    sendSuccess(res, { users });
   }),
 );
 
@@ -496,8 +505,12 @@ router.get(
 router.get(
   '/users/:id',
   [param('id').notEmpty().withMessage('User ID is required'), validationMiddleware],
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+
+    if (!id) {
+      throw new ValidationError('User ID is required');
+    }
 
     const user = await authService.getUserById(id);
 
@@ -505,7 +518,7 @@ router.get(
       throw new NotFoundError('User', id);
     }
 
-    return sendSuccess(res, { user });
+    sendSuccess(res, { user });
   }),
 );
 
@@ -519,15 +532,19 @@ router.put(
       .notEmpty()
       .withMessage('Username cannot be empty'),
     body('role').optional().notEmpty().withMessage('Role cannot be empty'),
-    body('isActive')
+    body('is_active')
       .optional()
       .isBoolean()
-      .withMessage('isActive must be a boolean'),
+      .withMessage('is_active must be a boolean'),
     validationMiddleware,
   ],
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const { username, role, isActive } = req.body;
+
+    if (!id) {
+      throw new ValidationError('User ID is required');
+    }
 
     const result = await authService.updateUser(id, {
       username,
@@ -550,7 +567,7 @@ router.put(
       );
     }
 
-    return sendSuccess(res, {
+    sendSuccess(res, {
       user: result.user,
     });
   }),
@@ -560,8 +577,12 @@ router.put(
 router.delete(
   '/users/:id',
   [param('id').notEmpty().withMessage('User ID is required'), validationMiddleware],
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+
+    if (!id) {
+      throw new ValidationError('User ID is required');
+    }
 
     const result = await authService.deleteUser(id);
 
@@ -576,7 +597,7 @@ router.delete(
       );
     }
 
-    return sendSuccess(res, null, {
+    sendSuccess(res, null, {
       message: 'User deleted successfully',
     });
   }),

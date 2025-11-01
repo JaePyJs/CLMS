@@ -10,13 +10,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
 } from 'recharts';
-import { Activity, Zap, Clock, Database, AlertTriangle, CheckCircle, Download, RefreshCw, Play, Pause, FileText, BarChart3, Monitor, Gauge, Target } from 'lucide-react';
+import { Activity, Zap, Clock, Database, AlertTriangle, CheckCircle, Download, RefreshCw, Play, Pause, FileText, BarChart3, Monitor, Gauge, Target, TrendingUp, TrendingDown, Timer } from 'lucide-react';
 import { performanceMonitoringService } from '@/services/performanceMonitoringService';
 import type { PerformanceReport, ComponentPerformance } from '@/services/performanceMonitoringService';
 
@@ -124,15 +119,13 @@ const PerformanceGrade: React.FC<PerformanceGradeProps> = ({ grade, score }) => 
 const PerformanceMonitor: React.FC = () => {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [currentReport, setCurrentReport] = useState<PerformanceReport | null>(null);
-  const [historicalReports, setHistoricalReports] = useState<PerformanceReport[]>([]);
   const [componentMetrics, setComponentMetrics] = useState<ComponentPerformance[]>([]);
   const [insights, setInsights] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [historicalReports, setHistoricalReports] = useState<PerformanceReport[]>([]);
 
   useEffect(() => {
     // Load existing data
-    const reports = performanceMonitoringService.getReports();
-    setHistoricalReports(reports);
     setComponentMetrics(performanceMonitoringService.getComponentMetrics());
 
     const latestReport = performanceMonitoringService.getLatestReport();
@@ -199,18 +192,6 @@ const PerformanceMonitor: React.FC = () => {
     return `${(mb / 1024).toFixed(1)}GB`;
   };
 
-  // Get grade color
-  const getGradeColor = (grade: string): string => {
-    const colors = {
-      A: 'text-green-600',
-      B: 'text-blue-600',
-      C: 'text-yellow-600',
-      D: 'text-orange-600',
-      F: 'text-red-600',
-    };
-    return colors[grade as keyof typeof colors] || 'text-gray-600';
-  };
-
   if (!currentReport) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -224,8 +205,6 @@ const PerformanceMonitor: React.FC = () => {
       </div>
     );
   }
-
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
   return (
     <div className="space-y-6">
@@ -464,7 +443,7 @@ const PerformanceMonitor: React.FC = () => {
                   {componentMetrics
                     .sort((a, b) => b.averageTime - a.averageTime)
                     .slice(0, 10)
-                    .map((component, index) => (
+                    .map((component) => (
                       <div key={component.name} className="border rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-semibold">{component.name}</h4>

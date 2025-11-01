@@ -1,18 +1,29 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import {
+  PrismaClient,
+  Prisma,
+  type equipment_status,
+  type equipment_type,
+} from '@prisma/client';
 import { logger } from '@/utils/logger';
 import { performanceMonitoringService } from '@/services/performanceMonitoringService';
 import { cacheManager } from '@/utils/caching';
 
 /**
  * Query Optimization Service
- * 
+ *
  * Provides tools and utilities for optimizing database queries,
  * including query analysis, index recommendations, and performance monitoring.
  */
 export class QueryOptimizationService {
   private prisma: PrismaClient;
-  private queryStats: Map<string, { count: number; totalTime: number; avgTime: number; slowQueries: number }> = new Map();
-  private indexRecommendations: Map<string, Array<{ table: string; columns: string[]; type: string; reason: string }>> = new Map();
+  private queryStats: Map<
+    string,
+    { count: number; totalTime: number; avgTime: number; slowQueries: number }
+  > = new Map();
+  private indexRecommendations: Map<
+    string,
+    Array<{ table: string; columns: string[]; type: string; reason: string }>
+  > = new Map();
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
@@ -29,19 +40,19 @@ export class QueryOptimizationService {
       cacheKey?: string;
       cacheTTL?: number;
       cacheTags?: string[];
-    }
+    },
   ): Promise<T> {
     // Check cache first
     if (options?.useCache && options.cacheKey) {
-      const cached = await cacheManager.get(options.cacheKey);
-      if (cached) {
-        return JSON.parse(cached) as T;
+      const cached = await cacheManager.get<T>(options.cacheKey);
+      if (cached !== null) {
+        return cached;
       }
     }
 
     // Execute query with monitoring
     const startTime = Date.now();
-    let result: T;
+    let result: T | null = null;
     let success = true;
     let error: Error | null = null;
 
@@ -62,8 +73,8 @@ export class QueryOptimizationService {
         success,
         metadata: {
           error: error ? error.message : undefined,
-          cached: false
-        }
+          cached: false,
+        },
       });
 
       // Update query statistics
@@ -71,11 +82,17 @@ export class QueryOptimizationService {
 
       // Cache result if needed
       if (success && options?.useCache && options.cacheKey) {
-        await cacheManager.set(options.cacheKey, JSON.stringify(result), {
-          ttl: options.cacheTTL || 300,
-          tags: options.cacheTags
-        });
+        if (result !== null) {
+          await cacheManager.set(options.cacheKey, result, {
+            ttl: options.cacheTTL ?? 300,
+            tags: options.cacheTags ?? [],
+          });
+        }
       }
+    }
+
+    if (result === null) {
+      throw new Error('Query execution failed without a result');
     }
 
     return result;
@@ -90,38 +107,40 @@ export class QueryOptimizationService {
     options?: {
       concurrency?: number;
       useTransaction?: boolean;
-    }
+    },
   ): Promise<T[]> {
     const concurrency = options?.concurrency || 5;
     const useTransaction = options?.useTransaction || false;
 
     if (useTransaction) {
-      return this.prisma.$transaction(async (tx) => {
+      return this.prisma.$transaction(async tx => {
         const results = [];
-        
+
         // Process queries in batches
         for (let i = 0; i < queries.length; i += concurrency) {
           const batch = queries.slice(i, i + concurrency);
           const batchResults = await Promise.all(
-            batch.map(query => this.executeQueryInTransaction(queryName, query, tx))
+            batch.map(query =>
+              this.executeQueryInTransaction(queryName, query, tx),
+            ),
           );
           results.push(...batchResults);
         }
-        
+
         return results;
       });
     } else {
       const results = [];
-      
+
       // Process queries in batches
       for (let i = 0; i < queries.length; i += concurrency) {
         const batch = queries.slice(i, i + concurrency);
         const batchResults = await Promise.all(
-          batch.map(query => this.executeQuery(queryName, query))
+          batch.map(query => this.executeQuery(queryName, query)),
         );
         results.push(...batchResults);
       }
-      
+
       return results;
     }
   }
@@ -132,7 +151,7 @@ export class QueryOptimizationService {
   private async executeQueryInTransaction<T>(
     queryName: string,
     queryFn: () => Promise<T>,
-    tx: Prisma.TransactionClient
+    _tx: Prisma.TransactionClient,
   ): Promise<T> {
     const startTime = Date.now();
     let result: T;
@@ -156,8 +175,8 @@ export class QueryOptimizationService {
         success,
         metadata: {
           error: error ? error.message : undefined,
-          transaction: true
-        }
+          transaction: true,
+        },
       });
 
       // Update query statistics
@@ -170,15 +189,17 @@ export class QueryOptimizationService {
   /**
    * Get students with optimized queries
    */
-  async getStudents(options: {
-    page?: number;
-    limit?: number;
-    gradeLevel?: string;
-    section?: string;
-    search?: string;
-    includeActivities?: boolean;
-    includeEquipmentSessions?: boolean;
-  } = {}) {
+  async getStudents(
+    options: {
+      page?: number;
+      limit?: number;
+      gradeLevel?: string;
+      section?: string;
+      search?: string;
+      includeActivities?: boolean;
+      includeEquipmentSessions?: boolean;
+    } = {},
+  ) {
     const {
       page = 1,
       limit = 20,
@@ -186,7 +207,7 @@ export class QueryOptimizationService {
       section,
       search,
       includeActivities = false,
-      includeEquipmentSessions = false
+      includeEquipmentSessions = false,
     } = options;
 
     const skip = (page - 1) * limit;
@@ -200,48 +221,48 @@ export class QueryOptimizationService {
       'getStudents',
       async () => {
         // Build where clause
-        const where: Prisma.StudentWhereInput = {};
-        
-        if (gradeLevel) where.gradeLevel = gradeLevel;
+        const where: Prisma.studentsWhereInput = {};
+
+        if (gradeLevel) where.grade_level = gradeLevel;
         if (section) where.section = section;
-        
+
         if (search) {
           where.OR = [
-            { firstName: { contains: search, mode: 'insensitive' } },
-            { lastName: { contains: search, mode: 'insensitive' } },
-            { studentId: { contains: search, mode: 'insensitive' } }
+            { first_name: { contains: search } },
+            { last_name: { contains: search } },
+            { student_id: { contains: search } },
           ];
         }
 
         // Build include clause
-        const include: Prisma.StudentInclude = {};
-        
+        const include: Prisma.studentsInclude = {};
+
         if (includeActivities) {
-          include.activities = {
+          include.student_activities = {
             where: { status: 'ACTIVE' },
-            orderBy: { checkInTime: 'desc' },
-            take: 5
+            orderBy: { start_time: 'desc' },
+            take: 5,
           };
         }
-        
+
         if (includeEquipmentSessions) {
-          include.equipmentSessions = {
+          include.equipment_sessions = {
             where: { status: 'ACTIVE' },
-            orderBy: { startTime: 'desc' },
-            take: 5
+            orderBy: { session_start: 'desc' },
+            take: 5,
           };
         }
 
         // Execute queries in parallel
         const [students, totalCount] = await Promise.all([
-          this.prisma.student.findMany({
+          this.prisma.students.findMany({
             where,
             include,
             skip,
             take: limit,
-            orderBy: { studentId: 'asc' }
+            orderBy: { student_id: 'asc' },
           }),
-          this.prisma.student.count({ where })
+          this.prisma.students.count({ where }),
         ]);
 
         return {
@@ -250,72 +271,79 @@ export class QueryOptimizationService {
             page,
             limit,
             total: totalCount,
-            pages: Math.ceil(totalCount / limit)
-          }
+            pages: Math.ceil(totalCount / limit),
+          },
         };
       },
       {
         useCache: true,
         cacheKey,
         cacheTTL: 300, // 5 minutes
-        cacheTags
-      }
+        cacheTags,
+      },
     );
   }
 
   /**
    * Get student with optimized query
    */
-  async getStudentById(id: string, options: {
-    includeActivities?: boolean;
-    includeEquipmentSessions?: boolean;
-  } = {}) {
-    const { includeActivities = false, includeEquipmentSessions = false } = options;
+  async getStudentById(
+    id: string,
+    options: {
+      includeActivities?: boolean;
+      includeEquipmentSessions?: boolean;
+    } = {},
+  ) {
+    const { includeActivities = false, includeEquipmentSessions = false } =
+      options;
     const cacheKey = `student:${id}:${JSON.stringify(options)}`;
     const cacheTags = ['student', `student:${id}`];
 
     return this.executeQuery(
       'getStudentById',
       async () => {
-        const include: Prisma.StudentInclude = {};
-        
+        const include: Prisma.studentsInclude = {};
+
         if (includeActivities) {
-          include.activities = {
-            orderBy: { checkInTime: 'desc' },
-            take: 10
-          };
-        }
-        
-        if (includeEquipmentSessions) {
-          include.equipmentSessions = {
-            orderBy: { startTime: 'desc' },
-            take: 10
+          include.student_activities = {
+            orderBy: { start_time: 'desc' },
+            take: 10,
           };
         }
 
-        return this.prisma.student.findUnique({
+        if (includeEquipmentSessions) {
+          include.equipment_sessions = {
+            orderBy: { session_start: 'desc' },
+            take: 10,
+          };
+        }
+
+        return this.prisma.students.findUnique({
           where: { id },
-          include
+          include,
         });
       },
       {
         useCache: true,
         cacheKey,
         cacheTTL: 600, // 10 minutes
-        cacheTags
-      }
+        cacheTags,
+      },
     );
   }
 
   /**
    * Search students with optimized query
    */
-  async searchStudents(query: string, options: {
-    page?: number;
-    limit?: number;
-    gradeLevel?: string;
-    section?: string;
-  } = {}) {
+  async searchStudents(
+    query: string,
+    options: {
+      page?: number;
+      limit?: number;
+      gradeLevel?: string;
+      section?: string;
+    } = {},
+  ) {
     const { page = 1, limit = 20, gradeLevel, section } = options;
     const skip = (page - 1) * limit;
     const cacheKey = `search:${query}:${JSON.stringify(options)}`;
@@ -328,26 +356,26 @@ export class QueryOptimizationService {
       'searchStudents',
       async () => {
         // Build where clause with search conditions
-        const where: Prisma.StudentWhereInput = {
+        const where: Prisma.studentsWhereInput = {
           OR: [
-            { firstName: { contains: query, mode: 'insensitive' } },
-            { lastName: { contains: query, mode: 'insensitive' } },
-            { studentId: { contains: query, mode: 'insensitive' } }
-          ]
+            { first_name: { contains: query } },
+            { last_name: { contains: query } },
+            { student_id: { contains: query } },
+          ],
         };
-        
-        if (gradeLevel) where.gradeLevel = gradeLevel;
+
+        if (gradeLevel) where.grade_level = gradeLevel;
         if (section) where.section = section;
 
         // Execute queries in parallel
         const [students, totalCount] = await Promise.all([
-          this.prisma.student.findMany({
+          this.prisma.students.findMany({
             where,
             skip,
             take: limit,
-            orderBy: { studentId: 'asc' }
+            orderBy: { student_id: 'asc' },
           }),
-          this.prisma.student.count({ where })
+          this.prisma.students.count({ where }),
         ]);
 
         return {
@@ -356,37 +384,33 @@ export class QueryOptimizationService {
             page,
             limit,
             total: totalCount,
-            pages: Math.ceil(totalCount / limit)
+            pages: Math.ceil(totalCount / limit),
           },
-          query
+          query,
         };
       },
       {
         useCache: true,
         cacheKey,
         cacheTTL: 300, // 5 minutes
-        cacheTags
-      }
+        cacheTags,
+      },
     );
   }
 
   /**
    * Get books with optimized query
    */
-  async getBooks(options: {
-    page?: number;
-    limit?: number;
-    category?: string;
-    status?: string;
-    search?: string;
-  } = {}) {
-    const {
-      page = 1,
-      limit = 20,
-      category,
-      status,
-      search
-    } = options;
+  async getBooks(
+    options: {
+      page?: number;
+      limit?: number;
+      category?: string;
+      status?: string;
+      search?: string;
+    } = {},
+  ) {
+    const { page = 1, limit = 20, category, status, search } = options;
 
     const skip = (page - 1) * limit;
     const cacheKey = `books:${JSON.stringify(options)}`;
@@ -399,29 +423,29 @@ export class QueryOptimizationService {
       'getBooks',
       async () => {
         // Build where clause
-        const where: Prisma.BookWhereInput = {};
-        
+        const where: Prisma.booksWhereInput = {};
+
         if (category) where.category = category;
-        if (status) where.status = status;
-        
+        if (status) where.is_active = status === 'ACTIVE';
+
         if (search) {
           where.OR = [
-            { title: { contains: search, mode: 'insensitive' } },
-            { author: { contains: search, mode: 'insensitive' } },
-            { isbn: { contains: search, mode: 'insensitive' } },
-            { accessionNumber: { contains: search, mode: 'insensitive' } }
+            { title: { contains: search } },
+            { author: { contains: search } },
+            { isbn: { contains: search } },
+            { accession_no: { contains: search } },
           ];
         }
 
         // Execute queries in parallel
         const [books, totalCount] = await Promise.all([
-          this.prisma.book.findMany({
+          this.prisma.books.findMany({
             where,
             skip,
             take: limit,
-            orderBy: { title: 'asc' }
+            orderBy: { title: 'asc' },
           }),
-          this.prisma.book.count({ where })
+          this.prisma.books.count({ where }),
         ]);
 
         return {
@@ -430,38 +454,33 @@ export class QueryOptimizationService {
             page,
             limit,
             total: totalCount,
-            pages: Math.ceil(totalCount / limit)
-          }
+            pages: Math.ceil(totalCount / limit),
+          },
         };
       },
       {
         useCache: true,
         cacheKey,
         cacheTTL: 600, // 10 minutes
-        cacheTags
-      }
+        cacheTags,
+      },
     );
   }
 
   /**
    * Get equipment with optimized query
    */
-  async getEquipment(options: {
-    page?: number;
-    limit?: number;
-    type?: string;
-    status?: string;
-    location?: string;
-    available?: boolean;
-  } = {}) {
-    const {
-      page = 1,
-      limit = 20,
-      type,
-      status,
-      location,
-      available
-    } = options;
+  async getEquipment(
+    options: {
+      page?: number;
+      limit?: number;
+      type?: equipment_type;
+      status?: equipment_status;
+      location?: string;
+      available?: boolean;
+    } = {},
+  ) {
+    const { page = 1, limit = 20, type, status, location, available } = options;
 
     const skip = (page - 1) * limit;
     const cacheKey = `equipment:${JSON.stringify(options)}`;
@@ -475,19 +494,16 @@ export class QueryOptimizationService {
       'getEquipment',
       async () => {
         // Build where clause
-        const where: Prisma.EquipmentWhereInput = {};
-        
+        const where: Prisma.equipmentWhereInput = {};
+
         if (type) where.type = type;
         if (status) where.status = status;
         if (location) where.location = location;
-        
+
         if (available !== undefined) {
-          where.sessions = {
-            some: {
-              status: 'ACTIVE',
-              endTime: null
-            }
-          };
+          where.equipment_sessions = available
+            ? { none: { status: 'ACTIVE', session_end: null } }
+            : { some: { status: 'ACTIVE', session_end: null } };
         }
 
         // Execute queries in parallel
@@ -496,9 +512,9 @@ export class QueryOptimizationService {
             where,
             skip,
             take: limit,
-            orderBy: { name: 'asc' }
+            orderBy: { name: 'asc' },
           }),
-          this.prisma.equipment.count({ where })
+          this.prisma.equipment.count({ where }),
         ]);
 
         return {
@@ -507,65 +523,96 @@ export class QueryOptimizationService {
             page,
             limit,
             total: totalCount,
-            pages: Math.ceil(totalCount / limit)
-          }
+            pages: Math.ceil(totalCount / limit),
+          },
         };
       },
       {
         useCache: true,
         cacheKey,
         cacheTTL: 300, // 5 minutes
-        cacheTags
-      }
+        cacheTags,
+      },
     );
   }
 
   /**
    * Get analytics data with optimized queries
    */
-  async getAnalyticsData(options: {
-    startDate?: Date;
-    endDate?: Date;
-    type?: 'summary' | 'students' | 'books' | 'equipment';
-  } = {}) {
+  async getAnalyticsData(
+    options: {
+      startDate?: Date;
+      endDate?: Date;
+      type?: 'summary' | 'students' | 'books' | 'equipment';
+    } = {},
+  ) {
     const { startDate, endDate, type = 'summary' } = options;
     const cacheKey = `analytics:${JSON.stringify(options)}`;
     const cacheTags = ['analytics', `analytics:${type}`];
+    const dateRange = this.buildDateRangeFilter(startDate, endDate);
 
     return this.executeQuery(
       'getAnalyticsData',
       async () => {
-        const dateFilter: Prisma.StudentActivityWhereInput['checkInTime'] = {};
-        
-        if (startDate) dateFilter.gte = startDate;
-        if (endDate) dateFilter.lte = endDate;
-
         switch (type) {
           case 'summary':
-            return this.getSummaryAnalytics(dateFilter);
+            return this.getSummaryAnalytics(dateRange);
           case 'students':
-            return this.getStudentAnalytics(dateFilter);
+            return this.getStudentAnalytics(dateRange);
           case 'books':
-            return this.getBookAnalytics(dateFilter);
+            return this.getBookAnalytics(dateRange);
           case 'equipment':
-            return this.getEquipmentAnalytics(dateFilter);
+            return this.getEquipmentAnalytics(dateRange);
           default:
-            return this.getSummaryAnalytics(dateFilter);
+            return this.getSummaryAnalytics(dateRange);
         }
       },
       {
         useCache: true,
         cacheKey,
         cacheTTL: 1800, // 30 minutes
-        cacheTags
-      }
+        cacheTags,
+      },
     );
+  }
+
+  private buildDateRangeFilter(
+    startDate?: Date,
+    endDate?: Date,
+  ): Prisma.DateTimeFilter | undefined {
+    const range: Prisma.DateTimeFilter = {};
+
+    if (startDate) {
+      range.gte = startDate;
+    }
+
+    if (endDate) {
+      range.lte = endDate;
+    }
+
+    return Object.keys(range).length > 0 ? range : undefined;
+  }
+
+  private buildActivityWhere(
+    dateRange?: Prisma.DateTimeFilter,
+  ): Prisma.student_activitiesWhereInput {
+    return dateRange ? { start_time: dateRange } : {};
   }
 
   /**
    * Get summary analytics data
    */
-  private async getSummaryAnalytics(dateFilter: Prisma.StudentActivityWhereInput['checkInTime']) {
+  private async getSummaryAnalytics(dateRange?: Prisma.DateTimeFilter) {
+    const activityWhere = this.buildActivityWhere(dateRange);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const todayActivityWhere: Prisma.student_activitiesWhereInput = {
+      start_time: {
+        gte: startOfToday,
+      },
+    };
+
     const [
       totalStudents,
       activeStudents,
@@ -573,147 +620,143 @@ export class QueryOptimizationService {
       availableBooks,
       totalEquipment,
       availableEquipment,
-      todayActivities
+      todayActivities,
     ] = await Promise.all([
-      this.prisma.student.count(),
-      this.prisma.student.count({
+      this.prisma.students.count(),
+      this.prisma.students.count({
         where: {
-          activities: {
-            some: {
-              checkInTime: dateFilter
-            }
-          }
-        }
+          student_activities: {
+            some: activityWhere,
+          },
+        },
       }),
-      this.prisma.book.count(),
-      this.prisma.book.count({
-        where: { status: 'AVAILABLE' }
+      this.prisma.books.count(),
+      this.prisma.books.count({
+        where: {
+          is_active: true,
+          available_copies: {
+            gt: 0,
+          },
+        },
       }),
       this.prisma.equipment.count(),
       this.prisma.equipment.count({
-        where: { status: 'AVAILABLE' }
+        where: { status: 'AVAILABLE' },
       }),
-      this.prisma.studentActivity.count({
-        where: {
-          checkInTime: {
-            gte: new Date(new Date().setHours(0, 0, 0, 0))
-          }
-        }
-      })
+      this.prisma.student_activities.count({
+        where: todayActivityWhere,
+      }),
     ]);
 
     return {
       students: {
         total: totalStudents,
-        active: activeStudents
+        active: activeStudents,
       },
       books: {
         total: totalBooks,
-        available: availableBooks
+        available: availableBooks,
       },
       equipment: {
         total: totalEquipment,
-        available: availableEquipment
+        available: availableEquipment,
       },
       activities: {
-        today: todayActivities
-      }
+        today: todayActivities,
+      },
     };
   }
 
   /**
    * Get student analytics data
    */
-  private async getStudentAnalytics(dateFilter: Prisma.StudentActivityWhereInput['checkInTime']) {
-    const [
-      gradeLevelStats,
-      sectionStats,
-      activityStats
-    ] = await Promise.all([
-      this.prisma.student.groupBy({
-        by: ['gradeLevel'],
-        _count: true
+  private async getStudentAnalytics(dateRange?: Prisma.DateTimeFilter) {
+    const activityWhere = this.buildActivityWhere(dateRange);
+
+    const [gradeLevelStats, sectionStats, activityStats] = await Promise.all([
+      this.prisma.students.groupBy({
+        by: ['grade_level'],
+        _count: { _all: true },
       }),
-      this.prisma.student.groupBy({
+      this.prisma.students.groupBy({
         by: ['section'],
-        _count: true
+        _count: { _all: true },
       }),
-      this.prisma.studentActivity.groupBy({
-        by: ['activityType'],
-        where: { checkInTime: dateFilter },
-        _count: true
-      })
+      this.prisma.student_activities.groupBy({
+        by: ['activity_type'],
+        where: activityWhere,
+        _count: { _all: true },
+      }),
     ]);
 
     return {
       gradeLevels: gradeLevelStats,
       sections: sectionStats,
-      activities: activityStats
+      activities: activityStats,
     };
   }
 
   /**
    * Get book analytics data
    */
-  private async getBookAnalytics(dateFilter: Prisma.StudentActivityWhereInput['checkInTime']) {
-    const [
-      categoryStats,
-      statusStats,
-      checkoutStats
-    ] = await Promise.all([
-      this.prisma.book.groupBy({
+  private async getBookAnalytics(dateRange?: Prisma.DateTimeFilter) {
+    const activityWhere = this.buildActivityWhere(dateRange);
+    const checkoutWhere: Prisma.student_activitiesWhereInput = {
+      ...activityWhere,
+      activity_type: 'BOOK_CHECKOUT',
+    };
+
+    const [categoryStats, activationStats, checkoutStats] = await Promise.all([
+      this.prisma.books.groupBy({
         by: ['category'],
-        _count: true
+        _count: { _all: true },
       }),
-      this.prisma.book.groupBy({
-        by: ['status'],
-        _count: true
+      this.prisma.books.groupBy({
+        by: ['is_active'],
+        _count: { _all: true },
       }),
-      this.prisma.studentActivity.groupBy({
-        by: ['activityType'],
-        where: { 
-          checkInTime: dateFilter,
-          activityType: 'BOOK_CHECKOUT'
-        },
-        _count: true
-      })
+      this.prisma.student_activities.groupBy({
+        by: ['activity_type'],
+        where: checkoutWhere,
+        _count: { _all: true },
+      }),
     ]);
 
     return {
       categories: categoryStats,
-      statuses: statusStats,
-      checkouts: checkoutStats
+      statuses: activationStats,
+      checkouts: checkoutStats,
     };
   }
 
   /**
    * Get equipment analytics data
    */
-  private async getEquipmentAnalytics(dateFilter: Prisma.StudentActivityWhereInput['checkInTime']) {
-    const [
-      typeStats,
-      statusStats,
-      usageStats
-    ] = await Promise.all([
+  private async getEquipmentAnalytics(dateRange?: Prisma.DateTimeFilter) {
+    const sessionWhere: Prisma.equipment_sessionsWhereInput = dateRange
+      ? { session_start: dateRange }
+      : {};
+
+    const [typeStats, statusStats, usageStats] = await Promise.all([
       this.prisma.equipment.groupBy({
         by: ['type'],
-        _count: true
+        _count: { _all: true },
       }),
       this.prisma.equipment.groupBy({
         by: ['status'],
-        _count: true
+        _count: { _all: true },
       }),
-      this.prisma.equipmentSession.groupBy({
-        by: ['equipmentId'],
-        where: { startTime: dateFilter },
-        _count: true
-      })
+      this.prisma.equipment_sessions.groupBy({
+        by: ['equipment_id'],
+        where: sessionWhere,
+        _count: { _all: true },
+      }),
     ]);
 
     return {
       types: typeStats,
       statuses: statusStats,
-      usage: usageStats
+      usage: usageStats,
     };
   }
 
@@ -725,14 +768,15 @@ export class QueryOptimizationService {
       count: 0,
       totalTime: 0,
       avgTime: 0,
-      slowQueries: 0
+      slowQueries: 0,
     };
 
     existing.count++;
     existing.totalTime += duration;
     existing.avgTime = existing.totalTime / existing.count;
-    
-    if (duration > 1000) { // Consider queries over 1s as slow
+
+    if (duration > 1000) {
+      // Consider queries over 1s as slow
       existing.slowQueries++;
     }
 
@@ -742,17 +786,28 @@ export class QueryOptimizationService {
   /**
    * Get query statistics
    */
-  getQueryStats(): Array<{ query: string; count: number; totalTime: number; avgTime: number; slowQueries: number }> {
+  getQueryStats(): Array<{
+    query: string;
+    count: number;
+    totalTime: number;
+    avgTime: number;
+    slowQueries: number;
+  }> {
     return Array.from(this.queryStats.entries()).map(([query, stats]) => ({
       query,
-      ...stats
+      ...stats,
     }));
   }
 
   /**
    * Get slow queries
    */
-  getSlowQueries(): Array<{ query: string; count: number; avgTime: number; slowQueries: number }> {
+  getSlowQueries(): Array<{
+    query: string;
+    count: number;
+    avgTime: number;
+    slowQueries: number;
+  }> {
     return this.getQueryStats().filter(stat => stat.slowQueries > 0);
   }
 
@@ -765,40 +820,59 @@ export class QueryOptimizationService {
       totalSlowQueries: number;
       avgQueryTime: number;
     };
-    slowQueries: Array<{ query: string; count: number; avgTime: number; slowQueries: number }>;
+    slowQueries: Array<{
+      query: string;
+      count: number;
+      avgTime: number;
+      slowQueries: number;
+    }>;
     recommendations: string[];
   } {
     const stats = this.getQueryStats();
     const slowQueries = this.getSlowQueries();
-    
+
     const totalQueries = stats.reduce((sum, stat) => sum + stat.count, 0);
-    const totalSlowQueries = stats.reduce((sum, stat) => sum + stat.slowQueries, 0);
-    const avgQueryTime = stats.reduce((sum, stat) => sum + stat.totalTime, 0) / totalQueries;
+    const totalSlowQueries = stats.reduce(
+      (sum, stat) => sum + stat.slowQueries,
+      0,
+    );
+    const avgQueryTime =
+      stats.reduce((sum, stat) => sum + stat.totalTime, 0) / totalQueries;
 
     const recommendations: string[] = [];
 
     // Add recommendations based on analysis
     if (totalSlowQueries > 0) {
-      recommendations.push(`${totalSlowQueries} slow queries detected. Consider optimizing these queries.`);
+      recommendations.push(
+        `${totalSlowQueries} slow queries detected. Consider optimizing these queries.`,
+      );
     }
 
     if (avgQueryTime > 100) {
-      recommendations.push(`Average query time is ${avgQueryTime.toFixed(2)}ms. Consider query optimization.`);
+      recommendations.push(
+        `Average query time is ${avgQueryTime.toFixed(2)}ms. Consider query optimization.`,
+      );
     }
 
     const verySlowQueries = slowQueries.filter(q => q.avgTime > 2000);
     if (verySlowQueries.length > 0) {
-      recommendations.push(`${verySlowQueries.length} queries are very slow (>2s). These require immediate attention.`);
+      recommendations.push(
+        `${verySlowQueries.length} queries are very slow (>2s). These require immediate attention.`,
+      );
     }
 
     // Add specific recommendations for slow queries
     slowQueries.forEach(query => {
       if (query.query.includes('search') && query.avgTime > 500) {
-        recommendations.push(`Consider adding full-text search indexes for ${query.query}.`);
+        recommendations.push(
+          `Consider adding full-text search indexes for ${query.query}.`,
+        );
       }
-      
+
       if (query.query.includes('activities') && query.avgTime > 1000) {
-        recommendations.push(`Consider optimizing the ${query.query} with better joins or pagination.`);
+        recommendations.push(
+          `Consider optimizing the ${query.query} with better joins or pagination.`,
+        );
       }
     });
 
@@ -806,10 +880,10 @@ export class QueryOptimizationService {
       summary: {
         totalQueries,
         totalSlowQueries,
-        avgQueryTime
+        avgQueryTime,
       },
       slowQueries,
-      recommendations
+      recommendations,
     };
   }
 
@@ -818,22 +892,22 @@ export class QueryOptimizationService {
    */
   async createRecommendedIndexes(): Promise<void> {
     const recommendations = [
-      'CREATE INDEX IF NOT EXISTS "idx_student_grade_level" ON "Student"("gradeLevel");',
-      'CREATE INDEX IF NOT EXISTS "idx_student_section" ON "Student"("section");',
-      'CREATE INDEX IF NOT EXISTS "idx_student_grade_section" ON "Student"("gradeLevel", "section");',
-      'CREATE INDEX IF NOT EXISTS "idx_student_name_search" ON "Student"("firstName", "lastName");',
-      'CREATE INDEX IF NOT EXISTS "idx_student_student_id" ON "Student"("studentId");',
-      'CREATE INDEX IF NOT EXISTS "idx_book_category" ON "Book"("category");',
-      'CREATE INDEX IF NOT EXISTS "idx_book_status" ON "Book"("status");',
-      'CREATE INDEX IF NOT EXISTS "idx_book_title_search" ON "Book"("title", "author");',
-      'CREATE INDEX IF NOT EXISTS "idx_equipment_type" ON "Equipment"("type");',
-      'CREATE INDEX IF NOT EXISTS "idx_equipment_status" ON "Equipment"("status");',
-      'CREATE INDEX IF NOT EXISTS "idx_equipment_location" ON "Equipment"("location");',
-      'CREATE INDEX IF NOT EXISTS "idx_activity_check_in_time" ON "StudentActivity"("checkInTime");',
-      'CREATE INDEX IF NOT EXISTS "idx_activity_student_id" ON "StudentActivity"("studentId");',
-      'CREATE INDEX IF NOT EXISTS "idx_activity_type" ON "StudentActivity"("activityType");',
-      'CREATE INDEX IF NOT EXISTS "idx_session_start_time" ON "EquipmentSession"("startTime");',
-      'CREATE INDEX IF NOT EXISTS "idx_session_equipment_id" ON "EquipmentSession"("equipmentId");'
+      'CREATE INDEX IF NOT EXISTS "idx_students_grade_level" ON "students"("grade_level");',
+      'CREATE INDEX IF NOT EXISTS "idx_students_section" ON "students"("section");',
+      'CREATE INDEX IF NOT EXISTS "idx_students_grade_section" ON "students"("grade_level", "section");',
+      'CREATE INDEX IF NOT EXISTS "idx_students_name_search" ON "students"("first_name", "last_name");',
+      'CREATE INDEX IF NOT EXISTS "idx_students_student_id" ON "students"("student_id");',
+      'CREATE INDEX IF NOT EXISTS "idx_books_category" ON "books"("category");',
+      'CREATE INDEX IF NOT EXISTS "idx_books_is_active" ON "books"("is_active");',
+      'CREATE INDEX IF NOT EXISTS "idx_books_title_author" ON "books"("title", "author");',
+      'CREATE INDEX IF NOT EXISTS "idx_equipment_type" ON "equipment"("type");',
+      'CREATE INDEX IF NOT EXISTS "idx_equipment_status" ON "equipment"("status");',
+      'CREATE INDEX IF NOT EXISTS "idx_equipment_location" ON "equipment"("location");',
+      'CREATE INDEX IF NOT EXISTS "idx_student_activities_start_time" ON "student_activities"("start_time");',
+      'CREATE INDEX IF NOT EXISTS "idx_student_activities_student_id" ON "student_activities"("student_id");',
+      'CREATE INDEX IF NOT EXISTS "idx_student_activities_activity_type" ON "student_activities"("activity_type");',
+      'CREATE INDEX IF NOT EXISTS "idx_equipment_sessions_session_start" ON "equipment_sessions"("session_start");',
+      'CREATE INDEX IF NOT EXISTS "idx_equipment_sessions_equipment_id" ON "equipment_sessions"("equipment_id");',
     ];
 
     for (const recommendation of recommendations) {
@@ -841,7 +915,9 @@ export class QueryOptimizationService {
         await this.prisma.$executeRawUnsafe(recommendation);
         logger.info(`Created index: ${recommendation}`);
       } catch (error) {
-        logger.warn(`Failed to create index: ${recommendation}`, { error: (error as Error).message });
+        logger.warn(`Failed to create index: ${recommendation}`, {
+          error: (error as Error).message,
+        });
       }
     }
   }

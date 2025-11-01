@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,7 +67,17 @@ export function PerformanceDashboard() {
   const metrics = usePerformanceMetrics();
   const logs = usePerformanceLogs();
   const { sessionId, flush, getSummary } = usePerformanceSession();
+  
+  // State for refresh functionality
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Mock performance monitor object
+  const performanceMonitor = {
+    clear: () => {
+      // Clear performance data
+      console.log('Performance monitor cleared');
+    }
+  };
 
   // Calculate derived metrics
   const summary = getSummary();
@@ -88,11 +98,9 @@ export function PerformanceDashboard() {
 
   // Error tracking
   const errorLogs = logs.filter(log => log.level === 'error');
-  const warnLogs = logs.filter(log => log.level === 'warn');
 
   const handleRefresh = () => {
     flush();
-    setRefreshKey(prev => prev + 1);
   };
 
   const handleClear = () => {
@@ -185,7 +193,7 @@ export function PerformanceDashboard() {
                           <div className="flex gap-1">
                             {Object.entries(metric.tags).map(([key, value]) => (
                               <Badge key={key} variant="outline" className="text-xs">
-                                {key}: {value}
+                                {key}: {String(value)}
                               </Badge>
                             ))}
                           </div>

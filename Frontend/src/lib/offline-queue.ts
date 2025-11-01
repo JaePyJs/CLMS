@@ -1,6 +1,5 @@
 import { openDB } from 'idb'
 import type { IDBPDatabase } from 'idb'
-import { useAppStore } from '@/store/useAppStore'
 import { apiClient } from './api'
 
 // Types for offline queue
@@ -99,7 +98,6 @@ class OfflineQueue {
     if (this.isProcessing || !navigator.onLine) return
 
     this.isProcessing = true
-    const store = useAppStore.getState()
 
     try {
       const items = await this.getQueueItems()

@@ -269,9 +269,9 @@ router.post('/activities', (0, ferpa_middleware_1.auditMiddleware)('CREATE_STUDE
             });
         }
         const activity = await (0, studentService_1.createStudentActivity)({
-            studentId,
-            activityType,
-            equipmentId,
+            student_id: studentId,
+            activity_type: activityType,
+            equipment_id: equipmentId,
             timeLimitMinutes,
             notes,
         });

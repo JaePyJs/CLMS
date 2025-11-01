@@ -93,7 +93,7 @@ export function usePerformanceMonitor(componentName?: string) {
  * Hook for monitoring API calls
  */
 export function useApiPerformance(apiName: string) {
-  const { startTiming, endTiming, log } = usePerformanceMonitor('api_calls');
+  const { startTiming, endTiming } = usePerformanceMonitor('api_calls');
 
   const trackApiCall = useCallback(async <T>(
     apiCall: () => Promise<T>,
@@ -277,7 +277,9 @@ export function useCoreWebVitals() {
         const lcpObserver = new PerformanceObserver((list) => {
           const entries = list.getEntries();
           const lastEntry = entries[entries.length - 1];
-          setVitals(prev => ({ ...prev, lcp: lastEntry.startTime }));
+          if (lastEntry) {
+            setVitals(prev => ({ ...prev, lcp: lastEntry.startTime }));
+          }
         });
         lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
       } catch (e) {
@@ -387,12 +389,7 @@ export function useMemoryMonitoring() {
  */
 export function useAsyncPerformance<T>(
   asyncFn: () => Promise<T>,
-  operationName: string,
-  options?: {
-    retryCount?: number;
-    timeout?: number;
-    onProgress?: (progress: number) => void;
-  }
+  operationName: string
 ) {
   const [state, setState] = useState<{
     data: T | null;

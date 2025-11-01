@@ -1,9 +1,9 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { cn } from '@/lib/utils';
 
 interface ResponsiveContainerProps {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
@@ -17,7 +17,7 @@ export function ResponsiveContainer({
   className = '',
   size = 'lg'
 }: ResponsiveContainerProps) {
-  const { isMobile, isTablet, isDesktop, isLarge } = useMobileOptimization();
+  const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
   const sizeClasses = {
     sm: 'max-w-2xl',
@@ -55,7 +55,7 @@ export function ResponsiveContainer({
 }
 
 interface ResponsiveGridProps {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   cols?: {
     mobile?: number;
@@ -81,7 +81,7 @@ export function ResponsiveGrid({
   cols = { mobile: 1, tablet: 2, desktop: 3, large: 4 },
   gap = { mobile: 'gap-3', tablet: 'gap-4', desktop: 'gap-6', large: 'gap-8' }
 }: ResponsiveGridProps) {
-  const { isMobile, isTablet, isDesktop, isLarge } = useMobileOptimization();
+  const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
   const getCols = () => {
     if (isMobile) return cols.mobile || 1;
@@ -97,7 +97,6 @@ export function ResponsiveGrid({
     return gap.large || 'gap-8';
   };
 
-  const gridCols = `grid-cols-${getCols()}`;
   const gridColsClasses = {
     1: 'grid-cols-1',
     2: 'grid-cols-2',
@@ -120,7 +119,7 @@ export function ResponsiveGrid({
 }
 
 interface ResponsiveFlexProps {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   direction?: {
     mobile?: 'row' | 'col';
@@ -146,7 +145,7 @@ export function ResponsiveFlex({
   wrap = false,
   gap = 'gap-4'
 }: ResponsiveFlexProps) {
-  const { isMobile, isTablet, isDesktop, isLarge } = useMobileOptimization();
+  const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
   const getDirection = () => {
     if (isMobile) return direction.mobile || 'col';
@@ -192,7 +191,7 @@ export function ResponsiveFlex({
 }
 
 interface ResponsiveTextProps {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   size?: {
     mobile?: string;
@@ -216,7 +215,7 @@ export function ResponsiveText({
   align = 'left',
   color = ''
 }: ResponsiveTextProps) {
-  const { isMobile, isTablet, isDesktop, isLarge } = useMobileOptimization();
+  const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
   const getSize = () => {
     if (isMobile) return size.mobile || 'text-sm';
@@ -254,7 +253,7 @@ export function ResponsiveText({
 }
 
 interface ResponsiveButtonProps {
-  children: React.ReactNode;
+  children: ReactNode;
   onClick?: () => void;
   className?: string;
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
@@ -266,7 +265,7 @@ interface ResponsiveButtonProps {
   };
   disabled?: boolean;
   loading?: boolean;
-  icon?: React.ReactNode;
+  icon?: ReactNode;
   iconPosition?: 'left' | 'right';
 }
 
@@ -284,7 +283,7 @@ export function ResponsiveButton({
   icon,
   iconPosition = 'left'
 }: ResponsiveButtonProps) {
-  const { isMobile, isTablet, isDesktop, isLarge } = useMobileOptimization();
+  const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
   const getSize = () => {
     if (isMobile) return size.mobile || 'md';
@@ -334,7 +333,7 @@ export function ResponsiveButton({
 }
 
 interface ResponsiveCardProps {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   padding?: {
     mobile?: string;
@@ -356,7 +355,7 @@ export function ResponsiveCard({
   hover = false,
   interactive = false
 }: ResponsiveCardProps) {
-  const { isMobile, isTablet, isDesktop, isLarge } = useMobileOptimization();
+  const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
   const getPadding = () => {
     if (isMobile) return padding.mobile || 'p-4';

@@ -11,12 +11,12 @@ import {
   EquipmentAssessmentType,
   EquipmentDamageSeverity,
   EquipmentReportType,
-  ActivityType,
-  StudentActivitiesStatus,
+  student_activities_activity_type,
+  student_activities_status,
   Prisma,
 } from '@prisma/client';
 import { WebSocketServer } from 'ws';
-import { getWebSocketServer } from '@/websocket/websocketServer';
+import { websocketServer } from '@/websocket/websocketServer';
 
 // Enhanced equipment interfaces
 export interface GetEquipmentOptions {
@@ -139,7 +139,7 @@ export class EquipmentService {
   private wss: WebSocketServer;
 
   constructor() {
-    this.wss = getWebSocketServer();
+    this.wss = websocketServer as any;
   }
 
   // Get equipment with enhanced filtering and relationships
@@ -957,7 +957,7 @@ export async function deleteEquipment(id: string) {
 export async function useEquipment(data: {
   equipment_id: string;
   student_id: string;
-  activity_type: ActivityType;
+  activity_type: student_activities_activity_type;
   timeLimitMinutes?: number;
   notes?: string;
 }) {

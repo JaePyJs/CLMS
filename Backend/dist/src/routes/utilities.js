@@ -545,13 +545,13 @@ router.post('/quick-start-session', async (req, res) => {
                 timestamp: new Date().toISOString(),
             });
         }
-        const activity = await prisma.activity.create({
+        const activity = await prisma.student_activities.create({
             data: {
-                studentId,
-                equipmentId,
-                startTime: new Date(),
-                endTime: new Date(Date.now() + timeLimitMinutes * 60 * 1000),
-                activityType: 'computer_usage',
+                student_id: studentId,
+                equipment_id: equipmentId,
+                start_time: new Date(),
+                end_time: new Date(Date.now() + timeLimitMinutes * 60 * 1000),
+                activity_type: 'computer_usage',
                 status: 'active',
             }
         });
@@ -565,11 +565,11 @@ router.post('/quick-start-session', async (req, res) => {
             data: {
                 activity: {
                     id: activity.id,
-                    studentId: activity.studentId,
-                    equipmentId: activity.equipmentId,
-                    startTime: activity.startTime,
-                    endTime: activity.endTime,
-                    activityType: activity.activityType,
+                    studentId: activity.student_id,
+                    equipmentId: activity.equipment_id,
+                    startTime: activity.start_time,
+                    endTime: activity.end_time,
+                    activityType: activity.activity_type,
                     status: activity.status,
                 }
             },
@@ -596,8 +596,8 @@ router.get('/quick-report', async (req, res) => {
         const [totalStudents, activeStudents, todayActivities, totalEquipment, availableEquipment] = await Promise.all([
             prisma.student.count(),
             prisma.student.count({ where: { isActive: true } }),
-            prisma.activity.count({
-                where: { startTime: { gte: todayStart } }
+            prisma.student_activities.count({
+                where: { start_time: { gte: todayStart } }
             }),
             prisma.equipment.count(),
             prisma.equipment.count({ where: { status: 'available' } })

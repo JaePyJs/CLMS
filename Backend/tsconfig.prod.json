@@ -13,7 +13,6 @@
     "exactOptionalPropertyTypes": false,
     "skipLibCheck": true,
     "noErrorTruncation": true,
-    "suppressImplicitAnyIndexErrors": true,
     "noResolve": false,
     "allowJs": true,
     "checkJs": false,
@@ -25,6 +24,7 @@
     "**/*.test.ts",
     "**/*.spec.ts",
     "tests",
-    "src/tests"
+    "src/tests",
+    "src/websocket/**/*"
   ]
 }

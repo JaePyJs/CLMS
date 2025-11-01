@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -6,14 +6,12 @@ import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Textarea } from '@/components/ui/textarea'
-import { useMobileOptimization, useTouchOptimization, useAccessibility, getResponsiveClasses } from '@/hooks/useMobileOptimization'
+import { useMobileOptimization, useTouchOptimization, getResponsiveClasses } from '@/hooks/useMobileOptimization'
 import { useAppStore } from '@/store/useAppStore'
 import { DashboardCardSkeleton } from '@/components/LoadingStates'
-import { Monitor, Gamepad2, Cpu, Play, Square, RotateCcw, CheckCircle, Clock, User, WifiOff, Calendar, Tool, TrendingUp, Search, Plus, Edit, MapPin, Tag, RefreshCw, Eye } from 'lucide-react';
+import { Monitor, Gamepad2, Cpu, Play, Square, RotateCcw, CheckCircle, Clock, User, WifiOff, Calendar, Wrench, TrendingUp, Search, Plus, Edit, MapPin, Tag, RefreshCw, Eye } from 'lucide-react';
 
 interface EquipmentItem {
   id: string
@@ -89,7 +87,8 @@ interface EquipmentMetrics {
 
 export function EnhancedEquipmentDashboard() {
   // Mobile optimization
-  const { isMobile, isTablet } = useMobileOptimization()
+  const mobileState = useMobileOptimization()
+  const { isMobile, isTablet } = mobileState
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization()
 
   // State management
@@ -104,7 +103,7 @@ export function EnhancedEquipmentDashboard() {
   const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false)
   const [showReservationDialog, setShowReservationDialog] = useState(false)
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentItem | null>(null)
-  const [isOnline] = useAppStore((state) => state.isOnline)
+  const isOnline = useAppStore((state) => state.isOnline)
 
   // Mock data for development
   const mockEquipment: EquipmentItem[] = [
@@ -362,7 +361,7 @@ export function EnhancedEquipmentDashboard() {
 
   if (isLoading) {
     return (
-      <div className={getResponsiveClasses('space-y-6', { isMobile, isTablet })}>
+      <div className={getResponsiveClasses('space-y-6', mobileState)}>
         <DashboardCardSkeleton />
         <DashboardCardSkeleton />
       </div>
@@ -371,7 +370,7 @@ export function EnhancedEquipmentDashboard() {
 
   return (
     <div
-      className={getResponsiveClasses('space-y-6', { isMobile, isTablet })}
+      className={getResponsiveClasses('space-y-6', mobileState)}
       onTouchStart={isMobile ? handleTouchStart : undefined}
       onTouchEnd={isMobile ? handleTouchEnd : undefined}
     >
@@ -395,7 +394,7 @@ export function EnhancedEquipmentDashboard() {
                 Add Equipment
               </Button>
             </DialogTrigger>
-            <DialogContent className={getResponsiveClasses('max-w-2xl', { isMobile, isTablet })}>
+            <DialogContent className={getResponsiveClasses('max-w-2xl', mobileState)}>
               <DialogHeader>
                 <DialogTitle>Add New Equipment</DialogTitle>
                 <DialogDescription>
@@ -501,7 +500,7 @@ export function EnhancedEquipmentDashboard() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Select value={selectedFilter} onValueChange={setSelectedFilter}>
-            <SelectTrigger className={getResponsiveClasses('w-full lg:w-40', { isMobile, isTablet })}>
+            <SelectTrigger className={getResponsiveClasses('w-full lg:w-40', mobileState)}>
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -514,7 +513,7 @@ export function EnhancedEquipmentDashboard() {
             </SelectContent>
           </Select>
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className={getResponsiveClasses('w-full lg:w-40', { isMobile, isTablet })}>
+            <SelectTrigger className={getResponsiveClasses('w-full lg:w-40', mobileState)}>
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -629,7 +628,7 @@ export function EnhancedEquipmentDashboard() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleEndSession(item.currentSession.id)}
+                          onClick={() => handleEndSession(item.currentSession?.id || '')}
                           className="flex-1"
                         >
                           <Square className="h-3 w-3 mr-1" />
@@ -674,7 +673,7 @@ export function EnhancedEquipmentDashboard() {
 
                       {item.status === 'MAINTENANCE' && (
                         <div className="text-center py-4">
-                          <Tool className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
+                          <Wrench className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
                           <p className="text-sm text-muted-foreground mb-2">
                             Under maintenance
                           </p>
@@ -701,7 +700,7 @@ export function EnhancedEquipmentDashboard() {
                           variant="outline"
                           onClick={() => handleScheduleMaintenance(item)}
                         >
-                          <Tool className="h-3 w-3" />
+                          <Wrench className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
@@ -803,7 +802,7 @@ export function EnhancedEquipmentDashboard() {
 
       {/* Maintenance Dialog */}
       <Dialog open={showMaintenanceDialog} onOpenChange={setShowMaintenanceDialog}>
-        <DialogContent className={getResponsiveClasses('max-w-2xl', { isMobile, isTablet })}>
+        <DialogContent className={getResponsiveClasses('max-w-2xl', mobileState)}>
           <DialogHeader>
             <DialogTitle>Schedule Maintenance</DialogTitle>
             <DialogDescription>
@@ -820,7 +819,7 @@ export function EnhancedEquipmentDashboard() {
 
       {/* Reservation Dialog */}
       <Dialog open={showReservationDialog} onOpenChange={setShowReservationDialog}>
-        <DialogContent className={getResponsiveClasses('max-w-2xl', { isMobile, isTablet })}>
+        <DialogContent className={getResponsiveClasses('max-w-2xl', mobileState)}>
           <DialogHeader>
             <DialogTitle>Create Reservation</DialogTitle>
             <DialogDescription>

@@ -100,11 +100,16 @@ const LoadingFallback = () => (
 export default function App() {
   const { user, logout } = useAuth();
 
+  // Dev-only ErrorBoundary test route
+  if (import.meta.env.DEV && typeof window !== 'undefined' && window.location.pathname === '/dev/error') {
+    throw new Error('Dev Error: Forced exception for ErrorBoundary validation');
+  }
+
   // Mobile optimization
   const { isMobile, isTablet } = useMobileOptimization();
   usePerformanceOptimization();
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
-  const { isOnline, queueCount, syncNow } = useOfflineSync();
+  useOfflineSync();
 
   // Enhanced navigation state
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -1114,5 +1119,5 @@ export default function App() {
         </footer>
       </div>
     </WebSocketProvider>
-  );
+   );
 }

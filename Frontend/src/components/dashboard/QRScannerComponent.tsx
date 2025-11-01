@@ -110,7 +110,7 @@ export default function QRScannerComponent({
       setHasCamera(videoDevices.length > 0);
 
       if (videoDevices.length > 0 && !selectedCamera) {
-        setSelectedCamera(videoDevices[0].deviceId);
+        setSelectedCamera(videoDevices[0]?.deviceId || '');
       }
     } catch (error) {
       console.error('Failed to check camera availability:', error);

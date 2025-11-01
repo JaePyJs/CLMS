@@ -2,7 +2,6 @@ import { EventEmitter } from 'events';
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { logger } from '@/utils/logger';
-import { PrismaClient } from '@prisma/client';
 
 // Performance metrics interfaces
 interface PerformanceMetric {
@@ -11,7 +10,7 @@ interface PerformanceMetric {
   operation: string;
   duration: number;
   success: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface SystemMetrics {
@@ -64,7 +63,7 @@ interface PerformanceSummary {
   alerts: PerformanceAlert[];
 }
 
-interface PerformanceAlert {
+export interface PerformanceAlert {
   id: string;
   timestamp: number;
   severity: 'low' | 'medium' | 'high' | 'critical';
@@ -86,7 +85,7 @@ interface PerformanceThresholds {
 
 /**
  * Performance Monitoring Service
- * 
+ *
  * Collects, analyzes, and reports on various performance metrics
  * across the CLMS application.
  */
@@ -111,7 +110,7 @@ export class PerformanceMonitoringService extends EventEmitter {
     'memory.growthRate': { warning: 10, critical: 20 },
     'import.smallDataset': { warning: 2000, critical: 5000 },
     'import.mediumDataset': { warning: 10000, critical: 20000 },
-    'import.largeDataset': { warning: 30000, critical: 60000 }
+    'import.largeDataset': { warning: 30000, critical: 60000 },
   };
 
   private intervals: NodeJS.Timeout[] = [];
@@ -123,7 +122,7 @@ export class PerformanceMonitoringService extends EventEmitter {
   constructor(metricsDir?: string) {
     super();
     this.metricsDir = metricsDir || join(process.cwd(), 'performance-metrics');
-    
+
     // Ensure metrics directory exists
     if (!existsSync(this.metricsDir)) {
       mkdirSync(this.metricsDir, { recursive: true });
@@ -198,7 +197,7 @@ export class PerformanceMonitoringService extends EventEmitter {
   recordMetric(metric: Omit<PerformanceMetric, 'timestamp'>): void {
     const fullMetric: PerformanceMetric = {
       timestamp: Date.now(),
-      ...metric
+      ...metric,
     };
 
     this.metrics.push(fullMetric);
@@ -218,44 +217,37 @@ export class PerformanceMonitoringService extends EventEmitter {
   /**
    * Record a performance metric with duration measurement
    */
-  recordDuration<T>(
+  async recordDuration<T>(
     category: PerformanceMetric['category'],
     operation: string,
     fn: () => Promise<T>,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>,
   ): Promise<T> {
-    return new Promise(async (resolve, reject) => {
-      const startTime = Date.now();
-      let success = true;
-      let result: T;
-      let error: Error | null = null;
+    const startTime = Date.now();
+    let success = true;
+    let error: Error | null = null;
 
-      try {
-        result = await fn();
-      } catch (e) {
-        success = false;
-        error = e as Error;
-        reject(e);
-        return;
-      } finally {
-        const duration = Date.now() - startTime;
-        
-        this.recordMetric({
-          category,
-          operation,
-          duration,
-          success,
-          metadata: {
-            ...metadata,
-            error: error ? error.message : undefined
-          }
-        });
+    try {
+      const result = await fn();
+      return result;
+    } catch (e) {
+      success = false;
+      error = e as Error;
+      throw e;
+    } finally {
+      const duration = Date.now() - startTime;
 
-        if (success) {
-          resolve(result as T);
-        }
-      }
-    });
+      this.recordMetric({
+        category,
+        operation,
+        duration,
+        success,
+        metadata: {
+          ...metadata,
+          error: error?.message,
+        },
+      });
+    }
   }
 
   /**
@@ -265,7 +257,7 @@ export class PerformanceMonitoringService extends EventEmitter {
     startTime?: number,
     endTime?: number,
     category?: PerformanceMetric['category'],
-    operation?: string
+    operation?: string,
   ): PerformanceMetric[] {
     let filteredMetrics = this.metrics;
 
@@ -328,21 +320,26 @@ export class PerformanceMonitoringService extends EventEmitter {
     // Calculate statistics for each category
     const categoryStats: PerformanceSummary['categories'] = {};
     Object.entries(categories).forEach(([key, categoryMetrics]) => {
-      const durations = categoryMetrics.map(m => m.duration).sort((a, b) => a - b);
+      const durations = categoryMetrics
+        .map(m => m.duration)
+        .sort((a, b) => a - b);
       const successCount = categoryMetrics.filter(m => m.success).length;
       const errorCount = categoryMetrics.length - successCount;
-      const timeRange = (endTime || Date.now()) - (startTime || metrics[0]?.timestamp || Date.now());
+      const timeRange =
+        (endTime || Date.now()) -
+        (startTime || metrics[0]?.timestamp || Date.now());
       const errorsPerMinute = (errorCount / timeRange) * 60000;
 
       categoryStats[key] = {
         count: categoryMetrics.length,
-        avgDuration: durations.reduce((sum, d) => sum + d, 0) / durations.length,
+        avgDuration:
+          durations.reduce((sum, d) => sum + d, 0) / durations.length,
         minDuration: durations[0] || 0,
         maxDuration: durations[durations.length - 1] || 0,
         p95Duration: durations[Math.floor(durations.length * 0.95)] || 0,
         p99Duration: durations[Math.floor(durations.length * 0.99)] || 0,
         successRate: (successCount / categoryMetrics.length) * 100,
-        errorsPerMinute
+        errorsPerMinute,
       };
     });
 
@@ -351,27 +348,37 @@ export class PerformanceMonitoringService extends EventEmitter {
     const cpuUsages = systemMetrics.map(m => m.cpu.usage);
 
     const systemStats = {
-      avgMemoryUsage: memoryUsages.length > 0 ? memoryUsages.reduce((sum, m) => sum + m, 0) / memoryUsages.length : 0,
+      avgMemoryUsage:
+        memoryUsages.length > 0
+          ? memoryUsages.reduce((sum, m) => sum + m, 0) / memoryUsages.length
+          : 0,
       maxMemoryUsage: memoryUsages.length > 0 ? Math.max(...memoryUsages) : 0,
-      avgCpuUsage: cpuUsages.length > 0 ? cpuUsages.reduce((sum, c) => sum + c, 0) / cpuUsages.length : 0,
-      maxCpuUsage: cpuUsages.length > 0 ? Math.max(...cpuUsages) : 0
+      avgCpuUsage:
+        cpuUsages.length > 0
+          ? cpuUsages.reduce((sum, c) => sum + c, 0) / cpuUsages.length
+          : 0,
+      maxCpuUsage: cpuUsages.length > 0 ? Math.max(...cpuUsages) : 0,
     };
 
     return {
       timeRange: {
-        start: startTime || (metrics[0]?.timestamp || Date.now()),
-        end: endTime || Date.now()
+        start: startTime || metrics[0]?.timestamp || Date.now(),
+        end: endTime || Date.now(),
       },
       categories: categoryStats,
       systemMetrics: systemStats,
-      alerts
+      alerts,
     };
   }
 
   /**
    * Get alerts for a specific time range
    */
-  getAlerts(startTime?: number, endTime?: number, resolved?: boolean): PerformanceAlert[] {
+  getAlerts(
+    startTime?: number,
+    endTime?: number,
+    resolved?: boolean,
+  ): PerformanceAlert[] {
     let filteredAlerts = this.alerts;
 
     // Filter by time range
@@ -409,7 +416,23 @@ export class PerformanceMonitoringService extends EventEmitter {
    * Update performance thresholds
    */
   updateThresholds(thresholds: Partial<PerformanceThresholds>): void {
-    this.thresholds = { ...this.thresholds, ...thresholds };
+    const updated: PerformanceThresholds = { ...this.thresholds };
+
+    for (const [key, value] of Object.entries(thresholds)) {
+      if (!value) {
+        continue;
+      }
+
+      const current = updated[key];
+      const warning = value.warning ?? current?.warning;
+      const critical = value.critical ?? current?.critical;
+
+      if (warning !== undefined && critical !== undefined) {
+        updated[key] = { warning, critical };
+      }
+    }
+
+    this.thresholds = updated;
     this.saveMetrics();
   }
 
@@ -432,27 +455,29 @@ export class PerformanceMonitoringService extends EventEmitter {
         percentage: (memUsage.heapUsed / memUsage.heapTotal) * 100,
         heapUsed: memUsage.heapUsed / 1024 / 1024, // MB
         heapTotal: memUsage.heapTotal / 1024 / 1024, // MB
-        external: memUsage.external / 1024 / 1024 // MB
+        external: memUsage.external / 1024 / 1024, // MB
       },
       cpu: {
         usage: cpuPercent,
-        loadAverage: loadAvg
+        loadAverage: loadAvg,
       },
       eventLoop: {
         utilization: 0, // Would need additional monitoring
-        delay: 0 // Would need additional monitoring
+        delay: 0, // Would need additional monitoring
       },
       gc: {
         collections: 0, // Would need additional monitoring
-        duration: 0 // Would need additional monitoring
-      }
+        duration: 0, // Would need additional monitoring
+      },
     };
 
     this.systemMetrics.push(systemMetric);
 
     // Keep system metrics array within bounds
     if (this.systemMetrics.length > this.maxSystemMetricsCount) {
-      this.systemMetrics = this.systemMetrics.slice(-this.maxSystemMetricsCount);
+      this.systemMetrics = this.systemMetrics.slice(
+        -this.maxSystemMetricsCount,
+      );
     }
 
     // Check memory threshold
@@ -461,7 +486,7 @@ export class PerformanceMonitoringService extends EventEmitter {
       category: 'memory',
       operation: 'usage',
       duration: systemMetric.memory.percentage,
-      success: true
+      success: true,
     });
 
     this.emit('systemMetrics', systemMetric);
@@ -488,30 +513,35 @@ export class PerformanceMonitoringService extends EventEmitter {
     // Analyze each group
     Object.entries(groups).forEach(([key, groupMetrics]) => {
       const durations = groupMetrics.map(m => m.duration);
-      const avgDuration = durations.reduce((sum, d) => sum + d, 0) / durations.length;
+      const avgDuration =
+        durations.reduce((sum, d) => sum + d, 0) / durations.length;
       const successCount = groupMetrics.filter(m => m.success).length;
-      const errorRate = ((groupMetrics.length - successCount) / groupMetrics.length) * 100;
+      const errorRate =
+        ((groupMetrics.length - successCount) / groupMetrics.length) * 100;
+      const [categoryPart] = key.split('.');
+      const category = categoryPart || 'general';
+      const threshold = this.thresholds[key];
 
       // Generate insights
       if (errorRate > 5) {
         this.createAlert({
           severity: errorRate > 10 ? 'high' : 'medium',
-          category: key.split('.')[0],
+          category,
           message: `High error rate detected: ${errorRate.toFixed(2)}%`,
           metric: 'errorRate',
           value: errorRate,
-          threshold: 5
+          threshold: 5,
         });
       }
 
-      if (avgDuration > this.thresholds[key]?.warning) {
+      if (threshold && avgDuration > threshold.warning) {
         this.createAlert({
-          severity: avgDuration > this.thresholds[key]?.critical ? 'high' : 'medium',
-          category: key.split('.')[0],
+          severity: avgDuration > threshold.critical ? 'high' : 'medium',
+          category,
           message: `Slow operation detected: ${key}`,
           metric: 'avgDuration',
           value: avgDuration,
-          threshold: this.thresholds[key]?.warning || 100
+          threshold: threshold.warning,
         });
       }
     });
@@ -532,7 +562,7 @@ export class PerformanceMonitoringService extends EventEmitter {
           message: `Critical threshold exceeded for ${key}: ${metric.duration}ms`,
           metric: 'duration',
           value: metric.duration,
-          threshold: threshold.critical
+          threshold: threshold.critical,
         });
       } else if (metric.duration > threshold.warning) {
         this.createAlert({
@@ -541,7 +571,7 @@ export class PerformanceMonitoringService extends EventEmitter {
           message: `Warning threshold exceeded for ${key}: ${metric.duration}ms`,
           metric: 'duration',
           value: metric.duration,
-          threshold: threshold.warning
+          threshold: threshold.warning,
         });
       }
     }
@@ -550,12 +580,14 @@ export class PerformanceMonitoringService extends EventEmitter {
   /**
    * Create a performance alert
    */
-  private createAlert(alert: Omit<PerformanceAlert, 'id' | 'timestamp' | 'resolved'>): void {
+  private createAlert(
+    alert: Omit<PerformanceAlert, 'id' | 'timestamp' | 'resolved'>,
+  ): void {
     const fullAlert: PerformanceAlert = {
       id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
       resolved: false,
-      ...alert
+      ...alert,
     };
 
     this.alerts.push(fullAlert);
@@ -567,14 +599,14 @@ export class PerformanceMonitoringService extends EventEmitter {
 
     // Emit alert event
     this.emit('alert', fullAlert);
-    
+
     logger.warn('Performance alert created', {
       id: fullAlert.id,
       severity: fullAlert.severity,
       category: fullAlert.category,
       message: fullAlert.message,
       value: fullAlert.value,
-      threshold: fullAlert.threshold
+      threshold: fullAlert.threshold,
     });
   }
 
@@ -588,22 +620,28 @@ export class PerformanceMonitoringService extends EventEmitter {
     // Remove old metrics
     const originalMetricsCount = this.metrics.length;
     this.metrics = this.metrics.filter(m => m.timestamp > oneWeekAgo);
-    
+
     // Remove old system metrics (keep last 24 hours)
     const oneDayAgo = now - 86400000;
     const originalSystemMetricsCount = this.systemMetrics.length;
-    this.systemMetrics = this.systemMetrics.filter(m => m.timestamp > oneDayAgo);
+    this.systemMetrics = this.systemMetrics.filter(
+      m => m.timestamp > oneDayAgo,
+    );
 
     // Remove old resolved alerts (keep last 24 hours)
     const originalAlertsCount = this.alerts.length;
-    this.alerts = this.alerts.filter(a => 
-      !a.resolved || a.timestamp > oneDayAgo || (a.resolvedAt && a.resolvedAt > oneDayAgo)
+    this.alerts = this.alerts.filter(
+      a =>
+        !a.resolved ||
+        a.timestamp > oneDayAgo ||
+        (a.resolvedAt && a.resolvedAt > oneDayAgo),
     );
 
     logger.info('Performance metrics cleanup completed', {
       metricsRemoved: originalMetricsCount - this.metrics.length,
-      systemMetricsRemoved: originalSystemMetricsCount - this.systemMetrics.length,
-      alertsRemoved: originalAlertsCount - this.alerts.length
+      systemMetricsRemoved:
+        originalSystemMetricsCount - this.systemMetrics.length,
+      alertsRemoved: originalAlertsCount - this.alerts.length,
     });
   }
 
@@ -617,13 +655,21 @@ export class PerformanceMonitoringService extends EventEmitter {
       const alertsFile = join(this.metricsDir, 'alerts.json');
 
       writeFileSync(metricsFile, JSON.stringify(this.metrics, null, 2));
-      writeFileSync(systemMetricsFile, JSON.stringify(this.systemMetrics, null, 2));
+      writeFileSync(
+        systemMetricsFile,
+        JSON.stringify(this.systemMetrics, null, 2),
+      );
       writeFileSync(alertsFile, JSON.stringify(this.alerts, null, 2));
-      writeFileSync(join(this.metricsDir, 'thresholds.json'), JSON.stringify(this.thresholds, null, 2));
+      writeFileSync(
+        join(this.metricsDir, 'thresholds.json'),
+        JSON.stringify(this.thresholds, null, 2),
+      );
 
       logger.debug('Performance metrics saved to disk');
     } catch (error) {
-      logger.error('Failed to save performance metrics', { error: (error as Error).message });
+      logger.error('Failed to save performance metrics', {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -642,7 +688,9 @@ export class PerformanceMonitoringService extends EventEmitter {
       }
 
       if (existsSync(systemMetricsFile)) {
-        this.systemMetrics = JSON.parse(readFileSync(systemMetricsFile, 'utf8'));
+        this.systemMetrics = JSON.parse(
+          readFileSync(systemMetricsFile, 'utf8'),
+        );
       }
 
       if (existsSync(alertsFile)) {
@@ -650,16 +698,21 @@ export class PerformanceMonitoringService extends EventEmitter {
       }
 
       if (existsSync(thresholdsFile)) {
-        this.thresholds = { ...this.thresholds, ...JSON.parse(readFileSync(thresholdsFile, 'utf8')) };
+        this.thresholds = {
+          ...this.thresholds,
+          ...JSON.parse(readFileSync(thresholdsFile, 'utf8')),
+        };
       }
 
       logger.info('Performance metrics loaded from disk', {
         metricsCount: this.metrics.length,
         systemMetricsCount: this.systemMetrics.length,
-        alertsCount: this.alerts.length
+        alertsCount: this.alerts.length,
       });
     } catch (error) {
-      logger.error('Failed to load performance metrics', { error: (error as Error).message });
+      logger.error('Failed to load performance metrics', {
+        error: (error as Error).message,
+      });
     }
   }
 }

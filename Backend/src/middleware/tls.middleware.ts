@@ -1,10 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
-import fs from 'fs';
-import crypto from 'crypto';
-import configuration from '@/config';
-import { logger } from '@/utils/logger';
-import { TransitEncryption } from '@/utils/encryption';
+import * as fs from 'fs';
+import * as crypto from 'crypto';
+import { logger } from '../utils/logger';
+import { TransitEncryption } from '../utils/encryption';
 
 class SecurityHeaders {
   private static tlsConfig: {
@@ -44,7 +43,7 @@ class SecurityHeaders {
           enabled: true,
           certPath,
           keyPath,
-          caPath,
+          ...(caPath && { caPath }),
           options: {
             cert: fs.readFileSync(certPath),
             key: fs.readFileSync(keyPath),
@@ -262,10 +261,11 @@ class TLSMiddleware {
           userAgent: req.get('User-Agent')
         });
 
-        return res.status(401).json({
+        res.status(401).json({
           error: 'Unauthorized',
           message: 'Client certificate is required'
         });
+        return;
       }
 
       // Log successful client certificate validation
@@ -367,11 +367,11 @@ class TLSMiddleware {
       // Add TLS-specific headers
       if (req.secure) {
         res.setHeader('X-HTTPS', 'true');
-        res.setHeader('X-TLS-Version', req.socket.getProtocol() || 'unknown');
-        res.setHeader('X-TLS-Cipher', req.socket.getCipher()?.name || 'unknown');
+        const socket = req.socket as any;
+        res.setHeader('X-TLS-Version', socket.getProtocol?.() || 'unknown');
+        res.setHeader('X-TLS-Cipher', socket.getCipher?.()?.name || 'unknown');
 
         // Add client certificate info if available
-        const socket = req.socket as any;
         if (socket.getPeerCertificate && Object.keys(socket.getPeerCertificate()).length > 0) {
           const cert = socket.getPeerCertificate();
           res.setHeader('X-Client-Cert-Subject', cert.subject?.CN || 'unknown');

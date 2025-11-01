@@ -15,7 +15,7 @@ import {
   scanStudentBarcode,
   checkDuplicateScan
 } from '@/services/scanService'
-import { ActivityType } from '@prisma/client'
+import { student_activities_activity_type } from '@prisma/client'
 import { logger } from '@/utils/logger'
 
 const router = Router()
@@ -26,11 +26,12 @@ router.post('/', async (req: Request, res: Response) => {
     const { barcode } = req.body
 
     if (!barcode) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Barcode is required',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const result = await scanBarcode(barcode)
@@ -58,14 +59,15 @@ router.post('/student/checkin', async (req: Request, res: Response) => {
     const { studentId, activityType, notes } = req.body
 
     if (!studentId || !activityType) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: studentId, activityType',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
-    const activity = await processStudentCheckIn(studentId, activityType as ActivityType, notes)
+    const activity = await processStudentCheckIn(studentId, activityType as student_activities_activity_type, notes)
 
     const response: ApiResponse = {
       success: true,
@@ -91,11 +93,12 @@ router.post('/student/checkout', async (req: Request, res: Response) => {
     const { studentId } = req.body
 
     if (!studentId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required field: studentId',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const activity = await processStudentCheckOut(studentId)
@@ -124,11 +127,12 @@ router.post('/book/checkout', async (req: Request, res: Response) => {
     const { bookId, studentId, dueDate, notes } = req.body
 
     if (!bookId || !studentId || !dueDate) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: bookId, studentId, dueDate',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const checkout = await processBookCheckout(bookId, studentId, new Date(dueDate), notes)
@@ -157,11 +161,12 @@ router.post('/book/return', async (req: Request, res: Response) => {
     const { checkoutId } = req.body
 
     if (!checkoutId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required field: checkoutId',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const checkout = await processBookReturn(checkoutId)
@@ -190,14 +195,15 @@ router.post('/equipment/use', async (req: Request, res: Response) => {
     const { equipmentId, studentId, activityType, notes } = req.body
 
     if (!equipmentId || !studentId || !activityType) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: equipmentId, studentId, activityType',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
-    const activity = await processEquipmentUse(equipmentId, studentId, activityType as ActivityType, notes)
+    const activity = await processEquipmentUse(equipmentId, studentId, activityType as student_activities_activity_type, notes)
 
     const response: ApiResponse = {
       success: true,
@@ -223,11 +229,12 @@ router.post('/equipment/release', async (req: Request, res: Response) => {
     const { activityId } = req.body
 
     if (!activityId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required field: activityId',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const activity = await processEquipmentRelease(activityId)
@@ -255,11 +262,12 @@ router.get('/status/student/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Student ID is required',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const status = await getStudentStatus(id)
@@ -286,11 +294,12 @@ router.get('/status/book/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Book ID is required',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const status = await getBookStatus(id)
@@ -317,11 +326,12 @@ router.get('/status/equipment/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Equipment ID is required',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const status = await getEquipmentStatus(id)
@@ -349,11 +359,12 @@ router.post('/student/register', async (req: Request, res: Response) => {
     const { studentId, firstName, lastName, gradeLevel, gradeCategory, section } = req.body
 
     if (!studentId || !firstName || !lastName || !gradeLevel || !gradeCategory) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: studentId, firstName, lastName, gradeLevel, gradeCategory',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const student = await registerStudent({
@@ -389,11 +400,12 @@ router.post('/student/scan', async (req: Request, res: Response) => {
     const { studentId } = req.body
 
     if (!studentId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required field: studentId',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const result = await scanStudentBarcode(studentId)
@@ -421,11 +433,12 @@ router.get('/student/:studentId/duplicate-check', async (req: Request, res: Resp
     const { studentId } = req.params
 
     if (!studentId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required field: studentId',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const isDuplicate = await checkDuplicateScan(studentId)
@@ -453,11 +466,12 @@ router.post('/student/self-checkin', async (req: Request, res: Response) => {
     const { studentId, firstName, lastName, gradeLevel, gradeCategory, section } = req.body
 
     if (!studentId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required field: studentId',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     // First scan the student to check if they need registration
@@ -466,11 +480,12 @@ router.post('/student/self-checkin', async (req: Request, res: Response) => {
     if (scanResult.data.requiresRegistration) {
       // Register the student first
       if (!firstName || !lastName || !gradeLevel || !gradeCategory) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'Student not found and missing registration data. Please provide: firstName, lastName, gradeLevel, gradeCategory',
           timestamp: new Date().toISOString()
         })
+        return;
       }
 
       await registerStudent({
@@ -484,7 +499,7 @@ router.post('/student/self-checkin', async (req: Request, res: Response) => {
     }
 
     // Now process the check-in
-    const activity = await processStudentCheckIn(studentId, ActivityType.GENERAL_VISIT)
+    const activity = await processStudentCheckIn(studentId, student_activities_activity_type.GENERAL_VISIT)
 
     const response: ApiResponse = {
       success: true,
@@ -516,11 +531,12 @@ router.post('/student/self-checkout', async (req: Request, res: Response) => {
     const { studentId } = req.body
 
     if (!studentId) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required field: studentId',
         timestamp: new Date().toISOString()
       })
+      return;
     }
 
     const activity = await processStudentCheckOut(studentId)

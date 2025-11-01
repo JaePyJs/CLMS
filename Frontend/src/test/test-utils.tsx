@@ -4,7 +4,6 @@ import type { ReactElement } from 'react';
 import { vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import { TestProviders, createTestQueryClient } from './TestProviders';
-import React from 'react';
 
 // Custom render function that includes all providers
 const customRender = (
@@ -17,7 +16,11 @@ const customRender = (
 
   return render(ui, {
     wrapper: ({ children }) => (
-      <TestProviders queryClient={queryClient}>{children}</TestProviders>
+      queryClient ? (
+        <TestProviders queryClient={queryClient}>{children}</TestProviders>
+      ) : (
+        <TestProviders>{children}</TestProviders>
+      )
     ),
     ...renderOptions,
   });

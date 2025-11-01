@@ -5,14 +5,19 @@ import { PrismaClient } from '@prisma/client';
 
 // Initialize Prisma Client directly
 const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'info', 'warn'] : ['error'],
+  log:
+    process.env.NODE_ENV === 'development'
+      ? ['query', 'error', 'info', 'warn']
+      : ['error'],
 });
 
 // JWT payload interface
 export interface JWTPayload {
   id: string;
+  userId?: string;
   username: string;
   role: string;
+  exp?: number;
 }
 
 // Login result interface
@@ -98,7 +103,11 @@ export class AuthService {
       // Update last login
       await prisma.users.update({
         where: { id: user.id },
-        data: { id: crypto.randomUUID(), updated_at: new Date(),  last_login_at: new Date() },
+        data: {
+          id: crypto.randomUUID(),
+          updated_at: new Date(),
+          last_login_at: new Date(),
+        },
       });
 
       logger.info(`User logged in successfully: ${username}`);
@@ -167,12 +176,12 @@ export class AuthService {
       // Create user
       const id = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       const user = await prisma.users.create({
-        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        data: {
           id: id,
           username: userData.username,
           password: hashedPassword,
           role: userData.role as any,
-          is_active: userData.is_active !== undefined ? userData.is_active : true,
+          is_active: userData.isActive !== undefined ? userData.isActive : true,
           email: null,
           full_name: null,
           permissions: {},
@@ -242,7 +251,11 @@ export class AuthService {
       // Update password
       await prisma.users.update({
         where: { id: id },
-        data: { id: crypto.randomUUID(), updated_at: new Date(),  password: hashedPassword },
+        data: {
+          id: crypto.randomUUID(),
+          updated_at: new Date(),
+          password: hashedPassword,
+        },
       });
 
       logger.info(`Password updated for user: ${user.username}`);
@@ -286,7 +299,11 @@ export class AuthService {
       // Update password
       await prisma.users.update({
         where: { id: id },
-        data: { id: crypto.randomUUID(), updated_at: new Date(),  password: hashedPassword },
+        data: {
+          id: crypto.randomUUID(),
+          updated_at: new Date(),
+          password: hashedPassword,
+        },
       });
 
       logger.info(`Password reset for user: ${user.username}`);
@@ -401,10 +418,11 @@ export class AuthService {
       // Update user
       const updatedUser = await prisma.users.update({
         where: { id: id },
-        data: { id: crypto.randomUUID(), updated_at: new Date(), 
+        data: {
           username: updateData.username,
           role: updateData.role as any,
-          is_active: updateData.is_active,
+          is_active: updateData.isActive,
+          updated_at: new Date(),
         },
         select: {
           id: true,
@@ -442,9 +460,7 @@ export class AuthService {
   }
 
   // Delete user
-  async deleteUser(
-    id: string,
-  ): Promise<{ success: boolean; error?: string }> {
+  async deleteUser(id: string): Promise<{ success: boolean; error?: string }> {
     try {
       // Check if user exists
       const user = await prisma.users.findUnique({

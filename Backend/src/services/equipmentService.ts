@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { logger } from '@/utils/logger';
 import {
   equipment_status,
@@ -33,13 +34,25 @@ const equipmentRepository = new EquipmentRepository();
 // Get all equipment with optional filtering
 export async function getEquipment(options: GetEquipmentOptions = {}) {
   try {
-    const result = await equipmentRepository.getEquipment({
-      type: options.type,
-      status: options.status,
-      page: options.page || 1,
-      limit: options.limit || 50,
-      search: options.search,
-    });
+    const queryOptions: Parameters<typeof equipmentRepository.getEquipment>[0] =
+      {
+        page: options.page ?? 1,
+        limit: options.limit ?? 50,
+      };
+
+    if (options.type !== undefined) {
+      queryOptions.type = options.type;
+    }
+
+    if (options.status !== undefined) {
+      queryOptions.status = options.status;
+    }
+
+    if (options.search !== undefined) {
+      queryOptions.search = options.search;
+    }
+
+    const result = await equipmentRepository.getEquipment(queryOptions);
 
     return {
       equipment: result.equipment,
@@ -93,15 +106,25 @@ export async function createEquipment(data: {
   description?: string;
 }) {
   try {
-    const equipment = await equipmentRepository.createEquipment({
+    const createData: Parameters<
+      typeof equipmentRepository.createEquipment
+    >[0] = {
       equipment_id: data.equipment_id,
       name: data.name,
       type: data.type,
       location: data.location,
       max_time_minutes: data.max_time_minutes,
-      requires_supervision: data.requires_supervision,
-      description: data.description,
-    });
+    };
+
+    if (data.requires_supervision !== undefined) {
+      createData.requires_supervision = data.requires_supervision;
+    }
+
+    if (data.description !== undefined) {
+      createData.description = data.description;
+    }
+
+    const equipment = await equipmentRepository.createEquipment(createData);
 
     return equipment;
   } catch (error) {
@@ -133,13 +156,17 @@ export async function updateEquipment(
   try {
     // Convert service interface to repository interface
     const updateData: Prisma.equipmentUpdateInput = {};
-    if (data.equipment_id !== undefined) updateData.equipment_id = data.equipment_id;
+    if (data.equipment_id !== undefined)
+      updateData.equipment_id = data.equipment_id;
     if (data.name !== undefined) updateData.name = data.name;
     if (data.type !== undefined) updateData.type = data.type;
     if (data.location !== undefined) updateData.location = data.location;
-    if (data.maxTimeMinutes !== undefined) updateData.max_time_minutes = data.maxTimeMinutes;
-    if (data.requiresSupervision !== undefined) updateData.requires_supervision = data.requiresSupervision;
-    if (data.description !== undefined) updateData.description = data.description;
+    if (data.maxTimeMinutes !== undefined)
+      updateData.max_time_minutes = data.maxTimeMinutes;
+    if (data.requiresSupervision !== undefined)
+      updateData.requires_supervision = data.requiresSupervision;
+    if (data.description !== undefined)
+      updateData.description = data.description;
     if (data.status !== undefined) updateData.status = data.status;
 
     const equipment = await equipmentRepository.updateById(id, updateData);
@@ -183,7 +210,7 @@ export async function deleteEquipment(id: string) {
 }
 
 // Use equipment
-export async function useEquipment(data: { 
+export async function useEquipment(data: {
   equipment_id: string;
   student_id: string;
   activity_type: student_activities_activity_type;
@@ -192,20 +219,24 @@ export async function useEquipment(data: {
 }) {
   try {
     // Check if equipment is available
-    const equipment = await prisma.equipment.findUnique({
-      where: { id: data.equipment_id },
+    const equipmentRecord = await prisma.equipment.findFirst({
+      where: {
+        OR: [{ id: data.equipment_id }, { equipment_id: data.equipment_id }],
+      },
     });
 
-    if (!equipment) {
+    if (!equipmentRecord) {
       throw new Error('Equipment not found');
     }
 
-    if (equipment.status !== equipment_status.AVAILABLE) {
+    if (equipmentRecord.status !== equipment_status.AVAILABLE) {
       throw new Error('Equipment is not available for use');
     }
 
-    const student = await prisma.students.findUnique({
-      where: { id: data.student_id },
+    const student = await prisma.students.findFirst({
+      where: {
+        OR: [{ id: data.student_id }, { student_id: data.student_id }],
+      },
     });
 
     if (!student) {
@@ -216,57 +247,42 @@ export async function useEquipment(data: {
     const startTime = new Date();
     const endTime = new Date(
       startTime.getTime() +
-        (data.time_limit_minutes || equipment.max_time_minutes) * 60000,
+        (data.time_limit_minutes || equipmentRecord.max_time_minutes) * 60000,
     );
 
     // Create activity record
     const activity = await prisma.student_activities.create({
       data: {
-        student_id: data.student_id,
+        id: `activity-${randomUUID()}`,
+        student_id: student.id,
         student_name: `${student.first_name} ${student.last_name}`.trim(),
         grade_level: student.grade_level,
         grade_category: student.grade_category,
         activity_type: data.activity_type,
-        equipment_id: data.equipment_id,
-        start_time,
-        end_time,
-        time_limit_minutes: data.time_limit_minutes || equipment.max_time_minutes,
+        equipment_id: equipmentRecord.equipment_id,
+        start_time: startTime,
+        end_time: endTime,
+        time_limit_minutes:
+          data.time_limit_minutes || equipmentRecord.max_time_minutes,
         notes: data.notes || null,
         status: student_activities_status.ACTIVE,
         processed_by: 'System',
-      },
-      include: {
-        student: {
-          select: {
-            student_id: true,
-            first_name: true,
-            last_name: true,
-            grade_level: true,
-            grade_category: true,
-          },
-        },
-        equipment: {
-          select: {
-            equipment_id: true,
-            name: true,
-            type: true,
-          },
-        },
+        updated_at: new Date(),
       },
     });
 
     // Update equipment status
     await prisma.equipment.update({
-      where: { id: data.equipment_id },
-      data: { 
+      where: { id: equipmentRecord.id },
+      data: {
         status: equipment_status.IN_USE,
       },
     });
 
     logger.info('Equipment used successfully', {
       activityId: activity.id,
-      equipment_id: data.equipment_id,
-      student_id: data.student_id,
+      equipment_id: equipmentRecord.equipment_id,
+      student_id: student.student_id,
     });
 
     return activity;
@@ -302,12 +318,12 @@ export async function releaseEquipment(activityId: string) {
     // Update activity record
     const updatedActivity = await prisma.student_activities.update({
       where: { id: activityId },
-      data: { 
+      data: {
         end_time: now,
         status: student_activities_status.COMPLETED,
       },
       include: {
-        student: {
+        students: {
           select: {
             student_id: true,
             first_name: true,
@@ -331,12 +347,15 @@ export async function releaseEquipment(activityId: string) {
       );
       await prisma.student_activities.update({
         where: { id: activityId },
-        data: {  duration_minutes: duration },
+        data: { duration_minutes: duration },
       });
     }
 
     // Update equipment status using repository
-    await equipmentRepository.updateStatus(activity.equipment_id, equipment_status.AVAILABLE);
+    await equipmentRepository.updateStatus(
+      activity.equipment_id,
+      equipment_status.AVAILABLE,
+    );
 
     logger.info('Equipment released successfully', {
       activityId,
@@ -361,7 +380,7 @@ export async function getEquipmentUsageHistory(
     const {
       equipment_id,
       student_id,
-      activity_type,
+      activityType,
       startDate,
       endDate,
       page = 1,
@@ -403,7 +422,7 @@ export async function getEquipmentUsageHistory(
         take: limit,
         orderBy: { start_time: 'desc' },
         include: {
-          student: {
+          students: {
             select: {
               student_id: true,
               first_name: true,

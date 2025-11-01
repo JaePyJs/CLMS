@@ -190,10 +190,10 @@ class AnalyticsService {
     const hourlyData = await prisma.$queryRaw<
       Array<{ hour: number; count: number }>
     >`
-      SELECT EXTRACT(HOUR FROM startTime) as hour, COUNT(*) as count
-      FROM activities
-      WHERE startTime >= ${startDate}
-      GROUP BY EXTRACT(HOUR FROM startTime)
+      SELECT EXTRACT(HOUR FROM start_time) as hour, COUNT(*) as count
+      FROM student_activities
+      WHERE start_time >= ${startDate}
+      GROUP BY EXTRACT(HOUR FROM start_time)
       ORDER BY count DESC
       LIMIT 3
     `;
@@ -208,10 +208,10 @@ class AnalyticsService {
     const weeklyData = await prisma.$queryRaw<
       Array<{ dayOfWeek: number; count: number }>
     >`
-      SELECT EXTRACT(DOW FROM startTime) as dayOfWeek, COUNT(*) as count
-      FROM activities
-      WHERE startTime >= ${startDate}
-      GROUP BY EXTRACT(DOW FROM startTime)
+      SELECT EXTRACT(DOW FROM start_time) as dayOfWeek, COUNT(*) as count
+      FROM student_activities
+      WHERE start_time >= ${startDate}
+      GROUP BY EXTRACT(DOW FROM start_time)
       ORDER BY count DESC
       LIMIT 2
     `;
@@ -341,10 +341,10 @@ class AnalyticsService {
     const dailyActivities = await prisma.$queryRaw<
       Array<{ date: Date; count: number }>
     >`
-      SELECT DATE(startTime) as date, COUNT(*) as count
-      FROM activities
-      WHERE startTime >= ${startDate}
-      GROUP BY DATE(startTime)
+      SELECT DATE(start_time) as date, COUNT(*) as count
+      FROM student_activities
+      WHERE start_time >= ${startDate}
+      GROUP BY DATE(start_time)
       ORDER BY date
     `;
 
@@ -466,10 +466,10 @@ class AnalyticsService {
           const visits = await prisma.$queryRaw<
             Array<{ date: Date; count: number }>
           >`
-            SELECT DATE(startTime) as date, COUNT(DISTINCT student_id) as count
-            FROM activities
-            WHERE startTime >= ${startDate}
-            GROUP BY DATE(startTime)
+            SELECT DATE(start_time) as date, COUNT(DISTINCT student_id) as count
+            FROM student_activities
+            WHERE start_time >= ${startDate}
+            GROUP BY DATE(start_time)
             ORDER BY date
           `;
           historicalData = visits.map(v => ({
@@ -482,10 +482,10 @@ class AnalyticsService {
           const equipment = await prisma.$queryRaw<
             Array<{ date: Date; count: number }>
           >`
-            SELECT DATE(startTime) as date, COUNT(*) as count
-            FROM activities
-            WHERE startTime >= ${startDate} AND equipment_id IS NOT NULL
-            GROUP BY DATE(startTime)
+            SELECT DATE(start_time) as date, COUNT(*) as count
+            FROM student_activities
+            WHERE start_time >= ${startDate} AND equipment_id IS NOT NULL
+            GROUP BY DATE(start_time)
             ORDER BY date
           `;
           historicalData = equipment.map(e => ({
@@ -498,10 +498,10 @@ class AnalyticsService {
           const books = await prisma.$queryRaw<
             Array<{ date: Date; count: number }>
           >`
-            SELECT DATE(startTime) as date, COUNT(*) as count
-            FROM activities
-            WHERE startTime >= ${startDate} AND activityType IN ('BOOK_BORROW', 'BOOK_RETURN')
-            GROUP BY DATE(startTime)
+            SELECT DATE(start_time) as date, COUNT(*) as count
+            FROM student_activities
+            WHERE start_time >= ${startDate} AND activity_type IN ('BOOK_CHECKOUT', 'BOOK_RETURN')
+            GROUP BY DATE(start_time)
             ORDER BY date
           `;
           historicalData = books.map(b => ({
@@ -792,10 +792,10 @@ class AnalyticsService {
     const hourlyData = await prisma.$queryRaw<
       Array<{ hour: number; count: number }>
     >`
-      SELECT EXTRACT(HOUR FROM startTime) as hour, COUNT(*) as count
-      FROM activities
-      WHERE startTime >= NOW() - INTERVAL '30 days'
-      GROUP BY EXTRACT(HOUR FROM startTime)
+      SELECT EXTRACT(HOUR FROM start_time) as hour, COUNT(*) as count
+      FROM student_activities
+      WHERE start_time >= NOW() - INTERVAL '30 days'
+      GROUP BY EXTRACT(HOUR FROM start_time)
       ORDER BY hour
     `;
 
@@ -823,10 +823,10 @@ class AnalyticsService {
     const weeklyData = await prisma.$queryRaw<
       Array<{ dayOfWeek: number; count: number }>
     >`
-      SELECT EXTRACT(DOW FROM startTime) as dayOfWeek, COUNT(*) as count
-      FROM activities
-      WHERE startTime >= NOW() - INTERVAL '12 weeks'
-      GROUP BY EXTRACT(DOW FROM startTime)
+      SELECT EXTRACT(DOW FROM start_time) as dayOfWeek, COUNT(*) as count
+      FROM student_activities
+      WHERE start_time >= NOW() - INTERVAL '12 weeks'
+      GROUP BY EXTRACT(DOW FROM start_time)
       ORDER BY dayOfWeek
     `;
 
@@ -854,10 +854,10 @@ class AnalyticsService {
     const monthlyData = await prisma.$queryRaw<
       Array<{ day: number; count: number }>
     >`
-      SELECT EXTRACT(DAY FROM startTime) as day, COUNT(*) as count
-      FROM activities
-      WHERE startTime >= NOW() - INTERVAL '6 months'
-      GROUP BY EXTRACT(DAY FROM startTime)
+      SELECT EXTRACT(DAY FROM start_time) as day, COUNT(*) as count
+      FROM student_activities
+      WHERE start_time >= NOW() - INTERVAL '6 months'
+      GROUP BY EXTRACT(DAY FROM start_time)
       ORDER BY day
     `;
 
@@ -1160,9 +1160,9 @@ class AnalyticsService {
         >`
           SELECT b.category, COUNT(*) as count
           FROM student_activities sa
-          JOIN books b ON sa.book_id = b.id
+          JOIN books b ON sa.checkout_id = b.id
           WHERE sa.start_time >= ${startDate}
-          AND sa.activity_type IN ('BOOK_BORROW', 'BOOK_RETURN')
+          AND sa.activity_type IN ('BOOK_CHECKOUT', 'BOOK_RETURN')
           GROUP BY b.category
           ORDER BY count DESC
         `;

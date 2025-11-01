@@ -246,9 +246,9 @@ router.post('/use', (0, authorization_middleware_1.requirePermission)(permission
             });
         }
         const activity = await (0, enhancedEquipmentService_1.useEquipment)({
-            equipmentId,
-            studentId,
-            activityType,
+            equipment_id: equipmentId,
+            student_id: studentId,
+            activity_type: activityType,
             timeLimitMinutes,
             notes,
         });

@@ -48,10 +48,11 @@ const upload = multer({
 router.post('/students', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'No file uploaded',
       });
+      return;
     }
 
     logger.info(`Starting student import from file: ${req.file.filename}`);
@@ -107,10 +108,11 @@ router.post('/students', upload.single('file'), async (req, res) => {
 router.post('/books', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'No file uploaded',
       });
+      return;
     }
 
     logger.info(`Starting book import from file: ${req.file.filename}`);
@@ -232,10 +234,11 @@ router.get('/templates/equipment', (req, res) => {
 router.post('/preview', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'No file uploaded',
       });
+      return;
     }
 
     const { importType = 'students', maxPreviewRows = 10 } = req.body;
@@ -285,10 +288,11 @@ router.post('/preview', upload.single('file'), async (req, res) => {
 router.post('/students/enhanced', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'No file uploaded',
       });
+      return;
     }
 
     const { fieldMappings, dryRun = false } = req.body;
@@ -301,10 +305,11 @@ router.post('/students/enhanced', upload.single('file'), async (req, res) => {
       try {
         mappings = JSON.parse(fieldMappings);
       } catch (error) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Invalid field mappings format',
         });
+        return;
       }
     }
 
@@ -318,7 +323,7 @@ router.post('/students/enhanced', upload.single('file'), async (req, res) => {
       // Clean up uploaded file
       fs.unlinkSync(req.file.path);
 
-      return res.status(200).json({
+      res.status(200).json({
         success: true,
         message: 'Dry run completed successfully',
         data: {
@@ -327,6 +332,7 @@ router.post('/students/enhanced', upload.single('file'), async (req, res) => {
           sampleRecords: records.slice(0, 5)
         }
       });
+      return;
     }
 
     // Import students using enhanced logic
@@ -373,10 +379,11 @@ router.post('/students/enhanced', upload.single('file'), async (req, res) => {
 router.post('/books/enhanced', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'No file uploaded',
       });
+      return;
     }
 
     const { fieldMappings, dryRun = false } = req.body;
@@ -389,10 +396,11 @@ router.post('/books/enhanced', upload.single('file'), async (req, res) => {
       try {
         mappings = JSON.parse(fieldMappings);
       } catch (error) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           message: 'Invalid field mappings format',
         });
+        return;
       }
     }
 

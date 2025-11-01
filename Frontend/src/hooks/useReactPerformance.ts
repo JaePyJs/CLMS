@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+// eslint-disable-next-line no-redeclare
 import { performance } from './perf_hooks';
 
 interface ComponentMetrics {

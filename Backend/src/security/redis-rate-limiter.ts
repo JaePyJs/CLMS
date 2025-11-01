@@ -1,6 +1,7 @@
 import Redis from 'ioredis';
 import { logger } from '@/utils/logger';
 import { Request, Response, NextFunction } from 'express';
+import { rateLimiterDisabled } from '@/utils/gates';
 
 interface RateLimitConfig {
   windowMs: number;
@@ -32,6 +33,16 @@ export class RedisRateLimiter {
     const now = Math.floor(Date.now() / 1000);
     const windowSize = Math.floor(this.config.windowMs / 1000);
     const windowStart = now - windowSize;
+
+    // Gate: disable rate limiter early
+    if (rateLimiterDisabled) {
+      return {
+        allowed: true,
+        remaining: this.config.maxRequests,
+        resetTime: new Date(Date.now() + this.config.windowMs),
+        totalHits: 0,
+      };
+    }
 
     try {
       // Use Redis pipeline for atomic operations
@@ -122,6 +133,14 @@ export class RedisRateLimiter {
   }
 
   createMiddleware() {
+    // Gate: return noop middleware when disabled
+    if (rateLimiterDisabled) {
+      return async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+        res.set('X-RateLimit-Disabled', 'true');
+        next();
+      };
+    }
+
     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
       try {
         const result = await this.checkRateLimit(req);

@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useAppStore } from '@/store/useAppStore';
 import { useTouchOptimization } from '@/hooks/useMobileOptimization';
-import { Wifi, WifiOff, AlertCircle, ChevronUp, X } from 'lucide-react';
+import { Wifi, WifiOff, AlertCircle, ChevronUp, X, Home, Camera, Library, Users, BookOpen, Laptop, BarChart, Settings } from 'lucide-react';
 
 interface NavigationItem {
   id: string;
@@ -118,17 +117,7 @@ export const MobileBottomNavigation: React.FC<MobileBottomNavigationProps> = ({
     }
   };
 
-  // Handle swipe gestures
-  const handleSwipe = (direction: string) => {
-    const allItems = [...mobileNavigationItems, ...moreNavigationItems];
-    const currentIndex = allItems.findIndex(item => item.id === activeTab);
 
-    if (direction === 'swipe-left' && currentIndex < allItems.length - 1) {
-      handleNavigation(allItems[currentIndex + 1]);
-    } else if (direction === 'swipe-right' && currentIndex > 0) {
-      handleNavigation(allItems[currentIndex - 1]);
-    }
-  };
 
   return (
     <>
@@ -179,7 +168,7 @@ export const MobileBottomNavigation: React.FC<MobileBottomNavigationProps> = ({
               >
                 <div className="relative">
                   <Icon className={`h-5 w-5 ${isActive ? item.color : ''}`} />
-                  {notifications?.some(n => n.type === item.id) && (
+                  {notifications?.some((n: any) => n.type === item.id) && (
                     <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full" />
                   )}
                 </div>
