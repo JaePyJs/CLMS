@@ -21,9 +21,9 @@ export default async function BookCatalogServer({
 }: BookCatalogProps) {
   // Server-side data fetching with caching
   const books = await getBooks({
-    category,
+    category: category || undefined,
     limit,
-    searchQuery,
+    searchQuery: searchQuery || undefined,
     sortBy,
     sortOrder,
     availableOnly

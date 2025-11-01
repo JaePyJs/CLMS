@@ -1,9 +1,9 @@
-import Redis from 'ioredis';
+import Redis, { RedisOptions } from 'ioredis';
 import { logger } from '@/utils/logger';
 import { performance } from 'perf_hooks';
 import { createHash } from 'crypto';
 
-interface CacheEntry<T = any> {
+interface CacheEntry<T = unknown> {
   data: T;
   expiresAt: number;
   createdAt: number;
@@ -43,25 +43,27 @@ class RedisCacheService {
   };
 
   constructor() {
-    this.redis = new Redis({
+    const redisOptions: RedisOptions = {
       host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
-      db: parseInt(process.env.REDIS_DB || '0'),
-      retryDelayOnFailover: 100,
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      db: parseInt(process.env.REDIS_DB || '0', 10),
       maxRetriesPerRequest: 3,
       lazyConnect: true,
       enableReadyCheck: true,
-      maxLoadingTimeout: 5000,
       keyPrefix: 'clms:',
       // Connection pooling
       family: 4,
-      keepAlive: true,
+      keepAlive: 1000,
       // Performance settings
       enableOfflineQueue: false,
       connectTimeout: 10000,
-      commandTimeout: 5000,
-    });
+    };
+
+    if (process.env.REDIS_PASSWORD) {
+      redisOptions.password = process.env.REDIS_PASSWORD;
+    }
+
+    this.redis = new Redis(redisOptions);
 
     this.setupEventHandlers();
     this.setupMetricsCollection();
@@ -76,7 +78,7 @@ class RedisCacheService {
       logger.info('Redis ready for commands');
     });
 
-    this.redis.on('error', (error) => {
+    this.redis.on('error', error => {
       logger.error('Redis connection error', { error: error.message });
       this.metrics.errors++;
     });
@@ -92,26 +94,29 @@ class RedisCacheService {
 
   private setupMetricsCollection(): void {
     // Collect metrics every 5 minutes
-    setInterval(async () => {
-      try {
-        const stats = await this.getStats();
-        logger.debug('Redis metrics', {
-          hitRate: `${stats.hitRate}%`,
-          memoryUsage: `${Math.round(stats.memoryUsage / 1024 / 1024)}MB`,
-          totalKeys: stats.totalKeys,
-        });
-      } catch (error) {
-        logger.warn('Failed to collect Redis metrics', {
-          error: (error as Error).message,
-        });
-      }
-    }, 5 * 60 * 1000);
+    setInterval(
+      async () => {
+        try {
+          const stats = await this.getStats();
+          logger.debug('Redis metrics', {
+            hitRate: `${stats.hitRate}%`,
+            memoryUsage: `${Math.round(stats.memoryUsage / 1024 / 1024)}MB`,
+            totalKeys: stats.totalKeys,
+          });
+        } catch (error) {
+          logger.warn('Failed to collect Redis metrics', {
+            error: (error as Error).message,
+          });
+        }
+      },
+      5 * 60 * 1000,
+    );
   }
 
   /**
    * Get value from cache with automatic metrics tracking
    */
-  async get<T = any>(key: string): Promise<T | null> {
+  async get<T = unknown>(key: string): Promise<T | null> {
     const startTime = performance.now();
 
     try {
@@ -131,15 +136,26 @@ class RedisCacheService {
         // Update access statistics
         entry.accessCount++;
         entry.lastAccessed = Date.now();
-        await this.redis.set(key, JSON.stringify(entry), 'EX', Math.ceil((entry.expiresAt - Date.now()) / 1000));
+        await this.redis.set(
+          key,
+          JSON.stringify(entry),
+          'EX',
+          Math.ceil((entry.expiresAt - Date.now()) / 1000),
+        );
 
         this.metrics.hits++;
-        logger.debug('Cache hit', { key, duration: `${Math.round(duration)}ms` });
+        logger.debug('Cache hit', {
+          key,
+          duration: `${Math.round(duration)}ms`,
+        });
         return entry.data;
       }
 
       this.metrics.misses++;
-      logger.debug('Cache miss', { key, duration: `${Math.round(duration)}ms` });
+      logger.debug('Cache miss', {
+        key,
+        duration: `${Math.round(duration)}ms`,
+      });
       return null;
     } catch (error) {
       this.metrics.errors++;
@@ -151,10 +167,10 @@ class RedisCacheService {
   /**
    * Set value in cache with optional configuration
    */
-  async set<T = any>(
+  async set<T = unknown>(
     key: string,
     value: T,
-    config: Partial<CacheConfig> = {}
+    config: Partial<CacheConfig> = {},
   ): Promise<boolean> {
     const startTime = performance.now();
     const finalConfig: CacheConfig = {
@@ -167,16 +183,24 @@ class RedisCacheService {
       const now = Date.now();
       const entry: CacheEntry<T> = {
         data: value,
-        expiresAt: now + (finalConfig.ttl * 1000),
+        expiresAt: now + finalConfig.ttl * 1000,
         createdAt: now,
         accessCount: 0,
         lastAccessed: now,
-        tags: finalConfig.tags,
         etag: finalConfig.etag || this.generateETag(value),
       };
 
+      if (finalConfig.tags && finalConfig.tags.length > 0) {
+        entry.tags = finalConfig.tags;
+      }
+
       // Set with expiration
-      const result = await this.redis.set(key, JSON.stringify(entry), 'EX', finalConfig.ttl);
+      const result = await this.redis.set(
+        key,
+        JSON.stringify(entry),
+        'EX',
+        finalConfig.ttl,
+      );
       const duration = performance.now() - startTime;
 
       // Add to tag indexes if tags are provided
@@ -189,7 +213,7 @@ class RedisCacheService {
         key,
         ttl: finalConfig.ttl,
         tags: finalConfig.tags,
-        duration: `${Math.round(duration)}ms`
+        duration: `${Math.round(duration)}ms`,
       });
 
       return result === 'OK';
@@ -219,7 +243,10 @@ class RedisCacheService {
       return result > 0;
     } catch (error) {
       this.metrics.errors++;
-      logger.error('Cache delete error', { key, error: (error as Error).message });
+      logger.error('Cache delete error', {
+        key,
+        error: (error as Error).message,
+      });
       return false;
     }
   }
@@ -236,19 +263,31 @@ class RedisCacheService {
         const keys = await this.redis.smembers(tagKey);
 
         if (keys.length > 0) {
-          const deleted = await this.redis.del(...keys);
+          const validKeys = keys.filter(Boolean);
+          if (validKeys.length === 0) {
+            continue;
+          }
+
+          const deleted = await this.redis.del(...validKeys);
           totalDeleted += deleted;
 
           // Remove tag index
           await this.redis.del(tagKey);
 
-          logger.debug('Invalidated cache by tag', { tag, keysCount: keys.length, deleted });
+          logger.debug('Invalidated cache by tag', {
+            tag,
+            keysCount: keys.length,
+            deleted,
+          });
         }
       }
 
       return totalDeleted;
     } catch (error) {
-      logger.error('Cache invalidation error', { tags, error: (error as Error).message });
+      logger.error('Cache invalidation error', {
+        tags,
+        error: (error as Error).message,
+      });
       return 0;
     }
   }
@@ -256,10 +295,10 @@ class RedisCacheService {
   /**
    * Get or set pattern (cache-aside pattern)
    */
-  async getOrSet<T = any>(
+  async getOrSet<T = unknown>(
     key: string,
     fetcher: () => Promise<T>,
-    config: Partial<CacheConfig> = {}
+    config: Partial<CacheConfig> = {},
   ): Promise<T> {
     // Try to get from cache first
     const cached = await this.get<T>(key);
@@ -276,7 +315,10 @@ class RedisCacheService {
 
       return data;
     } catch (error) {
-      logger.error('Failed to fetch and cache data', { key, error: (error as Error).message });
+      logger.error('Failed to fetch and cache data', {
+        key,
+        error: (error as Error).message,
+      });
       throw error;
     }
   }
@@ -284,11 +326,11 @@ class RedisCacheService {
   /**
    * Set with write-through pattern (updates cache and database)
    */
-  async setWithWriteThrough<T = any>(
+  async setWithWriteThrough<T = unknown>(
     key: string,
     value: T,
     config: Partial<CacheConfig> = {},
-    dbUpdater?: () => Promise<void>
+    dbUpdater?: () => Promise<void>,
   ): Promise<boolean> {
     try {
       // Update database first if updater provided
@@ -301,7 +343,7 @@ class RedisCacheService {
     } catch (error) {
       logger.error('Write-through cache update failed', {
         key,
-        error: (error as Error).message
+        error: (error as Error).message,
       });
       throw error;
     }
@@ -310,12 +352,18 @@ class RedisCacheService {
   /**
    * Batch operations
    */
-  async mget<T = any>(keys: string[]): Promise<Array<T | null>> {
+  async mget<T = unknown>(keys: string[]): Promise<Array<T | null>> {
     try {
       const values = await this.redis.mget(...keys);
       const results: Array<T | null> = [];
 
       for (let i = 0; i < keys.length; i++) {
+        const cacheKey = keys[i];
+        if (!cacheKey) {
+          results.push(null);
+          continue;
+        }
+
         const value = values[i];
         if (value) {
           try {
@@ -323,15 +371,15 @@ class RedisCacheService {
 
             // Check if expired
             if (Date.now() > entry.expiresAt) {
-              await this.delete(keys[i]);
+              await this.delete(cacheKey);
               results.push(null);
             } else {
               results.push(entry.data);
             }
           } catch (parseError) {
             logger.warn('Failed to parse cache entry', {
-              key: keys[i],
-              error: (parseError as Error).message
+              key: cacheKey,
+              error: (parseError as Error).message,
             });
             results.push(null);
           }
@@ -342,13 +390,15 @@ class RedisCacheService {
 
       return results;
     } catch (error) {
-      logger.error('Batch cache get error', { error: (error as Error).message });
+      logger.error('Batch cache get error', {
+        error: (error as Error).message,
+      });
       return new Array(keys.length).fill(null);
     }
   }
 
-  async mset<T = any>(
-    entries: Array<{ key: string; value: T; config?: Partial<CacheConfig> }>
+  async mset<T = unknown>(
+    entries: Array<{ key: string; value: T; config?: Partial<CacheConfig> }>,
   ): Promise<boolean> {
     try {
       const pipeline = this.redis.pipeline();
@@ -358,13 +408,16 @@ class RedisCacheService {
         const finalConfig: CacheConfig = { ttl: 300, ...config };
         const entry: CacheEntry<T> = {
           data: value,
-          expiresAt: now + (finalConfig.ttl * 1000),
+          expiresAt: now + finalConfig.ttl * 1000,
           createdAt: now,
           accessCount: 0,
           lastAccessed: now,
-          tags: finalConfig.tags,
           etag: finalConfig.etag || this.generateETag(value),
         };
+
+        if (finalConfig.tags && finalConfig.tags.length > 0) {
+          entry.tags = finalConfig.tags;
+        }
 
         pipeline.set(key, JSON.stringify(entry), 'EX', finalConfig.ttl);
 
@@ -387,7 +440,9 @@ class RedisCacheService {
       return success || false;
     } catch (error) {
       this.metrics.errors++;
-      logger.error('Batch cache set error', { error: (error as Error).message });
+      logger.error('Batch cache set error', {
+        error: (error as Error).message,
+      });
       return false;
     }
   }
@@ -395,7 +450,13 @@ class RedisCacheService {
   /**
    * Cache warming
    */
-  async warmCache(entries: Array<{ key: string; fetcher: () => Promise<any>; config?: Partial<CacheConfig> }>): Promise<void> {
+  async warmCache(
+    entries: Array<{
+      key: string;
+      fetcher: () => Promise<unknown>;
+      config?: Partial<CacheConfig>;
+    }>,
+  ): Promise<void> {
     logger.info('Starting cache warming', { entriesCount: entries.length });
 
     const promises = entries.map(async ({ key, fetcher, config }) => {
@@ -414,7 +475,7 @@ class RedisCacheService {
       } catch (error) {
         logger.warn('Failed to warm cache entry', {
           key,
-          error: (error as Error).message
+          error: (error as Error).message,
         });
       }
     });
@@ -444,14 +505,17 @@ class RedisCacheService {
         totalKeys: await this.redis.dbsize(),
         memoryUsage: memoryInfo.used_memory || 0,
         hitRate: totalRequests > 0 ? (keyspaceHits / totalRequests) * 100 : 0,
-        missRate: totalRequests > 0 ? (keyspaceMisses / totalRequests) * 100 : 0,
+        missRate:
+          totalRequests > 0 ? (keyspaceMisses / totalRequests) * 100 : 0,
         evictions: statsInfo.evicted_keys || 0,
         keyspaceHits,
         keyspaceMisses,
         connectedClients: clientsInfo.connected_clients || 0,
       };
     } catch (error) {
-      logger.error('Failed to get cache stats', { error: (error as Error).message });
+      logger.error('Failed to get cache stats', {
+        error: (error as Error).message,
+      });
       return {
         totalKeys: 0,
         memoryUsage: 0,
@@ -472,8 +536,10 @@ class RedisCacheService {
     const totalRequests = this.metrics.hits + this.metrics.misses;
     return {
       ...this.metrics,
-      hitRate: totalRequests > 0 ? (this.metrics.hits / totalRequests) * 100 : 0,
-      missRate: totalRequests > 0 ? (this.metrics.misses / totalRequests) * 100 : 0,
+      hitRate:
+        totalRequests > 0 ? (this.metrics.hits / totalRequests) * 100 : 0,
+      missRate:
+        totalRequests > 0 ? (this.metrics.misses / totalRequests) * 100 : 0,
     };
   }
 
@@ -486,7 +552,9 @@ class RedisCacheService {
       logger.info('Cache cleared');
       return result === 'OK';
     } catch (error) {
-      logger.error('Failed to clear cache', { error: (error as Error).message });
+      logger.error('Failed to clear cache', {
+        error: (error as Error).message,
+      });
       return false;
     }
   }
@@ -521,7 +589,10 @@ class RedisCacheService {
   /**
    * Subscribe to cache events
    */
-  subscribe(pattern: string, callback: (channel: string, message: string) => void): () => void {
+  subscribe(
+    pattern: string,
+    callback: (channel: string, message: string) => void,
+  ): () => void {
     if (!this.subscribers.has(pattern)) {
       this.subscribers.set(pattern, new Set());
     }
@@ -549,7 +620,7 @@ class RedisCacheService {
     } catch (error) {
       logger.error('Failed to publish cache event', {
         channel,
-        error: (error as Error).message
+        error: (error as Error).message,
       });
       return 0;
     }
@@ -564,7 +635,7 @@ class RedisCacheService {
       logger.info('Redis disconnected');
     } catch (error) {
       logger.error('Error disconnecting from Redis', {
-        error: (error as Error).message
+        error: (error as Error).message,
       });
     }
   }
@@ -572,12 +643,16 @@ class RedisCacheService {
   /**
    * Helper methods
    */
-  private generateETag(data: any): string {
+  private generateETag(data: unknown): string {
     const content = JSON.stringify(data);
     return `"${createHash('md5').update(content).digest('hex')}"`;
   }
 
-  private async addToTagIndexes(key: string, tags: string[], ttl: number): Promise<void> {
+  private async addToTagIndexes(
+    key: string,
+    tags: string[],
+    ttl: number,
+  ): Promise<void> {
     const pipeline = this.redis.pipeline();
 
     for (const tag of tags) {
@@ -588,7 +663,10 @@ class RedisCacheService {
     await pipeline.exec();
   }
 
-  private async removeFromTagIndexes(key: string, tags: string[]): Promise<void> {
+  private async removeFromTagIndexes(
+    key: string,
+    tags: string[],
+  ): Promise<void> {
     const pipeline = this.redis.pipeline();
 
     for (const tag of tags) {

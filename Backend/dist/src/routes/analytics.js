@@ -15,70 +15,51 @@ router.get('/metrics', (0, authorization_middleware_1.requirePermission)(permiss
         const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
         const [totalStudents, activeStudents, newStudentsThisMonth] = await Promise.all([
-            prisma.student.count(),
-            prisma.student.count({ where: { isActive: true } }),
-            prisma.student.count({
+            prisma.students.count(),
+            prisma.students.count({ where: { is_active: true } }),
+            prisma.students.count({
                 where: {
-                    createdAt: { gte: monthStart }
+                    created_at: { gte: monthStart }
                 }
             })
         ]);
-        const [totalActivities, todayActivities, weekActivities, activeSessions] = await Promise.all([
-            prisma.activity.count(),
-            prisma.activity.count({
-                where: {
-                    startTime: { gte: todayStart }
-                }
-            }),
-            prisma.activity.count({
-                where: {
-                    startTime: { gte: weekStart }
-                }
-            }),
-            prisma.activity.count({
-                where: {
-                    status: client_1.ActivityStatus.ACTIVE,
-                    startTime: { gte: todayStart }
-                }
-            })
-        ]);
-        const [totalEquipment, availableEquipment, inUseEquipment] = await Promise.all([
+        const [totalEquipment, availableEquipment, weeklyCheckouts] = await Promise.all([
             prisma.equipment.count(),
-            prisma.equipment.count({ where: { status: client_1.EquipmentStatus.AVAILABLE } }),
-            prisma.equipment.count({ where: { status: client_1.EquipmentStatus.IN_USE } })
+            prisma.equipment.count({
+                where: {
+                    status: client_1.equipment_status.AVAILABLE
+                }
+            }),
+            Promise.resolve(0)
         ]);
-        const [totalBooks, availableBooks, borrowedBooks] = await Promise.all([
-            prisma.book.count(),
-            prisma.book.count({ where: { isActive: true } }),
-            prisma.book.count({ where: { availableCopies: { lt: 1 } } })
+        const [totalBooks, availableBooks] = await Promise.all([
+            prisma.books.count(),
+            prisma.books.count({ where: { is_active: true } })
         ]);
         const metrics = {
             overview: {
                 totalStudents,
                 activeStudents,
                 newStudentsThisMonth,
-                totalActivities,
-                todayActivities,
-                weekActivities,
-                activeSessions
+                totalBooks,
+                totalEquipment,
+                availableEquipment
             },
             equipment: {
                 total: totalEquipment,
                 available: availableEquipment,
-                inUse: inUseEquipment,
-                utilizationRate: totalEquipment > 0 ? (inUseEquipment / totalEquipment) * 100 : 0
+                utilizationRate: totalEquipment > 0 ? ((totalEquipment - availableEquipment) / totalEquipment) * 100 : 0
             },
             books: {
                 total: totalBooks,
                 available: availableBooks,
-                borrowed: borrowedBooks,
-                circulationRate: totalBooks > 0 ? (borrowedBooks / totalBooks) * 100 : 0
+                circulationRate: totalBooks > 0 ? ((totalBooks - availableBooks) / totalBooks) * 100 : 0
             },
             usage: {
-                totalVisitors: todayActivities,
+                totalVisitors: 0,
                 averageSessionDuration: 0,
                 peakHour: 14,
-                equipmentUtilization: totalEquipment > 0 ? (inUseEquipment / totalEquipment) * 100 : 0
+                equipmentUtilization: totalEquipment > 0 ? ((totalEquipment - availableEquipment) / totalEquipment) * 100 : 0
             },
             system: {
                 uptime: process.uptime(),
@@ -104,15 +85,15 @@ router.get('/metrics', (0, authorization_middleware_1.requirePermission)(permiss
 router.get('/timeline', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
-        const activities = await prisma.activity.findMany({
+        const activities = await prisma.student_activities.findMany({
             take: limit,
             include: {
-                student: {
+                students: {
                     select: {
                         id: true,
-                        firstName: true,
-                        lastName: true,
-                        gradeLevel: true
+                        first_name: true,
+                        last_name: true,
+                        grade_level: true
                     }
                 },
                 equipment: {
@@ -123,20 +104,20 @@ router.get('/timeline', async (req, res) => {
                     }
                 }
             },
-            orderBy: { startTime: 'desc' }
+            orderBy: { start_time: 'desc' }
         });
         const timeline = activities.map(activity => ({
             id: activity.id,
-            timestamp: activity.startTime.toISOString(),
-            studentName: `${activity.student?.firstName || 'Unknown'} ${activity.student?.lastName || 'Student'}`,
-            studentGrade: activity.student?.gradeLevel || 'Unknown',
-            activityType: activity.activityType,
+            timestamp: activity.start_time.toISOString(),
+            studentName: `${activity.students?.first_name || 'Unknown'} ${activity.students?.last_name || 'Student'}`,
+            studentGrade: activity.students?.grade_level || 'Unknown',
+            activityType: activity.activity_type,
             status: activity.status,
             equipmentId: activity.equipment?.name || 'No equipment',
             equipmentType: activity.equipment?.type || null,
-            duration: activity.endTime
-                ? Math.round((activity.endTime.getTime() - activity.startTime.getTime()) / 60000)
-                : null,
+            duration: activity.end_time
+                ? Math.round((activity.end_time.getTime() - activity.start_time.getTime()) / 60000)
+                : activity.duration_minutes,
             notes: activity.notes
         }));
         res.json({
@@ -159,15 +140,15 @@ router.get('/notifications', async (req, res) => {
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const [overdueSessions, recentActivities] = await Promise.all([
-            prisma.activity.count({
+            prisma.student_activities.count({
                 where: {
-                    status: client_1.ActivityStatus.ACTIVE,
-                    startTime: { lt: new Date(now.getTime() - 2 * 60 * 60 * 1000) }
+                    status: client_1.student_activities_status.ACTIVE,
+                    start_time: { lt: new Date(now.getTime() - 2 * 60 * 60 * 1000) }
                 }
             }),
-            prisma.activity.count({
+            prisma.student_activities.count({
                 where: {
-                    startTime: { gte: todayStart }
+                    start_time: { gte: todayStart }
                 }
             })
         ]);
@@ -488,17 +469,17 @@ router.post('/export', (0, authorization_middleware_1.requirePermission)(permiss
         if (format === 'csv') {
             res.setHeader('Content-Type', 'text/csv');
             res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-            res.send(exportData);
+            return res.send(exportData);
         }
         else if (format === 'json') {
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-            res.json(exportData);
+            return res.json(exportData);
         }
         else if (format === 'pdf') {
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-            res.send(exportData);
+            return res.send(exportData);
         }
     }
     catch (error) {
@@ -516,12 +497,12 @@ async function getBaseMetrics() {
     const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const [totalStudents, activeStudents, totalActivities, todayActivities] = await Promise.all([
-        prisma.student.count(),
-        prisma.student.count({ where: { isActive: true } }),
-        prisma.activity.count(),
-        prisma.activity.count({
+        prisma.students.count(),
+        prisma.students.count({ where: { is_active: true } }),
+        prisma.student_activities.count(),
+        prisma.student_activities.count({
             where: {
-                startTime: { gte: todayStart }
+                start_time: { gte: todayStart }
             }
         })
     ]);

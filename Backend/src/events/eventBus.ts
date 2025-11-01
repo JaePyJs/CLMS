@@ -166,7 +166,7 @@ export class EventTypeRegistry {
     if (!result.success) {
       return {
         valid: false,
-        error: result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+        error: result.error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
       };
     }
 
@@ -223,7 +223,9 @@ export class EventMiddlewareManager {
       }
 
       const middleware = this.middlewares[index++];
-      await middleware(event, next);
+      if (middleware) {
+        await middleware(event, next);
+      }
     };
 
     await next();
@@ -468,7 +470,7 @@ export class EventBus<TEventMap extends Record<string, any> = Record<string, any
     
     // Maintain history size
     if (this.eventHistory.length > (this.config.maxHistorySize || 1000)) {
-      this.eventHistory = this.eventHistory.slice(-this.config.maxHistorySize);
+      this.eventHistory = this.eventHistory.slice(-(this.config.maxHistorySize || 1000));
     }
 
     // Persist to Redis if enabled
@@ -685,7 +687,7 @@ export class EventBus<TEventMap extends Record<string, any> = Record<string, any
       }
     }
     
-    return this.eventHistory.slice(-limit || 100);
+    return this.eventHistory.slice(-(limit || 100));
   }
 
   /**

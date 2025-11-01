@@ -5,8 +5,8 @@ import { Loader2, AlertCircle } from 'lucide-react';
 interface OptimizedImageProps {
   src: string;
   alt: string;
-  width?: number;
-  height?: number;
+  width?: number | undefined;
+  height?: number | undefined;
   className?: string;
   placeholder?: string;
   blurDataURL?: string;
@@ -134,7 +134,7 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>((props,
     observerRef.current = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
-        if (entry.isIntersecting) {
+        if (entry && entry.isIntersecting) {
           const img = entry.target as HTMLImageElement;
           img.loading = 'lazy';
           img.decoding = decoding;
@@ -175,6 +175,25 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>((props,
     aspectRatio: `${aspectRatio}`,
     ...style,
   } : style;
+
+  // Ensure width/height attributes exist to prevent layout shift
+  useEffect(() => {
+    const img = imgRef.current;
+    const container = containerRef.current;
+    if (!img || !container) return;
+
+    const hasWidthAttr = img.getAttribute('width');
+    const hasHeightAttr = img.getAttribute('height');
+
+    if (!hasWidthAttr || !hasHeightAttr) {
+      const w = width ?? container.clientWidth ?? img.clientWidth;
+      const h = height ?? container.clientHeight ?? (aspectRatio ? Math.round((w || 0) / aspectRatio) : img.clientHeight);
+      if (w && h) {
+        img.setAttribute('width', String(w));
+        img.setAttribute('height', String(h));
+      }
+    }
+  }, [width, height, aspectRatio]);
 
   return (
     <div
@@ -224,7 +243,7 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>((props,
         height={height}
         loading={priority ? 'eager' : loading}
         decoding={decoding}
-        fetchpriority={priority ? 'high' : fetchPriority}
+        fetchPriority={priority ? 'high' : fetchPriority}
         className={`w-full h-full object-${objectFit} transition-opacity duration-${fadeDuration} ${
           imageState.isLoaded ? 'opacity-100' : 'opacity-0'
         }`}
@@ -262,7 +281,7 @@ export const withImageOptimization = <P extends object>(
 };
 
 // Utility function to preload images
-export const preloadImage = (src: string, priority: 'high' | 'low' = 'low'): Promise<void> => {
+export const preloadImage = (src: string, _priority: 'high' | 'low' = 'low'): Promise<void> => {
   return new Promise((resolve, reject) => {
     const link = document.createElement('link');
     link.rel = 'preload';

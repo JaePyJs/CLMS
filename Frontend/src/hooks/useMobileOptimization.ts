@@ -77,6 +77,7 @@ export const useTouchOptimization = (config: Partial<TouchOptimizationConfig> = 
   
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
+    if (!touch) return;
     setTouchStart({
       x: touch.clientX,
       y: touch.clientY,
@@ -88,6 +89,7 @@ export const useTouchOptimization = (config: Partial<TouchOptimizationConfig> = 
     if (!touchStart) return;
     
     const touch = e.changedTouches[0];
+    if (!touch) return;
     const deltaX = Math.abs(touch.clientX - touchStart.x);
     const deltaY = Math.abs(touch.clientY - touchStart.y);
     const deltaTime = Date.now() - touchStart.time;
@@ -139,14 +141,9 @@ export const useAccessibility = (): AccessibilityConfig => {
     screenReaderAnnouncement: false
   });
 
-  const updatePreference = useCallback((key: keyof AccessibilityConfig, value: boolean | string) => {
-    setPreferences(prev => ({ ...prev, [key]: value }));
-  }, []);
-
   useIsomorphicLayoutEffect(() => {
     // Detect user preferences
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const prefersHighContrast = window.matchMedia('(prefers-contrast: high)').matches;
 
     setPreferences(prev => ({
@@ -227,7 +224,7 @@ export const useVirtualScrolling = (itemHeight: number, containerHeight: number)
 
 // Performance optimization hook
 export const usePerformanceOptimization = () => {
-  const { isMobile, isTablet, isDesktop, isLarge, isExtraLarge } = useMobileOptimization();
+  const { isMobile, isTablet, isDesktop, isLarge } = useMobileOptimization();
 
   // Determine performance tier
   const getPerformanceTier = () => {

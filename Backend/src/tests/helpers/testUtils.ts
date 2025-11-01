@@ -1,6 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import {
+  waitFor,
+  generateMockStudents,
+  generateMockBooks,
+  generateMockEquipment,
+  measureExecutionTime,
+  createSnapshot,
+  compareSnapshots
+} from '@/utils/common';
 
 export const prisma = new PrismaClient();
 
@@ -122,80 +131,23 @@ export const cleanupDatabase = async () => {
   await prisma.book.deleteMany({});
   await prisma.equipment.deleteMany({});
   await prisma.student.deleteMany({});
-  await prisma.auditLog.deleteMany({});
+  await prisma.audit_logs.deleteMany({});
   await prisma.notification.deleteMany({});
   await prisma.user.deleteMany({});
 };
 
-// Wait for condition
-export const waitFor = async (
-  condition: () => Promise<boolean>,
-  timeout: number = 5000,
-  interval: number = 100
-): Promise<void> => {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeout) {
-    if (await condition()) {
-      return;
-    }
-    await new Promise(resolve => setTimeout(resolve, interval));
-  }
-
-  throw new Error('Timeout waiting for condition');
+// Re-export utilities from common
+export {
+  waitFor,
+  generateMockStudents,
+  generateMockBooks,
+  generateMockEquipment,
+  measureExecutionTime,
+  createSnapshot,
+  compareSnapshots
 };
 
-// Mock data generators
-export const generateMockStudents = (count: number) => {
-  const gradeCategories = ['PRIMARY', 'GRADE_SCHOOL', 'JUNIOR_HIGH', 'SENIOR_HIGH'];
-  const gradeLevels = ['Grade 1', 'Grade 3', 'Grade 5', 'Grade 7', 'Grade 9', 'Grade 11'];
-
-  return Array.from({ length: count }, (_, i) => ({
-    studentId: `STU${String(i + 1).padStart(4, '0')}`,
-    firstName: `Student${i + 1}`,
-    lastName: `Test${i + 1}`,
-    gradeLevel: gradeLevels[i % gradeLevels.length],
-    gradeCategory: gradeCategories[i % gradeCategories.length],
-    email: `student${i + 1}@test.com`,
-    isActive: true
-  }));
-};
-
-export const generateMockBooks = (count: number) => {
-  const categories = ['Fiction', 'Non-Fiction', 'Science', 'History', 'Mathematics'];
-  
-  return Array.from({ length: count }, (_, i) => ({
-    title: `Test Book ${i + 1}`,
-    author: `Author ${i + 1}`,
-    isbn: `ISBN${String(i + 1).padStart(13, '0')}`,
-    accessionNumber: `ACC${String(i + 1).padStart(6, '0')}`,
-    category: categories[i % categories.length],
-    status: 'AVAILABLE'
-  }));
-};
-
-export const generateMockEquipment = (count: number) => {
-  const types = ['COMPUTER', 'GAMING', 'AVR', 'TABLET'];
-  
-  return Array.from({ length: count }, (_, i) => ({
-    equipmentId: `EQ${String(i + 1).padStart(3, '0')}`,
-    name: `Equipment ${i + 1}`,
-    type: types[i % types.length],
-    status: 'AVAILABLE'
-  }));
-};
-
-// Performance testing helpers
-export const measureExecutionTime = async <T>(
-  fn: () => Promise<T>
-): Promise<{ result: T; duration: number }> => {
-  const start = Date.now();
-  const result = await fn();
-  const duration = Date.now() - start;
-  
-  return { result, duration };
-};
-
+// Load testing helper (specific to test utilities)
 export const runLoadTest = async (
   testFn: () => Promise<void>,
   iterations: number = 100,
@@ -268,15 +220,6 @@ export const assertValidBook = (book: any) => {
   if (!book.author) throw new Error('Book missing author');
   if (!book.accessionNumber) throw new Error('Book missing accessionNumber');
   if (!book.status) throw new Error('Book missing status');
-};
-
-// Snapshot testing helpers
-export const createSnapshot = (data: any) => {
-  return JSON.stringify(data, null, 2);
-};
-
-export const compareSnapshots = (snapshot1: string, snapshot2: string) => {
-  return snapshot1 === snapshot2;
 };
 
 // Test lifecycle hooks

@@ -32,40 +32,80 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.importService = exports.ImportService = void 0;
 const fs_1 = require("fs");
 const logger_1 = require("@/utils/logger");
-const prisma_1 = require("@/utils/prisma");
 const csv_parse_1 = require("csv-parse");
 const client_1 = require("@prisma/client");
 const XLSX = __importStar(require("xlsx"));
-const crypto_1 = __importDefault(require("crypto"));
+const repositories_1 = require("@/repositories");
+const dataTransformationPipeline_1 = require("@/utils/dataTransformationPipeline");
+const typeInference_1 = require("@/utils/typeInference");
 class ImportService {
+    studentsRepository;
+    booksRepository;
+    equipmentRepository;
+    transformationPipeline;
+    typeInference;
+    constructor() {
+        this.studentsRepository = repositories_1.studentsRepository;
+        this.booksRepository = repositories_1.booksRepository;
+        this.equipmentRepository = repositories_1.equipmentRepository;
+        this.transformationPipeline = new dataTransformationPipeline_1.DataTransformationPipeline({
+            logLevel: 'info',
+            strictMode: false,
+            maxErrors: 100,
+            skipInvalidRows: true,
+            batchSize: 50,
+        });
+        this.typeInference = new typeInference_1.TypeInference({
+            strictMode: false,
+            logLevel: 'info',
+        });
+    }
     async importStudentsWithMapping(filePath, fieldMappings) {
         const result = {
             success: true,
             totalRecords: 0,
             importedRecords: 0,
+            updatedRecords: 0,
             skippedRecords: 0,
             errorRecords: 0,
             errors: [],
+            warnings: [],
         };
         try {
-            logger_1.logger.info(`Starting enhanced student import from ${filePath}`);
-            const records = await this.parseFile(filePath, { fieldMappings });
-            result.totalRecords = records.length;
-            for (const record of records) {
+            logger_1.logger.info(`Starting enhanced student import from ${filePath} using repository pattern`);
+            const transformationResult = await this.transformationPipeline.processFile(filePath, 'students', {
+                customMappings: this.convertFieldMappingsToDict(fieldMappings),
+                dryRun: false,
+            });
+            result.totalRecords = transformationResult.totalRows;
+            const stats = transformationResult.statistics;
+            result.transformationStats = {
+                typeConversions: this.getStatisticNumber(stats, 'typeConversions'),
+                fieldMappings: Object.keys(transformationResult.fieldMappings).length,
+                validationErrors: this.getStatisticNumber(stats, 'validationErrors'),
+                processingTime: transformationResult.duration,
+            };
+            result.pipelineErrors = transformationResult.errors;
+            for (const rawRecord of transformationResult.data) {
+                const record = this.toStringRecord(rawRecord);
+                if (!record) {
+                    result.errors.push(`Unable to normalize student record: ${JSON.stringify(rawRecord)}`);
+                    result.errorRecords++;
+                    continue;
+                }
                 try {
                     if (!record.name || !record.grade_level || !record.section) {
-                        result.errors.push(`Missing required fields for student: ${JSON.stringify(record)}`);
+                        result.errors.push(`Missing required fields for student: ${JSON.stringify(rawRecord)}`);
                         result.errorRecords++;
                         continue;
                     }
-                    const nameParts = record.name.split(',').map((part) => part.trim());
+                    const nameParts = record.name
+                        .split(',')
+                        .map((part) => part.trim());
                     if (nameParts.length < 2 || !nameParts[0] || !nameParts[1]) {
                         result.errors.push(`Invalid name format for student: ${record.name}. Expected: "Last name, First name MI"`);
                         result.errorRecords++;
@@ -100,28 +140,22 @@ class ImportService {
                         result.errorRecords++;
                         continue;
                     }
-                    const existingStudent = await prisma_1.prisma.students.findUnique({
-                        where: { student_id },
-                    });
+                    const existingStudent = await this.studentsRepository.findByStudentId(student_id);
                     if (existingStudent) {
-                        logger_1.logger.info(`Student already exists, skipping: ${student_id}`);
-                        result.skippedRecords++;
-                        continue;
+                        result.warnings.push(`Student already exists, updating: ${student_id}`);
+                        result.updatedRecords++;
                     }
-                    await prisma_1.prisma.students.create({
-                        data: {
-                            id: crypto_1.default.randomUUID(),
-                            updated_at: new Date(),
-                            student_id,
-                            first_name: firstName,
-                            last_name: lastName,
-                            grade_level: record.grade_level,
-                            grade_category,
-                            section: record.section,
-                        },
+                    else {
+                        result.importedRecords++;
+                    }
+                    await this.studentsRepository.upsertByStudentId(student_id, {
+                        first_name: firstName,
+                        last_name: lastName,
+                        grade_level: record.grade_level,
+                        grade_category,
+                        section: record.section,
                     });
-                    result.importedRecords++;
-                    logger_1.logger.info(`Imported student: ${student_id}`);
+                    logger_1.logger.info(`${existingStudent ? 'Updated' : 'Imported'} student: ${student_id}`);
                 }
                 catch (error) {
                     const errorMessage = `Error importing student ${record.name}: ${error.message}`;
@@ -130,16 +164,26 @@ class ImportService {
                     logger_1.logger.error(errorMessage);
                 }
             }
-            logger_1.logger.info(`Enhanced student import completed`, {
+            transformationResult.errors.forEach(error => {
+                if (error.severity === 'error') {
+                    result.errors.push(`Row ${error.row}, Field ${error.field}: ${error.message}`);
+                }
+                else {
+                    result.warnings.push(`Row ${error.row}, Field ${error.field}: ${error.message}`);
+                }
+            });
+            logger_1.logger.info(`Enhanced student import completed using repository pattern`, {
                 totalRecords: result.totalRecords,
                 importedRecords: result.importedRecords,
+                updatedRecords: result.updatedRecords,
                 skippedRecords: result.skippedRecords,
                 errorRecords: result.errorRecords,
+                processingTime: result.transformationStats?.processingTime,
             });
             return result;
         }
         catch (error) {
-            logger_1.logger.error('Failed to import students with mapping', {
+            logger_1.logger.error('Failed to import students with mapping using repository pattern', {
                 error: error.message,
             });
             result.success = false;
@@ -147,33 +191,91 @@ class ImportService {
             return result;
         }
     }
+    convertFieldMappingsToDict(fieldMappings) {
+        const dict = {};
+        fieldMappings.forEach(mapping => {
+            if (!mapping.targetField) {
+                logger_1.logger.warn('Skipping import field mapping without target', {
+                    sourceField: mapping.sourceField,
+                });
+                return;
+            }
+            dict[mapping.sourceField] = mapping.targetField;
+        });
+        return dict;
+    }
+    getStatisticNumber(statistics, key) {
+        const value = statistics[key];
+        return typeof value === 'number' ? value : 0;
+    }
+    toStringRecord(record) {
+        const normalized = {};
+        for (const [key, value] of Object.entries(record)) {
+            if (value === undefined || value === null) {
+                continue;
+            }
+            if (typeof value === 'string' || typeof value === 'number') {
+                normalized[key] = String(value);
+                continue;
+            }
+            if (typeof value === 'boolean') {
+                normalized[key] = value ? 'true' : 'false';
+                continue;
+            }
+            if (value instanceof Date) {
+                normalized[key] = value.toISOString();
+                continue;
+            }
+            return null;
+        }
+        return normalized;
+    }
     async importBooksWithMapping(filePath, fieldMappings) {
         const result = {
             success: true,
             totalRecords: 0,
             importedRecords: 0,
+            updatedRecords: 0,
             skippedRecords: 0,
             errorRecords: 0,
             errors: [],
+            warnings: [],
         };
         try {
-            logger_1.logger.info(`Starting enhanced book import from ${filePath}`);
-            const records = await this.parseFile(filePath, { fieldMappings });
-            result.totalRecords = records.length;
-            for (const record of records) {
+            logger_1.logger.info(`Starting enhanced book import from ${filePath} using repository pattern`);
+            const transformationResult = await this.transformationPipeline.processFile(filePath, 'books', {
+                customMappings: this.convertFieldMappingsToDict(fieldMappings),
+                dryRun: false,
+            });
+            result.totalRecords = transformationResult.totalRows;
+            const stats = transformationResult.statistics;
+            result.transformationStats = {
+                typeConversions: this.getStatisticNumber(stats, 'typeConversions'),
+                fieldMappings: Object.keys(transformationResult.fieldMappings).length,
+                validationErrors: this.getStatisticNumber(stats, 'validationErrors'),
+                processingTime: transformationResult.duration,
+            };
+            result.pipelineErrors = transformationResult.errors;
+            for (const rawRecord of transformationResult.data) {
+                const record = this.toStringRecord(rawRecord);
+                if (!record) {
+                    result.errors.push(`Unable to normalize book record: ${JSON.stringify(rawRecord)}`);
+                    result.errorRecords++;
+                    continue;
+                }
                 try {
                     if (!record.accession_no || !record.title || !record.author) {
-                        result.errors.push(`Missing required fields for book: ${JSON.stringify(record)}`);
+                        result.errors.push(`Missing required fields for book: ${JSON.stringify(rawRecord)}`);
                         result.errorRecords++;
                         continue;
                     }
-                    const existingBook = await prisma_1.prisma.books.findUnique({
-                        where: { accession_no: record.accession_no },
-                    });
+                    const existingBook = await this.booksRepository.findByAccessionNo(record.accession_no);
                     if (existingBook) {
-                        logger_1.logger.info(`Book already exists, skipping: ${record.accession_no}`);
-                        result.skippedRecords++;
-                        continue;
+                        result.warnings.push(`Book already exists, updating: ${record.accession_no}`);
+                        result.updatedRecords++;
+                    }
+                    else {
+                        result.importedRecords++;
                     }
                     let cost_price = null;
                     if (record.costPrice) {
@@ -189,31 +291,48 @@ class ImportService {
                             year = parsedYear;
                         }
                     }
-                    await prisma_1.prisma.books.create({
-                        data: {
-                            id: crypto_1.default.randomUUID(),
-                            updated_at: new Date(),
-                            accession_no: record.accession_no,
-                            isbn: record.isbn || null,
-                            title: record.title,
-                            author: record.author,
-                            publisher: record.publisher || null,
-                            category: 'General',
-                            subcategory: null,
-                            location: null,
-                            total_copies: 1,
-                            available_copies: 1,
-                            edition: record.edition || null,
-                            volume: record.volume || null,
-                            pages: record.pages || null,
-                            source_of_fund: record.sourceOfFund || null,
-                            cost_price,
-                            year,
-                            remarks: record.remarks || null,
-                        },
-                    });
-                    result.importedRecords++;
-                    logger_1.logger.info(`Imported book: ${record.accession_no}`);
+                    const upsertPayload = {
+                        title: record.title,
+                        author: record.author,
+                        category: 'General',
+                        total_copies: 1,
+                        available_copies: 1,
+                    };
+                    if (record.isbn) {
+                        upsertPayload.isbn = record.isbn;
+                    }
+                    if (record.publisher) {
+                        upsertPayload.publisher = record.publisher;
+                    }
+                    if (record.subcategory) {
+                        upsertPayload.subcategory = record.subcategory;
+                    }
+                    if (record.location) {
+                        upsertPayload.location = record.location;
+                    }
+                    if (record.edition) {
+                        upsertPayload.edition = record.edition;
+                    }
+                    if (record.volume) {
+                        upsertPayload.volume = record.volume;
+                    }
+                    if (record.pages) {
+                        upsertPayload.pages = record.pages;
+                    }
+                    if (record.sourceOfFund) {
+                        upsertPayload.source_of_fund = record.sourceOfFund;
+                    }
+                    if (record.remarks) {
+                        upsertPayload.remarks = record.remarks;
+                    }
+                    if (cost_price !== null) {
+                        upsertPayload.cost_price = cost_price;
+                    }
+                    if (year !== null) {
+                        upsertPayload.year = year;
+                    }
+                    await this.booksRepository.upsertByAccessionNo(record.accession_no, upsertPayload);
+                    logger_1.logger.info(`${existingBook ? 'Updated' : 'Imported'} book: ${record.accession_no}`);
                 }
                 catch (error) {
                     const errorMessage = `Error importing book ${record.accession_no}: ${error.message}`;
@@ -222,16 +341,26 @@ class ImportService {
                     logger_1.logger.error(errorMessage);
                 }
             }
-            logger_1.logger.info(`Enhanced book import completed`, {
+            transformationResult.errors.forEach(error => {
+                if (error.severity === 'error') {
+                    result.errors.push(`Row ${error.row}, Field ${error.field}: ${error.message}`);
+                }
+                else {
+                    result.warnings.push(`Row ${error.row}, Field ${error.field}: ${error.message}`);
+                }
+            });
+            logger_1.logger.info(`Enhanced book import completed using repository pattern`, {
                 totalRecords: result.totalRecords,
                 importedRecords: result.importedRecords,
+                updatedRecords: result.updatedRecords,
                 skippedRecords: result.skippedRecords,
                 errorRecords: result.errorRecords,
+                processingTime: result.transformationStats?.processingTime,
             });
             return result;
         }
         catch (error) {
-            logger_1.logger.error('Failed to import books with mapping', {
+            logger_1.logger.error('Failed to import books with mapping using repository pattern', {
                 error: error.message,
             });
             result.success = false;
@@ -244,22 +373,42 @@ class ImportService {
             success: true,
             totalRecords: 0,
             importedRecords: 0,
+            updatedRecords: 0,
             skippedRecords: 0,
             errorRecords: 0,
             errors: [],
+            warnings: [],
         };
         try {
-            logger_1.logger.info(`Starting student import from ${filePath}`);
-            const records = await this.parseCsvFile(filePath);
-            result.totalRecords = records.length;
-            for (const record of records) {
+            logger_1.logger.info(`Starting student import from ${filePath} using repository pattern`);
+            const transformationResult = await this.transformationPipeline.processFile(filePath, 'students', {
+                dryRun: false,
+            });
+            result.totalRecords = transformationResult.totalRows;
+            const stats = transformationResult.statistics;
+            result.transformationStats = {
+                typeConversions: this.getStatisticNumber(stats, 'typeConversions'),
+                fieldMappings: Object.keys(transformationResult.fieldMappings).length,
+                validationErrors: this.getStatisticNumber(stats, 'validationErrors'),
+                processingTime: transformationResult.duration,
+            };
+            result.pipelineErrors = transformationResult.errors;
+            for (const rawRecord of transformationResult.data) {
+                const record = this.toStringRecord(rawRecord);
+                if (!record) {
+                    result.errors.push(`Unable to normalize student record: ${JSON.stringify(rawRecord)}`);
+                    result.errorRecords++;
+                    continue;
+                }
                 try {
                     if (!record.name || !record.grade_level || !record.section) {
-                        result.errors.push(`Missing required fields for student: ${JSON.stringify(record)}`);
+                        result.errors.push(`Missing required fields for student: ${JSON.stringify(rawRecord)}`);
                         result.errorRecords++;
                         continue;
                     }
-                    const nameParts = record.name.split(',').map((part) => part.trim());
+                    const nameParts = record.name
+                        .split(',')
+                        .map((part) => part.trim());
                     if (nameParts.length < 2 || !nameParts[0] || !nameParts[1]) {
                         result.errors.push(`Invalid name format for student: ${record.name}. Expected: "Last name, First name MI"`);
                         result.errorRecords++;
@@ -284,36 +433,32 @@ class ImportService {
                     let grade_category;
                     const gradeNumber = parseInt(gradeNum, 10);
                     if (gradeNumber >= 7 && gradeNumber <= 10) {
-                        gradeCategory = client_1.students_grade_category.JUNIOR_HIGH;
+                        grade_category = client_1.students_grade_category.JUNIOR_HIGH;
                     }
                     else if (gradeNumber >= 11 && gradeNumber <= 12) {
-                        gradeCategory = client_1.students_grade_category.SENIOR_HIGH;
+                        grade_category = client_1.students_grade_category.SENIOR_HIGH;
                     }
                     else {
                         result.errors.push(`Invalid grade level: ${record.grade_level} for student: ${record.name}`);
                         result.errorRecords++;
                         continue;
                     }
-                    const existingStudent = await prisma_1.prisma.students.findUnique({
-                        where: { student_id },
-                    });
+                    const existingStudent = await this.studentsRepository.findByStudentId(student_id);
                     if (existingStudent) {
-                        logger_1.logger.info(`Student already exists, skipping: ${student_id}`);
-                        result.skippedRecords++;
-                        continue;
+                        result.warnings.push(`Student already exists, updating: ${student_id}`);
+                        result.updatedRecords++;
                     }
-                    await prisma_1.prisma.students.create({
-                        data: { id: crypto_1.default.randomUUID(), updated_at: new Date(),
-                            student_id,
-                            first_name,
-                            last_name,
-                            grade_level: record.grade_level,
-                            grade_category,
-                            section: record.section,
-                        },
+                    else {
+                        result.importedRecords++;
+                    }
+                    await this.studentsRepository.upsertByStudentId(student_id, {
+                        first_name: firstName,
+                        last_name: lastName,
+                        grade_level: record.grade_level,
+                        grade_category,
+                        section: record.section,
                     });
-                    result.importedRecords++;
-                    logger_1.logger.info(`Imported student: ${student_id}`);
+                    logger_1.logger.info(`${existingStudent ? 'Updated' : 'Imported'} student: ${student_id}`);
                 }
                 catch (error) {
                     const errorMessage = `Error importing student ${record.name}: ${error.message}`;
@@ -322,16 +467,26 @@ class ImportService {
                     logger_1.logger.error(errorMessage);
                 }
             }
-            logger_1.logger.info(`Student import completed`, {
+            transformationResult.errors.forEach(error => {
+                if (error.severity === 'error') {
+                    result.errors.push(`Row ${error.row}, Field ${error.field}: ${error.message}`);
+                }
+                else {
+                    result.warnings.push(`Row ${error.row}, Field ${error.field}: ${error.message}`);
+                }
+            });
+            logger_1.logger.info(`Student import completed using repository pattern`, {
                 totalRecords: result.totalRecords,
                 importedRecords: result.importedRecords,
+                updatedRecords: result.updatedRecords,
                 skippedRecords: result.skippedRecords,
                 errorRecords: result.errorRecords,
+                processingTime: result.transformationStats?.processingTime,
             });
             return result;
         }
         catch (error) {
-            logger_1.logger.error('Failed to import students', {
+            logger_1.logger.error('Failed to import students using repository pattern', {
                 error: error.message,
             });
             result.success = false;
@@ -344,34 +499,52 @@ class ImportService {
             success: true,
             totalRecords: 0,
             importedRecords: 0,
+            updatedRecords: 0,
             skippedRecords: 0,
             errorRecords: 0,
             errors: [],
+            warnings: [],
         };
         try {
-            logger_1.logger.info(`Starting book import from ${filePath}`);
-            const records = await this.parseCsvFile(filePath);
-            result.totalRecords = records.length;
-            for (const record of records) {
+            logger_1.logger.info(`Starting book import from ${filePath} using repository pattern`);
+            const transformationResult = await this.transformationPipeline.processFile(filePath, 'books', {
+                dryRun: false,
+            });
+            result.totalRecords = transformationResult.totalRows;
+            const stats = transformationResult.statistics;
+            result.transformationStats = {
+                typeConversions: this.getStatisticNumber(stats, 'typeConversions'),
+                fieldMappings: Object.keys(transformationResult.fieldMappings).length,
+                validationErrors: this.getStatisticNumber(stats, 'validationErrors'),
+                processingTime: transformationResult.duration,
+            };
+            result.pipelineErrors = transformationResult.errors;
+            for (const rawRecord of transformationResult.data) {
+                const record = this.toStringRecord(rawRecord);
+                if (!record) {
+                    result.errors.push(`Unable to normalize book record: ${JSON.stringify(rawRecord)}`);
+                    result.errorRecords++;
+                    continue;
+                }
                 try {
                     if (!record.accession_no || !record.title || !record.author) {
-                        result.errors.push(`Missing required fields for book: ${JSON.stringify(record)}`);
+                        result.errors.push(`Missing required fields for book: ${JSON.stringify(rawRecord)}`);
                         result.errorRecords++;
                         continue;
                     }
-                    const existingBook = await prisma_1.prisma.books.findUnique({
-                        where: { accession_no: record.accession_no },
-                    });
+                    const existingBook = await this.booksRepository.findByAccessionNo(record.accession_no);
                     if (existingBook) {
-                        logger_1.logger.info(`Book already exists, skipping: ${record.accession_no}`);
-                        result.skippedRecords++;
-                        continue;
+                        result.warnings.push(`Book already exists, updating: ${record.accession_no}`);
+                        result.updatedRecords++;
+                    }
+                    else {
+                        result.importedRecords++;
                     }
                     let cost_price = null;
                     if (record.cost_price) {
                         const parsedCost = parseFloat(record.cost_price.replace(/[^0-9.-]/g, ''));
                         if (!isNaN(parsedCost)) {
-                            costPrice = parsedCost;
+                            cost_price = parsedCost;
                         }
                     }
                     let year = null;
@@ -381,29 +554,48 @@ class ImportService {
                             year = parsedYear;
                         }
                     }
-                    await prisma_1.prisma.books.create({
-                        data: { id: crypto_1.default.randomUUID(), updated_at: new Date(),
-                            accession_no: record.accession_no,
-                            isbn: record.isbn || null,
-                            title: record.title,
-                            author: record.author,
-                            publisher: record.publisher || null,
-                            category: 'General',
-                            subcategory: null,
-                            location: null,
-                            total_copies: 1,
-                            available_copies: 1,
-                            edition: record.edition || null,
-                            volume: record.volume || null,
-                            pages: record.pages || null,
-                            source_of_fund: record.source_of_fund || null,
-                            cost_price,
-                            year,
-                            remarks: record.remarks || null,
-                        },
-                    });
-                    result.importedRecords++;
-                    logger_1.logger.info(`Imported book: ${record.accession_no}`);
+                    const upsertPayload = {
+                        title: record.title,
+                        author: record.author,
+                        category: 'General',
+                        total_copies: 1,
+                        available_copies: 1,
+                    };
+                    if (record.isbn) {
+                        upsertPayload.isbn = record.isbn;
+                    }
+                    if (record.publisher) {
+                        upsertPayload.publisher = record.publisher;
+                    }
+                    if (record.subcategory) {
+                        upsertPayload.subcategory = record.subcategory;
+                    }
+                    if (record.location) {
+                        upsertPayload.location = record.location;
+                    }
+                    if (record.edition) {
+                        upsertPayload.edition = record.edition;
+                    }
+                    if (record.volume) {
+                        upsertPayload.volume = record.volume;
+                    }
+                    if (record.pages) {
+                        upsertPayload.pages = record.pages;
+                    }
+                    if (record.source_of_fund) {
+                        upsertPayload.source_of_fund = record.source_of_fund;
+                    }
+                    if (record.remarks) {
+                        upsertPayload.remarks = record.remarks;
+                    }
+                    if (cost_price !== null) {
+                        upsertPayload.cost_price = cost_price;
+                    }
+                    if (year !== null) {
+                        upsertPayload.year = year;
+                    }
+                    await this.booksRepository.upsertByAccessionNo(record.accession_no, upsertPayload);
+                    logger_1.logger.info(`${existingBook ? 'Updated' : 'Imported'} book: ${record.accession_no}`);
                 }
                 catch (error) {
                     const errorMessage = `Error importing book ${record.accession_no}: ${error.message}`;
@@ -412,16 +604,26 @@ class ImportService {
                     logger_1.logger.error(errorMessage);
                 }
             }
-            logger_1.logger.info(`Book import completed`, {
+            transformationResult.errors.forEach(error => {
+                if (error.severity === 'error') {
+                    result.errors.push(`Row ${error.row}, Field ${error.field}: ${error.message}`);
+                }
+                else {
+                    result.warnings.push(`Row ${error.row}, Field ${error.field}: ${error.message}`);
+                }
+            });
+            logger_1.logger.info(`Book import completed using repository pattern`, {
                 totalRecords: result.totalRecords,
                 importedRecords: result.importedRecords,
+                updatedRecords: result.updatedRecords,
                 skippedRecords: result.skippedRecords,
                 errorRecords: result.errorRecords,
+                processingTime: result.transformationStats?.processingTime,
             });
             return result;
         }
         catch (error) {
-            logger_1.logger.error('Failed to import books', {
+            logger_1.logger.error('Failed to import books using repository pattern', {
                 error: error.message,
             });
             result.success = false;
@@ -434,15 +636,27 @@ class ImportService {
             success: true,
             totalRecords: 0,
             importedRecords: 0,
+            updatedRecords: 0,
             skippedRecords: 0,
             errorRecords: 0,
             errors: [],
+            warnings: [],
         };
         try {
-            logger_1.logger.info(`Starting equipment import from ${filePath}`);
-            const records = await this.parseCsvFile(filePath);
-            result.totalRecords = records.length;
-            for (const record of records) {
+            logger_1.logger.info(`Starting equipment import from ${filePath} using repository pattern`);
+            const transformationResult = await this.transformationPipeline.processFile(filePath, 'equipment', {
+                dryRun: false,
+            });
+            result.totalRecords = transformationResult.totalRows;
+            const stats = transformationResult.statistics;
+            result.transformationStats = {
+                typeConversions: this.getStatisticNumber(stats, 'typeConversions'),
+                fieldMappings: Object.keys(transformationResult.fieldMappings).length,
+                validationErrors: this.getStatisticNumber(stats, 'validationErrors'),
+                processingTime: transformationResult.duration,
+            };
+            result.pipelineErrors = transformationResult.errors;
+            for (const record of transformationResult.data) {
                 try {
                     if (!record.equipment_id ||
                         !record.name ||
@@ -453,34 +667,43 @@ class ImportService {
                         result.errorRecords++;
                         continue;
                     }
+                    const maxTimeMinutes = Number(record.max_time_minutes);
+                    if (Number.isNaN(maxTimeMinutes)) {
+                        result.errors.push(`Invalid max_time_minutes value for equipment: ${record.equipment_id}`);
+                        result.errorRecords++;
+                        continue;
+                    }
                     if (!Object.values(client_1.equipment_type).includes(record.type)) {
                         result.errors.push(`Invalid equipment type: ${record.type} for equipment: ${record.equipment_id}`);
                         result.errorRecords++;
                         continue;
                     }
-                    const requiresSupervision = record.requires_supervision?.toLowerCase() === 'yes' ||
-                        record.requires_supervision?.toLowerCase() === 'true';
-                    const existingEquipment = await prisma_1.prisma.equipment.findUnique({
-                        where: { equipment_id: record.equipment_id },
-                    });
+                    const requiresSupervisionValue = (record.requires_supervision ??
+                        record.requiresSupervision ??
+                        '').toLowerCase();
+                    const requiresSupervisionFlag = requiresSupervisionValue === 'yes' ||
+                        requiresSupervisionValue === 'true';
+                    const existingEquipment = await this.equipmentRepository.findByEquipmentId(record.equipment_id);
                     if (existingEquipment) {
-                        logger_1.logger.info(`Equipment already exists, skipping: ${record.equipment_id}`);
-                        result.skippedRecords++;
-                        continue;
+                        result.warnings.push(`Equipment already exists, updating: ${record.equipment_id}`);
+                        result.updatedRecords++;
                     }
-                    await prisma_1.prisma.equipment.create({
-                        data: { id: crypto_1.default.randomUUID(), updated_at: new Date(),
-                            equipment_id: record.equipment_id,
-                            name: record.name,
-                            type: record.type,
-                            location: record.location,
-                            max_time_minutes: record.max_time_minutes,
-                            requires_supervision,
-                            description: record.description || null,
-                            status: client_1.equipment_status.AVAILABLE, },
-                    });
-                    result.importedRecords++;
-                    logger_1.logger.info(`Imported equipment: ${record.equipment_id}`);
+                    else {
+                        result.importedRecords++;
+                    }
+                    const equipmentPayload = {
+                        name: record.name,
+                        type: record.type,
+                        location: record.location,
+                        max_time_minutes: maxTimeMinutes,
+                        requires_supervision: requiresSupervisionFlag,
+                        status: client_1.equipment_status.AVAILABLE,
+                    };
+                    if (record.description) {
+                        equipmentPayload.description = record.description;
+                    }
+                    await this.equipmentRepository.upsertByEquipmentId(record.equipment_id, equipmentPayload);
+                    logger_1.logger.info(`${existingEquipment ? 'Updated' : 'Imported'} equipment: ${record.equipment_id}`);
                 }
                 catch (error) {
                     const errorMessage = `Error importing equipment ${record.equipment_id}: ${error.message}`;
@@ -489,16 +712,26 @@ class ImportService {
                     logger_1.logger.error(errorMessage);
                 }
             }
-            logger_1.logger.info(`Equipment import completed`, {
+            transformationResult.errors.forEach(error => {
+                if (error.severity === 'error') {
+                    result.errors.push(`Row ${error.row}, Field ${error.field}: ${error.message}`);
+                }
+                else {
+                    result.warnings.push(`Row ${error.row}, Field ${error.field}: ${error.message}`);
+                }
+            });
+            logger_1.logger.info(`Equipment import completed using repository pattern`, {
                 totalRecords: result.totalRecords,
                 importedRecords: result.importedRecords,
+                updatedRecords: result.updatedRecords,
                 skippedRecords: result.skippedRecords,
                 errorRecords: result.errorRecords,
+                processingTime: result.transformationStats?.processingTime,
             });
             return result;
         }
         catch (error) {
-            logger_1.logger.error('Failed to import equipment', {
+            logger_1.logger.error('Failed to import equipment using repository pattern', {
                 error: error.message,
             });
             result.success = false;
@@ -508,25 +741,54 @@ class ImportService {
     }
     async previewFile(filePath, options = {}) {
         try {
-            const fileExtension = filePath.split('.').pop()?.toLowerCase();
-            if (fileExtension === 'csv') {
-                return this.previewCsvFile(filePath, options);
+            logger_1.logger.info(`Starting file preview using transformation pipeline: ${filePath}`);
+            const entityType = options.entityType ?? 'students';
+            const pipelineOptions = { dryRun: true };
+            if (options.fieldMappings?.length) {
+                pipelineOptions.customMappings = this.convertFieldMappingsToDict(options.fieldMappings);
             }
-            else if (['xlsx', 'xls'].includes(fileExtension || '')) {
-                return this.previewExcelFile(filePath, options);
-            }
-            else {
-                throw new Error('Unsupported file format. Only CSV and Excel files are supported.');
-            }
+            const transformationResult = await this.transformationPipeline.processFile(filePath, entityType, pipelineOptions);
+            const headers = Object.keys(transformationResult.fieldMappings);
+            const rows = transformationResult.data
+                .slice(0, options.maxPreviewRows || 10)
+                .map(record => headers.map(header => String(record[header] || '')));
+            const suggestedMappings = Object.entries(transformationResult.fieldMappings).reduce((accumulator, [sourceField, mapping]) => {
+                if (!mapping.targetField) {
+                    return accumulator;
+                }
+                accumulator.push({
+                    sourceField,
+                    targetField: mapping.targetField,
+                    required: mapping.confidence > 0.8,
+                });
+                return accumulator;
+            }, []);
+            const previewData = {
+                headers,
+                rows,
+                totalRows: transformationResult.totalRows,
+                suggestedMappings,
+                fileType: filePath.endsWith('.csv') ? 'csv' : 'excel',
+            };
+            logger_1.logger.info('File preview completed using transformation pipeline', {
+                totalRows: previewData.totalRows,
+                previewRows: previewData.rows.length,
+                headers: previewData.headers.length,
+                suggestedMappings: previewData.suggestedMappings.length,
+            });
+            return previewData;
         }
         catch (error) {
-            logger_1.logger.error('Error previewing file', { error: error.message, filePath });
+            logger_1.logger.error('Error previewing file with transformation pipeline', {
+                error: error.message,
+                filePath,
+            });
             throw error;
         }
     }
     async previewCsvFile(filePath, options) {
         return new Promise((resolve, reject) => {
-            const records = [];
+            const flatValues = [];
             let headers = [];
             (0, fs_1.createReadStream)(filePath)
                 .pipe((0, csv_parse_1.parse)({
@@ -538,17 +800,18 @@ class ImportService {
                 if (headers.length === 0) {
                     headers = Object.keys(record);
                 }
-                records.push(...Object.values(record));
+                const values = Object.values(record).map(value => String(value ?? ''));
+                flatValues.push(...values);
             })
                 .on('end', () => {
-                const rows = this.chunkArray(records, headers.length);
+                const rows = this.chunkArray(flatValues, headers.length);
                 const suggestedMappings = this.generateSuggestedMappings(headers, 'students');
                 resolve({
                     headers,
                     rows: rows.slice(0, options.maxPreviewRows || 10),
                     totalRows: rows.length,
                     suggestedMappings,
-                    fileType: 'csv'
+                    fileType: 'csv',
                 });
             })
                 .on('error', (error) => {
@@ -558,9 +821,17 @@ class ImportService {
     }
     async previewExcelFile(filePath, options) {
         const workbook = XLSX.readFile(filePath);
-        const sheetName = workbook.SheetNames[0];
+        const [sheetName] = workbook.SheetNames;
+        if (!sheetName) {
+            throw new Error('Excel workbook does not contain any sheets');
+        }
         const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        if (!worksheet) {
+            throw new Error(`Worksheet "${sheetName}" not found in workbook`);
+        }
+        const data = XLSX.utils.sheet_to_json(worksheet, {
+            header: 1,
+        });
         if (data.length === 0) {
             throw new Error('Excel file is empty');
         }
@@ -572,7 +843,7 @@ class ImportService {
             rows: rows.slice(0, options.maxPreviewRows || 10),
             totalRows: rows.length,
             suggestedMappings,
-            fileType: 'excel'
+            fileType: 'excel',
         };
     }
     async parseFile(filePath, options = {}) {
@@ -608,7 +879,20 @@ class ImportService {
                             mapping.sourceField.toLowerCase().includes(h.toLowerCase()));
                         if (sourceIndex !== -1) {
                             const sourceHeader = headers[sourceIndex];
-                            mappedRecord[mapping.targetField] = record[sourceHeader];
+                            if (!sourceHeader) {
+                                logger_1.logger.warn('Skipping source header with undefined value during CSV parse', {
+                                    sourceField: mapping.sourceField,
+                                });
+                                continue;
+                            }
+                            const targetField = mapping.targetField;
+                            if (!targetField) {
+                                logger_1.logger.warn('Skipping import field mapping without target during CSV parse', {
+                                    sourceField: mapping.sourceField,
+                                });
+                                continue;
+                            }
+                            mappedRecord[targetField] = record[sourceHeader];
                         }
                         else if (mapping.required) {
                             throw new Error(`Required field "${mapping.sourceField}" not found in file`);
@@ -630,9 +914,17 @@ class ImportService {
     }
     async parseExcelFile(filePath, options) {
         const workbook = XLSX.readFile(filePath);
-        const sheetName = workbook.SheetNames[0];
+        const [sheetName] = workbook.SheetNames;
+        if (!sheetName) {
+            throw new Error('Excel workbook does not contain any sheets');
+        }
         const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        if (!worksheet) {
+            throw new Error(`Worksheet "${sheetName}" not found in workbook`);
+        }
+        const data = XLSX.utils.sheet_to_json(worksheet, {
+            header: 1,
+        });
         if (data.length === 0) {
             return [];
         }
@@ -646,7 +938,14 @@ class ImportService {
                     const sourceIndex = headers.findIndex(h => h.toLowerCase().includes(mapping.sourceField.toLowerCase()) ||
                         mapping.sourceField.toLowerCase().includes(h.toLowerCase()));
                     if (sourceIndex !== -1) {
-                        record[mapping.targetField] = row[sourceIndex];
+                        const targetField = mapping.targetField;
+                        if (!targetField) {
+                            logger_1.logger.warn('Skipping import field mapping without target during Excel parse', {
+                                sourceField: mapping.sourceField,
+                            });
+                            continue;
+                        }
+                        record[targetField] = row[sourceIndex];
                     }
                     else if (mapping.required) {
                         throw new Error(`Required field "${mapping.sourceField}" not found in file`);
@@ -655,6 +954,9 @@ class ImportService {
             }
             else {
                 headers.forEach((header, index) => {
+                    if (!header) {
+                        return;
+                    }
                     record[header] = row[index];
                 });
             }
@@ -673,7 +975,7 @@ class ImportService {
                     mappings.push({
                         sourceField: matchedHeader,
                         targetField: field,
-                        required: true
+                        required: true,
                     });
                 }
             }

@@ -16,14 +16,14 @@ import {
   Filter,
 } from 'lucide-react';
 import notificationApi from '../services/notificationApi';
-import type { Notification } from '../services/notificationApi';
+import type { AppNotification } from '../services/notificationApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationWebSocket } from '@/hooks/useWebSocket';
 import { toast } from 'sonner';
 
 const NotificationCenter: React.FC = () => {
   const { token, user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,7 +32,7 @@ const NotificationCenter: React.FC = () => {
   const [showPreferences, setShowPreferences] = useState(false);
 
   // Real-time WebSocket integration
-  const { isConnected, error: wsError } = useNotificationWebSocket();
+  const { isConnected } = useNotificationWebSocket();
 
   // Handle real-time notifications
   const handleRealTimeNotification = useCallback((message: any) => {
@@ -130,7 +130,7 @@ const NotificationCenter: React.FC = () => {
     try {
       // Update UI optimistically
       setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read: true, readAt: new Date() } : n)
+        prev.map(n => n.id === notificationId ? { ...n, read: true, readAt: new Date().toISOString() } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
 
@@ -138,20 +138,13 @@ const NotificationCenter: React.FC = () => {
       const socket = (window as any).socket;
       if (socket && isConnected) {
         socket.emit('notification:mark-read', { notificationId });
-
-        // Listen for confirmation
-        socket.once('notification:marked-read', () => {
-          // Already updated optimistically
-        });
-      } else {
-        // Fallback to API
-        await notificationApi.markAsRead(notificationId);
       }
+      
+      // Fallback to API call
+      await notificationApi.markAsRead(notificationId);
     } catch (error) {
       console.error('Error marking notification as read:', error);
-      toast.error('Failed to mark notification as read');
-      // Revert optimistic update
-      await fetchNotifications();
+      toast.error('Failed to mark as read');
     }
   };
 
@@ -182,7 +175,7 @@ const NotificationCenter: React.FC = () => {
     }
   };
 
-  const getNotificationIcon = (type: Notification['type'], priority: Notification['priority']) => {
+  const getNotificationIcon = (type: AppNotification['type'], priority: AppNotification['priority']) => {
     const iconClass = `w-5 h-5 ${
       priority === 'URGENT'
         ? 'text-red-600'
@@ -211,7 +204,7 @@ const NotificationCenter: React.FC = () => {
     }
   };
 
-  const getPriorityColor = (priority: Notification['priority']) => {
+  const getPriorityColor = (priority: AppNotification['priority']) => {
     switch (priority) {
       case 'URGENT':
         return 'border-l-red-600 bg-red-50';
@@ -248,6 +241,7 @@ const NotificationCenter: React.FC = () => {
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
         title={isConnected ? "Connected" : "Disconnected"}
+        data-testid="notification-center"
       >
         <Bell className="w-6 h-6" />
 

@@ -35,15 +35,15 @@ interface ReportSection {
 }
 
 interface ReportConfig {
-  id?: string;
+  id?: string | undefined;
   name: string;
-  description?: string;
+  description?: string | undefined;
   type: string;
   category: string;
   recipients: string[];
   format: 'html' | 'pdf' | 'excel' | 'csv' | 'json';
   is_active: boolean;
-  schedule?: string;
+  schedule?: string | undefined;
   sections: ReportSection[];
 }
 
@@ -77,6 +77,7 @@ export function AdvancedReporting() {
   const [alertConfigs, setAlertConfigs] = useState<AlertConfig[]>([]);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [editingConfig, setEditingConfig] = useState<ReportConfig | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Mock data for demonstration
   const reportTemplates: ReportTemplate[] = [
@@ -264,7 +265,8 @@ export function AdvancedReporting() {
     if (editingConfig) {
       setReportConfigs(prev => prev.map(c => c.id === editingConfig.id ? { ...config, id: editingConfig.id } : c));
     } else {
-      setReportConfigs(prev => [...prev, { ...config, id: Date.now().toString() }]);
+      const newConfig: ReportConfig = { ...config, id: Date.now().toString() };
+      setReportConfigs(prev => [...prev, newConfig]);
     }
     setShowConfigDialog(false);
     setEditingConfig(null);
@@ -365,9 +367,9 @@ export function AdvancedReporting() {
                     </div>
 
                     <div className="flex gap-2 pt-2">
-                      <Select onValueChange={(format) => handleGenerateReport(template, format)}>
+                      <Select onValueChange={(format) => handleGenerateReport(template, format)} disabled={isGenerating}>
                         <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Generate" />
+                          <SelectValue placeholder={isGenerating ? "Generating..." : "Generate"} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="html">HTML</SelectItem>
@@ -415,9 +417,7 @@ export function AdvancedReporting() {
                         </Button>
                       )}
                       {report.status === 'generating' && (
-                        <ButtonLoading loading size="sm">
-                          Generating...
-                        </ButtonLoading>
+                        <ButtonLoading text="Generating..." />
                       )}
                     </div>
                   </div>
@@ -471,7 +471,7 @@ export function AdvancedReporting() {
                         <Button variant="ghost" size="sm">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDeleteConfig(config.id)}>
+                        <Button variant="ghost" size="sm" onClick={() => config.id && handleDeleteConfig(config.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

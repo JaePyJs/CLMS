@@ -1,4 +1,5 @@
 import { createReadStream } from 'fs';
+import { randomUUID } from 'crypto';
 import { logger } from '@/utils/logger';
 import { prisma } from '@/utils/prisma';
 import { parse } from 'csv-parse';
@@ -72,7 +73,11 @@ export class SHJCSImportService {
           }
 
           // Skip if User ID is empty or just asterisks
-          if (!record['User id'] || record['User id'].trim() === '' || record['User id'].trim() === '**') {
+          if (
+            !record['User id'] ||
+            record['User id'].trim() === '' ||
+            record['User id'].trim() === '**'
+          ) {
             result.errors.push(
               `Skipping student with no User ID: ${record.Names}`,
             );
@@ -84,7 +89,7 @@ export class SHJCSImportService {
           let nameStr = record.Names.trim();
           // Remove leading number and period (e.g., "1. " or "23. ")
           nameStr = nameStr.replace(/^\d+\.\s*/, '');
-          
+
           // Split name parts (might be "Last, First" or just "Last")
           const nameParts = nameStr.split(',').map(part => part.trim());
           const lastName = nameParts[0] || nameStr;
@@ -99,7 +104,7 @@ export class SHJCSImportService {
           }
 
           const student_id = record['User id'].trim();
-          
+
           // Extract barcode from format *ID* or just use the ID
           let barcodeData = record[''] || '';
           if (barcodeData) {
@@ -107,16 +112,26 @@ export class SHJCSImportService {
           }
 
           // Determine grade category from section name
-          let grade_category: students_grade_category = students_grade_category.JUNIOR_HIGH;
+          let gradeCategory: students_grade_category =
+            students_grade_category.JUNIOR_HIGH;
           const sectionLower = record.Section.toLowerCase();
-          
+
           // Check if section contains grade indicators
-          if (sectionLower.includes('7') || sectionLower.includes('8') || 
-              sectionLower.includes('9') || sectionLower.includes('10') ||
-              sectionLower.includes('grade 7') || sectionLower.includes('grade 8')) {
+          if (
+            sectionLower.includes('7') ||
+            sectionLower.includes('8') ||
+            sectionLower.includes('9') ||
+            sectionLower.includes('10') ||
+            sectionLower.includes('grade 7') ||
+            sectionLower.includes('grade 8')
+          ) {
             gradeCategory = students_grade_category.JUNIOR_HIGH;
-          } else if (sectionLower.includes('11') || sectionLower.includes('12') ||
-                     sectionLower.includes('grade 11') || sectionLower.includes('grade 12')) {
+          } else if (
+            sectionLower.includes('11') ||
+            sectionLower.includes('12') ||
+            sectionLower.includes('grade 11') ||
+            sectionLower.includes('grade 12')
+          ) {
             gradeCategory = students_grade_category.SENIOR_HIGH;
           }
 
@@ -142,19 +157,23 @@ export class SHJCSImportService {
 
           // Create student
           await prisma.students.create({
-            data: { id: crypto.randomUUID(), updated_at: new Date(), 
+            data: {
+              id: randomUUID(),
+              updated_at: new Date(),
               student_id,
-              first_name,
-              last_name,
-              grade_level,
-              grade_category,
+              first_name: firstName,
+              last_name: lastName,
+              grade_level: gradeLevel,
+              grade_category: gradeCategory,
               section: record.Section,
               barcode_image: barcodeData || null,
             },
           });
 
           result.importedRecords++;
-          logger.info(`Imported student: ${student_id} - ${first_name} ${last_name}`);
+          logger.info(
+            `Imported student: ${student_id} - ${firstName} ${lastName}`,
+          );
         } catch (error) {
           const errorMessage = `Error importing student ${record['User id']}: ${(error as Error).message}`;
           result.errors.push(errorMessage);
@@ -214,17 +233,17 @@ export class SHJCSImportService {
           // Truncate author if too long (MySQL limit)
           let author = record.Author?.trim() || 'Unknown';
           if (author.length > 500) {
-            author = author.substring(0, 497) + '...';
-            logger.warn(`Author name truncated for book ${accession_no}`);
+            author = `${author.substring(0, 497)}...`;
+            logger.warn(`Author name truncated for book ${accessionNo}`);
           }
 
           // Check if book already exists
           const existingBook = await prisma.books.findUnique({
-            where: { accession_no },
+            where: { accession_no: accessionNo },
           });
 
           if (existingBook) {
-            logger.info(`Book already exists, skipping: ${accession_no}`);
+            logger.info(`Book already exists, skipping: ${accessionNo}`);
             result.skippedRecords++;
             continue;
           }
@@ -244,7 +263,7 @@ export class SHJCSImportService {
             const cleanPrice = record.Price.replace(/[^0-9.-]/g, '');
             const parsedPrice = parseFloat(cleanPrice);
             if (!isNaN(parsedPrice)) {
-              costPrice = parsedPrice;
+              cost_price = parsedPrice;
             }
           }
 
@@ -253,8 +272,10 @@ export class SHJCSImportService {
 
           // Create book with SHJCS format
           await prisma.books.create({
-            data: { id: crypto.randomUUID(), updated_at: new Date(), 
-              accession_no,
+            data: {
+              id: randomUUID(),
+              updated_at: new Date(),
+              accession_no: accessionNo,
               isbn: record.ISBN?.trim() || null,
               title: record.Title.trim(),
               author, // Use the truncated author
@@ -276,7 +297,7 @@ export class SHJCSImportService {
           });
 
           result.importedRecords++;
-          logger.info(`Imported book: ${accession_no} - ${record.Title}`);
+          logger.info(`Imported book: ${accessionNo} - ${record.Title}`);
         } catch (error) {
           const errorMessage = `Error importing book ${record.Barcode}: ${(error as Error).message}`;
           result.errors.push(errorMessage);

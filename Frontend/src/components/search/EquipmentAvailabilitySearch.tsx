@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -19,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Search, Monitor, Filter, X, Download, Clock, CheckCircle, XCircle, Calendar, ChevronDown, Zap, Settings, MapPin, UserCheck, Users } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
@@ -493,9 +493,9 @@ export default function EquipmentAvailabilitySearch() {
               </Button>
 
               <Select
-                value={filters.sortBy}
-                onValueChange={(value: any) => {
-                  setFilters({ ...filters, sortBy: value });
+                value={filters.sortBy || ''}
+                onValueChange={(value: string) => {
+                  setFilters({ ...filters, sortBy: value as 'name' | 'type' | 'status' | 'usageHours' | 'condition' | 'location' });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -514,9 +514,9 @@ export default function EquipmentAvailabilitySearch() {
               </Select>
 
               <Select
-                value={filters.sortOrder}
-                onValueChange={(value: any) => {
-                  setFilters({ ...filters, sortOrder: value });
+                value={filters.sortOrder || ''}
+                onValueChange={(value: string) => {
+                  setFilters({ ...filters, sortOrder: value as 'asc' | 'desc' });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -540,7 +540,7 @@ export default function EquipmentAvailabilitySearch() {
                   <label className="text-sm font-medium">Type</label>
                   <Select
                     value={filters.type || ''}
-                    onValueChange={(value: any) => {
+                    onValueChange={(value: string) => {
                       setFilters({ ...filters, type: value });
                       setCurrentPage(1);
                       performSearch();
@@ -565,7 +565,7 @@ export default function EquipmentAvailabilitySearch() {
                   <label className="text-sm font-medium">Status</label>
                   <Select
                     value={filters.status || ''}
-                    onValueChange={(value: any) => {
+                    onValueChange={(value: string) => {
                       setFilters({ ...filters, status: value });
                       setCurrentPage(1);
                       performSearch();
@@ -603,7 +603,7 @@ export default function EquipmentAvailabilitySearch() {
                   <label className="text-sm font-medium">Condition</label>
                   <Select
                     value={filters.conditionRating || ''}
-                    onValueChange={(value: any) => {
+                    onValueChange={(value: string) => {
                       setFilters({ ...filters, conditionRating: value });
                       setCurrentPage(1);
                       performSearch();
@@ -644,7 +644,8 @@ export default function EquipmentAvailabilitySearch() {
                     placeholder="9999"
                     value={filters.maxUsageHours || ''}
                     onChange={(e) => {
-                      setFilters({ ...filters, maxUsageHours: e.target.value ? parseInt(e.target.value) : undefined });
+                      const value = e.target.value ? parseInt(e.target.value) : undefined;
+                      setFilters({ ...filters, maxUsageHours: value });
                       setCurrentPage(1);
                       performSearch();
                     }}

@@ -83,7 +83,7 @@ vi.mock('@/services/imageOptimizationService', () => {
       }).join(', ');
     },
     generateSizes: () => '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
-    preloadImage: async (imageUrl: string, priority: string = 'auto') => {
+    preloadImage: async () => {
       // Mock preloading by doing nothing
       return Promise.resolve();
     },
@@ -111,7 +111,7 @@ vi.mock('@/services/imageOptimizationService', () => {
     clearCache: () => {},
     generatePlaceholder: (width: number = 300, height: number = 200, color: string = '#e5e7eb') =>
       `data:image/svg+xml,%3Csvg width='${width}' height='${height}' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='${color.replace('#', '%23')}'/%3E%3C/svg%3E`,
-    generateBlurPlaceholder: async (imageUrl: string, width: number = 40, height: number = 40) =>
+    generateBlurPlaceholder: async (width: number = 40, height: number = 40) =>
       `data:image/svg+xml,%3Csvg width='${width}' height='${height}' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='%23e5e7eb'/%3E%3C/svg%3E`,
     isFormatSupported: () => true,
     getSupportedFormats: () => ['webp', 'avif', 'jpeg', 'png'],

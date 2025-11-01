@@ -14,39 +14,25 @@ require("express-async-errors");
 const logger_1 = require("@/utils/logger");
 const errors_1 = require("@/utils/errors");
 const database_1 = __importDefault(require("@/config/database"));
+const prisma_1 = require("@/utils/prisma");
 const auth_1 = __importDefault(require("@/routes/auth"));
 const students_1 = __importDefault(require("@/routes/students"));
 const books_1 = __importDefault(require("@/routes/books"));
-const activities_1 = __importDefault(require("@/routes/activities"));
 const analytics_1 = __importDefault(require("@/routes/analytics"));
 const equipment_1 = __importDefault(require("@/routes/equipment"));
-const fines_1 = __importDefault(require("@/routes/fines"));
-const reports_1 = __importDefault(require("@/routes/reports"));
 const users_routes_1 = __importDefault(require("@/routes/users.routes"));
 const audit_routes_1 = __importDefault(require("@/routes/audit.routes"));
-const notifications_routes_1 = __importDefault(require("@/routes/notifications.routes"));
-const settings_1 = __importDefault(require("@/routes/settings"));
-const backup_routes_1 = __importDefault(require("@/routes/backup.routes"));
-const import_routes_1 = __importDefault(require("@/routes/import.routes"));
-const self_service_routes_1 = __importDefault(require("@/routes/self-service.routes"));
-const scanner_1 = __importDefault(require("@/routes/scanner"));
-const performance_1 = __importDefault(require("@/routes/performance"));
-const utilities_1 = __importDefault(require("@/routes/utilities"));
-const automation_1 = __importDefault(require("@/routes/automation"));
-const admin_1 = __importDefault(require("@/routes/admin"));
-const enhancedEquipment_1 = __importDefault(require("@/routes/enhancedEquipment"));
-const enhancedSearch_1 = __importDefault(require("@/routes/enhancedSearch"));
-const errors_routes_1 = __importDefault(require("@/routes/errors.routes"));
-const securityMonitoring_routes_1 = __importDefault(require("@/routes/securityMonitoring.routes"));
-const reporting_1 = __importDefault(require("@/routes/reporting"));
-const scan_1 = __importDefault(require("@/routes/scan"));
-const scannerTesting_1 = __importDefault(require("@/routes/scannerTesting"));
 const auth_2 = require("@/middleware/auth");
+const optimizedJobProcessor_1 = require("@/services/optimizedJobProcessor");
+const automation_1 = require("@/services/automation");
+const redis_1 = require("@/utils/redis");
+const gates_1 = require("@/utils/gates");
 class CLMSApplication {
     app;
     httpServer = null;
     prisma = database_1.default.getClient();
     isInitialized = false;
+    isReady = false;
     constructor() {
         this.app = (0, express_1.default)();
     }
@@ -60,7 +46,13 @@ class CLMSApplication {
             this.setupBasicMiddleware();
             this.setupBasicRoutes();
             this.setupErrorHandling();
-            await this.testDatabaseConnection();
+            const deferDbInit = process.env.DEFER_DB_INIT === 'true';
+            if (!deferDbInit) {
+                await this.testDatabaseConnection();
+            }
+            else {
+                logger_1.logger.warn('Database initialization deferred (DEFER_DB_INIT=true)');
+            }
             this.httpServer = (0, http_1.createServer)(this.app);
             this.setupGracefulShutdown();
             this.isInitialized = true;
@@ -89,158 +81,175 @@ class CLMSApplication {
     }
     setupBasicRoutes() {
         this.app.get('/health', this.healthCheck.bind(this));
-        this.app.get('/', (req, res) => {
-            res.json({
-                success: true,
-                message: 'CLMS API is running (Simplified)',
-                version: '1.0.0',
-                timestamp: new Date().toISOString(),
-                documentation: '/api-docs',
-            });
-        });
-        this.app.get('/api', (req, res) => {
-            res.json({
-                success: true,
-                message: 'CLMS API v1.0.0 (Complete)',
-                endpoints: {
-                    auth: '/api/auth',
-                    students: '/api/students',
-                    books: '/api/books',
-                    activities: '/api/activities',
-                    analytics: '/api/analytics',
-                    equipment: '/api/equipment',
-                    fines: '/api/fines',
-                    reports: '/api/reports',
-                    users: '/api/users',
-                    audit: '/api/audit',
-                    notifications: '/api/notifications',
-                    settings: '/api/settings',
-                    backup: '/api/backup',
-                    import: '/api/import',
-                    'self-service': '/api/self-service',
-                    scanner: '/api/scanner',
-                    performance: '/api/performance',
-                    utilities: '/api/utilities',
-                    automation: '/api/automation',
-                    admin: '/api/admin',
-                    'enhanced-equipment': '/api/enhanced-equipment',
-                    'enhanced-search': '/api/enhanced-search',
-                    errors: '/api/errors',
-                    'security-monitoring': '/api/security-monitoring',
-                    reporting: '/api/reporting',
-                    scan: '/api/scan',
-                    'scanner-testing': '/api/scanner-testing',
-                },
-                timestamp: new Date().toISOString(),
-            });
-        });
+        this.app.get('/ready', this.readyCheck.bind(this));
+        this.app.get('/health/extended', this.extendedHealthCheck.bind(this));
         this.app.use('/api/auth', auth_1.default);
         this.app.use('/api/students', auth_2.authMiddleware, students_1.default);
         this.app.use('/api/books', auth_2.authMiddleware, books_1.default);
-        this.app.use('/api/activities', auth_2.authMiddleware, activities_1.default);
-        this.app.use('/api/analytics', auth_2.authMiddleware, analytics_1.default);
         this.app.use('/api/equipment', auth_2.authMiddleware, equipment_1.default);
-        this.app.use('/api/fines', auth_2.authMiddleware, fines_1.default);
-        this.app.use('/api/reports', auth_2.authMiddleware, reports_1.default);
         this.app.use('/api/users', auth_2.authMiddleware, users_routes_1.default);
+        this.app.use('/api/analytics', auth_2.authMiddleware, analytics_1.default);
         this.app.use('/api/audit', auth_2.authMiddleware, audit_routes_1.default);
-        this.app.use('/api/notifications', auth_2.authMiddleware, notifications_routes_1.default);
-        this.app.use('/api/settings', auth_2.authMiddleware, settings_1.default);
-        this.app.use('/api/backup', auth_2.authMiddleware, backup_routes_1.default);
-        this.app.use('/api/import', auth_2.authMiddleware, import_routes_1.default);
-        this.app.use('/api/self-service', auth_2.authMiddleware, self_service_routes_1.default);
-        this.app.use('/api/scanner', auth_2.authMiddleware, scanner_1.default);
-        this.app.use('/api/performance', auth_2.authMiddleware, performance_1.default);
-        this.app.use('/api/utilities', auth_2.authMiddleware, utilities_1.default);
-        this.app.use('/api/automation', auth_2.authMiddleware, automation_1.default);
-        this.app.use('/api/admin', auth_2.authMiddleware, admin_1.default);
-        this.app.use('/api/enhanced-equipment', auth_2.authMiddleware, enhancedEquipment_1.default);
-        this.app.use('/api/enhanced-search', auth_2.authMiddleware, enhancedSearch_1.default);
-        this.app.use('/api/errors', auth_2.authMiddleware, errors_routes_1.default);
-        this.app.use('/api/security-monitoring', auth_2.authMiddleware, securityMonitoring_routes_1.default);
-        this.app.use('/api/reporting', auth_2.authMiddleware, reporting_1.default);
-        this.app.use('/api/scan', auth_2.authMiddleware, scan_1.default);
-        this.app.use('/api/scanner-testing', auth_2.authMiddleware, scannerTesting_1.default);
-        logger_1.logger.debug('All routes configured');
+        logger_1.logger.debug('Basic routes configured');
     }
     setupErrorHandling() {
-        this.app.use(errors_1.notFoundHandler);
-        this.app.use(errors_1.errorHandler);
+        this.app.use((err, req, res, next) => {
+            logger_1.logger.error('Unhandled error:', err);
+            res.status(500).json({
+                error: 'Internal server error',
+                message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+            });
+        });
+        this.app.use((req, res) => {
+            res.status(404).json({
+                error: 'Not found',
+                message: `Route ${req.method} ${req.path} not found`
+            });
+        });
         logger_1.logger.debug('Error handling configured');
     }
     async testDatabaseConnection() {
         try {
-            await this.prisma.$connect();
-            logger_1.logger.info('Database connection established');
+            await prisma_1.prisma.$connect();
+            logger_1.logger.info('Database connection successful');
         }
         catch (error) {
-            logger_1.logger.error('Failed to connect to database', {
-                error: error.message,
-            });
+            logger_1.logger.error('Database connection failed:', error);
             throw error;
         }
     }
     setupGracefulShutdown() {
-        const shutdown = async (signal) => {
+        const gracefulShutdown = async (signal) => {
             logger_1.logger.info(`Received ${signal}, starting graceful shutdown...`);
             try {
-                await this.prisma.$disconnect();
-                logger_1.logger.info('Graceful shutdown completed');
+                await this.shutdown();
                 process.exit(0);
             }
             catch (error) {
-                logger_1.logger.error('Error during graceful shutdown', {
-                    error: error.message,
-                });
+                logger_1.logger.error('Error during graceful shutdown:', error);
                 process.exit(1);
             }
         };
-        process.on('SIGTERM', () => shutdown('SIGTERM'));
-        process.on('SIGINT', () => shutdown('SIGINT'));
+        process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+        process.on('SIGINT', () => gracefulShutdown('SIGINT'));
         logger_1.logger.debug('Graceful shutdown handlers configured');
+    }
+    async readyCheck(req, res) {
+        try {
+            const uptime = process.uptime();
+            const memoryUsage = process.memoryUsage();
+            const startTime = Date.now();
+            let redis = { connected: false };
+            try {
+                const redisHealth = await (0, redis_1.healthCheck)();
+                redis = {
+                    connected: redisHealth,
+                    responseTime: undefined,
+                };
+            }
+            catch {
+                redis = { connected: false };
+            }
+            const responseTime = Date.now() - startTime;
+            res.json({
+                status: 'OK',
+                uptime,
+                memory: memoryUsage,
+                responseTime,
+                redis,
+            });
+        }
+        catch (error) {
+            res.status(500).json({
+                status: 'ERROR',
+                message: 'Readiness check failed',
+                error: error.message,
+            });
+        }
     }
     async healthCheck(req, res) {
         try {
             const startTime = Date.now();
-            const databaseHealth = await this.checkDatabaseHealth();
-            const memoryUsage = process.memoryUsage();
-            const totalMemory = memoryUsage.heapTotal;
-            const usedMemory = memoryUsage.heapUsed;
-            const memoryUsagePercent = Math.round((usedMemory / totalMemory) * 100);
+            const dbHealth = await this.checkDatabaseHealth();
             const uptime = process.uptime();
-            const health = {
-                status: 'OK',
-                timestamp: new Date().toISOString(),
-                uptime: Math.floor(uptime),
-                version: '1.0.0',
-                environment: process.env.NODE_ENV || 'development',
-                services: {
-                    database: databaseHealth,
-                },
-                system: {
-                    memory: {
-                        used: usedMemory,
-                        total: totalMemory,
-                        percentage: memoryUsagePercent,
-                    },
-                    platform: process.platform,
-                    nodeVersion: process.version,
-                },
-                responseTime: Date.now() - startTime,
-            };
-            const allServicesHealthy = databaseHealth.connected;
-            const statusCode = allServicesHealthy ? 200 : 503;
-            res.status(statusCode).json(health);
+            const memoryUsage = process.memoryUsage();
+            const responseTime = Date.now() - startTime;
+            res.json({
+                status: dbHealth.connected ? 'OK' : 'ERROR',
+                db: dbHealth,
+                uptime,
+                memory: memoryUsage,
+                responseTime,
+            });
         }
         catch (error) {
-            logger_1.logger.error('Health check failed', { error: error.message });
-            res.status(503).json({
+            res.status(500).json({
                 status: 'ERROR',
-                timestamp: new Date().toISOString(),
-                error: 'Health check failed',
+                message: 'Health check failed',
                 details: process.env.NODE_ENV === 'development'
                     ? error.message
                     : undefined,
+            });
+        }
+    }
+    async extendedHealthCheck(req, res) {
+        try {
+            const startTime = Date.now();
+            const deferDbInit = process.env.DEFER_DB_INIT === 'true';
+            const dbHealth = deferDbInit
+                ? { connected: false, error: 'Initialization deferred' }
+                : await this.checkDatabaseHealth();
+            let redis = {};
+            try {
+                redis = await (0, redis_1.healthCheck)();
+            }
+            catch (e) {
+                redis = { connected: false, error: e.message };
+            }
+            let jobs = {};
+            try {
+                jobs = await optimizedJobProcessor_1.optimizedJobProcessor.healthCheck();
+            }
+            catch (e) {
+                jobs = { healthy: false, error: e.message };
+            }
+            let automation = {};
+            try {
+                automation = automation_1.automationService.getSystemHealth();
+            }
+            catch (e) {
+                automation = { initialized: false, error: e.message };
+            }
+            const gates = {
+                queuesDisabled: gates_1.queuesDisabled,
+                disableScheduledTasks: gates_1.disableScheduledTasks,
+                rateLimiterDisabled: gates_1.rateLimiterDisabled,
+                emailDisabled: gates_1.emailDisabled,
+            };
+            const uptime = process.uptime();
+            const memory = process.memoryUsage();
+            const responseTime = Date.now() - startTime;
+            const criticalHealthy = dbHealth.connected && redis?.connected !== false;
+            const status = criticalHealthy ? 'OK' : 'DEGRADED';
+            res.json({
+                status,
+                environment: process.env.NODE_ENV,
+                version: '1.0.0',
+                responseTime,
+                uptime,
+                memory,
+                gates,
+                db: dbHealth,
+                redis,
+                jobs,
+                automation,
+            });
+        }
+        catch (error) {
+            res.status(500).json({
+                status: 'ERROR',
+                message: 'Extended health check failed',
+                error: error.message,
             });
         }
     }
@@ -273,16 +282,37 @@ class CLMSApplication {
                 throw new Error('HTTP server not initialized');
             }
             console.log('[DEBUG] About to call httpServer.listen()...');
-            await new Promise(resolve => {
-                this.httpServer.listen(port, () => {
-                    console.log('[DEBUG] Listen callback fired!');
+            await new Promise((resolve, reject) => {
+                const onListening = () => {
+                    console.log('[DEBUG] Listen event fired (server is listening)');
+                    this.isReady = true;
                     logger_1.logger.info(`🚀 CLMS Backend Server running on port ${port}`);
                     logger_1.logger.info(`📝 Environment: ${process.env.NODE_ENV}`);
                     logger_1.logger.info(`🔗 Health check: http://localhost:${port}/health`);
+                    logger_1.logger.info(`🔎 Readiness: http://localhost:${port}/ready`);
                     logger_1.logger.info(`📚 Library: ${process.env.LIBRARY_NAME}`);
                     logger_1.logger.info('✅ Backend started successfully (Simplified)');
                     resolve();
-                });
+                };
+                const onError = (err) => {
+                    console.log('[DEBUG] Listen error event fired:', err);
+                    logger_1.logger.error('HTTP server listen error', {
+                        port,
+                        code: err?.code,
+                        message: err?.message,
+                        stack: err?.stack,
+                    });
+                    reject(err);
+                };
+                this.httpServer.once('listening', onListening);
+                this.httpServer.once('error', onError);
+                try {
+                    this.httpServer.listen(port, '0.0.0.0');
+                }
+                catch (syncError) {
+                    console.log('[DEBUG] Synchronous listen throw:', syncError);
+                    onError(syncError);
+                }
             });
             console.log('[DEBUG] After listen promise');
         }

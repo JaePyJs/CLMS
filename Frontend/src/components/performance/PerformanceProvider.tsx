@@ -38,7 +38,7 @@ export function PerformanceProvider({ children, config }: PerformanceProviderPro
   const [metrics, setMetrics] = useState<PerformanceMetric[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [userId, setUserIdState] = useState<string | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout>();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update performance monitor config if provided
   useEffect(() => {

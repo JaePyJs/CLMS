@@ -260,7 +260,7 @@ export function getErrorResponse(error: CLMSError, requestId?: string): ErrorRes
         }
       }),
       timestamp: new Date().toISOString(),
-      requestId,
+      ...(requestId && { requestId }),
     },
   };
 }

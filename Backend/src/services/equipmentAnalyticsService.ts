@@ -6,8 +6,8 @@ import {
   EquipmentConditionRating,
   EquipmentMaintenanceType,
   EquipmentMaintenanceStatus,
-  StudentActivitiesStatus,
-  ActivityType,
+  student_activities_status,
+  student_activities_activity_type,
   Prisma,
 } from '@prisma/client';
 

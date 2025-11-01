@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { useDashboardMetrics, useActivityTimeline, useHealthCheck } from '@/hooks/api-hooks'
+import { useActivityTimeline, useHealthCheck } from '@/hooks/api-hooks'
 import { useAppStore } from '@/store/useAppStore'
 import { useAuth } from '@/contexts/AuthContext'
 import { useWebSocketContext } from '@/contexts/WebSocketContext'
@@ -11,7 +11,6 @@ import { AddStudentDialog } from './AddStudentDialog'
 import { RealTimeDashboard } from './RealTimeDashboard'
 import { utilitiesApi } from '@/lib/api'
 import { toast } from 'sonner'
-import { DashboardCardSkeleton } from '@/components/LoadingStates'
 import { Users, Monitor, Clock, TrendingUp, AlertCircle, CheckCircle, Activity, Wifi, CalendarDays, FileText, Shield, Download, Printer, Maximize2, Minimize2, AlertTriangle, Settings, BarChart3, Eye, Edit, ExternalLink, Bell } from 'lucide-react';
 
 interface DashboardOverviewProps {
@@ -312,14 +311,6 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
 
           {/* Enhanced Interactive Status Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {metricsLoading ? (
-              <>
-                <DashboardCardSkeleton />
-                <DashboardCardSkeleton />
-                <DashboardCardSkeleton />
-                <DashboardCardSkeleton />
-              </>
-            ) : (
             <>
             <Card
               className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800 hover:shadow-lg transition-all cursor-pointer group"
@@ -444,7 +435,6 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
               </CardContent>
             </Card>
             </>
-            )}
           </div>
 
           {/* Equipment Status Summary */}

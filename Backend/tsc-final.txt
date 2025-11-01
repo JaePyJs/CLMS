@@ -1,0 +1,8 @@
+src/routes/audit.routes.ts(107,9): error TS1135: Argument expression expected.
+src/routes/audit.routes.ts(107,10): error TS1472: 'catch' or 'finally' expected.
+src/routes/audit.routes.ts(109,7): error TS1109: Expression expected.
+src/routes/audit.routes.ts(109,8): error TS1128: Declaration or statement expected.
+src/routes/audit.routes.ts(126,5): error TS1128: Declaration or statement expected.
+src/routes/audit.routes.ts(126,7): error TS1005: 'try' expected.
+src/routes/audit.routes.ts(138,3): error TS1128: Declaration or statement expected.
+src/routes/audit.routes.ts(139,1): error TS1128: Declaration or statement expected.

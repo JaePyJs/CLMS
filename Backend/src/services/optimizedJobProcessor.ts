@@ -6,8 +6,9 @@
  */
 
 import Bull, { Job, JobOptions, Queue, QueueOptions } from 'bull';
-import { enhancedRedis } from '@/config/redis';
 import { logger } from '@/utils/logger';
+import { NoopQueue } from '@/utils/noopQueue';
+import { queuesDisabled } from '@/utils/gates';
 
 interface JobConfig {
   // Queue settings
@@ -30,7 +31,7 @@ interface JobConfig {
   // Performance settings
   drainDelay: number;
   maxMemory: number;
-    batchSize: number;
+  batchSize: number;
   batchTimeout: number;
 }
 
@@ -51,32 +52,56 @@ interface JobMetrics {
   memoryUsage: number;
 
   // Queue-specific metrics
-  byQueue: Map<string, {
-    total: number;
-    completed: number;
-    failed: number;
-    averageTime: number;
-  }>;
+  byQueue: Map<
+    string,
+    {
+      total: number;
+      completed: number;
+      failed: number;
+      averageTime: number;
+    }
+  >;
 }
+
+type JobHandler = (job: Job) => Promise<unknown>;
+
+type ExtendedJobOptions = JobOptions & {
+  concurrency?: number;
+};
 
 interface JobDefinition {
   name: string;
-  handler: (job: Job) => Promise<any>;
-  options: {
-    concurrency?: number;
-    priority?: number;
-    delay?: number;
-    attempts?: number;
-    backoff?: string;
-    removeOnComplete?: number;
-    removeOnFail?: number;
-  };
+  handler: JobHandler;
+  options?: ExtendedJobOptions;
+}
+
+interface RegisteredJobDefinition {
+  name: string;
+  handler: JobHandler;
+  options: JobOptions;
+}
+
+interface QueueStats {
+  name: string;
+  waiting: number;
+  active: number;
+  completed: number;
+  failed: number;
+  delayed: number;
+  paused: boolean;
+}
+
+interface MemorySnapshot {
+  heapUsed: string;
+  heapTotal: string;
+  external: string;
+  error?: string;
 }
 
 class OptimizedJobProcessor {
   private config: JobConfig;
   private queues: Map<string, Queue> = new Map();
-  private jobDefinitions: Map<string, JobDefinition> = new Map();
+  private jobDefinitions: Map<string, RegisteredJobDefinition> = new Map();
   private metrics: JobMetrics;
   private processingBatches: Map<string, Set<string>> = new Map();
 
@@ -88,8 +113,6 @@ class OptimizedJobProcessor {
   }
 
   private loadConfig(): JobConfig {
-    const isProduction = process.env.NODE_ENV === 'production';
-
     return {
       defaultJobOptions: {
         removeOnComplete: parseInt(process.env.JOB_REMOVE_ON_COMPLETE || '100'),
@@ -105,7 +128,9 @@ class OptimizedJobProcessor {
         stalledInterval: parseInt(process.env.JOB_STALLED_INTERVAL || '30000'),
         maxStalledCount: parseInt(process.env.JOB_MAX_STALLED_COUNT || '1'),
         guardInterval: parseInt(process.env.JOB_GUARD_INTERVAL || '5000'),
-        retryProcessDelay: parseInt(process.env.JOB_RETRY_PROCESS_DELAY || '5000'),
+        retryProcessDelay: parseInt(
+          process.env.JOB_RETRY_PROCESS_DELAY || '5000',
+        ),
       },
 
       concurrency: {
@@ -140,22 +165,39 @@ class OptimizedJobProcessor {
     };
   }
 
-  private setupGlobalQueueSettings(): void {
-    // Default Redis connection for Bull queues
-    const redisConfig = {
+  private getRedisConfig(): {
+    host: string;
+    port: number;
+    db: number;
+    password?: string;
+  } {
+    const baseConfig = {
       host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
-      db: parseInt(process.env.REDIS_DB || '1'), // Use separate DB for jobs
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      db: parseInt(process.env.REDIS_DB || '1', 10),
     };
 
-    Bull.prototype.create = function(options?: QueueOptions): Queue {
-      return new Bull(this.name, {
+    const password = process.env.REDIS_PASSWORD;
+    return password ? { ...baseConfig, password } : baseConfig;
+  }
+
+  private setupGlobalQueueSettings(): void {
+    const redisConfig = this.getRedisConfig();
+    const defaultJobOptions = this.config.defaultJobOptions;
+    const settings = this.config.settings;
+
+    Bull.prototype.create = function (
+      this: Queue,
+      options?: QueueOptions,
+    ): Queue {
+      const mergedOptions: QueueOptions = {
         redis: redisConfig,
-        defaultJobOptions: this.config.defaultJobOptions,
-        settings: this.config.settings,
+        defaultJobOptions,
+        settings,
         ...options,
-      });
+      };
+
+      return new Bull(this.name, mergedOptions);
     };
   }
 
@@ -182,17 +224,22 @@ class OptimizedJobProcessor {
       return this.queues.get(name)!;
     }
 
-    const queue = new Bull(name, {
-      redis: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379'),
-        password: process.env.REDIS_PASSWORD,
-        db: parseInt(process.env.REDIS_DB || '1'),
-      },
+    if (queuesDisabled) {
+      const queue = new NoopQueue() as unknown as Queue;
+      this.setupQueueEventListeners(queue as any, name);
+      this.queues.set(name, queue);
+      logger.warn('Queue created as Noop (queues disabled)', { name });
+      return queue;
+    }
+
+    const queueOptions: QueueOptions = {
+      redis: this.getRedisConfig(),
       defaultJobOptions: this.config.defaultJobOptions,
       settings: this.config.settings,
       ...options,
-    });
+    };
+
+    const queue = new Bull(name, queueOptions);
 
     this.setupQueueEventListeners(queue, name);
     this.queues.set(name, queue);
@@ -203,7 +250,7 @@ class OptimizedJobProcessor {
   }
 
   private setupQueueEventListeners(queue: Queue, name: string): void {
-    queue.on('completed', (job, result) => {
+    queue.on('completed', (job, _result) => {
       this.metrics.completed++;
       this.updateJobMetrics(name, job, 'completed');
 
@@ -226,7 +273,7 @@ class OptimizedJobProcessor {
       });
     });
 
-    queue.on('stalled', (job) => {
+    queue.on('stalled', job => {
       this.metrics.stalled++;
 
       logger.warn('Job stalled', {
@@ -244,7 +291,7 @@ class OptimizedJobProcessor {
       });
     });
 
-    queue.on('error', (error) => {
+    queue.on('error', error => {
       logger.error('Queue error', {
         queue: name,
         error: error.message,
@@ -254,16 +301,20 @@ class OptimizedJobProcessor {
 
   // Job registration and processing
   registerJob(jobDefinition: JobDefinition): void {
-    const { name, handler, options } = jobDefinition;
+    const { name, handler } = jobDefinition;
+    const definitionOptions = jobDefinition.options ?? {};
+
+    const { concurrency: configuredConcurrency, ...jobOptionOverrides } =
+      definitionOptions;
+    const concurrency =
+      configuredConcurrency ?? this.config.concurrency.default;
 
     let queue = this.queues.get('default');
     if (!queue) {
       queue = this.createQueue('default');
     }
 
-    const concurrency = options.concurrency || this.config.concurrency.default;
-
-    queue.process(name, concurrency, async (job) => {
+    queue.process(name, concurrency, async job => {
       const startTime = Date.now();
 
       try {
@@ -287,20 +338,26 @@ class OptimizedJobProcessor {
       }
     });
 
-    this.jobDefinitions.set(name, jobDefinition);
+    const jobOptions: JobOptions = { ...jobOptionOverrides };
+
+    this.jobDefinitions.set(name, {
+      name,
+      handler,
+      options: jobOptions,
+    });
 
     logger.info('Job registered', {
       name,
       concurrency,
-      options,
+      options: jobOptions,
     });
   }
 
   // Job creation and management
   async addJob<T>(
     name: string,
-    data: any,
-    options: JobOptions = {}
+    data: T,
+    options: JobOptions = {},
   ): Promise<Job<T>> {
     const queue = this.getQueueForJob(name);
     const jobDefinition = this.jobDefinitions.get(name);
@@ -310,10 +367,11 @@ class OptimizedJobProcessor {
     }
 
     // Merge default options with job-specific options
-    const mergedOptions = {
-      ...jobDefinition.options,
+    const definitionOptions = jobDefinition.options;
+    const mergedOptions: JobOptions = {
+      ...definitionOptions,
       ...options,
-      priority: options.priority || jobDefinition.options.priority || 0,
+      priority: options.priority ?? definitionOptions.priority ?? 0,
     };
 
     this.metrics.total++;
@@ -329,14 +387,17 @@ class OptimizedJobProcessor {
     return job;
   }
 
-  async addBulkJobs<T>(
+  async addBulkJobs(
     jobs: Array<{
       name: string;
-      data: any;
+      data: unknown;
       options?: JobOptions;
-    }>
-  ): Promise<Job<T>[]> {
-    const jobGroups = new Map<string, Array<{ data: any; options: JobOptions }>>();
+    }>,
+  ): Promise<Job[]> {
+    const jobGroups = new Map<
+      string,
+      Array<{ data: unknown; options: JobOptions }>
+    >();
 
     // Group jobs by queue
     jobs.forEach(({ name, data, options = {} }) => {
@@ -349,7 +410,7 @@ class OptimizedJobProcessor {
       jobGroups.get(queueName)!.push({ data, options });
     });
 
-    const results: Job<T>[] = [];
+    const results: Job[] = [];
 
     // Add jobs in batches per queue
     for (const [queueName, jobList] of jobGroups) {
@@ -379,19 +440,19 @@ class OptimizedJobProcessor {
   // Batch processing
   async processBatch<T>(
     name: string,
-    items: any[],
-    processor: (batch: any[]) => Promise<T[]>,
+    items: T[],
+    processor: (batch: T[]) => Promise<T[]>,
     options: {
       batchSize?: number;
       concurrency?: number;
       delay?: number;
-    } = {}
+    } = {},
   ): Promise<T[]> {
     const batchSize = options.batchSize || this.config.batchSize;
     const concurrency = options.concurrency || 1;
     const delay = options.delay || 0;
 
-    const batches: any[][] = [];
+    const batches: T[][] = [];
     for (let i = 0; i < items.length; i += batchSize) {
       batches.push(items.slice(i, i + batchSize));
     }
@@ -401,7 +462,10 @@ class OptimizedJobProcessor {
     this.processingBatches.set(name, new Set([batchId]));
 
     try {
-      const processBatchWithDelay = async (batch: any[], index: number): Promise<T[]> => {
+      const processBatchWithDelay = async (
+        batch: T[],
+        index: number,
+      ): Promise<T[]> => {
         if (delay > 0 && index > 0) {
           await new Promise(resolve => setTimeout(resolve, delay));
         }
@@ -413,7 +477,7 @@ class OptimizedJobProcessor {
       for (let i = 0; i < batches.length; i += concurrency) {
         const concurrentBatches = batches.slice(i, i + concurrency);
         const batchPromises = concurrentBatches.map((batch, index) =>
-          processBatchWithDelay(batch, i + index)
+          processBatchWithDelay(batch, i + index),
         );
 
         const batchResults = await Promise.all(batchPromises);
@@ -436,14 +500,22 @@ class OptimizedJobProcessor {
   }
 
   // Priority queue management
-  async addHighPriorityJob<T>(name: string, data: any, options: JobOptions = {}): Promise<Job<T>> {
+  async addHighPriorityJob<T>(
+    name: string,
+    data: T,
+    options: JobOptions = {},
+  ): Promise<Job<T>> {
     return this.addJob(name, data, {
       ...options,
       priority: 10, // High priority
     });
   }
 
-  async addLowPriorityJob<T>(name: string, data: any, options: JobOptions = {}): Promise<Job<T>> {
+  async addLowPriorityJob<T>(
+    name: string,
+    data: T,
+    options: JobOptions = {},
+  ): Promise<Job<T>> {
     return this.addJob(name, data, {
       ...options,
       priority: 1, // Low priority
@@ -492,13 +564,17 @@ class OptimizedJobProcessor {
   }
 
   async pauseAllQueues(): Promise<void> {
-    const promises = Array.from(this.queues.values()).map(queue => queue.pause());
+    const promises = Array.from(this.queues.values()).map(queue =>
+      queue.pause(),
+    );
     await Promise.all(promises);
     logger.info('All queues paused');
   }
 
   async resumeAllQueues(): Promise<void> {
-    const promises = Array.from(this.queues.values()).map(queue => queue.resume());
+    const promises = Array.from(this.queues.values()).map(queue =>
+      queue.resume(),
+    );
     await Promise.all(promises);
     logger.info('All queues resumed');
   }
@@ -513,22 +589,27 @@ class OptimizedJobProcessor {
   }
 
   async clearAllQueues(): Promise<void> {
-    const promises = Array.from(this.queues.keys()).map(name => this.clearQueue(name));
+    const promises = Array.from(this.queues.keys()).map(name =>
+      this.clearQueue(name),
+    );
     await Promise.all(promises);
     logger.info('All queues cleared');
   }
 
   // Monitoring and metrics
-  async getQueueStats(name: string): Promise<any> {
+  async getQueueStats(name: string): Promise<QueueStats | null> {
     const queue = this.queues.get(name);
     if (!queue) return null;
 
-    const waiting = await queue.getWaiting();
-    const active = await queue.getActive();
-    const completed = await queue.getCompleted();
-    const failed = await queue.getFailed();
-    const delayed = await queue.getDelayed();
-    const paused = await queue.getPaused();
+    const [waiting, active, completed, failed, delayed, isPaused] =
+      await Promise.all([
+        queue.getWaiting(),
+        queue.getActive(),
+        queue.getCompleted(),
+        queue.getFailed(),
+        queue.getDelayed(),
+        queue.isPaused(),
+      ]);
 
     return {
       name,
@@ -537,12 +618,12 @@ class OptimizedJobProcessor {
       completed: completed.length,
       failed: failed.length,
       delayed: delayed.length,
-      paused: paused.length,
+      paused: isPaused,
     };
   }
 
-  async getAllQueueStats(): Promise<any[]> {
-    const stats = [];
+  async getAllQueueStats(): Promise<QueueStats[]> {
+    const stats: QueueStats[] = [];
     for (const name of this.queues.keys()) {
       const stat = await this.getQueueStats(name);
       if (stat) stats.push(stat);
@@ -554,7 +635,8 @@ class OptimizedJobProcessor {
     // This would be enhanced with real-time metrics collection
     // For now, we'll calculate basic metrics
     const total = this.metrics.completed + this.metrics.failed;
-    this.metrics.errorRate = total > 0 ? (this.metrics.failed / total) * 100 : 0;
+    this.metrics.errorRate =
+      total > 0 ? (this.metrics.failed / total) * 100 : 0;
 
     // Calculate throughput (jobs per second)
     const timeWindow = 60; // 1 minute
@@ -590,7 +672,8 @@ class OptimizedJobProcessor {
       this.metrics.averageProcessingTime = duration;
     } else {
       this.metrics.averageProcessingTime =
-        (this.metrics.averageProcessingTime * (totalJobs - 1) + duration) / totalJobs;
+        (this.metrics.averageProcessingTime * (totalJobs - 1) + duration) /
+        totalJobs;
     }
   }
 
@@ -631,7 +714,7 @@ class OptimizedJobProcessor {
 
   private async cleanupOldJobs(): Promise<void> {
     const retentionDays = parseInt(process.env.JOB_RETENTION_DAYS || '7');
-    const cutoffTime = Date.now() - (retentionDays * 24 * 60 * 60 * 1000);
+    const cutoffTime = Date.now() - retentionDays * 24 * 60 * 60 * 1000;
 
     for (const [name, queue] of this.queues) {
       try {
@@ -651,8 +734,10 @@ class OptimizedJobProcessor {
       ...this.metrics,
       queueCount: this.queues.size,
       registeredJobs: this.jobDefinitions.size,
-      activeBatches: Array.from(this.processingBatches.values())
-        .reduce((total, batches) => total + batches.size, 0),
+      activeBatches: Array.from(this.processingBatches.values()).reduce(
+        (total, batches) => total + batches.size,
+        0,
+      ),
     });
   }
 
@@ -663,15 +748,16 @@ class OptimizedJobProcessor {
 
   async healthCheck(): Promise<{
     healthy: boolean;
-    queues: any[];
+    queues: QueueStats[];
     metrics: JobMetrics;
-    memory: any;
+    memory: MemorySnapshot;
   }> {
     try {
       const queueStats = await this.getAllQueueStats();
       const memoryUsage = process.memoryUsage();
 
-      const healthy = memoryUsage.heapUsed / 1024 / 1024 < this.config.maxMemory;
+      const healthy =
+        memoryUsage.heapUsed / 1024 / 1024 < this.config.maxMemory;
 
       return {
         healthy,
@@ -684,11 +770,17 @@ class OptimizedJobProcessor {
         },
       };
     } catch (error) {
+      const memoryUsage = process.memoryUsage();
       return {
         healthy: false,
         queues: [],
         metrics: this.getMetrics(),
-        memory: { error: (error as Error).message },
+        memory: {
+          heapUsed: `${(memoryUsage.heapUsed / 1024 / 1024).toFixed(2)}MB`,
+          heapTotal: `${(memoryUsage.heapTotal / 1024 / 1024).toFixed(2)}MB`,
+          external: `${(memoryUsage.external / 1024 / 1024).toFixed(2)}MB`,
+          error: (error as Error).message,
+        },
       };
     }
   }
@@ -703,7 +795,9 @@ class OptimizedJobProcessor {
     await new Promise(resolve => setTimeout(resolve, this.config.drainDelay));
 
     // Close all queues
-    const closePromises = Array.from(this.queues.values()).map(queue => queue.close());
+    const closePromises = Array.from(this.queues.values()).map(queue =>
+      queue.close(),
+    );
     await Promise.all(closePromises);
 
     logger.info('Job processor shutdown completed');

@@ -57,20 +57,22 @@ class AuditLogger {
     };
 
     try {
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
-          userId: auditEntry.userId,
-          userRole: auditEntry.userRole,
+          id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          entity: auditEntry.endpoint || 'unknown',
           action: auditEntry.action,
-          endpoint: auditEntry.endpoint,
-          method: auditEntry.method,
-          ipAddress: auditEntry.ip,
-          userAgent: auditEntry.userAgent,
-          requestData: this.sanitizeForLogging(auditEntry.requestData),
-          timestamp: auditEntry.timestamp,
-          success: auditEntry.success,
-          statusCode: auditEntry.statusCode,
-          duration: auditEntry.duration
+          entity_id: auditEntry.userId || 'system',
+          performed_by: auditEntry.userRole || 'system',
+          ip_address: auditEntry.ip,
+          user_agent: auditEntry.userAgent || null,
+          old_values: this.sanitizeForLogging(auditEntry.requestData),
+          created_at: auditEntry.timestamp,
+          new_values: {
+            success: auditEntry.success,
+            statusCode: auditEntry.statusCode,
+            duration: auditEntry.duration
+          }
         }
       });
 
@@ -92,15 +94,17 @@ class AuditLogger {
     };
 
     try {
-      await prisma.auditLog.updateMany({
+      await prisma.audit_logs.updateMany({
         where: {
-          userId: entry.userId,
-          action: entry.action,
-          timestamp: {
+          ...(entry.userId && { entity_id: entry.userId }),
+          ...(entry.action && { action: entry.action }),
+          created_at: {
             gte: new Date(Date.now() - 60000) // Last minute
           }
         },
-        data: updateData
+        data: {
+          new_values: updateData
+        }
       });
     } catch (error) {
       console.error('Failed to update audit entry:', error);
@@ -109,16 +113,16 @@ class AuditLogger {
 
   async logSecurityEvent(eventType: string, details: any): Promise<void> {
     try {
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
+          id: `security_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          entity: 'system',
           action: `SECURITY_${eventType.toUpperCase()}`,
-          endpoint: 'system',
-          method: 'SYSTEM',
-          ipAddress: details.ip || 'system',
-          requestData: this.sanitizeForLogging(details),
-          timestamp: new Date(),
-          success: false,
-          userRole: 'SYSTEM'
+          entity_id: 'system',
+          performed_by: 'SYSTEM',
+          ip_address: details.ip || 'system',
+          old_values: this.sanitizeForLogging(details),
+          created_at: new Date()
         }
       });
     } catch (error) {
@@ -144,8 +148,8 @@ export const auditMiddleware = (action: string) => {
       action,
       endpoint,
       method,
-      ip: req.ip,
-      userAgent: req.get('User-Agent'),
+      ip: req.ip || 'unknown',
+      userAgent: req.get('User-Agent') || 'unknown',
       requestData: {
         body: req.body,
         query: req.query,

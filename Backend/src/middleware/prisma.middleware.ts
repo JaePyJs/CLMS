@@ -63,7 +63,7 @@ export function prismaMiddleware(): Prisma.Middleware {
 /**
  * Handle create operations by adding ID and timestamps
  */
-async function handleCreateOperation(model: string, data: any): Promise<any> {
+async function handleCreateOperation(model: string | undefined, data: any): Promise<any> {
   if (!data) return data;
 
   // Handle single record creation
@@ -81,7 +81,7 @@ async function handleCreateOperation(model: string, data: any): Promise<any> {
     }
 
     // Add updated_at timestamp if field exists and not provided
-    if (hasUpdatedAtField(model) && !processedData.updated_at) {
+    if (model && hasUpdatedAtField(model) && !processedData.updated_at) {
       processedData.updated_at = new Date();
     }
 
@@ -113,13 +113,13 @@ async function handleCreateOperation(model: string, data: any): Promise<any> {
 /**
  * Handle update operations by updating timestamps
  */
-async function handleUpdateOperation(model: string, data: any): Promise<any> {
+async function handleUpdateOperation(model: string | undefined, data: any): Promise<any> {
   if (!data || typeof data !== 'object') return data;
 
   const processedData = { ...data };
 
   // Always update the updated_at field for update operations
-  if (hasUpdatedAtField(model) && !processedData.updated_at) {
+  if (model && hasUpdatedAtField(model) && !processedData.updated_at) {
     processedData.updated_at = new Date();
   }
 
@@ -129,7 +129,7 @@ async function handleUpdateOperation(model: string, data: any): Promise<any> {
 /**
  * Check if the model has an id field
  */
-function hasIdField(model: string): boolean {
+function hasIdField(model: string | undefined): boolean {
   const modelsWithId = [
     'audit_logs',
     'automation_jobs',
@@ -151,13 +151,14 @@ function hasIdField(model: string): boolean {
     'users',
   ];
 
+  if (!model) return false;
   return modelsWithId.includes(model);
 }
 
 /**
  * Check if the model has a created_at field
  */
-function hasCreatedAtField(model: string): boolean {
+function hasCreatedAtField(model: string | undefined): boolean {
   const modelsWithCreatedAt = [
     'audit_logs',
     'automation_jobs',
@@ -179,13 +180,14 @@ function hasCreatedAtField(model: string): boolean {
     'users',
   ];
 
+  if (!model) return false;
   return modelsWithCreatedAt.includes(model);
 }
 
 /**
  * Check if the model has an updated_at field
  */
-function hasUpdatedAtField(model: string): boolean {
+function hasUpdatedAtField(model: string | undefined): boolean {
   const modelsWithUpdatedAt = [
     'automation_jobs',
     'book_checkouts',
@@ -202,6 +204,7 @@ function hasUpdatedAtField(model: string): boolean {
     'users',
   ];
 
+  if (!model) return false;
   return modelsWithUpdatedAt.includes(model);
 }
 

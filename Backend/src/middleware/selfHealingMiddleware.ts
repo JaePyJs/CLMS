@@ -1,10 +1,19 @@
 import type { Request, Response, NextFunction } from 'express';
-import { BaseError } from '@/utils/errors';
+import { BaseError } from '../utils/errors';
 import { enhancedErrorHandler, ErrorCategory, ErrorSeverity } from './errorMiddleware';
-import { recoveryService } from '@/services/recoveryService';
-import { errorReportingService } from '@/services/errorReportingService';
-import { errorNotificationService } from '@/services/errorNotificationService';
-import { logger } from '@/utils/logger';
+import { recoveryService } from '../services/recoveryService';
+import { errorReportingService } from '../services/errorReportingService';
+import { errorNotificationService } from '../services/errorNotificationService';
+import { logger } from '../utils/logger';
+
+// Extend Request interface to include timeout
+declare global {
+  namespace Express {
+    interface Request {
+      timeout?: number;
+    }
+  }
+}
 
 export interface HealingStrategy {
   id: string;
@@ -222,7 +231,10 @@ export class SelfHealingMiddleware {
             try {
               // Calculate retry delay based on rate limit headers
               const retryAfter = res.getHeader('Retry-After') || 60;
-              await new Promise(resolve => setTimeout(resolve, parseInt(retryAfter) * 1000));
+              const delay = typeof retryAfter === 'string' ? parseInt(retryAfter) : 
+                           typeof retryAfter === 'number' ? retryAfter : 
+                           Array.isArray(retryAfter) ? parseInt(retryAfter[0] || '60') : 60;
+              await new Promise(resolve => setTimeout(resolve, delay * 1000));
               return true;
             } catch (retryError) {
               logger.error('Rate limit retry failed', { retryError });
@@ -313,7 +325,7 @@ export class SelfHealingMiddleware {
 
     // Store original end method to intercept responses
     const originalEnd = res.end;
-    res.end = function(this: Response, ...args: any[]) {
+    (res.end as any) = function(this: Response, chunk?: any, encoding?: BufferEncoding, cb?: () => void): Response {
       const duration = Date.now() - startTime;
 
       // Check if response indicates an error
@@ -332,7 +344,7 @@ export class SelfHealingMiddleware {
           });
       }
 
-      return originalEnd.apply(this, args);
+      return originalEnd.call(this, chunk, encoding as BufferEncoding, cb);
     };
 
     next();
@@ -344,8 +356,8 @@ export class SelfHealingMiddleware {
     if (!strategy) {
       logger.debug('No healing strategy found for error', {
         errorType: error.constructor.name,
-        category: error.category,
-        severity: error.severity,
+        category: (error as any).category || 'UNKNOWN',
+        severity: (error as any).severity || 'MEDIUM',
       });
       return {
         strategy: 'none',
@@ -418,7 +430,7 @@ export class SelfHealingMiddleware {
           type: action.type,
           success: actionSuccess,
           duration: Date.now() - actionStartTime,
-          error: actionError,
+          ...(actionError ? { error: actionError } : {}),
         });
 
         // If action succeeded, stop trying more actions
@@ -447,7 +459,7 @@ export class SelfHealingMiddleware {
       await this.reportHealingResult(req, error, result);
 
       // Send notification if healing failed
-      if (!overallSuccess && error.severity === ErrorSeverity.CRITICAL) {
+      if (!overallSuccess && (error as any).severity === ErrorSeverity.CRITICAL) {
         await this.notifyHealingFailure(req, error, result);
       }
 
@@ -469,17 +481,17 @@ export class SelfHealingMiddleware {
   }
 
   private findMatchingStrategy(error: BaseError): HealingStrategy | null {
-    for (const strategy of this.strategies.values()) {
+    for (const strategy of Array.from(this.strategies.values())) {
       // Check error type
       const errorTypeMatch = strategy.errorTypes.some(type =>
         error.constructor.name === type || error.code === type
       );
 
       // Check category
-      const categoryMatch = strategy.category === error.category;
+      const categoryMatch = strategy.category === (error as any).category;
 
       // Check severity
-      const severityMatch = strategy.severity.includes(error.severity!);
+      const severityMatch = strategy.severity.includes((error as any).severity!);
 
       if (errorTypeMatch && categoryMatch && severityMatch) {
         return strategy;
@@ -541,7 +553,7 @@ export class SelfHealingMiddleware {
       const context = {
         requestId: req.headers['x-request-id'] as string || 'unknown',
         userId: (req as any).user?.id,
-        ip: req.ip,
+        ip: req.ip || 'unknown',
         userAgent: req.get('User-Agent') || 'unknown',
         method: req.method,
         url: req.originalUrl,
@@ -571,7 +583,7 @@ export class SelfHealingMiddleware {
       const context = {
         requestId: req.headers['x-request-id'] as string || 'unknown',
         userId: (req as any).user?.id,
-        ip: req.ip,
+        ip: req.ip || 'unknown',
         userAgent: req.get('User-Agent') || 'unknown',
         method: req.method,
         url: req.originalUrl,
@@ -590,7 +602,7 @@ export class SelfHealingMiddleware {
     setInterval(() => {
       const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
 
-      for (const [strategyId, history] of this.activationHistory.entries()) {
+      for (const [strategyId, history] of Array.from(this.activationHistory.entries())) {
         const filteredHistory = history.filter(h => h.timestamp >= cutoff);
         this.activationHistory.set(strategyId, filteredHistory);
       }
@@ -621,7 +633,7 @@ export class SelfHealingMiddleware {
       const strategyHistory = this.activationHistory.get(strategyId) || [];
       history.push(...strategyHistory.map(h => ({ strategy: strategyId, ...h })));
     } else {
-      for (const [id, strategyHistory] of this.activationHistory.entries()) {
+      for (const [id, strategyHistory] of Array.from(this.activationHistory.entries())) {
         history.push(...strategyHistory.map(h => ({ strategy: id, ...h })));
       }
     }

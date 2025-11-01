@@ -23,7 +23,7 @@ enum RateLimitAlgorithm {
   TOKEN_BUCKET = 'token_bucket',
   FIXED_WINDOW = 'fixed_window',
   SLIDING_WINDOW = 'sliding_window',
-  EXPONENTIAL_BACKOFF = 'exponential_backoff'
+  EXPONENTIAL_BACKOFF = 'exponential_backoff',
 }
 
 interface RateLimitResult {
@@ -33,19 +33,32 @@ interface RateLimitResult {
   totalHits: number;
 }
 
+type RequestWithUser = Request & {
+  user?: {
+    id?: string;
+    role?: string;
+  };
+  requestId?: string;
+};
+
 class RateLimitService {
   private redis: Redis;
   private defaultConfig: RateLimitConfig;
-  private roleBasedLimits: RoleBasedRateLimit;
+  private roleBasedLimits: RoleBasedRateLimit = {};
 
   constructor() {
-    this.redis = new Redis({
+    const redisOptions = {
       host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
-      maxRetries: 3,
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      maxRetriesPerRequest: 3,
       lazyConnect: true,
-    });
+    } as const;
+
+    this.redis = new Redis(
+      process.env.REDIS_PASSWORD
+        ? { ...redisOptions, password: process.env.REDIS_PASSWORD }
+        : redisOptions,
+    );
 
     this.setupRoleBasedLimits();
     this.defaultConfig = {
@@ -66,7 +79,7 @@ class RateLimitService {
         max: 5000,
         skipSuccessfulRequests: false,
         skipFailedRequests: false,
-        headers: true
+        headers: true,
       },
       // Admins have high limits
       ADMIN: {
@@ -74,7 +87,7 @@ class RateLimitService {
         max: 2000,
         skipSuccessfulRequests: false,
         skipFailedRequests: false,
-        headers: true
+        headers: true,
       },
       // Librarians have moderate limits
       LIBRARIAN: {
@@ -82,7 +95,7 @@ class RateLimitService {
         max: 1000,
         skipSuccessfulRequests: false,
         skipFailedRequests: false,
-        headers: true
+        headers: true,
       },
       // Teachers have lower limits
       TEACHER: {
@@ -90,7 +103,7 @@ class RateLimitService {
         max: 500,
         skipSuccessfulRequests: false,
         skipFailedRequests: false,
-        headers: true
+        headers: true,
       },
       // Students have the lowest limits
       STUDENT: {
@@ -98,7 +111,7 @@ class RateLimitService {
         max: 200,
         skipSuccessfulRequests: false,
         skipFailedRequests: false,
-        headers: true
+        headers: true,
       },
       // Viewers have very limited access
       VIEWER: {
@@ -106,7 +119,7 @@ class RateLimitService {
         max: 100,
         skipSuccessfulRequests: false,
         skipFailedRequests: false,
-        headers: true
+        headers: true,
       },
       // Unauthenticated users have very strict limits
       UNAUTHENTICATED: {
@@ -114,20 +127,23 @@ class RateLimitService {
         max: 50,
         skipSuccessfulRequests: false,
         skipFailedRequests: false,
-        headers: true
-      }
+        headers: true,
+      },
     };
   }
 
   // Get user role from request
-  private getUserRole(req: Request): string {
-    const user = (req as any).user;
+  private getUserRole(req: RequestWithUser): string {
+    const user = req.user;
     return user?.role || 'UNAUTHENTICATED';
   }
 
   // Generate rate limit key
-  private generateKey(req: Request, algorithm: RateLimitAlgorithm): string {
-    const user = (req as any).user;
+  private generateKey(
+    req: RequestWithUser,
+    algorithm: RateLimitAlgorithm,
+  ): string {
+    const user = req.user;
     const role = this.getUserRole(req);
     const ip = req.ip || req.connection.remoteAddress || 'unknown';
     const endpoint = req.path;
@@ -149,27 +165,43 @@ class RateLimitService {
   /**
    * Create rate limiting middleware (legacy support)
    */
-  createRateLimit(config: Partial<RateLimitConfig> = {}) {
-    return this.createRoleBasedRateLimit(RateLimitAlgorithm.SLIDING_WINDOW, config);
+  createRateLimit(
+    config: Partial<RateLimitConfig> = {},
+  ): (
+    req: RequestWithUser,
+    res: Response,
+    next: NextFunction,
+  ) => Promise<void> {
+    return this.createRoleBasedRateLimit(
+      RateLimitAlgorithm.SLIDING_WINDOW,
+      config,
+    );
   }
 
   /**
    * Create advanced rate limiting with multiple tiers
    */
-  createTieredRateLimit(tiers: Array<{
-    max: number;
-    windowMs: number;
-    priority?: number;
-    conditions?: (req: any) => boolean;
-  }>) {
-    return async (req: any, res: any, next: any): Promise<void> => {
+  createTieredRateLimit(
+    tiers: Array<{
+      max: number;
+      windowMs: number;
+      priority?: number;
+      conditions?: (req: RequestWithUser) => boolean;
+    }>,
+  ) {
+    return async (
+      req: RequestWithUser,
+      res: Response,
+      next: NextFunction,
+    ): Promise<void> => {
       try {
         // Find applicable tier
         const tier = tiers.find(t => !t.conditions || t.conditions(req));
 
         if (!tier) {
           // No matching tier, use default
-          return this.createRateLimit()(req, res, next);
+          await this.createRateLimit()(req, res, next);
+          return;
         }
 
         // Create rate limit for this tier
@@ -179,7 +211,7 @@ class RateLimitService {
           message: `Rate limit exceeded (${tier.max} requests per ${tier.windowMs / 1000}s)`,
         };
 
-        return this.createRateLimit(tieredConfig)(req, res, next);
+        await this.createRateLimit(tieredConfig)(req, res, next);
       } catch (error) {
         logger.error('Tiered rate limiting error', {
           error: (error as Error).message,
@@ -192,11 +224,17 @@ class RateLimitService {
   /**
    * Create user-based rate limiting
    */
-  createUserRateLimit(config: Partial<RateLimitConfig> = {}) {
+  createUserRateLimit(
+    config: Partial<RateLimitConfig> = {},
+  ): (
+    req: RequestWithUser,
+    res: Response,
+    next: NextFunction,
+  ) => Promise<void> {
     const userConfig: RateLimitConfig = {
       ...this.defaultConfig,
       ...config,
-      keyGenerator: (req: any) => {
+      keyGenerator: (req: RequestWithUser) => {
         // Use user ID if authenticated, otherwise IP
         const user = req.user;
         return user ? `user:${user.id}` : `ip:${req.ip}`;
@@ -211,9 +249,13 @@ class RateLimitService {
    */
   createEndpointRateLimit(
     endpointConfig: Record<string, Partial<RateLimitConfig>>,
-    defaultConfig: Partial<RateLimitConfig> = {}
+    defaultConfig: Partial<RateLimitConfig> = {},
   ) {
-    return (req: any, res: any, next: any): void => {
+    return async (
+      req: RequestWithUser,
+      res: Response,
+      next: NextFunction,
+    ): Promise<void> => {
       const route = req.route?.path || req.path;
       const method = req.method;
       const key = `${method}:${route}`;
@@ -226,7 +268,8 @@ class RateLimitService {
           keyGenerator: () => `${key}:${req.ip}`,
         });
 
-        return middleware(req, res, next);
+        await middleware(req, res, next);
+        return;
       }
 
       next();
@@ -236,7 +279,10 @@ class RateLimitService {
   /**
    * Get rate limit status for a specific key
    */
-  async getRateLimitStatus(key: string, windowMs: number): Promise<RateLimitResult> {
+  async getRateLimitStatus(
+    key: string,
+    windowMs: number,
+  ): Promise<RateLimitResult> {
     try {
       const now = Date.now();
       const windowStart = now - windowMs;
@@ -246,7 +292,7 @@ class RateLimitService {
 
       // Get TTL for reset time
       const ttl = await this.redis.ttl(key);
-      const resetTime = new Date(now + (ttl * 1000));
+      const resetTime = new Date(now + ttl * 1000);
 
       return {
         allowed: true,
@@ -291,6 +337,7 @@ class RateLimitService {
   async getRateLimitStats(): Promise<{
     totalKeys: number;
     activeLimits: number;
+    totalRequests: number;
     topViolators: Array<{ key: string; count: number }>;
     distribution: Record<string, number>;
   }> {
@@ -302,26 +349,29 @@ class RateLimitService {
       const violators: Array<{ key: string; count: number }> = [];
       const distribution: Record<string, number> = {};
 
-      for (const key of keys.slice(0, 100)) { // Limit to prevent too many operations
+      for (const key of keys.slice(0, 100)) {
+        // Limit to prevent too many operations
         try {
           const count = await this.redis.zcard(key);
           totalRequests += count;
 
-          if (count > 100) { // Consider as potential violator
+          if (count > 100) {
+            // Consider as potential violator
             violators.push({ key, count });
           }
 
           // Distribution analysis
           const range = this.getRequestRange(count);
           distribution[range] = (distribution[range] || 0) + 1;
-        } catch (error) {
-          // Skip failed keys
+        } catch {
+          // Skip keys that fail during inspection
         }
       }
 
       return {
         totalKeys: keys.length,
         activeLimits: keys.length,
+        totalRequests,
         topViolators: violators.sort((a, b) => b.count - a.count).slice(0, 10),
         distribution,
       };
@@ -333,6 +383,7 @@ class RateLimitService {
       return {
         totalKeys: 0,
         activeLimits: 0,
+        totalRequests: 0,
         topViolators: [],
         distribution: {},
       };
@@ -343,11 +394,16 @@ class RateLimitService {
    * Create adaptive rate limiting based on system load
    */
   createAdaptiveRateLimit(config: Partial<RateLimitConfig> = {}) {
-    return async (req: any, res: any, next: any): Promise<void> => {
+    return async (
+      req: RequestWithUser,
+      res: Response,
+      next: NextFunction,
+    ): Promise<void> => {
       try {
         // Get current system metrics
         const memoryUsage = process.memoryUsage();
-        const memoryPercent = (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
+        const memoryPercent =
+          (memoryUsage.heapUsed / memoryUsage.heapTotal) * 100;
 
         // Adjust rate limits based on system load
         let adjustedMax = config.max || this.defaultConfig.max;
@@ -377,7 +433,7 @@ class RateLimitService {
           adjustedWindow,
         });
 
-        return this.createRateLimit(adaptiveConfig)(req, res, next);
+        await this.createRateLimit(adaptiveConfig)(req, res, next);
       } catch (error) {
         logger.error('Adaptive rate limiting error', {
           error: (error as Error).message,
@@ -391,9 +447,14 @@ class RateLimitService {
    * Main rate limiting method with role-based support and multiple algorithms
    */
   public async checkRateLimit(
-    req: Request,
-    algorithm: RateLimitAlgorithm = RateLimitAlgorithm.TOKEN_BUCKET
-  ): Promise<{ allowed: boolean; remaining: number; resetTime: number; config: RateLimitConfig }> {
+    req: RequestWithUser,
+    algorithm: RateLimitAlgorithm = RateLimitAlgorithm.TOKEN_BUCKET,
+  ): Promise<{
+    allowed: boolean;
+    remaining: number;
+    resetTime: number;
+    config: RateLimitConfig;
+  }> {
     const role = this.getUserRole(req);
     const config = this.roleBasedLimits[role] || this.defaultConfig;
 
@@ -423,15 +484,15 @@ class RateLimitService {
         algorithm,
         ip: req.ip,
         userAgent: req.get('User-Agent'),
-        requestId: (req as any).requestId,
+        requestId: req.requestId,
         endpoint: req.path,
-        method: req.method
+        method: req.method,
       });
     }
 
     return {
       ...result,
-      config
+      config,
     };
   }
 
@@ -439,8 +500,8 @@ class RateLimitService {
    * Token bucket algorithm implementation
    */
   private async tokenBucket(
-    req: Request,
-    config: RateLimitConfig
+    req: RequestWithUser,
+    config: RateLimitConfig,
   ): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
     const key = this.generateKey(req, RateLimitAlgorithm.TOKEN_BUCKET);
     const now = Date.now();
@@ -457,7 +518,7 @@ class RateLimitService {
 
       // Refill tokens based on time passed
       const timePassed = (now - lastRefill) / 1000;
-      tokens = Math.min(maxTokens, tokens + (timePassed * refillRate));
+      tokens = Math.min(maxTokens, tokens + timePassed * refillRate);
 
       // Check if request can be processed
       if (tokens >= 1) {
@@ -466,7 +527,7 @@ class RateLimitService {
         // Update bucket state
         await this.redis.hset(`bucket:${key}`, {
           tokens: tokens.toString(),
-          lastRefill: now.toString()
+          lastRefill: now.toString(),
         });
 
         await this.redis.expire(`bucket:${key}`, Math.ceil(windowSize / 1000));
@@ -474,13 +535,13 @@ class RateLimitService {
         return {
           allowed: true,
           remaining: Math.floor(tokens),
-          resetTime: now + windowSize
+          resetTime: now + windowSize,
         };
       } else {
         return {
           allowed: false,
           remaining: 0,
-          resetTime: now + windowSize
+          resetTime: now + windowSize,
         };
       }
     } catch (error) {
@@ -494,8 +555,8 @@ class RateLimitService {
    * Fixed window algorithm implementation
    */
   private async fixedWindow(
-    req: Request,
-    config: RateLimitConfig
+    req: RequestWithUser,
+    config: RateLimitConfig,
   ): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
     const key = this.generateKey(req, RateLimitAlgorithm.FIXED_WINDOW);
     const now = Date.now();
@@ -507,13 +568,16 @@ class RateLimitService {
       const currentCount = await this.redis.incr(`fixed:${key}:${windowStart}`);
 
       if (currentCount === 1) {
-        await this.redis.expire(`fixed:${key}:${windowStart}`, Math.ceil(windowSize / 1000));
+        await this.redis.expire(
+          `fixed:${key}:${windowStart}`,
+          Math.ceil(windowSize / 1000),
+        );
       }
 
       return {
         allowed: currentCount <= config.max,
         remaining: Math.max(0, config.max - currentCount),
-        resetTime: windowEnd
+        resetTime: windowEnd,
       };
     } catch (error) {
       logger.error('Fixed window algorithm error', { error, key });
@@ -526,8 +590,8 @@ class RateLimitService {
    * Exponential backoff algorithm implementation
    */
   private async exponentialBackoff(
-    req: Request,
-    config: RateLimitConfig
+    req: RequestWithUser,
+    config: RateLimitConfig,
   ): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
     const key = this.generateKey(req, RateLimitAlgorithm.EXPONENTIAL_BACKOFF);
     const now = Date.now();
@@ -544,14 +608,14 @@ class RateLimitService {
         return {
           allowed: false,
           remaining: 0,
-          resetTime: blockedUntil
+          resetTime: blockedUntil,
         };
       }
 
       // Calculate backoff delay
       const backoffDelay = Math.min(
         config.windowMs,
-        Math.pow(2, attemptCount) * 1000 // Exponential backoff
+        Math.pow(2, attemptCount) * 1000, // Exponential backoff
       );
 
       // Check if enough time has passed since last attempt
@@ -560,15 +624,18 @@ class RateLimitService {
         const newBlockedUntil = now + backoffDelay;
 
         await this.redis.hset(`backoff:${key}`, {
-          blockedUntil: newBlockedUntil.toString()
+          blockedUntil: newBlockedUntil.toString(),
         });
 
-        await this.redis.expire(`backoff:${key}`, Math.ceil(backoffDelay / 1000) + 1);
+        await this.redis.expire(
+          `backoff:${key}`,
+          Math.ceil(backoffDelay / 1000) + 1,
+        );
 
         return {
           allowed: false,
           remaining: 0,
-          resetTime: newBlockedUntil
+          resetTime: newBlockedUntil,
         };
       }
 
@@ -577,15 +644,18 @@ class RateLimitService {
 
       await this.redis.hset(`backoff:${key}`, {
         attempts: attemptCount.toString(),
-        lastAttempt: now.toString()
+        lastAttempt: now.toString(),
       });
 
-      await this.redis.expire(`backoff:${key}`, Math.ceil(config.windowMs / 1000) + 1);
+      await this.redis.expire(
+        `backoff:${key}`,
+        Math.ceil(config.windowMs / 1000) + 1,
+      );
 
       return {
         allowed: true,
         remaining: Math.max(0, config.max - attemptCount),
-        resetTime: now + config.windowMs
+        resetTime: now + config.windowMs,
       };
     } catch (error) {
       logger.error('Exponential backoff algorithm error', { error, key });
@@ -599,9 +669,13 @@ class RateLimitService {
    */
   public createRoleBasedRateLimit(
     algorithm: RateLimitAlgorithm = RateLimitAlgorithm.TOKEN_BUCKET,
-    customConfig?: Partial<RateLimitConfig>
+    customConfig?: Partial<RateLimitConfig>,
   ) {
-    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    return async (
+      req: RequestWithUser,
+      res: Response,
+      next: NextFunction,
+    ): Promise<void> => {
       try {
         const role = this.getUserRole(req);
         const baseConfig = this.roleBasedLimits[role] || this.defaultConfig;
@@ -613,7 +687,10 @@ class RateLimitService {
         if (config.headers) {
           res.setHeader('X-RateLimit-Limit', config.max.toString());
           res.setHeader('X-RateLimit-Remaining', result.remaining.toString());
-          res.setHeader('X-RateLimit-Reset', Math.ceil(result.resetTime / 1000).toString());
+          res.setHeader(
+            'X-RateLimit-Reset',
+            Math.ceil(result.resetTime / 1000).toString(),
+          );
           res.setHeader('X-RateLimit-Algorithm', algorithm);
           res.setHeader('X-RateLimit-Role', role);
         }
@@ -634,7 +711,7 @@ class RateLimitService {
             endpoint: req.path,
             method: req.method,
             retryAfter,
-            requestId: (req as any).requestId
+            requestId: req.requestId,
           });
 
           res.status(429).json({
@@ -648,15 +725,18 @@ class RateLimitService {
               remaining: result.remaining,
               resetTime: result.resetTime,
               algorithm,
-              role
-            }
+              role,
+            },
           });
           return;
         }
 
         next();
       } catch (error) {
-        logger.error('Rate limiting middleware error', { error, requestId: (req as any).requestId });
+        logger.error('Rate limiting middleware error', {
+          error,
+          requestId: req.requestId,
+        });
 
         // Fail open - allow request if rate limiting fails
         next();
@@ -668,16 +748,15 @@ class RateLimitService {
    * Progressive rate limiting for abusive behavior
    */
   public async progressiveRateLimit(
-    req: Request,
-    violations: number
+    req: RequestWithUser,
+    violations: number,
   ): Promise<{ allowed: boolean; penaltyMinutes: number }> {
     const role = this.getUserRole(req);
-    const baseConfig = this.roleBasedLimits[role] || this.defaultConfig;
 
     // Calculate progressive penalty
     const penaltyMinutes = Math.min(
       60 * 24, // Max 24 hours
-      Math.pow(2, violations - 1) * 5 // Start at 5 minutes
+      Math.pow(2, violations - 1) * 5, // Start at 5 minutes
     );
 
     const penaltyMs = penaltyMinutes * 60 * 1000;
@@ -690,12 +769,16 @@ class RateLimitService {
       if (blockedUntil && parseInt(blockedUntil) > now) {
         return {
           allowed: false,
-          penaltyMinutes: Math.ceil((parseInt(blockedUntil) - now) / 60000)
+          penaltyMinutes: Math.ceil((parseInt(blockedUntil) - now) / 60000),
         };
       }
 
       // Set progressive block
-      await this.redis.setex(key, Math.ceil(penaltyMs / 1000), (now + penaltyMs).toString());
+      await this.redis.setex(
+        key,
+        Math.ceil(penaltyMs / 1000),
+        (now + penaltyMs).toString(),
+      );
 
       logger.warn('Progressive rate limit applied', {
         key,
@@ -704,12 +787,12 @@ class RateLimitService {
         penaltyMinutes,
         ip: req.ip,
         endpoint: req.path,
-        requestId: (req as any).requestId
+        requestId: req.requestId,
       });
 
       return {
         allowed: false,
-        penaltyMinutes
+        penaltyMinutes,
       };
     } catch (error) {
       logger.error('Progressive rate limiting error', { error, key });
@@ -728,11 +811,12 @@ class RateLimitService {
       for (const key of keys) {
         try {
           const ttl = await this.redis.ttl(key);
-          if (ttl === -1) { // No expiration set
+          if (ttl === -1) {
+            // No expiration set
             await this.redis.expire(key, 3600); // Set 1 hour expiration
             deleted++;
           }
-        } catch (error) {
+        } catch (_error) {
           // Skip failed keys
         }
       }
@@ -758,8 +842,8 @@ class RateLimitService {
    * Sliding window algorithm implementation
    */
   private async slidingWindow(
-    req: Request,
-    config: RateLimitConfig
+    req: RequestWithUser,
+    config: RateLimitConfig,
   ): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
     const key = this.generateKey(req, RateLimitAlgorithm.SLIDING_WINDOW);
     const now = Date.now();
@@ -781,12 +865,12 @@ class RateLimitService {
       pipeline.expire(`sliding:${key}`, Math.ceil(windowSize / 1000) + 1);
 
       const results = await pipeline.exec();
-      const currentCount = results?.[2]?.[1] as number || 0;
+      const currentCount = (results?.[2]?.[1] as number) || 0;
 
       return {
         allowed: currentCount <= config.max,
         remaining: Math.max(0, config.max - currentCount),
-        resetTime: now + windowSize
+        resetTime: now + windowSize,
       };
     } catch (error) {
       logger.error('Sliding window algorithm error', { error, key });
@@ -794,17 +878,17 @@ class RateLimitService {
       return {
         allowed: true,
         remaining: config.max - 1,
-        resetTime: now + windowSize
+        resetTime: now + windowSize,
       };
     }
   }
 
   private async trackRequest(
-    req: any,
-    res: any,
+    req: RequestWithUser,
+    res: Response,
     config: RateLimitConfig,
     key: string,
-    timestamp: number
+    timestamp: number,
   ): Promise<void> {
     try {
       const isSuccess = res.statusCode < 400;

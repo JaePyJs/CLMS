@@ -3,6 +3,7 @@ import * as path from 'path';
 import type { Request, Response, NextFunction } from 'express';
 import type { TransformableInfo } from 'logform';
 import winston from 'winston';
+import { buildLogEntry, getCurrentTimestamp } from './common';
 
 type Metadata = Record<string, unknown>;
 
@@ -10,31 +11,6 @@ const logsDir = path.join(process.cwd(), 'logs');
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
-
-const buildLogEntry = (info: TransformableInfo): string => {
-  const { level, message, stack, ...meta } = info;
-  const timestamp =
-    typeof info.timestamp === 'string'
-      ? info.timestamp
-      : new Date().toISOString();
-  const levelLabel =
-    typeof level === 'string' ? level.toUpperCase() : String(level);
-  const text = typeof message === 'string' ? message : JSON.stringify(message);
-
-  let log = `${timestamp} [${levelLabel}]: ${text}`;
-
-  if (Object.keys(meta).length > 0) {
-    log += ` ${JSON.stringify(meta)}`;
-  }
-
-  if (stack) {
-    const stackTrace =
-      typeof stack === 'string' ? stack : JSON.stringify(stack, null, 2);
-    log += `\n${stackTrace}`;
-  }
-
-  return log;
-};
 
 const customFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -104,7 +80,7 @@ if (process.env.NODE_ENV !== 'production') {
   );
 }
 
-const withTimestamp = (): string => new Date().toISOString();
+const withTimestamp = (): string => getCurrentTimestamp();
 
 export const auditLogger = {
   log: (

@@ -1,42 +1,75 @@
 import Bull, { Job, JobOptions } from 'bull';
-import { PrismaClient, notifications_type, notifications_priority } from '@prisma/client';
+import {
+  PrismaClient,
+  notifications_type,
+  notifications_priority,
+} from '@prisma/client';
 import { notificationService } from '../services/notification.service';
 import { logger } from '../utils/logger';
 import cron from 'node-cron';
+import { NoopQueue } from '../utils/noopQueue';
 
 const prisma = new PrismaClient();
 
+const queuesDisabled = process.env.DISABLE_QUEUES === 'true';
+const disableScheduledTasks = process.env.DISABLE_SCHEDULED_TASKS === 'true';
+
 // Create notification queues
-const notificationQueue = new Bull('notifications', {
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
-  },
-  defaultJobOptions: {
-    removeOnComplete: 50,
-    removeOnFail: 20,
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 2000,
+let notificationQueue: any;
+if (queuesDisabled) {
+  logger.warn('DISABLE_QUEUES=true; notification queue will not initialize');
+  notificationQueue = new NoopQueue();
+} else {
+  notificationQueue = new Bull('notifications', {
+    redis: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
     },
-  },
+    defaultJobOptions: {
+      removeOnComplete: 50,
+      removeOnFail: 20,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 2000,
+      },
+    },
+  });
+}
+
+let scheduledNotificationQueue: any;
+if (queuesDisabled) {
+  logger.warn('DISABLE_QUEUES=true; scheduled notification queue will not initialize');
+  scheduledNotificationQueue = new NoopQueue();
+} else {
+  scheduledNotificationQueue = new Bull('scheduled-notifications', {
+    redis: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+    },
+    defaultJobOptions: {
+      removeOnComplete: 100,
+      removeOnFail: 50,
+      attempts: 5,
+      backoff: {
+        type: 'exponential',
+        delay: 5000,
+      },
+    },
+  });
+}
+
+// Attach error handlers early to avoid process crash on Redis connection errors
+notificationQueue.on('error', (error: any) => {
+  logger.warn('Notification queue connection error', {
+    error: error?.message || String(error),
+  });
 });
 
-const scheduledNotificationQueue = new Bull('scheduled-notifications', {
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
-  },
-  defaultJobOptions: {
-    removeOnComplete: 100,
-    removeOnFail: 50,
-    attempts: 5,
-    backoff: {
-      type: 'exponential',
-      delay: 5000,
-    },
-  },
+scheduledNotificationQueue.on('error', (error: any) => {
+  logger.warn('Scheduled notification queue connection error', {
+    error: error?.message || String(error),
+  });
 });
 
 // Types for different notification jobs
@@ -69,23 +102,41 @@ interface SystemMaintenanceJob {
 }
 
 class NotificationWorker {
+  private readonly isEnabled = !queuesDisabled;
+
   constructor() {
-    this.setupProcessors();
-    this.setupScheduledTasks();
     this.setupEventHandlers();
+
+    if (this.isEnabled) {
+      this.setupProcessors();
+    } else {
+      logger.info('NotificationWorker disabled via DISABLE_QUEUES');
+    }
+
+    if (!disableScheduledTasks && this.isEnabled) {
+      this.setupScheduledTasks();
+    } else {
+      logger.info('Scheduled tasks disabled via DISABLE_SCHEDULED_TASKS or queues disabled');
+    }
   }
 
   // Setup queue processors
   private setupProcessors() {
     // Process scheduled notifications
-    scheduledNotificationQueue.process('send-scheduled-notification', async (job: Job) => {
-      return this.processScheduledNotification(job);
-    });
+    scheduledNotificationQueue.process(
+      'send-scheduled-notification',
+      async (job: Job) => {
+        return this.processScheduledNotification(job);
+      },
+    );
 
     // Process due date reminders
-    scheduledNotificationQueue.process('due-date-reminder', async (job: Job) => {
-      return this.processDueDateReminder(job);
-    });
+    scheduledNotificationQueue.process(
+      'due-date-reminder',
+      async (job: Job) => {
+        return this.processDueDateReminder(job);
+      },
+    );
 
     // Process overdue notices
     scheduledNotificationQueue.process('overdue-notice', async (job: Job) => {
@@ -98,14 +149,20 @@ class NotificationWorker {
     });
 
     // Process system maintenance notifications
-    scheduledNotificationQueue.process('system-maintenance', async (job: Job) => {
-      return this.processSystemMaintenance(job);
-    });
+    scheduledNotificationQueue.process(
+      'system-maintenance',
+      async (job: Job) => {
+        return this.processSystemMaintenance(job);
+      },
+    );
 
     // Process equipment session reminders
-    scheduledNotificationQueue.process('equipment-session-reminder', async (job: Job) => {
-      return this.processEquipmentSessionReminder(job);
-    });
+    scheduledNotificationQueue.process(
+      'equipment-session-reminder',
+      async (job: Job) => {
+        return this.processEquipmentSessionReminder(job);
+      },
+    );
 
     // Process daily digest notifications
     scheduledNotificationQueue.process('daily-digest', async (job: Job) => {
@@ -180,12 +237,13 @@ class NotificationWorker {
     const { notificationData } = job.data;
 
     try {
-      const notification = await notificationService.createNotification(notificationData);
+      const notification =
+        await notificationService.createNotification(notificationData);
 
       logger.info('Scheduled notification sent', {
         notificationId: notification.id,
         type: notificationData.type,
-        userId: notificationData.userId,
+        userId: notificationData.user_id ?? notificationData.userId,
       });
 
       return { success: true, notificationId: notification.id };
@@ -224,22 +282,24 @@ class NotificationWorker {
               id: true,
               accession_no: true,
               title: true,
-              author: true
-            }
+              author: true,
+            },
           },
           students: {
             select: {
               id: true,
               student_id: true,
               first_name: true,
-              last_name: true
-            }
+              last_name: true,
+            },
           },
         },
       });
 
       for (const checkout of upcomingDueBooks) {
-        const daysUntilDue = Math.ceil((checkout.due_date.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        const daysUntilDue = Math.ceil(
+          (checkout.due_date.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+        );
 
         // Send reminder for 3 days and 1 day before due date
         if (daysUntilDue === 3 || daysUntilDue === 1) {
@@ -253,14 +313,20 @@ class NotificationWorker {
         }
       }
 
-      logger.info('Due book check completed', { found: upcomingDueBooks.length });
+      logger.info('Due book check completed', {
+        found: upcomingDueBooks.length,
+      });
     } catch (error) {
-      logger.error('Failed to check due books', { error });
+      logger.error('Failed to check due books', {
+        error: (error as Error).message,
+      });
     }
   }
 
   // Schedule due date reminder
-  private async scheduleDueDateReminder(data: DueDateReminderJob): Promise<void> {
+  private async scheduleDueDateReminder(
+    data: DueDateReminderJob,
+  ): Promise<void> {
     const jobData = {
       type: 'due-date-reminder',
       ...data,
@@ -274,7 +340,8 @@ class NotificationWorker {
 
   // Process due date reminder
   private async processDueDateReminder(job: Job): Promise<any> {
-    const { studentId, bookId, checkoutId, dueDate, daysUntilDue } = job.data as DueDateReminderJob;
+    const { studentId, bookId, checkoutId, dueDate, daysUntilDue } =
+      job.data as DueDateReminderJob;
 
     try {
       const checkout = await prisma.book_checkouts.findUnique({
@@ -285,16 +352,16 @@ class NotificationWorker {
               id: true,
               accession_no: true,
               title: true,
-              author: true
-            }
+              author: true,
+            },
           },
           students: {
             select: {
               id: true,
               student_id: true,
               first_name: true,
-              last_name: true
-            }
+              last_name: true,
+            },
           },
         },
       });
@@ -320,7 +387,10 @@ class NotificationWorker {
 
       return { success: true, daysUntilDue };
     } catch (error) {
-      logger.error('Failed to process due date reminder', { error, checkoutId });
+      logger.error('Failed to process due date reminder', {
+        error,
+        checkoutId,
+      });
       throw error;
     }
   }
@@ -341,22 +411,24 @@ class NotificationWorker {
               id: true,
               accession_no: true,
               title: true,
-              author: true
-            }
+              author: true,
+            },
           },
           students: {
             select: {
               id: true,
               student_id: true,
               first_name: true,
-              last_name: true
-            }
+              last_name: true,
+            },
           },
         },
       });
 
       for (const checkout of overdueCheckouts) {
-        const daysOverdue = Math.ceil((Date.now() - checkout.due_date.getTime()) / (1000 * 60 * 60 * 24));
+        const daysOverdue = Math.ceil(
+          (Date.now() - checkout.due_date.getTime()) / (1000 * 60 * 60 * 24),
+        );
 
         await this.scheduleOverdueNotice({
           studentId: checkout.student_id,
@@ -366,7 +438,9 @@ class NotificationWorker {
         });
       }
 
-      logger.info('Overdue notice processing completed', { found: overdueCheckouts.length });
+      logger.info('Overdue notice processing completed', {
+        found: overdueCheckouts.length,
+      });
     } catch (error) {
       logger.error('Failed to process overdue notices', { error });
     }
@@ -387,7 +461,8 @@ class NotificationWorker {
 
   // Process overdue notice
   private async processOverdueNotice(job: Job): Promise<any> {
-    const { studentId, checkoutId, daysOverdue, fineAmount } = job.data as OverdueNoticeJob;
+    const { studentId, checkoutId, daysOverdue, fineAmount } =
+      job.data as OverdueNoticeJob;
 
     try {
       const checkout = await prisma.book_checkouts.findUnique({
@@ -398,16 +473,16 @@ class NotificationWorker {
               id: true,
               accession_no: true,
               title: true,
-              author: true
-            }
+              author: true,
+            },
           },
           students: {
             select: {
               id: true,
               student_id: true,
               first_name: true,
-              last_name: true
-            }
+              last_name: true,
+            },
           },
         },
       });
@@ -416,7 +491,8 @@ class NotificationWorker {
         return { success: false, reason: 'Checkout not found' };
       }
 
-      const priority = daysOverdue > 7 ? 'URGENT' : daysOverdue > 3 ? 'HIGH' : 'NORMAL';
+      const priority =
+        daysOverdue > 7 ? 'URGENT' : daysOverdue > 3 ? 'HIGH' : 'NORMAL';
 
       await notificationService.createNotification({
         user_id: studentId,
@@ -460,12 +536,12 @@ class NotificationWorker {
       }
 
       await notificationService.createNotification({
-        userId: studentId,
+        user_id: studentId,
         type: 'INFO',
         title: 'Book Available for Pickup',
         message: `The book "${book.title}" you placed on hold is now available for pickup. Please collect it within 3 days.`,
         priority: 'HIGH',
-        actionUrl: `/books/${bookId}`,
+        action_url: `/books/${bookId}`,
         metadata: {
           holdId,
           bookId,
@@ -474,7 +550,10 @@ class NotificationWorker {
 
       return { success: true, bookId, title: book.title };
     } catch (error) {
-      logger.error('Failed to process hold available notification', { error, holdId });
+      logger.error('Failed to process hold available notification', {
+        error,
+        holdId,
+      });
       throw error;
     }
   }
@@ -498,16 +577,16 @@ class NotificationWorker {
               id: true,
               equipment_id: true,
               name: true,
-              type: true
-            }
+              type: true,
+            },
           },
           students: {
             select: {
               id: true,
               student_id: true,
               first_name: true,
-              last_name: true
-            }
+              last_name: true,
+            },
           },
         },
       });
@@ -516,23 +595,31 @@ class NotificationWorker {
         await this.scheduleEquipmentSessionReminder(session.id);
       }
 
-      logger.info('Expiring session check completed', { found: expiringSessions.length });
+      logger.info('Expiring session check completed', {
+        found: expiringSessions.length,
+      });
     } catch (error) {
       logger.error('Failed to check expiring sessions', { error });
     }
   }
 
   // Schedule equipment session reminder
-  private async scheduleEquipmentSessionReminder(sessionId: string): Promise<void> {
+  private async scheduleEquipmentSessionReminder(
+    sessionId: string,
+  ): Promise<void> {
     const jobData = {
       type: 'equipment-session-reminder',
       sessionId,
     };
 
-    await scheduledNotificationQueue.add('equipment-session-reminder', jobData, {
-      delay: 0,
-      priority: 7,
-    });
+    await scheduledNotificationQueue.add(
+      'equipment-session-reminder',
+      jobData,
+      {
+        delay: 0,
+        priority: 7,
+      },
+    );
   }
 
   // Process equipment session reminder
@@ -548,16 +635,16 @@ class NotificationWorker {
               id: true,
               equipment_id: true,
               name: true,
-              type: true
-            }
+              type: true,
+            },
           },
           students: {
             select: {
               id: true,
               student_id: true,
               first_name: true,
-              last_name: true
-            }
+              last_name: true,
+            },
           },
         },
       });
@@ -579,9 +666,16 @@ class NotificationWorker {
         },
       });
 
-      return { success: true, sessionId, equipmentName: session.equipment.name };
+      return {
+        success: true,
+        sessionId,
+        equipmentName: session.equipment.name,
+      };
     } catch (error) {
-      logger.error('Failed to process equipment session reminder', { error, sessionId });
+      logger.error('Failed to process equipment session reminder', {
+        error,
+        sessionId,
+      });
       throw error;
     }
   }
@@ -598,23 +692,30 @@ class NotificationWorker {
       });
 
       for (const user of users) {
-        const preferences = await notificationService.getUserNotificationPreferences(user.id);
+        const preferences =
+          await notificationService.getUserNotificationPreferences(user.id);
 
         // Only send digest if user has email notifications enabled
         if (preferences.emailNotifications) {
-          await scheduledNotificationQueue.add('daily-digest', {
-            type: 'daily-digest',
-            userId: user.id,
-            userEmail: user.email,
-            userName: user.full_name,
-          }, {
-            delay: Math.random() * 60000, // Random delay to spread load
-            priority: 3,
-          });
+          await scheduledNotificationQueue.add(
+            'daily-digest',
+            {
+              type: 'daily-digest',
+              user_id: user.id,
+              user_email: user.email,
+              user_name: user.full_name,
+            },
+            {
+              delay: Math.random() * 60000, // Random delay to spread load
+              priority: 3,
+            },
+          );
         }
       }
 
-      logger.info('Daily digest scheduled for all users', { count: users.length });
+      logger.info('Daily digest scheduled for all users', {
+        count: users.length,
+      });
     } catch (error) {
       logger.error('Failed to send daily digest', { error });
     }
@@ -622,7 +723,7 @@ class NotificationWorker {
 
   // Process daily digest
   private async processDailyDigest(job: Job): Promise<any> {
-    const { userId, userEmail, userName } = job.data;
+    const { user_id: userId, user_email: userEmail } = job.data;
 
     try {
       const yesterday = new Date();
@@ -646,16 +747,16 @@ class NotificationWorker {
               id: true,
               student_id: true,
               first_name: true,
-              last_name: true
-            }
+              last_name: true,
+            },
           },
           equipment: {
             select: {
               id: true,
               equipment_id: true,
               name: true,
-              type: true
-            }
+              type: true,
+            },
           },
         },
         take: 10,
@@ -673,16 +774,19 @@ class NotificationWorker {
         return { success: true, message: 'No digest content' };
       }
 
-      const digestContent = this.generateDailyDigestContent(activities, unreadCount);
+      const digestContent = this.generateDailyDigestContent(
+        activities,
+        unreadCount,
+      );
 
       await notificationService.createNotification({
-        userId,
+        user_id: userId,
         type: 'INFO',
         title: 'Daily Library Activity Digest',
         message: digestContent,
         priority: 'LOW',
         sendEmail: true,
-        emailTo: userEmail,
+        email_to: userEmail,
         metadata: {
           digestType: 'daily',
           activityCount: activities.length,
@@ -699,7 +803,10 @@ class NotificationWorker {
   }
 
   // Generate daily digest content
-  private generateDailyDigestContent(activities: any[], unreadCount: number): string {
+  private generateDailyDigestContent(
+    activities: any[],
+    unreadCount: number,
+  ): string {
     let content = `Here's your daily library activity summary:\n\n`;
 
     if (activities.length > 0) {
@@ -736,7 +843,9 @@ class NotificationWorker {
         },
       });
 
-      logger.info('Old notifications cleanup completed', { deleted: result.count });
+      logger.info('Old notifications cleanup completed', {
+        deleted: result.count,
+      });
     } catch (error) {
       logger.error('Failed to cleanup old notifications', { error });
     }
@@ -744,17 +853,26 @@ class NotificationWorker {
 
   // Schedule system maintenance notification
   async scheduleSystemMaintenance(data: SystemMaintenanceJob): Promise<string> {
+    if (!this.isEnabled) {
+      logger.warn('Queues disabled; system maintenance scheduling is a no-op', { data });
+      return `noop_${Date.now()}`;
+    }
+
     const jobData = {
       type: 'system-maintenance',
       ...data,
     };
 
-    const job = await scheduledNotificationQueue.add('system-maintenance', jobData, {
-      delay: data.scheduledTime.getTime() - Date.now(),
-      priority: 10,
-    });
+    const job = await scheduledNotificationQueue.add(
+      'system-maintenance',
+      jobData,
+      {
+        delay: data.scheduledTime.getTime() - Date.now(),
+        priority: 10,
+      },
+    );
 
-    return job.id.toString();
+    return job.id?.toString?.() || `noop_${Date.now()}`;
   }
 
   // Process system maintenance notification
@@ -762,7 +880,7 @@ class NotificationWorker {
     const { title, message, affectedUsers } = job.data as SystemMaintenanceJob;
 
     try {
-      const usersToNotify = affectedUsers || await this.getAllActiveUsers();
+      const usersToNotify = affectedUsers || (await this.getAllActiveUsers());
 
       for (const userId of usersToNotify) {
         await notificationService.createNotification({
@@ -780,7 +898,10 @@ class NotificationWorker {
 
       return { success: true, notifiedUsers: usersToNotify.length };
     } catch (error) {
-      logger.error('Failed to process system maintenance notification', { error, title });
+      logger.error('Failed to process system maintenance notification', {
+        error,
+        title,
+      });
       throw error;
     }
   }
@@ -796,13 +917,28 @@ class NotificationWorker {
   }
 
   // Get queue statistics
-  getQueueStats(): any {
+  async getQueueStats(): Promise<{
+    scheduledNotifications: {
+      waiting: number;
+      active: number;
+      completed: number;
+      failed: number;
+    };
+  }> {
+    const [waitingJobs, activeJobs, completedJobs, failedJobs] =
+      await Promise.all([
+        scheduledNotificationQueue.getWaiting(),
+        scheduledNotificationQueue.getActive(),
+        scheduledNotificationQueue.getCompleted(),
+        scheduledNotificationQueue.getFailed(),
+      ]);
+
     return {
       scheduledNotifications: {
-        waiting: scheduledNotificationQueue.getWaiting().length,
-        active: scheduledNotificationQueue.getActive().length,
-        completed: scheduledNotificationQueue.getCompleted().length,
-        failed: scheduledNotificationQueue.getFailed().length,
+        waiting: waitingJobs.length,
+        active: activeJobs.length,
+        completed: completedJobs.length,
+        failed: failedJobs.length,
       },
     };
   }

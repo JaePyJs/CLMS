@@ -252,7 +252,7 @@ export class AuditTrail {
 
       // Query with pagination
       const [events, totalCount] = await Promise.all([
-        prisma.auditLog.findMany({
+        prisma.audit_logs.findMany({
           where: whereClause,
           orderBy: {
             timestamp: filter.sortOrder === 'asc' ? 'asc' : 'desc'
@@ -260,7 +260,7 @@ export class AuditTrail {
           take: filter.limit || 100,
           skip: filter.offset || 0
         }),
-        prisma.auditLog.count({ where: whereClause })
+        prisma.audit_logs.count({ where: whereClause })
       ]);
 
       // Transform database records to audit events
@@ -313,7 +313,7 @@ export class AuditTrail {
 
   async getEventById(eventId: string): Promise<AuditEvent | null> {
     try {
-      const log = await prisma.auditLog.findUnique({
+      const log = await prisma.audit_logs.findUnique({
         where: { id: eventId }
       });
 
@@ -509,7 +509,7 @@ export class AuditTrail {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - this.config.archiveAfterDays);
 
-      const archivedCount = await prisma.auditLog.deleteMany({
+      const archivedCount = await prisma.audit_logs.deleteMany({
         where: {
           timestamp: {
             lt: cutoffDate
@@ -613,7 +613,7 @@ export class AuditTrail {
       const eventsToFlush = this.eventBuffer.splice(0, this.config.batchSize);
 
       // Batch insert to database
-      await prisma.auditLog.createMany({
+      await prisma.audit_logs.createMany({
         data: eventsToFlush.map(event => ({
           id: event.id,
           userId: event.userId,

@@ -24,11 +24,9 @@ export interface LoginResponse {
 // API client class
 class ApiClient {
   private client: ReturnType<typeof axios.create>;
-  private baseURL: string;
   private DEFAULT_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
   constructor(baseURL: string = this.DEFAULT_API_URL) {
-    this.baseURL = baseURL;
     this.client = axios.create({
       baseURL,
       timeout: 10000,

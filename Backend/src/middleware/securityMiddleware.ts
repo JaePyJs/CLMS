@@ -1,8 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
-import { logger } from '@/utils/logger';
-import { ValidationError } from '@/errors/error-types';
-import { rateLimitService, RateLimitAlgorithm } from '@/services/rateLimitService';
+import { logger } from '../utils/logger';
+import { ValidationError } from '../errors/error-types';
+import { rateLimitService, RateLimitAlgorithm } from '../services/rateLimitService';
+
+// Extend Request interface to include requestId
+declare global {
+  namespace Express {
+    interface Request {
+      requestId?: string;
+    }
+  }
+}
 
 // Security configuration interface
 interface SecurityConfig {
@@ -102,12 +111,7 @@ const defaultSecurityConfig: SecurityConfig = {
   rateLimiting: {
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 1000, // 1000 requests per window
-    message: {
-      success: false,
-      error: 'Too many requests, please try again later.',
-      timestamp: new Date().toISOString(),
-      retryAfter: 15 * 60 // 15 minutes in seconds
-    },
+    message: 'Too many requests, please try again later.',
     skipSuccessfulRequests: false,
     keyGenerator: (req: Request) => {
       // Use user ID if available, otherwise IP
@@ -164,11 +168,11 @@ export const createRateLimit = (config: SecurityConfig['rateLimiting']) => {
     const windowStart = now - config.windowMs;
 
     // Clean up old entries
-    for (const [k, v] of requestTracker.entries()) {
+    Array.from(requestTracker.entries()).forEach(([k, v]) => {
       if (v.resetTime < now) {
         requestTracker.delete(k);
       }
-    }
+    });
 
     // Get or create request count
     let requestData = requestTracker.get(key);
@@ -198,13 +202,14 @@ export const createRateLimit = (config: SecurityConfig['rateLimiting']) => {
       res.setHeader('X-RateLimit-Remaining', '0');
       res.setHeader('X-RateLimit-Reset', Math.ceil(requestData.resetTime / 1000).toString());
 
-      return res.status(429).json({
+      res.status(429).json({
         ...(typeof config.message === 'string'
           ? { error: config.message }
           : config.message
         ),
         retryAfter
       });
+      return;
     }
 
     // Set rate limit headers
@@ -218,7 +223,7 @@ export const createRateLimit = (config: SecurityConfig['rateLimiting']) => {
 };
 
 // Input validation middleware
-export const validateInput = (req: Request, res: Response, next: NextFunction) => {
+export const validateInput = (req: Request, res: Response, next: NextFunction): void => {
   // Check for common attack patterns
   const suspiciousPatterns = [
     /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
@@ -245,7 +250,7 @@ export const validateInput = (req: Request, res: Response, next: NextFunction) =
 
   // Check URL parameters
   const urlParams = new URLSearchParams(req.url.split('?')[1] || '');
-  for (const [key, value] of urlParams) {
+  for (const [key, value] of Array.from(urlParams.entries())) {
     if (checkValue(value)) {
       logger.warn('Suspicious input detected', {
         ip: req.ip,
@@ -255,7 +260,12 @@ export const validateInput = (req: Request, res: Response, next: NextFunction) =
         value: value.substring(0, 100) // Log first 100 chars
       });
 
-      throw new ValidationError('Invalid input detected');
+      res.status(400).json({
+        success: false,
+        error: 'Invalid input detected',
+        timestamp: new Date().toISOString()
+      });
+      return;
     }
   }
 
@@ -267,7 +277,12 @@ export const validateInput = (req: Request, res: Response, next: NextFunction) =
       requestId: req.requestId
     });
 
-    throw new ValidationError('Invalid input detected');
+    res.status(400).json({
+      success: false,
+      error: 'Invalid input detected',
+      timestamp: new Date().toISOString()
+    });
+    return;
   }
 
   next();
@@ -296,7 +311,7 @@ export const securityHeaders = (config: SecurityConfig['securityHeaders'] = defa
 // Content Security Policy middleware
 export const contentSecurityPolicy = (config: SecurityConfig['contentSecurityPolicy'] = defaultSecurityConfig.contentSecurityPolicy) => {
   const cspValue = Object.entries(config.directives)
-    .map(([directive, sources]) => `${directive} ${sources.join(' ')}`)
+    .map(([directive, sources]) => `${directive} ${Array.isArray(sources) ? sources.join(' ') : sources}`)
     .join('; ');
 
   return (req: Request, res: Response, next: NextFunction) => {
@@ -326,11 +341,12 @@ export const ipFilter = (allowedIPs: string[] = []) => {
         url: req.url
       });
 
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         error: 'Access denied from this IP address',
         timestamp: new Date().toISOString()
       });
+      return;
     }
 
     next();
@@ -354,11 +370,12 @@ export const userAgentFilter = (blockedUserAgents: string[] = []) => {
         url: req.url
       });
 
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         error: 'Access denied',
         timestamp: new Date().toISOString()
       });
+      return;
     }
 
     next();
@@ -380,12 +397,13 @@ export const requestSizeLimit = (maxSize: number = 10 * 1024 * 1024) => { // 10M
         url: req.url
       });
 
-      return res.status(413).json({
+      res.status(413).json({
         success: false,
         error: 'Request entity too large',
         maxSize: `${maxSize / 1024 / 1024}MB`,
         timestamp: new Date().toISOString()
       });
+      return;
     }
 
     next();
@@ -424,7 +442,7 @@ export const requestTimeout = (timeout: number = 30000) => { // 30 seconds defau
 };
 
 // Security audit middleware
-export const securityAudit = (req: Request, res: Response, next: NextFunction) => {
+export const securityAudit = (req: Request, res: Response, next: NextFunction): void => {
   const auditData = {
     timestamp: new Date().toISOString(),
     ip: req.ip,

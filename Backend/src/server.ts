@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 console.log('[DEBUG server.ts] Loading full app module...');
 import { app } from './app';
 console.log('[DEBUG server.ts] App module loaded');

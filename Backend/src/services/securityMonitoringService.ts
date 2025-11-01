@@ -1,17 +1,9 @@
-import { Request, Response } from 'express';
-import Redis from 'ioredis';
+import { Request, Response, NextFunction } from 'express';
+import enhancedRedis from '@/config/redis';
 import { logger } from '@/utils/logger';
-import { ValidationError, AuthenticationError } from '@/utils/errors';
-import { FERPAComplianceLevel } from '@/services/ferpaService';
+import { FERPAComplianceLevel, DataSensitivity } from '@/services/ferpaService';
 
-// Create a local FERPAComplianceError class if it doesn't exist
-class FERPAComplianceError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'FERPAComplianceError';
-  }
-}
-import { FERPAComplianceLevel, DataSensitivity } from './ferpaService';
+type RedisClient = ReturnType<typeof enhancedRedis.getClient>;
 
 // Security event types
 export enum SecurityEventType {
@@ -40,7 +32,7 @@ export enum SecurityEventType {
   FERPA_DATA_RETENTION_VIOLATION = 'ferpa_data_retention_violation',
   FERPA_CONSENT_NOT_VERIFIED = 'ferpa_consent_not_verified',
   FERPA_ENCRYPTION_KEY_COMPROMISE = 'ferpa_encryption_key_compromise',
-  FERPA_AUDIT_LOG_TAMPERING = 'ferpa_audit_log_tampering'
+  FERPA_AUDIT_LOG_TAMPERING = 'ferpa_audit_log_tampering',
 }
 
 // Alert severity levels
@@ -48,7 +40,7 @@ export enum AlertSeverity {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
 
 // Security event interface
@@ -63,7 +55,7 @@ export interface SecurityEvent {
   userRole?: string;
   endpoint?: string;
   method?: string;
-  details: Record<string, any>;
+  details: Record<string, unknown>;
   resolved: boolean;
   metadata?: {
     requestId?: string;
@@ -72,6 +64,41 @@ export interface SecurityEvent {
     deviceFingerprint?: string;
   };
 }
+
+type RequestContext = Request & {
+  user?: {
+    id?: string;
+    role?: string;
+    username?: string;
+  };
+  requestId?: string;
+  sessionId?: string;
+  geoLocation?: string;
+  deviceFingerprint?: string;
+};
+
+type SecurityAlert = {
+  id: string;
+  eventId: string;
+  type: SecurityEventType;
+  severity: AlertSeverity;
+  timestamp: number;
+  ip: string;
+  details: Record<string, unknown>;
+  threshold: number;
+  actualCount: number;
+  timeWindow: number;
+  notificationChannels: string[];
+  escalationRules?: AlertConfig['escalationRules'];
+  resolved: boolean;
+  resolvedBy?: string;
+  resolvedAt?: number;
+  userAgent?: string;
+  userId?: string;
+  userRole?: string;
+  endpoint?: string;
+  method?: string;
+};
 
 // Alert configuration
 export interface AlertConfig {
@@ -93,188 +120,356 @@ export interface SecurityMetrics {
   totalEvents: number;
   eventsByType: Record<SecurityEventType, number>;
   eventsBySeverity: Record<AlertSeverity, number>;
-  topOffenders: Array<{ ip: string; count: number; events: SecurityEventType[] }>;
-  recentTrends: Array<{ timestamp: number; count: number; severity: AlertSeverity }>;
+  topOffenders: Array<{
+    ip: string;
+    count: number;
+    events: SecurityEventType[];
+  }>;
+  recentTrends: Array<{
+    timestamp: number;
+    count: number;
+    severity: AlertSeverity;
+  }>;
   activeThreats: number;
   resolvedThreats: number;
   falsePositives: number;
 }
 
 export class SecurityMonitoringService {
-  private redis: Redis;
-  private alertConfigs: Map<SecurityEventType, AlertConfig>;
+  private static sharedInstance: SecurityMonitoringService | null = null;
+
+  private redis: RedisClient;
+  private alertConfigs: Map<SecurityEventType, AlertConfig> = new Map();
   private eventHistory: Map<string, SecurityEvent[]> = new Map();
   private alertCooldowns: Map<string, number> = new Map();
 
-  constructor(redis: Redis) {
-    this.redis = redis;
+  constructor(redisClient?: RedisClient) {
+    this.redis = redisClient ?? enhancedRedis.getClient();
     this.setupDefaultAlertConfigurations();
     this.startPeriodicCleanup();
+  }
+
+  private static getSharedInstance(): SecurityMonitoringService {
+    if (!SecurityMonitoringService.sharedInstance) {
+      SecurityMonitoringService.sharedInstance =
+        new SecurityMonitoringService();
+    }
+
+    return SecurityMonitoringService.sharedInstance;
+  }
+
+  private static parseIntSafe(
+    value: string | undefined,
+    defaultValue = 0,
+  ): number {
+    if (!value) {
+      return defaultValue;
+    }
+
+    const parsed = Number.parseInt(value, 10);
+    return Number.isNaN(parsed) ? defaultValue : parsed;
+  }
+
+  private static parseJSONSafe<T>(value: string | undefined, fallback: T): T {
+    if (!value) {
+      return fallback;
+    }
+
+    try {
+      return JSON.parse(value) as T;
+    } catch (error) {
+      logger.warn('Failed to parse JSON payload in security monitoring', {
+        error: (error as Error).message,
+      });
+      return fallback;
+    }
+  }
+
+  private static ensureString(
+    value: string | undefined,
+    fallback = '',
+  ): string {
+    return value ?? fallback;
+  }
+
+  private static estimatePayloadLength(payload: unknown): number {
+    if (typeof payload === 'string') {
+      return payload.length;
+    }
+
+    if (Array.isArray(payload)) {
+      return payload.length;
+    }
+
+    if (payload && typeof payload === 'object' && 'length' in payload) {
+      const possibleLength = (payload as { length?: unknown }).length;
+      if (typeof possibleLength === 'number') {
+        return possibleLength;
+      }
+    }
+
+    return 0;
+  }
+
+  private static extractPayloadField<T>(
+    payload: unknown,
+    field: string,
+  ): T | undefined {
+    if (!payload || typeof payload !== 'object') {
+      return undefined;
+    }
+
+    const record = payload as Record<string, unknown>;
+    const value = record[field];
+    return value as T | undefined;
   }
 
   private setupDefaultAlertConfigurations(): void {
     this.alertConfigs = new Map([
       // Authentication failures - high priority
-      [SecurityEventType.AUTHENTICATION_FAILURE, {
-        enabled: true,
-        threshold: 5, // 5 failures in 5 minutes
-        timeWindow: 5 * 60 * 1000,
-        cooldown: 10 * 60 * 1000, // 10 minutes between alerts
-        severity: AlertSeverity.HIGH,
-        notificationChannels: ['email', 'slack', 'admin_dashboard']
-      }],
+      [
+        SecurityEventType.AUTHENTICATION_FAILURE,
+        {
+          enabled: true,
+          threshold: 5, // 5 failures in 5 minutes
+          timeWindow: 5 * 60 * 1000,
+          cooldown: 10 * 60 * 1000, // 10 minutes between alerts
+          severity: AlertSeverity.HIGH,
+          notificationChannels: ['email', 'slack', 'admin_dashboard'],
+        },
+      ],
 
       // Brute force attempts - critical priority
-      [SecurityEventType.BRUTE_FORCE_ATTEMPT, {
-        enabled: true,
-        threshold: 10, // 10 attempts in 1 minute
-        timeWindow: 60 * 1000,
-        cooldown: 5 * 60 * 1000, // 5 minutes between alerts
-        severity: AlertSeverity.CRITICAL,
-        notificationChannels: ['email', 'slack', 'sms', 'admin_dashboard']
-      }],
+      [
+        SecurityEventType.BRUTE_FORCE_ATTEMPT,
+        {
+          enabled: true,
+          threshold: 10, // 10 attempts in 1 minute
+          timeWindow: 60 * 1000,
+          cooldown: 5 * 60 * 1000, // 5 minutes between alerts
+          severity: AlertSeverity.CRITICAL,
+          notificationChannels: ['email', 'slack', 'sms', 'admin_dashboard'],
+        },
+      ],
 
       // Rate limiting - medium priority
-      [SecurityEventType.RATE_LIMIT_EXCEEDED, {
-        enabled: true,
-        threshold: 20, // 20 violations in 10 minutes
-        timeWindow: 10 * 60 * 1000,
-        cooldown: 30 * 60 * 1000, // 30 minutes between alerts
-        severity: AlertSeverity.MEDIUM,
-        notificationChannels: ['admin_dashboard']
-      }],
+      [
+        SecurityEventType.RATE_LIMIT_EXCEEDED,
+        {
+          enabled: true,
+          threshold: 20, // 20 violations in 10 minutes
+          timeWindow: 10 * 60 * 1000,
+          cooldown: 30 * 60 * 1000, // 30 minutes between alerts
+          severity: AlertSeverity.MEDIUM,
+          notificationChannels: ['admin_dashboard'],
+        },
+      ],
 
       // FERPA violations - critical priority
-      [SecurityEventType.FERPA_VIOLATION, {
-        enabled: true,
-        threshold: 1, // Any FERPA violation triggers alert
-        timeWindow: 60 * 1000,
-        cooldown: 60 * 60 * 1000, // 1 hour between alerts
-        severity: AlertSeverity.CRITICAL,
-        notificationChannels: ['email', 'slack', 'sms', 'admin_dashboard', 'compliance_team']
-      }],
+      [
+        SecurityEventType.FERPA_VIOLATION,
+        {
+          enabled: true,
+          threshold: 1, // Any FERPA violation triggers alert
+          timeWindow: 60 * 1000,
+          cooldown: 60 * 60 * 1000, // 1 hour between alerts
+          severity: AlertSeverity.CRITICAL,
+          notificationChannels: [
+            'email',
+            'slack',
+            'sms',
+            'admin_dashboard',
+            'compliance_team',
+          ],
+        },
+      ],
 
       // Suspicious input - medium priority
-      [SecurityEventType.SUSPICIOUS_INPUT, {
-        enabled: true,
-        threshold: 3, // 3 suspicious inputs in 5 minutes
-        timeWindow: 5 * 60 * 1000,
-        cooldown: 15 * 60 * 1000, // 15 minutes between alerts
-        severity: AlertSeverity.MEDIUM,
-        notificationChannels: ['admin_dashboard']
-      }],
+      [
+        SecurityEventType.SUSPICIOUS_INPUT,
+        {
+          enabled: true,
+          threshold: 3, // 3 suspicious inputs in 5 minutes
+          timeWindow: 5 * 60 * 1000,
+          cooldown: 15 * 60 * 1000, // 15 minutes between alerts
+          severity: AlertSeverity.MEDIUM,
+          notificationChannels: ['admin_dashboard'],
+        },
+      ],
 
       // Authorization failures - high priority
-      [SecurityEventType.AUTHORIZATION_FAILURE, {
-        enabled: true,
-        threshold: 5, // 5 authorization failures in 5 minutes
-        timeWindow: 5 * 60 * 1000,
-        cooldown: 10 * 60 * 1000, // 10 minutes between alerts
-        severity: AlertSeverity.HIGH,
-        notificationChannels: ['email', 'admin_dashboard']
-      }],
+      [
+        SecurityEventType.AUTHORIZATION_FAILURE,
+        {
+          enabled: true,
+          threshold: 5, // 5 authorization failures in 5 minutes
+          timeWindow: 5 * 60 * 1000,
+          cooldown: 10 * 60 * 1000, // 10 minutes between alerts
+          severity: AlertSeverity.HIGH,
+          notificationChannels: ['email', 'admin_dashboard'],
+        },
+      ],
 
       // Abnormal API usage - medium priority
-      [SecurityEventType.ABNORMAL_API_USAGE, {
-        enabled: true,
-        threshold: 100, // 100% increase in normal usage
-        timeWindow: 60 * 60 * 1000, // 1 hour window
-        cooldown: 60 * 60 * 1000, // 1 hour between alerts
-        severity: AlertSeverity.MEDIUM,
-        notificationChannels: ['admin_dashboard']
-      }],
+      [
+        SecurityEventType.ABNORMAL_API_USAGE,
+        {
+          enabled: true,
+          threshold: 100, // 100% increase in normal usage
+          timeWindow: 60 * 60 * 1000, // 1 hour window
+          cooldown: 60 * 60 * 1000, // 1 hour between alerts
+          severity: AlertSeverity.MEDIUM,
+          notificationChannels: ['admin_dashboard'],
+        },
+      ],
 
       // Privilege escalation attempts - critical priority
-      [SecurityEventType.PRIVILEGE_ESCALATION_ATTEMPT, {
-        enabled: true,
-        threshold: 1, // Any attempt triggers alert
-        timeWindow: 60 * 1000,
-        cooldown: 30 * 60 * 1000, // 30 minutes between alerts
-        severity: AlertSeverity.CRITICAL,
-        notificationChannels: ['email', 'slack', 'sms', 'admin_dashboard']
-      }],
+      [
+        SecurityEventType.PRIVILEGE_ESCALATION_ATTEMPT,
+        {
+          enabled: true,
+          threshold: 1, // Any attempt triggers alert
+          timeWindow: 60 * 1000,
+          cooldown: 30 * 60 * 1000, // 30 minutes between alerts
+          severity: AlertSeverity.CRITICAL,
+          notificationChannels: ['email', 'slack', 'sms', 'admin_dashboard'],
+        },
+      ],
 
       // Data exfiltration attempts - critical priority
-      [SecurityEventType.DATA_EXFILTRATION_ATTEMPT, {
-        enabled: true,
-        threshold: 1, // Any attempt triggers alert
-        timeWindow: 60 * 1000,
-        cooldown: 15 * 60 * 1000, // 15 minutes between alerts
-        severity: AlertSeverity.CRITICAL,
-        notificationChannels: ['email', 'slack', 'sms', 'admin_dashboard', 'compliance_team']
-      }],
+      [
+        SecurityEventType.DATA_EXFILTRATION_ATTEMPT,
+        {
+          enabled: true,
+          threshold: 1, // Any attempt triggers alert
+          timeWindow: 60 * 1000,
+          cooldown: 15 * 60 * 1000, // 15 minutes between alerts
+          severity: AlertSeverity.CRITICAL,
+          notificationChannels: [
+            'email',
+            'slack',
+            'sms',
+            'admin_dashboard',
+            'compliance_team',
+          ],
+        },
+      ],
 
       // FERPA-specific alert configurations
 
       // FERPA data access without justification - critical priority
-      [SecurityEventType.FERPA_DATA_ACCESS_WITHOUT_JUSTIFICATION, {
-        enabled: true,
-        threshold: 1, // Any violation triggers alert
-        timeWindow: 60 * 1000,
-        cooldown: 30 * 60 * 1000, // 30 minutes between alerts
-        severity: AlertSeverity.CRITICAL,
-        notificationChannels: ['email', 'slack', 'admin_dashboard', 'compliance_team']
-      }],
+      [
+        SecurityEventType.FERPA_DATA_ACCESS_WITHOUT_JUSTIFICATION,
+        {
+          enabled: true,
+          threshold: 1, // Any violation triggers alert
+          timeWindow: 60 * 1000,
+          cooldown: 30 * 60 * 1000, // 30 minutes between alerts
+          severity: AlertSeverity.CRITICAL,
+          notificationChannels: [
+            'email',
+            'slack',
+            'admin_dashboard',
+            'compliance_team',
+          ],
+        },
+      ],
 
       // FERPA unauthorized sensitive data access - critical priority
-      [SecurityEventType.FERPA_UNAUTHORIZED_SENSITIVE_DATA_ACCESS, {
-        enabled: true,
-        threshold: 1, // Any unauthorized access triggers alert
-        timeWindow: 60 * 1000,
-        cooldown: 15 * 60 * 1000, // 15 minutes between alerts
-        severity: AlertSeverity.CRITICAL,
-        notificationChannels: ['email', 'slack', 'sms', 'admin_dashboard', 'compliance_team']
-      }],
+      [
+        SecurityEventType.FERPA_UNAUTHORIZED_SENSITIVE_DATA_ACCESS,
+        {
+          enabled: true,
+          threshold: 1, // Any unauthorized access triggers alert
+          timeWindow: 60 * 1000,
+          cooldown: 15 * 60 * 1000, // 15 minutes between alerts
+          severity: AlertSeverity.CRITICAL,
+          notificationChannels: [
+            'email',
+            'slack',
+            'sms',
+            'admin_dashboard',
+            'compliance_team',
+          ],
+        },
+      ],
 
       // FERPA mass data export - critical priority
-      [SecurityEventType.FERPA_MASS_DATA_EXPORT, {
-        enabled: true,
-        threshold: 1, // Any mass export triggers alert
-        timeWindow: 60 * 1000,
-        cooldown: 60 * 60 * 1000, // 1 hour between alerts
-        severity: AlertSeverity.CRITICAL,
-        notificationChannels: ['email', 'slack', 'sms', 'admin_dashboard', 'compliance_team']
-      }],
+      [
+        SecurityEventType.FERPA_MASS_DATA_EXPORT,
+        {
+          enabled: true,
+          threshold: 1, // Any mass export triggers alert
+          timeWindow: 60 * 1000,
+          cooldown: 60 * 60 * 1000, // 1 hour between alerts
+          severity: AlertSeverity.CRITICAL,
+          notificationChannels: [
+            'email',
+            'slack',
+            'sms',
+            'admin_dashboard',
+            'compliance_team',
+          ],
+        },
+      ],
 
       // FERPA suspicious search pattern - high priority
-      [SecurityEventType.FERPA_SUSPICIOUS_SEARCH_PATTERN, {
-        enabled: true,
-        threshold: 5, // 5 suspicious searches in 10 minutes
-        timeWindow: 10 * 60 * 1000,
-        cooldown: 20 * 60 * 1000, // 20 minutes between alerts
-        severity: AlertSeverity.HIGH,
-        notificationChannels: ['email', 'admin_dashboard', 'compliance_team']
-      }],
+      [
+        SecurityEventType.FERPA_SUSPICIOUS_SEARCH_PATTERN,
+        {
+          enabled: true,
+          threshold: 5, // 5 suspicious searches in 10 minutes
+          timeWindow: 10 * 60 * 1000,
+          cooldown: 20 * 60 * 1000, // 20 minutes between alerts
+          severity: AlertSeverity.HIGH,
+          notificationChannels: ['email', 'admin_dashboard', 'compliance_team'],
+        },
+      ],
 
       // FERPA unusual office hours access - medium priority
-      [SecurityEventType.FERPA_UNUSUAL_OFFICE_HOURS_ACCESS, {
-        enabled: true,
-        threshold: 3, // 3 accesses outside office hours in 1 hour
-        timeWindow: 60 * 60 * 1000,
-        cooldown: 30 * 60 * 1000, // 30 minutes between alerts
-        severity: AlertSeverity.MEDIUM,
-        notificationChannels: ['admin_dashboard']
-      }],
+      [
+        SecurityEventType.FERPA_UNUSUAL_OFFICE_HOURS_ACCESS,
+        {
+          enabled: true,
+          threshold: 3, // 3 accesses outside office hours in 1 hour
+          timeWindow: 60 * 60 * 1000,
+          cooldown: 30 * 60 * 1000, // 30 minutes between alerts
+          severity: AlertSeverity.MEDIUM,
+          notificationChannels: ['admin_dashboard'],
+        },
+      ],
 
       // FERPA multiple student access - high priority
-      [SecurityEventType.FERPA_MULTIPLE_STUDENT_ACCESS, {
-        enabled: true,
-        threshold: 50, // Access to 50+ students in 10 minutes
-        timeWindow: 10 * 60 * 1000,
-        cooldown: 15 * 60 * 1000, // 15 minutes between alerts
-        severity: AlertSeverity.HIGH,
-        notificationChannels: ['email', 'admin_dashboard']
-      }],
+      [
+        SecurityEventType.FERPA_MULTIPLE_STUDENT_ACCESS,
+        {
+          enabled: true,
+          threshold: 50, // Access to 50+ students in 10 minutes
+          timeWindow: 10 * 60 * 1000,
+          cooldown: 15 * 60 * 1000, // 15 minutes between alerts
+          severity: AlertSeverity.HIGH,
+          notificationChannels: ['email', 'admin_dashboard'],
+        },
+      ],
 
       // FERPA audit log tampering - critical priority
-      [SecurityEventType.FERPA_AUDIT_LOG_TAMPERING, {
-        enabled: true,
-        threshold: 1, // Any tampering attempt triggers alert
-        timeWindow: 60 * 1000,
-        cooldown: 60 * 60 * 1000, // 1 hour between alerts
-        severity: AlertSeverity.CRITICAL,
-        notificationChannels: ['email', 'slack', 'sms', 'admin_dashboard', 'compliance_team']
-      }]
+      [
+        SecurityEventType.FERPA_AUDIT_LOG_TAMPERING,
+        {
+          enabled: true,
+          threshold: 1, // Any tampering attempt triggers alert
+          timeWindow: 60 * 1000,
+          cooldown: 60 * 60 * 1000, // 1 hour between alerts
+          severity: AlertSeverity.CRITICAL,
+          notificationChannels: [
+            'email',
+            'slack',
+            'sms',
+            'admin_dashboard',
+            'compliance_team',
+          ],
+        },
+      ],
     ]);
   }
 
@@ -283,49 +478,93 @@ export class SecurityMonitoringService {
    */
   public async recordSecurityEvent(
     eventType: SecurityEventType,
-    req: Request,
-    details: Record<string, any> = {},
-    severity?: AlertSeverity
+    req: RequestContext,
+    details: Record<string, unknown> = {},
+    severity?: AlertSeverity,
   ): Promise<void> {
     try {
-      const event: SecurityEvent = {
-        id: this.generateEventId(),
-        type: eventType,
-        severity: severity || this.alertConfigs.get(eventType)?.severity || AlertSeverity.MEDIUM,
-        timestamp: Date.now(),
-        ip: req.ip || req.connection.remoteAddress || 'unknown',
-        userAgent: req.get('User-Agent'),
-        userId: (req as any).user?.id,
-        userRole: (req as any).user?.role,
-        endpoint: req.path,
-        method: req.method,
-        details,
-        resolved: false,
-        metadata: {
-          requestId: (req as any).requestId,
-          sessionId: (req as any).sessionId
-        }
-      };
-
-      // Store event in Redis
-      await this.storeEvent(event);
-
-      // Store in memory history for quick access
-      const memoryKey = `${event.ip}:${event.type}`;
-      if (!this.eventHistory.has(memoryKey)) {
-        this.eventHistory.set(memoryKey, []);
-      }
-      this.eventHistory.get(memoryKey)!.push(event);
-
-      // Check if alert should be triggered
-      await this.evaluateAlertConditions(event);
-
-      // Log the event
-      this.logSecurityEvent(event);
-
+      const eventData = this.extractRequestData(req);
+      const event = this.buildSecurityEvent(eventType, eventData, details, severity);
+      
+      await this.processSecurityEvent(event);
     } catch (error) {
       logger.error('Failed to record security event', { error, eventType });
     }
+  }
+
+  // Helper method to extract request data
+  private extractRequestData(req: RequestContext) {
+    return {
+      userAgent: req.get('User-Agent') ?? undefined,
+      userId: req.user?.id,
+      userRole: req.user?.role,
+      ipAddress: req.ip || req.socket?.remoteAddress || 'unknown',
+      endpoint: req.path,
+      method: req.method,
+      metadata: this.buildRequestMetadata(req),
+    };
+  }
+
+  // Helper method to build request metadata
+  private buildRequestMetadata(req: RequestContext): NonNullable<SecurityEvent['metadata']> {
+    const metadata: NonNullable<SecurityEvent['metadata']> = {};
+    
+    if (req.requestId) metadata.requestId = req.requestId;
+    if (req.sessionId) metadata.sessionId = req.sessionId;
+    if (req.geoLocation) metadata.geoLocation = req.geoLocation;
+    if (req.deviceFingerprint) metadata.deviceFingerprint = req.deviceFingerprint;
+    
+    return metadata;
+  }
+
+  // Helper method to build security event object
+  private buildSecurityEvent(
+    eventType: SecurityEventType,
+    requestData: ReturnType<SecurityMonitoringService['extractRequestData']>,
+    details: Record<string, unknown>,
+    severity?: AlertSeverity,
+  ): SecurityEvent {
+    const event: SecurityEvent = {
+      id: this.generateEventId(),
+      type: eventType,
+      severity: severity ?? this.alertConfigs.get(eventType)?.severity ?? AlertSeverity.MEDIUM,
+      timestamp: Date.now(),
+      ip: requestData.ipAddress,
+      endpoint: requestData.endpoint,
+      method: requestData.method,
+      details,
+      resolved: false,
+    };
+
+    // Use conditional assignment pattern for exactOptionalPropertyTypes compliance
+    if (requestData.userAgent !== undefined) event.userAgent = requestData.userAgent;
+    if (requestData.userId !== undefined) event.userId = requestData.userId;
+    if (requestData.userRole !== undefined) event.userRole = requestData.userRole;
+    if (Object.keys(requestData.metadata).length > 0) event.metadata = requestData.metadata;
+
+    return event;
+  }
+
+  // Helper method to process security event (storage and alerting)
+  private async processSecurityEvent(event: SecurityEvent): Promise<void> {
+    await Promise.all([
+      this.storeEvent(event),
+      this.addToMemoryHistory(event),
+      this.evaluateAlertConditions(event),
+    ]);
+
+    this.logSecurityEvent(event);
+  }
+
+  // Helper method to add event to memory history
+  private addToMemoryHistory(event: SecurityEvent): void {
+    const memoryKey = `${event.ip}:${event.type}`;
+    
+    if (!this.eventHistory.has(memoryKey)) {
+      this.eventHistory.set(memoryKey, []);
+    }
+    
+    this.eventHistory.get(memoryKey)!.push(event);
   }
 
   /**
@@ -353,7 +592,7 @@ export class SecurityMonitoringService {
       method: event.method || '',
       details: JSON.stringify(event.details),
       resolved: event.resolved.toString(),
-      metadata: JSON.stringify(event.metadata || {})
+      metadata: JSON.stringify(event.metadata || {}),
     });
 
     // Set TTL (30 days)
@@ -392,7 +631,7 @@ export class SecurityMonitoringService {
     const recentEvents = await this.countEventsByTypeAndIP(
       event.type,
       event.ip,
-      config.timeWindow
+      config.timeWindow,
     );
 
     if (recentEvents >= config.threshold) {
@@ -407,7 +646,7 @@ export class SecurityMonitoringService {
   private async countEventsByTypeAndIP(
     type: SecurityEventType,
     ip: string,
-    timeWindow: number
+    timeWindow: number,
   ): Promise<number> {
     try {
       const now = Date.now();
@@ -422,8 +661,11 @@ export class SecurityMonitoringService {
         const eventKey = `security_event:${eventId}`;
         const eventData = await this.redis.hgetall(eventKey);
 
-        if (eventData.type === type &&
-            parseInt(eventData.timestamp) >= windowStart) {
+        const eventTimestamp = SecurityMonitoringService.parseIntSafe(
+          eventData.timestamp,
+        );
+
+        if (eventData.type === type && eventTimestamp >= windowStart) {
           count++;
         }
       }
@@ -438,30 +680,45 @@ export class SecurityMonitoringService {
   /**
    * Trigger security alert
    */
-  private async triggerAlert(event: SecurityEvent, config: AlertConfig): Promise<void> {
-    const alert = {
+  private async triggerAlert(
+    event: SecurityEvent,
+    config: AlertConfig,
+  ): Promise<void> {
+    const alert: SecurityAlert = {
       id: this.generateEventId(),
       eventId: event.id,
       type: event.type,
       severity: config.severity,
       timestamp: Date.now(),
       ip: event.ip,
-      userAgent: event.userAgent,
-      userId: event.userId,
-      userRole: event.userRole,
-      endpoint: event.endpoint,
-      method: event.method,
       details: event.details,
       threshold: config.threshold,
       actualCount: await this.countEventsByTypeAndIP(
         event.type,
         event.ip,
-        config.timeWindow
+        config.timeWindow,
       ),
       timeWindow: config.timeWindow,
-      notificationChannels: config.notificationChannels,
-      escalationRules: config.escalationRules
+      notificationChannels: [...config.notificationChannels],
+      escalationRules: config.escalationRules,
+      resolved: false,
     };
+
+    if (event.userAgent) {
+      alert.userAgent = event.userAgent;
+    }
+    if (event.userId) {
+      alert.userId = event.userId;
+    }
+    if (event.userRole) {
+      alert.userRole = event.userRole;
+    }
+    if (event.endpoint) {
+      alert.endpoint = event.endpoint;
+    }
+    if (event.method) {
+      alert.method = event.method;
+    }
 
     // Store alert
     await this.storeAlert(alert);
@@ -477,14 +734,14 @@ export class SecurityMonitoringService {
       ip: alert.ip,
       threshold: alert.threshold,
       actualCount: alert.actualCount,
-      timeWindow: alert.timeWindow
+      timeWindow: alert.timeWindow,
     });
   }
 
   /**
    * Store alert in Redis
    */
-  private async storeAlert(alert: any): Promise<void> {
+  private async storeAlert(alert: SecurityAlert): Promise<void> {
     const alertKey = `security_alert:${alert.id}`;
     const activeAlertsKey = 'active_security_alerts';
 
@@ -507,8 +764,10 @@ export class SecurityMonitoringService {
       actualCount: alert.actualCount.toString(),
       timeWindow: alert.timeWindow.toString(),
       notificationChannels: JSON.stringify(alert.notificationChannels),
-      escalationRules: JSON.stringify(alert.escalationRules || []),
-      resolved: 'false'
+      escalationRules: JSON.stringify(alert.escalationRules ?? []),
+      resolved: alert.resolved ? 'true' : 'false',
+      resolvedBy: alert.resolvedBy || '',
+      resolvedAt: alert.resolvedAt ? alert.resolvedAt.toString() : '',
     });
 
     pipeline.expire(alertKey, 30 * 24 * 60 * 60); // 30 days
@@ -521,7 +780,7 @@ export class SecurityMonitoringService {
   /**
    * Send notifications to configured channels
    */
-  private async sendNotifications(alert: any): Promise<void> {
+  private async sendNotifications(alert: SecurityAlert): Promise<void> {
     const notifications = alert.notificationChannels;
 
     for (const channel of notifications) {
@@ -554,67 +813,69 @@ export class SecurityMonitoringService {
   /**
    * Send email notification
    */
-  private async sendEmailNotification(alert: any): Promise<void> {
+  private async sendEmailNotification(alert: SecurityAlert): Promise<void> {
     // Implementation would integrate with email service
     logger.info('Email notification sent', {
       alertId: alert.id,
       type: alert.type,
-      severity: alert.severity
+      severity: alert.severity,
     });
   }
 
   /**
    * Send Slack notification
    */
-  private async sendSlackNotification(alert: any): Promise<void> {
+  private async sendSlackNotification(alert: SecurityAlert): Promise<void> {
     // Implementation would integrate with Slack API
     logger.info('Slack notification sent', {
       alertId: alert.id,
       type: alert.type,
-      severity: alert.severity
+      severity: alert.severity,
     });
   }
 
   /**
    * Send SMS notification
    */
-  private async sendSMSNotification(alert: any): Promise<void> {
+  private async sendSMSNotification(alert: SecurityAlert): Promise<void> {
     // Implementation would integrate with SMS service
     logger.info('SMS notification sent', {
       alertId: alert.id,
       type: alert.type,
-      severity: alert.severity
+      severity: alert.severity,
     });
   }
 
   /**
    * Update admin dashboard
    */
-  private async updateAdminDashboard(alert: any): Promise<void> {
+  private async updateAdminDashboard(alert: SecurityAlert): Promise<void> {
     // Implementation would update admin dashboard real-time
     logger.info('Admin dashboard updated', {
       alertId: alert.id,
       type: alert.type,
-      severity: alert.severity
+      severity: alert.severity,
     });
   }
 
   /**
    * Notify compliance team
    */
-  private async notifyComplianceTeam(alert: any): Promise<void> {
+  private async notifyComplianceTeam(alert: SecurityAlert): Promise<void> {
     // Implementation would send detailed compliance notification
     logger.info('Compliance team notified', {
       alertId: alert.id,
       type: alert.type,
-      severity: alert.severity
+      severity: alert.severity,
     });
   }
 
   /**
    * Get security metrics
    */
-  public async getSecurityMetrics(timeRange: number = 24 * 60 * 60 * 1000): Promise<SecurityMetrics> {
+  public async getSecurityMetrics(
+    timeRange: number = 24 * 60 * 60 * 1000,
+  ): Promise<SecurityMetrics> {
     try {
       const now = Date.now();
       const startTime = now - timeRange;
@@ -627,7 +888,7 @@ export class SecurityMonitoringService {
         recentTrends: [],
         activeThreats: 0,
         resolvedThreats: 0,
-        falsePositives: 0
+        falsePositives: 0,
       };
 
       // Get all active alerts
@@ -638,8 +899,8 @@ export class SecurityMonitoringService {
       // Analyze events by time ranges
       const timeBuckets = 24; // 24 hourly buckets
       for (let i = 0; i < timeBuckets; i++) {
-        const bucketStart = startTime + (i * timeRange / timeBuckets);
-        const bucketEnd = bucketStart + (timeRange / timeBuckets);
+        const bucketStart = startTime + (i * timeRange) / timeBuckets;
+        const bucketEnd = bucketStart + timeRange / timeBuckets;
 
         const bucketKey = `security_events_time:${Math.floor(bucketStart / (60 * 1000))}`;
         const eventIds = await this.redis.smembers(bucketKey);
@@ -651,8 +912,11 @@ export class SecurityMonitoringService {
           const eventKey = `security_event:${eventId}`;
           const eventData = await this.redis.hgetall(eventKey);
 
-          if (parseInt(eventData.timestamp) >= bucketStart &&
-              parseInt(eventData.timestamp) < bucketEnd) {
+          const eventTimestamp = SecurityMonitoringService.parseIntSafe(
+            eventData.timestamp,
+          );
+
+          if (eventTimestamp >= bucketStart && eventTimestamp < bucketEnd) {
             metrics.totalEvents++;
 
             // Count by type
@@ -661,7 +925,8 @@ export class SecurityMonitoringService {
 
             // Count by severity
             const severity = eventData.severity as AlertSeverity;
-            metrics.eventsBySeverity[severity] = (metrics.eventsBySeverity[severity] || 0) + 1;
+            metrics.eventsBySeverity[severity] =
+              (metrics.eventsBySeverity[severity] || 0) + 1;
 
             if (severity === AlertSeverity.HIGH) highCount++;
             if (severity === AlertSeverity.CRITICAL) criticalCount++;
@@ -671,8 +936,12 @@ export class SecurityMonitoringService {
         metrics.recentTrends.push({
           timestamp: bucketStart,
           count: eventIds.length,
-          severity: criticalCount > 0 ? AlertSeverity.CRITICAL :
-                   highCount > 0 ? AlertSeverity.HIGH : AlertSeverity.MEDIUM
+          severity:
+            criticalCount > 0
+              ? AlertSeverity.CRITICAL
+              : highCount > 0
+                ? AlertSeverity.HIGH
+                : AlertSeverity.MEDIUM,
         });
       }
 
@@ -692,13 +961,19 @@ export class SecurityMonitoringService {
   private async calculateTopOffenders(metrics: SecurityMetrics): Promise<void> {
     try {
       const ipKeys = await this.redis.keys('security_events_ip:*');
-      const ipCounts: Array<{ ip: string; count: number; events: SecurityEventType[] }> = [];
+      const ipCounts: Array<{
+        ip: string;
+        count: number;
+        events: SecurityEventType[];
+      }> = [];
 
-      for (const ipKey of ipKeys.slice(0, 100)) { // Limit to prevent too many operations
+      for (const ipKey of ipKeys.slice(0, 100)) {
+        // Limit to prevent too many operations
         const ip = ipKey.replace('security_events_ip:', '');
         const eventIds = await this.redis.smembers(ipKey);
 
-        if (eventIds.length > 5) { // Only consider IPs with more than 5 events
+        if (eventIds.length > 5) {
+          // Only consider IPs with more than 5 events
           const eventTypes: SecurityEventType[] = [];
 
           for (const eventId of eventIds) {
@@ -710,7 +985,7 @@ export class SecurityMonitoringService {
           ipCounts.push({
             ip,
             count: eventIds.length,
-            events: [...new Set(eventTypes)] // Unique event types
+            events: [...new Set(eventTypes)], // Unique event types
           });
         }
       }
@@ -726,33 +1001,88 @@ export class SecurityMonitoringService {
   /**
    * Get active security alerts
    */
-  public async getActiveAlerts(): Promise<any[]> {
+  public async getActiveAlerts(): Promise<SecurityAlert[]> {
     try {
       const activeAlertsKey = 'active_security_alerts';
       const alertIds = await this.redis.smembers(activeAlertsKey);
 
-      const alerts = [];
+      const alerts: SecurityAlert[] = [];
       for (const alertId of alertIds) {
         const alertKey = `security_alert:${alertId}`;
         const alertData = await this.redis.hgetall(alertKey);
 
-        alerts.push({
-          id: alertData.id,
-          eventId: alertData.eventId,
-          type: alertData.type,
-          severity: alertData.severity,
-          timestamp: parseInt(alertData.timestamp),
-          ip: alertData.ip,
-          userId: alertData.userId,
-          userRole: alertData.userRole,
-          endpoint: alertData.endpoint,
-          method: alertData.method,
-          details: JSON.parse(alertData.details || '{}'),
-          threshold: parseInt(alertData.threshold),
-          actualCount: parseInt(alertData.actualCount),
-          timeWindow: parseInt(alertData.timeWindow),
-          resolved: alertData.resolved === 'true'
-        });
+        if (!alertData || !alertData.type || !alertData.severity) {
+          continue;
+        }
+
+        const timestamp = SecurityMonitoringService.parseIntSafe(
+          alertData.timestamp,
+          Date.now(),
+        );
+        const threshold = SecurityMonitoringService.parseIntSafe(
+          alertData.threshold,
+        );
+        const actualCount = SecurityMonitoringService.parseIntSafe(
+          alertData.actualCount,
+        );
+        const timeWindow = SecurityMonitoringService.parseIntSafe(
+          alertData.timeWindow,
+        );
+        const notificationChannels = SecurityMonitoringService.parseJSONSafe<
+          string[]
+        >(alertData.notificationChannels, []);
+        const details = SecurityMonitoringService.parseJSONSafe<
+          Record<string, unknown>
+        >(alertData.details, {});
+
+        const alert: SecurityAlert = {
+          id: alertData.id ?? alertId,
+          eventId: alertData.eventId ?? alertId,
+          type: alertData.type as SecurityEventType,
+          severity: alertData.severity as AlertSeverity,
+          timestamp,
+          ip: SecurityMonitoringService.ensureString(alertData.ip, 'unknown'),
+          details,
+          threshold,
+          actualCount,
+          timeWindow,
+          notificationChannels,
+          escalationRules: alertData.escalationRules
+            ? SecurityMonitoringService.parseJSONSafe<
+                AlertConfig['escalationRules']
+              >(alertData.escalationRules, [])
+            : undefined,
+          resolved: alertData.resolved === 'true',
+        };
+
+        if (alertData.userAgent) {
+          alert.userAgent = alertData.userAgent;
+        }
+        if (alertData.userId) {
+          alert.userId = alertData.userId;
+        }
+        if (alertData.userRole) {
+          alert.userRole = alertData.userRole;
+        }
+        if (alertData.endpoint) {
+          alert.endpoint = alertData.endpoint;
+        }
+        if (alertData.method) {
+          alert.method = alertData.method;
+        }
+        if (alertData.resolvedBy) {
+          alert.resolvedBy = alertData.resolvedBy;
+        }
+
+        const resolvedAt = SecurityMonitoringService.parseIntSafe(
+          alertData.resolvedAt,
+          0,
+        );
+        if (resolvedAt > 0) {
+          alert.resolvedAt = resolvedAt;
+        }
+
+        alerts.push(alert);
       }
 
       return alerts.sort((a, b) => b.timestamp - a.timestamp);
@@ -765,7 +1095,10 @@ export class SecurityMonitoringService {
   /**
    * Resolve security alert
    */
-  public async resolveAlert(alertId: string, resolvedBy: string): Promise<boolean> {
+  public async resolveAlert(
+    alertId: string,
+    resolvedBy: string,
+  ): Promise<boolean> {
     try {
       const alertKey = `security_alert:${alertId}`;
       const activeAlertsKey = 'active_security_alerts';
@@ -791,7 +1124,7 @@ export class SecurityMonitoringService {
    */
   public updateAlertConfig(
     eventType: SecurityEventType,
-    config: Partial<AlertConfig>
+    config: Partial<AlertConfig>,
   ): void {
     const currentConfig = this.alertConfigs.get(eventType);
     if (currentConfig) {
@@ -805,7 +1138,7 @@ export class SecurityMonitoringService {
    */
   public async getEventHistory(
     ip: string,
-    timeRange: number = 24 * 60 * 60 * 1000
+    timeRange: number = 24 * 60 * 60 * 1000,
   ): Promise<SecurityEvent[]> {
     try {
       const ipKey = `security_events_ip:${ip}`;
@@ -819,23 +1152,47 @@ export class SecurityMonitoringService {
         const eventKey = `security_event:${eventId}`;
         const eventData = await this.redis.hgetall(eventKey);
 
-        const timestamp = parseInt(eventData.timestamp);
+        const timestamp = SecurityMonitoringService.parseIntSafe(
+          eventData.timestamp,
+        );
         if (timestamp >= startTime) {
-          events.push({
-            id: eventData.id,
+          const eventRecord: SecurityEvent = {
+            id: eventData.id ?? eventId,
             type: eventData.type as SecurityEventType,
             severity: eventData.severity as AlertSeverity,
             timestamp,
-            ip: eventData.ip,
-            userAgent: eventData.userAgent,
-            userId: eventData.userId,
-            userRole: eventData.userRole,
-            endpoint: eventData.endpoint,
-            method: eventData.method,
-            details: JSON.parse(eventData.details || '{}'),
+            ip: SecurityMonitoringService.ensureString(eventData.ip, 'unknown'),
+            details: SecurityMonitoringService.parseJSONSafe<
+              Record<string, unknown>
+            >(eventData.details, {}),
             resolved: eventData.resolved === 'true',
-            metadata: JSON.parse(eventData.metadata || '{}')
-          });
+          };
+
+          if (eventData.endpoint) {
+            eventRecord.endpoint = eventData.endpoint;
+          }
+          if (eventData.method) {
+            eventRecord.method = eventData.method;
+          }
+
+          if (eventData.userAgent) {
+            eventRecord.userAgent = eventData.userAgent;
+          }
+          if (eventData.userId) {
+            eventRecord.userId = eventData.userId;
+          }
+          if (eventData.userRole) {
+            eventRecord.userRole = eventData.userRole;
+          }
+
+          const metadata = SecurityMonitoringService.parseJSONSafe<
+            NonNullable<SecurityEvent['metadata']>
+          >(eventData.metadata, {});
+          if (Object.keys(metadata).length > 0) {
+            eventRecord.metadata = metadata;
+          }
+
+          events.push(eventRecord);
         }
       }
 
@@ -857,9 +1214,14 @@ export class SecurityMonitoringService {
    * Log security event
    */
   private logSecurityEvent(event: SecurityEvent): void {
-    const logLevel = event.severity === AlertSeverity.CRITICAL ? 'error' :
-                    event.severity === AlertSeverity.HIGH ? 'warn' :
-                    event.severity === AlertSeverity.MEDIUM ? 'info' : 'debug';
+    const logLevel =
+      event.severity === AlertSeverity.CRITICAL
+        ? 'error'
+        : event.severity === AlertSeverity.HIGH
+          ? 'warn'
+          : event.severity === AlertSeverity.MEDIUM
+            ? 'info'
+            : 'debug';
 
     logger[logLevel]('Security event recorded', {
       eventId: event.id,
@@ -870,7 +1232,7 @@ export class SecurityMonitoringService {
       userRole: event.userRole,
       endpoint: event.endpoint,
       method: event.method,
-      details: event.details
+      details: event.details,
     });
   }
 
@@ -878,29 +1240,35 @@ export class SecurityMonitoringService {
    * Start periodic cleanup of old data
    */
   private startPeriodicCleanup(): void {
-    setInterval(async () => {
-      try {
-        // Clean up old cooldowns
-        const now = Date.now();
-        for (const [key, timestamp] of this.alertCooldowns.entries()) {
-          if (now - timestamp > 24 * 60 * 60 * 1000) { // 24 hours
-            this.alertCooldowns.delete(key);
+    setInterval(
+      async () => {
+        try {
+          // Clean up old cooldowns
+          const now = Date.now();
+          for (const [key, timestamp] of this.alertCooldowns.entries()) {
+            if (now - timestamp > 24 * 60 * 60 * 1000) {
+              // 24 hours
+              this.alertCooldowns.delete(key);
+            }
           }
-        }
 
-        // Clean up memory history
-        for (const [key, events] of this.eventHistory.entries()) {
-          const recentEvents = events.filter(e => now - e.timestamp < 60 * 60 * 1000); // Keep last hour
-          if (recentEvents.length === 0) {
-            this.eventHistory.delete(key);
-          } else {
-            this.eventHistory.set(key, recentEvents);
+          // Clean up memory history
+          for (const [key, events] of this.eventHistory.entries()) {
+            const recentEvents = events.filter(
+              e => now - e.timestamp < 60 * 60 * 1000,
+            ); // Keep last hour
+            if (recentEvents.length === 0) {
+              this.eventHistory.delete(key);
+            } else {
+              this.eventHistory.set(key, recentEvents);
+            }
           }
+        } catch (error) {
+          logger.error('Security monitoring cleanup failed', { error });
         }
-      } catch (error) {
-        logger.error('Security monitoring cleanup failed', { error });
-      }
-    }, 60 * 60 * 1000); // Run every hour
+      },
+      60 * 60 * 1000,
+    ); // Run every hour
   }
 
   /**
@@ -911,23 +1279,26 @@ export class SecurityMonitoringService {
    * Detect FERPA data access without proper justification
    */
   public async detectFERPADataAccessWithoutJustification(
-    req: Request,
+    req: RequestContext,
     accessedFields: string[],
     complianceLevel: FERPAComplianceLevel,
-    hasJustification: boolean
+    hasJustification: boolean,
   ): Promise<void> {
-    if (!hasJustification && complianceLevel >= FERPAComplianceLevel.SENSITIVE) {
+    if (
+      !hasJustification &&
+      complianceLevel >= FERPAComplianceLevel.SENSITIVE
+    ) {
       await this.recordSecurityEvent(
         SecurityEventType.FERPA_DATA_ACCESS_WITHOUT_JUSTIFICATION,
         req,
         {
           accessedFields,
           complianceLevel,
-          userRole: (req as any).user?.role,
+          userRole: req.user?.role,
           endpoint: req.path,
-          method: req.method
+          method: req.method,
         },
-        AlertSeverity.CRITICAL
+        AlertSeverity.CRITICAL,
       );
     }
   }
@@ -936,11 +1307,11 @@ export class SecurityMonitoringService {
    * Detect unauthorized sensitive data access
    */
   public async detectUnauthorizedSensitiveDataAccess(
-    req: Request,
+    req: RequestContext,
     accessedFields: string[],
     userRole: string,
     requiredLevel: FERPAComplianceLevel,
-    actualLevel: FERPAComplianceLevel
+    actualLevel: FERPAComplianceLevel,
   ): Promise<void> {
     if (actualLevel < requiredLevel) {
       await this.recordSecurityEvent(
@@ -952,9 +1323,9 @@ export class SecurityMonitoringService {
           requiredLevel,
           actualLevel,
           endpoint: req.path,
-          method: req.method
+          method: req.method,
         },
-        AlertSeverity.CRITICAL
+        AlertSeverity.CRITICAL,
       );
     }
   }
@@ -963,17 +1334,28 @@ export class SecurityMonitoringService {
    * Detect mass data export attempts
    */
   public async detectMassDataExport(
-    req: Request,
+    req: RequestContext,
     recordCount: number,
-    dataSensitivity: DataSensitivity[]
+    dataSensitivity: DataSensitivity[],
   ): Promise<void> {
     const hasHighlySensitiveData = dataSensitivity.some(sensitivity =>
-      [DataSensitivity.MEDICAL_INFO, DataSensitivity.DISCIPLINARY, DataSensitivity.SPECIAL_EDUCATION].includes(sensitivity)
+      [
+        DataSensitivity.MEDICAL_INFO,
+        DataSensitivity.DISCIPLINARY,
+        DataSensitivity.SPECIAL_EDUCATION,
+      ].includes(sensitivity),
     );
 
     const threshold = hasHighlySensitiveData ? 10 : 100; // Lower threshold for highly sensitive data
 
     if (recordCount > threshold) {
+      const exportParam = req.query.export;
+      const exportType = Array.isArray(exportParam)
+        ? exportParam[0]
+        : typeof exportParam === 'string'
+          ? exportParam
+          : 'unknown';
+
       await this.recordSecurityEvent(
         SecurityEventType.FERPA_MASS_DATA_EXPORT,
         req,
@@ -982,9 +1364,9 @@ export class SecurityMonitoringService {
           dataSensitivity,
           hasHighlySensitiveData,
           threshold,
-          exportType: req.query.export || 'unknown'
+          exportType,
         },
-        AlertSeverity.CRITICAL
+        AlertSeverity.CRITICAL,
       );
     }
   }
@@ -993,9 +1375,9 @@ export class SecurityMonitoringService {
    * Detect suspicious search patterns
    */
   public async detectSuspiciousSearchPattern(
-    req: Request,
+    req: RequestContext,
     searchQuery: string,
-    resultCount: number
+    resultCount: number,
   ): Promise<void> {
     const suspiciousPatterns = [
       /ssn/i,
@@ -1007,10 +1389,12 @@ export class SecurityMonitoringService {
       /parent.*phone/i,
       /home.*address/i,
       /\d{10}/, // Possible phone number
-      /\b\d{5}\b/ // ZIP code
+      /\b\d{5}\b/, // ZIP code
     ];
 
-    const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(searchQuery));
+    const isSuspicious = suspiciousPatterns.some(pattern =>
+      pattern.test(searchQuery),
+    );
 
     if (isSuspicious || resultCount > 1000) {
       await this.recordSecurityEvent(
@@ -1020,9 +1404,11 @@ export class SecurityMonitoringService {
           searchQuery,
           resultCount,
           isSuspicious,
-          matchedPatterns: suspiciousPatterns.filter(pattern => pattern.test(searchQuery))
+          matchedPatterns: suspiciousPatterns.filter(pattern =>
+            pattern.test(searchQuery),
+          ),
         },
-        AlertSeverity.HIGH
+        AlertSeverity.HIGH,
       );
     }
   }
@@ -1031,15 +1417,16 @@ export class SecurityMonitoringService {
    * Detect unusual office hours access
    */
   public async detectUnusualOfficeHoursAccess(
-    req: Request,
-    userRole: string
+    req: RequestContext,
+    userRole: string,
   ): Promise<void> {
     const now = new Date();
     const hour = now.getHours();
     const dayOfWeek = now.getDay();
 
     // Define office hours (8 AM - 6 PM, Monday - Friday)
-    const isOfficeHours = dayOfWeek >= 1 && dayOfWeek <= 5 && hour >= 8 && hour <= 18;
+    const isOfficeHours =
+      dayOfWeek >= 1 && dayOfWeek <= 5 && hour >= 8 && hour <= 18;
     const isAdminAccess = ['SUPER_ADMIN', 'ADMIN'].includes(userRole);
 
     if (!isOfficeHours && !isAdminAccess) {
@@ -1052,9 +1439,9 @@ export class SecurityMonitoringService {
           dayOfWeek,
           isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
           isLateNight: hour < 6 || hour > 22,
-          userRole
+          userRole,
         },
-        AlertSeverity.MEDIUM
+        AlertSeverity.MEDIUM,
       );
     }
   }
@@ -1063,9 +1450,9 @@ export class SecurityMonitoringService {
    * Detect multiple student access patterns
    */
   public async detectMultipleStudentAccess(
-    req: Request,
+    req: RequestContext,
     accessedStudentIds: string[],
-    timeWindow: number = 10 * 60 * 1000 // 10 minutes
+    timeWindow: number = 10 * 60 * 1000, // 10 minutes
   ): Promise<void> {
     const studentCount = accessedStudentIds.length;
     const threshold = 50; // Access to 50+ students
@@ -1079,9 +1466,9 @@ export class SecurityMonitoringService {
           threshold,
           studentIds: accessedStudentIds.slice(0, 10), // Log first 10 for analysis
           timeWindow,
-          accessPattern: this.analyzeAccessPattern(accessedStudentIds)
+          accessPattern: this.analyzeAccessPattern(accessedStudentIds),
         },
-        AlertSeverity.HIGH
+        AlertSeverity.HIGH,
       );
     }
   }
@@ -1090,10 +1477,10 @@ export class SecurityMonitoringService {
    * Detect data retention violations
    */
   public async detectDataRetentionViolation(
-    req: Request,
+    req: RequestContext,
     dataType: string,
     recordAge: number,
-    maxRetentionDays: number
+    maxRetentionDays: number,
   ): Promise<void> {
     const retentionDays = recordAge / (24 * 60 * 60 * 1000);
 
@@ -1106,9 +1493,10 @@ export class SecurityMonitoringService {
           recordAge,
           retentionDays,
           maxRetentionDays,
-          violationSeverity: retentionDays > maxRetentionDays * 2 ? 'CRITICAL' : 'WARNING'
+          violationSeverity:
+            retentionDays > maxRetentionDays * 2 ? 'CRITICAL' : 'WARNING',
         },
-        AlertSeverity.HIGH
+        AlertSeverity.HIGH,
       );
     }
   }
@@ -1117,10 +1505,10 @@ export class SecurityMonitoringService {
    * Detect consent verification issues
    */
   public async detectConsentNotVerified(
-    req: Request,
+    req: RequestContext,
     actionType: string,
     requiresConsent: boolean,
-    consentVerified: boolean
+    consentVerified: boolean,
   ): Promise<void> {
     if (requiresConsent && !consentVerified) {
       await this.recordSecurityEvent(
@@ -1130,10 +1518,10 @@ export class SecurityMonitoringService {
           actionType,
           requiresConsent,
           consentVerified,
-          userRole: (req as any).user?.role,
-          endpoint: req.path
+          userRole: req.user?.role,
+          endpoint: req.path,
         },
-        AlertSeverity.CRITICAL
+        AlertSeverity.CRITICAL,
       );
     }
   }
@@ -1142,9 +1530,9 @@ export class SecurityMonitoringService {
    * Detect potential encryption key compromise
    */
   public async detectEncryptionKeyCompromise(
-    req: Request,
+    req: RequestContext,
     keyAccessAttempts: number,
-    unusualKeyUsage: boolean
+    unusualKeyUsage: boolean,
   ): Promise<void> {
     const threshold = 10; // More than 10 key access attempts
 
@@ -1156,10 +1544,10 @@ export class SecurityMonitoringService {
           keyAccessAttempts,
           threshold,
           unusualKeyUsage,
-          userRole: (req as any).user?.role,
-          endpoint: req.path
+          userRole: req.user?.role,
+          endpoint: req.path,
         },
-        AlertSeverity.CRITICAL
+        AlertSeverity.CRITICAL,
       );
     }
   }
@@ -1168,9 +1556,9 @@ export class SecurityMonitoringService {
    * Detect audit log tampering
    */
   public async detectAuditLogTampering(
-    req: Request,
+    req: RequestContext,
     logModifications: string[],
-    suspiciousActivity: boolean
+    suspiciousActivity: boolean,
   ): Promise<void> {
     if (logModifications.length > 0 || suspiciousActivity) {
       await this.recordSecurityEvent(
@@ -1180,10 +1568,10 @@ export class SecurityMonitoringService {
           logModifications,
           modificationCount: logModifications.length,
           suspiciousActivity,
-          userRole: (req as any).user?.role,
-          endpoint: req.path
+          userRole: req.user?.role,
+          endpoint: req.path,
         },
-        AlertSeverity.CRITICAL
+        AlertSeverity.CRITICAL,
       );
     }
   }
@@ -1198,31 +1586,51 @@ export class SecurityMonitoringService {
     pattern: string;
   } {
     if (studentIds.length < 2) {
-      return { isSequential: false, isRandom: false, isTargeted: false, pattern: 'INSUFFICIENT_DATA' };
+      return {
+        isSequential: false,
+        isRandom: false,
+        isTargeted: false,
+        pattern: 'INSUFFICIENT_DATA',
+      };
     }
 
     // Check for sequential IDs
-    const numericIds = studentIds.map(id => parseInt(id.replace(/\D/g, ''))).filter(n => !isNaN(n));
+    const numericIds = studentIds
+      .map(id => parseInt(id.replace(/\D/g, '')))
+      .filter(n => !isNaN(n));
     numericIds.sort((a, b) => a - b);
 
     let isSequential = true;
     for (let i = 1; i < numericIds.length; i++) {
-      if (numericIds[i] - numericIds[i-1] !== 1) {
+      const currentId = numericIds[i];
+      const previousId = numericIds[i - 1];
+      if (
+        currentId === undefined ||
+        previousId === undefined ||
+        currentId - previousId !== 1
+      ) {
         isSequential = false;
         break;
       }
     }
 
     // Check for targeted pattern (same grade, section, etc.)
-    const hasCommonPrefix = studentIds.some(id =>
-      studentIds.filter(otherId => otherId.startsWith(id.substring(0, 3))).length > studentIds.length * 0.8
+    const hasCommonPrefix = studentIds.some(
+      id =>
+        studentIds.filter(otherId => otherId.startsWith(id.substring(0, 3)))
+          .length >
+        studentIds.length * 0.8,
     );
 
     return {
       isSequential,
       isRandom: !isSequential && !hasCommonPrefix,
       isTargeted: hasCommonPrefix,
-      pattern: isSequential ? 'SEQUENTIAL' : hasCommonPrefix ? 'TARGETED' : 'RANDOM'
+      pattern: isSequential
+        ? 'SEQUENTIAL'
+        : hasCommonPrefix
+          ? 'TARGETED'
+          : 'RANDOM',
     };
   }
 
@@ -1230,14 +1638,13 @@ export class SecurityMonitoringService {
    * Express middleware for automatic security event recording
    */
   public securityEventMiddleware() {
-    return (req: Request, res: Response, next: Function) => {
-      const originalSend = res.send;
+    return (req: RequestContext, res: Response, next: NextFunction) => {
+      const originalSend = res.send.bind(res);
 
-      res.send = function(body) {
-        // Record events based on response status and request patterns
-        SecurityMonitoringService.recordEventFromRequest(req, res, body);
-        return originalSend.call(this, body);
-      };
+      res.send = ((body?: unknown) => {
+        void SecurityMonitoringService.recordEventFromRequest(req, res, body);
+        return originalSend(body);
+      }) as typeof res.send;
 
       next();
     };
@@ -1247,44 +1654,48 @@ export class SecurityMonitoringService {
    * Static method to record events from request/response
    */
   private static async recordEventFromRequest(
-    req: Request,
+    req: RequestContext,
     res: Response,
-    body: any
+    body: unknown,
   ): Promise<void> {
     try {
+      const service = SecurityMonitoringService.getSharedInstance();
+      const responseSize =
+        SecurityMonitoringService.estimatePayloadLength(body);
+
       // Record authentication failures
       if (res.statusCode === 401) {
-        const service = new SecurityMonitoringService(new Redis());
         await service.recordSecurityEvent(
           SecurityEventType.AUTHENTICATION_FAILURE,
           req,
-          { statusCode: res.statusCode, responseSize: body?.length || 0 }
+          { statusCode: res.statusCode, responseSize },
         );
       }
 
       // Record authorization failures
       if (res.statusCode === 403) {
-        const service = new SecurityMonitoringService(new Redis());
         await service.recordSecurityEvent(
           SecurityEventType.AUTHORIZATION_FAILURE,
           req,
-          { statusCode: res.statusCode, attemptedResource: req.path }
+          { statusCode: res.statusCode, attemptedResource: req.path },
         );
       }
 
       // Record rate limit exceeded
       if (res.statusCode === 429) {
-        const service = new SecurityMonitoringService(new Redis());
         await service.recordSecurityEvent(
           SecurityEventType.RATE_LIMIT_EXCEEDED,
           req,
           {
             retryAfter: res.getHeader('Retry-After'),
-            rateLimitInfo: body?.rateLimitInfo
-          }
+            rateLimitInfo:
+              SecurityMonitoringService.extractPayloadField<unknown>(
+                body,
+                'rateLimitInfo',
+              ),
+          },
         );
       }
-
     } catch (error) {
       logger.error('Failed to record event from request', { error });
     }

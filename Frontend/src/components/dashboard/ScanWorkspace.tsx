@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -25,7 +25,7 @@ import { useStudentActivity } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { offlineActions } from '@/lib/offline-queue';
 import { toast } from 'sonner';
-import { Camera, Keyboard, Edit3, Users, BookOpen, Monitor, Gamepad2, Clock, AlertCircle, Play, Square, RefreshCw, Plus, Timer, UserPlus, FileText, Settings, Eye, AlertTriangle, Filter, Printer, ExternalLink, Calendar, BarChart3, Activity, Shield } from 'lucide-react';
+import { Camera, Keyboard, Edit3, Users, BookOpen, Monitor, Gamepad2, Clock, AlertCircle, Play, Square, RefreshCw, Plus, Timer, UserPlus, FileText, Settings, Eye, AlertTriangle, Filter, Printer, ExternalLink, Calendar, BarChart3, Activity, Shield, Download } from 'lucide-react';
 
 interface Student {
   id: string;
@@ -57,8 +57,6 @@ export function ScanWorkspace() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [isExporting, setIsExporting] = useState(false);
   const [isPrintingSessions, setIsPrintingSessions] = useState(false);
-  const [selectedTimeExtension, setSelectedTimeExtension] =
-    useState<number>(15);
 
   // Self-service enhancements
   const [cooldownInfo, setCooldownInfo] = useState<{
@@ -69,16 +67,10 @@ export function ScanWorkspace() {
 
   const { isOnline, lastScanResult } = useAppStore();
   const {
-    isScanning,
-    isCameraActive,
-    scannerError,
-    lastResult,
-    videoRef,
     startCamera,
     stopCamera,
   } = useCameraScanner();
-  const { isListening, currentInput, lastScannedCode, toggleListening } =
-    useUsbScanner();
+  const { toggleListening } = useUsbScanner();
   const { isOpen, input, setIsOpen, setInput, handleSubmit } = useManualEntry();
   const { mutate: logActivity } = useStudentActivity();
 
@@ -157,11 +149,11 @@ export function ScanWorkspace() {
             ? {
                 id: result.student.id,
                 studentId: result.student.studentId,
-                firstName: result.student.name.split(' ')[0],
-                lastName: result.student.name.split(' ').slice(1).join(' '),
+                firstName: result.student.name?.split(' ')[0] || '',
+                lastName: result.student.name?.split(' ').slice(1).join(' ') || result.student.name || '',
                 gradeLevel: result.student.gradeLevel,
-                gradeCategory: '',
-                section: result.student.section,
+                gradeCategory: result.student.gradeCategory || '',
+                section: result.student.section || '',
               }
             : undefined,
           barcode,
@@ -453,7 +445,7 @@ export function ScanWorkspace() {
             disabled={isExporting || selectedSessions.length === 0}
             className="bg-white/90 hover:bg-white shadow-sm"
           >
-            <ExportIcon className="h-4 w-4 mr-1" />
+            <Download className="h-4 w-4 mr-1" />
             Export
           </Button>
           <Button
@@ -1248,7 +1240,7 @@ export function ScanWorkspace() {
               }
               className="text-purple-600 hover:bg-purple-50"
             >
-              <ExportIcon className="h-3 w-3 mr-1" />
+              <Download className="h-3 w-3 mr-1" />
               Export
             </Button>
             <Button

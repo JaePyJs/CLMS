@@ -302,7 +302,7 @@ class PerformanceMonitoringService {
     let lastInteractionTime = 0;
     const interactionThreshold = 50; // ms
 
-    const measureInteraction = (event: Event) => {
+    const measureInteraction = () => {
       const now = performance.now();
       const interactionTime = now - lastInteractionTime;
 
@@ -369,7 +369,6 @@ class PerformanceMonitoringService {
 
   public generateReport(): PerformanceReport {
     const now = Date.now();
-    const navigation = window.performance?.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
 
     const report: PerformanceReport = {
       timestamp: now,

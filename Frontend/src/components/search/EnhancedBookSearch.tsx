@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -19,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { Search, BookOpen, Filter, X, TrendingUp, Star, ChevronDown, Eye, Users, Sparkles } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
@@ -115,13 +115,14 @@ export default function EnhancedBookSearch() {
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const suggestionTimeoutRef = useRef<NodeJS.Timeout>();
+  const suggestionTimeoutRef = useRef<NodeJS.Timeout | undefined>();
 
   // Fetch popular books on mount
   useEffect(() => {
     fetchPopularBooks();
     fetchNewBooks();
     fetchAvailableBooks();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch suggestions with debouncing
@@ -133,12 +134,10 @@ export default function EnhancedBookSearch() {
 
     setLoadingSuggestions(true);
     try {
-      const response = await apiClient.get('/api/search/suggestions', {
-        params: {
-          query: searchQuery,
-          limit: 5,
-          type: 'all',
-        },
+      const response = await apiClient.get<SearchSuggestion>('/api/search/suggestions', {
+        query: searchQuery,
+        limit: 5,
+        type: 'all',
       });
 
       if (response.success && response.data) {
@@ -200,17 +199,20 @@ export default function EnhancedBookSearch() {
       if (filters.sortBy) searchParams.sortBy = filters.sortBy;
       if (filters.sortOrder) searchParams.sortOrder = filters.sortOrder;
 
-      const response = await apiClient.get('/api/search/books', { params: searchParams });
+      const response = await apiClient.get<SearchResponse>('/api/search/books', searchParams);
 
       if (response.success && response.data) {
         if (resetPagination) {
           setSearchResults(response.data);
         } else {
           // Append results for pagination
-          setSearchResults(prev => ({
-            ...response.data,
-            books: [...(prev?.books || []), ...response.data.books],
-          }));
+          setSearchResults(prev => {
+            if (!prev || !response.data) return prev;
+            return {
+              ...response.data,
+              books: [...prev.books, ...response.data.books],
+            };
+          });
         }
         setCurrentPage(page);
 
@@ -230,12 +232,10 @@ export default function EnhancedBookSearch() {
   // Fetch popular books
   const fetchPopularBooks = async () => {
     try {
-      const response = await apiClient.get('/api/search/popular', {
-        params: { limit: 8 },
-      });
+      const response = await apiClient.get<PopularBooks>('/api/search/popular', { limit: 8 });
 
       if (response.success && response.data) {
-        setPopularBooks(response.data);
+        setPopularBooks(response.data.books);
       }
     } catch (error) {
       console.error('Failed to fetch popular books:', error);
@@ -245,12 +245,10 @@ export default function EnhancedBookSearch() {
   // Fetch new books
   const fetchNewBooks = async () => {
     try {
-      const response = await apiClient.get('/api/search/new', {
-        params: { limit: 8 },
-      });
+      const response = await apiClient.get<PopularBooks>('/api/search/new', { limit: 8 });
 
       if (response.success && response.data) {
-        setNewBooks(response.data);
+        setNewBooks(response.data.books);
       }
     } catch (error) {
       console.error('Failed to fetch new books:', error);
@@ -260,12 +258,10 @@ export default function EnhancedBookSearch() {
   // Fetch available books
   const fetchAvailableBooks = async () => {
     try {
-      const response = await apiClient.get('/api/search/available', {
-        params: { limit: 8 },
-      });
+      const response = await apiClient.get<PopularBooks>('/api/search/available', { limit: 8 });
 
       if (response.success && response.data) {
-        setAvailableBooks(response.data);
+        setAvailableBooks(response.data.books);
       }
     } catch (error) {
       console.error('Failed to fetch available books:', error);
@@ -281,7 +277,7 @@ export default function EnhancedBookSearch() {
       if (book.category) params.category = book.category;
       if (book.author) params.author = book.author;
 
-      const response = await apiClient.get('/api/search/recommendations', { params });
+      const response = await apiClient.get<Recommendation[]>('/api/search/recommendations', params);
 
       if (response.success && response.data) {
         setRecommendations(response.data);
@@ -329,17 +325,30 @@ export default function EnhancedBookSearch() {
   };
 
   // Book availability badge
-  const getAvailabilityBadge = (book: Book) => {
-    if (!book.is_active) {
-      return <Badge variant="secondary">Inactive</Badge>;
+  const getAvailabilityBadge = (book: Book | Recommendation) => {
+    // For recommendations, use isAvailable property
+    if ('isAvailable' in book && typeof book.isAvailable === 'boolean') {
+      return book.isAvailable 
+        ? <Badge variant="default">Available</Badge>
+        : <Badge variant="destructive">Not Available</Badge>;
     }
-    if (book.available_copies === 0) {
-      return <Badge variant="destructive">All Checked Out</Badge>;
+    
+    // For full Book objects
+    if ('is_active' in book && 'available_copies' in book) {
+      if (!book.is_active) {
+        return <Badge variant="secondary">Inactive</Badge>;
+      }
+      if (book.available_copies === 0) {
+        return <Badge variant="destructive">All Checked Out</Badge>;
+      }
+      if (book.available_copies === 1) {
+        return <Badge variant="outline">Last Copy</Badge>;
+      }
+      return <Badge variant="default">{book.available_copies} Available</Badge>;
     }
-    if (book.available_copies === 1) {
-      return <Badge variant="outline">Last Copy</Badge>;
-    }
-    return <Badge variant="default">{book.available_copies} Available</Badge>;
+    
+    // Fallback
+    return <Badge variant="outline">Unknown</Badge>;
   };
 
   // Popularity score display
@@ -476,7 +485,7 @@ export default function EnhancedBookSearch() {
               </Button>
 
               <Select
-                value={filters.sortBy}
+                value={filters.sortBy ?? 'title'}
                 onValueChange={(value: any) => {
                   setFilters({ ...filters, sortBy: value });
                   setCurrentPage(1);
@@ -497,7 +506,7 @@ export default function EnhancedBookSearch() {
               </Select>
 
               <Select
-                value={filters.sortOrder}
+                value={filters.sortOrder ?? 'asc'}
                 onValueChange={(value: any) => {
                   setFilters({ ...filters, sortOrder: value });
                   setCurrentPage(1);

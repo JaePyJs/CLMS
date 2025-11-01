@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useMobileOptimization, useTouchOptimization, useAccessibility, getResponsiveClasses, getOptimalImageSize } from '@/hooks/useMobileOptimization';
+import { useMobileOptimization, useTouchOptimization, getResponsiveClasses } from '@/hooks/useMobileOptimization';
 import { studentsApi, utilitiesApi } from '@/lib/api';
-import { LoadingSpinner, TableSkeleton, ButtonLoading, EmptyState } from '@/components/LoadingStates';
 import {
   Card,
   CardContent,
@@ -13,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -21,7 +19,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -33,7 +30,7 @@ import {
 import { StudentBarcodeDialog } from './StudentBarcodeDialog';
 import { StudentImportDialog } from './StudentImportDialog';
 import { toast } from 'sonner';
-import { Users, UserPlus, Search, Download, Eye, Edit, Trash2, Settings, QrCode, Award, Phone, Mail, Calendar, AlertTriangle, FileText, Upload, UserMinus, UserCheck, MessageSquare, History, CreditCard, ExternalLink, TrendingUp, Activity } from 'lucide-react';
+import { Users, UserPlus, Search, Download, Eye, Edit, Trash2, Settings, QrCode, Award, Phone, Mail, Calendar, AlertTriangle, FileText, Upload, UserMinus, UserCheck, MessageSquare, CreditCard, ExternalLink, TrendingUp, Activity } from 'lucide-react';
 
 interface Student {
   id: string;
@@ -62,6 +59,17 @@ interface Student {
   libraryCardPrinted: boolean;
 }
 
+// Define the API response type
+interface StudentsApiResponse {
+  students: Student[];
+  total: number;
+  pagination: {
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+  };
+}
+
 interface MockStudentData {
   students: Student[];
   stats: {
@@ -78,9 +86,9 @@ export function StudentManagement() {
   const queryClient = useQueryClient();
 
   // Mobile optimization
-  const { isMobile, isTablet, isDesktop, isLarge, isExtraLarge, orientation } = useMobileOptimization();
-  const { handleTouchStart, handleTouchEnd, gesture } = useTouchOptimization();
-  const { prefersReducedMotion } = useAccessibility();
+  const mobileState = useMobileOptimization();
+  const { isMobile, isTablet } = mobileState;
+  const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
 
   // State management
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -92,13 +100,14 @@ export function StudentManagement() {
   const [activeTab, setActiveTab] = useState('overview');
 
   // Fetch students with TanStack Query
-  const { data: studentsResponse, isLoading, error, refetch } = useQuery({
+  const { data: studentsResponse } = useQuery({
     queryKey: ['students'],
-    queryFn: async () => {
+    queryFn: async (): Promise<StudentsApiResponse> => {
       const response = await studentsApi.getStudents();
-      return response.data || { students: [], total: 0, pagination: {} };
+      const data = response.data as StudentsApiResponse | undefined;
+      return data ?? { students: [], total: 0, pagination: {} };
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 2 * 60 * 1000,
   });
 
   const students = studentsResponse?.students || [];
@@ -132,8 +141,6 @@ export function StudentManagement() {
   const [isPrintingIDs, setIsPrintingIDs] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isSendingNotifications, setIsSendingNotifications] = useState(false);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [isAddingStudent, setIsAddingStudent] = useState(false);
 
   // Mutations
   const createStudentMutation = useMutation({
@@ -307,7 +314,7 @@ export function StudentManagement() {
     let filtered = students;
 
     if (searchTerm) {
-      filtered = filtered.filter(student =>
+      filtered = filtered.filter((student: Student) =>
         student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.studentId.toLowerCase().includes(searchTerm.toLowerCase())
@@ -315,13 +322,13 @@ export function StudentManagement() {
     }
 
     if (filterStatus !== 'all') {
-      filtered = filtered.filter(student =>
+      filtered = filtered.filter((student: Student) =>
         filterStatus === 'active' ? student.isActive : !student.isActive
       );
     }
 
     if (filterGrade !== 'all') {
-      filtered = filtered.filter(student => student.gradeCategory === filterGrade);
+      filtered = filtered.filter((student: Student) => student.gradeCategory === filterGrade);
     }
 
     setFilteredStudents(filtered);
@@ -334,82 +341,47 @@ export function StudentManagement() {
       return;
     }
 
-    setIsAddingStudent(true);
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-    const student: Student = {
-      id: Date.now().toString(),
-      studentId: `STU${Date.now().toString().slice(-3)}`,
+    const studentData = {
       firstName: newStudent.firstName,
       lastName: newStudent.lastName,
       gradeLevel: newStudent.gradeLevel,
-      gradeCategory: getGradeCategory(newStudent.gradeLevel),
       section: newStudent.section,
-      isActive: true,
       email: newStudent.email,
       phone: newStudent.phone,
-      address: newStudent.address,
       parentName: newStudent.parentName,
       parentPhone: newStudent.parentPhone,
       parentEmail: newStudent.parentEmail,
       emergencyContact: newStudent.emergencyContact,
+      address: newStudent.address,
       notes: newStudent.notes,
-      joinDate: new Date().toISOString().split('T')[0],
-      totalSessions: 0,
-      specialPrivileges: [],
-      disciplinaryFlags: 0,
-      qrCodeGenerated: false,
-      barcodeGenerated: false,
-      libraryCardPrinted: false
     };
 
-      setStudents([...students, student]);
-      toast.success(`Student ${student.firstName} ${student.lastName} added successfully!`);
-      setShowAddStudent(false);
-      setNewStudent({
-        firstName: '',
-        lastName: '',
-        gradeLevel: '',
-        section: '',
-        email: '',
-        phone: '',
-        parentName: '',
-        parentPhone: '',
-        parentEmail: '',
-        emergencyContact: '',
-        address: '',
-        notes: ''
-      });
-    } catch (error) {
-      toast.error('Failed to add student');
-    } finally {
-      setIsAddingStudent(false);
-    }
+    createStudentMutation.mutate(studentData);
   };
 
   const handleEditStudent = () => {
     if (!selectedStudent) return;
 
-    setStudents(students.map(s => s.id === selectedStudent.id ? selectedStudent : s));
-    toast.success('Student updated successfully!');
-    setShowEditStudent(false);
-    setSelectedStudent(null);
+    updateStudentMutation.mutate({
+      id: selectedStudent.id,
+      data: selectedStudent,
+    });
   };
 
   const handleDeleteStudent = (studentId: string) => {
     if (confirm('Are you sure you want to delete this student?')) {
-      setStudents(students.filter(s => s.id !== studentId));
-      toast.success('Student deleted successfully!');
+      deleteStudentMutation.mutate(studentId);
     }
   };
 
   const handleToggleStatus = (studentId: string) => {
-    setStudents(students.map(s =>
-      s.id === studentId ? { ...s, isActive: !s.isActive } : s
-    ));
-    toast.success('Student status updated!');
+    const student = students.find((s: Student) => s.id === studentId);
+    if (student) {
+      updateStudentMutation.mutate({
+        id: studentId,
+        data: { ...student, isActive: !student.isActive },
+      });
+    }
   };
 
   const handleGenerateQRCodes = async () => {
@@ -577,31 +549,34 @@ export function StudentManagement() {
   };
 
   // Handle swipe gestures for mobile navigation
-  useEffect(() => {
-    if (isMobile && gesture) {
-      if (gesture === 'swipe-left') {
-        // Navigate to next tab
-        const tabs = ['overview', 'students', 'bulk', 'reports'];
-        const currentIndex = tabs.indexOf(activeTab);
-        if (currentIndex < tabs.length - 1) {
-          setActiveTab(tabs[currentIndex + 1]);
-        }
-      } else if (gesture === 'swipe-right') {
-        // Navigate to previous tab
-        const tabs = ['overview', 'students', 'bulk', 'reports'];
-        const currentIndex = tabs.indexOf(activeTab);
-        if (currentIndex > 0) {
-          setActiveTab(tabs[currentIndex - 1]);
+  const handleTouchEndWithGesture = useCallback((e: React.TouchEvent) => {
+    if (isMobile) {
+      const gesture = handleTouchEnd(e);
+      if (gesture) {
+        if (gesture === 'swipe-left') {
+          // Navigate to next tab
+          const tabs = ['overview', 'students', 'bulk', 'reports'];
+          const currentIndex = tabs.indexOf(activeTab);
+          if (currentIndex < tabs.length - 1) {
+            setActiveTab(tabs[currentIndex + 1]);
+          }
+        } else if (gesture === 'swipe-right') {
+          // Navigate to previous tab
+          const tabs = ['overview', 'students', 'bulk', 'reports'];
+          const currentIndex = tabs.indexOf(activeTab);
+          if (currentIndex > 0) {
+            setActiveTab(tabs[currentIndex - 1]);
+          }
         }
       }
     }
-  }, [gesture, isMobile, activeTab]);
+  }, [handleTouchEnd, isMobile, activeTab]);
 
   return (
     <div
-      className={getResponsiveClasses('space-y-6', { isMobile, isTablet, isDesktop, isLarge, isExtraLarge })}
+      className={getResponsiveClasses('space-y-6', mobileState)}
       onTouchStart={isMobile ? handleTouchStart : undefined}
-      onTouchEnd={isMobile ? handleTouchEnd : undefined}
+      onTouchEnd={isMobile ? handleTouchEndWithGesture : undefined}
     >
       {/* Enhanced Header */}
       <div className={`relative ${isMobile ? 'mb-4' : ''}`}>
@@ -1349,7 +1324,7 @@ export function StudentManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">Grade Level *</label>
-                  <Select value={selectedStudent.gradeLevel} onValueChange={(value) => setSelectedStudent({ ...selectedStudent, gradeLevel: value })}>
+                  <Select value={selectedStudent?.gradeLevel ?? ''} onValueChange={(value) => selectedStudent && setSelectedStudent({ ...selectedStudent, gradeLevel: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select grade" />
                     </SelectTrigger>

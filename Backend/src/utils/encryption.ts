@@ -20,7 +20,7 @@ class EncryptionConstants {
     PUBLIC: 'public',
     INTERNAL: 'internal',
     CONFIDENTIAL: 'confidential',
-    RESTRICTED: 'restricted'
+    RESTRICTED: 'restricted',
   } as const;
 
   // Encryption contexts for different data types
@@ -29,7 +29,7 @@ class EncryptionConstants {
     USER_CREDENTIALS: 'user-credentials',
     AUDIT_DATA: 'audit-data',
     SYSTEM_CONFIG: 'system-config',
-    EQUIPMENT_DATA: 'equipment-data'
+    EQUIPMENT_DATA: 'equipment-data',
   } as const;
 }
 
@@ -40,7 +40,10 @@ class KeyManager {
   private static readonly DATA_KEY_FILE = 'data.key';
   private static readonly KEY_ROTATION_INTERVAL = 90 * 24 * 60 * 60 * 1000; // 90 days
   private static masterKey: Buffer | null = null;
-  private static dataKeys: Map<string, { key: Buffer; created: Date; version: string }> = new Map();
+  private static dataKeys: Map<
+    string,
+    { key: Buffer; created: Date; version: string }
+  > = new Map();
 
   static async initialize(): Promise<void> {
     try {
@@ -49,7 +52,9 @@ class KeyManager {
       await this.loadOrCreateDataKeys();
       logger.info('Key manager initialized successfully');
     } catch (error) {
-      logger.error('Failed to initialize key manager', { error: (error as Error).message });
+      logger.error('Failed to initialize key manager', {
+        error: (error as Error).message,
+      });
       throw error;
     }
   }
@@ -74,7 +79,11 @@ class KeyManager {
       const envKey = process.env.ENCRYPTION_MASTER_KEY;
       if (envKey) {
         // Use environment variable for initial setup
-        this.masterKey = crypto.scryptSync(envKey, 'master-key', EncryptionConstants.KEY_LENGTH);
+        this.masterKey = crypto.scryptSync(
+          envKey,
+          'master-key',
+          EncryptionConstants.KEY_LENGTH,
+        );
       } else {
         // Generate new master key
         this.masterKey = crypto.randomBytes(EncryptionConstants.KEY_LENGTH);
@@ -94,13 +103,22 @@ class KeyManager {
       const keys = JSON.parse(dataKeyData);
 
       for (const [context, keyInfo] of Object.entries(keys)) {
-        if (this.masterKey && keyInfo && typeof keyInfo === 'object' &&
-            'encrypted' in keyInfo && 'created' in keyInfo && 'version' in keyInfo) {
-          const decryptedKey = this.decryptKey(keyInfo.encrypted as string, this.masterKey);
+        if (
+          this.masterKey &&
+          keyInfo &&
+          typeof keyInfo === 'object' &&
+          'encrypted' in keyInfo &&
+          'created' in keyInfo &&
+          'version' in keyInfo
+        ) {
+          const decryptedKey = this.decryptKey(
+            keyInfo.encrypted as string,
+            this.masterKey,
+          );
           this.dataKeys.set(context, {
             key: decryptedKey,
             created: new Date(keyInfo.created as string),
-            version: keyInfo.version as string
+            version: keyInfo.version as string,
           });
         }
       }
@@ -126,31 +144,36 @@ class KeyManager {
       this.dataKeys.set(context, {
         key: dataKey,
         created: new Date(),
-        version: EncryptionConstants.KEY_VERSION
+        version: EncryptionConstants.KEY_VERSION,
       });
 
       keys[context] = {
         encrypted: encryptedKey,
         created: new Date().toISOString(),
-        version: EncryptionConstants.KEY_VERSION
+        version: EncryptionConstants.KEY_VERSION,
       };
     }
 
     const dataKeyPath = path.join(this.KEY_DIR, this.DATA_KEY_FILE);
-    await fs.writeFile(dataKeyPath, JSON.stringify(keys, null, 2), { mode: 0o600 });
+    await fs.writeFile(dataKeyPath, JSON.stringify(keys, null, 2), {
+      mode: 0o600,
+    });
     logger.info('Generated and saved new data keys');
   }
 
   private static encryptKey(key: Buffer, masterKey: Buffer): string {
     const iv = crypto.randomBytes(EncryptionConstants.IV_LENGTH);
-    const cipher = crypto.createCipher(EncryptionConstants.KEY_ALGORITHM, masterKey);
+    const cipher = crypto.createCipher(
+      EncryptionConstants.KEY_ALGORITHM,
+      masterKey,
+    );
 
     let encrypted = cipher.update(key);
     encrypted = Buffer.concat([encrypted, cipher.final()]);
 
     return JSON.stringify({
       encrypted: encrypted.toString('base64'),
-      iv: iv.toString('base64')
+      iv: iv.toString('base64'),
     });
   }
 
@@ -159,7 +182,10 @@ class KeyManager {
     const iv = Buffer.from(keyData.iv, 'base64');
     const encrypted = Buffer.from(keyData.encrypted, 'base64');
 
-    const decipher = crypto.createDecipher(EncryptionConstants.KEY_ALGORITHM, masterKey);
+    const decipher = crypto.createDecipher(
+      EncryptionConstants.KEY_ALGORITHM,
+      masterKey,
+    );
     let decrypted = decipher.update(encrypted);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
 
@@ -200,21 +226,30 @@ class KeyManager {
       const masterKeyPath = path.join(this.KEY_DIR, this.MASTER_KEY_FILE);
       const dataKeyPath = path.join(this.KEY_DIR, this.DATA_KEY_FILE);
 
-      await fs.copyFile(masterKeyPath, path.join(backupDir, this.MASTER_KEY_FILE));
+      await fs.copyFile(
+        masterKeyPath,
+        path.join(backupDir, this.MASTER_KEY_FILE),
+      );
       await fs.copyFile(dataKeyPath, path.join(backupDir, this.DATA_KEY_FILE));
 
       logger.info(`Keys backed up to: ${backupDir}`);
     } catch (error) {
-      logger.error('Failed to backup keys', { error: (error as Error).message });
+      logger.error('Failed to backup keys', {
+        error: (error as Error).message,
+      });
       throw error;
     }
   }
 
-  static getKeyInfo(): Array<{ context: string; created: Date; version: string }> {
+  static getKeyInfo(): Array<{
+    context: string;
+    created: Date;
+    version: string;
+  }> {
     return Array.from(this.dataKeys.entries()).map(([context, info]) => ({
       context,
       created: info.created,
-      version: info.version
+      version: info.version,
     }));
   }
 }
@@ -227,34 +262,93 @@ class FieldEncryption {
   private static readonly TAG_LENGTH = EncryptionConstants.TAG_LENGTH;
 
   // Define sensitive fields and their classification
-  private static readonly SENSITIVE_FIELDS: Record<string, {
-    classification: string;
-    context: string;
-    required: boolean;
-  }> = {
+  private static readonly SENSITIVE_FIELDS: Record<
+    string,
+    {
+      classification: string;
+      context: string;
+      required: boolean;
+    }
+  > = {
     // Student PII
-    'students.first_name': { classification: 'confidential', context: 'student-pii', required: true },
-    'students.last_name': { classification: 'confidential', context: 'student-pii', required: true },
-    'students.student_id': { classification: 'confidential', context: 'student-pii', required: true },
-    'students.section': { classification: 'internal', context: 'student-pii', required: false },
+    'students.first_name': {
+      classification: 'confidential',
+      context: 'student-pii',
+      required: true,
+    },
+    'students.last_name': {
+      classification: 'confidential',
+      context: 'student-pii',
+      required: true,
+    },
+    'students.student_id': {
+      classification: 'confidential',
+      context: 'student-pii',
+      required: true,
+    },
+    'students.section': {
+      classification: 'internal',
+      context: 'student-pii',
+      required: false,
+    },
 
     // User credentials
-    'users.email': { classification: 'confidential', context: 'user-credentials', required: false },
-    'users.full_name': { classification: 'internal', context: 'user-credentials', required: false },
-    'users.username': { classification: 'confidential', context: 'user-credentials', required: true },
-    'users.password': { classification: 'restricted', context: 'user-credentials', required: true },
+    'users.email': {
+      classification: 'confidential',
+      context: 'user-credentials',
+      required: false,
+    },
+    'users.full_name': {
+      classification: 'internal',
+      context: 'user-credentials',
+      required: false,
+    },
+    'users.username': {
+      classification: 'confidential',
+      context: 'user-credentials',
+      required: true,
+    },
+    'users.password': {
+      classification: 'restricted',
+      context: 'user-credentials',
+      required: true,
+    },
 
     // Equipment data
-    'equipment.serial_number': { classification: 'internal', context: 'equipment-data', required: false },
-    'equipment.asset_tag': { classification: 'internal', context: 'equipment-data', required: false },
+    'equipment.serial_number': {
+      classification: 'internal',
+      context: 'equipment-data',
+      required: false,
+    },
+    'equipment.asset_tag': {
+      classification: 'internal',
+      context: 'equipment-data',
+      required: false,
+    },
 
     // System configuration
-    'system_config.value': { classification: 'restricted', context: 'system-config', required: false },
+    'system_config.value': {
+      classification: 'restricted',
+      context: 'system-config',
+      required: false,
+    },
 
     // Audit data
-    'audit_logs.ip_address': { classification: 'internal', context: 'audit-data', required: false },
-    'audit_logs.new_values': { classification: 'confidential', context: 'audit-data', required: false },
-    'audit_logs.old_values': { classification: 'confidential', context: 'audit-data', required: false },
+    'audit_logs.ip_address': {
+      classification: 'internal',
+      context: 'audit-data',
+      required: false,
+    },
+    'audit_logs.new_values': {
+      classification: 'confidential',
+      context: 'audit-data',
+      required: false,
+    },
+    'audit_logs.old_values': {
+      classification: 'confidential',
+      context: 'audit-data',
+      required: false,
+    },
   };
 
   static async initialize(): Promise<void> {
@@ -265,7 +359,10 @@ class FieldEncryption {
     return KeyManager.getKey(context);
   }
 
-  static encryptField(data: string, context: string): {
+  static encryptField(
+    data: string,
+    context: string,
+  ): {
     encrypted: string;
     iv: string;
     tag: string;
@@ -293,7 +390,7 @@ class FieldEncryption {
       tag: tag.toString('hex'),
       context,
       version: EncryptionConstants.KEY_VERSION,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -301,7 +398,7 @@ class FieldEncryption {
     encryptedData: string,
     iv: string,
     tag: string,
-    context: string
+    context: string,
   ): string {
     if (!encryptedData) {
       return '';
@@ -321,13 +418,16 @@ class FieldEncryption {
       logger.error('Decryption failed', {
         error: (error as Error).message,
         context,
-        dataLength: encryptedData.length
+        dataLength: encryptedData.length,
       });
       throw new Error(`Decryption failed for context: ${context}`);
     }
   }
 
-  static encryptObject(obj: Record<string, any>, sensitiveFields: string[]): Record<string, any> {
+  static encryptObject(
+    obj: Record<string, any>,
+    sensitiveFields: string[],
+  ): Record<string, any> {
     const encrypted = { ...obj };
 
     for (const field of sensitiveFields) {
@@ -338,7 +438,10 @@ class FieldEncryption {
           continue;
         }
 
-        const fieldData = typeof obj[field] === 'string' ? obj[field] : JSON.stringify(obj[field]);
+        const fieldData =
+          typeof obj[field] === 'string'
+            ? obj[field]
+            : JSON.stringify(obj[field]);
         const encryptedValue = this.encryptField(fieldData, fieldInfo.context);
 
         encrypted[field] = {
@@ -349,7 +452,7 @@ class FieldEncryption {
           context: encryptedValue.context,
           classification: fieldInfo.classification,
           version: encryptedValue.version,
-          timestamp: encryptedValue.timestamp
+          timestamp: encryptedValue.timestamp,
         };
       }
     }
@@ -363,9 +466,16 @@ class FieldEncryption {
     for (const [key, value] of Object.entries(obj)) {
       if (value && typeof value === 'object' && value.encrypted === true) {
         try {
-          decrypted[key] = this.decryptField(value.data, value.iv, value.tag, value.context);
+          decrypted[key] = this.decryptField(
+            value.data,
+            value.iv,
+            value.tag,
+            value.context,
+          );
         } catch (error) {
-          logger.error(`Failed to decrypt field: ${key}`, { error: (error as Error).message });
+          logger.error(`Failed to decrypt field: ${key}`, {
+            error: (error as Error).message,
+          });
           // Keep the encrypted value if decryption fails
           decrypted[key] = `[ENCRYPTED: Decryption failed]`;
         }
@@ -382,7 +492,10 @@ class FieldEncryption {
   }
 
   // Get field classification
-  static getFieldClassification(tableName: string, fieldName: string): string | null {
+  static getFieldClassification(
+    tableName: string,
+    fieldName: string,
+  ): string | null {
     const fieldKey = `${tableName}.${fieldName}`;
     const fieldInfo = this.SENSITIVE_FIELDS[fieldKey];
     return fieldInfo ? fieldInfo.classification : null;
@@ -408,7 +521,15 @@ class FieldEncryption {
       return false;
     }
 
-    const requiredFields = ['encrypted', 'data', 'iv', 'tag', 'context', 'version', 'timestamp'];
+    const requiredFields = [
+      'encrypted',
+      'data',
+      'iv',
+      'tag',
+      'context',
+      'version',
+      'timestamp',
+    ];
     return requiredFields.every(field => encryptedValue.hasOwnProperty(field));
   }
 }
@@ -420,8 +541,8 @@ class TokenRotation {
     const now = new Date();
     const lastRotationTime = lastRotation.getTime();
     const nowTime = now.getTime();
-    
-    return (nowTime - lastRotationTime) > this.TOKEN_ROTATION_INTERVAL;
+
+    return nowTime - lastRotationTime > this.TOKEN_ROTATION_INTERVAL;
   }
 
   static generateTokenTimestamp(): string {
@@ -432,7 +553,14 @@ class TokenRotation {
 
   static extractTokenTimestamp(token: string): Date | null {
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const tokenParts = token.split('.');
+      const encodedPayload = tokenParts[1];
+
+      if (!encodedPayload) {
+        return null;
+      }
+
+      const payload = JSON.parse(atob(encodedPayload));
       return new Date(payload.iat * 1000);
     } catch {
       return null;
@@ -455,7 +583,7 @@ class PasswordUtils {
       requireLowercase: true,
       requireNumbers: true,
       requireSpecialChars: true,
-      maxAge: 90 * 24 * 60 * 60 * 1000 // 90 days
+      maxAge: 90 * 24 * 60 * 60 * 1000, // 90 days
     };
   }
 
@@ -467,7 +595,9 @@ class PasswordUtils {
     const errors: string[] = [];
 
     if (password.length < requirements.minLength) {
-      errors.push(`Password must be at least ${requirements.minLength} characters long`);
+      errors.push(
+        `Password must be at least ${requirements.minLength} characters long`,
+      );
     }
 
     if (requirements.requireUppercase && !/[A-Z]/.test(password)) {
@@ -482,13 +612,16 @@ class PasswordUtils {
       errors.push('Password must contain at least one number');
     }
 
-    if (requirements.requireSpecialChars && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    if (
+      requirements.requireSpecialChars &&
+      !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+    ) {
       errors.push('Password must contain at least one special character');
     }
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -500,7 +633,7 @@ class PasswordUtils {
     const allChars = uppercase + lowercase + numbers + symbols;
 
     let password = '';
-    
+
     // Ensure at least one character from each category
     password += uppercase[Math.floor(Math.random() * uppercase.length)];
     password += lowercase[Math.floor(Math.random() * lowercase.length)];
@@ -513,7 +646,10 @@ class PasswordUtils {
     }
 
     // Shuffle the password
-    return password.split('').sort(() => Math.random() - 0.5).join('');
+    return password
+      .split('')
+      .sort(() => Math.random() - 0.5)
+      .join('');
   }
 }
 
@@ -522,7 +658,7 @@ class DataMasking {
     if (str.length <= visibleChars) {
       return '*'.repeat(str.length);
     }
-    
+
     const visible = str.slice(-visibleChars);
     const masked = '*'.repeat(str.length - visibleChars);
     return masked + visible;
@@ -547,10 +683,10 @@ class DataMasking {
     if (cleaned.length <= 4) {
       return '*'.repeat(cleaned.length);
     }
-    
+
     const visible = cleaned.slice(-4);
     const masked = '*'.repeat(cleaned.length - 4);
-    
+
     return `***-***-${visible}`;
   }
 
@@ -559,7 +695,7 @@ class DataMasking {
     if (cleaned.length !== 9) {
       return '*'.repeat(ssn.length);
     }
-    
+
     return `***-**-${cleaned.slice(-4)}`;
   }
 }
@@ -578,7 +714,12 @@ export const encryptData = (data: string): string => {
 export const decryptData = (encryptedData: string): string => {
   try {
     const parsed = JSON.parse(encryptedData);
-    return FieldEncryption.decryptField(parsed.encrypted, parsed.iv, parsed.tag, parsed.context);
+    return FieldEncryption.decryptField(
+      parsed.encrypted,
+      parsed.iv,
+      parsed.tag,
+      parsed.context,
+    );
   } catch (error) {
     logger.error('Error decrypting data', { error: (error as Error).message });
     throw new Error('Decryption failed');
@@ -589,7 +730,9 @@ export const encryptObject = (obj: any): string => {
   try {
     return encryptData(JSON.stringify(obj));
   } catch (error) {
-    logger.error('Error encrypting object', { error: (error as Error).message });
+    logger.error('Error encrypting object', {
+      error: (error as Error).message,
+    });
     throw new Error('Object encryption failed');
   }
 };
@@ -599,11 +742,12 @@ export const decryptObject = (encryptedData: string): any => {
     const decrypted = decryptData(encryptedData);
     return JSON.parse(decrypted);
   } catch (error) {
-    logger.error('Error decrypting object', { error: (error as Error).message });
+    logger.error('Error decrypting object', {
+      error: (error as Error).message,
+    });
     throw new Error('Object decryption failed');
   }
 };
-
 
 // Enhanced compliance and audit logging
 class EncryptionCompliance {
@@ -615,14 +759,25 @@ class EncryptionCompliance {
     metadata?: any;
   }> = [];
 
-  static logEncryptionEvent(action: string, context: string, userId?: string, metadata?: any): void {
-    const event = {
+  static logEncryptionEvent(
+    action: string,
+    context: string,
+    userId?: string,
+    metadata?: any,
+  ): void {
+    const event: (typeof this.auditLog)[number] = {
       timestamp: new Date(),
       action,
       context,
-      userId,
-      metadata
     };
+
+    if (typeof userId === 'string') {
+      event.userId = userId;
+    }
+
+    if (metadata !== undefined) {
+      event.metadata = metadata;
+    }
 
     this.auditLog.push(event);
     logger.info('Encryption audit event', event);
@@ -652,12 +807,17 @@ class EncryptionCompliance {
       actions[event.action] = (actions[event.action] || 0) + 1;
     }
 
+    const lastEvent =
+      this.auditLog.length > 0
+        ? this.auditLog[this.auditLog.length - 1]
+        : undefined;
+
     return {
       totalEvents: this.auditLog.length,
       contexts,
       actions,
-      lastEvent: this.auditLog.length > 0 ? this.auditLog[this.auditLog.length - 1].timestamp : null,
-      keyInfo: KeyManager.getKeyInfo()
+      lastEvent: lastEvent ? lastEvent.timestamp : null,
+      keyInfo: KeyManager.getKeyInfo(),
     };
   }
 
@@ -682,7 +842,9 @@ class EncryptionCompliance {
         const keyAge = now.getTime() - key.created.getTime();
         const maxAge = 90 * 24 * 60 * 60 * 1000; // 90 days
         if (keyAge > maxAge) {
-          recommendations.push(`Key for context ${key.context} is older than 90 days and should be rotated`);
+          recommendations.push(
+            `Key for context ${key.context} is older than 90 days and should be rotated`,
+          );
         }
       }
     } catch (error) {
@@ -697,7 +859,7 @@ class EncryptionCompliance {
     return {
       isCompliant: issues.length === 0,
       issues,
-      recommendations
+      recommendations,
     };
   }
 }
@@ -712,7 +874,13 @@ class TransitEncryption {
     state?: string;
     locality?: string;
   }): string {
-    const { commonName, organization = 'CLMS Library', country = 'US', state = '', locality = '' } = options;
+    const {
+      commonName,
+      organization = 'CLMS Library',
+      country = 'US',
+      state = '',
+      locality = '',
+    } = options;
 
     return `
 -----BEGIN CERTIFICATE REQUEST-----
@@ -748,20 +916,22 @@ MIIBVjCB...
     return {
       isValid: issues.length === 0,
       issues,
-      recommendations
+      recommendations,
     };
   }
 
   // Generate secure headers
   static getSecureHeaders(): Record<string, string> {
     return {
-      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+      'Strict-Transport-Security':
+        'max-age=31536000; includeSubDomains; preload',
       'X-Content-Type-Options': 'nosniff',
       'X-Frame-Options': 'DENY',
       'X-XSS-Protection': '1; mode=block',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
-      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
-      'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
+      'Content-Security-Policy':
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+      'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
     };
   }
 }
@@ -769,7 +939,11 @@ MIIBVjCB...
 // Database encryption utilities
 class DatabaseEncryption {
   // Encrypt database field value
-  static encryptDatabaseField(value: any, tableName: string, fieldName: string): any {
+  static encryptDatabaseField(
+    value: any,
+    tableName: string,
+    fieldName: string,
+  ): any {
     if (value === null || value === undefined) {
       return value;
     }
@@ -780,11 +954,14 @@ class DatabaseEncryption {
 
     const context = FieldEncryption.getFieldContext(tableName, fieldName);
     if (!context) {
-      logger.warn(`No encryption context found for field: ${tableName}.${fieldName}`);
+      logger.warn(
+        `No encryption context found for field: ${tableName}.${fieldName}`,
+      );
       return value;
     }
 
-    const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+    const stringValue =
+      typeof value === 'string' ? value : JSON.stringify(value);
     const encrypted = FieldEncryption.encryptField(stringValue, context);
 
     return {
@@ -793,9 +970,12 @@ class DatabaseEncryption {
       iv: encrypted.iv,
       tag: encrypted.tag,
       context: encrypted.context,
-      classification: FieldEncryption.getFieldClassification(tableName, fieldName),
+      classification: FieldEncryption.getFieldClassification(
+        tableName,
+        fieldName,
+      ),
       version: encrypted.version,
-      timestamp: encrypted.timestamp
+      timestamp: encrypted.timestamp,
     };
   }
 
@@ -806,9 +986,16 @@ class DatabaseEncryption {
     }
 
     try {
-      return FieldEncryption.decryptField(value.data, value.iv, value.tag, value.context);
+      return FieldEncryption.decryptField(
+        value.data,
+        value.iv,
+        value.tag,
+        value.context,
+      );
     } catch (error) {
-      logger.error('Failed to decrypt database field', { error: (error as Error).message });
+      logger.error('Failed to decrypt database field', {
+        error: (error as Error).message,
+      });
       return '[DECRYPTION_FAILED]';
     }
   }
@@ -820,11 +1007,16 @@ class DatabaseEncryption {
     }
 
     const processed = { ...record };
-    const sensitiveFields = FieldEncryption.getSensitiveFieldsForTable(tableName);
+    const sensitiveFields =
+      FieldEncryption.getSensitiveFieldsForTable(tableName);
 
     for (const field of sensitiveFields) {
       if (processed.hasOwnProperty(field)) {
-        processed[field] = this.encryptDatabaseField(processed[field], tableName, field);
+        processed[field] = this.encryptDatabaseField(
+          processed[field],
+          tableName,
+          field,
+        );
       }
     }
 
@@ -852,7 +1044,7 @@ class EncryptionMigration {
   static async migrateTableData(
     tableName: string,
     prisma: any,
-    batchSize: number = 100
+    batchSize: number = 100,
   ): Promise<{ total: number; processed: number; errors: number }> {
     logger.info(`Starting encryption migration for table: ${tableName}`);
     let total = 0;
@@ -861,25 +1053,34 @@ class EncryptionMigration {
 
     try {
       // Get total count
-      const countResult = await prisma.$queryRaw`SELECT COUNT(*) as count FROM ${tableName}`;
+      const countResult =
+        await prisma.$queryRaw`SELECT COUNT(*) as count FROM ${tableName}`;
       total = countResult[0].count;
 
       logger.info(`Processing ${total} records in ${tableName}`);
 
       // Process in batches
       for (let offset = 0; offset < total; offset += batchSize) {
-        const records = await prisma.$queryRaw`SELECT * FROM ${tableName} LIMIT ${batchSize} OFFSET ${offset}`;
+        const records =
+          await prisma.$queryRaw`SELECT * FROM ${tableName} LIMIT ${batchSize} OFFSET ${offset}`;
 
         for (const record of records) {
           try {
-            const processedRecord = DatabaseEncryption.processRecordForStorage(record, tableName);
+            const processedRecord = DatabaseEncryption.processRecordForStorage(
+              record,
+              tableName,
+            );
 
             // Update the record with encrypted fields
-            const updateFields = {};
-            const sensitiveFields = FieldEncryption.getSensitiveFieldsForTable(tableName);
+            const updateFields: Record<string, unknown> = {};
+            const sensitiveFields =
+              FieldEncryption.getSensitiveFieldsForTable(tableName);
 
             for (const field of sensitiveFields) {
-              if (processedRecord.hasOwnProperty(field) && record[field] !== processedRecord[field]) {
+              if (
+                processedRecord.hasOwnProperty(field) &&
+                record[field] !== processedRecord[field]
+              ) {
                 updateFields[field] = processedRecord[field];
               }
             }
@@ -887,7 +1088,7 @@ class EncryptionMigration {
             if (Object.keys(updateFields).length > 0) {
               await prisma[tableName].update({
                 where: { id: record.id },
-                data: updateFields
+                data: updateFields,
               });
             }
 
@@ -895,20 +1096,28 @@ class EncryptionMigration {
 
             // Log progress
             if (processed % 10 === 0) {
-              logger.info(`Migration progress: ${processed}/${total} records processed`);
+              logger.info(
+                `Migration progress: ${processed}/${total} records processed`,
+              );
             }
           } catch (error) {
-            logger.error(`Failed to migrate record ${record.id}`, { error: (error as Error).message });
+            logger.error(`Failed to migrate record ${record.id}`, {
+              error: (error as Error).message,
+            });
             errors++;
           }
         }
       }
 
-      logger.info(`Migration completed for ${tableName}: ${processed} processed, ${errors} errors`);
+      logger.info(
+        `Migration completed for ${tableName}: ${processed} processed, ${errors} errors`,
+      );
 
       return { total, processed, errors };
     } catch (error) {
-      logger.error(`Migration failed for table ${tableName}`, { error: (error as Error).message });
+      logger.error(`Migration failed for table ${tableName}`, {
+        error: (error as Error).message,
+      });
       throw error;
     }
   }
@@ -916,7 +1125,7 @@ class EncryptionMigration {
   static async rollbackTableData(
     tableName: string,
     prisma: any,
-    batchSize: number = 100
+    batchSize: number = 100,
   ): Promise<{ total: number; processed: number; errors: number }> {
     logger.info(`Starting encryption rollback for table: ${tableName}`);
     let total = 0;
@@ -925,23 +1134,30 @@ class EncryptionMigration {
 
     try {
       // Get total count
-      const countResult = await prisma.$queryRaw`SELECT COUNT(*) as count FROM ${tableName}`;
+      const countResult =
+        await prisma.$queryRaw`SELECT COUNT(*) as count FROM ${tableName}`;
       total = countResult[0].count;
 
       // Process in batches
       for (let offset = 0; offset < total; offset += batchSize) {
-        const records = await prisma.$queryRaw`SELECT * FROM ${tableName} LIMIT ${batchSize} OFFSET ${offset}`;
+        const records =
+          await prisma.$queryRaw`SELECT * FROM ${tableName} LIMIT ${batchSize} OFFSET ${offset}`;
 
         for (const record of records) {
           try {
-            const decryptedRecord = DatabaseEncryption.processRecordForRetrieval(record);
+            const decryptedRecord =
+              DatabaseEncryption.processRecordForRetrieval(record);
 
             // Update the record with decrypted fields
-            const updateFields = {};
-            const sensitiveFields = FieldEncryption.getSensitiveFieldsForTable(tableName);
+            const updateFields: Record<string, unknown> = {};
+            const sensitiveFields =
+              FieldEncryption.getSensitiveFieldsForTable(tableName);
 
             for (const field of sensitiveFields) {
-              if (record[field]?.encrypted && decryptedRecord[field] !== record[field]) {
+              if (
+                record[field]?.encrypted &&
+                decryptedRecord[field] !== record[field]
+              ) {
                 updateFields[field] = decryptedRecord[field];
               }
             }
@@ -949,36 +1165,48 @@ class EncryptionMigration {
             if (Object.keys(updateFields).length > 0) {
               await prisma[tableName].update({
                 where: { id: record.id },
-                data: updateFields
+                data: updateFields,
               });
             }
 
             processed++;
           } catch (error) {
-            logger.error(`Failed to rollback record ${record.id}`, { error: (error as Error).message });
+            logger.error(`Failed to rollback record ${record.id}`, {
+              error: (error as Error).message,
+            });
             errors++;
           }
         }
       }
 
-      logger.info(`Rollback completed for ${tableName}: ${processed} processed, ${errors} errors`);
+      logger.info(
+        `Rollback completed for ${tableName}: ${processed} processed, ${errors} errors`,
+      );
 
       return { total, processed, errors };
     } catch (error) {
-      logger.error(`Rollback failed for table ${tableName}`, { error: (error as Error).message });
+      logger.error(`Rollback failed for table ${tableName}`, {
+        error: (error as Error).message,
+      });
       throw error;
     }
   }
 }
 
 // Enhanced convenience functions with context awareness
-export const encryptDataWithCompliance = (data: string, context: string): string => {
+export const encryptDataWithCompliance = (
+  data: string,
+  context: string,
+): string => {
   try {
     EncryptionCompliance.logEncryptionEvent('encrypt', context);
     const result = FieldEncryption.encryptField(data, context);
     return JSON.stringify(result);
   } catch (error) {
-    logger.error('Error encrypting data', { error: (error as Error).message, context });
+    logger.error('Error encrypting data', {
+      error: (error as Error).message,
+      context,
+    });
     throw new Error('Encryption failed');
   }
 };
@@ -987,19 +1215,30 @@ export const decryptDataWithCompliance = (encryptedData: string): string => {
   try {
     const parsed = JSON.parse(encryptedData);
     EncryptionCompliance.logEncryptionEvent('decrypt', parsed.context);
-    return FieldEncryption.decryptField(parsed.encrypted, parsed.iv, parsed.tag, parsed.context);
+    return FieldEncryption.decryptField(
+      parsed.encrypted,
+      parsed.iv,
+      parsed.tag,
+      parsed.context,
+    );
   } catch (error) {
     logger.error('Error decrypting data', { error: (error as Error).message });
     throw new Error('Decryption failed');
   }
 };
 
-export const encryptObjectWithCompliance = (obj: any, context: string): string => {
+export const encryptObjectWithCompliance = (
+  obj: any,
+  context: string,
+): string => {
   try {
     EncryptionCompliance.logEncryptionEvent('encrypt_object', context);
     return encryptDataWithCompliance(JSON.stringify(obj), context);
   } catch (error) {
-    logger.error('Error encrypting object', { error: (error as Error).message, context });
+    logger.error('Error encrypting object', {
+      error: (error as Error).message,
+      context,
+    });
     throw new Error('Object encryption failed');
   }
 };
@@ -1011,7 +1250,9 @@ export const decryptObjectWithCompliance = (encryptedData: string): any => {
     const decrypted = decryptDataWithCompliance(encryptedData);
     return JSON.parse(decrypted);
   } catch (error) {
-    logger.error('Error decrypting object', { error: (error as Error).message });
+    logger.error('Error decrypting object', {
+      error: (error as Error).message,
+    });
     throw new Error('Object decryption failed');
   }
 };
@@ -1023,7 +1264,13 @@ export const generateSecureToken = (length: number = 32): string => {
 export const hashData = (data: string, salt?: string): string => {
   try {
     const hashSalt = salt || crypto.randomBytes(16).toString('hex');
-    const hash = crypto.pbkdf2Sync(data, hashSalt, EncryptionConstants.ITERATIONS, 64, 'sha512');
+    const hash = crypto.pbkdf2Sync(
+      data,
+      hashSalt,
+      EncryptionConstants.ITERATIONS,
+      64,
+      'sha512',
+    );
     return `${hashSalt}:${hash.toString('hex')}`;
   } catch (error) {
     logger.error('Error hashing data', { error: (error as Error).message });
@@ -1039,7 +1286,13 @@ export const verifyHash = (data: string, hashedData: string): boolean => {
     const [salt, hash] = parts;
     if (!salt || !hash) return false;
 
-    const computedHash = crypto.pbkdf2Sync(data, salt, EncryptionConstants.ITERATIONS, 64, 'sha512');
+    const computedHash = crypto.pbkdf2Sync(
+      data,
+      salt,
+      EncryptionConstants.ITERATIONS,
+      64,
+      'sha512',
+    );
     return computedHash.toString('hex') === hash;
   } catch (error) {
     logger.error('Error verifying hash', { error: (error as Error).message });
@@ -1058,5 +1311,5 @@ export {
   TransitEncryption,
   DatabaseEncryption,
   EncryptionMigration,
-  EncryptionConstants
+  EncryptionConstants,
 };

@@ -1,15 +1,9 @@
+import enhancedRedis from '@/config/redis';
 import { prisma } from '@/utils/prisma';
 import { logger } from '@/utils/logger';
-import Redis from 'ioredis';
 
 // Redis client for caching analytics data
-const redis = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  retryDelayOnFailover: 100,
-  enableReadyCheck: false,
-  maxRetriesPerRequest: null,
-});
+const redis = enhancedRedis.getClient();
 
 const CACHE_TTL = 300; // 5 minutes for analytics
 
@@ -40,7 +34,7 @@ interface SearchMetrics {
   userId?: string;
   entityType: string;
   query: string;
-  filters: any;
+  filters: Record<string, unknown>;
   resultCount: number;
   responseTime: number;
   cacheHit: boolean;
@@ -50,7 +44,9 @@ interface SearchMetrics {
 }
 
 // Record search metrics
-export async function recordSearchMetrics(metrics: SearchMetrics): Promise<void> {
+export async function recordSearchMetrics(
+  metrics: SearchMetrics,
+): Promise<void> {
   try {
     // Store in Redis for real-time analytics
     const analyticsKey = `search_analytics:${new Date().toISOString().split('T')[0]}`;
@@ -110,18 +106,25 @@ export async function getSearchAnalytics(days = 30): Promise<SearchAnalytics> {
     };
 
     const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+    const startDate = new Date(
+      endDate.getTime() - (days - 1) * 24 * 60 * 60 * 1000,
+    );
 
     // Collect data for each day
     let totalResponseTime = 0;
     let totalSearches = 0;
     let cacheHits = 0;
     const entityCounts: Record<string, number> = {};
-    const dailyData: Array<{ date: string; count: number; entityType: string }> = [];
+    const dailyData: Array<{
+      date: string;
+      count: number;
+      entityType: string;
+    }> = [];
 
     for (let i = 0; i < days; i++) {
       const date = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
-      const dateStr = date.toISOString().split('T')[0];
+      const [isoDatePart] = date.toISOString().split('T');
+      const dateStr = isoDatePart ?? date.toISOString();
       const analyticsKey = `search_analytics:${dateStr}`;
 
       try {
@@ -139,7 +142,8 @@ export async function getSearchAnalytics(days = 30): Promise<SearchAnalytics> {
             }
 
             if (metric.entityType) {
-              entityCounts[metric.entityType] = (entityCounts[metric.entityType] || 0) + 1;
+              entityCounts[metric.entityType] =
+                (entityCounts[metric.entityType] || 0) + 1;
             }
           });
         }
@@ -160,47 +164,81 @@ export async function getSearchAnalytics(days = 30): Promise<SearchAnalytics> {
           });
         }
       } catch (error) {
-        logger.warn(`Failed to get analytics for ${dateStr}`, { error: (error as Error).message });
+        logger.warn(`Failed to get analytics for ${dateStr}`, {
+          error: (error as Error).message,
+        });
       }
     }
 
     // Calculate overall metrics
     analytics.totalSearches = totalSearches;
-    analytics.averageResponseTime = totalSearches > 0 ? totalResponseTime / totalSearches : 0;
-    analytics.cacheHitRate = totalSearches > 0 ? (cacheHits / totalSearches) * 100 : 0;
+    analytics.averageResponseTime =
+      totalSearches > 0 ? totalResponseTime / totalSearches : 0;
+    analytics.cacheHitRate =
+      totalSearches > 0 ? (cacheHits / totalSearches) * 100 : 0;
 
     // Get popular search terms for each entity type
     const entityTypes = ['books', 'students', 'equipment', 'global'];
-    const popularTerms: Array<{ term: string; count: number; entityType: string }> = [];
+    const popularTerms: Array<{
+      term: string;
+      count: number;
+      entityType: string;
+    }> = [];
 
     for (const entityType of entityTypes) {
       try {
-        const terms = await redis.zrevrange(`popular_terms:${entityType}`, 0, 9, 'WITHSCORES');
+        const terms = await redis.zrevrange(
+          `popular_terms:${entityType}`,
+          0,
+          9,
+          'WITHSCORES',
+        );
 
         for (let i = 0; i < terms.length; i += 2) {
+          const term = terms[i];
+          const score = terms[i + 1];
+
+          if (typeof term === 'undefined' || typeof score === 'undefined') {
+            continue;
+          }
+
+          const count = Number.parseInt(score, 10);
+          if (Number.isNaN(count)) {
+            continue;
+          }
+
           popularTerms.push({
-            term: terms[i],
-            count: parseInt(terms[i + 1]),
+            term,
+            count,
             entityType,
           });
         }
       } catch (error) {
-        logger.warn(`Failed to get popular terms for ${entityType}`, { error: (error as Error).message });
+        logger.warn(`Failed to get popular terms for ${entityType}`, {
+          error: (error as Error).message,
+        });
       }
     }
 
-    analytics.popularSearchTerms = popularTerms.sort((a, b) => b.count - a.count).slice(0, 10);
+    analytics.popularSearchTerms = popularTerms
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
 
     // Prepare search trends
     analytics.searchTrends = dailyData;
 
     // Prepare entity breakdown
-    const totalEntities = Object.values(entityCounts).reduce((sum, count) => sum + count, 0);
-    analytics.entityBreakdown = Object.entries(entityCounts).map(([entityType, count]) => ({
-      entityType,
-      count,
-      percentage: totalEntities > 0 ? (count / totalEntities) * 100 : 0,
-    })).sort((a, b) => b.count - a.count);
+    const totalEntities = Object.values(entityCounts).reduce(
+      (sum, count) => sum + count,
+      0,
+    );
+    analytics.entityBreakdown = Object.entries(entityCounts)
+      .map(([entityType, count]) => ({
+        entityType,
+        count,
+        percentage: totalEntities > 0 ? (count / totalEntities) * 100 : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
 
     // Cache the result
     await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(analytics));
@@ -218,8 +256,16 @@ export async function getSearchAnalytics(days = 30): Promise<SearchAnalytics> {
 // Get search performance metrics
 export async function getSearchPerformanceMetrics(): Promise<{
   averageResponseTime: number;
-  slowestQueries: Array<{ query: string; responseTime: number; timestamp: string }>;
-  fastestQueries: Array<{ query: string; responseTime: number; timestamp: string }>;
+  slowestQueries: Array<{
+    query: string;
+    responseTime: number;
+    timestamp: string;
+  }>;
+  fastestQueries: Array<{
+    query: string;
+    responseTime: number;
+    timestamp: string;
+  }>;
   cacheHitRate: number;
   errorRate: number;
 }> {
@@ -233,8 +279,16 @@ export async function getSearchPerformanceMetrics(): Promise<{
 
     const metrics = {
       averageResponseTime: 0,
-      slowestQueries: [] as Array<{ query: string; responseTime: number; timestamp: string }>,
-      fastestQueries: [] as Array<{ query: string; responseTime: number; timestamp: string }>,
+      slowestQueries: [] as Array<{
+        query: string;
+        responseTime: number;
+        timestamp: string;
+      }>,
+      fastestQueries: [] as Array<{
+        query: string;
+        responseTime: number;
+        timestamp: string;
+      }>,
       cacheHitRate: 0,
       errorRate: 0,
     };
@@ -248,7 +302,11 @@ export async function getSearchPerformanceMetrics(): Promise<{
       const parsedMetrics = dayMetrics.map(m => JSON.parse(m));
       let totalResponseTime = 0;
       let cacheHits = 0;
-      const allQueries: Array<{ query: string; responseTime: number; timestamp: string }> = [];
+      const allQueries: Array<{
+        query: string;
+        responseTime: number;
+        timestamp: string;
+      }> = [];
 
       parsedMetrics.forEach((metric: SearchMetrics) => {
         totalResponseTime += metric.responseTime;
@@ -258,10 +316,15 @@ export async function getSearchPerformanceMetrics(): Promise<{
         }
 
         if (metric.query) {
+          const timestampValue =
+            metric.timestamp instanceof Date
+              ? metric.timestamp.toISOString()
+              : String(metric.timestamp);
+
           allQueries.push({
             query: metric.query,
             responseTime: metric.responseTime,
-            timestamp: metric.timestamp,
+            timestamp: timestampValue,
           });
         }
       });
@@ -289,8 +352,24 @@ export async function getSearchPerformanceMetrics(): Promise<{
   }
 }
 
+type SavedSearchSummary = {
+  name: string;
+  use_count: number;
+};
+
+type SavedSearchDelegate = {
+  findMany: (args: {
+    where: { user_id: string };
+    orderBy: { use_count: 'desc' };
+    take: number;
+  }) => Promise<SavedSearchSummary[]>;
+};
+
 // Get user search behavior analytics
-export async function getUserSearchBehavior(userId?: string, days = 30): Promise<{
+export async function getUserSearchBehavior(
+  userId?: string,
+  days = 30,
+): Promise<{
   totalSearches: number;
   averageSearchesPerDay: number;
   mostSearchedEntities: Array<{ entityType: string; count: number }>;
@@ -306,34 +385,56 @@ export async function getUserSearchBehavior(userId?: string, days = 30): Promise
       return JSON.parse(cached);
     }
 
+    const initialActivityPattern = Array.from({ length: 24 }, (_, i) => ({
+      hour: i,
+      count: 0,
+    }));
+
     const behavior = {
       totalSearches: 0,
       averageSearchesPerDay: 0,
       mostSearchedEntities: [] as Array<{ entityType: string; count: number }>,
       favoriteSearchTerms: [] as Array<{ term: string; count: number }>,
-      searchActivityPattern: Array<{ hour: number; count: number }>(Array.from({ length: 24 }, (_, i) => ({ hour: i, count: 0 }))),
+      searchActivityPattern: initialActivityPattern,
       topSavedSearches: [] as Array<{ name: string; useCount: number }>,
     };
 
     const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+    const startDate = new Date(
+      endDate.getTime() - (days - 1) * 24 * 60 * 60 * 1000,
+    );
 
     // Collect user-specific data if userId is provided
     if (userId) {
       try {
         // Get user's saved searches
-        const savedSearches = await prisma.saved_searches.findMany({
-          where: { user_id: userId },
-          orderBy: { use_count: 'desc' },
-          take: 10,
-        });
+        const savedSearchDelegate = (
+          prisma as unknown as { saved_searches?: SavedSearchDelegate }
+        ).saved_searches;
 
-        behavior.topSavedSearches = savedSearches.map(search => ({
-          name: search.name,
-          useCount: search.use_count,
-        }));
+        if (savedSearchDelegate?.findMany) {
+          const savedSearches = await savedSearchDelegate.findMany({
+            where: { user_id: userId },
+            orderBy: { use_count: 'desc' },
+            take: 10,
+          });
+
+          behavior.topSavedSearches = savedSearches.map(
+            ({ name, use_count }) => ({
+              name,
+              useCount: use_count,
+            }),
+          );
+        } else {
+          logger.warn('Saved search delegate unavailable for analytics', {
+            userId,
+          });
+        }
       } catch (error) {
-        logger.warn('Failed to get user saved searches', { error: (error as Error).message, userId });
+        logger.warn('Failed to get user saved searches', {
+          error: (error as Error).message,
+          userId,
+        });
       }
     }
 
@@ -361,7 +462,8 @@ export async function getUserSearchBehavior(userId?: string, days = 30): Promise
           totalSearches++;
 
           if (metric.entityType) {
-            entityCounts[metric.entityType] = (entityCounts[metric.entityType] || 0) + 1;
+            entityCounts[metric.entityType] =
+              (entityCounts[metric.entityType] || 0) + 1;
           }
 
           if (metric.query) {
@@ -372,14 +474,18 @@ export async function getUserSearchBehavior(userId?: string, days = 30): Promise
           // Analyze hourly pattern
           if (metric.timestamp) {
             const hour = new Date(metric.timestamp).getHours();
-            const existingPattern = behavior.searchActivityPattern.find(p => p.hour === hour);
+            const existingPattern = behavior.searchActivityPattern.find(
+              p => p.hour === hour,
+            );
             if (existingPattern) {
               existingPattern.count++;
             }
           }
         });
       } catch (error) {
-        logger.warn(`Failed to analyze search pattern for ${dateStr}`, { error: (error as Error).message });
+        logger.warn(`Failed to analyze search pattern for ${dateStr}`, {
+          error: (error as Error).message,
+        });
       }
     }
 
@@ -413,15 +519,15 @@ export async function cleanupOldAnalyticsData(daysToKeep = 90): Promise<void> {
   try {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
-    const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
+    const cutoffDateStr = cutoffDate.toISOString().split('T')[0] ?? '';
 
     // Get all analytics keys
     const keys = await redis.keys('search_analytics:*');
 
     let deletedCount = 0;
     for (const key of keys) {
-      const dateStr = key.split(':')[1];
-      if (dateStr < cutoffDateStr) {
+      const [, dateStr] = key.split(':');
+      if (dateStr && cutoffDateStr && dateStr < cutoffDateStr) {
         await redis.del(key);
         deletedCount++;
       }

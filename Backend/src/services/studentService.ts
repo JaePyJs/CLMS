@@ -1,4 +1,5 @@
 import { logger } from '@/utils/logger';
+import { createServiceErrorHandler } from '@/utils/errorHandler';
 import {
   students_grade_category,
   student_activities_activity_type,
@@ -8,6 +9,9 @@ import {
 import { performanceOptimizationService } from './performanceOptimizationService';
 import { StudentsRepository } from '@/repositories';
 import { prisma } from '@/utils/prisma';
+
+// Create service-specific error handler
+const errorHandler = createServiceErrorHandler('studentService');
 
 export interface GetStudentsOptions {
   gradeCategory?: students_grade_category;
@@ -161,10 +165,7 @@ export async function createStudent(data: {
     if ((error as Error).message === 'Student ID already exists') {
       throw error;
     }
-    logger.error('Error creating student', {
-      error: (error as Error).message,
-      data,
-    });
+    errorHandler.handleDatabaseError(error, 'createStudent', { data });
     throw error;
   }
 }
@@ -334,9 +335,7 @@ export async function getActiveSessions() {
 
     return activities;
   } catch (error) {
-    logger.error('Error fetching active sessions', {
-      error: (error as Error).message,
-    });
+    errorHandler.handleDatabaseError(error, 'getActiveSessions', {});
     throw error;
   }
 }

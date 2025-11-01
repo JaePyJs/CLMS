@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, Component, memo } from 'react';
+import React, { Suspense, lazy, memo } from 'react';
 import type { ComponentType, ReactNode } from 'react';
 import { Loader2, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 
@@ -171,11 +171,8 @@ export const createLazyLoad = <T extends ComponentType<any>>(
   const {
     loader = <LoadingIndicator />,
     fallback = <LoadingIndicator />,
-    errorFallback,
     delay = 200,
-    retryCount = 0,
     maxRetries = 3,
-    retryDelay = 1000,
     onRetry,
     onError,
     onLoad,
@@ -185,19 +182,13 @@ export const createLazyLoad = <T extends ComponentType<any>>(
     trigger = true
   } = options;
 
-  const LazyComponent = lazy(importFunc, {
-    loading: () => (
-      <div style={{ height: '200px' }}>
-        {loader}
-      </div>
-    )
-  });
+  const LazyComponent = lazy(importFunc);
 
   return memo((props: any) => {
     const [loadingState, setLoadingState] = React.useState<LoadingState>('idle');
     const [currentRetryCount, setCurrentRetryCount] = React.useState(0);
 
-    const handleRetry = React.useCallback(() => {
+    React.useCallback(() => {
       setCurrentRetryCount(prev => prev + 1);
       setLoadingState('retry');
       onRetry?.();
@@ -322,7 +313,7 @@ export const LazyImage = memo(({
   React.useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
+        if (entry && entry.isIntersecting) {
           setIsInView(true);
         }
       },
@@ -391,13 +382,13 @@ export const BundleAnalyzer = memo(() => {
     // Analyze bundle size if performance API is available
     if ('performance' in window && 'memory' in performance) {
       const analyzeBundle = () => {
-        const navigation = performance.getEntriesByType('navigation')[0];
+        const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
         if (navigation) {
           setLoadTime(Math.round(navigation.loadEventEnd - navigation.loadEventStart));
         }
 
         // Get resource timing info for chunks
-        const resources = performance.getEntriesByType('resource');
+        const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
         const jsResources = resources.filter(r => r.name.endsWith('.js'));
         setChunkCount(jsResources.length);
 

@@ -13,6 +13,7 @@ import { authKeys, clearAuthState, fetchCurrentUser, primeAuthState } from '@/li
 
 interface AuthContextType {
   user: AuthUser | null
+  token: string | null
   isAuthenticated: boolean
   isLoading: boolean
   login: (username: string, password: string) => Promise<boolean>
@@ -55,7 +56,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [queryClient],
   )
 
-  const authQuery = useQuery({
+  const authQuery = useQuery<AuthUser>({
     queryKey: authKeys.current(),
     queryFn: fetchCurrentUser,
     enabled: Boolean(token),
@@ -147,20 +148,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkAuth()
   }, [checkAuth])
 
-  const user = authQuery.data ?? null
+  const user: AuthUser | null = authQuery.data ?? null
   const isAuthenticated = Boolean(token && user)
   const isLoading = token ? authQuery.isPending : false
 
   const value = useMemo<AuthContextType>(
     () => ({
       user,
+      token,
       isAuthenticated,
       isLoading,
       login,
       logout,
       checkAuth,
     }),
-    [checkAuth, isAuthenticated, isLoading, login, logout, user],
+    [checkAuth, isAuthenticated, isLoading, login, logout, token, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

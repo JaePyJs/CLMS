@@ -83,7 +83,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               type={toast.type}
               title={toast.title}
               message={toast.message}
-              duration={toast.duration}
+              duration={toast.duration ?? 5000}
               onClose={removeToast}
             />
           ))}

@@ -209,7 +209,12 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
             toast.warning(`Equipment update: ${message.data.equipmentName} - ${message.data.status}`);
             break;
           case 'system_notification':
-            toast[message.data.notificationType](message.data.title);
+            const notificationType = message.data.notificationType as keyof typeof toast;
+            if (notificationType && typeof toast[notificationType] === 'function') {
+              (toast[notificationType] as (message: string) => void)(message.data.title);
+            } else {
+              toast.info(message.data.title);
+            }
             break;
           case 'emergency_alert':
             toast.error(`🚨 EMERGENCY: ${message.data.message}`);

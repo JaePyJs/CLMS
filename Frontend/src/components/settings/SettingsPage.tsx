@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card } from '@/components/ui/card';
-import { Users, Sheet, Bot, Database, FileText } from 'lucide-react';
+import { Users, Sheet, Bot, Database, FileText, Settings } from 'lucide-react';
 
 // Import setting tab components
 const SystemSettings = React.lazy(() => import('./SystemSettings'));
@@ -35,7 +34,7 @@ export default function SettingsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 gap-2">
           <TabsTrigger value="system" className="gap-2">
-            <SettingsIcon className="w-4 h-4" />
+            <Settings className="w-4 h-4" />
             <span className="hidden sm:inline">System</span>
           </TabsTrigger>
           <TabsTrigger value="users" className="gap-2">

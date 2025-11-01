@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Activity, AlertTriangle, CheckCircle, BarChart3 } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, BarChart3, Clock, Zap, Timer } from 'lucide-react';
 
 interface PerformanceMetrics {
   loadTime: number;

@@ -77,6 +77,7 @@
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "csv-parse": "^5.5.0",
+    "csv-parser": "^3.2.0",
     "dotenv": "^16.3.1",
     "exceljs": "^4.4.0",
     "express": "^4.21.2",
@@ -111,6 +112,7 @@
   },
   "devDependencies": {
     "@types/autocannon": "^7.12.7",
+    "@types/bcrypt": "^6.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.7.5",
     "@types/cookie-parser": "^1.4.9",

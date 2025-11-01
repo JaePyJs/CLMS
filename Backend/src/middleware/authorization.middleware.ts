@@ -6,17 +6,13 @@ import {
   hasAnyPermission,
   hasAllPermissions,
 } from '../config/permissions';
+import { EnhancedJWTPayload } from './auth';
 
-// Extend Express Request type to include user
+// Extend Express Request type to include user with permissions
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        id: string;
-        username: string;
-        role: UserRole;
-        permissions?: string[];
-      };
+      user?: EnhancedJWTPayload;
     }
   }
 }
@@ -27,28 +23,30 @@ declare global {
 export const requirePermission = (permission: Permission) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Authentication required',
       });
+      return;
     }
 
     const userHasPermission = hasPermission(
-      req.user.role,
+      req.user.role as UserRole,
       permission,
       req.user.permissions,
     );
 
     if (!userHasPermission) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         message: 'Insufficient permissions',
         required: permission,
         userRole: req.user.role,
       });
+      return;
     }
 
-    next();
+    return next();
   };
 };
 
@@ -58,28 +56,30 @@ export const requirePermission = (permission: Permission) => {
 export const requireAnyPermission = (permissions: Permission[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Authentication required',
       });
+      return;
     }
 
     const userHasPermission = hasAnyPermission(
-      req.user.role,
+      req.user.role as UserRole,
       permissions,
       req.user.permissions,
     );
 
     if (!userHasPermission) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         message: 'Insufficient permissions',
         requiredAny: permissions,
         userRole: req.user.role,
       });
+      return;
     }
 
-    next();
+    return next();
   };
 };
 
@@ -89,28 +89,30 @@ export const requireAnyPermission = (permissions: Permission[]) => {
 export const requireAllPermissions = (permissions: Permission[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Authentication required',
       });
+      return;
     }
 
     const userHasPermissions = hasAllPermissions(
-      req.user.role,
+      req.user.role as UserRole,
       permissions,
       req.user.permissions,
     );
 
     if (!userHasPermissions) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         message: 'Insufficient permissions',
         requiredAll: permissions,
         userRole: req.user.role,
       });
+      return;
     }
 
-    next();
+    return next();
   };
 };
 
@@ -122,22 +124,24 @@ export const requireRole = (roles: UserRole | UserRole[]) => {
 
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Authentication required',
       });
+      return;
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({
+    if (!allowedRoles.includes(req.user.role as UserRole)) {
+      res.status(403).json({
         success: false,
         message: 'Insufficient role privileges',
         required: allowedRoles,
         userRole: req.user.role,
       });
+      return;
     }
 
-    next();
+    return next();
   };
 };
 
@@ -160,7 +164,7 @@ export const checkPermission = (
 ): boolean => {
   if (!req.user) return false;
 
-  return hasPermission(req.user.role, permission, req.user.permissions);
+  return hasPermission(req.user.role as UserRole, permission, req.user.permissions);
 };
 
 /**
@@ -169,26 +173,26 @@ export const checkPermission = (
 export const requireOwnershipOrAdmin = (userIdParam: string = 'userId') => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: 'Authentication required',
       });
+      return;
     }
 
     const targetUserId = req.params[userIdParam] || req.body[userIdParam];
     const isOwner = req.user.id === targetUserId;
-    const isAdmin = [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(
-      req.user.role,
-    );
+    const isAdmin = req.user.role === UserRole.ADMIN || req.user.role === UserRole.SUPER_ADMIN;
 
     if (!isOwner && !isAdmin) {
-      return res.status(403).json({
+      res.status(403).json({
         success: false,
         message: 'You can only access your own resources',
       });
+      return;
     }
 
-    next();
+    return next();
   };
 };
 

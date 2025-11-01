@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useMobileOptimization, getResponsiveClasses } from '@/hooks/useMobileOptimization';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,7 +61,8 @@ export function StudentBarcodeDialog({
   onOpenChange,
   student
 }: StudentBarcodeDialogProps) {
-  const { isMobile, isTablet, isDesktop } = useMobileOptimization();
+  const mobileState = useMobileOptimization();
+  const { isMobile } = mobileState;
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -133,7 +134,7 @@ export function StudentBarcodeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`max-w-4xl ${getResponsiveClasses('', { isMobile, isTablet, isDesktop })}`}>
+      <DialogContent className={`max-w-4xl ${getResponsiveClasses('', mobileState)}`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />

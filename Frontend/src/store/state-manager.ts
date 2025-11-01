@@ -37,7 +37,7 @@ export interface EnhancedStateStore<T> {
   batch: (updates: Array<() => void>) => void;
 
   // Computed values
-  computed: <R>(selector: StateSelector<T, R>) => R;
+  computed: Record<string, any>;
 
   // Actions
   actions: Record<string, (...args: any[]) => void>;
@@ -82,7 +82,7 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
   } = config;
 
   // Create Zustand store with middleware
-  const createStore = (set: any, get: any) => ({
+  const createStore = (set: any, get: any, api: any) => ({
     state: initialState,
 
     setState: (updater: T | ((prev: T) => T)) => {
@@ -98,9 +98,10 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
     select: <R>(selector: StateSelector<T, R>) => selector(get().state),
 
     subscribe: (callback: (state: T, previousState: T) => void) => {
-      return subscribe((state: any, previousState: any) => {
-        callback(state.state, previousState.state);
-      });
+      return api.subscribe(
+        (s: { state: T }) => s.state,
+        (state: T, previousState: T) => callback(state, previousState)
+      );
     },
 
     batch: (updates: Array<() => void>) => {
@@ -165,7 +166,12 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
     },
 
     subscribe: (callback) => {
-      return useStore.subscribe(callback);
+      return useStore.subscribe(
+        (s) => s.state,
+        (state, previousState) => {
+          callback(state, previousState);
+        }
+      );
     },
 
     effect: (effect) => {
@@ -186,9 +192,7 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
       useStore.getState().batch(updates);
     },
 
-    computed: <R>(selector: StateSelector<T, R>) => {
-      return selector(useStore.getState().getState());
-    },
+    computed: {} as Record<string, any>,
 
     actions: {},
 
@@ -280,7 +284,7 @@ export function useStateStoreComputed<T, R>(
   const [computedValue, setComputedValue] = React.useState(() => store.computed[computedKey]);
 
   React.useEffect(() => {
-    const unsubscribe = store.subscribe((newState) => {
+    const unsubscribe = store.subscribe(() => {
       const newComputedValue = store.computed[computedKey];
       setComputedValue(newComputedValue);
     });
@@ -347,8 +351,8 @@ export const StoreUtils = {
   /**
    * Create a deep selector for nested state
    */
-  deepSelect: <T, R>(path: string[]) => (state: T): R => {
-    return path.reduce((current, key) => current?.[key], state) as R;
+  deepSelect: <T extends Record<string, any>, R>(path: Array<string | number>) => (state: T): R => {
+    return path.reduce((current: any, key) => current?.[key], state as any) as R;
   },
 
   /**

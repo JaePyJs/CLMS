@@ -1,8 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
-import { BaseError } from '@/utils/errors';
-import { logger } from '@/utils/logger';
-import { auditService } from '@/services/auditService';
-import { notificationService } from '@/services/notification.service';
+import { BaseError } from '../utils/errors';
+import { logger } from '../utils/logger';
+import { auditService, AuditAction, AuditEntity } from '../services/auditService';
+import { notificationService } from '../services/notification.service';
+import { getCurrentTimestamp } from '../utils/common';
 
 // Error severity levels
 export enum ErrorSeverity {
@@ -36,6 +37,10 @@ interface EnhancedError extends Error {
   isRecoverable?: boolean;
   retryCount?: number;
   originalError?: Error;
+  details?: {
+    validationErrors?: any[];
+    [key: string]: any;
+  };
 }
 
 // Error context for tracking
@@ -259,14 +264,14 @@ export const enhancedErrorHandler = async (
   const context: ErrorContext = {
     requestId: (req.headers['x-request-id'] as string) || 'unknown',
     userId: (req as any).user?.id,
-    ip: req.ip,
+    ip: req.ip || 'unknown',
     userAgent: req.get('User-Agent') || 'unknown',
     method: req.method,
     url: req.originalUrl,
     body: req.body,
     query: req.query,
     params: req.params,
-    timestamp: new Date(),
+    timestamp: new Date(getCurrentTimestamp()),
     duration: startTime ? Date.now() - parseInt(startTime) : 0,
   };
 
@@ -420,7 +425,7 @@ function buildErrorResponse(
   context: ErrorContext,
   recoveryAttempted: boolean,
 ): any {
-  const baseResponse = {
+  const baseResponse: any = {
     success: false,
     error: error.message,
     code: error.code || 'INTERNAL_ERROR',
@@ -465,12 +470,14 @@ async function createErrorAuditLog(
   context: ErrorContext,
 ): Promise<void> {
   try {
-    await auditService.createLog({
-      action: 'ERROR_OCCURRED',
-      details: {
-        errorMessage: error.message,
+    await auditService.log({
+      action: AuditAction.VIEW,
+      entity: AuditEntity.SETTINGS,
+      success: false,
+      errorMessage: error.message,
+      metadata: {
         category: error.category,
-        severity: error.severity,
+        severity: error.severity === ErrorSeverity.CRITICAL ? 'HIGH' : 'MEDIUM',
         statusCode: error.statusCode,
         endpoint: `${context.method} ${context.url}`,
         userId: context.userId,
@@ -478,7 +485,6 @@ async function createErrorAuditLog(
         userAgent: context.userAgent,
         ip: context.ip,
       },
-      severity: error.severity === ErrorSeverity.CRITICAL ? 'HIGH' : 'MEDIUM',
     });
   } catch (auditError) {
     logger.error('Failed to create error audit log', { auditError });
@@ -491,11 +497,11 @@ async function sendErrorNotification(
   context: ErrorContext,
 ): Promise<void> {
   try {
-    await notificationService.sendNotification({
+    await notificationService.createNotification({
       type: 'SYSTEM_ALERT',
       title: `Critical Error: ${error.category}`,
       message: `A critical ${error.category} error occurred: ${error.message}`,
-      recipients: ['admin'], // Would get actual admin users
+      // recipients: ['admin'], // Would get actual admin users - removed as it's not in the interface
       priority: 'HIGH',
       metadata: {
         errorId: context.requestId,

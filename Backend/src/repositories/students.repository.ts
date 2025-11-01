@@ -313,11 +313,11 @@ export class StudentsRepository extends BaseRepository<
 
       // Apply filters
       if (grade_level) {
-        where.grade_level = { contains: grade_level, mode: 'insensitive' };
+        where.grade_level = { contains: grade_level };
       }
 
       if (section) {
-        where.section = { contains: section, mode: 'insensitive' };
+        where.section = { contains: section };
       }
 
       if (grade_category) {
@@ -331,10 +331,9 @@ export class StudentsRepository extends BaseRepository<
       // Apply search across multiple fields
       if (search) {
         where.OR = [
-          { first_name: { contains: search, mode: 'insensitive' } },
-          { last_name: { contains: search, mode: 'insensitive' } },
-          { student_id: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
+          { first_name: { contains: search } },
+          { last_name: { contains: search } },
+          { student_id: { contains: search } },
         ];
       }
 
@@ -408,23 +407,22 @@ export class StudentsRepository extends BaseRepository<
       if (query) {
         andConditions.push({
           OR: [
-            { first_name: { contains: query, mode: 'insensitive' } },
-            { last_name: { contains: query, mode: 'insensitive' } },
-            { student_id: { contains: query, mode: 'insensitive' } },
-            { email: { contains: query, mode: 'insensitive' } },
+            { first_name: { contains: query } },
+            { last_name: { contains: query } },
+            { student_id: { contains: query } },
           ],
         });
       }
 
       if (grade_level) {
         andConditions.push({
-          grade_level: { contains: grade_level, mode: 'insensitive' }
+          grade_level: { contains: grade_level }
         });
       }
 
       if (section) {
         andConditions.push({
-          section: { contains: section, mode: 'insensitive' }
+          section: { contains: section }
         });
       }
 
@@ -434,17 +432,18 @@ export class StudentsRepository extends BaseRepository<
         });
       }
 
-      if (hasActiveCheckouts !== undefined) {
-        andConditions.push({
-          active_checkouts: hasActiveCheckouts ? { gt: 0 } : 0
-        });
-      }
+      // Remove hasActiveCheckouts and hasUnpaidFines filters as these fields don't exist
+      // if (hasActiveCheckouts !== undefined) {
+      //   andConditions.push({
+      //     active_checkouts: hasActiveCheckouts ? { gt: 0 } : 0
+      //   });
+      // }
 
-      if (hasUnpaidFines !== undefined) {
-        andConditions.push({
-          unpaid_fines: hasUnpaidFines ? { gt: 0 } : 0
-        });
-      }
+      // if (hasUnpaidFines !== undefined) {
+      //   andConditions.push({
+      //     unpaid_fines: hasUnpaidFines ? { gt: 0 } : 0
+      //   });
+      // }
 
       if (andConditions.length > 0) {
         where.AND = andConditions;
@@ -489,17 +488,18 @@ export class StudentsRepository extends BaseRepository<
         updated_at: new Date(),
       };
 
-      if (change.total !== undefined) {
-        updateData.total_checkouts = {
-          increment: change.total,
-        };
-      }
+      // Remove total_checkouts and active_checkouts updates as these fields don't exist
+      // if (change.total !== undefined) {
+      //   updateData.total_checkouts = {
+      //     increment: change.total,
+      //   };
+      // }
 
-      if (change.active !== undefined) {
-        updateData.active_checkouts = {
-          increment: change.active,
-        };
-      }
+      // if (change.active !== undefined) {
+      //   updateData.active_checkouts = {
+      //     increment: change.active,
+      //   };
+      // }
 
       const student = await this.getModel().update({
         where: { student_id },
@@ -542,17 +542,18 @@ export class StudentsRepository extends BaseRepository<
         updated_at: new Date(),
       };
 
-      if (change.total !== undefined) {
-        updateData.total_fines = {
-          increment: change.total,
-        };
-      }
+      // Remove total_fines and unpaid_fines updates as these fields don't exist
+      // if (change.total !== undefined) {
+      //   updateData.total_fines = {
+      //     increment: change.total,
+      //   };
+      // }
 
-      if (change.unpaid !== undefined) {
-        updateData.unpaid_fines = {
-          increment: change.unpaid,
-        };
-      }
+      // if (change.unpaid !== undefined) {
+      //   updateData.unpaid_fines = {
+      //     increment: change.unpaid,
+      //   };
+      // }
 
       const student = await this.getModel().update({
         where: { student_id },
@@ -595,7 +596,7 @@ export class StudentsRepository extends BaseRepository<
         },
       });
 
-      return result.map(item => ({
+      return result.map((item: any) => ({
         grade_level: item.grade_level,
         count: item._count.grade_level,
       }));
@@ -619,7 +620,7 @@ export class StudentsRepository extends BaseRepository<
         },
       });
 
-      return result.map(item => ({
+      return result.map((item: any) => ({
         section: item.section,
         count: item._count.section,
       }));
@@ -715,47 +716,21 @@ export class StudentsRepository extends BaseRepository<
     }
   }
 
-  /**
-   * Create a student (overriding base method for validation)
-   */
-  async create(data: Prisma.studentsCreateInput): Promise<students> {
+  override async create(data: Prisma.studentsCreateInput): Promise<students> {
     this.validateStudentData(data);
     return super.create(data);
   }
 
   /**
-   * Update a student by ID (overriding base method for validation)
+   * Override update methods to include validation
    */
-  async updateById(id: string, data: Prisma.studentsUpdateInput): Promise<students | null> {
-    // Validate only if student_id, first_name, last_name, grade_level, or section is being updated
-    if (data.student_id || data.first_name || data.last_name || data.grade_level || data.section) {
-      const existingStudent = await this.findById(id);
-      if (!existingStudent) {
-        return null;
-      }
-
-      const updatedData = { ...existingStudent, ...data };
-      this.validateStudentData(updatedData);
-    }
-
+  override async updateById(id: string, data: Prisma.studentsUpdateInput): Promise<students | null> {
+    this.validateStudentData(data);
     return super.updateById(id, data);
   }
 
-  /**
-   * Update a student by external ID (overriding base method for validation)
-   */
-  async updateByExternalId(student_id: string, data: Prisma.studentsUpdateInput): Promise<students | null> {
-    // Validate only if student_id, first_name, last_name, grade_level, or section is being updated
-    if (data.student_id || data.first_name || data.last_name || data.grade_level || data.section) {
-      const existingStudent = await this.findByStudentId(student_id);
-      if (!existingStudent) {
-        return null;
-      }
-
-      const updatedData = { ...existingStudent, ...data };
-      this.validateStudentData(updatedData);
-    }
-
+  override async updateByExternalId(student_id: string, data: Prisma.studentsUpdateInput): Promise<students | null> {
+    this.validateStudentData(data);
     return super.updateByExternalId(student_id, data);
   }
 }

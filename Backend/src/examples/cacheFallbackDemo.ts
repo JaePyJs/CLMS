@@ -169,7 +169,7 @@ async function demonstratePerformanceComparison(): Promise<void> {
     
     const setStartTime = Date.now();
     for (let i = 0; i < testKeys.length; i++) {
-      await cacheManager.set(testKeys[i], testValues[i], 60000);
+      await cacheManager.set(testKeys[i] || '', testValues[i] || '', 60000);
     }
     const setEndTime = Date.now();
     

@@ -11,7 +11,7 @@ interface BaseEntity {
 // API response wrapper types
 interface ApiResponse<T> {
   success: boolean;
-  data: T;
+  data?: T;
   error?: string;
   message?: string;
 }
@@ -223,7 +223,7 @@ type ConfigCategory =
   | 'INTEGRATIONS';
 
 // Notifications
-interface Notification extends BaseEntity {
+interface AppNotification extends BaseEntity {
   userId: string;
   type: NotificationType;
   title: string;
@@ -446,7 +446,7 @@ export type {
   PaymentMethod,
   SystemConfig,
   ConfigCategory,
-  Notification,
+  AppNotification,
   NotificationType,
   NotificationPriority,
   AuditLog,

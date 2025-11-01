@@ -73,15 +73,17 @@ model automation_logs {
 }
 
 model barcode_history {
-  id           String   @id
+  id           String    @id
   format       String
   barcode_data String
   book_id      String?
   entity_id    String
   entity_type  String
-  generated_at DateTime @default(now())
-  generated_by String   @default("Sophia")
+  generated_at DateTime  @default(now())
+  generated_by String    @default("Sophia")
   student_id   String?
+  books        books?    @relation(fields: [book_id], references: [id])
+  students     students? @relation(fields: [student_id], references: [id])
 
   @@index([book_id], map: "barcode_history_book_id_fkey")
   @@index([student_id], map: "barcode_history_student_id_fkey")
@@ -90,20 +92,23 @@ model barcode_history {
 }
 
 model book_checkouts {
-  id            String                @id
-  status        book_checkouts_status @default(ACTIVE)
-  notes         String?
-  book_id       String
-  checkout_date DateTime              @default(now())
-  created_at    DateTime              @default(now())
-  due_date      DateTime
-  fine_amount   Decimal               @default(0.00) @db.Decimal(10, 2)
-  fine_paid     Boolean               @default(false)
-  overdue_days  Int                   @default(0)
-  processed_by  String                @default("Sophia")
-  return_date   DateTime?
-  student_id    String
-  updated_at    DateTime
+  id                 String                @id
+  status             book_checkouts_status @default(ACTIVE)
+  notes              String?
+  book_id            String
+  checkout_date      DateTime              @default(now())
+  created_at         DateTime              @default(now())
+  due_date           DateTime
+  fine_amount        Decimal               @default(0.00) @db.Decimal(10, 2)
+  fine_paid          Boolean               @default(false)
+  overdue_days       Int                   @default(0)
+  processed_by       String                @default("Sophia")
+  return_date        DateTime?
+  student_id         String
+  updated_at         DateTime
+  books              books                 @relation(fields: [book_id], references: [id])
+  students           students              @relation(fields: [student_id], references: [id])
+  student_activities student_activities[]
 
   @@index([book_id], map: "idx_book_checkouts_book_id")
   @@index([due_date], map: "idx_book_checkouts_due_date")
@@ -113,28 +118,30 @@ model book_checkouts {
 }
 
 model books {
-  id               String   @id
+  id               String            @id
   isbn             String?
-  title            String   @db.VarChar(500)
-  author           String   @db.VarChar(500)
+  title            String            @db.VarChar(500)
+  author           String            @db.VarChar(500)
   publisher        String?
   category         String
   subcategory      String?
   location         String?
-  accession_no     String   @unique
-  available_copies Int      @default(1)
+  accession_no     String            @unique
+  available_copies Int               @default(1)
   barcode_image    String?
-  created_at       DateTime @default(now())
-  is_active        Boolean  @default(true)
-  total_copies     Int      @default(1)
+  created_at       DateTime          @default(now())
+  is_active        Boolean           @default(true)
+  total_copies     Int               @default(1)
   updated_at       DateTime
   cost_price       Float?
   edition          String?
   pages            String?
-  remarks          String?  @db.Text
+  remarks          String?           @db.Text
   source_of_fund   String?
   volume           String?
   year             Int?
+  book_checkouts   book_checkouts[]
+  barcode_history  barcode_history[]
 
   @@index([accession_no], map: "idx_books_accession_no")
   @@index([category], map: "idx_books_category")
@@ -142,37 +149,44 @@ model books {
 }
 
 model equipment {
-  id                   String                     @id
-  name                 String
-  type                 equipment_type
-  location             String
-  status               equipment_status           @default(AVAILABLE)
-  description          String?
-  created_at           DateTime                   @default(now())
-  equipment_id         String                     @unique
-  max_time_minutes     Int
-  requires_supervision Boolean                    @default(false)
-  updated_at           DateTime
-  purchase_date        DateTime?
-  purchase_cost        Float?
-  serial_number        String?                    @db.VarChar(255)
-  asset_tag            String?                    @db.VarChar(255)
-  warranty_expiry      DateTime?
-  condition_rating     equipment_condition_rating @default(EXCELLENT)
-  maintenance_interval Int?
-  last_maintenance     DateTime?
-  next_maintenance     DateTime?
-  total_usage_hours    Float                      @default(0)
-  daily_usage_hours    Float                      @default(0)
-  qr_code_data         String?
-  barcode_data         String?
-  category             String?
-  tags                 Json?
-  specifications       Json?
-  notes                String?                    @db.Text
-  is_active            Boolean                    @default(true)
-  serial_number_enc    Json?
-  asset_tag_enc        Json?
+  id                          String                        @id
+  name                        String
+  type                        equipment_type
+  location                    String
+  status                      equipment_status              @default(AVAILABLE)
+  description                 String?
+  created_at                  DateTime                      @default(now())
+  equipment_id                String                        @unique
+  max_time_minutes            Int
+  requires_supervision        Boolean                       @default(false)
+  updated_at                  DateTime
+  purchase_date               DateTime?
+  purchase_cost               Float?
+  serial_number               String?                       @db.VarChar(255)
+  asset_tag                   String?                       @db.VarChar(255)
+  warranty_expiry             DateTime?
+  condition_rating            equipment_condition_rating    @default(EXCELLENT)
+  maintenance_interval        Int?
+  last_maintenance            DateTime?
+  next_maintenance            DateTime?
+  total_usage_hours           Float                         @default(0)
+  daily_usage_hours           Float                         @default(0)
+  qr_code_data                String?
+  barcode_data                String?
+  category                    String?
+  tags                        Json?
+  specifications              Json?
+  notes                       String?                       @db.Text
+  is_active                   Boolean                       @default(true)
+  serial_number_enc           Json?
+  asset_tag_enc               Json?
+  equipment_sessions          equipment_sessions[]
+  equipment_reservations      equipment_reservations[]
+  equipment_maintenance       equipment_maintenance[]
+  equipment_reports           equipment_reports[]
+  student_activities          student_activities[]
+  equipment_condition_reports equipment_condition_reports[]
+  equipment_usage_stats       equipment_usage_stats[]
 
   @@index([asset_tag], map: "idx_equipment_asset_tag")
   @@index([category], map: "idx_equipment_category")
@@ -202,6 +216,7 @@ model equipment_condition_reports {
   updated_at       DateTime
   photos           Json?
   witness_names    Json?
+  equipment        equipment                                    @relation(fields: [equipment_id], references: [id])
 
   @@index([assessment_date], map: "idx_equipment_condition_reports_date")
   @@index([equipment_id], map: "idx_equipment_condition_reports_equipment_id")
@@ -229,6 +244,7 @@ model equipment_maintenance {
   warranty_claim     Boolean                                @default(false)
   follow_up_required Boolean                                @default(false)
   follow_up_date     DateTime?
+  equipment          equipment                              @relation(fields: [equipment_id], references: [id])
 
   @@index([equipment_id], map: "idx_equipment_maintenance_equipment_id")
   @@index([priority], map: "idx_equipment_maintenance_priority")
@@ -250,6 +266,7 @@ model equipment_reports {
   is_public     Boolean                       @default(false)
   file_path     String?
   summary       String?                       @db.Text
+  equipment     equipment?                    @relation(fields: [equipment_id], references: [id])
 
   @@unique([report_type, report_period, equipment_id])
   @@index([equipment_id], map: "idx_equipment_reports_equipment_id")
@@ -272,6 +289,8 @@ model equipment_reservations {
   processed_by        String                        @default("Sophia")
   cancellation_reason String?                       @db.Text
   cancelled_at        DateTime?
+  equipment           equipment                     @relation(fields: [equipment_id], references: [id])
+  students            students                      @relation(fields: [student_id], references: [id])
 
   @@index([reservation_date], map: "idx_equipment_reservations_date")
   @@index([equipment_id], map: "idx_equipment_reservations_equipment_id")
@@ -294,6 +313,8 @@ model equipment_sessions {
   session_start   DateTime                  @default(now())
   student_id      String
   updated_at      DateTime
+  equipment       equipment                 @relation(fields: [equipment_id], references: [id])
+  students        students                  @relation(fields: [student_id], references: [id])
 
   @@index([equipment_id], map: "idx_equipment_sessions_equipment_id")
   @@index([session_start], map: "idx_equipment_sessions_start")
@@ -302,19 +323,20 @@ model equipment_sessions {
 }
 
 model equipment_usage_stats {
-  id                String   @id
+  id                String    @id
   equipment_id      String
-  date              DateTime @default(now())
-  total_sessions    Int      @default(0)
-  total_minutes     Int      @default(0)
+  date              DateTime  @default(now())
+  total_sessions    Int       @default(0)
+  total_minutes     Int       @default(0)
   peak_hour_start   Int?
   peak_hour_end     Int?
-  utilization_rate  Float    @default(0)
-  average_session   Float    @default(0)
-  issues_reported   Int      @default(0)
+  utilization_rate  Float     @default(0)
+  average_session   Float     @default(0)
+  issues_reported   Int       @default(0)
   revenue_generated Float?
-  created_at        DateTime @default(now())
+  created_at        DateTime  @default(now())
   updated_at        DateTime
+  equipment         equipment @relation(fields: [equipment_id], references: [id])
 
   @@unique([equipment_id, date])
   @@index([date], map: "idx_equipment_usage_stats_date")
@@ -361,6 +383,9 @@ model student_activities {
   sync_attempts      Int                                @default(0)
   created_at         DateTime                           @default(now())
   updated_at         DateTime
+  students           students                           @relation(fields: [student_id], references: [id])
+  equipment          equipment?                         @relation(fields: [equipment_id], references: [id])
+  book_checkouts     book_checkouts?                    @relation(fields: [checkout_id], references: [id])
 
   @@index([activity_type], map: "idx_student_activities_activity_type")
   @@index([google_synced], map: "idx_student_activities_google_synced")
@@ -372,26 +397,31 @@ model student_activities {
 }
 
 model students {
-  id                          String                  @id
-  section                     String?                 @db.Text
+  id                          String                   @id
+  section                     String?                  @db.Text
   barcode_image               String?
-  created_at                  DateTime                @default(now())
-  first_name                  String                  @db.Text
+  created_at                  DateTime                 @default(now())
+  first_name                  String                   @db.Text
   grade_category              students_grade_category
   grade_level                 String
-  is_active                   Boolean                 @default(true)
-  last_name                   String                  @db.Text
-  student_id                  String                  @unique
+  is_active                   Boolean                  @default(true)
+  last_name                   String                   @db.Text
+  student_id                  String                   @unique
   updated_at                  DateTime
-  equipment_ban               Boolean                 @default(false)
-  equipment_ban_reason        String?                 @db.Text
+  equipment_ban               Boolean                  @default(false)
+  equipment_ban_reason        String?                  @db.Text
   equipment_ban_until         DateTime?
-  fine_balance                Float                   @default(0)
-  max_concurrent_reservations Int                     @default(2)
+  fine_balance                Float                    @default(0)
+  max_concurrent_reservations Int                      @default(2)
   first_name_enc              Json?
   last_name_enc               Json?
   student_id_enc              Json?
   section_enc                 Json?
+  book_checkouts              book_checkouts[]
+  equipment_reservations      equipment_reservations[]
+  equipment_sessions          equipment_sessions[]
+  student_activities          student_activities[]
+  barcode_history             barcode_history[]
 
   @@index([equipment_ban], map: "idx_students_equipment_ban")
   @@index([grade_category], map: "idx_students_grade_category")
@@ -434,23 +464,24 @@ model users {
 }
 
 model id_mappings {
-  id            String   @id
-  entity_type   String   // student, book, equipment, user, checkout
-  external_id   String   // Original ID from import/external system
-  internal_id   String   // UUID in our system
-  created_at    DateTime @default(now())
-  updated_at    DateTime
-  last_accessed DateTime @default(now())
-  access_count  Int      @default(0)
-  is_active     Boolean  @default(true)
-  metadata      Json?    // Additional information about the mapping
+  id           String   @id
+  entityType   String   @map("entity_type")
+  externalId   String   @map("external_id")
+  internalId   String   @map("internal_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @map("updated_at")
+  lastAccessed DateTime @default(now()) @map("last_accessed")
+  accessCount  Int      @default(0) @map("access_count")
+  isActive     Boolean  @default(true) @map("is_active")
+  metadata     Json?
 
-  @@unique([entity_type, external_id])
-  @@index([entity_type], map: "idx_id_mappings_entity_type")
-  @@index([external_id], map: "idx_id_mappings_external_id")
-  @@index([internal_id], map: "idx_id_mappings_internal_id")
-  @@index([is_active], map: "idx_id_mappings_is_active")
-  @@index([last_accessed], map: "idx_id_mappings_last_accessed")
+  @@unique([entityType, externalId])
+  @@index([entityType], map: "idx_id_mappings_entity_type")
+  @@index([externalId], map: "idx_id_mappings_external_id")
+  @@index([internalId], map: "idx_id_mappings_internal_id")
+  @@index([isActive], map: "idx_id_mappings_is_active")
+  @@index([lastAccessed], map: "idx_id_mappings_last_accessed")
+  @@map("id_mappings")
 }
 
 enum automation_logs_status {

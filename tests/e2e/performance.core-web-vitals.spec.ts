@@ -386,10 +386,13 @@ test.describe('Performance - Core Web Vitals', () => {
       const swipeStartTime = Date.now();
 
       // Simulate swipe
-      await page.touch().move(300, 100);
-      await page.touch().down();
-      await page.touch().move(100, 100, { steps: 5 });
-      await page.touch().up();
+-      await page.touch().move(300, 100);
+-      await page.touch().down();
+-      await page.touch().move(100, 100, { steps: 5 });
+-      await page.touch().up();
++      await page.touchscreen.down(300, 100);
++      await page.touchscreen.move(100, 100);
++      await page.touchscreen.up();
 
       await page.waitForTimeout(500); // Wait for swipe to process
 

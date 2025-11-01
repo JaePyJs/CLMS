@@ -12,6 +12,8 @@ import {
 } from '@prisma/client';
 import { equipmentService } from './enhancedEquipmentService';
 import { equipmentWebSocketService } from '@/websocket/equipmentWebSocket';
+import { NoopQueue, NoopWorker } from '@/utils/noopQueue';
+import { queuesDisabled, disableScheduledTasks } from '@/utils/gates';
 
 // Equipment scheduling service
 export class EquipmentSchedulingService {
@@ -22,11 +24,29 @@ export class EquipmentSchedulingService {
 
   constructor() {
     this.initializeQueues();
-    this.initializeWorkers();
-    this.setupScheduledJobs();
+    if (!queuesDisabled) {
+      this.initializeWorkers();
+    } else {
+      logger.warn('EquipmentSchedulingService workers not initialized: queues disabled');
+    }
+    if (!queuesDisabled && !disableScheduledTasks) {
+      this.setupScheduledJobs();
+    } else {
+      logger.warn('EquipmentSchedulingService scheduled jobs not initialized: gates active', {
+        queuesDisabled,
+        disableScheduledTasks,
+      });
+    }
   }
 
   private initializeQueues() {
+    if (queuesDisabled) {
+      this.maintenanceQueue = new NoopQueue() as unknown as Queue;
+      this.sessionQueue = new NoopQueue() as unknown as Queue;
+      logger.warn('EquipmentSchedulingService using NoopQueue: queues disabled');
+      return;
+    }
+
     // Maintenance scheduling queue
     this.maintenanceQueue = new Queue('equipment-maintenance', {
       connection: redis,
@@ -57,6 +77,12 @@ export class EquipmentSchedulingService {
   }
 
   private initializeWorkers() {
+    if (queuesDisabled) {
+      this.maintenanceWorker = new NoopWorker() as unknown as Worker;
+      this.sessionWorker = new NoopWorker() as unknown as Worker;
+      return;
+    }
+
     // Maintenance worker
     this.maintenanceWorker = new Worker(
       'equipment-maintenance',
@@ -115,6 +141,9 @@ export class EquipmentSchedulingService {
   }
 
   private setupScheduledJobs() {
+    if (queuesDisabled || disableScheduledTasks) {
+      return;
+    }
     // Schedule routine maintenance checks
     this.scheduleRoutineMaintenance();
 

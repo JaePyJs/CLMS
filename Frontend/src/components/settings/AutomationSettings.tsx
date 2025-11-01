@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +22,7 @@ import {
   AlertCircle,
   Loader2,
   Calendar,
-  History,
+  History as HistoryIcon,
 } from 'lucide-react';
 
 interface AutomationJob {
@@ -335,7 +335,7 @@ export default function AutomationSettings() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <History className="w-5 h-5" />
+              <HistoryIcon className="w-5 h-5" />
               Job Execution History
             </CardTitle>
             <CardDescription>

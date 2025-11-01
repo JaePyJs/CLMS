@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,7 +74,7 @@ export default function FinesManagement() {
       const response = await finesApi.getFines(status);
       
       if (response.success && response.data) {
-        setFines(response.data.fines || []);
+        setFines((response.data as any).fines || []);
       } else {
         showMessage('error', 'Failed to load fines');
       }

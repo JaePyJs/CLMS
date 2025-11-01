@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -68,7 +68,7 @@ export default function UserManagement() {
     queryKey: ['users'],
     queryFn: async () => {
       const response = await settingsApi.getUsers();
-      return response.data || [];
+      return (response.data as User[]) || [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });

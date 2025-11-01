@@ -53,7 +53,7 @@ interface MemoryOperation {
 
 /**
  * Memory Optimization Service
- * 
+ *
  * Provides tools for monitoring memory usage, detecting memory leaks,
  * and optimizing memory consumption in the CLMS application.
  */
@@ -67,7 +67,7 @@ export class MemoryOptimizationService extends EventEmitter {
 
   constructor(config?: Partial<MemoryOptimizationConfig>) {
     super();
-    
+
     this.config = {
       enableAutoGC: true,
       gcThreshold: 500, // 500MB
@@ -77,7 +77,7 @@ export class MemoryOptimizationService extends EventEmitter {
       memoryMonitoringInterval: 30, // 30 seconds
       maxMemoryUsage: 1024, // 1GB
       enableMemoryProfiling: false,
-      ...config
+      ...config,
     };
   }
 
@@ -141,7 +141,7 @@ export class MemoryOptimizationService extends EventEmitter {
       external: memUsage.external,
       rss: memUsage.rss,
       heapUsedPercentage: (memUsage.heapUsed / memUsage.heapTotal) * 100,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     this.memorySnapshots.push(stats);
@@ -161,8 +161,8 @@ export class MemoryOptimizationService extends EventEmitter {
         heapUsed: stats.heapUsed / 1024 / 1024, // MB
         heapTotal: stats.heapTotal / 1024 / 1024, // MB
         external: stats.external / 1024 / 1024, // MB
-        rss: stats.rss / 1024 / 1024 // MB
-      }
+        rss: stats.rss / 1024 / 1024, // MB
+      },
     });
 
     this.emit('snapshot', stats);
@@ -189,12 +189,12 @@ export class MemoryOptimizationService extends EventEmitter {
    */
   startOperation(id: string, name: string): void {
     const startMemory = process.memoryUsage().heapUsed;
-    
+
     this.operations.set(id, {
       id,
       name,
       startTime: Date.now(),
-      startMemory
+      startMemory,
     });
   }
 
@@ -226,8 +226,8 @@ export class MemoryOptimizationService extends EventEmitter {
       metadata: {
         memoryDelta: memoryDelta / 1024 / 1024, // MB
         duration,
-        operationId: id
-      }
+        operationId: id,
+      },
     });
 
     // Clean up operation after 10 minutes
@@ -239,7 +239,7 @@ export class MemoryOptimizationService extends EventEmitter {
       id,
       name: operation.name,
       memoryDelta: memoryDelta / 1024 / 1024, // MB
-      duration
+      duration,
     });
 
     return { memoryDelta: memoryDelta / 1024 / 1024, duration };
@@ -251,18 +251,18 @@ export class MemoryOptimizationService extends EventEmitter {
   async trackMemory<T>(
     id: string,
     name: string,
-    fn: () => Promise<T>
+    fn: () => Promise<T>,
   ): Promise<{ result: T; memoryDelta: number; duration: number }> {
     this.startOperation(id, name);
-    
+
     try {
       const result = await fn();
       const operation = this.endOperation(id);
-      
+
       return {
         result,
         memoryDelta: operation?.memoryDelta || 0,
-        duration: operation?.duration || 0
+        duration: operation?.duration || 0,
       };
     } catch (error) {
       this.operations.delete(id);
@@ -278,16 +278,16 @@ export class MemoryOptimizationService extends EventEmitter {
       const beforeGC = this.captureMemorySnapshot();
       global.gc();
       const afterGC = this.captureMemorySnapshot();
-      
+
       const memoryFreed = (beforeGC.heapUsed - afterGC.heapUsed) / 1024 / 1024; // MB
       this.lastGC = Date.now();
-      
+
       logger.info(`Garbage collection completed`, {
         memoryFreed: `${memoryFreed.toFixed(2)} MB`,
         beforeGC: `${(beforeGC.heapUsed / 1024 / 1024).toFixed(2)} MB`,
-        afterGC: `${(afterGC.heapUsed / 1024 / 1024).toFixed(2)} MB`
+        afterGC: `${(afterGC.heapUsed / 1024 / 1024).toFixed(2)} MB`,
       });
-      
+
       this.emit('gc', { memoryFreed, beforeGC, afterGC });
       return true;
     } else {
@@ -305,11 +305,13 @@ export class MemoryOptimizationService extends EventEmitter {
 
     // Check if we're above the maximum memory usage
     if (memoryUsageMB > this.config.maxMemoryUsage) {
-      logger.warn(`Memory usage above threshold: ${memoryUsageMB.toFixed(2)} MB`);
-      
+      logger.warn(
+        `Memory usage above threshold: ${memoryUsageMB.toFixed(2)} MB`,
+      );
+
       this.emit('highMemoryUsage', {
         current: memoryUsageMB,
-        threshold: this.config.maxMemoryUsage
+        threshold: this.config.maxMemoryUsage,
       });
 
       // Force garbage collection if enabled
@@ -323,18 +325,32 @@ export class MemoryOptimizationService extends EventEmitter {
       const recentSnapshots = this.memorySnapshots.slice(-10);
       const oldestSnapshot = recentSnapshots[0];
       const newestSnapshot = recentSnapshots[recentSnapshots.length - 1];
-      
-      const timeDiff = (newestSnapshot.timestamp - oldestSnapshot.timestamp) / 1000 / 60; // minutes
-      const memoryDiff = (newestSnapshot.heapUsed - oldestSnapshot.heapUsed) / 1024 / 1024; // MB
+
+      if (!oldestSnapshot || !newestSnapshot) {
+        return;
+      }
+
+      const oldest = oldestSnapshot;
+      const newest = newestSnapshot;
+
+      const timeDiff = (newest.timestamp - oldest.timestamp) / 1000 / 60; // minutes
+      if (timeDiff <= 0) {
+        return;
+      }
+
+      const memoryDiff = (newest.heapUsed - oldest.heapUsed) / 1024 / 1024; // MB
       const growthRate = memoryDiff / timeDiff; // MB per minute
 
-      if (growthRate > 10) { // Growing more than 10MB per minute
-        logger.warn(`High memory growth rate detected: ${growthRate.toFixed(2)} MB/min`);
-        
+      if (growthRate > 10) {
+        // Growing more than 10MB per minute
+        logger.warn(
+          `High memory growth rate detected: ${growthRate.toFixed(2)} MB/min`,
+        );
+
         this.emit('highMemoryGrowthRate', {
           growthRate,
           timeDiff,
-          memoryDiff
+          memoryDiff,
         });
 
         // Force garbage collection if enabled
@@ -354,18 +370,38 @@ export class MemoryOptimizationService extends EventEmitter {
         detected: false,
         growthRate: 0,
         suspiciousOperations: [],
-        recommendations: ['Need more memory snapshots to detect leaks']
+        recommendations: ['Need more memory snapshots to detect leaks'],
       };
     }
 
     // Analyze memory growth trend
     const recentSnapshots = this.memorySnapshots.slice(-10);
     const oldestSnapshot = recentSnapshots[0];
+    if (!oldestSnapshot) {
+      return {
+        detected: false,
+        growthRate: 0,
+        suspiciousOperations: [],
+        recommendations: ['Need more memory snapshots to detect leaks'],
+      };
+    }
+
     const newestSnapshot = recentSnapshots[recentSnapshots.length - 1];
-    
-    const timeDiff = (newestSnapshot.timestamp - oldestSnapshot.timestamp) / 1000 / 60; // minutes
-    const memoryDiff = (newestSnapshot.heapUsed - oldestSnapshot.heapUsed) / 1024 / 1024; // MB
-    const growthRate = memoryDiff / timeDiff; // MB per minute
+    if (!newestSnapshot) {
+      return {
+        detected: false,
+        growthRate: 0,
+        suspiciousOperations: [],
+        recommendations: ['Need more memory snapshots to detect leaks'],
+      };
+    }
+
+    const oldest = oldestSnapshot;
+    const newest = newestSnapshot;
+
+    const timeDiff = (newest.timestamp - oldest.timestamp) / 1000 / 60; // minutes
+    const memoryDiff = (newest.heapUsed - oldest.heapUsed) / 1024 / 1024; // MB
+    const growthRate = timeDiff > 0 ? memoryDiff / timeDiff : 0; // MB per minute
 
     // Check for suspicious operations
     const suspiciousOperations: string[] = [];
@@ -375,7 +411,8 @@ export class MemoryOptimizationService extends EventEmitter {
       .slice(0, 5);
 
     operations.forEach(op => {
-      if (op.memoryDelta && op.memoryDelta > 10 * 1024 * 1024) { // More than 10MB
+      if (op.memoryDelta && op.memoryDelta > 10 * 1024 * 1024) {
+        // More than 10MB
         suspiciousOperations.push(op.name);
       }
     });
@@ -384,7 +421,8 @@ export class MemoryOptimizationService extends EventEmitter {
     const recommendations: string[] = [];
     let detected = false;
 
-    if (growthRate > 5) { // Growing more than 5MB per minute
+    if (growthRate > 5) {
+      // Growing more than 5MB per minute
       detected = true;
       recommendations.push('Memory leak detected: High growth rate');
       recommendations.push('Review recent code changes for memory leaks');
@@ -393,21 +431,25 @@ export class MemoryOptimizationService extends EventEmitter {
 
     if (suspiciousOperations.length > 0) {
       detected = true;
-      recommendations.push(`Suspicious operations detected: ${suspiciousOperations.join(', ')}`);
+      recommendations.push(
+        `Suspicious operations detected: ${suspiciousOperations.join(', ')}`,
+      );
       recommendations.push('Review these operations for memory leaks');
     }
 
-    if (newestSnapshot.heapUsedPercentage > 90) {
+    if (newest.heapUsedPercentage > 90) {
       detected = true;
       recommendations.push('High memory usage detected');
-      recommendations.push('Consider increasing memory limits or optimizing memory usage');
+      recommendations.push(
+        'Consider increasing memory limits or optimizing memory usage',
+      );
     }
 
     const result: MemoryLeakResult = {
       detected,
       growthRate,
       suspiciousOperations,
-      recommendations
+      recommendations,
     };
 
     if (detected) {
@@ -439,7 +481,9 @@ export class MemoryOptimizationService extends EventEmitter {
     const originalSnapshotCount = this.memorySnapshots.length;
     this.memorySnapshots = this.memorySnapshots.slice(-50);
     if (this.memorySnapshots.length < originalSnapshotCount) {
-      actions.push(`Cleared ${originalSnapshotCount - this.memorySnapshots.length} old memory snapshots`);
+      actions.push(
+        `Cleared ${originalSnapshotCount - this.memorySnapshots.length} old memory snapshots`,
+      );
     }
 
     // Clear old operations
@@ -452,29 +496,32 @@ export class MemoryOptimizationService extends EventEmitter {
       }
     }
     if (this.operations.size < operationCount) {
-      actions.push(`Cleared ${operationCount - this.operations.size} old operation trackers`);
+      actions.push(
+        `Cleared ${operationCount - this.operations.size} old operation trackers`,
+      );
     }
 
     const afterOptimization = this.getCurrentMemoryUsage();
-    const memoryFreed = (beforeOptimization.heapUsed - afterOptimization.heapUsed) / 1024 / 1024; // MB
+    const memoryFreed =
+      (beforeOptimization.heapUsed - afterOptimization.heapUsed) / 1024 / 1024; // MB
 
     logger.info('Memory optimization completed', {
       memoryFreed: `${memoryFreed.toFixed(2)} MB`,
-      actions: actions.length
+      actions: actions.length,
     });
 
     this.emit('optimized', {
       beforeOptimization,
       afterOptimization,
       memoryFreed,
-      actions
+      actions,
     });
 
     return {
       beforeOptimization,
       afterOptimization,
       memoryFreed,
-      actions
+      actions,
     };
   }
 
@@ -488,15 +535,22 @@ export class MemoryOptimizationService extends EventEmitter {
 
     // General recommendations
     if (memoryUsageMB > 500) {
-      recommendations.push('High memory usage detected. Consider optimizing data structures.');
+      recommendations.push(
+        'High memory usage detected. Consider optimizing data structures.',
+      );
     }
 
     if (currentMemory.heapUsedPercentage > 80) {
-      recommendations.push('High heap usage percentage. Look for memory leaks.');
+      recommendations.push(
+        'High heap usage percentage. Look for memory leaks.',
+      );
     }
 
-    if (currentMemory.external > 100 * 1024 * 1024) { // More than 100MB
-      recommendations.push('High external memory usage. Check for native module leaks.');
+    if (currentMemory.external > 100 * 1024 * 1024) {
+      // More than 100MB
+      recommendations.push(
+        'High external memory usage. Check for native module leaks.',
+      );
     }
 
     // Operation-specific recommendations
@@ -504,11 +558,14 @@ export class MemoryOptimizationService extends EventEmitter {
       .filter(op => op.memoryDelta !== undefined && op.memoryDelta > 0)
       .sort((a, b) => (b.memoryDelta || 0) - (a.memoryDelta || 0));
 
-    if (operations.length > 0) {
-      const topOperation = operations[0];
-      if (topOperation.memoryDelta && topOperation.memoryDelta > 50 * 1024 * 1024) { // More than 50MB
-        recommendations.push(`Operation "${topOperation.name}" uses a lot of memory. Consider optimizing it.`);
-      }
+    const [topOperation] = operations;
+    if (
+      topOperation?.memoryDelta &&
+      topOperation.memoryDelta > 50 * 1024 * 1024
+    ) {
+      recommendations.push(
+        `Operation "${topOperation.name}" uses a lot of memory. Consider optimizing it.`,
+      );
     }
 
     // Configuration-specific recommendations
@@ -551,7 +608,7 @@ export class MemoryOptimizationService extends EventEmitter {
         id: op.id,
         name: op.name,
         duration: op.endTime! - op.startTime,
-        memoryDelta: op.memoryDelta! / 1024 / 1024 // MB
+        memoryDelta: op.memoryDelta! / 1024 / 1024, // MB
       }))
       .sort((a, b) => b.memoryDelta - a.memoryDelta)
       .slice(0, 10);
@@ -562,7 +619,7 @@ export class MemoryOptimizationService extends EventEmitter {
       operations,
       leakDetection,
       recommendations,
-      config: this.config
+      config: this.config,
     };
   }
 }
@@ -570,7 +627,9 @@ export class MemoryOptimizationService extends EventEmitter {
 // Singleton instance
 export let memoryOptimizationService: MemoryOptimizationService;
 
-export function initializeMemoryOptimizationService(config?: Partial<MemoryOptimizationConfig>): void {
+export function initializeMemoryOptimizationService(
+  config?: Partial<MemoryOptimizationConfig>,
+): void {
   memoryOptimizationService = new MemoryOptimizationService(config);
   memoryOptimizationService.start();
 }

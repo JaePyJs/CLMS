@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import Redis, { RedisOptions } from 'ioredis';
 import { logger } from './logger';
 
 interface CacheOptions {
@@ -16,12 +16,15 @@ interface CacheStats {
 
 class CacheManager {
   private redis: Redis | null = null;
-  private memoryCache: Map<string, { value: any; expires: number; tags: string[] }> = new Map();
+  private memoryCache: Map<
+    string,
+    { value: unknown; expires: number; tags: string[] }
+  > = new Map();
   private stats: CacheStats = {
     hits: 0,
     misses: 0,
     sets: 0,
-    deletes: 0
+    deletes: 0,
   };
   private useRedis: boolean = false;
   private cleanupInterval: NodeJS.Timeout | null = null;
@@ -34,25 +37,32 @@ class CacheManager {
   private initializeRedis() {
     try {
       if (process.env.REDIS_HOST && process.env.REDIS_PORT) {
-        this.redis = new Redis({
+        const redisOptions: RedisOptions = {
           host: process.env.REDIS_HOST,
           port: parseInt(process.env.REDIS_PORT, 10),
-          password: process.env.REDIS_PASSWORD || undefined,
-          retryStrategy: (times) => {
+          retryStrategy: times => {
             if (times > 3) {
-              logger.warn('Redis connection failed, falling back to memory cache');
+              logger.warn(
+                'Redis connection failed, falling back to memory cache',
+              );
               return null;
             }
             return Math.min(times * 100, 3000);
-          }
-        });
+          },
+        };
+
+        if (process.env.REDIS_PASSWORD) {
+          redisOptions.password = process.env.REDIS_PASSWORD;
+        }
+
+        this.redis = new Redis(redisOptions);
 
         this.redis.on('connect', () => {
           this.useRedis = true;
           logger.info('Redis cache connected');
         });
 
-        this.redis.on('error', (error) => {
+        this.redis.on('error', error => {
           logger.warn('Redis error, using memory cache:', error.message);
           this.useRedis = false;
         });
@@ -66,21 +76,24 @@ class CacheManager {
 
   private startCleanup() {
     // Clean expired memory cache entries every 5 minutes
-    this.cleanupInterval = setInterval(() => {
-      const now = Date.now();
-      let cleaned = 0;
+    this.cleanupInterval = setInterval(
+      () => {
+        const now = Date.now();
+        let cleaned = 0;
 
-      for (const [key, entry] of this.memoryCache.entries()) {
-        if (entry.expires < now) {
-          this.memoryCache.delete(key);
-          cleaned++;
+        for (const [key, entry] of this.memoryCache.entries()) {
+          if (entry.expires < now) {
+            this.memoryCache.delete(key);
+            cleaned++;
+          }
         }
-      }
 
-      if (cleaned > 0) {
-        logger.debug(`Cleaned ${cleaned} expired cache entries`);
-      }
-    }, 5 * 60 * 1000);
+        if (cleaned > 0) {
+          logger.debug(`Cleaned ${cleaned} expired cache entries`);
+        }
+      },
+      5 * 60 * 1000,
+    );
   }
 
   private getCacheKey(key: string, prefix?: string): string {
@@ -115,7 +128,11 @@ class CacheManager {
     }
   }
 
-  async set<T>(key: string, value: T, options: CacheOptions = {}): Promise<boolean> {
+  async set<T>(
+    key: string,
+    value: T,
+    options: CacheOptions = {},
+  ): Promise<boolean> {
     const cacheKey = this.getCacheKey(key, options.prefix);
     const ttl = options.ttl || 3600; // Default 1 hour
     const tags = options.tags || [];
@@ -135,8 +152,8 @@ class CacheManager {
       } else {
         this.memoryCache.set(cacheKey, {
           value,
-          expires: Date.now() + (ttl * 1000),
-          tags
+          expires: Date.now() + ttl * 1000,
+          tags,
         });
       }
 
@@ -214,7 +231,9 @@ class CacheManager {
         }
       }
 
-      logger.debug(`Invalidated ${invalidated} cache entries matching pattern: ${pattern}`);
+      logger.debug(
+        `Invalidated ${invalidated} cache entries matching pattern: ${pattern}`,
+      );
       return invalidated;
     } catch (error) {
       logger.error('Cache invalidate by pattern error:', error);
@@ -245,14 +264,14 @@ class CacheManager {
     return {
       ...this.stats,
       size: this.memoryCache.size,
-      hitRate: Math.round(hitRate * 100) / 100
+      hitRate: Math.round(hitRate * 100) / 100,
     };
   }
 
   async getOrSet<T>(
     key: string,
     factory: () => Promise<T>,
-    options: CacheOptions = {}
+    options: CacheOptions = {},
   ): Promise<T> {
     // Try to get from cache
     const cached = await this.get<T>(key, options);
@@ -289,19 +308,19 @@ export const cacheManager = new CacheManager();
 // Decorator for caching method results
 export function Cacheable(options: CacheOptions = {}) {
   return function (
-    target: any,
+    target: object,
     propertyName: string,
-    descriptor: PropertyDescriptor
+    descriptor: PropertyDescriptor,
   ) {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (...args: unknown[]) {
       const cacheKey = `${target.constructor.name}:${propertyName}:${JSON.stringify(args)}`;
 
       return cacheManager.getOrSet(
         cacheKey,
         () => originalMethod.apply(this, args),
-        options
+        options,
       );
     };
 
@@ -313,7 +332,7 @@ export function Cacheable(options: CacheOptions = {}) {
 export async function cacheQuery<T>(
   key: string,
   query: () => Promise<T>,
-  ttl: number = 300
+  ttl: number = 300,
 ): Promise<T> {
   return cacheManager.getOrSet(key, query, { ttl });
 }

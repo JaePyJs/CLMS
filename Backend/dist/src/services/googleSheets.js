@@ -89,23 +89,23 @@ class GoogleSheetsService {
             let totalRecordsProcessed = 0;
             const studentsResult = await this.syncStudents();
             if (studentsResult.success) {
-                totalRecordsProcessed += studentsResult.records_processed || 0;
+                totalRecordsProcessed += studentsResult.recordsProcessed || 0;
             }
             const booksResult = await this.syncBooks();
             if (booksResult.success) {
-                totalRecordsProcessed += booksResult.records_processed || 0;
+                totalRecordsProcessed += booksResult.recordsProcessed || 0;
             }
             const equipmentResult = await this.syncEquipment();
             if (equipmentResult.success) {
-                totalRecordsProcessed += equipmentResult.records_processed || 0;
+                totalRecordsProcessed += equipmentResult.recordsProcessed || 0;
             }
             const activitiesResult = await this.syncActivities();
             if (activitiesResult.success) {
-                totalRecordsProcessed += activitiesResult.records_processed || 0;
+                totalRecordsProcessed += activitiesResult.recordsProcessed || 0;
             }
             const checkoutsResult = await this.syncBookCheckouts();
             if (checkoutsResult.success) {
-                totalRecordsProcessed += checkoutsResult.records_processed || 0;
+                totalRecordsProcessed += checkoutsResult.recordsProcessed || 0;
             }
             const duration = Date.now() - startTime;
             logger_1.logger.info(`Google Sheets sync completed in ${duration}ms`, {
@@ -113,7 +113,7 @@ class GoogleSheetsService {
             });
             return {
                 success: true,
-                records_processed: totalRecordsProcessed,
+                recordsProcessed: totalRecordsProcessed,
             };
         }
         catch (error) {
@@ -159,7 +159,7 @@ class GoogleSheetsService {
             logger_1.logger.info(`Synced ${students.length} students to Google Sheets`);
             return {
                 success: true,
-                records_processed: students.length,
+                recordsProcessed: students.length,
             };
         }
         catch (error) {
@@ -213,7 +213,7 @@ class GoogleSheetsService {
             logger_1.logger.info(`Synced ${books.length} books to Google Sheets`);
             return {
                 success: true,
-                records_processed: books.length,
+                recordsProcessed: books.length,
             };
         }
         catch (error) {
@@ -262,7 +262,7 @@ class GoogleSheetsService {
             logger_1.logger.info(`Synced ${equipment.length} equipment items to Google Sheets`);
             return {
                 success: true,
-                records_processed: equipment.length,
+                recordsProcessed: equipment.length,
             };
         }
         catch (error) {
@@ -282,25 +282,26 @@ class GoogleSheetsService {
             }
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const activityInclude = {
+                students: {
+                    select: {
+                        student_id: true,
+                        first_name: true,
+                        last_name: true,
+                    },
+                },
+                equipment: {
+                    select: {
+                        equipment_id: true,
+                        name: true,
+                    },
+                },
+            };
             const activities = await prisma_1.prisma.student_activities.findMany({
                 where: {
                     start_time: { gte: thirtyDaysAgo },
                 },
-                include: {
-                    student: {
-                        select: {
-                            student_id: true,
-                            first_name: true,
-                            last_name: true,
-                        },
-                    },
-                    equipment: {
-                        select: {
-                            equipment_id: true,
-                            name: true,
-                        },
-                    },
-                },
+                include: activityInclude,
                 orderBy: { start_time: 'desc' },
             });
             const headers = [
@@ -319,29 +320,31 @@ class GoogleSheetsService {
                 'Processed By',
                 'Created At',
             ];
-            const rows = activities.map(activity => [
-                activity.id,
-                activity.student?.student_id ?? '',
-                activity.student
-                    ? `${activity.student.first_name} ${activity.student.last_name}`
-                    : '',
-                activity.activity_type,
-                activity.equipment?.equipment_id ?? '',
-                activity.equipment?.name ?? '',
-                activity.start_time.toISOString(),
-                activity.end_time?.toISOString() ?? '',
-                activity.duration_minutes?.toString() ?? '',
-                activity.time_limit_minutes?.toString() ?? '',
-                activity.status,
-                activity.notes ?? '',
-                activity.processed_by,
-                activity.created_at.toISOString(),
-            ]);
+            const rows = activities.map(activity => {
+                const student = activity.students;
+                const equipment = activity.equipment;
+                return [
+                    activity.id,
+                    student?.student_id ?? '',
+                    student ? `${student.first_name} ${student.last_name}` : '',
+                    activity.activity_type,
+                    equipment?.equipment_id ?? '',
+                    equipment?.name ?? '',
+                    activity.start_time.toISOString(),
+                    activity.end_time?.toISOString() ?? '',
+                    activity.duration_minutes?.toString() ?? '',
+                    activity.time_limit_minutes?.toString() ?? '',
+                    activity.status,
+                    activity.notes ?? '',
+                    activity.processed_by,
+                    activity.created_at.toISOString(),
+                ];
+            });
             await this.updateSheet('Activities', headers, rows);
             logger_1.logger.info(`Synced ${activities.length} activities to Google Sheets`);
             return {
                 success: true,
-                records_processed: activities.length,
+                recordsProcessed: activities.length,
             };
         }
         catch (error) {
@@ -361,26 +364,27 @@ class GoogleSheetsService {
             }
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const checkoutInclude = {
+                students: {
+                    select: {
+                        student_id: true,
+                        first_name: true,
+                        last_name: true,
+                    },
+                },
+                books: {
+                    select: {
+                        accession_no: true,
+                        title: true,
+                        author: true,
+                    },
+                },
+            };
             const checkouts = await prisma_1.prisma.book_checkouts.findMany({
                 where: {
                     checkout_date: { gte: thirtyDaysAgo },
                 },
-                include: {
-                    student: {
-                        select: {
-                            student_id: true,
-                            first_name: true,
-                            last_name: true,
-                        },
-                    },
-                    book: {
-                        select: {
-                            accession_no: true,
-                            title: true,
-                            author: true,
-                        },
-                    },
-                },
+                include: checkoutInclude,
                 orderBy: { checkout_date: 'desc' },
             });
             const headers = [
@@ -401,31 +405,33 @@ class GoogleSheetsService {
                 'Processed By',
                 'Created At',
             ];
-            const rows = checkouts.map(checkout => [
-                checkout.id,
-                checkout.student?.student_id ?? '',
-                checkout.student
-                    ? `${checkout.student.first_name} ${checkout.student.last_name}`
-                    : '',
-                checkout.book?.accession_no ?? '',
-                checkout.book?.title ?? '',
-                checkout.book?.author ?? '',
-                checkout.checkout_date.toISOString(),
-                checkout.due_date.toISOString(),
-                checkout.return_date?.toISOString() ?? '',
-                checkout.status,
-                checkout.overdue_days.toString(),
-                checkout.fine_amount.toString(),
-                checkout.fine_paid ? 'Yes' : 'No',
-                checkout.notes ?? '',
-                checkout.processed_by,
-                checkout.created_at.toISOString(),
-            ]);
+            const rows = checkouts.map(checkout => {
+                const student = checkout.students;
+                const book = checkout.books;
+                return [
+                    checkout.id,
+                    student?.student_id ?? '',
+                    student ? `${student.first_name} ${student.last_name}` : '',
+                    book?.accession_no ?? '',
+                    book?.title ?? '',
+                    book?.author ?? '',
+                    checkout.checkout_date.toISOString(),
+                    checkout.due_date.toISOString(),
+                    checkout.return_date?.toISOString() ?? '',
+                    checkout.status,
+                    checkout.overdue_days.toString(),
+                    checkout.fine_amount.toString(),
+                    checkout.fine_paid ? 'Yes' : 'No',
+                    checkout.notes ?? '',
+                    checkout.processed_by,
+                    checkout.created_at.toISOString(),
+                ];
+            });
             await this.updateSheet('Book Checkouts', headers, rows);
             logger_1.logger.info(`Synced ${checkouts.length} book checkouts to Google Sheets`);
             return {
                 success: true,
-                records_processed: checkouts.length,
+                recordsProcessed: checkouts.length,
             };
         }
         catch (error) {
@@ -535,6 +541,23 @@ class GoogleSheetsService {
             startOfDay.setHours(0, 0, 0, 0);
             const endOfDay = new Date(dateString);
             endOfDay.setHours(23, 59, 59, 999);
+            const dailyActivityInclude = {
+                students: {
+                    select: {
+                        student_id: true,
+                        first_name: true,
+                        last_name: true,
+                        grade_level: true,
+                    },
+                },
+                equipment: {
+                    select: {
+                        equipment_id: true,
+                        name: true,
+                        type: true,
+                    },
+                },
+            };
             const activities = await prisma_1.prisma.student_activities.findMany({
                 where: {
                     start_time: {
@@ -542,40 +565,26 @@ class GoogleSheetsService {
                         lte: endOfDay,
                     },
                 },
-                include: {
-                    student: {
-                        select: {
-                            student_id: true,
-                            first_name: true,
-                            last_name: true,
-                            grade_level: true,
-                        },
-                    },
-                    equipment: {
-                        select: {
-                            equipment_id: true,
-                            name: true,
-                            type: true,
-                        },
-                    },
-                },
+                include: dailyActivityInclude,
                 orderBy: { start_time: 'desc' },
             });
             const reportData = {
                 date: dateString,
                 totalActivities: activities.length,
                 activitiesByType: activities.reduce((acc, activity) => {
-                    acc[activity.activity_type] = (acc[activity.activity_type] || 0) + 1;
+                    const activityType = activity.activity_type ?? 'unknown';
+                    acc[activityType] = (acc[activityType] || 0) + 1;
                     return acc;
                 }, {}),
                 activitiesByGrade: activities.reduce((acc, activity) => {
-                    const gradeLevel = activity.student?.grade_level ?? 'Unknown';
+                    const student = activity.students;
+                    const gradeLevel = student?.grade_level ?? 'Unknown';
                     acc[gradeLevel] = (acc[gradeLevel] || 0) + 1;
                     return acc;
                 }, {}),
-                equipmentUsage: activities.filter(a => a.equipment).length,
+                equipmentUsage: activities.filter(activity => Boolean(activity.equipment)).length,
                 uniqueStudents: new Set(activities
-                    .map(activity => activity.student?.student_id)
+                    .map(activity => activity.students?.student_id)
                     .filter((id) => Boolean(id))).size,
             };
             await this.appendDailyReport(reportData);

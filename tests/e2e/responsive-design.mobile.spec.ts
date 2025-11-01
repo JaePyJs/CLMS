@@ -320,10 +320,9 @@ test.describe('Responsive Design - Mobile', () => {
             const endX = device.viewport.width * 0.2;
             const y = device.viewport.height / 2;
 
-            await page.touch().move(startX, y);
-            await page.touch().down();
-            await page.touch().move(endX, y, { steps: 10 });
-            await page.touch().up();
+            await page.touchscreen.down(startX, y);
+            await page.touchscreen.move(endX, y);
+            await page.touchscreen.up();
 
             await page.waitForTimeout(1000);
           }
@@ -339,10 +338,9 @@ test.describe('Responsive Design - Mobile', () => {
               const startY = 100;
               const endY = device.viewport.height - 100;
 
-              await page.touch().move(device.viewport.width / 2, startY);
-              await page.touch().down();
-              await page.touch().move(device.viewport.width / 2, endY, { steps: 10 });
-              await page.touch().up();
+              await page.touchscreen.down(device.viewport.width / 2, startY);
+              await page.touchscreen.move(device.viewport.width / 2, endY);
+              await page.touchscreen.up();
 
               await page.waitForTimeout(1000);
             }

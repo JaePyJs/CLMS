@@ -70,10 +70,11 @@ router.get('/reports/:id', authMiddleware, async (req: Request, res: Response) =
 
     const report = reports.find(r => r.id === id);
     if (!report) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Error report not found',
       });
+      return;
     }
 
     res.json({
@@ -307,10 +308,11 @@ router.post('/healing/strategies/:id/toggle', authMiddleware, async (req: Reques
     }
 
     if (!success) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Healing strategy not found',
       });
+      return;
     }
 
     // Log the action
@@ -380,10 +382,11 @@ router.post('/notifications/channels/:id/test', authMiddleware, async (req: Requ
     const success = await errorNotificationService.testChannel(id);
 
     if (!success) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Notification channel test failed',
       });
+      return;
     }
 
     res.json({

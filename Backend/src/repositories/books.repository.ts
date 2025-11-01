@@ -5,7 +5,7 @@ import { BaseRepository } from './base.repository';
 
 /**
  * Books Repository
- * 
+ *
  * Extends BaseRepository to provide book-specific operations with flexible
  * ID handling for accession_no (external book identifier).
  */
@@ -124,12 +124,14 @@ export class BooksRepository extends BaseRepository<
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        const target = (error.meta?.target as any)?.find((field: string) => 
-          field.includes('accession_no')
+        const target = (error.meta?.target as any)?.find((field: string) =>
+          field.includes('accession_no'),
         );
-        
+
         if (target) {
-          throw new Error(`Book with accession number '${data.accession_no}' already exists`);
+          throw new Error(
+            `Book with accession number '${data.accession_no}' already exists`,
+          );
         }
       }
 
@@ -164,7 +166,7 @@ export class BooksRepository extends BaseRepository<
       volume?: string;
       year?: number;
       is_active?: boolean;
-    }
+    },
   ): Promise<books> {
     try {
       const whereClause = { accession_no };
@@ -194,18 +196,38 @@ export class BooksRepository extends BaseRepository<
         ...(data.isbn !== undefined && { isbn: data.isbn || null }),
         ...(data.title && { title: data.title.trim() }),
         ...(data.author && { author: data.author.trim() }),
-        ...(data.publisher !== undefined && { publisher: data.publisher?.trim() || null }),
+        ...(data.publisher !== undefined && {
+          publisher: data.publisher?.trim() || null,
+        }),
         ...(data.category && { category: data.category.trim() }),
-        ...(data.subcategory !== undefined && { subcategory: data.subcategory?.trim() || null }),
-        ...(data.location !== undefined && { location: data.location?.trim() || null }),
-        ...(data.total_copies !== undefined && { total_copies: data.total_copies }),
-        ...(data.available_copies !== undefined && { available_copies: data.available_copies }),
-        ...(data.cost_price !== undefined && { cost_price: data.cost_price || null }),
-        ...(data.edition !== undefined && { edition: data.edition?.trim() || null }),
+        ...(data.subcategory !== undefined && {
+          subcategory: data.subcategory?.trim() || null,
+        }),
+        ...(data.location !== undefined && {
+          location: data.location?.trim() || null,
+        }),
+        ...(data.total_copies !== undefined && {
+          total_copies: data.total_copies,
+        }),
+        ...(data.available_copies !== undefined && {
+          available_copies: data.available_copies,
+        }),
+        ...(data.cost_price !== undefined && {
+          cost_price: data.cost_price || null,
+        }),
+        ...(data.edition !== undefined && {
+          edition: data.edition?.trim() || null,
+        }),
         ...(data.pages !== undefined && { pages: data.pages?.trim() || null }),
-        ...(data.remarks !== undefined && { remarks: data.remarks?.trim() || null }),
-        ...(data.source_of_fund !== undefined && { source_of_fund: data.source_of_fund?.trim() || null }),
-        ...(data.volume !== undefined && { volume: data.volume?.trim() || null }),
+        ...(data.remarks !== undefined && {
+          remarks: data.remarks?.trim() || null,
+        }),
+        ...(data.source_of_fund !== undefined && {
+          source_of_fund: data.source_of_fund?.trim() || null,
+        }),
+        ...(data.volume !== undefined && {
+          volume: data.volume?.trim() || null,
+        }),
         ...(data.year !== undefined && { year: data.year || null }),
         ...(data.is_active !== undefined && { is_active: data.is_active }),
         updated_at: new Date(),
@@ -218,14 +240,17 @@ export class BooksRepository extends BaseRepository<
       });
 
       const isCreated = book.created_at.getTime() === book.updated_at.getTime();
-      
-      logger.info(`Book ${isCreated ? 'created' : 'updated'} successfully via upsert`, {
-        id: book.id,
-        accession_no: book.accession_no,
-        title: book.title,
-        author: book.author,
-        action: isCreated ? 'created' : 'updated',
-      });
+
+      logger.info(
+        `Book ${isCreated ? 'created' : 'updated'} successfully via upsert`,
+        {
+          id: book.id,
+          accession_no: book.accession_no,
+          title: book.title,
+          author: book.author,
+          action: isCreated ? 'created' : 'updated',
+        },
+      );
 
       return book;
     } catch (error) {
@@ -240,18 +265,20 @@ export class BooksRepository extends BaseRepository<
   /**
    * Get books with flexible filtering options
    */
-  async getBooks(options: {
-    category?: string;
-    subcategory?: string;
-    isActive?: boolean;
-    page?: number;
-    limit?: number;
-    search?: string;
-    author?: string;
-    publisher?: string;
-    year?: number;
-    availableOnly?: boolean;
-  } = {}): Promise<{
+  async getBooks(
+    options: {
+      category?: string;
+      subcategory?: string;
+      isActive?: boolean;
+      page?: number;
+      limit?: number;
+      search?: string;
+      author?: string;
+      publisher?: string;
+      year?: number;
+      availableOnly?: boolean;
+    } = {},
+  ): Promise<{
     books: books[];
     pagination: {
       page: number;
@@ -279,11 +306,11 @@ export class BooksRepository extends BaseRepository<
 
       // Apply filters
       if (category) {
-        where.category = { contains: category, mode: 'insensitive' };
+        where.category = { contains: category };
       }
 
       if (subcategory) {
-        where.subcategory = { contains: subcategory, mode: 'insensitive' };
+        where.subcategory = { contains: subcategory };
       }
 
       if (isActive !== undefined) {
@@ -291,11 +318,11 @@ export class BooksRepository extends BaseRepository<
       }
 
       if (author) {
-        where.author = { contains: author, mode: 'insensitive' };
+        where.author = { contains: author };
       }
 
       if (publisher) {
-        where.publisher = { contains: publisher, mode: 'insensitive' };
+        where.publisher = { contains: publisher };
       }
 
       if (year) {
@@ -309,12 +336,12 @@ export class BooksRepository extends BaseRepository<
       // Apply search across multiple fields
       if (search) {
         where.OR = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { author: { contains: search, mode: 'insensitive' } },
-          { accession_no: { contains: search, mode: 'insensitive' } },
-          { isbn: { contains: search, mode: 'insensitive' } },
-          { publisher: { contains: search, mode: 'insensitive' } },
-          { category: { contains: search, mode: 'insensitive' } },
+          { title: { contains: search } },
+          { author: { contains: search } },
+          { accession_no: { contains: search } },
+          { isbn: { contains: search } },
+          { publisher: { contains: search } },
+          { category: { contains: search } },
         ];
       }
 
@@ -388,11 +415,11 @@ export class BooksRepository extends BaseRepository<
       if (query) {
         andConditions.push({
           OR: [
-            { title: { contains: query, mode: 'insensitive' } },
-            { author: { contains: query, mode: 'insensitive' } },
-            { accession_no: { contains: query, mode: 'insensitive' } },
-            { isbn: { contains: query, mode: 'insensitive' } },
-            { publisher: { contains: query, mode: 'insensitive' } },
+            { title: { contains: query } },
+            { author: { contains: query } },
+            { accession_no: { contains: query } },
+            { isbn: { contains: query } },
+            { publisher: { contains: query } },
           ],
         });
       }
@@ -400,21 +427,21 @@ export class BooksRepository extends BaseRepository<
       if (category) {
         andConditions.push({
           OR: [
-            { category: { contains: category, mode: 'insensitive' } },
-            { subcategory: { contains: category, mode: 'insensitive' } },
+            { category: { contains: category } },
+            { subcategory: { contains: category } },
           ],
         });
       }
 
       if (author) {
         andConditions.push({
-          author: { contains: author, mode: 'insensitive' }
+          author: { contains: author },
         });
       }
 
       if (publisher) {
         andConditions.push({
-          publisher: { contains: publisher, mode: 'insensitive' }
+          publisher: { contains: publisher },
         });
       }
 
@@ -433,7 +460,7 @@ export class BooksRepository extends BaseRepository<
 
       if (availableOnly) {
         andConditions.push({
-          available_copies: { gt: 0 }
+          available_copies: { gt: 0 },
         });
       }
 
@@ -475,7 +502,7 @@ export class BooksRepository extends BaseRepository<
   async updateAvailability(
     accession_no: string,
     change: number,
-    operation: 'increment' | 'decrement' = 'increment'
+    operation: 'increment' | 'decrement' = 'increment',
   ): Promise<books | null> {
     try {
       const book = await this.getModel().update({
@@ -518,7 +545,9 @@ export class BooksRepository extends BaseRepository<
   /**
    * Get book categories with counts
    */
-  async getCategoriesWithCounts(): Promise<{ category: string; count: number }[]> {
+  async getCategoriesWithCounts(): Promise<
+    { category: string; count: number }[]
+  > {
     try {
       const categories = await this.getModel().groupBy({
         by: ['category'],
@@ -533,7 +562,7 @@ export class BooksRepository extends BaseRepository<
         },
       });
 
-      return categories.map(item => ({
+      return categories.map((item: any) => ({
         category: item.category,
         count: item._count.category,
       }));
@@ -564,7 +593,7 @@ export class BooksRepository extends BaseRepository<
       source_of_fund?: string;
       volume?: string;
       year?: number;
-    }>
+    }>,
   ): Promise<{
     successful: books[];
     failed: Array<{ accession_no: string; error: string }>;
@@ -581,9 +610,14 @@ export class BooksRepository extends BaseRepository<
 
     for (const bookData of booksData) {
       try {
-        const existingBook = await this.findByAccessionNo(bookData.accession_no);
-        
-        const book = await this.upsertByAccessionNo(bookData.accession_no, bookData);
+        const existingBook = await this.findByAccessionNo(
+          bookData.accession_no,
+        );
+
+        const book = await this.upsertByAccessionNo(
+          bookData.accession_no,
+          bookData,
+        );
         successful.push(book);
 
         if (!existingBook) {
@@ -647,7 +681,10 @@ export class BooksRepository extends BaseRepository<
       throw new Error('Available copies cannot be negative');
     }
 
-    if (data.year !== undefined && (data.year < 1000 || data.year > new Date().getFullYear() + 10)) {
+    if (
+      data.year !== undefined &&
+      (data.year < 1000 || data.year > new Date().getFullYear() + 10)
+    ) {
       throw new Error('Invalid publication year');
     }
   }
@@ -655,7 +692,7 @@ export class BooksRepository extends BaseRepository<
   /**
    * Override create method to include validation
    */
-  async create(data: Prisma.booksCreateInput): Promise<books> {
+  override async create(data: Prisma.booksCreateInput): Promise<books> {
     this.validateBookData(data);
     return super.create(data);
   }
@@ -663,12 +700,18 @@ export class BooksRepository extends BaseRepository<
   /**
    * Override update methods to include validation
    */
-  async updateById(id: string, data: Prisma.booksUpdateInput): Promise<books | null> {
+  override async updateById(
+    id: string,
+    data: Prisma.booksUpdateInput,
+  ): Promise<books | null> {
     this.validateBookData(data);
     return super.updateById(id, data);
   }
 
-  async updateByExternalId(accession_no: string, data: Prisma.booksUpdateInput): Promise<books | null> {
+  override async updateByExternalId(
+    accession_no: string,
+    data: Prisma.booksUpdateInput,
+  ): Promise<books | null> {
     this.validateBookData(data);
     return super.updateByExternalId(accession_no, data);
   }

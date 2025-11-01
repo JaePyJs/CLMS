@@ -74,6 +74,7 @@ export function RealTimeMonitor({
 
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [isConnected, refreshDashboard]);
 
   const formatTime = (date: Date) => {

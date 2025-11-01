@@ -6,7 +6,7 @@ import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useTouchOptimization } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
-import { Zap, ArrowRight } from 'lucide-react';
+import { Zap, ArrowRight, Library, BookOpen, Users, Camera, Clock, BarChart3, Settings, Plus } from 'lucide-react';
 
 interface QuickAction {
   id: string;
@@ -29,7 +29,6 @@ interface MobileQuickActionsProps {
 
 export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
   onActionClick,
-  customActions,
 }) => {
   const { isMobile, isTablet } = useMobileOptimization();
   const { queueAction, isOnline } = useOfflineSync();
@@ -143,8 +142,6 @@ export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
     },
   ];
 
-  const actions = [...defaultActions, ...(customActions || []), ...secondaryActions];
-
   // Quick checkout handler
   const handleQuickCheckout = useCallback(async () => {
     if (actionInProgress) return;
@@ -173,6 +170,7 @@ export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
               studentId: mockStudentId,
               timestamp: Date.now(),
             },
+            maxRetries: 3,
           });
         }
       }, 1500);
@@ -208,6 +206,7 @@ export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
               bookId: mockBookId,
               timestamp: Date.now(),
             },
+            maxRetries: 3,
           });
         }
       }, 1500);

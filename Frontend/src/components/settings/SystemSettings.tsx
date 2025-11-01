@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,7 +57,7 @@ export default function SystemSettings() {
     queryKey: ['system-settings'],
     queryFn: async () => {
       const response = await settingsApi.getSystemSettings();
-      return response.data || DEFAULT_CONFIG;
+      return (response.data as SystemConfig) || DEFAULT_CONFIG;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -68,7 +68,9 @@ export default function SystemSettings() {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] });
       toast.success('Settings saved successfully!');
-      setSettings(response.data || newSettings);
+      if (response.data) {
+        setSettings(response.data as SystemConfig);
+      }
       setHasChanges(false);
     },
     onError: (error: any) => {
@@ -82,7 +84,7 @@ export default function SystemSettings() {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] });
       toast.success('Settings reset to defaults');
-      setSettings(response.data || DEFAULT_CONFIG);
+      setSettings((response.data as SystemConfig) || DEFAULT_CONFIG);
       setHasChanges(false);
     },
     onError: () => {

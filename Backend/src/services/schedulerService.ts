@@ -84,7 +84,9 @@ export class JobScheduler {
   }
 
   // Create task function based on job type
-  private createTaskForJobType(jobType: automation_jobs_type): (() => Promise<void>) | null {
+  private createTaskForJobType(
+    jobType: automation_jobs_type,
+  ): (() => Promise<void>) | null {
     switch (jobType) {
       case automation_jobs_type.DAILY_BACKUP:
         return this.createDailyBackupTask();
@@ -117,12 +119,18 @@ export class JobScheduler {
       try {
         // This would implement database backup logic
         // For now, we'll just log the execution
-        await this.updateJobStatus('Daily Backup', automation_jobs_status.RUNNING);
+        await this.updateJobStatus(
+          'Daily Backup',
+          automation_jobs_status.RUNNING,
+        );
 
         // Simulate backup process
         await new Promise(resolve => setTimeout(resolve, 2000));
 
-        await this.updateJobStatus('Daily Backup', automation_jobs_status.COMPLETED);
+        await this.updateJobStatus(
+          'Daily Backup',
+          automation_jobs_status.COMPLETED,
+        );
 
         const duration = Date.now() - startTime;
         logger.info(`Daily backup task completed in ${duration}ms`);
@@ -130,7 +138,10 @@ export class JobScheduler {
         logger.error('Daily backup task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Daily Backup', automation_jobs_status.FAILED);
+        await this.updateJobStatus(
+          'Daily Backup',
+          automation_jobs_status.FAILED,
+        );
       }
     };
   }
@@ -142,17 +153,26 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Google Sheets Sync', automation_jobs_status.RUNNING);
+        await this.updateJobStatus(
+          'Google Sheets Sync',
+          automation_jobs_status.RUNNING,
+        );
 
         // Import Google Sheets service dynamically to avoid circular dependencies
         const { googleSheetsService } = await import('./googleSheets');
         const syncResult = await googleSheetsService.testConnection();
 
         if (syncResult) {
-          await this.updateJobStatus('Google Sheets Sync', automation_jobs_status.COMPLETED);
+          await this.updateJobStatus(
+            'Google Sheets Sync',
+            automation_jobs_status.COMPLETED,
+          );
           logger.info('Google Sheets sync completed successfully');
         } else {
-          await this.updateJobStatus('Google Sheets Sync', automation_jobs_status.FAILED);
+          await this.updateJobStatus(
+            'Google Sheets Sync',
+            automation_jobs_status.FAILED,
+          );
           logger.error('Google Sheets sync failed');
         }
 
@@ -162,7 +182,10 @@ export class JobScheduler {
         logger.error('Google Sheets sync task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Google Sheets Sync', automation_jobs_status.FAILED);
+        await this.updateJobStatus(
+          'Google Sheets Sync',
+          automation_jobs_status.FAILED,
+        );
       }
     };
   }
@@ -174,7 +197,10 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Session Expiry Check', automation_jobs_status.RUNNING);
+        await this.updateJobStatus(
+          'Session Expiry Check',
+          automation_jobs_status.RUNNING,
+        );
 
         // Find expired sessions
         const now = new Date();
@@ -184,7 +210,7 @@ export class JobScheduler {
             status: student_activities_status.ACTIVE,
           },
           include: {
-            student: {
+            students: {
               select: {
                 student_id: true,
                 first_name: true,
@@ -197,23 +223,33 @@ export class JobScheduler {
         // Update expired sessions
         let expiredCount = 0;
         for (const session of expiredSessions) {
+          const updateTimestamp = new Date();
           await prisma.student_activities.update({
             where: { id: session.id },
-            data: { id: crypto.randomUUID(), updated_at: new Date(),  status: student_activities_status.EXPIRED },
+            data: {
+              status: student_activities_status.EXPIRED,
+              updated_at: updateTimestamp,
+            },
           });
 
           // If equipment was used, update its status
           if (session.equipment_id) {
             await prisma.equipment.update({
               where: { id: session.equipment_id },
-              data: { id: crypto.randomUUID(), updated_at: new Date(),  status: equipment_status.AVAILABLE },
+              data: {
+                status: equipment_status.AVAILABLE,
+                updated_at: updateTimestamp,
+              },
             });
           }
 
           expiredCount++;
         }
 
-        await this.updateJobStatus('Session Expiry Check', automation_jobs_status.COMPLETED);
+        await this.updateJobStatus(
+          'Session Expiry Check',
+          automation_jobs_status.COMPLETED,
+        );
         logger.info(
           `Session expiry check completed: ${expiredCount} sessions expired`,
         );
@@ -224,7 +260,10 @@ export class JobScheduler {
         logger.error('Session expiry check task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Session Expiry Check', automation_jobs_status.FAILED);
+        await this.updateJobStatus(
+          'Session Expiry Check',
+          automation_jobs_status.FAILED,
+        );
       }
     };
   }
@@ -236,7 +275,10 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Overdue Notifications', automation_jobs_status.RUNNING);
+        await this.updateJobStatus(
+          'Overdue Notifications',
+          automation_jobs_status.RUNNING,
+        );
 
         // Find overdue books
         const now = new Date();
@@ -246,7 +288,7 @@ export class JobScheduler {
             status: book_checkouts_status.ACTIVE,
           },
           include: {
-            student: {
+            students: {
               select: {
                 student_id: true,
                 first_name: true,
@@ -254,7 +296,7 @@ export class JobScheduler {
                 grade_level: true,
               },
             },
-            book: {
+            books: {
               select: {
                 accession_no: true,
                 title: true,
@@ -275,17 +317,18 @@ export class JobScheduler {
 
           await prisma.book_checkouts.update({
             where: { id: checkout.id },
-            data: { id: crypto.randomUUID(), updated_at: new Date(), 
+            data: {
               status: book_checkouts_status.OVERDUE,
-              overdue_days,
-              fine_amount,
+              overdue_days: overdueDays,
+              fine_amount: fineAmount,
+              updated_at: new Date(),
             },
           });
 
           // Here you would implement notification logic (email, SMS, etc.)
           // For now, we'll just log it
           logger.info(
-            `Overdue notification sent to ${checkout.student.first_name} ${checkout.student.last_name} for book "${checkout.book.title}" (${overdue_days} days, ₱${fine_amount} fine)`,
+            `Overdue notification sent to ${checkout.students.first_name} ${checkout.students.last_name} for book "${checkout.books.title}" (${overdueDays} days, ₱${fineAmount} fine)`,
           );
 
           notifiedCount++;
@@ -305,7 +348,10 @@ export class JobScheduler {
         logger.error('Overdue notifications task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Overdue Notifications', automation_jobs_status.FAILED);
+        await this.updateJobStatus(
+          'Overdue Notifications',
+          automation_jobs_status.FAILED,
+        );
       }
     };
   }
@@ -317,7 +363,10 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Weekly Cleanup', automation_jobs_status.RUNNING);
+        await this.updateJobStatus(
+          'Weekly Cleanup',
+          automation_jobs_status.RUNNING,
+        );
 
         // Clean up old logs (older than 30 days)
         const thirtyDaysAgo = new Date();
@@ -339,7 +388,10 @@ export class JobScheduler {
           },
         });
 
-        await this.updateJobStatus('Weekly Cleanup', automation_jobs_status.COMPLETED);
+        await this.updateJobStatus(
+          'Weekly Cleanup',
+          automation_jobs_status.COMPLETED,
+        );
         logger.info(
           `Weekly cleanup completed: ${deletedLogs.count} logs deleted, ${deletedAuditLogs.count} audit logs deleted`,
         );
@@ -350,7 +402,10 @@ export class JobScheduler {
         logger.error('Weekly cleanup task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Weekly Cleanup', automation_jobs_status.FAILED);
+        await this.updateJobStatus(
+          'Weekly Cleanup',
+          automation_jobs_status.FAILED,
+        );
       }
     };
   }
@@ -362,7 +417,10 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Monthly Report', automation_jobs_status.RUNNING);
+        await this.updateJobStatus(
+          'Monthly Report',
+          automation_jobs_status.RUNNING,
+        );
 
         // Get date range for last month
         const now = new Date();
@@ -417,7 +475,10 @@ export class JobScheduler {
           `Monthly report generated: ${JSON.stringify(report, null, 2)}`,
         );
 
-        await this.updateJobStatus('Monthly Report', automation_jobs_status.COMPLETED);
+        await this.updateJobStatus(
+          'Monthly Report',
+          automation_jobs_status.COMPLETED,
+        );
         logger.info('Monthly report task completed');
 
         const duration = Date.now() - startTime;
@@ -426,7 +487,10 @@ export class JobScheduler {
         logger.error('Monthly report task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Monthly Report', automation_jobs_status.FAILED);
+        await this.updateJobStatus(
+          'Monthly Report',
+          automation_jobs_status.FAILED,
+        );
       }
     };
   }
@@ -438,7 +502,10 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Integrity Audit', automation_jobs_status.RUNNING);
+        await this.updateJobStatus(
+          'Integrity Audit',
+          automation_jobs_status.RUNNING,
+        );
 
         // Check for data inconsistencies
         const issues: string[] = [];
@@ -446,11 +513,11 @@ export class JobScheduler {
         // Check for active activities without valid students
         const invalidActivities = await prisma.student_activities.findMany({
           where: { status: student_activities_status.ACTIVE },
-          include: { student: true },
+          include: { students: true },
         });
 
         for (const activity of invalidActivities) {
-          if (!activity.student) {
+          if (!activity.students) {
             issues.push(
               `Activity ${activity.id} has invalid student reference`,
             );
@@ -460,16 +527,19 @@ export class JobScheduler {
         // Check for active checkouts without valid books
         const invalidCheckouts = await prisma.book_checkouts.findMany({
           where: { status: book_checkouts_status.ACTIVE },
-          include: { book: true },
+          include: { books: true },
         });
 
         for (const checkout of invalidCheckouts) {
-          if (!checkout.book) {
+          if (!checkout.books) {
             issues.push(`Checkout ${checkout.id} has invalid book reference`);
           }
         }
 
-        await this.updateJobStatus('Integrity Audit', automation_jobs_status.COMPLETED);
+        await this.updateJobStatus(
+          'Integrity Audit',
+          automation_jobs_status.COMPLETED,
+        );
         logger.info(`Integrity audit completed: ${issues.length} issues found`);
 
         if (issues.length > 0) {
@@ -482,7 +552,10 @@ export class JobScheduler {
         logger.error('Integrity audit task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Integrity Audit', automation_jobs_status.FAILED);
+        await this.updateJobStatus(
+          'Integrity Audit',
+          automation_jobs_status.FAILED,
+        );
       }
     };
   }
@@ -494,7 +567,10 @@ export class JobScheduler {
       const startTime = Date.now();
 
       try {
-        await this.updateJobStatus('Teacher Notifications', automation_jobs_status.RUNNING);
+        await this.updateJobStatus(
+          'Teacher Notifications',
+          automation_jobs_status.RUNNING,
+        );
 
         // Get all active students with overdue books
         const overdueStudents = await prisma.book_checkouts.findMany({
@@ -502,7 +578,7 @@ export class JobScheduler {
             status: book_checkouts_status.OVERDUE,
           },
           include: {
-            student: {
+            students: {
               select: {
                 student_id: true,
                 first_name: true,
@@ -511,7 +587,7 @@ export class JobScheduler {
                 grade_category: true,
               },
             },
-            book: {
+            books: {
               select: {
                 accession_no: true,
                 title: true,
@@ -526,11 +602,15 @@ export class JobScheduler {
         const studentsByGrade = overdueStudents.reduce<
           Partial<Record<students_grade_category, OverdueCheckout[]>>
         >((acc, checkout) => {
-          const grade = checkout.student.grade_category;
-          if (!acc[grade]) {
-            acc[grade] = [];
+          const student = checkout.students;
+          if (!student?.grade_category) {
+            return acc;
           }
-          (acc[grade] as OverdueCheckout[]).push(checkout);
+
+          const grade = student.grade_category;
+          const group = acc[grade] ?? [];
+          group.push(checkout);
+          acc[grade] = group;
           return acc;
         }, {});
 
@@ -543,11 +623,17 @@ export class JobScheduler {
 
           // Here you would implement actual notification logic
           // For now, we'll just log the details
-          overdueList.forEach(({ student, book, overdue_days, fine_amount }) => {
-            logger.info(
-              `- ${student.first_name} ${student.last_name} (${student.student_id}): "${book.title}" (${overdue_days} days, ₱${fine_amount} fine)`,
-            );
-          });
+          overdueList.forEach(
+            ({ students, books, overdue_days, fine_amount }) => {
+              if (!students || !books) {
+                return;
+              }
+
+              logger.info(
+                `- ${students.first_name} ${students.last_name} (${students.student_id}): "${books.title}" (${overdue_days} days, ₱${fine_amount} fine)`,
+              );
+            },
+          );
         }
 
         await this.updateJobStatus(
@@ -562,7 +648,10 @@ export class JobScheduler {
         logger.error('Teacher notifications task failed', {
           error: (error as Error).message,
         });
-        await this.updateJobStatus('Teacher Notifications', automation_jobs_status.FAILED);
+        await this.updateJobStatus(
+          'Teacher Notifications',
+          automation_jobs_status.FAILED,
+        );
       }
     };
   }

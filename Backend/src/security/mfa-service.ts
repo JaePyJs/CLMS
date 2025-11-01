@@ -159,7 +159,7 @@ export class MFAService {
       await this.redis.del(tempKey);
 
       // Log successful MFA enablement
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
           userId,
           action: 'mfa_enabled',
@@ -295,7 +295,7 @@ export class MFAService {
       await this.markMFAVerified(sessionId);
 
       // Log successful MFA verification
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
           userId,
           action: 'mfa_verified',
@@ -370,7 +370,7 @@ export class MFAService {
       });
 
       // Log MFA disablement
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
           userId,
           action: 'mfa_disabled',
@@ -441,7 +441,7 @@ export class MFAService {
       });
 
       // Log backup codes regeneration
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
           userId,
           action: 'mfa_backup_codes_regenerated',
@@ -637,7 +637,7 @@ export class MFAService {
         },
       });
 
-      const verificationAttempts = await prisma.auditLog.count({
+      const verificationAttempts = await prisma.audit_logs.count({
         where: {
           action: 'mfa_verified',
           timestamp: {

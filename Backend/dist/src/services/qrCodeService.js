@@ -79,20 +79,20 @@ class QRCodeService {
             catch (error) {
                 errorCount++;
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                logger_1.logger.error(`Failed to generate QR for student ${student.student_id}: ${error_message}`);
+                logger_1.logger.error(`Failed to generate QR for student ${student.student_id}: ${errorMessage}`);
                 results.push({
                     student_id: student.student_id,
                     name: `${student.first_name} ${student.last_name}`,
                     qrPath: '',
                     qrUrl: '',
                     success: false,
-                    error: error_message,
+                    error: errorMessage,
                 });
             }
         }
         const summary = {
             totalStudents: students.length,
-            success_count,
+            success_count: successCount,
             errorCount,
             outputDir: this.qrDir,
             results,
@@ -100,7 +100,7 @@ class QRCodeService {
         };
         const reportPath = path.join(this.qrDir, '_generation-report.json');
         fs.writeFileSync(reportPath, JSON.stringify(summary, null, 2));
-        logger_1.logger.info(`QR generation complete. Success: ${success_count}, Failed: ${errorCount}`);
+        logger_1.logger.info(`QR generation complete. Success: ${successCount}, Failed: ${errorCount}`);
         return summary;
     }
     async generateQRCodeForStudent(student_id) {
@@ -125,7 +125,7 @@ class QRCodeService {
         });
         await prisma.students.update({
             where: { id: student.id },
-            data: { id: crypto.randomUUID(), updated_at: new Date(), barcode_image: filePath },
+            data: { updated_at: new Date(), barcode_image: filePath },
         });
         return {
             student_id: student.student_id,
@@ -168,7 +168,7 @@ class QRCodeService {
             if (student) {
                 await prisma.students.update({
                     where: { id: student.id },
-                    data: { id: crypto.randomUUID(), updated_at: new Date(), barcode_image: null },
+                    data: { updated_at: new Date(), barcode_image: null },
                 });
             }
             return true;

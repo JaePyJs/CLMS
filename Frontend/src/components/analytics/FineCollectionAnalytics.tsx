@@ -44,12 +44,7 @@ interface FineCategory {
   trend: 'up' | 'down' | 'stable'
 }
 
-interface OverduePattern {
-  type: string
-  overdueRate: number
-  averageDelay: number
-  recommendations: string[]
-}
+
 
 const FINE_COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C']
 
@@ -84,8 +79,7 @@ export function FineCollectionAnalytics({ timeframe, data, isLoading = false }: 
     setFineCategories(categories)
 
     // Process overdue patterns
-    const patterns = analyticsData.overdueAnalysis?.patterns || []
-    setOverduePatterns(patterns)
+    // Note: overduePatterns state not implemented yet
   }
 
   const calculatePercentage = (value: number, total: number): number => {

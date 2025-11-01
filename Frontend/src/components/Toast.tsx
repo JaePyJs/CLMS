@@ -39,6 +39,8 @@ const Toast: React.FC<ToastProps> = ({
         return <AlertTriangle className="w-5 h-5 text-orange-600" />;
       case 'info':
         return <Info className="w-5 h-5 text-blue-600" />;
+      default:
+        return <Info className="w-5 h-5 text-blue-600" />;
     }
   };
 

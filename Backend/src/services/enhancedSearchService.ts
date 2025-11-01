@@ -186,180 +186,27 @@ function getCacheKey(options: EnhancedSearchOptions): string {
 // Enhanced book search with advanced filtering
 export async function searchBooks(options: EnhancedSearchOptions = {}) {
   try {
-    const {
-      query,
-      category,
-      subcategory,
-      author,
-      publisher,
-      location,
-      availableOnly = false,
-      readingLevel,
-      grade,
-      sortBy = 'title',
-      sortOrder = 'asc',
-      page = 1,
-      limit = 20,
-      includeCovers = true,
-    } = options;
-
     const cacheKey = getCacheKey(options);
-
+    
     // Try to get from cache first
     const cached = await redis.get(cacheKey);
     if (cached) {
-      logger.info('Search results retrieved from cache', { query, page });
+      logger.info('Search results retrieved from cache', { query: options.query, page: options.page });
       return JSON.parse(cached);
     }
 
-    const skip = (page - 1) * limit;
-    const where: Prisma.booksWhereInput = {};
-
-    // Build search conditions
-    if (query) {
-      where.OR = [
-        { title: { contains: query } },
-        { author: { contains: query } },
-        { publisher: { contains: query } },
-        { category: { contains: query } },
-        { subcategory: { contains: query } },
-        { accession_no: { contains: query } },
-        { isbn: { contains: query } },
-      ];
-    }
-
-    if (category) {
-      where.category = { contains: category };
-    }
-
-    if (subcategory) {
-      where.subcategory = { contains: subcategory };
-    }
-
-    if (author) {
-      where.author = { contains: author };
-    }
-
-    if (publisher) {
-      where.publisher = { contains: publisher };
-    }
-
-    if (location) {
-      where.location = { contains: location };
-    }
-
-    if (availableOnly) {
-      where.available_copies = { gt: 0 };
-    }
-
-    // Filter by reading level (could be stored in subcategory or a dedicated field)
-    if (readingLevel) {
-      where.subcategory = {
-        contains: readingLevel,
-      };
-    }
-
-    // Determine sort order
-    let orderBy: Prisma.booksOrderByWithRelationInput = {};
-
-    switch (sortBy) {
-      case 'author':
-        orderBy = { author: sortOrder };
-        break;
-      case 'category':
-        orderBy = { category: sortOrder };
-        break;
-      case 'popularity':
-        // Sort by total copies (most popular first)
-        orderBy = { total_copies: sortOrder === 'desc' ? 'desc' : 'asc' };
-        break;
-      case 'newest':
-        orderBy = { created_at: sortOrder === 'desc' ? 'desc' : 'asc' };
-        break;
-      case 'available':
-        orderBy = { available_copies: sortOrder === 'desc' ? 'desc' : 'asc' };
-        break;
-      case 'title':
-      default:
-        orderBy = { title: sortOrder };
-        break;
-    }
-
-    const [books, total] = await Promise.all([
-      prisma.books.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy,
-        include: {
-          book_checkouts: {
-            where: { status: 'ACTIVE' },
-            orderBy: { checkout_date: 'desc' },
-            take: 1,
-          },
-        },
-      }),
-      prisma.books.count({ where }),
-    ]);
-
-    // Enrich books with additional data
-    const enrichedBooks = await Promise.all(
-      books.map(async (book) => {
-        let coverUrl = null;
-
-        // Get book cover from Open Library API if requested
-        if (includeCovers && book.isbn) {
-          try {
-            coverUrl = await getBookCover(book.isbn);
-          } catch (error) {
-            logger.warn('Failed to fetch book cover', {
-              isbn: book.isbn,
-              error: (error as Error).message
-            });
-          }
-        }
-
-        // Add popularity score based on checkout history
-        const popularityScore = await calculatePopularityScore(book.id);
-
-        return {
-          ...book,
-          coverUrl,
-          popularityScore,
-          isAvailable: book.available_copies > 0,
-        };
-      })
-    );
-
-    const result = {
-      books: enrichedBooks,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-      filters: {
-        query,
-        category,
-        subcategory,
-        author,
-        publisher,
-        location,
-        availableOnly,
-        readingLevel,
-      },
-      sortBy,
-      sortOrder,
-    };
+    const { where, orderBy, pagination } = buildBookSearchParams(options);
+    const [books, total] = await fetchBooksFromDatabase(where, orderBy, pagination);
+    const enrichedBooks = await enrichBookData(books, options.includeCovers ?? true);
+    const result = buildBookSearchResult(enrichedBooks, total, options, orderBy);
 
     // Cache the results
     await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result));
 
     logger.info('Enhanced search completed', {
-      query,
+      query: options.query,
       total,
-      page,
+      page: options.page,
       took: Date.now(),
     });
 
@@ -371,6 +218,175 @@ export async function searchBooks(options: EnhancedSearchOptions = {}) {
     });
     throw error;
   }
+}
+
+// Helper function to build book search parameters
+function buildBookSearchParams(options: EnhancedSearchOptions) {
+  const {
+    query,
+    category,
+    subcategory,
+    author,
+    publisher,
+    location,
+    availableOnly = false,
+    readingLevel,
+    sortBy = 'title',
+    sortOrder = 'asc',
+    page = 1,
+    limit = 20,
+  } = options;
+
+  const skip = (page - 1) * limit;
+  const where: Prisma.booksWhereInput = {};
+
+  // Build search conditions
+  if (query) {
+    where.OR = [
+      { title: { contains: query } },
+      { author: { contains: query } },
+      { publisher: { contains: query } },
+      { category: { contains: query } },
+      { subcategory: { contains: query } },
+      { accession_no: { contains: query } },
+      { isbn: { contains: query } },
+    ];
+  }
+
+  // Apply filters
+  if (category) where.category = { contains: category };
+  if (subcategory) where.subcategory = { contains: subcategory };
+  if (author) where.author = { contains: author };
+  if (publisher) where.publisher = { contains: publisher };
+  if (location) where.location = { contains: location };
+  if (availableOnly) where.available_copies = { gt: 0 };
+  if (readingLevel) where.subcategory = { contains: readingLevel };
+
+  // Determine sort order
+  const orderBy = determineBookSortOrder(sortBy, sortOrder);
+
+  return {
+    where,
+    orderBy,
+    pagination: { skip, take: limit }
+  };
+}
+
+// Helper function to determine book sort order
+function determineBookSortOrder(sortBy: string, sortOrder: string): Prisma.booksOrderByWithRelationInput {
+  switch (sortBy) {
+    case 'author':
+      return { author: sortOrder };
+    case 'category':
+      return { category: sortOrder };
+    case 'popularity':
+      return { total_copies: sortOrder === 'desc' ? 'desc' : 'asc' };
+    case 'newest':
+      return { created_at: sortOrder === 'desc' ? 'desc' : 'asc' };
+    case 'available':
+      return { available_copies: sortOrder === 'desc' ? 'desc' : 'asc' };
+    case 'title':
+    default:
+      return { title: sortOrder };
+  }
+}
+
+// Helper function to fetch books from database
+async function fetchBooksFromDatabase(
+  where: Prisma.booksWhereInput,
+  orderBy: Prisma.booksOrderByWithRelationInput,
+  pagination: { skip: number; take: number }
+) {
+  return await Promise.all([
+    prisma.books.findMany({
+      where,
+      skip: pagination.skip,
+      take: pagination.take,
+      orderBy,
+      include: {
+        book_checkouts: {
+          where: { status: 'ACTIVE' },
+          orderBy: { checkout_date: 'desc' },
+          take: 1,
+        },
+      },
+    }),
+    prisma.books.count({ where }),
+  ]);
+}
+
+// Helper function to enrich book data
+async function enrichBookData(books: any[], includeCovers: boolean) {
+  return await Promise.all(
+    books.map(async (book) => {
+      let coverUrl = null;
+
+      if (includeCovers && book.isbn) {
+        try {
+          coverUrl = await getBookCover(book.isbn);
+        } catch (error) {
+          logger.warn('Failed to fetch book cover', {
+            isbn: book.isbn,
+            error: (error as Error).message
+          });
+        }
+      }
+
+      const popularityScore = await calculatePopularityScore(book.id);
+
+      return {
+        ...book,
+        coverUrl,
+        popularityScore,
+        isAvailable: book.available_copies > 0,
+      };
+    })
+  );
+}
+
+// Helper function to build book search result
+function buildBookSearchResult(
+  books: any[],
+  total: number,
+  options: EnhancedSearchOptions,
+  orderBy: Prisma.booksOrderByWithRelationInput
+) {
+  const {
+    query,
+    category,
+    subcategory,
+    author,
+    publisher,
+    location,
+    availableOnly,
+    readingLevel,
+    sortBy = 'title',
+    sortOrder = 'asc',
+    page = 1,
+    limit = 20,
+  } = options;
+
+  return {
+    books,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
+    filters: {
+      query,
+      category,
+      subcategory,
+      author,
+      publisher,
+      location,
+      availableOnly,
+      readingLevel,
+    },
+    sortBy,
+    sortOrder,
+  };
 }
 
 // Get search suggestions/autocomplete
@@ -450,50 +466,104 @@ export async function getSearchSuggestions(options: SearchSuggestionOptions = {}
 // Get book recommendations based on various criteria
 export async function getBookRecommendations(options: RecommendationOptions = {}) {
   try {
-    const {
-      bookId,
-      category,
-      author,
-      limit = 8,
-      excludeCheckedOut = false,
-    } = options;
+    const { bookId, category, author, limit = 8, excludeCheckedOut = false } = options;
+    
+    const baseBook = await getBaseBook(bookId);
+    const recommendationStrategy = buildRecommendationStrategy(baseBook, category, author, bookId, excludeCheckedOut);
+    const recommendations = await fetchRecommendations(recommendationStrategy, limit);
+    const enrichedRecommendations = await enrichRecommendations(recommendations, baseBook, recommendationStrategy.authorFilter);
 
-    let baseBook = null;
+    return enrichedRecommendations.slice(0, limit);
+  } catch (error) {
+    logger.error('Error getting book recommendations', {
+      error: (error as Error).message,
+      options,
+    });
+    throw error;
+  }
+}
 
-    // If bookId is provided, get the book to base recommendations on
-    if (bookId) {
-      baseBook = await prisma.books.findUnique({
-        where: { id: bookId },
-      });
-    }
+// Helper function to get base book for recommendations
+async function getBaseBook(bookId?: string) {
+  if (!bookId) return null;
+  
+  return await prisma.books.findUnique({
+    where: { id: bookId },
+  });
+}
 
-    const where: Prisma.booksWhereInput = {};
+// Helper function to build recommendation strategy
+function buildRecommendationStrategy(
+  baseBook: any,
+  category?: string,
+  author?: string,
+  bookId?: string,
+  excludeCheckedOut = false
+) {
+  const where: Prisma.booksWhereInput = {};
+  
+  // Don't include the original book in recommendations
+  if (bookId) {
+    where.id = { not: bookId };
+  }
 
-    // Don't include the original book in recommendations
-    if (bookId) {
-      where.id = { not: bookId };
-    }
+  // Determine category filter
+  const targetCategory = category || (baseBook && baseBook.category);
+  if (targetCategory) {
+    where.category = targetCategory;
+  }
 
-    // Prioritize books from the same category
-    if (category || (baseBook && baseBook.category)) {
-      where.category = category || baseBook.category;
-    } else if (baseBook) {
-      // Fallback to same category as base book
-      where.category = baseBook.category;
-    }
+  // Determine author filter
+  const authorFilter = author || (baseBook && baseBook.author);
 
-    // Also consider books by the same author
-    const authorFilter = author || (baseBook && baseBook.author);
+  // Only show available books if requested
+  if (excludeCheckedOut) {
+    where.available_copies = { gt: 0 };
+  }
 
-    // Only show available books if requested
-    if (excludeCheckedOut) {
-      where.available_copies = { gt: 0 };
-    }
+  return {
+    where,
+    authorFilter,
+    baseBook,
+    category: targetCategory
+  };
+}
 
-    // Get recommendations from same category
-    const categoryRecommendations = await prisma.books.findMany({
-      where,
-      take: Math.ceil(limit * 0.7), // 70% from same category
+// Helper function to fetch recommendations using different strategies
+async function fetchRecommendations(strategy: any, limit: number) {
+  const { where, authorFilter } = strategy;
+  let recommendations: any[] = [];
+
+  // Get recommendations from same category (70% of results)
+  const categoryRecommendations = await prisma.books.findMany({
+    where,
+    take: Math.ceil(limit * 0.7),
+    orderBy: [
+      { available_copies: 'desc' },
+      { total_copies: 'desc' },
+      { title: 'asc' },
+    ],
+    include: {
+      book_checkouts: {
+        where: { status: 'ACTIVE' },
+        orderBy: { checkout_date: 'desc' },
+        take: 1,
+      },
+    },
+  });
+
+  recommendations = [...categoryRecommendations];
+
+  // If we have author filter and need more recommendations
+  if (authorFilter && recommendations.length < limit) {
+    const authorWhere: Prisma.booksWhereInput = {
+      author: { contains: authorFilter },
+      ...where,
+    };
+
+    const authorRecommendations = await prisma.books.findMany({
+      where: authorWhere,
+      take: limit - recommendations.length,
       orderBy: [
         { available_copies: 'desc' },
         { total_copies: 'desc' },
@@ -508,98 +578,67 @@ export async function getBookRecommendations(options: RecommendationOptions = {}
       },
     });
 
-    let recommendations = [...categoryRecommendations];
-
-    // If we have author filter and need more recommendations
-    if (authorFilter && recommendations.length < limit) {
-      const authorWhere: Prisma.booksWhereInput = {
-        author: { contains: authorFilter },
-        ...(bookId && { id: { not: bookId } }),
-        ...(excludeCheckedOut && { available_copies: { gt: 0 } }),
-      };
-
-      const authorRecommendations = await prisma.books.findMany({
-        where: authorWhere,
-        take: limit - recommendations.length,
-        orderBy: [
-          { available_copies: 'desc' },
-          { total_copies: 'desc' },
-          { title: 'asc' },
-        ],
-        include: {
-          book_checkouts: {
-            where: { status: 'ACTIVE' },
-            orderBy: { checkout_date: 'desc' },
-            take: 1,
-          },
-        },
-      });
-
-      recommendations = [...recommendations, ...authorRecommendations];
-    }
-
-    // If still need more, get popular books
-    if (recommendations.length < limit) {
-      const popularWhere: Prisma.booksWhereInput = {
-        ...(bookId && { id: { not: bookId } }),
-        ...(excludeCheckedOut && { available_copies: { gt: 0 } }),
-      };
-
-      const popularRecommendations = await prisma.books.findMany({
-        where: popularWhere,
-        take: limit - recommendations.length,
-        orderBy: [
-          { total_copies: 'desc' },
-          { available_copies: 'desc' },
-          { title: 'asc' },
-        ],
-        include: {
-          book_checkouts: {
-            where: { status: 'ACTIVE' },
-            orderBy: { checkout_date: 'desc' },
-            take: 1,
-          },
-        },
-      });
-
-      recommendations = [...recommendations, ...popularRecommendations];
-    }
-
-    // Add cover URLs and enrichment
-    const enrichedRecommendations = await Promise.all(
-      recommendations.map(async (book) => {
-        let coverUrl = null;
-
-        if (book.isbn) {
-          try {
-            coverUrl = await getBookCover(book.isbn);
-          } catch (error) {
-            logger.warn('Failed to fetch book cover for recommendation', {
-              isbn: book.isbn
-            });
-          }
-        }
-
-        const popularityScore = await calculatePopularityScore(book.id);
-
-        return {
-          ...book,
-          coverUrl,
-          popularityScore,
-          isAvailable: book.available_copies > 0,
-          recommendationReason: determineRecommendationReason(book, baseBook, authorFilter),
-        };
-      })
-    );
-
-    return enrichedRecommendations.slice(0, limit);
-  } catch (error) {
-    logger.error('Error getting book recommendations', {
-      error: (error as Error).message,
-      options,
-    });
-    throw error;
+    recommendations = [...recommendations, ...authorRecommendations];
   }
+
+  // If still need more, get popular books
+  if (recommendations.length < limit) {
+    const popularWhere: Prisma.booksWhereInput = {
+      ...where,
+      // Remove category filter to get broader popular recommendations
+      category: undefined,
+    };
+
+    const popularRecommendations = await prisma.books.findMany({
+      where: popularWhere,
+      take: limit - recommendations.length,
+      orderBy: [
+        { total_copies: 'desc' },
+        { available_copies: 'desc' },
+        { title: 'asc' },
+      ],
+      include: {
+        book_checkouts: {
+          where: { status: 'ACTIVE' },
+          orderBy: { checkout_date: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    recommendations = [...recommendations, ...popularRecommendations];
+  }
+
+  return recommendations;
+}
+
+// Helper function to enrich recommendations with additional data
+async function enrichRecommendations(recommendations: any[], baseBook: any, authorFilter?: string) {
+  return await Promise.all(
+    recommendations.map(async (book) => {
+      let coverUrl = null;
+
+      if (book.isbn) {
+        try {
+          coverUrl = await getBookCover(book.isbn);
+        } catch (error) {
+          logger.warn('Failed to fetch book cover for recommendation', {
+            isbn: book.isbn
+          });
+        }
+      }
+
+      const popularityScore = await calculatePopularityScore(book.id);
+
+      return {
+        ...book,
+        coverUrl,
+        popularityScore,
+        isAvailable: book.available_copies > 0,
+        recommendationReason: determineRecommendationReason(book, baseBook, authorFilter),
+      };
+    })
+  );
 }
 
 // Helper function to get book cover from Open Library API
@@ -681,199 +720,27 @@ export async function getRecentSearches(userId?: string, limit = 10): Promise<st
 // Enhanced Student Search with Advanced Filtering
 export async function searchStudents(options: StudentSearchOptions = {}): Promise<StudentSearchResult> {
   try {
-    const {
-      query,
-      gradeCategory,
-      gradeLevel,
-      isActive,
-      hasEquipmentBan,
-      hasFines,
-      activityType,
-      dateFrom,
-      dateTo,
-      sortBy = 'name',
-      sortOrder = 'asc',
-      page = 1,
-      limit = 20,
-    } = options;
-
     const cacheKey = `student_search:${JSON.stringify(options)}`;
-
+    
     // Try to get from cache first
     const cached = await redis.get(cacheKey);
     if (cached) {
-      logger.info('Student search results retrieved from cache', { query, page });
+      logger.info('Student search results retrieved from cache', { query: options.query, page: options.page });
       return JSON.parse(cached);
     }
 
-    const skip = (page - 1) * limit;
-    const where: Prisma.studentsWhereInput = {};
-
-    // Build search conditions
-    if (query) {
-      where.OR = [
-        { first_name: { contains: query } },
-        { last_name: { contains: query } },
-        { student_id: { contains: query } },
-        { section: { contains: query } },
-      ];
-    }
-
-    if (gradeCategory) {
-      where.grade_category = gradeCategory as any;
-    }
-
-    if (gradeLevel) {
-      where.grade_level = { contains: gradeLevel };
-    }
-
-    if (isActive !== undefined) {
-      where.is_active = isActive;
-    }
-
-    if (hasEquipmentBan !== undefined) {
-      where.equipment_ban = hasEquipmentBan;
-    }
-
-    if (hasFines !== undefined) {
-      where.fine_balance = hasFines ? { gt: 0 } : { lte: 0 };
-    }
-
-    // Activity-based filtering
-    let activityWhere: Prisma.student_activitiesWhereInput = {};
-    if (activityType) {
-      activityWhere.activity_type = activityType as any;
-    }
-    if (dateFrom || dateTo) {
-      activityWhere.start_time = {};
-      if (dateFrom) activityWhere.start_time.gte = new Date(dateFrom);
-      if (dateTo) activityWhere.start_time.lte = new Date(dateTo);
-    }
-
-    // Determine sort order
-    let orderBy: Prisma.studentsOrderByWithRelationInput = {};
-    switch (sortBy) {
-      case 'name':
-        orderBy = { last_name: sortOrder, first_name: sortOrder };
-        break;
-      case 'gradeLevel':
-        orderBy = { grade_category: sortOrder, grade_level: sortOrder };
-        break;
-      case 'fineBalance':
-        orderBy = { fine_balance: sortOrder === 'desc' ? 'desc' : 'asc' };
-        break;
-      case 'checkoutCount':
-        // This would require aggregation - simplified for now
-        orderBy = { last_name: sortOrder };
-        break;
-      case 'lastActivity':
-        // This would require joining with activities - simplified for now
-        orderBy = { updated_at: sortOrder === 'desc' ? 'desc' : 'asc' };
-        break;
-      default:
-        orderBy = { last_name: sortOrder, first_name: sortOrder };
-        break;
-    }
-
-    const [students, total] = await Promise.all([
-      prisma.students.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy,
-        include: {
-          student_activities: activityType || dateFrom || dateTo ? {
-            where: activityWhere,
-            orderBy: { start_time: 'desc' },
-            take: 1,
-          } : false,
-          book_checkouts: {
-            where: { status: 'ACTIVE' },
-            orderBy: { checkout_date: 'desc' },
-            take: 1,
-          },
-          equipment_sessions: {
-            where: { status: 'ACTIVE' },
-            orderBy: { session_start: 'desc' },
-            take: 1,
-          },
-        },
-      }),
-      prisma.students.count({ where }),
-    ]);
-
-    // Enrich students with additional data
-    const enrichedStudents = await Promise.all(
-      students.map(async (student) => {
-        // Calculate checkout statistics
-        const checkoutStats = await prisma.book_checkouts.groupBy({
-          by: ['status'],
-          where: { student_id: student.id },
-          _count: { status: true },
-        });
-
-        const activeCheckouts = checkoutStats.find(s => s.status === 'ACTIVE')?._count.status || 0;
-        const overdueCheckouts = checkoutStats.find(s => s.status === 'OVERDUE')?._count.status || 0;
-
-        // Calculate activity statistics
-        const activityStats = await prisma.student_activities.groupBy({
-          by: ['activity_type'],
-          where: {
-            student_id: student.id,
-            start_time: dateFrom || dateTo ? {
-              gte: dateFrom ? new Date(dateFrom) : undefined,
-              lte: dateTo ? new Date(dateTo) : undefined,
-            } : undefined,
-          },
-          _count: { activity_type: true },
-        });
-
-        const lastActivity = student.student_activities?.[0];
-        const lastCheckout = student.book_checkouts?.[0];
-        const currentSession = student.equipment_sessions?.[0];
-
-        return {
-          ...student,
-          // Add computed fields
-          fullName: `${student.first_name} ${student.last_name}`,
-          activeCheckouts,
-          overdueCheckouts,
-          totalActivities: activityStats.reduce((sum, stat) => sum + stat._count.activity_type, 0),
-          lastActivityDate: lastActivity?.start_time,
-          lastCheckoutDate: lastCheckout?.checkout_date,
-          currentEquipmentSession: currentSession,
-          hasOverdueItems: overdueCheckouts > 0,
-          equipmentBanStatus: student.equipment_ban ? {
-            isBanned: true,
-            reason: student.equipment_ban_reason,
-            until: student.equipment_ban_until,
-          } : {
-            isBanned: false,
-          },
-        };
-      })
-    );
-
-    const result: StudentSearchResult = {
-      students: enrichedStudents,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-      filters: options,
-      sortBy,
-      sortOrder,
-    };
+    const { where, orderBy, pagination, activityWhere } = buildStudentSearchParams(options);
+    const [students, total] = await fetchStudentsFromDatabase(where, orderBy, pagination, activityWhere);
+    const enrichedStudents = await enrichStudentData(students, options.dateFrom, options.dateTo);
+    const result = buildStudentSearchResult(enrichedStudents, total, options, orderBy);
 
     // Cache the results
     await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result));
 
     logger.info('Enhanced student search completed', {
-      query,
+      query: options.query,
       total,
-      page,
+      page: options.page,
       took: Date.now(),
     });
 
@@ -885,6 +752,201 @@ export async function searchStudents(options: StudentSearchOptions = {}): Promis
     });
     throw error;
   }
+}
+
+// Helper function to build student search parameters
+function buildStudentSearchParams(options: StudentSearchOptions) {
+  const {
+    query,
+    gradeCategory,
+    gradeLevel,
+    isActive,
+    hasEquipmentBan,
+    hasFines,
+    activityType,
+    dateFrom,
+    dateTo,
+    sortBy = 'name',
+    sortOrder = 'asc',
+    page = 1,
+    limit = 20,
+  } = options;
+
+  const skip = (page - 1) * limit;
+  const where: Prisma.studentsWhereInput = {};
+
+  // Build search conditions
+  if (query) {
+    where.OR = [
+      { first_name: { contains: query } },
+      { last_name: { contains: query } },
+      { student_id: { contains: query } },
+      { section: { contains: query } },
+    ];
+  }
+
+  // Apply filters
+  if (gradeCategory) where.grade_category = gradeCategory as any;
+  if (gradeLevel) where.grade_level = { contains: gradeLevel };
+  if (isActive !== undefined) where.is_active = isActive;
+  if (hasEquipmentBan !== undefined) where.equipment_ban = hasEquipmentBan;
+  if (hasFines !== undefined) where.fine_balance = hasFines ? { gt: 0 } : { lte: 0 };
+
+  // Activity-based filtering
+  const activityWhere: Prisma.student_activitiesWhereInput = {};
+  if (activityType) activityWhere.activity_type = activityType as any;
+  if (dateFrom || dateTo) {
+    activityWhere.start_time = {};
+    if (dateFrom) activityWhere.start_time.gte = new Date(dateFrom);
+    if (dateTo) activityWhere.start_time.lte = new Date(dateTo);
+  }
+
+  // Determine sort order
+  const orderBy = determineStudentSortOrder(sortBy, sortOrder);
+
+  return {
+    where,
+    orderBy,
+    pagination: { skip, take: limit },
+    activityWhere
+  };
+}
+
+// Helper function to determine student sort order
+function determineStudentSortOrder(sortBy: string, sortOrder: string): Prisma.studentsOrderByWithRelationInput {
+  switch (sortBy) {
+    case 'name':
+      return { last_name: sortOrder, first_name: sortOrder };
+    case 'gradeLevel':
+      return { grade_category: sortOrder, grade_level: sortOrder };
+    case 'fineBalance':
+      return { fine_balance: sortOrder === 'desc' ? 'desc' : 'asc' };
+    case 'checkoutCount':
+      // This would require aggregation - simplified for now
+      return { last_name: sortOrder };
+    case 'lastActivity':
+      // This would require joining with activities - simplified for now
+      return { updated_at: sortOrder === 'desc' ? 'desc' : 'asc' };
+    default:
+      return { last_name: sortOrder, first_name: sortOrder };
+  }
+}
+
+// Helper function to fetch students from database
+async function fetchStudentsFromDatabase(
+  where: Prisma.studentsWhereInput,
+  orderBy: Prisma.studentsOrderByWithRelationInput,
+  pagination: { skip: number; take: number },
+  activityWhere: Prisma.student_activitiesWhereInput
+) {
+  return await Promise.all([
+    prisma.students.findMany({
+      where,
+      skip: pagination.skip,
+      take: pagination.take,
+      orderBy,
+      include: {
+        student_activities: Object.keys(activityWhere).length > 0 ? {
+          where: activityWhere,
+          orderBy: { start_time: 'desc' },
+          take: 1,
+        } : false,
+        book_checkouts: {
+          where: { status: 'ACTIVE' },
+          orderBy: { checkout_date: 'desc' },
+          take: 1,
+        },
+        equipment_sessions: {
+          where: { status: 'ACTIVE' },
+          orderBy: { session_start: 'desc' },
+          take: 1,
+        },
+      },
+    }),
+    prisma.students.count({ where }),
+  ]);
+}
+
+// Helper function to enrich student data
+async function enrichStudentData(students: any[], dateFrom?: string, dateTo?: string) {
+  return await Promise.all(
+    students.map(async (student) => {
+      const [checkoutStats, activityStats] = await Promise.all([
+        // Calculate checkout statistics
+        prisma.book_checkouts.groupBy({
+          by: ['status'],
+          where: { student_id: student.id },
+          _count: { status: true },
+        }),
+        // Calculate activity statistics
+        prisma.student_activities.groupBy({
+          by: ['activity_type'],
+          where: {
+            student_id: student.id,
+            start_time: dateFrom || dateTo ? {
+              gte: dateFrom ? new Date(dateFrom) : undefined,
+              lte: dateTo ? new Date(dateTo) : undefined,
+            } : undefined,
+          },
+          _count: { activity_type: true },
+        }),
+      ]);
+
+      const activeCheckouts = checkoutStats.find(s => s.status === 'ACTIVE')?._count.status || 0;
+      const overdueCheckouts = checkoutStats.find(s => s.status === 'OVERDUE')?._count.status || 0;
+      const lastActivity = student.student_activities?.[0];
+      const lastCheckout = student.book_checkouts?.[0];
+      const currentSession = student.equipment_sessions?.[0];
+
+      return {
+        ...student,
+        // Add computed fields
+        fullName: `${student.first_name} ${student.last_name}`,
+        activeCheckouts,
+        overdueCheckouts,
+        totalActivities: activityStats.reduce((sum, stat) => sum + stat._count.activity_type, 0),
+        lastActivityDate: lastActivity?.start_time,
+        lastCheckoutDate: lastCheckout?.checkout_date,
+        currentEquipmentSession: currentSession,
+        hasOverdueItems: overdueCheckouts > 0,
+        equipmentBanStatus: student.equipment_ban ? {
+          isBanned: true,
+          reason: student.equipment_ban_reason,
+          until: student.equipment_ban_until,
+        } : {
+          isBanned: false,
+        },
+      };
+    })
+  );
+}
+
+// Helper function to build student search result
+function buildStudentSearchResult(
+  students: any[],
+  total: number,
+  options: StudentSearchOptions,
+  orderBy: Prisma.studentsOrderByWithRelationInput
+) {
+  const {
+    sortBy = 'name',
+    sortOrder = 'asc',
+    page = 1,
+    limit = 20,
+  } = options;
+
+  return {
+    students,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
+    filters: options,
+    sortBy,
+    sortOrder,
+  };
 }
 
 // Enhanced Equipment Search with Advanced Filtering

@@ -519,7 +519,7 @@ export class SessionManager {
       await this.redis.expire(eventKey, 7 * 24 * 60 * 60); // Keep for 7 days
 
       // Also log to database for permanent record
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
           userId: event.userId,
           action: `security_${event.type}`,

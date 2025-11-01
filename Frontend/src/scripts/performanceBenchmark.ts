@@ -4,8 +4,6 @@
  * Automated performance testing and benchmarking utilities for CLMS frontend
  */
 
-import { performanceMonitoringService } from '@/services/performanceMonitoringService';
-
 interface BenchmarkConfig {
   name: string;
   iterations: number;
@@ -196,9 +194,9 @@ class PerformanceBenchmark {
       min: Math.min(...values),
       max: Math.max(...values),
       average,
-      median: sorted[Math.floor(sorted.length / 2)],
-      p95: sorted[Math.floor(sorted.length * 0.95)],
-      p99: sorted[Math.floor(sorted.length * 0.99)],
+      median: sorted[Math.floor(sorted.length / 2)] || 0,
+      p95: sorted[Math.floor(sorted.length * 0.95)] || 0,
+      p99: sorted[Math.floor(sorted.length * 0.99)] || 0,
     };
   }
 
@@ -256,7 +254,7 @@ class PerformanceBenchmark {
     return violations;
   }
 
-  private calculateScore(config: BenchmarkConfig, violations: Array<{ severity: 'warning' | 'error' }>): number {
+  private calculateScore(violations: Array<{ severity: 'warning' | 'error' }>): number {
     let score = 100;
 
     violations.forEach(violation => {

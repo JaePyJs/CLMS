@@ -1,8 +1,7 @@
 import { IncomingMessage } from 'http';
 import { URL } from 'url';
 import { authService, JWTPayload } from '../services/authService';
-import { logger } from '../utils/logger';
-import { securityLogger } from '../utils/logger';
+import { logger, securityLogger } from '../utils/logger';
 
 export interface WebSocketAuthResult {
   success: boolean;
@@ -23,13 +22,13 @@ export interface WebSocketAuthOptions {
  */
 export async function authenticateWebSocket(
   request: IncomingMessage,
-  options: WebSocketAuthOptions = {}
+  options: WebSocketAuthOptions = {},
 ): Promise<WebSocketAuthResult> {
   const {
     requireAuth = true,
     allowedRoles,
     rateLimitEnabled = true,
-    maxConnectionsPerUser = 5
+    maxConnectionsPerUser = 5,
   } = options;
 
   try {
@@ -38,39 +37,51 @@ export async function authenticateWebSocket(
 
     if (!token) {
       if (requireAuth) {
-        securityLogger.failedAuth('websocket', 'No token provided', getClientIP(request));
+        securityLogger.failedAuth(
+          'websocket',
+          'No token provided',
+          getClientIP(request),
+        );
         return {
           success: false,
           error: 'Authentication required',
-          statusCode: 4011
+          statusCode: 4011,
         };
       }
 
       // Anonymous connection allowed
       return {
-        success: true
+        success: true,
       };
     }
 
     // Verify JWT token
     const user = authService.verifyToken(token);
     if (!user) {
-      securityLogger.failedAuth('websocket', 'Invalid token', getClientIP(request));
+      securityLogger.failedAuth(
+        'websocket',
+        'Invalid token',
+        getClientIP(request),
+      );
       return {
         success: false,
         error: 'Invalid authentication token',
-        statusCode: 4011
+        statusCode: 4011,
       };
     }
 
     // Check token expiration
     const now = Math.floor(Date.now() / 1000);
     if (user.exp && user.exp < now) {
-      securityLogger.failedAuth('websocket', 'Token expired', getClientIP(request));
+      securityLogger.failedAuth(
+        'websocket',
+        'Token expired',
+        getClientIP(request),
+      );
       return {
         success: false,
         error: 'Authentication token expired',
-        statusCode: 4011
+        statusCode: 4011,
       };
     }
 
@@ -78,59 +89,69 @@ export async function authenticateWebSocket(
     if (allowedRoles && allowedRoles.length > 0) {
       if (!allowedRoles.includes(user.role)) {
         securityLogger.permissionDenied(
-          user.userId,
+          user.userId ?? user.id,
           'websocket',
           'connect',
-          getClientIP(request)
+          getClientIP(request),
         );
         return {
           success: false,
           error: 'Insufficient permissions for WebSocket connection',
-          statusCode: 4013
+          statusCode: 4013,
         };
       }
     }
 
     // Rate limiting check (if enabled)
     if (rateLimitEnabled) {
-      const rateLimitResult = await checkRateLimit(user.userId, maxConnectionsPerUser);
+      const rateLimitResult = await checkRateLimit(
+        user.userId ?? user.id,
+        maxConnectionsPerUser,
+      );
       if (!rateLimitResult.allowed) {
-        securityLogger.failedAuth('websocket', 'Rate limit exceeded', getClientIP(request));
+        securityLogger.failedAuth(
+          'websocket',
+          'Rate limit exceeded',
+          getClientIP(request),
+        );
         return {
           success: false,
           error: 'Too many WebSocket connections',
-          statusCode: 4013
+          statusCode: 4013,
         };
       }
     }
 
     // Log successful authentication
     logger.info('WebSocket authentication successful', {
-      userId: user.userId,
+      userId: user.userId ?? user.id,
       username: user.username,
       role: user.role,
       ip: getClientIP(request),
-      userAgent: request.headers['user-agent']
+      userAgent: request.headers['user-agent'],
     });
 
     return {
       success: true,
-      user
+      user,
     };
-
   } catch (error) {
     logger.error('WebSocket authentication error', {
       error: (error as Error).message,
       stack: (error as Error).stack,
-      ip: getClientIP(request)
+      ip: getClientIP(request),
     });
 
-    securityLogger.failedAuth('websocket', (error as Error).message, getClientIP(request));
+    securityLogger.failedAuth(
+      'websocket',
+      (error as Error).message,
+      getClientIP(request),
+    );
 
     return {
       success: false,
       error: 'Authentication failed',
-      statusCode: 4011
+      statusCode: 4011,
     };
   }
 }
@@ -163,7 +184,7 @@ function extractTokenFromRequest(request: IncomingMessage): string | null {
   } catch (error) {
     logger.error('Error extracting token from WebSocket request', {
       error: (error as Error).message,
-      url: request.url
+      url: request.url ?? '',
     });
     return null;
   }
@@ -176,7 +197,8 @@ function getClientIP(request: IncomingMessage): string {
   // Try various headers for the real IP
   const forwardedFor = request.headers['x-forwarded-for'];
   if (forwardedFor) {
-    return (forwardedFor as string).split(',')[0].trim();
+    const firstIP = (forwardedFor as string).split(',')[0];
+    return firstIP ? firstIP.trim() : 'unknown';
   }
 
   const realIP = request.headers['x-real-ip'];
@@ -190,15 +212,22 @@ function getClientIP(request: IncomingMessage): string {
   }
 
   // Fallback to remote address
-  return request.socket?.remoteAddress || 'unknown';
+  const socket = request.socket;
+  return socket && socket.remoteAddress ? socket.remoteAddress : 'unknown';
 }
 
 /**
  * Rate limiting for WebSocket connections
  */
-const connectionAttempts = new Map<string, { count: number; resetTime: number }>();
+const connectionAttempts = new Map<
+  string,
+  { count: number; resetTime: number }
+>();
 
-async function checkRateLimit(userId: string, maxConnections: number): Promise<{ allowed: boolean }> {
+async function checkRateLimit(
+  userId: string,
+  maxConnections: number,
+): Promise<{ allowed: boolean }> {
   const now = Date.now();
   const windowMs = 60 * 1000; // 1 minute window
 
@@ -208,7 +237,7 @@ async function checkRateLimit(userId: string, maxConnections: number): Promise<{
     // First attempt
     connectionAttempts.set(userId, {
       count: 1,
-      resetTime: now + windowMs
+      resetTime: now + windowMs,
     });
     return { allowed: true };
   }
@@ -217,7 +246,7 @@ async function checkRateLimit(userId: string, maxConnections: number): Promise<{
   if (now > attempts.resetTime) {
     connectionAttempts.set(userId, {
       count: 1,
-      resetTime: now + windowMs
+      resetTime: now + windowMs,
     });
     return { allowed: true };
   }
@@ -248,7 +277,9 @@ export function cleanupRateLimitEntries(): void {
 /**
  * WebSocket authentication middleware for Express integration
  */
-export function createWebSocketAuthMiddleware(options: WebSocketAuthOptions = {}) {
+export function createWebSocketAuthMiddleware(
+  options: WebSocketAuthOptions = {},
+) {
   return async (request: IncomingMessage): Promise<WebSocketAuthResult> => {
     return authenticateWebSocket(request, options);
   };
@@ -257,7 +288,10 @@ export function createWebSocketAuthMiddleware(options: WebSocketAuthOptions = {}
 /**
  * Validate WebSocket upgrade request
  */
-export function validateWebSocketUpgrade(request: IncomingMessage): { valid: boolean; error?: string } {
+export function validateWebSocketUpgrade(request: IncomingMessage): {
+  valid: boolean;
+  error?: string;
+} {
   // Check required headers
   const upgrade = request.headers.upgrade;
   const connection = request.headers.connection;
@@ -294,19 +328,32 @@ export function getConnectionMetadata(request: IncomingMessage): {
   origin?: string;
   protocol?: string;
 } {
-  return {
+  const ua = request.headers['user-agent'];
+  const origin = request.headers.origin;
+  const protocol = request.headers['sec-websocket-protocol'];
+
+  const metadata: {
+    ip: string;
+    userAgent?: string;
+    origin?: string;
+    protocol?: string;
+  } = {
     ip: getClientIP(request),
-    userAgent: request.headers['user-agent'],
-    origin: request.headers.origin,
-    protocol: request.headers['sec-websocket-protocol']
   };
+  if (typeof ua === 'string') metadata.userAgent = ua;
+  if (typeof origin === 'string') metadata.origin = origin;
+  if (typeof protocol === 'string') metadata.protocol = protocol;
+  return metadata;
 }
 
 /**
  * Set up periodic cleanup of rate limit entries
  */
 export function setupPeriodicCleanup(): NodeJS.Timeout {
-  return setInterval(() => {
-    cleanupRateLimitEntries();
-  }, 5 * 60 * 1000); // Every 5 minutes
+  return setInterval(
+    () => {
+      cleanupRateLimitEntries();
+    },
+    5 * 60 * 1000,
+  ); // Every 5 minutes
 }

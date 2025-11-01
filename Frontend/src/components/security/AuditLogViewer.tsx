@@ -36,11 +36,11 @@ interface AuditLogEntry {
   id: string;
   timestamp: string;
   userId: string;
-  userRole: string;
+  userRole?: string;
   sessionId?: string;
   requestId?: string;
-  endpoint: string;
-  method: string;
+  endpoint?: string;
+  method?: string;
   ipAddress: string;
   userAgent?: string;
   entityType: string;
@@ -124,11 +124,11 @@ const AuditLogViewer: React.FC = () => {
         id: `audit_${Date.now()}_${index}`,
         timestamp: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString(),
         userId: `user_${Math.floor(Math.random() * 100)}`,
-        userRole: ['TEACHER', 'LIBRARIAN', 'ADMIN', 'STAFF'][Math.floor(Math.random() * 4)] as any,
+        userRole: ['TEACHER', 'LIBRARIAN', 'ADMIN', 'STAFF'][Math.floor(Math.random() * 4)],
         sessionId: `session_${Math.random().toString(36).substr(2, 9)}`,
         requestId: `req_${Math.random().toString(36).substr(2, 9)}`,
         endpoint: ['/api/students', '/api/activities', '/api/books', '/api/equipment'][Math.floor(Math.random() * 4)],
-        method: ['GET', 'POST', 'PUT', 'DELETE'][Math.floor(Math.random() * 4)] as any,
+        method: ['GET', 'POST', 'PUT', 'DELETE'][Math.floor(Math.random() * 4)],
         ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         entityType: ['student', 'activity', 'book', 'equipment'][Math.floor(Math.random() * 4)],

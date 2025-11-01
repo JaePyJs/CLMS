@@ -40,28 +40,12 @@ exports.shutdownLogger = exports.structuredLogger = exports.logError = exports.c
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const winston_1 = __importDefault(require("winston"));
+const common_1 = require("./common");
 const logsDir = path.join(process.cwd(), 'logs');
 if (!fs.existsSync(logsDir)) {
     fs.mkdirSync(logsDir, { recursive: true });
 }
-const buildLogEntry = (info) => {
-    const { level, message, stack, ...meta } = info;
-    const timestamp = typeof info.timestamp === 'string'
-        ? info.timestamp
-        : new Date().toISOString();
-    const levelLabel = typeof level === 'string' ? level.toUpperCase() : String(level);
-    const text = typeof message === 'string' ? message : JSON.stringify(message);
-    let log = `${timestamp} [${levelLabel}]: ${text}`;
-    if (Object.keys(meta).length > 0) {
-        log += ` ${JSON.stringify(meta)}`;
-    }
-    if (stack) {
-        const stackTrace = typeof stack === 'string' ? stack : JSON.stringify(stack, null, 2);
-        log += `\n${stackTrace}`;
-    }
-    return log;
-};
-const customFormat = winston_1.default.format.combine(winston_1.default.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), winston_1.default.format.errors({ stack: true }), winston_1.default.format.printf(buildLogEntry));
+const customFormat = winston_1.default.format.combine(winston_1.default.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), winston_1.default.format.errors({ stack: true }), winston_1.default.format.printf(common_1.buildLogEntry));
 exports.logger = winston_1.default.createLogger({
     level: process.env.LOG_LEVEL ?? 'info',
     format: customFormat,
@@ -107,7 +91,7 @@ if (process.env.NODE_ENV !== 'production') {
         format: winston_1.default.format.combine(winston_1.default.format.colorize(), winston_1.default.format.simple(), customFormat),
     }));
 }
-const withTimestamp = () => new Date().toISOString();
+const withTimestamp = () => (0, common_1.getCurrentTimestamp)();
 exports.auditLogger = {
     log: (action, entity, entity_id, id, details) => {
         const payload = {

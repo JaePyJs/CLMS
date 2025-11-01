@@ -91,11 +91,12 @@ router.get('/suggestions', async (req: Request, res: Response) => {
     const { query, limit = '10', type = 'all' } = req.query;
 
     if (!query || (query as string).length < 2) {
-      return res.json({
+      res.json({
         success: true,
         data: { titles: [], authors: [], categories: [] },
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const suggestions = await getSearchSuggestions({
@@ -164,11 +165,12 @@ router.get('/recent', requirePermission(Permission.BOOKS_VIEW), async (req: Requ
     const { limit = '10' } = req.query;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const recentSearches = await getRecentSearches(userId, parseInt(limit as string));
@@ -203,19 +205,21 @@ router.post('/save',
     const { query } = req.body;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     if (!query || typeof query !== 'string') {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Search query is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     await saveSearchQuery(userId, query);
@@ -494,7 +498,7 @@ router.get('/global', async (req: Request, res: Response) => {
     } = req.query;
 
     if (!query || (query as string).length < 2) {
-      return res.json({
+      res.json({
         success: true,
         data: {
           books: [],
@@ -510,6 +514,18 @@ router.get('/global', async (req: Request, res: Response) => {
         },
         timestamp: new Date().toISOString(),
       });
+      return;
+    }
+
+    // Validate at least one search parameter is provided
+    if (!bookIds?.length && !studentIds?.length && !equipmentIds?.length &&
+        !isbns?.length && !accessionNumbers?.length && !studentNumbers?.length) {
+      res.status(400).json({
+        success: false,
+        error: 'At least one search parameter must be provided',
+        timestamp: new Date().toISOString(),
+      });
+      return;
     }
 
     const searchOptions = {
@@ -566,11 +582,12 @@ router.post('/bulk', requirePermission(Permission.BOOKS_VIEW), async (req: Reque
     // Validate at least one search parameter is provided
     if (!bookIds?.length && !studentIds?.length && !equipmentIds?.length &&
         !isbns?.length && !accessionNumbers?.length && !studentNumbers?.length) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'At least one search parameter must be provided',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const searchOptions = {
@@ -611,11 +628,12 @@ router.get('/students/suggestions', async (req: Request, res: Response) => {
     const { query, limit = '10' } = req.query;
 
     if (!query || (query as string).length < 2) {
-      return res.json({
+      res.json({
         success: true,
         data: { names: [], studentIds: [], grades: [] },
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     // Use student search with minimal filters to get suggestions
@@ -659,11 +677,12 @@ router.get('/equipment/suggestions', async (req: Request, res: Response) => {
     const { query, limit = '10' } = req.query;
 
     if (!query || (query as string).length < 2) {
-      return res.json({
+      res.json({
         success: true,
         data: { names: [], types: [], locations: [] },
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     // Use equipment search with minimal filters to get suggestions
@@ -711,21 +730,23 @@ router.post('/saved',
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const { name, description, entityType, searchParams, isPublic, enableNotifications } = req.body;
 
     if (!name || !entityType || !searchParams) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Name, entityType, and searchParams are required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const savedSearch = await savedSearchService.createSavedSearch({
@@ -767,11 +788,12 @@ router.get('/saved',
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const { entityType, includePublic, page = '1', limit = '50' } = req.query;
@@ -815,11 +837,12 @@ router.get('/saved/:id',
     const savedSearch = await savedSearchService.getSavedSearchById(id, userId);
 
     if (!savedSearch) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Saved search not found',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     // Record that this search was used
@@ -862,11 +885,12 @@ router.put('/saved/:id',
     const userId = (req as any).user?.id;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const { name, description, entityType, searchParams, isPublic, enableNotifications } = req.body;
@@ -913,11 +937,12 @@ router.delete('/saved/:id',
     const userId = (req as any).user?.id;
 
     if (!userId) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         error: 'Authentication required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     await savedSearchService.deleteSavedSearch(id, userId);

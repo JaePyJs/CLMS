@@ -35,11 +35,12 @@ router.get(
       const job = await automationService.getJobStatus(id || '');
 
       if (!job) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Job not found',
           timestamp: new Date().toISOString(),
         });
+        return;
       }
 
       const response: ApiResponse = {
@@ -50,11 +51,12 @@ router.get(
 
       return res.json(response);
     } catch (_error) {
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         error: 'Failed to fetch job status',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
   },
 );
@@ -75,11 +77,12 @@ router.post(
 
       return res.json(response);
     } catch (_error) {
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         error: 'Failed to trigger job',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
   },
 );

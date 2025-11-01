@@ -97,7 +97,7 @@ router.post('/', async (req, res) => {
         }
         const book = await (0, bookService_1.createBook)({
             isbn,
-            accessionNo,
+            accession_no: accessionNo,
             title,
             author,
             publisher,
@@ -324,10 +324,10 @@ router.get('/checkouts/all', (0, ferpa_middleware_1.auditMiddleware)('LIST_BOOK_
             limit: parseInt(limit),
         };
         if (bookId) {
-            options.bookId = bookId;
+            options.book_id = bookId;
         }
         if (studentId) {
-            options.studentId = studentId;
+            options.student_id = studentId;
         }
         if (status) {
             options.status = status;

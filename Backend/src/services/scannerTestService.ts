@@ -1,11 +1,17 @@
 import { EventEmitter } from 'events';
 import { logger } from '@/utils/logger';
 import { Redis } from 'ioredis';
-import { USBScannerService, ScanData } from './usbScannerService';
+import { USBScannerService } from './usbScannerService';
 import { RealtimeScanProcessor } from './realtimeScanProcessor';
 
 // Test scenario types
-export type TestScenarioType = 'basic_scan' | 'bulk_scan' | 'error_handling' | 'performance' | 'duplicate_detection' | 'device_simulation';
+export type TestScenarioType =
+  | 'basic_scan'
+  | 'bulk_scan'
+  | 'error_handling'
+  | 'performance'
+  | 'duplicate_detection'
+  | 'device_simulation';
 
 // Test data generators
 interface TestDataGenerator {
@@ -60,7 +66,7 @@ export interface TestError {
   deviceId: string;
   error: string;
   data: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 // Device test results
@@ -99,7 +105,7 @@ export class ScannerTestService extends EventEmitter {
   constructor(
     redis: Redis,
     scannerService: USBScannerService,
-    scanProcessor: RealtimeScanProcessor
+    scanProcessor: RealtimeScanProcessor,
   ) {
     super();
     this.redis = redis;
@@ -135,7 +141,8 @@ export class ScannerTestService extends EventEmitter {
       {
         id: 'basic_scan_test',
         name: 'Basic Scan Test',
-        description: 'Test basic scanning functionality with various barcode types',
+        description:
+          'Test basic scanning functionality with various barcode types',
         type: 'basic_scan',
         config: {
           scanCount: 50,
@@ -280,7 +287,10 @@ export class ScannerTestService extends EventEmitter {
     };
 
     this.testScenarios.set(newScenario.id, newScenario);
-    logger.info('Created test scenario', { scenarioId: newScenario.id, name: newScenario.name });
+    logger.info('Created test scenario', {
+      scenarioId: newScenario.id,
+      name: newScenario.name,
+    });
 
     return newScenario;
   }
@@ -315,7 +325,11 @@ export class ScannerTestService extends EventEmitter {
 
       this.activeTests.set(testId, testResults);
 
-      logger.info('Starting test scenario', { testId, scenarioId, scenarioName: scenario.name });
+      logger.info('Starting test scenario', {
+        testId,
+        scenarioId,
+        scenarioName: scenario.name,
+      });
       this.emit('testStarted', { testId, scenario });
 
       // Execute test based on type
@@ -369,7 +383,10 @@ export class ScannerTestService extends EventEmitter {
         try {
           await this.generateAndSendScan(testId, deviceId, scenario.config);
         } catch (error) {
-          logger.error('Error in test scan', { error: (error as Error).message, testId });
+          logger.error('Error in test scan', {
+            error: (error as Error).message,
+            testId,
+          });
         }
       }, i * scenario.config.scanInterval);
 
@@ -377,15 +394,21 @@ export class ScannerTestService extends EventEmitter {
     }
 
     // Schedule test completion
-    const completionTimer = setTimeout(() => {
-      this.completeTest(testId);
-    }, scenario.config.scanCount * scenario.config.scanInterval + 1000);
+    const completionTimer = setTimeout(
+      () => {
+        this.completeTest(testId);
+      },
+      scenario.config.scanCount * scenario.config.scanInterval + 1000,
+    );
 
     timers.push(completionTimer);
   }
 
   // Execute device simulation test
-  private async executeDeviceSimulationTest(testId: string, scenario: TestScenario) {
+  private async executeDeviceSimulationTest(
+    testId: string,
+    scenario: TestScenario,
+  ) {
     const testResults = this.activeTests.get(testId);
     if (!testResults) return;
 
@@ -396,11 +419,28 @@ export class ScannerTestService extends EventEmitter {
     const scansPerDevice = Math.ceil(scenario.config.scanCount / deviceCount);
 
     // Get available simulated devices
-    const availableDevices = Array.from(this.simulatedDevices.values()).slice(0, deviceCount);
+    const availableDevices = Array.from(this.simulatedDevices.values()).slice(
+      0,
+      deviceCount,
+    );
 
-    for (let deviceIndex = 0; deviceIndex < availableDevices.length; deviceIndex++) {
+    if (availableDevices.length === 0) {
+      logger.warn('No simulated devices available for device simulation test', {
+        testId,
+      });
+      return;
+    }
+
+    for (
+      let deviceIndex = 0;
+      deviceIndex < availableDevices.length;
+      deviceIndex++
+    ) {
       const device = availableDevices[deviceIndex];
-      const deviceId = device.id;
+      if (!device) {
+        continue;
+      }
+      const { id: deviceId, scanInterval } = device;
 
       // Initialize device results
       testResults.deviceResults.set(deviceId, {
@@ -415,26 +455,36 @@ export class ScannerTestService extends EventEmitter {
 
       // Generate scans for this device
       for (let scanIndex = 0; scanIndex < scansPerDevice; scanIndex++) {
-        const timer = setTimeout(async () => {
-          try {
-            await this.generateAndSendScan(testId, deviceId, scenario.config, device);
-          } catch (error) {
-            logger.error('Error in device simulation scan', {
-              error: (error as Error).message,
-              testId,
-              deviceId,
-            });
-          }
-        }, scanIndex * device.scanInterval + (deviceIndex * 100)); // Stagger device start times
+        const timer = setTimeout(
+          async () => {
+            try {
+              await this.generateAndSendScan(testId, deviceId, scenario.config);
+            } catch (error) {
+              logger.error('Error in device simulation scan', {
+                error: (error as Error).message,
+                testId,
+                deviceId,
+              });
+            }
+          },
+          scanIndex * scanInterval + deviceIndex * 100,
+        ); // Stagger device start times
 
         timers.push(timer);
       }
     }
 
     // Schedule test completion
+    const maxInterval = Math.max(
+      ...availableDevices.map(
+        device => device?.scanInterval ?? scenario.config.scanInterval,
+      ),
+    );
+    const completionDelay = maxInterval * scansPerDevice + 2000;
+
     const completionTimer = setTimeout(() => {
       this.completeTest(testId);
-    }, Math.max(...availableDevices.map(d => d.scanInterval)) * scansPerDevice + 2000);
+    }, completionDelay);
 
     timers.push(completionTimer);
   }
@@ -444,7 +494,6 @@ export class ScannerTestService extends EventEmitter {
     testId: string,
     deviceId: string,
     config: TestScenarioConfig,
-    device?: SimulatedDevice
   ) {
     const testResults = this.activeTests.get(testId);
     if (!testResults) return;
@@ -460,7 +509,8 @@ export class ScannerTestService extends EventEmitter {
         scanData = this.dataGenerator.generateInvalidBarcode();
       } else {
         // Generate scan data based on configured types
-        const dataType = config.dataTypes[Math.floor(Math.random() * config.dataTypes.length)];
+        const dataType =
+          config.dataTypes[Math.floor(Math.random() * config.dataTypes.length)];
 
         switch (dataType) {
           case 'student':
@@ -486,24 +536,6 @@ export class ScannerTestService extends EventEmitter {
         }
       }
 
-      // Create scan data object
-      const scanDataObj: ScanData = {
-        deviceId,
-        data: scanData,
-        timestamp: new Date(),
-        rawData: Buffer.from(scanData),
-        deviceInfo: {
-          path: `/simulated/${deviceId}`,
-          vendorId: device?.vendorId || 0x1234,
-          productId: device?.productId || 0x5678,
-          product: device?.name || 'Simulated Scanner',
-          manufacturer: 'Test Manufacturer',
-          interface: 0,
-          usagePage: 0x01,
-          usage: 0x06,
-        },
-      };
-
       // Send scan data to processor
       const startTime = Date.now();
       await this.scanProcessor.processManualScan(scanData, deviceId);
@@ -512,14 +544,18 @@ export class ScannerTestService extends EventEmitter {
       // Update test results
       testResults.totalScans++;
       testResults.averageProcessingTime =
-        (testResults.averageProcessingTime * (testResults.totalScans - 1) + processingTime) / testResults.totalScans;
+        (testResults.averageProcessingTime * (testResults.totalScans - 1) +
+          processingTime) /
+        testResults.totalScans;
 
       // Update device results
       const deviceResults = testResults.deviceResults.get(deviceId);
       if (deviceResults) {
         deviceResults.totalScans++;
         deviceResults.averageScanTime =
-          (deviceResults.averageScanTime * (deviceResults.totalScans - 1) + processingTime) / deviceResults.totalScans;
+          (deviceResults.averageScanTime * (deviceResults.totalScans - 1) +
+            processingTime) /
+          deviceResults.totalScans;
         deviceResults.lastScanTime = new Date();
       }
 
@@ -533,7 +569,6 @@ export class ScannerTestService extends EventEmitter {
         scanData,
         processingTime,
       });
-
     } catch (error) {
       // Record error
       const testError: TestError = {
@@ -559,8 +594,10 @@ export class ScannerTestService extends EventEmitter {
 
     // Calculate final metrics
     testResults.endTime = new Date();
-    testResults.duration = testResults.endTime.getTime() - testResults.startTime.getTime();
-    testResults.throughput = testResults.totalScans / (testResults.duration / 1000);
+    testResults.duration =
+      testResults.endTime.getTime() - testResults.startTime.getTime();
+    testResults.throughput =
+      testResults.totalScans / (testResults.duration / 1000);
 
     // Clean up timers
     const timers = this.testTimers.get(testId);
@@ -570,7 +607,8 @@ export class ScannerTestService extends EventEmitter {
     }
 
     // Calculate success/failure rates
-    testResults.successfulScans = testResults.totalScans - testResults.failedScans;
+    testResults.successfulScans =
+      testResults.totalScans - testResults.failedScans;
 
     logger.info('Test completed', {
       testId,
@@ -597,7 +635,10 @@ export class ScannerTestService extends EventEmitter {
       const key = `test:results:${testId}`;
       await this.redis.setex(key, 60 * 60 * 24, JSON.stringify(results)); // 24 hours TTL
     } catch (error) {
-      logger.error('Failed to store test results', { error: (error as Error).message, testId });
+      logger.error('Failed to store test results', {
+        error: (error as Error).message,
+        testId,
+      });
     }
   }
 
@@ -622,7 +663,10 @@ export class ScannerTestService extends EventEmitter {
 
       return null;
     } catch (error) {
-      logger.error('Failed to get test results', { error: (error as Error).message, testId });
+      logger.error('Failed to get test results', {
+        error: (error as Error).message,
+        testId,
+      });
       return null;
     }
   }
@@ -633,7 +677,7 @@ export class ScannerTestService extends EventEmitter {
       const results: TestResults[] = [];
 
       // Add active test results
-      for (const [testId, testResults] of this.activeTests) {
+      for (const testResults of this.activeTests.values()) {
         results.push({ ...testResults });
       }
 
@@ -643,17 +687,24 @@ export class ScannerTestService extends EventEmitter {
         const resultsData = await this.redis.get(key);
         if (resultsData) {
           const testResults = JSON.parse(resultsData) as TestResults;
-          testResults.deviceResults = new Map(Object.entries(testResults.deviceResults));
+          testResults.deviceResults = new Map(
+            Object.entries(testResults.deviceResults),
+          );
           results.push(testResults);
         }
       }
 
       // Sort by start time (most recent first)
-      results.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+      results.sort(
+        (a, b) =>
+          new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
+      );
 
       return results;
     } catch (error) {
-      logger.error('Failed to get all test results', { error: (error as Error).message });
+      logger.error('Failed to get all test results', {
+        error: (error as Error).message,
+      });
       return [];
     }
   }
@@ -681,7 +732,10 @@ export class ScannerTestService extends EventEmitter {
 
       return true;
     } catch (error) {
-      logger.error('Failed to stop test', { error: (error as Error).message, testId });
+      logger.error('Failed to stop test', {
+        error: (error as Error).message,
+        testId,
+      });
       return false;
     }
   }
@@ -699,7 +753,10 @@ export class ScannerTestService extends EventEmitter {
       logger.info('Test results deleted', { testId });
       return true;
     } catch (error) {
-      logger.error('Failed to delete test results', { error: (error as Error).message, testId });
+      logger.error('Failed to delete test results', {
+        error: (error as Error).message,
+        testId,
+      });
       return false;
     }
   }
@@ -709,8 +766,21 @@ export class ScannerTestService extends EventEmitter {
     return Array.from(this.simulatedDevices.values());
   }
 
+  // Get active test identifiers
+  getActiveTestIds(): string[] {
+    return Array.from(this.activeTests.keys());
+  }
+
+  // Get active test summaries
+  getActiveTests(): TestResults[] {
+    return Array.from(this.activeTests.values());
+  }
+
   // Update simulated device
-  updateSimulatedDevice(deviceId: string, updates: Partial<SimulatedDevice>): boolean {
+  updateSimulatedDevice(
+    deviceId: string,
+    updates: Partial<SimulatedDevice>,
+  ): boolean {
     const device = this.simulatedDevices.get(deviceId);
     if (!device) {
       return false;
@@ -787,7 +857,8 @@ class DefaultTestDataGenerator implements TestDataGenerator {
       'NULL',
     ];
 
-    return invalidTypes[Math.floor(Math.random() * invalidTypes.length)];
+    const index = Math.floor(Math.random() * invalidTypes.length);
+    return invalidTypes[index] ?? 'INVALID_CODE';
   }
 
   generateQRCode(): string {
@@ -800,7 +871,8 @@ class DefaultTestDataGenerator implements TestDataGenerator {
       `Check-in:${new Date().toISOString()}`,
     ];
 
-    return qrContent[Math.floor(Math.random() * qrContent.length)];
+    const index = Math.floor(Math.random() * qrContent.length);
+    return qrContent[index] ?? 'https://library.example.com';
   }
 }
 
@@ -810,10 +882,14 @@ let testServiceInstance: ScannerTestService | null = null;
 export function getScannerTestService(
   redis: Redis,
   scannerService: USBScannerService,
-  scanProcessor: RealtimeScanProcessor
+  scanProcessor: RealtimeScanProcessor,
 ): ScannerTestService {
   if (!testServiceInstance) {
-    testServiceInstance = new ScannerTestService(redis, scannerService, scanProcessor);
+    testServiceInstance = new ScannerTestService(
+      redis,
+      scannerService,
+      scanProcessor,
+    );
   }
   return testServiceInstance;
 }

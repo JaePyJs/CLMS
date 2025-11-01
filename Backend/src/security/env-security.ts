@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import fs from 'fs';
-import path from 'path';
 import { logger } from '@/utils/logger';
 
 export interface EnvSecurityConfig {
@@ -22,10 +21,16 @@ export interface EnvValidationResult {
   decrypted: Record<string, string>;
 }
 
+export interface EnvSecurityStatus {
+  isSecure: boolean;
+  issues: string[];
+  recommendations: string[];
+}
+
 export class EnvSecurity {
   private config: EnvSecurityConfig;
-  private encryptionKey: Buffer;
-  private cache: Map<string, any> = new Map();
+  private encryptionKey: Buffer | null = null;
+  private cache: Map<string, string> = new Map();
 
   constructor(config: Partial<EnvSecurityConfig> = {}) {
     this.config = {
@@ -36,7 +41,7 @@ export class EnvSecurity {
         'NODE_ENV',
         'DATABASE_URL',
         'JWT_SECRET',
-        'REDIS_URL'
+        'REDIS_URL',
       ],
       sensitiveVariables: [
         'DATABASE_URL',
@@ -48,16 +53,16 @@ export class EnvSecurity {
         'TOKEN',
         'KEY',
         'PRIVATE',
-        'CREDENTIALS'
+        'CREDENTIALS',
       ],
       allowedOrigins: [],
       secureProductionDefaults: {
         NODE_ENV: 'production',
         BCRYPT_ROUNDS: '12',
         RATE_LIMIT_WINDOW: '900000',
-        RATE_LIMIT_MAX_REQUESTS: '100'
+        RATE_LIMIT_MAX_REQUESTS: '100',
       },
-      ...config
+      ...config,
     };
 
     this.initializeEncryption();
@@ -69,7 +74,10 @@ export class EnvSecurity {
     try {
       // Check cache first
       if (this.cache.has(key)) {
-        return this.cache.get(key);
+        const cachedValue = this.cache.get(key);
+        if (cachedValue !== undefined) {
+          return cachedValue;
+        }
       }
 
       let value = process.env[key];
@@ -96,11 +104,10 @@ export class EnvSecurity {
       }
 
       return value;
-
     } catch (error) {
       logger.error('Failed to get environment variable', {
         error: (error as Error).message,
-        key
+        key,
       });
       throw error;
     }
@@ -134,13 +141,12 @@ export class EnvSecurity {
       logger.debug('Environment variable set', {
         key,
         encrypted: encrypt,
-        sensitive: this.isSensitiveVariable(key)
+        sensitive: this.isSensitiveVariable(key),
       });
-
     } catch (error) {
       logger.error('Failed to set environment variable', {
         error: (error as Error).message,
-        key
+        key,
       });
       throw error;
     }
@@ -153,7 +159,7 @@ export class EnvSecurity {
       missing: [],
       invalid: [],
       warnings: [],
-      decrypted: {}
+      decrypted: {},
     };
 
     try {
@@ -164,9 +170,10 @@ export class EnvSecurity {
           result.missing.push(variable);
           result.isValid = false;
         } else {
-          result.decrypted[variable] = this.config.encryptionEnabled && this.isSensitiveVariable(variable)
-            ? this.decryptValue(value)
-            : value;
+          result.decrypted[variable] =
+            this.config.encryptionEnabled && this.isSensitiveVariable(variable)
+              ? this.decryptValue(value)
+              : value;
         }
       }
 
@@ -189,8 +196,13 @@ export class EnvSecurity {
           result.isValid = false;
         }
 
-        if (process.env.BCRYPT_ROUNDS && parseInt(process.env.BCRYPT_ROUNDS) < 10) {
-          result.warnings.push('BCrypt rounds should be at least 10 in production');
+        if (
+          process.env.BCRYPT_ROUNDS &&
+          parseInt(process.env.BCRYPT_ROUNDS) < 10
+        ) {
+          result.warnings.push(
+            'BCrypt rounds should be at least 10 in production',
+          );
         }
 
         // Check for missing security headers
@@ -203,21 +215,20 @@ export class EnvSecurity {
       if (result.isValid) {
         logger.info('Environment validation passed', {
           variablesChecked: this.config.requiredVariables.length,
-          encrypted: this.config.encryptionEnabled
+          encrypted: this.config.encryptionEnabled,
         });
       } else {
         logger.error('Environment validation failed', {
           missing: result.missing,
           invalid: result.invalid,
-          warnings: result.warnings
+          warnings: result.warnings,
         });
       }
 
       return result;
-
     } catch (error) {
       logger.error('Environment validation error', {
-        error: (error as Error).message
+        error: (error as Error).message,
       });
 
       result.isValid = false;
@@ -243,8 +254,14 @@ export class EnvSecurity {
           continue;
         }
 
-        const [key, ...valueParts] = line.split('=');
+        const [rawKey = '', ...valueParts] = line.split('=');
+        const key = rawKey.trim();
         const value = valueParts.join('=');
+
+        if (key.length === 0) {
+          encryptedLines.push(line);
+          continue;
+        }
 
         if (this.isSensitiveVariable(key)) {
           const encryptedValue = this.encryptValue(value);
@@ -262,17 +279,18 @@ export class EnvSecurity {
       logger.info('Environment variables encrypted', {
         inputFile: envFilePath,
         outputFile: encryptedFilePath,
-        variablesEncrypted: lines.filter(line =>
-          line.trim() !== '' &&
-          !line.trim().startsWith('#') &&
-          this.isSensitiveVariable(line.split('=')[0])
-        ).length
+        variablesEncrypted: lines.filter(currentLine => {
+          if (currentLine.trim() === '' || currentLine.trim().startsWith('#')) {
+            return false;
+          }
+          const [lineKey = ''] = currentLine.split('=');
+          return this.isSensitiveVariable(lineKey.trim());
+        }).length,
       });
-
     } catch (error) {
       logger.error('Failed to encrypt environment variables', {
         error: (error as Error).message,
-        envFilePath
+        envFilePath,
       });
       throw error;
     }
@@ -293,8 +311,13 @@ export class EnvSecurity {
           continue;
         }
 
-        const [key, ...valueParts] = line.split('=');
+        const [rawKey = '', ...valueParts] = line.split('=');
+        const key = rawKey.trim();
         const value = valueParts.join('=');
+
+        if (key.length === 0) {
+          continue;
+        }
 
         if (this.isSensitiveVariable(key)) {
           const decryptedValue = this.decryptValue(value);
@@ -306,29 +329,33 @@ export class EnvSecurity {
 
       logger.info('Encrypted environment loaded', {
         envFilePath,
-        variablesLoaded: lines.filter(line =>
-          line.trim() !== '' &&
-          !line.trim().startsWith('#')
-        ).length
+        variablesLoaded: lines.filter(
+          line => line.trim() !== '' && !line.trim().startsWith('#'),
+        ).length,
       });
-
     } catch (error) {
       logger.error('Failed to load encrypted environment', {
         error: (error as Error).message,
-        envFilePath
+        envFilePath,
       });
       throw error;
     }
   }
 
   // Generate secure random values
-  generateSecureRandom(type: 'string' | 'hex' | 'base64', length: number = 32): string {
+  generateSecureRandom(
+    type: 'string' | 'hex' | 'base64',
+    length: number = 32,
+  ): string {
     try {
       const bytes = crypto.randomBytes(length);
 
       switch (type) {
         case 'string':
-          return bytes.toString('base64').replace(/[+/=]/g, '').substring(0, length);
+          return bytes
+            .toString('base64')
+            .replace(/[+/=]/g, '')
+            .substring(0, length);
         case 'hex':
           return bytes.toString('hex');
         case 'base64':
@@ -336,12 +363,11 @@ export class EnvSecurity {
         default:
           throw new Error(`Unsupported random type: ${type}`);
       }
-
     } catch (error) {
       logger.error('Failed to generate secure random value', {
         error: (error as Error).message,
         type,
-        length
+        length,
       });
       throw error;
     }
@@ -355,16 +381,12 @@ export class EnvSecurity {
       SESSION_SECRET: this.generateSecureRandom('base64', 48),
       API_SECRET: this.generateSecureRandom('hex', 32),
       CSRF_SECRET: this.generateSecureRandom('hex', 32),
-      WEBHOOK_SECRET: this.generateSecureRandom('hex', 32)
+      WEBHOOK_SECRET: this.generateSecureRandom('hex', 32),
     };
   }
 
   // Check if environment is secure
-  isEnvironmentSecure(): {
-    isSecure: boolean;
-    issues: string[];
-    recommendations: string[];
-  } {
+  isEnvironmentSecure(): EnvSecurityStatus {
     const issues: string[] = [];
     const recommendations: string[] = [];
 
@@ -375,12 +397,18 @@ export class EnvSecurity {
         recommendations.push('Generate and set a secure JWT secret');
       }
 
-      if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('localhost')) {
+      if (
+        process.env.DATABASE_URL &&
+        process.env.DATABASE_URL.includes('localhost')
+      ) {
         issues.push('Using localhost database in production');
         recommendations.push('Use production database connection');
       }
 
-      if (!process.env.REDIS_URL || process.env.REDIS_URL.includes('localhost')) {
+      if (
+        !process.env.REDIS_URL ||
+        process.env.REDIS_URL.includes('localhost')
+      ) {
         issues.push('Redis not properly configured for production');
         recommendations.push('Configure production Redis instance');
       }
@@ -407,7 +435,7 @@ export class EnvSecurity {
     return {
       isSecure: issues.length === 0,
       issues,
-      recommendations
+      recommendations,
     };
   }
 
@@ -415,7 +443,7 @@ export class EnvSecurity {
   getSecurityReport(): {
     config: EnvSecurityConfig;
     validation: EnvValidationResult;
-    securityCheck: ReturnType<typeof this.isEnvironmentSecure>;
+    securityCheck: EnvSecurityStatus;
     encryptedVariables: string[];
     cacheStats: {
       size: number;
@@ -429,8 +457,8 @@ export class EnvSecurity {
       encryptedVariables: this.config.sensitiveVariables,
       cacheStats: {
         size: this.cache.size,
-        keys: Array.from(this.cache.keys())
-      }
+        keys: Array.from(this.cache.keys()),
+      },
     };
   }
 
@@ -442,7 +470,7 @@ export class EnvSecurity {
         // Generate a new encryption key
         key = this.generateSecureRandom('hex', 64);
         logger.warn('No encryption key provided, generated new key', {
-          keyPreview: key.substring(0, 8) + '...'
+          keyPreview: `${key.substring(0, 8)}...`,
         });
       }
 
@@ -451,34 +479,45 @@ export class EnvSecurity {
       if (this.encryptionKey.length !== 32) {
         throw new Error('Encryption key must be 32 bytes (64 hex characters)');
       }
-
     } catch (error) {
       logger.error('Failed to initialize encryption', {
-        error: (error as Error).message
+        error: (error as Error).message,
       });
       throw error;
     }
   }
 
+  private ensureEncryptionKey(): Buffer {
+    if (!this.encryptionKey) {
+      throw new Error('Encryption key not initialized');
+    }
+    return this.encryptionKey;
+  }
+
   private isSensitiveVariable(key: string): boolean {
     const upperKey = key.toUpperCase();
     return this.config.sensitiveVariables.some(sensitive =>
-      upperKey.includes(sensitive.toUpperCase())
+      upperKey.includes(sensitive.toUpperCase()),
     );
   }
 
   private encryptValue(value: string): string {
     try {
       const iv = crypto.randomBytes(16);
-      const cipher = crypto.createCipher('aes-256-cbc', this.encryptionKey);
+      const cipher = crypto.createCipheriv(
+        'aes-256-cbc',
+        this.ensureEncryptionKey(),
+        iv,
+      );
+      const encrypted = Buffer.concat([
+        cipher.update(value, 'utf8'),
+        cipher.final(),
+      ]);
 
-      let encrypted = cipher.update(value, 'utf8', 'hex');
-      encrypted += cipher.final('hex');
-
-      return iv.toString('hex') + ':' + encrypted;
+      return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
     } catch (error) {
       logger.error('Failed to encrypt value', {
-        error: (error as Error).message
+        error: (error as Error).message,
       });
       throw error;
     }
@@ -492,19 +531,29 @@ export class EnvSecurity {
         return encryptedValue;
       }
 
-      const iv = Buffer.from(parts[0], 'hex');
-      const encrypted = parts[1];
+      const [ivHex, encryptedHex] = parts;
+      if (!ivHex || !encryptedHex) {
+        return encryptedValue;
+      }
 
-      const decipher = crypto.createDecipher('aes-256-cbc', this.encryptionKey);
+      const iv = Buffer.from(ivHex, 'hex');
+      const encryptedBuffer = Buffer.from(encryptedHex, 'hex');
 
-      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
+      const decipher = crypto.createDecipheriv(
+        'aes-256-cbc',
+        this.ensureEncryptionKey(),
+        iv,
+      );
+      const decrypted = Buffer.concat([
+        decipher.update(encryptedBuffer),
+        decipher.final(),
+      ]);
 
-      return decrypted;
+      return decrypted.toString('utf8');
     } catch (error) {
       // If decryption fails, return original value
       logger.warn('Failed to decrypt value, returning original', {
-        error: (error as Error).message
+        error: (error as Error).message,
       });
       return encryptedValue;
     }
@@ -527,7 +576,10 @@ export class EnvSecurity {
     }
   }
 
-  private validateVariableFormat(key: string, value: string): { isValid: boolean; error?: string } {
+  private validateVariableFormat(
+    key: string,
+    value: string,
+  ): { isValid: boolean; error?: string } {
     const upperKey = key.toUpperCase();
 
     // URL validation
@@ -548,7 +600,11 @@ export class EnvSecurity {
     }
 
     // Number validation
-    if (upperKey.includes('ROUNDS') || upperKey.includes('LIMIT') || upperKey.includes('TIMEOUT')) {
+    if (
+      upperKey.includes('ROUNDS') ||
+      upperKey.includes('LIMIT') ||
+      upperKey.includes('TIMEOUT')
+    ) {
       const num = parseInt(value);
       if (isNaN(num) || num < 0) {
         return { isValid: false, error: 'Invalid number format' };
@@ -565,28 +621,31 @@ export class EnvSecurity {
     return { isValid: true };
   }
 
-  private logEnvironmentAccess(key: string, action: 'access' | 'set', metadata?: any): void {
+  private logEnvironmentAccess(
+    key: string,
+    action: 'access' | 'set',
+    metadata?: Record<string, unknown>,
+  ): void {
     try {
-      const logData = {
+      const isSensitive = this.isSensitiveVariable(key);
+      const logData: Record<string, unknown> = {
         key,
         action,
-        sensitive: this.isSensitiveVariable(key),
+        sensitive: isSensitive,
         timestamp: new Date(),
-        ...metadata
+        ...metadata,
       };
 
-      // Don't log the actual value for sensitive variables
-      if (!logData.sensitive) {
+      if (!isSensitive) {
         logData.value = process.env[key];
       }
 
       logger.debug('Environment variable access', logData);
-
     } catch (error) {
       logger.error('Failed to log environment access', {
         error: (error as Error).message,
         key,
-        action
+        action,
       });
     }
   }
@@ -596,6 +655,8 @@ export class EnvSecurity {
 export const envSecurity = new EnvSecurity();
 
 // Export convenience functions
-export const getEnv = (key: string, defaultValue?: string) => envSecurity.get(key, defaultValue);
-export const setEnv = (key: string, value: string, encrypt?: boolean) => envSecurity.set(key, value, encrypt);
+export const getEnv = (key: string, defaultValue?: string) =>
+  envSecurity.get(key, defaultValue);
+export const setEnv = (key: string, value: string, encrypt?: boolean) =>
+  envSecurity.set(key, value, encrypt);
 export const validateEnv = () => envSecurity.validateEnvironment();

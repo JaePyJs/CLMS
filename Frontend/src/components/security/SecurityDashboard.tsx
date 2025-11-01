@@ -463,7 +463,11 @@ const SecurityDashboard: React.FC = () => {
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex items-center gap-2">
-                  {getHealthIcon(ferpaData?.dataRetentionStatus || 'healthy')}
+                  {getHealthIcon(
+                    ferpaData?.dataRetentionStatus === 'compliant' || ferpaData?.dataRetentionStatus === 'violation' 
+                      ? 'healthy' 
+                      : (ferpaData?.dataRetentionStatus as 'healthy' | 'warning' | 'critical') || 'healthy'
+                  )}
                   <span className="text-sm capitalize">{ferpaData?.dataRetentionStatus}</span>
                 </div>
                 <div className="flex justify-between">

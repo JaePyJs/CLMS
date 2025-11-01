@@ -2,14 +2,26 @@ import { PrismaClient } from '@prisma/client';
 import { logger } from '@/utils/logger';
 import { performanceMonitoringService } from './performanceMonitoringService';
 import { performanceAlertingService } from './performanceAlertingService';
-import { CacheManager } from '@/cache/cacheManager';
-import { initializeQueryOptimizationService, queryOptimizationService } from './queryOptimizationService';
-import { initializeAdvancedCachingService, advancedCachingService } from './advancedCachingService';
-import { initializeMemoryOptimizationService, memoryOptimizationService } from './memoryOptimizationService';
+import { CacheManager, CacheManagerConfig } from '@/cache/cacheManager';
+import { EvictionPolicy } from '@/cache/memoryCache';
+import {
+  initializeQueryOptimizationService,
+  queryOptimizationService,
+} from './queryOptimizationService';
+import {
+  initializeAdvancedCachingService,
+  advancedCachingService,
+  CacheStrategy,
+  InvalidationStrategy,
+} from './advancedCachingService';
+import {
+  initializeMemoryOptimizationService,
+  memoryOptimizationService,
+} from './memoryOptimizationService';
 
 /**
  * Performance Services Initializer
- * 
+ *
  * This service initializes all performance-related services in the correct order
  * and sets up the necessary integrations between them.
  */
@@ -22,20 +34,40 @@ export class PerformanceServicesInitializer {
     this.prisma = prisma;
     this.cacheManager = new CacheManager({
       redisInstanceName: 'performance',
-      redisEnvironment: process.env.NODE_ENV || 'development',
+      redisEnvironment: this.resolveRedisEnvironment(),
       memoryCacheConfig: {
         maxSize: 5000,
-        evictionPolicy: 'LRU' as any,
+        evictionPolicy: EvictionPolicy.LRU,
         defaultTTL: 3600000,
         cleanupInterval: 30000,
         enableMetrics: true,
-        persistCriticalData: false
+        persistCriticalData: false,
       },
       healthCheckInterval: 30000,
       failoverTimeout: 5000,
       enableDataSync: true,
-      syncBatchSize: 100
+      syncBatchSize: 100,
     });
+  }
+
+  private resolveRedisEnvironment(): CacheManagerConfig['redisEnvironment'] {
+    const env =
+      process.env.REDIS_ENVIRONMENT ?? process.env.NODE_ENV ?? 'development';
+
+    switch (env) {
+      case 'production':
+      case 'staging':
+      case 'testing':
+      case 'development':
+        return env;
+      case 'test':
+        return 'testing';
+      default:
+        logger.warn('Unknown Redis environment, defaulting to development', {
+          env,
+        });
+        return 'development';
+    }
   }
 
   /**
@@ -71,7 +103,7 @@ export class PerformanceServicesInitializer {
         enableMemoryMonitoring: true,
         memoryMonitoringInterval: 30, // 30 seconds
         maxMemoryUsage: 1024, // 1GB
-        enableMemoryProfiling: process.env.NODE_ENV === 'development'
+        enableMemoryProfiling: process.env.NODE_ENV === 'development',
       });
       logger.info('Memory optimization service initialized');
 
@@ -107,7 +139,9 @@ export class PerformanceServicesInitializer {
       // Emit initialization event
       this.emitInitializationEvent();
     } catch (error) {
-      logger.error('Failed to initialize performance services', { error: (error as Error).message });
+      logger.error('Failed to initialize performance services', {
+        error: (error as Error).message,
+      });
       throw error;
     }
   }
@@ -144,7 +178,9 @@ export class PerformanceServicesInitializer {
       this.isInitialized = false;
       logger.info('All performance services stopped successfully');
     } catch (error) {
-      logger.error('Failed to stop performance services', { error: (error as Error).message });
+      logger.error('Failed to stop performance services', {
+        error: (error as Error).message,
+      });
       throw error;
     }
   }
@@ -154,57 +190,57 @@ export class PerformanceServicesInitializer {
    */
   private setupServiceIntegrations(): void {
     // Set up performance monitoring for cache operations
-    this.cacheManager.on('get', (key, hit, responseTime) => {
+    this.cacheManager.on('get', ({ key, hit, responseTime }) => {
       performanceMonitoringService.recordMetric({
         category: 'cache',
         operation: 'get',
         duration: responseTime,
         success: true,
-        metadata: { key, hit }
+        metadata: { key, hit },
       });
     });
 
-    this.cacheManager.on('set', (key, responseTime) => {
+    this.cacheManager.on('set', ({ key, responseTime }) => {
       performanceMonitoringService.recordMetric({
         category: 'cache',
         operation: 'set',
         duration: responseTime,
         success: true,
-        metadata: { key }
+        metadata: { key },
       });
     });
 
     // Set up performance monitoring for memory operations
     if (memoryOptimizationService) {
-      memoryOptimizationService.on('highMemoryUsage', (data) => {
+      memoryOptimizationService.on('highMemoryUsage', data => {
         performanceMonitoringService.recordMetric({
           category: 'memory',
           operation: 'highUsage',
           duration: data.current,
           success: false,
-          metadata: { threshold: data.threshold }
+          metadata: { threshold: data.threshold },
         });
       });
 
-      memoryOptimizationService.on('memoryLeakDetected', (data) => {
+      memoryOptimizationService.on('memoryLeakDetected', data => {
         performanceMonitoringService.recordMetric({
           category: 'memory',
           operation: 'leakDetected',
           duration: data.growthRate,
           success: false,
-          metadata: { detected: data.detected }
+          metadata: { detected: data.detected },
         });
       });
     }
 
     // Set up performance alerts for critical metrics
-    performanceMonitoringService.on('alert', (alert) => {
+    performanceMonitoringService.on('alert', alert => {
       if (alert.severity === 'critical') {
         logger.error('Critical performance alert', {
           category: alert.category,
           message: alert.message,
           value: alert.value,
-          threshold: alert.threshold
+          threshold: alert.threshold,
         });
       }
     });
@@ -220,46 +256,46 @@ export class PerformanceServicesInitializer {
 
     // Configure student cache
     advancedCachingService.configureCache('student:*', {
-      strategy: 'cache-aside' as any,
-      invalidationStrategy: 'tag-based' as any,
+      strategy: CacheStrategy.CACHE_ASIDE,
+      invalidationStrategy: InvalidationStrategy.TAG_BASED,
       ttl: 1800, // 30 minutes
       refreshThreshold: 0.8,
-      enableMetrics: true
+      enableMetrics: true,
     });
 
     // Configure book cache
     advancedCachingService.configureCache('book:*', {
-      strategy: 'cache-aside' as any,
-      invalidationStrategy: 'tag-based' as any,
+      strategy: CacheStrategy.CACHE_ASIDE,
+      invalidationStrategy: InvalidationStrategy.TAG_BASED,
       ttl: 3600, // 1 hour
       refreshThreshold: 0.8,
-      enableMetrics: true
+      enableMetrics: true,
     });
 
     // Configure equipment cache
     advancedCachingService.configureCache('equipment:*', {
-      strategy: 'cache-aside' as any,
-      invalidationStrategy: 'tag-based' as any,
+      strategy: CacheStrategy.CACHE_ASIDE,
+      invalidationStrategy: InvalidationStrategy.TAG_BASED,
       ttl: 900, // 15 minutes
       refreshThreshold: 0.8,
-      enableMetrics: true
+      enableMetrics: true,
     });
 
     // Configure analytics cache
     advancedCachingService.configureCache('analytics:*', {
-      strategy: 'refresh-ahead' as any,
-      invalidationStrategy: 'time-based' as any,
+      strategy: CacheStrategy.REFRESH_AHEAD,
+      invalidationStrategy: InvalidationStrategy.TIME_BASED,
       ttl: 1800, // 30 minutes
       refreshThreshold: 0.7,
-      enableMetrics: true
+      enableMetrics: true,
     });
 
     // Configure search cache
     advancedCachingService.configureCache('search:*', {
-      strategy: 'cache-aside' as any,
-      invalidationStrategy: 'time-based' as any,
+      strategy: CacheStrategy.CACHE_ASIDE,
+      invalidationStrategy: InvalidationStrategy.TIME_BASED,
       ttl: 300, // 5 minutes
-      enableMetrics: true
+      enableMetrics: true,
     });
 
     logger.debug('Cache strategies configured successfully');
@@ -283,8 +319,8 @@ export class PerformanceServicesInitializer {
       duration: 60,
       cooldown: 300,
       notifications: {
-        log: true
-      }
+        log: true,
+      },
     });
 
     // API performance alerts
@@ -301,8 +337,8 @@ export class PerformanceServicesInitializer {
       duration: 60,
       cooldown: 300,
       notifications: {
-        log: true
-      }
+        log: true,
+      },
     });
 
     // Memory usage alerts
@@ -319,8 +355,8 @@ export class PerformanceServicesInitializer {
       duration: 120,
       cooldown: 600,
       notifications: {
-        log: true
-      }
+        log: true,
+      },
     });
 
     // Cache performance alerts
@@ -337,8 +373,8 @@ export class PerformanceServicesInitializer {
       duration: 300,
       cooldown: 600,
       notifications: {
-        log: true
-      }
+        log: true,
+      },
     });
 
     logger.debug('Performance alerts configured successfully');
@@ -350,7 +386,11 @@ export class PerformanceServicesInitializer {
   private emitInitializationEvent(): void {
     // Emit event to notify other parts of the application
     if (typeof process !== 'undefined' && process.emit) {
-      process.emit('performance-services:initialized', {
+      const emit = process.emit as unknown as (
+        eventName: string,
+        ...args: unknown[]
+      ) => boolean;
+      emit('performance-services:initialized', {
         timestamp: new Date().toISOString(),
         services: {
           monitoring: performanceMonitoringService,
@@ -358,8 +398,8 @@ export class PerformanceServicesInitializer {
           cacheManager: this.cacheManager,
           queryOptimization: queryOptimizationService,
           advancedCaching: advancedCachingService,
-          memoryOptimization: memoryOptimizationService
-        }
+          memoryOptimization: memoryOptimizationService,
+        },
       });
     }
   }
@@ -386,8 +426,8 @@ export class PerformanceServicesInitializer {
         cacheManager: this.cacheManager ? true : false,
         queryOptimization: queryOptimizationService ? true : false,
         advancedCaching: advancedCachingService ? true : false,
-        memoryOptimization: memoryOptimizationService ? true : false
-      }
+        memoryOptimization: memoryOptimizationService ? true : false,
+      },
     };
   }
 
@@ -401,7 +441,7 @@ export class PerformanceServicesInitializer {
       cacheManager: this.cacheManager,
       queryOptimization: queryOptimizationService,
       advancedCaching: advancedCachingService,
-      memoryOptimization: memoryOptimizationService
+      memoryOptimization: memoryOptimizationService,
     };
   }
 }
@@ -409,7 +449,9 @@ export class PerformanceServicesInitializer {
 // Singleton instance
 export let performanceServicesInitializer: PerformanceServicesInitializer;
 
-export function initializePerformanceServices(prisma: PrismaClient): PerformanceServicesInitializer {
+export function initializePerformanceServices(
+  prisma: PrismaClient,
+): PerformanceServicesInitializer {
   performanceServicesInitializer = new PerformanceServicesInitializer(prisma);
   return performanceServicesInitializer;
 }
@@ -420,5 +462,5 @@ export {
   performanceAlertingService,
   queryOptimizationService,
   advancedCachingService,
-  memoryOptimizationService
+  memoryOptimizationService,
 };

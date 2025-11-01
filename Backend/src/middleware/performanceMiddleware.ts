@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { logger } from '@/utils/logger';
 import { performance } from 'perf_hooks';
 import Redis from 'ioredis';
-import { performanceOptimizationService } from '@/services/performanceOptimizationService';
+import { optimizedDatabase } from '@/config/database';
 
 interface PerformanceMetrics {
   route: string;
@@ -30,8 +30,9 @@ class PerformanceMiddleware {
     this.redis = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
-      retryDelayOnFailover: 100,
+      retryStrategy: (times) => Math.min(times * 50, 2000),
       maxRetriesPerRequest: 3,
+      enableOfflineQueue: false,
       lazyConnect: true,
     });
   }
@@ -45,11 +46,15 @@ class PerformanceMiddleware {
       const startMemory = process.memoryUsage();
 
       // Store original res.end to capture response timing
-      const originalEnd = res.end;
-      res.end = function(this: Response, ...args: any[]): Response {
+      const originalEnd = res.end.bind(res);
+      const newEnd: typeof res.end = function(this: Response, chunk?: any, encoding?: any, cb?: any) {
         const endTime = performance.now();
         const endMemory = process.memoryUsage();
         const duration = endTime - startTime;
+
+        const userAgent = req.get('User-Agent') || '';
+        const ip = typeof req.ip === 'string' ? req.ip : '';
+        const cacheHit = !!(res.locals as any).cacheHit;
 
         // Record performance metrics
         const metrics: PerformanceMetrics = {
@@ -58,9 +63,9 @@ class PerformanceMiddleware {
           duration: Math.round(duration),
           statusCode: res.statusCode,
           timestamp: new Date(),
-          userAgent: req.get('User-Agent'),
-          ip: req.ip,
-          cacheHit: res.locals.cacheHit || false,
+          userAgent,
+          ip,
+          cacheHit,
         };
 
         // Log slow requests
@@ -106,8 +111,9 @@ class PerformanceMiddleware {
           });
         }
 
-        return originalEnd.apply(this, args);
-      };
+        return (originalEnd as any).call(this, chunk, encoding, cb);
+      } as any;
+      res.end = newEnd;
 
       next();
     };
@@ -153,24 +159,23 @@ class PerformanceMiddleware {
 
         // Cache the response if it's successful
         if (res.statusCode === 200) {
-          const originalJson = res.json;
-          res.json = function(this: Response, data: any): Response {
-            // Generate ETag from content
+          const originalJson = res.json.bind(res);
+          const redis = this.redis;
+          res.json = (data: any): Response => {
             const content = JSON.stringify(data);
             const etag = `"${require('crypto').createHash('md5').update(content).digest('hex')}"`;
 
-            // Cache response for 5 minutes
-            this.redis.setex(cacheKey, 300, etag);
-            this.redis.setex(`${cacheKey}:response`, 300, JSON.stringify({
+            void redis.setex(cacheKey, 300, etag);
+            void redis.setex(`${cacheKey}:response`, 300, JSON.stringify({
               data,
               timestamp: new Date().toISOString(),
             }));
 
-            this.set('ETag', etag);
-            this.set('X-Cache', 'MISS');
+            res.set('ETag', etag);
+            res.set('X-Cache', 'MISS');
 
-            return originalJson.call(this, data);
-          }.bind({ redis: this.redis });
+            return originalJson(data);
+          };
         }
       } catch (error) {
         logger.warn('ETag cache error', {
@@ -240,17 +245,19 @@ class PerformanceMiddleware {
 
     return compression({
       filter: (req: Request, res: Response) => {
-        // Don't compress responses that are already compressed
-        if (res.getHeader('Content-Encoding')) {
+        const encodingHeader = res.getHeader('Content-Encoding');
+        if (encodingHeader) {
           return false;
         }
 
-        // Only compress JSON responses and text
-        const contentType = res.getHeader('Content-Type');
-        return contentType && (
-          contentType.includes('application/json') ||
-          contentType.includes('text/')
-        );
+        const header = res.getHeader('Content-Type');
+        const contentType = Array.isArray(header)
+          ? header.join(',')
+          : typeof header === 'string'
+          ? header
+          : '';
+
+        return contentType.includes('application/json') || contentType.includes('text/');
       },
       threshold: 1024, // Only compress responses larger than 1KB
       level: 6, // Compression level (1-9)
@@ -274,7 +281,7 @@ class PerformanceMiddleware {
           duration: Math.round(duration),
           statusCode: res.statusCode,
           timestamp: new Date().toISOString(),
-          ip: req.ip,
+          ip: typeof req.ip === 'string' ? req.ip : '',
         }));
 
         // Keep only last 1000 entries per endpoint
@@ -288,7 +295,7 @@ class PerformanceMiddleware {
             path: req.route?.path || req.path,
             duration: `${Math.round(duration)}ms`,
             statusCode: res.statusCode,
-            ip: req.ip,
+            ip: typeof req.ip === 'string' ? req.ip : '',
           });
         }
       });
@@ -371,12 +378,15 @@ class PerformanceMiddleware {
     });
 
     const slowestEndpoints = Array.from(endpointStats.entries())
-      .map(([endpoint, stats]) => ({
-        route: endpoint.split(':')[1],
-        method: endpoint.split(':')[0],
-        avgDuration: Math.round(stats.totalDuration / stats.count),
-        count: stats.count,
-      }))
+      .map(([endpoint, stats]): { route: string; method: string; avgDuration: number; count: number } => {
+        const [method, route] = endpoint.split(':');
+        return {
+          route: route || '',
+          method: method || '',
+          avgDuration: Math.round(stats.totalDuration / stats.count),
+          count: stats.count,
+        };
+      })
       .sort((a, b) => b.avgDuration - a.avgDuration)
       .slice(0, 10);
 
@@ -401,10 +411,10 @@ class PerformanceMiddleware {
         const startTime = performance.now();
 
         // Check database connection
-        await performanceOptimizationService.prisma.$queryRaw`SELECT 1`;
+      const dbHealth = await optimizedDatabase.healthCheck();
 
-        // Check Redis connection
-        await this.redis.ping();
+      // Check Redis connection
+      await this.redis.ping();
 
         const endTime = performance.now();
         const responseTime = Math.round(endTime - startTime);
@@ -419,7 +429,7 @@ class PerformanceMiddleware {
             heapUsed: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`,
             heapTotal: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)}MB`,
           },
-          database: 'connected',
+          database: dbHealth?.connected ? 'connected' : 'disconnected',
           redis: 'connected',
         };
 

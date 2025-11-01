@@ -81,7 +81,7 @@ export function withBaseComponent<T extends BaseComponentProps>(
  */
 export abstract class BaseComponent<P extends BaseComponentProps = BaseComponentProps> {
   protected props: P;
-  protected element?: HTMLElement;
+  protected element?: HTMLElement | undefined;
 
   constructor(props: P) {
     this.props = props;

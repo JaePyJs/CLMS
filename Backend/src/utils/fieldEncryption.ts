@@ -14,7 +14,7 @@ interface EncryptionConfig {
 // Encrypted data structure
 interface EncryptedData {
   data: string; // Encrypted data (base64)
-  iv: string;  // Initialization vector (base64)
+  iv: string; // Initialization vector (base64)
   salt: string; // Salt for key derivation (base64)
   algorithm: string;
   version: number;
@@ -33,10 +33,10 @@ interface EncryptionMetadata {
 const DEFAULT_CONFIG: EncryptionConfig = {
   algorithm: 'aes-256-gcm',
   keyLength: 32, // 256 bits
-  ivLength: 12,  // 96 bits for GCM
+  ivLength: 12, // 96 bits for GCM
   tagLength: 16, // 128 bits authentication tag
   iterations: 100000,
-  saltLength: 32 // 256 bits
+  saltLength: 32, // 256 bits
 };
 
 /**
@@ -56,22 +56,32 @@ export class FieldEncryption {
     // Get master key from environment or generate a warning
     const masterKeyHex = process.env.FIELD_ENCRYPTION_MASTER_KEY;
     if (!masterKeyHex) {
-      logger.error('FIELD_ENCRYPTION_MASTER_KEY environment variable not set. Field encryption will not work.');
-      throw new Error('FIELD_ENCRYPTION_MASTER_KEY is required for field encryption');
+      logger.error(
+        'FIELD_ENCRYPTION_MASTER_KEY environment variable not set. Field encryption will not work.',
+      );
+      throw new Error(
+        'FIELD_ENCRYPTION_MASTER_KEY is required for field encryption',
+      );
     }
 
     try {
       this.masterKey = Buffer.from(masterKeyHex, 'hex');
       if (this.masterKey.length !== this.config.keyLength) {
-        throw new Error(`Master key must be ${this.config.keyLength} bytes (64 hex characters for AES-256)`);
+        throw new Error(
+          `Master key must be ${this.config.keyLength} bytes (64 hex characters for AES-256)`,
+        );
       }
     } catch (error) {
       logger.error('Invalid master key format', { error });
-      throw new Error('Invalid FIELD_ENCRYPTION_MASTER_KEY format. Must be 64 hex characters.');
+      throw new Error(
+        'Invalid FIELD_ENCRYPTION_MASTER_KEY format. Must be 64 hex characters.',
+      );
     }
 
     this.rotationEnabled = process.env.ENCRYPTION_KEY_ROTATION === 'true';
-    this.keyRotationInterval = parseInt(process.env.ENCRYPTION_ROTATION_INTERVAL || '86400000'); // 24 hours default
+    this.keyRotationInterval = parseInt(
+      process.env.ENCRYPTION_ROTATION_INTERVAL || '86400000',
+    ); // 24 hours default
 
     if (this.rotationEnabled) {
       this.startKeyRotation();
@@ -87,7 +97,7 @@ export class FieldEncryption {
       field: string;
       userId: string;
       entityId?: string;
-    }
+    },
   ): { encryptedData: EncryptedData; metadata: EncryptionMetadata } {
     try {
       if (!value || value.trim() === '') {
@@ -118,7 +128,7 @@ export class FieldEncryption {
         iv: iv.toString('base64'),
         salt: salt.toString('base64'),
         algorithm: this.config.algorithm,
-        version: 1
+        version: 1,
       };
 
       const metadata: EncryptionMetadata = {
@@ -126,7 +136,7 @@ export class FieldEncryption {
         algorithm: this.config.algorithm,
         keyId: this.generateKeyId(context.field, salt),
         encryptedAt: new Date(),
-        encryptedBy: context.userId
+        encryptedBy: context.userId,
       };
 
       // Log encryption event (without sensitive data)
@@ -134,16 +144,15 @@ export class FieldEncryption {
         field: context.field,
         entityId: context.entityId,
         encryptedBy: context.userId,
-        algorithm: this.config.algorithm
+        algorithm: this.config.algorithm,
       });
 
       return { encryptedData, metadata };
-
     } catch (error) {
       logger.error('Field encryption failed', {
         error: (error as Error).message,
         field: context.field,
-        userId: context.userId
+        userId: context.userId,
       });
       throw new Error(`Field encryption failed: ${(error as Error).message}`);
     }
@@ -158,7 +167,7 @@ export class FieldEncryption {
       field: string;
       userId: string;
       entityId?: string;
-    }
+    },
   ): string {
     try {
       // Convert base64 strings back to buffers
@@ -181,16 +190,15 @@ export class FieldEncryption {
         field: context.field,
         entityId: context.entityId,
         decryptedBy: context.userId,
-        algorithm: encryptedData.algorithm
+        algorithm: encryptedData.algorithm,
       });
 
       return decrypted;
-
     } catch (error) {
       logger.error('Field decryption failed', {
         error: (error as Error).message,
         field: context.field,
-        userId: context.userId
+        userId: context.userId,
       });
       throw new Error(`Field decryption failed: ${(error as Error).message}`);
     }
@@ -213,6 +221,33 @@ export class FieldEncryption {
     );
   }
 
+  private buildFieldContext(
+    field: string,
+    context: {
+      userId: string;
+      entityId?: string;
+    },
+  ): {
+    field: string;
+    userId: string;
+    entityId?: string;
+  } {
+    const fieldContext: {
+      field: string;
+      userId: string;
+      entityId?: string;
+    } = {
+      field,
+      userId: context.userId,
+    };
+
+    if (typeof context.entityId === 'string') {
+      fieldContext.entityId = context.entityId;
+    }
+
+    return fieldContext;
+  }
+
   /**
    * Encrypt multiple fields in an object
    */
@@ -222,17 +257,17 @@ export class FieldEncryption {
     context: {
       userId: string;
       entityId?: string;
-    }
+    },
   ): Record<string, any> {
     const result = { ...data };
 
     for (const field of fieldsToEncrypt) {
       if (data[field] && typeof data[field] === 'string') {
-        const { encryptedData, metadata } = this.encryptField(data[field], {
-          field,
-          userId: context.userId,
-          entityId: context.entityId
-        });
+        const fieldContext = this.buildFieldContext(field, context);
+        const { encryptedData, metadata } = this.encryptField(
+          data[field],
+          fieldContext,
+        );
 
         // Store encrypted data
         result[field] = encryptedData;
@@ -254,7 +289,7 @@ export class FieldEncryption {
     context: {
       userId: string;
       entityId?: string;
-    }
+    },
   ): Record<string, any> {
     const result = { ...data };
 
@@ -264,15 +299,12 @@ export class FieldEncryption {
 
       if (this.isEncrypted(encryptedData)) {
         try {
-          result[field] = this.decryptField(encryptedData, {
-            field,
-            userId: context.userId,
-            entityId: context.entityId
-          });
+          const fieldContext = this.buildFieldContext(field, context);
+          result[field] = this.decryptField(encryptedData, fieldContext);
         } catch (error) {
           logger.warn('Failed to decrypt field, keeping original value', {
             field,
-            error: (error as Error).message
+            error: (error as Error).message,
           });
           // Keep original encrypted value if decryption fails
         }
@@ -291,7 +323,7 @@ export class FieldEncryption {
     context: {
       userId: string;
       entityId?: string;
-    }
+    },
   ): Promise<Record<string, any>> {
     const result = { ...data };
 
@@ -301,32 +333,25 @@ export class FieldEncryption {
 
       if (this.isEncrypted(encryptedData) && metadata) {
         try {
+          const fieldContext = this.buildFieldContext(field, context);
           // Decrypt with old key
-          const decryptedValue = this.decryptField(encryptedData, {
-            field,
-            userId: context.userId,
-            entityId: context.entityId
-          });
+          const decryptedValue = this.decryptField(encryptedData, fieldContext);
 
           // Re-encrypt with new key
-          const { encryptedData: newEncryptedData, metadata: newMetadata } = this.encryptField(decryptedValue, {
-            field,
-            userId: context.userId,
-            entityId: context.entityId
-          });
+          const { encryptedData: newEncryptedData, metadata: newMetadata } =
+            this.encryptField(decryptedValue, fieldContext);
 
           result[field] = newEncryptedData;
           result[`${field}_enc`] = {
             ...newMetadata,
             rotatedAt: new Date(),
             rotatedBy: context.userId,
-            previousKeyId: metadata.keyId
+            previousKeyId: metadata.keyId,
           };
-
         } catch (error) {
           logger.error('Failed to rotate encryption for field', {
             field,
-            error: (error as Error).message
+            error: (error as Error).message,
           });
         }
       }
@@ -350,13 +375,15 @@ export class FieldEncryption {
       Buffer.concat([salt, Buffer.from(field)]),
       this.config.iterations,
       this.config.keyLength,
-      'sha256'
+      'sha256',
     );
 
     // Cache the key (limit cache size)
     if (this.keyCache.size > 1000) {
       const firstKey = this.keyCache.keys().next().value;
-      this.keyCache.delete(firstKey);
+      if (typeof firstKey === 'string') {
+        this.keyCache.delete(firstKey);
+      }
     }
     this.keyCache.set(cacheKey, key);
 
@@ -399,13 +426,13 @@ export class FieldEncryption {
       const { encryptedData } = this.encryptField(testValue, {
         field: 'test',
         userId: 'system',
-        entityId: 'test'
+        entityId: 'test',
       });
 
       const decryptedValue = this.decryptField(encryptedData, {
         field: 'test',
         userId: 'system',
-        entityId: 'test'
+        entityId: 'test',
       });
 
       return testValue === decryptedValue;
@@ -428,7 +455,7 @@ export class FieldEncryption {
       config: this.config,
       cacheSize: this.keyCache.size,
       rotationEnabled: this.rotationEnabled,
-      isConfigValid: this.validateConfig()
+      isConfigValid: this.validateConfig(),
     };
   }
 
@@ -456,11 +483,11 @@ export const simpleEncryption: FieldEncryptionService = {
     const { encryptedData, metadata } = fieldEncryption.encryptField(value, {
       field: 'audit_data',
       userId: 'system',
-      entityId: 'audit'
+      entityId: 'audit',
     });
     return {
       encryptedData: encryptedData.data,
-      metadata
+      metadata,
     };
   },
 
@@ -470,7 +497,7 @@ export const simpleEncryption: FieldEncryptionService = {
       iv: '',
       salt: '',
       algorithm: '',
-      version: 1
+      version: 1,
     };
 
     // Reconstruct from stored format if needed
@@ -481,9 +508,9 @@ export const simpleEncryption: FieldEncryptionService = {
     return fieldEncryption.decryptField(data, {
       field: 'audit_data',
       userId: 'system',
-      entityId: 'audit'
+      entityId: 'audit',
     });
-  }
+  },
 };
 
 // Export class for testing

@@ -2,7 +2,10 @@ import { EventEmitter } from 'events';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { logger } from '@/utils/logger';
-import { performanceMonitoringService, PerformanceAlert } from '@/services/performanceMonitoringService';
+import {
+  performanceMonitoringService,
+  PerformanceAlert,
+} from '@/services/performanceMonitoringService';
 
 // Alert types and interfaces
 export interface AlertRule {
@@ -23,7 +26,7 @@ export interface AlertRule {
     webhook?: boolean;
     log?: boolean;
   };
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface AlertNotification {
@@ -58,7 +61,7 @@ export interface AlertEscalationPolicy {
 
 /**
  * Performance Alerting Service
- * 
+ *
  * Manages alert rules, notifications, and escalation policies for
  * performance issues detected by the monitoring service.
  */
@@ -66,7 +69,10 @@ export class PerformanceAlertingService extends EventEmitter {
   private rules: Map<string, AlertRule> = new Map();
   private escalationPolicies: Map<string, AlertEscalationPolicy> = new Map();
   private notifications: AlertNotification[] = [];
-  private activeAlerts: Map<string, { alert: PerformanceAlert; ruleId: string; startTime: number }> = new Map();
+  private activeAlerts: Map<
+    string,
+    { alert: PerformanceAlert; ruleId: string; startTime: number }
+  > = new Map();
   private lastAlertTimes: Map<string, number> = new Map();
   private intervals: NodeJS.Timeout[] = [];
   private isRunning: boolean = false;
@@ -75,7 +81,7 @@ export class PerformanceAlertingService extends EventEmitter {
   constructor(alertsDir?: string) {
     super();
     this.alertsDir = alertsDir || join(process.cwd(), 'performance-alerts');
-    
+
     // Ensure alerts directory exists
     if (!existsSync(this.alertsDir)) {
       mkdirSync(this.alertsDir, { recursive: true });
@@ -89,7 +95,7 @@ export class PerformanceAlertingService extends EventEmitter {
     this.setupDefaultRules();
 
     // Listen for performance alerts
-    performanceMonitoringService.on('alert', (alert) => {
+    performanceMonitoringService.on('alert', alert => {
       this.handlePerformanceAlert(alert);
     });
   }
@@ -221,7 +227,11 @@ export class PerformanceAlertingService extends EventEmitter {
   /**
    * Get active alerts
    */
-  getActiveAlerts(): Array<{ alert: PerformanceAlert; ruleId: string; startTime: number }> {
+  getActiveAlerts(): Array<{
+    alert: PerformanceAlert;
+    ruleId: string;
+    startTime: number;
+  }> {
     return Array.from(this.activeAlerts.values());
   }
 
@@ -229,7 +239,9 @@ export class PerformanceAlertingService extends EventEmitter {
    * Get notification history
    */
   getNotifications(limit?: number): AlertNotification[] {
-    const notifications = this.notifications.sort((a, b) => b.timestamp - a.timestamp);
+    const notifications = this.notifications.sort(
+      (a, b) => b.timestamp - a.timestamp,
+    );
     return limit ? notifications.slice(0, limit) : notifications;
   }
 
@@ -251,7 +263,7 @@ export class PerformanceAlertingService extends EventEmitter {
       metric: rule.metric,
       value: rule.threshold,
       threshold: rule.threshold,
-      resolved: false
+      resolved: false,
     };
 
     this.handleAlert(alert, ruleId);
@@ -282,7 +294,7 @@ export class PerformanceAlertingService extends EventEmitter {
       timestamp: Date.now(),
       sent: false,
       channel: 'log',
-      message: `Alert resolved: ${activeAlert.alert.message}`
+      message: `Alert resolved: ${activeAlert.alert.message}`,
     });
 
     this.emit('alertResolved', activeAlert.alert);
@@ -295,11 +307,12 @@ export class PerformanceAlertingService extends EventEmitter {
    */
   private handlePerformanceAlert(alert: PerformanceAlert): void {
     // Find matching rules
-    const matchingRules = Array.from(this.rules.values()).filter(rule => 
-      rule.enabled &&
-      rule.category === alert.category &&
-      rule.metric === alert.metric &&
-      this.evaluateCondition(alert.value, rule.condition, rule.threshold)
+    const matchingRules = Array.from(this.rules.values()).filter(
+      rule =>
+        rule.enabled &&
+        rule.category === alert.category &&
+        rule.metric === alert.metric &&
+        this.evaluateCondition(alert.value, rule.condition, rule.threshold),
     );
 
     // Process each matching rule
@@ -322,7 +335,7 @@ export class PerformanceAlertingService extends EventEmitter {
     const lastAlertTime = this.lastAlertTimes.get(alertKey) || 0;
 
     // Check cooldown
-    if (rule.cooldown && (now - lastAlertTime) < (rule.cooldown * 1000)) {
+    if (rule.cooldown && now - lastAlertTime < rule.cooldown * 1000) {
       return;
     }
 
@@ -336,7 +349,7 @@ export class PerformanceAlertingService extends EventEmitter {
     this.activeAlerts.set(alert.id, {
       alert: { ...alert },
       ruleId,
-      startTime: now
+      startTime: now,
     });
 
     // Update last alert time
@@ -351,7 +364,7 @@ export class PerformanceAlertingService extends EventEmitter {
         timestamp: now,
         sent: false,
         channel: 'log',
-        message: `[${rule.severity.toUpperCase()}] ${alert.message} (Value: ${alert.value}, Threshold: ${rule.threshold})`
+        message: `[${rule.severity.toUpperCase()}] ${alert.message} (Value: ${alert.value}, Threshold: ${rule.threshold})`,
       });
     }
 
@@ -363,7 +376,7 @@ export class PerformanceAlertingService extends EventEmitter {
         timestamp: now,
         sent: false,
         channel: 'email',
-        message: `[${rule.severity.toUpperCase()}] ${alert.message} (Value: ${alert.value}, Threshold: ${rule.threshold})`
+        message: `[${rule.severity.toUpperCase()}] ${alert.message} (Value: ${alert.value}, Threshold: ${rule.threshold})`,
       });
     }
 
@@ -375,7 +388,7 @@ export class PerformanceAlertingService extends EventEmitter {
         timestamp: now,
         sent: false,
         channel: 'slack',
-        message: `[${rule.severity.toUpperCase()}] ${alert.message} (Value: ${alert.value}, Threshold: ${rule.threshold})`
+        message: `[${rule.severity.toUpperCase()}] ${alert.message} (Value: ${alert.value}, Threshold: ${rule.threshold})`,
       });
     }
 
@@ -387,7 +400,7 @@ export class PerformanceAlertingService extends EventEmitter {
         timestamp: now,
         sent: false,
         channel: 'webhook',
-        message: `[${rule.severity.toUpperCase()}] ${alert.message} (Value: ${alert.value}, Threshold: ${rule.threshold})`
+        message: `[${rule.severity.toUpperCase()}] ${alert.message} (Value: ${alert.value}, Threshold: ${rule.threshold})`,
       });
     }
 
@@ -403,7 +416,7 @@ export class PerformanceAlertingService extends EventEmitter {
 
     // Group metrics by category and metric name
     const metricGroups: Record<string, number[]> = {};
-    
+
     metrics.forEach(metric => {
       const key = `${metric.category}.${metric.operation}`;
       if (!metricGroups[key]) {
@@ -414,9 +427,11 @@ export class PerformanceAlertingService extends EventEmitter {
 
     // Add system metrics
     if (systemMetrics.length > 0) {
-      const latestSystemMetric = systemMetrics[systemMetrics.length - 1];
-      metricGroups['memory.usage'] = [latestSystemMetric.memory.percentage];
-      metricGroups['cpu.usage'] = [latestSystemMetric.cpu.usage];
+      const latestSystemMetric = systemMetrics.at(-1);
+      if (latestSystemMetric) {
+        metricGroups['memory.usage'] = [latestSystemMetric.memory.percentage];
+        metricGroups['cpu.usage'] = [latestSystemMetric.cpu.usage];
+      }
     }
 
     // Check each rule
@@ -433,7 +448,8 @@ export class PerformanceAlertingService extends EventEmitter {
       }
 
       // Calculate average value
-      const avgValue = values.reduce((sum, val) => sum + val, 0) / values.length;
+      const avgValue =
+        values.reduce((sum, val) => sum + val, 0) / values.length;
 
       // Check if condition is met
       if (this.evaluateCondition(avgValue, rule.condition, rule.threshold)) {
@@ -442,7 +458,7 @@ export class PerformanceAlertingService extends EventEmitter {
         const now = Date.now();
         const lastAlertTime = this.lastAlertTimes.get(alertKey) || 0;
 
-        if (!rule.cooldown || (now - lastAlertTime) >= (rule.cooldown * 1000)) {
+        if (!rule.cooldown || now - lastAlertTime >= rule.cooldown * 1000) {
           // Create alert
           const alert: PerformanceAlert = {
             id: `rule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -453,7 +469,7 @@ export class PerformanceAlertingService extends EventEmitter {
             metric: rule.metric,
             value: avgValue,
             threshold: rule.threshold,
-            resolved: false
+            resolved: false,
           };
 
           this.handleAlert(alert, rule.id);
@@ -475,17 +491,20 @@ export class PerformanceAlertingService extends EventEmitter {
       }
 
       // Find applicable escalation policies
-      const policies = Array.from(this.escalationPolicies.values()).filter(policy => policy.enabled);
+      const policies = Array.from(this.escalationPolicies.values()).filter(
+        policy => policy.enabled,
+      );
 
       policies.forEach(policy => {
         policy.rules.forEach(escalationRule => {
           // Check if it's time to escalate
-          if ((now - startTime) >= (escalationRule.delay * 1000)) {
+          if (now - startTime >= escalationRule.delay * 1000) {
             // Check if we've already sent this escalation
             const escalationKey = `${alert.id}_${policy.id}_${escalationRule.severity}`;
             const lastEscalation = this.lastAlertTimes.get(escalationKey) || 0;
 
-            if ((now - lastEscalation) >= 60000) { // Don't escalate more than once per minute
+            if (now - lastEscalation >= 60000) {
+              // Don't escalate more than once per minute
               // Send escalation notifications
               if (escalationRule.notifications.email) {
                 this.sendNotification({
@@ -495,7 +514,7 @@ export class PerformanceAlertingService extends EventEmitter {
                   timestamp: now,
                   sent: false,
                   channel: 'email',
-                  message: `[ESCALATED - ${escalationRule.severity.toUpperCase()}] ${alert.message}`
+                  message: `[ESCALATED - ${escalationRule.severity.toUpperCase()}] ${alert.message}`,
                 });
               }
 
@@ -507,7 +526,7 @@ export class PerformanceAlertingService extends EventEmitter {
                   timestamp: now,
                   sent: false,
                   channel: 'slack',
-                  message: `[ESCALATED - ${escalationRule.severity.toUpperCase()}] ${alert.message}`
+                  message: `[ESCALATED - ${escalationRule.severity.toUpperCase()}] ${alert.message}`,
                 });
               }
 
@@ -519,7 +538,7 @@ export class PerformanceAlertingService extends EventEmitter {
                   timestamp: now,
                   sent: false,
                   channel: 'webhook',
-                  message: `[ESCALATED - ${escalationRule.severity.toUpperCase()}] ${alert.message}`
+                  message: `[ESCALATED - ${escalationRule.severity.toUpperCase()}] ${alert.message}`,
                 });
               }
 
@@ -527,7 +546,9 @@ export class PerformanceAlertingService extends EventEmitter {
               this.lastAlertTimes.set(escalationKey, now);
 
               this.emit('alertEscalated', { alert, policy, escalationRule });
-              logger.warn(`Alert escalated: ${alert.message} to ${escalationRule.severity}`);
+              logger.warn(
+                `Alert escalated: ${alert.message} to ${escalationRule.severity}`,
+              );
             }
           }
         });
@@ -538,29 +559,37 @@ export class PerformanceAlertingService extends EventEmitter {
   /**
    * Send a notification
    */
-  private async sendNotification(notification: AlertNotification): Promise<void> {
+  private async sendNotification(
+    notification: AlertNotification,
+  ): Promise<void> {
     try {
       switch (notification.channel) {
         case 'log':
           logger.warn(notification.message);
           notification.sent = true;
           break;
-          
+
         case 'email':
           // TODO: Implement email notification
-          logger.info(`Email notification (not implemented): ${notification.message}`);
+          logger.info(
+            `Email notification (not implemented): ${notification.message}`,
+          );
           notification.sent = true;
           break;
-          
+
         case 'slack':
           // TODO: Implement Slack notification
-          logger.info(`Slack notification (not implemented): ${notification.message}`);
+          logger.info(
+            `Slack notification (not implemented): ${notification.message}`,
+          );
           notification.sent = true;
           break;
-          
+
         case 'webhook':
           // TODO: Implement webhook notification
-          logger.info(`Webhook notification (not implemented): ${notification.message}`);
+          logger.info(
+            `Webhook notification (not implemented): ${notification.message}`,
+          );
           notification.sent = true;
           break;
       }
@@ -580,7 +609,7 @@ export class PerformanceAlertingService extends EventEmitter {
       logger.error('Failed to send notification', {
         channel: notification.channel,
         message: notification.message,
-        error: (error as Error).message
+        error: (error as Error).message,
       });
     }
   }
@@ -588,15 +617,26 @@ export class PerformanceAlertingService extends EventEmitter {
   /**
    * Evaluate a condition
    */
-  private evaluateCondition(value: number, condition: string, threshold: number): boolean {
+  private evaluateCondition(
+    value: number,
+    condition: string,
+    threshold: number,
+  ): boolean {
     switch (condition) {
-      case 'gt': return value > threshold;
-      case 'lt': return value < threshold;
-      case 'eq': return value === threshold;
-      case 'gte': return value >= threshold;
-      case 'lte': return value <= threshold;
-      case 'ne': return value !== threshold;
-      default: return false;
+      case 'gt':
+        return value > threshold;
+      case 'lt':
+        return value < threshold;
+      case 'eq':
+        return value === threshold;
+      case 'gte':
+        return value >= threshold;
+      case 'lte':
+        return value <= threshold;
+      case 'ne':
+        return value !== threshold;
+      default:
+        return false;
     }
   }
 
@@ -626,8 +666,8 @@ export class PerformanceAlertingService extends EventEmitter {
           email: true,
           slack: false,
           webhook: false,
-          log: true
-        }
+          log: true,
+        },
       },
       {
         id: 'api-slow-response',
@@ -645,8 +685,8 @@ export class PerformanceAlertingService extends EventEmitter {
           email: false,
           slack: false,
           webhook: false,
-          log: true
-        }
+          log: true,
+        },
       },
       {
         id: 'memory-high-usage',
@@ -664,8 +704,8 @@ export class PerformanceAlertingService extends EventEmitter {
           email: true,
           slack: false,
           webhook: false,
-          log: true
-        }
+          log: true,
+        },
       },
       {
         id: 'cache-slow-operation',
@@ -683,9 +723,9 @@ export class PerformanceAlertingService extends EventEmitter {
           email: false,
           slack: false,
           webhook: false,
-          log: true
-        }
-      }
+          log: true,
+        },
+      },
     ];
 
     defaultRules.forEach(rule => {
@@ -702,12 +742,14 @@ export class PerformanceAlertingService extends EventEmitter {
   private cleanupOldNotifications(): void {
     const oneWeekAgo = Date.now() - 604800000;
     const originalCount = this.notifications.length;
-    
-    this.notifications = this.notifications.filter(n => n.timestamp > oneWeekAgo);
-    
+
+    this.notifications = this.notifications.filter(
+      n => n.timestamp > oneWeekAgo,
+    );
+
     logger.info('Old notifications cleaned up', {
       removed: originalCount - this.notifications.length,
-      remaining: this.notifications.length
+      remaining: this.notifications.length,
     });
   }
 
@@ -717,10 +759,15 @@ export class PerformanceAlertingService extends EventEmitter {
   private saveRules(): void {
     try {
       const rulesFile = join(this.alertsDir, 'alert-rules.json');
-      writeFileSync(rulesFile, JSON.stringify(Array.from(this.rules.entries()), null, 2));
+      writeFileSync(
+        rulesFile,
+        JSON.stringify(Array.from(this.rules.entries()), null, 2),
+      );
       logger.debug('Alert rules saved to disk');
     } catch (error) {
-      logger.error('Failed to save alert rules', { error: (error as Error).message });
+      logger.error('Failed to save alert rules', {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -730,10 +777,15 @@ export class PerformanceAlertingService extends EventEmitter {
   private saveEscalationPolicies(): void {
     try {
       const policiesFile = join(this.alertsDir, 'escalation-policies.json');
-      writeFileSync(policiesFile, JSON.stringify(Array.from(this.escalationPolicies.entries()), null, 2));
+      writeFileSync(
+        policiesFile,
+        JSON.stringify(Array.from(this.escalationPolicies.entries()), null, 2),
+      );
       logger.debug('Escalation policies saved to disk');
     } catch (error) {
-      logger.error('Failed to save escalation policies', { error: (error as Error).message });
+      logger.error('Failed to save escalation policies', {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -744,14 +796,18 @@ export class PerformanceAlertingService extends EventEmitter {
     try {
       const rulesFile = join(this.alertsDir, 'alert-rules.json');
       if (existsSync(rulesFile)) {
-        const rulesData = JSON.parse(require('fs').readFileSync(rulesFile, 'utf8'));
+        const rulesData = JSON.parse(
+          require('fs').readFileSync(rulesFile, 'utf8'),
+        );
         rulesData.forEach(([id, rule]: [string, AlertRule]) => {
           this.rules.set(id, rule);
         });
         logger.info('Alert rules loaded from disk', { count: this.rules.size });
       }
     } catch (error) {
-      logger.error('Failed to load alert rules', { error: (error as Error).message });
+      logger.error('Failed to load alert rules', {
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -762,14 +818,22 @@ export class PerformanceAlertingService extends EventEmitter {
     try {
       const policiesFile = join(this.alertsDir, 'escalation-policies.json');
       if (existsSync(policiesFile)) {
-        const policiesData = JSON.parse(require('fs').readFileSync(policiesFile, 'utf8'));
-        policiesData.forEach(([id, policy]: [string, AlertEscalationPolicy]) => {
-          this.escalationPolicies.set(id, policy);
+        const policiesData = JSON.parse(
+          require('fs').readFileSync(policiesFile, 'utf8'),
+        );
+        policiesData.forEach(
+          ([id, policy]: [string, AlertEscalationPolicy]) => {
+            this.escalationPolicies.set(id, policy);
+          },
+        );
+        logger.info('Escalation policies loaded from disk', {
+          count: this.escalationPolicies.size,
         });
-        logger.info('Escalation policies loaded from disk', { count: this.escalationPolicies.size });
       }
     } catch (error) {
-      logger.error('Failed to load escalation policies', { error: (error as Error).message });
+      logger.error('Failed to load escalation policies', {
+        error: (error as Error).message,
+      });
     }
   }
 }

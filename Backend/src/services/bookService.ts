@@ -15,7 +15,7 @@ export interface GetBooksOptions {
 export interface GetBookCheckoutsOptions {
   book_id?: string;
   student_id?: string;
-  status?: typeof book_checkouts_status;
+  status?: book_checkouts_status;
   startDate?: Date;
   endDate?: Date;
   page?: number;
@@ -28,18 +28,26 @@ const booksRepository = new BooksRepository();
 // Get all books with optional filtering
 export async function getBooks(options: GetBooksOptions = {}) {
   try {
-    const queryOptions: any = {
-      page: options.page || 1,
-      limit: options.limit || 50,
+    const queryOptions: Parameters<typeof booksRepository.getBooks>[0] = {
+      page: options.page ?? 1,
+      limit: options.limit ?? 50,
     };
 
-    if (options.category !== undefined)
+    if (options.category !== undefined) {
       queryOptions.category = options.category;
-    if (options.subcategory !== undefined)
+    }
+
+    if (options.subcategory !== undefined) {
       queryOptions.subcategory = options.subcategory;
-    if (options.isActive !== undefined)
+    }
+
+    if (options.isActive !== undefined) {
       queryOptions.isActive = options.isActive;
-    if (options.search !== undefined) queryOptions.search = options.search;
+    }
+
+    if (options.search !== undefined) {
+      queryOptions.search = options.search;
+    }
 
     const result = await booksRepository.getBooks(queryOptions);
 
@@ -115,21 +123,36 @@ export async function createBook(data: {
   availableCopies?: number;
 }) {
   try {
-    const bookData: any = {
+    const bookData: Parameters<typeof booksRepository.createBook>[0] = {
       accession_no: data.accession_no,
       title: data.title,
       author: data.author,
       category: data.category,
     };
 
-    if (data.isbn !== undefined) bookData.isbn = data.isbn;
-    if (data.publisher !== undefined) bookData.publisher = data.publisher;
-    if (data.subcategory !== undefined) bookData.subcategory = data.subcategory;
-    if (data.location !== undefined) bookData.location = data.location;
-    if (data.totalCopies !== undefined)
+    if (data.isbn !== undefined) {
+      bookData.isbn = data.isbn;
+    }
+
+    if (data.publisher !== undefined) {
+      bookData.publisher = data.publisher;
+    }
+
+    if (data.subcategory !== undefined) {
+      bookData.subcategory = data.subcategory;
+    }
+
+    if (data.location !== undefined) {
+      bookData.location = data.location;
+    }
+
+    if (data.totalCopies !== undefined) {
       bookData.total_copies = data.totalCopies;
-    if (data.availableCopies !== undefined)
+    }
+
+    if (data.availableCopies !== undefined) {
       bookData.available_copies = data.availableCopies;
+    }
 
     const book = await booksRepository.createBook(bookData);
 
@@ -348,7 +371,7 @@ export async function getBookCheckouts(options: GetBookCheckoutsOptions = {}) {
     }
 
     if (status) {
-      where.status = status as any;
+      where.status = status;
     }
 
     if (startDate || endDate) {

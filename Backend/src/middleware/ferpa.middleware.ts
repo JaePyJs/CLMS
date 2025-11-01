@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { ferpaComplianceService } from '@/services/ferpaService';
-import { logger } from '@/utils/logger';
+import { FERPAService } from '../services/ferpaService';
+import { ferpaComplianceService } from '../services/ferpaComplianceService';
+import { logger } from '../utils/logger';
 
 // Extend Request interface to include FERPA compliance data
 declare global {
@@ -64,7 +65,7 @@ export const ferpaComplianceCheck = (
       }
 
       // Check if user is accessing their own data (if allowed)
-      if (options.allowSelfAccess && req.user.username === studentId) {
+      if (options.allowSelfAccess && req.user.id === studentId) {
         req.ferpaContext = {
           accessGranted: true,
           maskedFields: [],
@@ -120,10 +121,10 @@ export const ferpaComplianceCheck = (
         dataCategories,
         accessLevel,
         {
-          sessionId: req.user.sessionId,
-          ipAddress: req.ip,
-          userAgent: req.get('User-Agent'),
-          requestId: req.headers['x-request-id'] as string
+          sessionId: req.headers['x-session-id'] as string || req.user.id,
+          ipAddress: req.ip || 'unknown',
+          userAgent: req.get('User-Agent') || 'unknown',
+          requestId: req.headers['x-request-id'] as string || `ferpa-${Date.now()}`
         }
       );
 
@@ -133,8 +134,8 @@ export const ferpaComplianceCheck = (
         maskedFields: accessResult.maskedFields || [],
         dataCategories,
         accessLevel,
-        requestId: accessResult.expiresAt,
-        expiresAt: accessResult.expiresAt
+        requestId: req.headers['x-request-id'] as string || `ferpa-${Date.now()}`,
+        ...(accessResult.expiresAt && { expiresAt: accessResult.expiresAt })
       };
 
       req.studentId = studentId;
@@ -289,12 +290,12 @@ export const ferpaAuditLog = (action: string) => {
                 accessLevel: req.ferpaContext?.accessLevel || 'UNKNOWN',
                 accessGranted: res.statusCode < 400,
                 recordsCount: Array.isArray(data) ? data.length : (data ? 1 : 0),
-                accessPurpose: req.ferpaPurpose,
-                sessionId: req.user.sessionId,
-                ipAddress: req.ip,
-                userAgent: req.get('User-Agent'),
-                denialReason: res.statusCode >= 400 ? 'Request failed' : undefined,
-                retentionExpiresAt: req.ferpaContext?.expiresAt
+                accessPurpose: req.ferpaPurpose || 'UNSPECIFIED',
+                sessionId: req.headers['x-session-id'] as string || req.user.id,
+                ipAddress: req.ip || 'unknown',
+                userAgent: req.get('User-Agent') || 'unknown',
+                ...(res.statusCode >= 400 && { denialReason: 'Request failed' }),
+                ...(req.ferpaContext?.expiresAt && { retentionExpiresAt: req.ferpaContext.expiresAt })
               });
             }
           } catch (logError) {

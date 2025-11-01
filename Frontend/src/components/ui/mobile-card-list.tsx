@@ -1,13 +1,11 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 
 interface MobileCardListProps<T> {
   data: T[];
-  renderCard: (item: T, isMobile: boolean) => React.ReactNode;
-  renderTable?: (data: T[]) => React.ReactNode;
+  renderCard: (item: T, isMobile: boolean) => ReactNode;
+  renderTable?: (data: T[]) => ReactNode;
   emptyMessage?: string;
   className?: string;
 }
@@ -59,7 +57,7 @@ export function MobileCardList<T>({
 
 interface MobileTableProps {
   headers: string[];
-  rows: React.ReactNode[][];
+  rows: ReactNode[][];
   mobileHeaders?: string[];
   className?: string;
 }

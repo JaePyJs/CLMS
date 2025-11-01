@@ -30,7 +30,6 @@ class CacheMiddleware {
     this.redis = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
-      retryDelayOnFailover: 100,
       maxRetriesPerRequest: 3,
       lazyConnect: true,
     });
@@ -40,7 +39,7 @@ class CacheMiddleware {
    * Response caching middleware
    */
   cache(config: Partial<CacheConfig> = {}) {
-    const finalConfig = { ...this.defaultConfig, ...config };
+    const finalConfig: CacheConfig = { ...this.defaultConfig, ...config } as CacheConfig;
 
     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
       // Only cache GET requests
@@ -288,12 +287,16 @@ class CacheMiddleware {
         };
 
         // Set cache asynchronously (don't block response)
-        this.setCachedResponse(cacheKey, cacheEntry, config).catch(error => {
-          logger.warn('Failed to cache response asynchronously', {
-            error: error.message,
-            key: cacheKey,
+        // Set cache asynchronously (don't block response)
+        const cacheService = this;
+        if (cacheService && 'setCachedResponse' in cacheService) {
+          (cacheService as any).setCachedResponse(cacheKey, cacheEntry, config).catch((error: Error) => {
+            logger.warn('Failed to cache response asynchronously', {
+              error: error.message,
+              key: cacheKey,
+            });
           });
-        });
+        }
 
         // Set cache headers
         this.set('ETag', etag);
@@ -302,7 +305,7 @@ class CacheMiddleware {
       }
 
       return originalJson.call(this, data);
-    }.bind({ setCachedResponse: this.setCachedResponse.bind(this) });
+    };
 
     // Capture headers
     const originalSet = res.set;

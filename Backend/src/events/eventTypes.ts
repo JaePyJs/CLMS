@@ -363,35 +363,30 @@ export function initializeEventTypes(): void {
   EventTypeRegistry.registerEventType(
     'student:create',
     StudentCreatePayloadSchema,
-    StudentCreatePayload,
     'student'
   );
   
   EventTypeRegistry.registerEventType(
     'student:update',
     StudentUpdatePayloadSchema,
-    StudentUpdatePayload,
     'student'
   );
   
   EventTypeRegistry.registerEventType(
     'student:delete',
     StudentDeletePayloadSchema,
-    StudentDeletePayload,
     'student'
   );
   
   EventTypeRegistry.registerEventType(
     'student:checkout',
     StudentCheckoutPayloadSchema,
-    StudentCheckoutPayload,
     'student'
   );
   
   EventTypeRegistry.registerEventType(
     'student:return',
     StudentReturnPayloadSchema,
-    StudentReturnPayload,
     'student'
   );
 
@@ -399,42 +394,36 @@ export function initializeEventTypes(): void {
   EventTypeRegistry.registerEventType(
     'book:create',
     BookCreatePayloadSchema,
-    BookCreatePayload,
     'book'
   );
   
   EventTypeRegistry.registerEventType(
     'book:update',
     BookUpdatePayloadSchema,
-    BookUpdatePayload,
     'book'
   );
   
   EventTypeRegistry.registerEventType(
     'book:delete',
     BookDeletePayloadSchema,
-    BookDeletePayload,
     'book'
   );
   
   EventTypeRegistry.registerEventType(
     'book:checkout',
     BookCheckoutPayloadSchema,
-    BookCheckoutPayload,
     'book'
   );
   
   EventTypeRegistry.registerEventType(
     'book:return',
     BookReturnPayloadSchema,
-    BookReturnPayload,
     'book'
   );
   
   EventTypeRegistry.registerEventType(
     'book:reserve',
     BookReservePayloadSchema,
-    BookReservePayload,
     'book'
   );
 
@@ -442,42 +431,36 @@ export function initializeEventTypes(): void {
   EventTypeRegistry.registerEventType(
     'equipment:create',
     EquipmentCreatePayloadSchema,
-    EquipmentCreatePayload,
     'equipment'
   );
   
   EventTypeRegistry.registerEventType(
     'equipment:update',
     EquipmentUpdatePayloadSchema,
-    EquipmentUpdatePayload,
     'equipment'
   );
   
   EventTypeRegistry.registerEventType(
     'equipment:delete',
     EquipmentDeletePayloadSchema,
-    EquipmentDeletePayload,
     'equipment'
   );
   
   EventTypeRegistry.registerEventType(
     'equipment:checkout',
     EquipmentCheckoutPayloadSchema,
-    EquipmentCheckoutPayload,
     'equipment'
   );
   
   EventTypeRegistry.registerEventType(
     'equipment:return',
     EquipmentReturnPayloadSchema,
-    EquipmentReturnPayload,
     'equipment'
   );
   
   EventTypeRegistry.registerEventType(
     'equipment:reserve',
     EquipmentReservePayloadSchema,
-    EquipmentReservePayload,
     'equipment'
   );
 
@@ -485,21 +468,18 @@ export function initializeEventTypes(): void {
   EventTypeRegistry.registerEventType(
     'system:notification',
     SystemNotificationPayloadSchema,
-    SystemNotificationPayload,
     'system'
   );
   
   EventTypeRegistry.registerEventType(
     'system:alert',
     SystemAlertPayloadSchema,
-    SystemAlertPayload,
     'system'
   );
   
   EventTypeRegistry.registerEventType(
     'system:status',
     SystemStatusPayloadSchema,
-    SystemStatusPayload,
     'system'
   );
 
@@ -507,21 +487,18 @@ export function initializeEventTypes(): void {
   EventTypeRegistry.registerEventType(
     'import:start',
     ImportStartPayloadSchema,
-    ImportStartPayload,
     'import'
   );
   
   EventTypeRegistry.registerEventType(
     'import:progress',
     ImportProgressPayloadSchema,
-    ImportProgressPayload,
     'import'
   );
   
   EventTypeRegistry.registerEventType(
     'import:completion',
     ImportCompletionPayloadSchema,
-    ImportCompletionPayload,
     'import'
   );
 
@@ -529,28 +506,24 @@ export function initializeEventTypes(): void {
   EventTypeRegistry.registerEventType(
     'user:login',
     UserLoginPayloadSchema,
-    UserLoginPayload,
     'user'
   );
   
   EventTypeRegistry.registerEventType(
     'user:logout',
     UserLogoutPayloadSchema,
-    UserLogoutPayload,
     'user'
   );
   
   EventTypeRegistry.registerEventType(
     'user:permissions',
     UserPermissionsPayloadSchema,
-    UserPermissionsPayload,
     'user'
   );
   
   EventTypeRegistry.registerEventType(
     'user:preferences',
     UserPreferencesPayloadSchema,
-    UserPreferencesPayload,
     'user'
   );
 
@@ -558,14 +531,12 @@ export function initializeEventTypes(): void {
   EventTypeRegistry.registerEventType(
     'scanner:scan',
     ScannerScanPayloadSchema,
-    ScannerScanPayload,
     'scanner'
   );
   
   EventTypeRegistry.registerEventType(
     'scanner:result',
     ScannerResultPayloadSchema,
-    ScannerResultPayload,
     'scanner'
   );
 }
@@ -682,7 +653,7 @@ export function validateEventPayload(eventType: string, payload: any): {
   if (!result.success) {
     return {
       valid: false,
-      error: result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ')
+      error: result.error.issues.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
     };
   }
 

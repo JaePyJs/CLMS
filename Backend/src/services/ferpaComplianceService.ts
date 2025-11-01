@@ -1,6 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { logger } from '@/utils/logger';
 import { injectable } from 'inversify';
+import { prisma as sharedPrisma } from '@/utils/prisma';
 import crypto from 'crypto';
 
 export interface DataAccessResult {
@@ -37,10 +38,13 @@ export interface DataAccessLog {
 @injectable()
 export class FERPAComplianceService {
   private prisma: PrismaClient;
-  private accessCache: Map<string, { result: DataAccessResult; expires: Date }> = new Map();
+  private accessCache: Map<
+    string,
+    { result: DataAccessResult; expires: Date }
+  > = new Map();
 
-  constructor() {
-    this.prisma = new PrismaClient();
+  constructor(prismaClient: PrismaClient = sharedPrisma) {
+    this.prisma = prismaClient;
     this.startCacheCleanup();
   }
 
@@ -57,10 +61,15 @@ export class FERPAComplianceService {
       ipAddress?: string;
       userAgent?: string;
       requestId?: string;
-    } = {}
+    } = {},
   ): Promise<DataAccessResult> {
     try {
-      const cacheKey = this.generateCacheKey(studentId, userId, dataCategories, accessLevel);
+      const cacheKey = this.generateCacheKey(
+        studentId,
+        userId,
+        dataCategories,
+        accessLevel,
+      );
 
       // Check cache first
       const cached = this.accessCache.get(cacheKey);
@@ -69,18 +78,18 @@ export class FERPAComplianceService {
       }
 
       // Get user and student information
-      const user = await this.prisma.user.findUnique({
+      const user = await this.prisma.users.findUnique({
         where: { id: userId },
-        select: { role: true, username: true }
+        select: { role: true, username: true },
       });
 
       if (!user) {
         return { granted: false, reason: 'User not found' };
       }
 
-      const student = await this.prisma.student.findUnique({
+      const student = await this.prisma.students.findUnique({
         where: { id: studentId },
-        select: { gradeCategory: true, isActive: true }
+        select: { grade_category: true, is_active: true },
       });
 
       if (!student) {
@@ -93,44 +102,60 @@ export class FERPAComplianceService {
         dataCategories,
         accessLevel,
         studentId,
-        user.username
+        user.username,
       );
 
       // Cache the result for 5 minutes
       this.accessCache.set(cacheKey, {
         result: accessResult,
-        expires: new Date(Date.now() + 5 * 60 * 1000)
+        expires: new Date(Date.now() + 5 * 60 * 1000),
       });
 
       // Log the access attempt
-      await this.logDataAccess({
+      const logEntry: DataAccessLog = {
         studentId,
         userId,
-        requestId: context.requestId,
         accessType: accessLevel,
         dataCategory: dataCategories.join(','),
         accessLevel,
         accessGranted: accessResult.granted,
         recordsCount: 1,
-        sessionId: context.sessionId,
-        ipAddress: context.ipAddress,
-        userAgent: context.userAgent,
-        denialReason: accessResult.granted ? undefined : accessResult.reason
-      });
+      };
+
+      if (context.requestId) {
+        logEntry.requestId = context.requestId;
+      }
+
+      if (context.sessionId) {
+        logEntry.sessionId = context.sessionId;
+      }
+
+      if (context.ipAddress) {
+        logEntry.ipAddress = context.ipAddress;
+      }
+
+      if (context.userAgent) {
+        logEntry.userAgent = context.userAgent;
+      }
+
+      if (!accessResult.granted && accessResult.reason) {
+        logEntry.denialReason = accessResult.reason;
+      }
+
+      await this.logDataAccess(logEntry);
 
       return accessResult;
-
     } catch (error) {
       logger.error('FERPA compliance check failed', {
         error: (error as Error).message,
         studentId,
         userId,
-        dataCategories
+        dataCategories,
       });
 
       return {
         granted: false,
-        reason: 'System error during compliance check'
+        reason: 'System error during compliance check',
       };
     }
   }
@@ -141,53 +166,57 @@ export class FERPAComplianceService {
   public async checkConsentRequirements(
     studentId: string,
     consentType: string,
-    userRole: string
+    userRole: string,
   ): Promise<ConsentRequirement> {
     try {
       // For most educational purposes, consent is implied for directory information
-      if (consentType === 'PERSONAL_INFO' && this.isDirectoryInfoAccess(userRole)) {
+      if (
+        consentType === 'PERSONAL_INFO' &&
+        this.isDirectoryInfoAccess(userRole)
+      ) {
         return {
           required: false,
           validConsent: true,
-          consentType
+          consentType,
         };
       }
 
       // For sensitive information, check if consent is required
-      const student = await this.prisma.student.findUnique({
+      const student = await this.prisma.students.findUnique({
         where: { id: studentId },
-        select: { gradeCategory: true }
+        select: { grade_category: true },
       });
 
       if (!student) {
         return {
           required: true,
           validConsent: false,
-          consentType
+          consentType,
         };
       }
 
       // Minor students require guardian consent for sensitive data
-      const requiresGuardianConsent = this.isMinorStudent(student.gradeCategory);
+      const requiresGuardianConsent = this.isMinorStudent(
+        student.grade_category,
+      );
 
       return {
         required: requiresGuardianConsent,
         validConsent: !requiresGuardianConsent, // Simplified - in real implementation, check consent records
         consentType,
-        guardianConsent: !requiresGuardianConsent
+        guardianConsent: !requiresGuardianConsent,
       };
-
     } catch (error) {
       logger.error('Consent check failed', {
         error: (error as Error).message,
         studentId,
-        consentType
+        consentType,
       });
 
       return {
         required: true,
         validConsent: false,
-        consentType
+        consentType,
       };
     }
   }
@@ -195,39 +224,58 @@ export class FERPAComplianceService {
   /**
    * Apply data masking based on user role and sensitivity
    */
-  public applyDataMasking(
-    data: any,
-    studentId: string,
+  public applyDataMasking<T>(
+    data: T,
+    _studentId: string,
     userRole: string,
-    dataCategories: string[]
-  ): any {
-    if (!data) return data;
+    dataCategories: string[],
+  ): T {
+    if (data === null || data === undefined) {
+      return data;
+    }
 
-    const maskedData = Array.isArray(data) ? [...data] : { ...data };
+    if (typeof data !== 'object') {
+      return data;
+    }
+
     const sensitiveFields = this.getSensitiveFields(userRole, dataCategories);
 
-    const maskValue = (value: any, fieldType: string): any => {
-      if (value === null || value === undefined) return value;
+    const maskValue = (rawValue: unknown, fieldType: string): unknown => {
+      if (rawValue === null || rawValue === undefined) {
+        return rawValue;
+      }
+
+      if (typeof rawValue !== 'string') {
+        return fieldType === 'financial' ? '[CONFIDENTIAL]' : '[MASKED]';
+      }
+
+      const value = rawValue;
 
       switch (fieldType) {
-        case 'email':
-          if (typeof value === 'string' && value.includes('@')) {
-            const [username, domain] = value.split('@');
-            return username.charAt(0) + '*'.repeat(username.length - 2) + username.charAt(username.length - 1) + '@' + domain;
+        case 'email': {
+          const [username, domain] = value.split('@');
+
+          if (!username || !domain) {
+            return '[MASKED]';
           }
-          return value;
+
+          if (username.length <= 2) {
+            return `${username.charAt(0)}*@${domain}`;
+          }
+
+          const mask = '*'.repeat(Math.max(0, username.length - 2));
+          return `${username.charAt(0)}${mask}${username.charAt(username.length - 1)}@${domain}`;
+        }
 
         case 'phone':
-          if (typeof value === 'string' && value.length >= 7) {
-            return value.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
-          }
-          return '****';
+          return value.length >= 7
+            ? value.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+            : '****';
 
         case 'name':
-          if (typeof value === 'string' && value.length > 2) {
-            return value.charAt(0) + '*'.repeat(value.length - 2) + value.charAt(value.length - 1);
-          }
-          return '***';
+          return value.length > 2
+            ? `${value.charAt(0)}${'*'.repeat(value.length - 2)}${value.charAt(value.length - 1)}`
+            : '***';
 
         case 'address':
           return '[RESTRICTED]';
@@ -240,27 +288,29 @@ export class FERPAComplianceService {
       }
     };
 
-    const applyMasking = (obj: any): any => {
+    const applyMasking = (obj: unknown): unknown => {
       if (Array.isArray(obj)) {
         return obj.map(item => applyMasking(item));
       }
 
       if (obj && typeof obj === 'object') {
-        const result = { ...obj };
+        const result: Record<string, unknown> = {
+          ...(obj as Record<string, unknown>),
+        };
 
         for (const [key, value] of Object.entries(result)) {
           const fieldPath = key.toLowerCase();
+          const matchingField = sensitiveFields.find(sensitive =>
+            fieldPath.includes(sensitive.toLowerCase()),
+          );
 
-          for (const sensitiveField of sensitiveFields) {
-            if (fieldPath.includes(sensitiveField.toLowerCase())) {
-              result[key] = maskValue(value, sensitiveField);
-              break;
-            }
+          if (matchingField) {
+            result[key] = maskValue(value, matchingField);
+            continue;
           }
 
-          // Recursively apply masking to nested objects
-          if (typeof result[key] === 'object' && result[key] !== null) {
-            result[key] = applyMasking(result[key]);
+          if (value && typeof value === 'object') {
+            result[key] = applyMasking(value);
           }
         }
 
@@ -270,7 +320,11 @@ export class FERPAComplianceService {
       return obj;
     };
 
-    return applyMasking(maskedData);
+    const clonedData: unknown = Array.isArray(data)
+      ? [...(data as unknown[])]
+      : { ...(data as Record<string, unknown>) };
+
+    return applyMasking(clonedData) as T;
   }
 
   /**
@@ -278,6 +332,34 @@ export class FERPAComplianceService {
    */
   public async logDataAccess(logEntry: DataAccessLog): Promise<void> {
     try {
+      const newValues: Prisma.JsonObject = {
+        dataCategory: logEntry.dataCategory,
+        accessLevel: logEntry.accessLevel,
+        accessGranted: logEntry.accessGranted,
+        recordsCount: logEntry.recordsCount,
+      };
+
+      if (logEntry.accessPurpose) {
+        newValues.accessPurpose = logEntry.accessPurpose;
+      }
+
+      if (logEntry.requestId) {
+        newValues.requestId = logEntry.requestId;
+      }
+
+      if (logEntry.sessionId) {
+        newValues.sessionId = logEntry.sessionId;
+      }
+
+      if (logEntry.denialReason) {
+        newValues.denialReason = logEntry.denialReason;
+      }
+
+      if (logEntry.retentionExpiresAt) {
+        newValues.retentionExpiresAt =
+          logEntry.retentionExpiresAt.toISOString();
+      }
+
       await this.prisma.audit_logs.create({
         data: {
           id: this.generateAuditId(),
@@ -285,33 +367,22 @@ export class FERPAComplianceService {
           action: logEntry.accessType,
           entity_id: logEntry.studentId,
           performed_by: logEntry.userId,
-          ip_address: logEntry.ipAddress || 'unknown',
-          user_agent: logEntry.userAgent || 'unknown',
-          old_values: null,
-          new_values: {
-            dataCategory: logEntry.dataCategory,
-            accessLevel: logEntry.accessLevel,
-            accessGranted: logEntry.accessGranted,
-            recordsCount: logEntry.recordsCount,
-            accessPurpose: logEntry.accessPurpose,
-            requestId: logEntry.requestId,
-            sessionId: logEntry.sessionId,
-            denialReason: logEntry.denialReason
-          }
-        }
+          ip_address: logEntry.ipAddress ?? 'unknown',
+          user_agent: logEntry.userAgent ?? 'unknown',
+          new_values: newValues,
+        },
       });
 
       logger.info('FERPA data access logged', {
         studentId: logEntry.studentId,
         userId: logEntry.userId,
         accessType: logEntry.accessType,
-        accessGranted: logEntry.accessGranted
+        accessGranted: logEntry.accessGranted,
       });
-
     } catch (error) {
       logger.error('Failed to log FERPA data access', {
         error: (error as Error).message,
-        logEntry
+        logEntry,
       });
     }
   }
@@ -324,7 +395,7 @@ export class FERPAComplianceService {
     dataCategories: string[],
     accessLevel: string,
     studentId: string,
-    username: string
+    username: string,
   ): Promise<DataAccessResult> {
     // Self-access rule
     if (username === studentId && accessLevel === 'READ_ONLY') {
@@ -333,18 +404,21 @@ export class FERPAComplianceService {
 
     // Role-based permissions
     const rolePermissions = this.getRolePermissions(userRole);
-    const requiredLevel = this.getRequiredAccessLevel(dataCategories, accessLevel);
+    const requiredLevel = this.getRequiredAccessLevel(
+      dataCategories,
+      accessLevel,
+    );
 
     if (rolePermissions.includes(requiredLevel)) {
       return {
         granted: true,
-        maskedFields: this.getMaskedFields(userRole, dataCategories)
+        maskedFields: this.getMaskedFields(userRole, dataCategories),
       };
     }
 
     return {
       granted: false,
-      reason: `Insufficient privileges. Required: ${requiredLevel}, User role: ${userRole}`
+      reason: `Insufficient privileges. Required: ${requiredLevel}, User role: ${userRole}`,
     };
   }
 
@@ -353,12 +427,18 @@ export class FERPAComplianceService {
    */
   private getRolePermissions(userRole: string): string[] {
     const permissions: Record<string, string[]> = {
-      'SUPER_ADMIN': ['PUBLIC', 'LIMITED', 'SENSITIVE', 'RESTRICTED', 'CONFIDENTIAL'],
-      'ADMIN': ['PUBLIC', 'LIMITED', 'SENSITIVE', 'RESTRICTED'],
-      'LIBRARIAN': ['PUBLIC', 'LIMITED', 'SENSITIVE'],
-      'ASSISTANT': ['PUBLIC', 'LIMITED'],
-      'TEACHER': ['PUBLIC', 'LIMITED'],
-      'VIEWER': ['PUBLIC']
+      SUPER_ADMIN: [
+        'PUBLIC',
+        'LIMITED',
+        'SENSITIVE',
+        'RESTRICTED',
+        'CONFIDENTIAL',
+      ],
+      ADMIN: ['PUBLIC', 'LIMITED', 'SENSITIVE', 'RESTRICTED'],
+      LIBRARIAN: ['PUBLIC', 'LIMITED', 'SENSITIVE'],
+      ASSISTANT: ['PUBLIC', 'LIMITED'],
+      TEACHER: ['PUBLIC', 'LIMITED'],
+      VIEWER: ['PUBLIC'],
     };
 
     return permissions[userRole] || ['PUBLIC'];
@@ -367,11 +447,19 @@ export class FERPAComplianceService {
   /**
    * Get required access level based on data categories and access type
    */
-  private getRequiredAccessLevel(dataCategories: string[], accessLevel: string): string {
+  private getRequiredAccessLevel(
+    dataCategories: string[],
+    accessLevel: string,
+  ): string {
     // If any sensitive categories are requested, require higher access
-    const sensitiveCategories = ['PERSONAL', 'MEDICAL', 'FINANCIAL', 'DISCIPLINARY'];
+    const sensitiveCategories = [
+      'PERSONAL',
+      'MEDICAL',
+      'FINANCIAL',
+      'DISCIPLINARY',
+    ];
     const hasSensitiveData = dataCategories.some(cat =>
-      sensitiveCategories.some(sensitive => cat.includes(sensitive))
+      sensitiveCategories.some(sensitive => cat.includes(sensitive)),
     );
 
     if (hasSensitiveData) {
@@ -388,11 +476,21 @@ export class FERPAComplianceService {
   /**
    * Get fields that should be masked based on user role
    */
-  private getMaskedFields(userRole: string, dataCategories: string[]): string[] {
+  private getMaskedFields(
+    userRole: string,
+    dataCategories: string[],
+  ): string[] {
     const allFields: string[] = [];
 
     if (dataCategories.includes('PERSONAL')) {
-      allFields.push('email', 'phone', 'address', 'parentName', 'parentPhone', 'parentEmail');
+      allFields.push(
+        'email',
+        'phone',
+        'address',
+        'parentName',
+        'parentPhone',
+        'parentEmail',
+      );
     }
 
     if (dataCategories.includes('FINANCIAL')) {
@@ -413,7 +511,7 @@ export class FERPAComplianceService {
 
     if (maxAllowedLevel === 'LIMITED') {
       return allFields.filter(field =>
-        ['email', 'phone', 'address'].includes(field)
+        ['email', 'phone', 'address'].includes(field),
       );
     }
 
@@ -423,7 +521,10 @@ export class FERPAComplianceService {
   /**
    * Get sensitive fields that require masking
    */
-  private getSensitiveFields(userRole: string, dataCategories: string[]): string[] {
+  private getSensitiveFields(
+    userRole: string,
+    dataCategories: string[],
+  ): string[] {
     const fields: string[] = [];
 
     if (dataCategories.includes('PERSONAL')) {
@@ -462,7 +563,7 @@ export class FERPAComplianceService {
     studentId: string,
     userId: string,
     dataCategories: string[],
-    accessLevel: string
+    accessLevel: string,
   ): string {
     return `ferpa_${studentId}_${userId}_${dataCategories.join('_')}_${accessLevel}`;
   }
@@ -478,14 +579,17 @@ export class FERPAComplianceService {
    * Start periodic cleanup of expired cache entries
    */
   private startCacheCleanup(): void {
-    setInterval(() => {
-      const now = new Date();
-      for (const [key, value] of this.accessCache.entries()) {
-        if (value.expires < now) {
-          this.accessCache.delete(key);
+    setInterval(
+      () => {
+        const now = new Date();
+        for (const [key, value] of this.accessCache.entries()) {
+          if (value.expires < now) {
+            this.accessCache.delete(key);
+          }
         }
-      }
-    }, 10 * 60 * 1000); // Clean up every 10 minutes
+      },
+      10 * 60 * 1000,
+    ); // Clean up every 10 minutes
   }
 }
 

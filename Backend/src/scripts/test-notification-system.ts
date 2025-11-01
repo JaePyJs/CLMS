@@ -1,4 +1,8 @@
-import { PrismaClient, notifications_type, notifications_priority } from '@prisma/client';
+import {
+  PrismaClient,
+  notifications_type,
+  notifications_priority,
+} from '@prisma/client';
 import { notificationService } from '../services/notification.service';
 import { emailService } from '../services/emailService';
 import { logger } from '../utils/logger';
@@ -51,18 +55,19 @@ class NotificationSystemTester {
         title: 'Test Notification',
         message: 'This is a test notification from the system test suite.',
         priority: 'NORMAL',
-        userId: 'test-user-id',
+        user_id: 'test-user-id',
       });
 
       // Test notification with action URL
-      const notificationWithAction = await notificationService.createNotification({
-        type: 'WARNING',
-        title: 'Test with Action',
-        message: 'This notification has an action button.',
-        priority: 'HIGH',
-        actionUrl: '/test/action',
-        userId: 'test-user-id',
-      });
+      const notificationWithAction =
+        await notificationService.createNotification({
+          type: 'WARNING',
+          title: 'Test with Action',
+          message: 'This notification has an action button.',
+          priority: 'HIGH',
+          action_url: '/test/action',
+          user_id: 'test-user-id',
+        });
 
       this.results.push({
         testName: 'Notification Creation',
@@ -110,16 +115,24 @@ class NotificationSystemTester {
       ];
 
       const createdNotifications = await Promise.all(
-        testNotifications.map(n => notificationService.createNotification(n))
+        testNotifications.map(n => notificationService.createNotification(n)),
       );
 
       // Test retrieval
-      const allNotifications = await notificationService.getUserNotifications('test-user-id');
-      const unreadNotifications = await notificationService.getUserNotifications('test-user-id', { unreadOnly: true });
-      const filteredNotifications = await notificationService.getUserNotifications('test-user-id', { type: 'INFO' });
+      const allNotifications =
+        await notificationService.getUserNotifications('test-user-id');
+      const unreadNotifications =
+        await notificationService.getUserNotifications('test-user-id', {
+          unreadOnly: true,
+        });
+      const filteredNotifications =
+        await notificationService.getUserNotifications('test-user-id', {
+          type: 'INFO',
+        });
 
       // Test statistics
-      const stats = await notificationService.getNotificationStats('test-user-id');
+      const stats =
+        await notificationService.getNotificationStats('test-user-id');
 
       this.results.push({
         testName: 'Notification Retrieval',
@@ -150,17 +163,23 @@ class NotificationSystemTester {
       const testUserId = 'test-user-id';
 
       // Get default preferences
-      const defaultPrefs = await notificationService.getUserNotificationPreferences(testUserId);
+      const defaultPrefs =
+        await notificationService.getUserNotificationPreferences(testUserId);
 
       // Update preferences
-      const updatedPrefs = await notificationService.updateUserNotificationPreferences(testUserId, {
-        emailNotifications: false,
-        dueDateReminders: false,
-        fineAlerts: true,
-      });
+      const updatedPrefs =
+        await notificationService.updateUserNotificationPreferences(
+          testUserId,
+          {
+            emailNotifications: false,
+            dueDateReminders: false,
+            fineAlerts: true,
+          },
+        );
 
       // Verify preferences were updated
-      const retrievedPrefs = await notificationService.getUserNotificationPreferences(testUserId);
+      const retrievedPrefs =
+        await notificationService.getUserNotificationPreferences(testUserId);
 
       const success =
         retrievedPrefs.emailNotifications === false &&
@@ -198,8 +217,8 @@ class NotificationSystemTester {
         type: 'INFO',
         title: 'Scheduled Test',
         message: 'This notification was scheduled for future delivery.',
-        scheduledFor: futureTime,
-        userId: 'test-user-id',
+        scheduled_for: futureTime,
+        user_id: 'test-user-id',
       });
 
       this.results.push({
@@ -268,13 +287,21 @@ class NotificationSystemTester {
       };
 
       // Test HTML template generation
-      const htmlTemplate = (notificationService as any).generateEmailTemplate(testNotification, 'Test User');
+      const htmlTemplate = (notificationService as any).generateEmailTemplate(
+        testNotification,
+        'Test User',
+      );
 
       // Test text template generation
-      const textTemplate = (notificationService as any).generateTextTemplate(testNotification, 'Test User');
+      const textTemplate = (notificationService as any).generateTextTemplate(
+        testNotification,
+        'Test User',
+      );
 
       // Test subject generation
-      const subject = (notificationService as any).generateEmailSubject(testNotification);
+      const subject = (notificationService as any).generateEmailSubject(
+        testNotification,
+      );
 
       this.results.push({
         testName: 'Email Templates',
@@ -302,15 +329,16 @@ class NotificationSystemTester {
 
     try {
       // Test queue statistics
-      const queueStats = notificationWorker.getQueueStats();
+      const queueStats = await notificationWorker.getQueueStats();
 
       // Test system maintenance scheduling
       const maintenanceTime = new Date(Date.now() + 300000); // 5 minutes from now
-      const maintenanceJobId = await notificationWorker.scheduleSystemMaintenance({
-        title: 'Test Maintenance',
-        message: 'This is a test maintenance notification.',
-        scheduledTime: maintenanceTime,
-      });
+      const maintenanceJobId =
+        await notificationWorker.scheduleSystemMaintenance({
+          title: 'Test Maintenance',
+          message: 'This is a test maintenance notification.',
+          scheduledTime: maintenanceTime,
+        });
 
       this.results.push({
         testName: 'Background Jobs',
@@ -336,14 +364,16 @@ class NotificationSystemTester {
     const startTime = Date.now();
 
     try {
-      const stats = notificationWorker.getQueueStats();
+      const stats = await notificationWorker.getQueueStats();
 
       this.results.push({
         testName: 'Queue Statistics',
         success: true,
         details: {
           scheduledNotifications: stats.scheduledNotifications,
-          totalWaiting: stats.scheduledNotifications.waiting + stats.scheduledNotifications.active,
+          totalWaiting:
+            stats.scheduledNotifications.waiting +
+            stats.scheduledNotifications.active,
           totalCompleted: stats.scheduledNotifications.completed,
           totalFailed: stats.scheduledNotifications.failed,
         },
@@ -403,7 +433,9 @@ class NotificationSystemTester {
     console.log(`\nTotal Tests: ${totalTests}`);
     console.log(`Passed: ${passedTests} ✅`);
     console.log(`Failed: ${failedTests} ❌`);
-    console.log(`Success Rate: ${((passedTests / totalTests) * 100).toFixed(1)}%`);
+    console.log(
+      `Success Rate: ${((passedTests / totalTests) * 100).toFixed(1)}%`,
+    );
 
     console.log('\nDetailed Results:');
     console.log('-'.repeat(30));
@@ -419,7 +451,9 @@ class NotificationSystemTester {
       }
 
       if (result.details) {
-        console.log(`   Details: ${JSON.stringify(result.details, null, 2).substring(0, 200)}...`);
+        console.log(
+          `   Details: ${JSON.stringify(result.details, null, 2).substring(0, 200)}...`,
+        );
       }
 
       console.log('');
@@ -429,22 +463,30 @@ class NotificationSystemTester {
     const totalDuration = this.results.reduce((sum, r) => sum + r.duration, 0);
     const avgDuration = totalDuration / totalTests;
     const slowestTest = this.results.reduce((prev, current) =>
-      current.duration > prev.duration ? current : prev
+      current.duration > prev.duration ? current : prev,
     );
     const fastestTest = this.results.reduce((prev, current) =>
-      current.duration < prev.duration ? current : prev
+      current.duration < prev.duration ? current : prev,
     );
 
     console.log('📈 Performance Summary:');
     console.log(`Total Duration: ${totalDuration}ms`);
     console.log(`Average Test Duration: ${avgDuration.toFixed(2)}ms`);
-    console.log(`Slowest Test: ${slowestTest.testName} (${slowestTest.duration}ms)`);
-    console.log(`Fastest Test: ${fastestTest.testName} (${fastestTest.duration}ms)`);
+    console.log(
+      `Slowest Test: ${slowestTest.testName} (${slowestTest.duration}ms)`,
+    );
+    console.log(
+      `Fastest Test: ${fastestTest.testName} (${fastestTest.duration}ms)`,
+    );
 
     if (failedTests === 0) {
-      console.log('\n🎉 All tests passed! The notification system is working correctly.');
+      console.log(
+        '\n🎉 All tests passed! The notification system is working correctly.',
+      );
     } else {
-      console.log(`\n⚠️  ${failedTests} test(s) failed. Please review the errors above.`);
+      console.log(
+        `\n⚠️  ${failedTests} test(s) failed. Please review the errors above.`,
+      );
     }
 
     console.log('\n✨ Test completed at:', new Date().toISOString());
@@ -455,12 +497,13 @@ class NotificationSystemTester {
 if (require.main === module) {
   const tester = new NotificationSystemTester();
 
-  tester.runAllTests()
+  tester
+    .runAllTests()
     .then(() => {
       console.log('\nTest execution completed.');
       process.exit(0);
     })
-    .catch((error) => {
+    .catch(error => {
       console.error('Test execution failed:', error);
       process.exit(1);
     });

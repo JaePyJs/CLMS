@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -69,7 +69,7 @@ export default function SystemLogs() {
       return response.data as LogsResponse;
     },
     staleTime: 10 * 1000, // 10 seconds
-    keepPreviousData: true, // Keep showing old data while fetching new page
+    placeholderData: keepPreviousData, // Keep showing old data while fetching new page (TanStack Query v5)
   });
 
   const logs = data?.logs || [];

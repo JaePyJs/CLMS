@@ -10,6 +10,7 @@ import React, {
 import type { ComponentType, ReactNode, ProfilerOnRenderCallback } from 'react';
 import { VariableSizeList as List } from 'react-window';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Activity, BarChart3 } from 'lucide-react';
 
@@ -140,7 +141,6 @@ export const withPerformanceMonitoring = <P extends object>(
 interface VirtualizedListProps<T> {
   items: T[];
   itemHeight: number | ((index: number) => number);
-  itemSize: number | ((index: number) => number);
   renderItem: (item: T, index: number) => ReactNode;
   height: number;
   width?: number;
@@ -151,10 +151,10 @@ interface VirtualizedListProps<T> {
 
 export const VirtualizedList = <T,>({
   items,
-  itemSize,
+  itemHeight,
   renderItem,
   height,
-  width = '100%',
+  width = 300,
   overscanCount = 5,
   className = '',
 }: VirtualizedListProps<T>) => {
@@ -164,11 +164,11 @@ export const VirtualizedList = <T,>({
   }), [items, renderItem]);
 
   const getItemSize = useCallback((index: number) => {
-    if (typeof itemSize === 'function') {
-      return itemSize(index);
+    if (typeof itemHeight === 'function') {
+      return itemHeight(index);
     }
-    return itemSize;
-  }, [itemSize]);
+    return itemHeight;
+  }, [itemHeight]);
 
   const Row = memo(({ index, style }: { index: number; style: React.CSSProperties }) => {
     const { items, renderItem } = itemData;

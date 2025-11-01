@@ -2,6 +2,8 @@ import nodemailer from 'nodemailer';
 import { logger } from '../utils/logger';
 import { PrismaClient } from '@prisma/client';
 import Bull from 'bull';
+import { randomUUID } from 'crypto'
+import { NoopQueue } from '../utils/noopQueue';
 
 const prisma = new PrismaClient();
 
@@ -48,21 +50,29 @@ interface DeliveryStatus {
 }
 
 // Email queue for processing
-const emailQueue = new Bull('email processing', {
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
-  },
-  defaultJobOptions: {
-    removeOnComplete: 10,
-    removeOnFail: 5,
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 2000,
+let emailQueue: any;
+const queuesDisabled = process.env.DISABLE_QUEUES === 'true';
+const emailDisabled = process.env.DISABLE_EMAIL === 'true';
+if (queuesDisabled || emailDisabled) {
+  logger.warn('Queues or email disabled; emailQueue will be a no-op');
+  emailQueue = new NoopQueue();
+} else {
+  emailQueue = new Bull('email processing', {
+    redis: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
     },
-  },
-});
+    defaultJobOptions: {
+      removeOnComplete: 10,
+      removeOnFail: 5,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 2000,
+      },
+    },
+  });
+}
 
 class EmailService {
   private transporter: nodemailer.Transporter | null = null;
@@ -70,13 +80,21 @@ class EmailService {
   private isConnected: boolean = false;
 
   constructor() {
-    this.initializeTransporter();
+    if (emailDisabled) {
+      logger.warn('DISABLE_EMAIL=true; email service will not initialize');
+    } else {
+      this.initializeTransporter();
+    }
     this.setupQueueProcessors();
   }
 
   // Initialize email transporter with configuration
   private async initializeTransporter() {
     try {
+      if (emailDisabled) {
+        logger.warn('Email disabled by environment; skipping transporter initialization');
+        return;
+      }
       this.config = this.getEmailConfig();
 
       if (!this.config) {
@@ -84,7 +102,7 @@ class EmailService {
         return;
       }
 
-      this.transporter = nodemailer.createTransporter({
+      this.transporter = nodemailer.createTransport({
         host: this.config.host,
         port: this.config.port,
         secure: this.config.secure,
@@ -172,6 +190,10 @@ class EmailService {
 
   // Send email immediately
   async sendEmail(message: EmailMessage, options?: { priority?: string; delay?: number }): Promise<string> {
+    if (emailDisabled) {
+      logger.warn('Email disabled; dropping sendEmail request', { to: message.to, subject: message.subject });
+      return `noop_${Date.now()}`;
+    }
     if (!this.isConnected || !this.transporter) {
       throw new Error('Email service not connected');
     }
@@ -179,13 +201,11 @@ class EmailService {
     const messageId = `email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     if (options?.delay) {
-      // Schedule for later
       emailQueue.add('send-email', { messageId, message, options }, {
         delay: options.delay,
         priority: this.getQueuePriority(options.priority),
       });
     } else {
-      // Send immediately
       emailQueue.add('send-email', { messageId, message, options }, {
         priority: this.getQueuePriority(options.priority),
       });
@@ -199,6 +219,10 @@ class EmailService {
     messages: EmailMessage[],
     options?: { priority?: string; delay?: number; batchSize?: number }
   ): Promise<string> {
+    if (emailDisabled) {
+      logger.warn('Email disabled; dropping sendBulkEmail request', { count: messages.length });
+      return `noop_${Date.now()}`;
+    }
     if (!this.isConnected || !this.transporter) {
       throw new Error('Email service not connected');
     }
@@ -206,7 +230,6 @@ class EmailService {
     const messageId = `bulk_email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const batchSize = options?.batchSize || 50;
 
-    // Process in batches to avoid overwhelming the server
     for (let i = 0; i < messages.length; i += batchSize) {
       const batch = messages.slice(i, i + batchSize);
 
@@ -215,7 +238,7 @@ class EmailService {
         messages: batch,
         options,
       }, {
-        delay: options?.delay || (i > 0 ? 1000 : 0), // Delay subsequent batches
+        delay: options?.delay || (i > 0 ? 1000 : 0),
         priority: this.getQueuePriority(options.priority),
       });
     }
@@ -307,7 +330,7 @@ class EmailService {
     try {
       await prisma.audit_logs.create({
         data: {
-          id: crypto.randomUUID(),
+          id: randomUUID(),
           entity: 'email_delivery',
           action: status.status,
           entity_id: messageId,
@@ -383,6 +406,7 @@ class EmailService {
     config: Partial<EmailConfig> | null;
     queueStats: any;
   } {
+    const disabled = emailDisabled || queuesDisabled;
     return {
       connected: this.isConnected,
       config: this.config ? {
@@ -391,12 +415,7 @@ class EmailService {
         from: this.config.from,
         pool: this.config.pool,
       } : null,
-      queueStats: {
-        waiting: emailQueue.getWaiting().length,
-        active: emailQueue.getActive().length,
-        completed: emailQueue.getCompleted().length,
-        failed: emailQueue.getFailed().length,
-      },
+      queueStats: disabled ? { disabled: true } : { disabled: false },
     };
   }
 

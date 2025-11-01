@@ -6,6 +6,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { render } from '@testing-library/react';
 import type { RenderOptions } from '@testing-library/react';
+import React from 'react';
 
 // Global cleanup after each test
 afterEach(() => {

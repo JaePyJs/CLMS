@@ -9,7 +9,9 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const logger_1 = require("@/utils/logger");
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'info', 'warn'] : ['error'],
+    log: process.env.NODE_ENV === 'development'
+        ? ['query', 'error', 'info', 'warn']
+        : ['error'],
 });
 class AuthService {
     jwtSecret;
@@ -55,7 +57,11 @@ class AuthService {
             });
             await prisma.users.update({
                 where: { id: user.id },
-                data: { id: crypto.randomUUID(), updated_at: new Date(), last_login_at: new Date() },
+                data: {
+                    id: crypto.randomUUID(),
+                    updated_at: new Date(),
+                    last_login_at: new Date(),
+                },
             });
             logger_1.logger.info(`User logged in successfully: ${username}`);
             return {
@@ -107,16 +113,17 @@ class AuthService {
             const hashedPassword = await this.hashPassword(userData.password);
             const id = `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
             const user = await prisma.users.create({
-                data: { id: crypto.randomUUID(), updated_at: new Date(),
+                data: {
                     id: id,
                     username: userData.username,
                     password: hashedPassword,
                     role: userData.role,
-                    is_active: userData.is_active !== undefined ? userData.is_active : true,
+                    is_active: userData.isActive !== undefined ? userData.isActive : true,
                     email: null,
                     full_name: null,
                     permissions: {},
-                    updated_at: new Date(), },
+                    updated_at: new Date(),
+                },
             });
             logger_1.logger.info(`New user created: ${userData.username}`);
             return {
@@ -163,7 +170,11 @@ class AuthService {
             const hashedPassword = await this.hashPassword(newPassword);
             await prisma.users.update({
                 where: { id: id },
-                data: { id: crypto.randomUUID(), updated_at: new Date(), password: hashedPassword },
+                data: {
+                    id: crypto.randomUUID(),
+                    updated_at: new Date(),
+                    password: hashedPassword,
+                },
             });
             logger_1.logger.info(`Password updated for user: ${user.username}`);
             return {
@@ -195,7 +206,11 @@ class AuthService {
             const hashedPassword = await this.hashPassword(newPassword);
             await prisma.users.update({
                 where: { id: id },
-                data: { id: crypto.randomUUID(), updated_at: new Date(), password: hashedPassword },
+                data: {
+                    id: crypto.randomUUID(),
+                    updated_at: new Date(),
+                    password: hashedPassword,
+                },
             });
             logger_1.logger.info(`Password reset for user: ${user.username}`);
             return {
@@ -291,10 +306,12 @@ class AuthService {
             }
             const updatedUser = await prisma.users.update({
                 where: { id: id },
-                data: { id: crypto.randomUUID(), updated_at: new Date(),
+                data: {
                     username: updateData.username,
                     role: updateData.role,
-                    is_active: updateData.is_active, },
+                    is_active: updateData.isActive,
+                    updated_at: new Date(),
+                },
                 select: {
                     id: true,
                     username: true,

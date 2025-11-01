@@ -1,0 +1,229 @@
+name: Documentation Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: 
+      - 'Docs/**'
+      - '*.md'
+      - '.github/workflows/documentation-validation.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths: 
+      - 'Docs/**'
+      - '*.md'
+      - '.github/workflows/documentation-validation.yml'
+  schedule:
+    # Run documentation validation daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  validate-links:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: |
+        if [ -f package.json ]; then
+          npm ci
+        else
+          echo "No package.json found, skipping npm install"
+        fi
+        
+    - name: Create reports directory
+      run: mkdir -p docs/reports
+      
+    - name: Run documentation link validation
+      run: |
+        echo "🔗 Running documentation link validation..."
+        node scripts/validate-docs-only.js
+        
+    - name: Check link health threshold
+      run: |
+        echo "📊 Checking link health threshold..."
+        
+        # Extract link health from the latest validation report
+        LATEST_REPORT=$(ls -t docs/reports/docs-validation-*.txt | head -1)
+        
+        if [ -f "$LATEST_REPORT" ]; then
+          LINK_HEALTH=$(grep "Link health:" "$LATEST_REPORT" | sed 's/Link health: *//' | sed 's/%//')
+          echo "Current link health: ${LINK_HEALTH}%"
+          
+          # Require minimum 75% link health
+          THRESHOLD=75
+          if (( $(echo "$LINK_HEALTH >= $THRESHOLD" | bc -l) )); then
+            echo "✅ Link health (${LINK_HEALTH}%) meets threshold (${THRESHOLD}%)"
+          else
+            echo "❌ Link health (${LINK_HEALTH}%) below threshold (${THRESHOLD}%)"
+            echo "::warning::Documentation link health is below threshold. Consider fixing broken links."
+            exit 1
+          fi
+        else
+          echo "❌ No validation report found"
+          exit 1
+        fi
+        
+    - name: Upload validation report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: documentation-validation-report
+        path: docs/reports/
+        retention-days: 30
+        
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          // Find the latest validation report
+          const reportsDir = 'docs/reports';
+          const files = fs.readdirSync(reportsDir).filter(f => f.startsWith('docs-validation-'));
+          const latestReport = files.sort().pop();
+          
+          if (latestReport) {
+            const reportPath = path.join(reportsDir, latestReport);
+            const content = fs.readFileSync(reportPath, 'utf8');
+            
+            // Extract key metrics
+            const linkHealthMatch = content.match(/Link health:\s*([\d.]+)%/);
+            const brokenLinksMatch = content.match(/Broken links:\s*(\d+)/);
+            const totalLinksMatch = content.match(/Total links:\s*(\d+)/);
+            
+            const linkHealth = linkHealthMatch ? linkHealthMatch[1] : 'N/A';
+            const brokenLinks = brokenLinksMatch ? brokenLinksMatch[1] : 'N/A';
+            const totalLinks = totalLinksMatch ? totalLinksMatch[1] : 'N/A';
+            
+            const comment = `## 📊 Documentation Validation Results\n\n**Link Health:** ${linkHealth}%\n**Broken Links:** ${brokenLinks}/${totalLinks}\n\n### 📈 Status\n${linkHealth >= 75 ? '✅ PASSED' : '❌ FAILED'} - Link health is ${linkHealth >= 75 ? 'above' : 'below'} the 75% threshold\n\n### 📋 Details\n- Full validation report is available in the workflow artifacts\n- Run \`node scripts/validate-docs-only.js\` locally to see detailed results`.trim();
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          }
+
+  validate-markdown:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install markdownlint
+      run: npm install -g markdownlint-cli
+      
+    - name: Run markdown linting
+      run: |
+        echo "📝 Running markdown linting..."
+        
+        # Create markdownlint config if it doesn't exist
+        if [ ! -f .markdownlint.json ]; then
+          cat > .markdownlint.json << 'EOF'
+        {
+          "default": true,
+          "MD013": false,
+          "MD033": false,
+          "MD041": false
+        }
+        EOF
+        fi
+        
+        # Lint all markdown files
+        markdownlint "**/*.md" --config .markdownlint.json || {
+          echo "::warning::Markdown linting found issues. Please review and fix formatting."
+          exit 1
+        }
+        
+    - name: Check document structure
+      run: |
+        echo "🏗️ Checking document structure..."
+        
+        # Verify essential documentation files exist
+        REQUIRED_FILES=(
+          "Docs/README.md"
+          "Docs/DEVELOPER_QUICK_START_GUIDE.md"
+          "Docs/DOCUMENTATION_WORKFLOW_GUIDE.md"
+          "Docs/DOCUMENTATION_MAINTENANCE_PLAYBOOK.md"
+          "README.md"
+        )
+        
+        for file in "${REQUIRED_FILES[@]}"; do
+          if [ -f "$file" ]; then
+            echo "✅ $file exists"
+          else
+            echo "❌ $file is missing"
+            exit 1
+          fi
+        done
+
+  check-documentation-coverage:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Check documentation coverage
+      run: |
+        echo "📚 Checking documentation coverage..."
+        
+        # Count documentation files
+        DOC_FILES=$(find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" | wc -l)
+        echo "Total markdown files: $DOC_FILES"
+        
+        # Check for documentation in key areas
+        AREAS_WITH_DOCS=0
+        TOTAL_AREAS=6
+        
+        # Check each area for documentation
+        [ -d "Docs" ] && ((AREAS_WITH_DOCS++))
+        [ -d "Backend/docs" ] && ((AREAS_WITH_DOCS++))
+        [ -d "Frontend/docs" ] && ((AREAS_WITH_DOCS++))
+        [ -d "infrastructure" ] && ((AREAS_WITH_DOCS++))
+        [ -d ".github" ] && ((AREAS_WITH_DOCS++))
+        [ -f "README.md" ] && ((AREAS_WITH_DOCS++))
+        
+        COVERAGE=$((AREAS_WITH_DOCS * 100 / TOTAL_AREAS))
+        echo "Documentation coverage: ${COVERAGE}% (${AREAS_WITH_DOCS}/${TOTAL_AREAS} areas)"
+        
+        if [ $COVERAGE -ge 80 ]; then
+          echo "✅ Good documentation coverage"
+        else
+          echo "⚠️ Documentation coverage could be improved"
+          echo "::warning::Consider adding documentation to uncovered areas."
+        fi
+        
+    - name: Generate coverage report
+      run: |
+        echo "📊 Generating documentation coverage report..."
+        
+        cat > docs/reports/coverage-report.json << EOF
+        {
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "total_markdown_files": $DOC_FILES,
+          "areas_with_docs": $AREAS_WITH_DOCS,
+          "total_areas": $TOTAL_AREAS,
+          "coverage_percentage": $COVERAGE
+        }
+        EOF
+        
+        echo "Coverage report generated"

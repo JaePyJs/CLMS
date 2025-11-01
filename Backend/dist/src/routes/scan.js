@@ -411,7 +411,7 @@ router.post('/student/self-checkin', async (req, res) => {
                 section
             });
         }
-        const activity = await (0, scanService_1.processStudentCheckIn)(studentId, client_1.ActivityType.GENERAL_VISIT);
+        const activity = await (0, scanService_1.processStudentCheckIn)(studentId, client_1.student_activities_activity_type.GENERAL_VISIT);
         const response = {
             success: true,
             data: {

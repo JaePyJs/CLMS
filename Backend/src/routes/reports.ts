@@ -27,9 +27,9 @@ router.get('/daily', async (req: Request, res: Response) => {
     endOfDay.setHours(23, 59, 59, 999)
 
     // Get all activities for the day
-    const activities = await prisma.activity.findMany({
+    const activities = await prisma.student_activities.findMany({
       where: {
-        startTime: {
+        start_time: {
           gte: startOfDay,
           lte: endOfDay
         }
@@ -60,12 +60,12 @@ router.get('/daily', async (req: Request, res: Response) => {
 
     // Calculate statistics
     const checkIns = activities.filter(a => 
-      a.activityType === 'GENERAL_VISIT' || 
-      a.activityType === 'STUDY' || 
-      a.activityType === 'RECREATION'
+      a.activity_type === 'GENERAL_VISIT' || 
+      a.activity_type === 'STUDY' || 
+      a.activity_type === 'RECREATION'
     ).length
 
-    const uniqueStudents = new Set(activities.map(a => a.studentId)).size
+    const uniqueStudents = new Set(activities.map(a => a.student_id)).size
 
     // Calculate average duration for completed activities
     const completedActivities = activities.filter(a => a.status === 'COMPLETED' && a.durationMinutes)
@@ -106,9 +106,9 @@ router.get('/daily', async (req: Request, res: Response) => {
         details: {
           bookCheckouts: checkouts.length,
           bookReturns: returns.length,
-          computerUse: activities.filter(a => a.activityType === 'COMPUTER_USE').length,
-          gamingSessions: activities.filter(a => a.activityType === 'GAMING_SESSION').length,
-          avrSessions: activities.filter(a => a.activityType === 'AVR_SESSION').length
+          computerUse: activities.filter(a => a.activity_type === 'COMPUTER_USE').length,
+          gamingSessions: activities.filter(a => a.activity_type === 'GAMING_SESSION').length,
+          avrSessions: activities.filter(a => a.activity_type === 'AVR_SESSION').length
         },
         gradeLevelBreakdown
       },
@@ -143,15 +143,15 @@ router.get('/weekly', async (req: Request, res: Response) => {
     endOfWeek.setHours(23, 59, 59, 999)
 
     // Get all activities for the week
-    const activities = await prisma.activity.findMany({
+    const activities = await prisma.student_activities.findMany({
       where: {
-        startTime: {
+        start_time: {
           gte: startOfWeek,
           lte: endOfWeek
         }
       },
       include: {
-        student: true
+        students: true
       }
     })
 
@@ -170,7 +170,7 @@ router.get('/weekly', async (req: Request, res: Response) => {
 
     // Calculate totals
     const totalVisits = activities.length
-    const uniqueStudents = new Set(activities.map(a => a.studentId)).size
+    const uniqueStudents = new Set(activities.map(a => a.student_id)).size
     const totalCheckouts = checkouts.length
 
     // Get popular books (most checked out)
@@ -224,7 +224,7 @@ router.get('/weekly', async (req: Request, res: Response) => {
         dayOfWeek: dayStart.toLocaleDateString('en-US', { weekday: 'short' }),
         visits: dayActivities.length,
         checkouts: dayCheckouts.length,
-        uniqueStudents: new Set(dayActivities.map(a => a.studentId)).size
+        uniqueStudents: new Set(dayActivities.map(a => a.student_id)).size
       })
     }
 
@@ -272,15 +272,15 @@ router.get('/monthly', async (req: Request, res: Response) => {
     endOfMonth.setHours(23, 59, 59, 999)
 
     // Get all activities for the month
-    const activities = await prisma.activity.findMany({
+    const activities = await prisma.student_activities.findMany({
       where: {
-        startTime: {
+        start_time: {
           gte: startOfMonth,
           lte: endOfMonth
         }
       },
       include: {
-        student: true
+        students: true
       }
     })
 
@@ -309,14 +309,14 @@ router.get('/monthly', async (req: Request, res: Response) => {
 
     // Calculate statistics
     const totalVisits = activities.length
-    const uniqueStudents = new Set(activities.map(a => a.studentId)).size
+    const uniqueStudents = new Set(activities.map(a => a.student_id)).size
     const booksBorrowed = checkouts.length
     const booksReturned = returns.length
 
     // Activity type breakdown
     const activityBreakdown: { [key: string]: number } = {}
     activities.forEach(a => {
-      activityBreakdown[a.activityType] = (activityBreakdown[a.activityType] || 0) + 1
+      activityBreakdown[a.activity_type] = (activityBreakdown[a.activity_type] || 0) + 1
     })
 
     // Grade level breakdown
@@ -354,7 +354,7 @@ router.get('/monthly', async (req: Request, res: Response) => {
         weekStart: currentWeekStart.toISOString().split('T')[0],
         weekEnd: finalWeekEnd.toISOString().split('T')[0],
         visits: weekActivities.length,
-        uniqueStudents: new Set(weekActivities.map(a => a.studentId)).size
+        uniqueStudents: new Set(weekActivities.map(a => a.student_id)).size
       })
       
       currentWeekStart.setDate(currentWeekStart.getDate() + 7)
@@ -403,7 +403,8 @@ router.get('/custom', async (req: Request, res: Response) => {
         error: 'Both start and end dates are required',
         timestamp: new Date().toISOString()
       }
-      return res.status(400).json(response)
+      res.status(400).json(response)
+      return
     }
 
     const startDate = new Date(start as string)
@@ -419,19 +420,20 @@ router.get('/custom', async (req: Request, res: Response) => {
         error: 'Start date must be before end date',
         timestamp: new Date().toISOString()
       }
-      return res.status(400).json(response)
+      res.status(400).json(response)
+      return
     }
 
     // Get all activities for the date range
-    const activities = await prisma.activity.findMany({
+    const activities = await prisma.student_activities.findMany({
       where: {
-        startTime: {
+        start_time: {
           gte: startDate,
           lte: endDate
         }
       },
       include: {
-        student: true
+        students: true
       }
     })
 
@@ -460,19 +462,19 @@ router.get('/custom', async (req: Request, res: Response) => {
 
     // Calculate basic statistics
     const totalCheckIns = activities.filter(a => 
-      a.activityType === 'GENERAL_VISIT' || 
-      a.activityType === 'STUDY' || 
-      a.activityType === 'RECREATION'
+      a.activity_type === 'GENERAL_VISIT' || 
+      a.activity_type === 'STUDY' || 
+      a.activity_type === 'RECREATION'
     ).length
 
-    const uniqueStudents = new Set(activities.map(a => a.studentId)).size
+    const uniqueStudents = new Set(activities.map(a => a.student_id)).size
     const booksBorrowed = checkouts.length
     const booksReturned = returns.length
 
     // Activity type breakdown
     const activityBreakdown: { [key: string]: number } = {}
     activities.forEach(a => {
-      activityBreakdown[a.activityType] = (activityBreakdown[a.activityType] || 0) + 1
+      activityBreakdown[a.activity_type] = (activityBreakdown[a.activity_type] || 0) + 1
     })
 
     // Grade level breakdown
@@ -486,9 +488,9 @@ router.get('/custom', async (req: Request, res: Response) => {
     // Most active students
     const studentActivityCounts: { [key: string]: { name: string; count: number } } = {}
     activities.forEach(a => {
-      const studentId = a.studentId
+      const studentId = a.student_id
       if (!studentActivityCounts[studentId]) {
-        const fullName = a.student ? `${a.student.firstName} ${a.student.lastName}` : 'Unknown'
+        const fullName = a.students ? `${a.students.first_name} ${a.students.last_name}` : 'Unknown'
         studentActivityCounts[studentId] = { name: fullName, count: 0 }
       }
       studentActivityCounts[studentId].count++

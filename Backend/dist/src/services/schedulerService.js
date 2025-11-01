@@ -172,7 +172,7 @@ class JobScheduler {
                         status: client_1.student_activities_status.ACTIVE,
                     },
                     include: {
-                        student: {
+                        students: {
                             select: {
                                 student_id: true,
                                 first_name: true,
@@ -183,14 +183,21 @@ class JobScheduler {
                 });
                 let expiredCount = 0;
                 for (const session of expiredSessions) {
+                    const updateTimestamp = new Date();
                     await prisma_1.prisma.student_activities.update({
                         where: { id: session.id },
-                        data: { id: crypto.randomUUID(), updated_at: new Date(), status: client_1.student_activities_status.EXPIRED },
+                        data: {
+                            status: client_1.student_activities_status.EXPIRED,
+                            updated_at: updateTimestamp,
+                        },
                     });
                     if (session.equipment_id) {
                         await prisma_1.prisma.equipment.update({
                             where: { id: session.equipment_id },
-                            data: { id: crypto.randomUUID(), updated_at: new Date(), status: client_1.equipment_status.AVAILABLE },
+                            data: {
+                                status: client_1.equipment_status.AVAILABLE,
+                                updated_at: updateTimestamp,
+                            },
                         });
                     }
                     expiredCount++;
@@ -221,7 +228,7 @@ class JobScheduler {
                         status: client_1.book_checkouts_status.ACTIVE,
                     },
                     include: {
-                        student: {
+                        students: {
                             select: {
                                 student_id: true,
                                 first_name: true,
@@ -229,7 +236,7 @@ class JobScheduler {
                                 grade_level: true,
                             },
                         },
-                        book: {
+                        books: {
                             select: {
                                 accession_no: true,
                                 title: true,
@@ -245,13 +252,14 @@ class JobScheduler {
                     const fineAmount = overdueDays * 1.0;
                     await prisma_1.prisma.book_checkouts.update({
                         where: { id: checkout.id },
-                        data: { id: crypto.randomUUID(), updated_at: new Date(),
+                        data: {
                             status: client_1.book_checkouts_status.OVERDUE,
-                            overdue_days,
-                            fine_amount,
+                            overdue_days: overdueDays,
+                            fine_amount: fineAmount,
+                            updated_at: new Date(),
                         },
                     });
-                    logger_1.logger.info(`Overdue notification sent to ${checkout.student.first_name} ${checkout.student.last_name} for book "${checkout.book.title}" (${overdue_days} days, ₱${fine_amount} fine)`);
+                    logger_1.logger.info(`Overdue notification sent to ${checkout.students.first_name} ${checkout.students.last_name} for book "${checkout.books.title}" (${overdueDays} days, ₱${fineAmount} fine)`);
                     notifiedCount++;
                 }
                 await this.updateJobStatus('Overdue Notifications', client_1.automation_jobs_status.COMPLETED);
@@ -361,19 +369,19 @@ class JobScheduler {
                 const issues = [];
                 const invalidActivities = await prisma_1.prisma.student_activities.findMany({
                     where: { status: client_1.student_activities_status.ACTIVE },
-                    include: { student: true },
+                    include: { students: true },
                 });
                 for (const activity of invalidActivities) {
-                    if (!activity.student) {
+                    if (!activity.students) {
                         issues.push(`Activity ${activity.id} has invalid student reference`);
                     }
                 }
                 const invalidCheckouts = await prisma_1.prisma.book_checkouts.findMany({
                     where: { status: client_1.book_checkouts_status.ACTIVE },
-                    include: { book: true },
+                    include: { books: true },
                 });
                 for (const checkout of invalidCheckouts) {
-                    if (!checkout.book) {
+                    if (!checkout.books) {
                         issues.push(`Checkout ${checkout.id} has invalid book reference`);
                     }
                 }
@@ -404,7 +412,7 @@ class JobScheduler {
                         status: client_1.book_checkouts_status.OVERDUE,
                     },
                     include: {
-                        student: {
+                        students: {
                             select: {
                                 student_id: true,
                                 first_name: true,
@@ -413,7 +421,7 @@ class JobScheduler {
                                 grade_category: true,
                             },
                         },
-                        book: {
+                        books: {
                             select: {
                                 accession_no: true,
                                 title: true,
@@ -423,18 +431,24 @@ class JobScheduler {
                     },
                 });
                 const studentsByGrade = overdueStudents.reduce((acc, checkout) => {
-                    const grade = checkout.student.grade_category;
-                    if (!acc[grade]) {
-                        acc[grade] = [];
+                    const student = checkout.students;
+                    if (!student?.grade_category) {
+                        return acc;
                     }
-                    acc[grade].push(checkout);
+                    const grade = student.grade_category;
+                    const group = acc[grade] ?? [];
+                    group.push(checkout);
+                    acc[grade] = group;
                     return acc;
                 }, {});
                 for (const [grade, students] of Object.entries(studentsByGrade)) {
                     const overdueList = students ?? [];
                     logger_1.logger.info(`Teacher notification for ${grade}: ${overdueList.length} students with overdue books`);
-                    overdueList.forEach(({ student, book, overdue_days, fine_amount }) => {
-                        logger_1.logger.info(`- ${student.first_name} ${student.last_name} (${student.student_id}): "${book.title}" (${overdue_days} days, ₱${fine_amount} fine)`);
+                    overdueList.forEach(({ students, books, overdue_days, fine_amount }) => {
+                        if (!students || !books) {
+                            return;
+                        }
+                        logger_1.logger.info(`- ${students.first_name} ${students.last_name} (${students.student_id}): "${books.title}" (${overdue_days} days, ₱${fine_amount} fine)`);
                     });
                 }
                 await this.updateJobStatus('Teacher Notifications', client_1.automation_jobs_status.COMPLETED);

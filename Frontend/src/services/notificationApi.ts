@@ -1,6 +1,6 @@
 import api from './api';
 
-export interface Notification {
+export interface AppNotification {
   id: string;
   userId?: string;
   type: 'OVERDUE_BOOK' | 'FINE_ADDED' | 'FINE_WAIVED' | 'BOOK_DUE_SOON' | 
@@ -19,7 +19,7 @@ export interface Notification {
 export interface NotificationResponse {
   success: boolean;
   data: {
-    notifications: Notification[];
+    notifications: AppNotification[];
     total: number;
     unreadCount: number;
   };
@@ -57,19 +57,19 @@ export const notificationApi = {
   },
 
   // Create a notification
-  async createNotification(data: Partial<Notification>): Promise<{ success: boolean; data: Notification }> {
+  async createNotification(data: Partial<AppNotification>): Promise<{ success: boolean; data: AppNotification }> {
     const response = await api.post('/notifications', data);
     return response.data;
   },
 
   // Create multiple notifications
-  async createBulkNotifications(notifications: Partial<Notification>[]): Promise<{ success: boolean; data: any }> {
+  async createBulkNotifications(notifications: Partial<AppNotification>[]): Promise<{ success: boolean; data: any }> {
     const response = await api.post('/notifications/bulk', { notifications });
     return response.data;
   },
 
   // Mark notification as read
-  async markAsRead(notificationId: string): Promise<{ success: boolean; data: Notification }> {
+  async markAsRead(notificationId: string): Promise<{ success: boolean; data: AppNotification }> {
     const response = await api.patch(`/notifications/${notificationId}/read`);
     return response.data;
   },

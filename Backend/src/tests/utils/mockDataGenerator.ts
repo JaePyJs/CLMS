@@ -1,12 +1,12 @@
 import { faker } from '@faker-js/faker';
 import {
-  GradeCategory,
-  EquipmentType,
-  EquipmentStatus,
-  ActivityType,
-  ActivityStatus,
+  students_grade_category,
+  equipment_type,
+  equipment_status,
+  student_activities_activity_type,
+  student_activities_status,
   users_role,
-  CheckoutStatus,
+  book_checkouts_status,
   notifications_type,
   notifications_priority
 } from '@prisma/client';
@@ -241,11 +241,11 @@ class MockDataGenerator {
    */
   async generateActivities(count: number, students: any[], equipment: any[], dateRange: { start: Date, end: Date }): Promise<any[]> {
     const activities = [];
-    const activityTypes: ActivityType[] = [
+    const activityTypes: student_activities_activity_type[] = [
       'COMPUTER_USE', 'GAMING_SESSION', 'AVR_SESSION', 'BOOK_CHECKOUT',
       'BOOK_RETURN', 'GENERAL_VISIT', 'RECREATION', 'STUDY', 'OTHER'
     ];
-    const statuses: ActivityStatus[] = ['ACTIVE', 'COMPLETED', 'EXPIRED', 'CANCELLED', 'EXTENDED'];
+    const statuses: student_activities_status[] = ['ACTIVE', 'COMPLETED', 'EXPIRED', 'CANCELLED', 'EXTENDED'];
 
     for (let i = 0; i < count; i++) {
       const student = faker.helpers.arrayElement(students);

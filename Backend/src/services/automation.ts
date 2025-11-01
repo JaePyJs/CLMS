@@ -17,6 +17,8 @@ import { JobExecutionResult, JobConfig } from '@/types';
 import { logger, automationLogger, performanceLogger } from '@/utils/logger';
 import { googleSheetsService } from './googleSheets';
 import { BaseError } from '@/utils/errors';
+import { NoopQueue } from '@/utils/noopQueue';
+import { queuesDisabled, disableScheduledTasks } from '@/utils/gates';
 
 type QueuePayload = Record<string, unknown>;
 
@@ -108,18 +110,25 @@ export class AutomationService {
     }
 
     try {
-      // Connect to Redis
-      await this.redis.connect();
-      logger.info('Connected to Redis for automation queues');
+      // Connect to Redis when queues are enabled
+      if (!queuesDisabled) {
+        await this.redis.connect();
+        logger.info('Connected to Redis for automation queues');
+      } else {
+        logger.warn('Skipping Redis connect: queues are disabled');
+      }
 
       // Initialize job queues
       await this.initializeQueues();
 
-      // Load and schedule jobs from database
-      await this.loadScheduledJobs();
-
-      // Setup cleanup interval
-      this.setupCleanupInterval();
+      // Load and schedule jobs from database when scheduling is enabled
+      if (!disableScheduledTasks) {
+        await this.loadScheduledJobs();
+        // Setup cleanup interval
+        this.setupCleanupInterval();
+      } else {
+        logger.warn('Scheduled jobs and cleanup interval disabled by gate');
+      }
 
       this.isInitialized = true;
       logger.info('Automation service initialized successfully');
@@ -192,10 +201,12 @@ export class AutomationService {
     ];
 
     for (const config of queueConfigs) {
-      const queue = new Bull<QueuePayload>(config.name, {
-        redis: this.redis.options,
-        ...config.options,
-      });
+      const queue = queuesDisabled
+        ? (new NoopQueue() as unknown as Queue<QueuePayload>)
+        : new Bull<QueuePayload>(config.name, {
+            redis: this.redis.options,
+            ...config.options,
+          });
 
       // Setup job processors
       this.setupJobProcessors(queue, config.name);
@@ -204,82 +215,15 @@ export class AutomationService {
       this.setupQueueEventListeners(queue, config.name);
 
       this.queues.set(config.name, queue);
-      logger.info(`Initialized queue: ${config.name}`);
+      logger.info(`Initialized queue: ${config.name}${queuesDisabled ? ' (noop)' : ''}`);
     }
-  }
-
-  private setupJobProcessors(
-    queue: Queue<QueuePayload>,
-    queueName: string,
-  ): void {
-    switch (queueName) {
-      case 'backup':
-        queue.process('daily-backup', this.processDailyBackup.bind(this));
-        queue.process('database-backup', this.processDatabaseBackup.bind(this));
-        break;
-
-      case 'sync':
-        queue.process(
-          'google-sheets-sync',
-          this.processGoogleSheetsSync.bind(this),
-        );
-        queue.process('activity-sync', this.processActivitySync.bind(this));
-        break;
-
-      case 'notifications':
-        queue.process(
-          'teacher-notifications',
-          this.processTeacherNotifications.bind(this),
-        );
-        queue.process(
-          'overdue-notifications',
-          this.processOverdueNotifications.bind(this),
-        );
-        break;
-
-      case 'maintenance':
-        queue.process(
-          'session-expiry-check',
-          this.processSessionExpiryCheck.bind(this),
-        );
-        queue.process('weekly-cleanup', this.processWeeklyCleanup.bind(this));
-        queue.process('integrity-audit', this.processIntegrityAudit.bind(this));
-        break;
-    }
-  }
-
-  private setupQueueEventListeners(
-    queue: Queue<QueuePayload>,
-    _queueName: string,
-  ): void {
-    queue.on('completed', (job: Job<QueuePayload>, result: unknown) => {
-      automationLogger.jobSuccess(
-        job.name,
-        job.id.toString(),
-        job.finishedOn! - job.timestamp,
-        result,
-      );
-    });
-
-    queue.on('failed', (job: Job<QueuePayload>, err: Error) => {
-      automationLogger.jobFailure(
-        job.name,
-        job.id.toString(),
-        job.finishedOn! - job.timestamp,
-        err,
-      );
-    });
-
-    queue.on('stalled', (job: Job<QueuePayload>) => {
-      logger.warn(`Job stalled: ${job.name} (${job.id})`);
-    });
-
-    queue.on('progress', (job: Job, progress: number) => {
-      logger.debug(`Job progress: ${job.name} (${job.id}) - ${progress}%`);
-    });
   }
 
   private async loadScheduledJobs(): Promise<void> {
+    if (disableScheduledTasks) {
+      logger.warn('Skipping loadScheduledJobs: scheduled tasks disabled');
+      return;
+    }
     try {
       const jobs = await this.prisma.automation_jobs.findMany({
         where: { is_enabled: true },
@@ -298,6 +242,10 @@ export class AutomationService {
   }
 
   async scheduleJob(job: AutomationJob): Promise<void> {
+    if (disableScheduledTasks) {
+      logger.warn(`Skipping scheduleJob for ${job.name}: scheduled tasks disabled`);
+      return;
+    }
     try {
       // Validate cron expression
       if (!cron.validate(job.schedule)) {
@@ -340,6 +288,70 @@ export class AutomationService {
         error: (error as Error).message,
       });
     }
+  }
+
+  private setupCleanupInterval(): void {
+    if (disableScheduledTasks) {
+      return;
+    }
+    // Clean up old logs and completed jobs every hour
+    setInterval(
+      async () => {
+        try {
+          // Clean up old automation logs (keep last 30 days)
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+          await this.prisma.automation_logs.deleteMany({
+            where: {
+              started_at: { lt: thirtyDaysAgo },
+            },
+          });
+
+          logger.debug('Cleaned up old automation logs');
+        } catch (error) {
+          logger.error('Failed to cleanup old automation logs', {
+            error: (error as Error).message,
+          });
+        }
+      },
+      60 * 60 * 1000,
+    ); // Every hour
+  }
+
+  async shutdown(): Promise<void> {
+    logger.info('Shutting down automation service');
+
+    // Stop all scheduled jobs
+    for (const task of this.scheduledJobs.values()) {
+      task.stop();
+    }
+    this.scheduledJobs.clear();
+
+    // Close all queues
+    for (const queue of this.queues.values()) {
+      await queue.close();
+    }
+    this.queues.clear();
+
+    // Close Redis connection if it was used
+    if (!queuesDisabled) {
+      await this.redis.disconnect();
+    }
+
+    // Close Prisma connection
+    await this.prisma.$disconnect();
+
+    logger.info('Automation service shutdown complete');
+  }
+
+  getSystemHealth(): AutomationSystemHealth {
+    return {
+      initialized: this.isInitialized,
+      scheduledJobs: this.scheduledJobs.size,
+      activeQueues: this.queues.size,
+      redisConnected: !queuesDisabled && this.redis.status === 'ready',
+    };
   }
 
   private async executeJob(job: AutomationJob): Promise<void> {

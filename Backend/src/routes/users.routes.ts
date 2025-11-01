@@ -76,10 +76,11 @@ router.get('/:id', requirePermission(Permission.USERS_VIEW), async (req, res) =>
     const user = await userService.getUserById(req.params.id);
 
     if (!user) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         message: 'User not found',
       });
+      return;
     }
 
     res.json({
@@ -171,10 +172,11 @@ router.patch('/:id/role', requireSuperAdmin, async (req, res) => {
     const { role } = req.body;
 
     if (!role) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Role is required',
       });
+      return;
     }
 
     const user = await userService.updateUserRole(req.params.id, role);
@@ -202,10 +204,11 @@ router.patch('/:id/permissions', requireSuperAdmin, async (req, res) => {
     const { permissions } = req.body;
 
     if (!Array.isArray(permissions)) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Permissions must be an array',
       });
+      return;
     }
 
     const user = await userService.updateUserPermissions(req.params.id, permissions);
@@ -277,10 +280,11 @@ router.post('/:id/change-password', requireOwnershipOrAdmin('id'), async (req, r
     const { oldPassword, newPassword } = req.body;
 
     if (!oldPassword || !newPassword) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'Old password and new password are required',
       });
+      return;
     }
 
     await userService.changePassword(req.params.id, oldPassword, newPassword);
@@ -308,10 +312,11 @@ router.post('/:id/reset-password', requireAdmin, async (req, res) => {
     const { newPassword } = req.body;
 
     if (!newPassword) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: 'New password is required',
       });
+      return;
     }
 
     await userService.resetPassword(req.params.id, newPassword);

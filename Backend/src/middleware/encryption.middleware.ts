@@ -97,11 +97,12 @@ export class EncryptionMiddleware {
 
         // In production, you might want to block requests if encryption is not properly configured
         if (process.env.NODE_ENV === 'production' && compliance.issues.length > 0) {
-          return res.status(503).json({
+          res.status(503).json({
             error: 'Service temporarily unavailable',
             message: 'Encryption system is not properly configured',
             details: compliance.issues
           });
+          return;
         }
       }
 
@@ -209,7 +210,7 @@ export class EncryptionMiddleware {
     // /api/users/profile -> users
 
     const match = path.match(/^\/api\/([^\/]+)/);
-    return match ? match[1] : null;
+    return match && match[1] ? match[1] : null;
   }
 
   /**
@@ -288,6 +289,8 @@ export class EncryptionMiddleware {
     if (!email || typeof email !== 'string') return email;
 
     const [localPart, domain] = email.split('@');
+    if (!localPart || !domain) return email;
+    
     if (localPart.length <= 2) {
       return `${'*'.repeat(localPart.length)}@${domain}`;
     }

@@ -83,7 +83,7 @@ interface Alert {
   timestamp: number;
   resolved: boolean;
   resolvedAt?: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 interface MonitoringConfig {
@@ -114,6 +114,34 @@ interface MonitoringConfig {
   };
 }
 
+type AggregatedMetrics = {
+  averageCpuUsage: number;
+  averageMemoryUsage: number;
+  averageResponseTime: number;
+  totalRequests: number;
+  totalErrors: number;
+  sampleSize: number;
+};
+
+type DatabaseHealthStatus = Awaited<
+  ReturnType<typeof optimizedDatabase.healthCheck>
+>;
+type CacheHealthStatus = Awaited<ReturnType<typeof enhancedRedis.healthCheck>>;
+type JobProcessorHealthStatus = Awaited<
+  ReturnType<typeof optimizedJobProcessor.healthCheck>
+>;
+
+type MonitoringHealthStatus = {
+  healthy: boolean;
+  metrics: SystemMetrics;
+  alerts: Alert[];
+  services: {
+    database: DatabaseHealthStatus;
+    redis: CacheHealthStatus;
+    jobs: JobProcessorHealthStatus;
+  };
+};
+
 class MonitoringService extends EventEmitter {
   private config: MonitoringConfig;
   private metrics: SystemMetrics[] = [];
@@ -143,9 +171,15 @@ class MonitoringService extends EventEmitter {
           memory: parseFloat(process.env.ALERT_MEMORY_THRESHOLD || '85'),
           disk: parseFloat(process.env.ALERT_DISK_THRESHOLD || '90'),
           errorRate: parseFloat(process.env.ALERT_ERROR_RATE_THRESHOLD || '5'),
-          responseTime: parseFloat(process.env.ALERT_RESPONSE_TIME_THRESHOLD || '2000'),
-          databaseConnections: parseInt(process.env.ALERT_DB_CONNECTIONS_THRESHOLD || '80'),
-          cacheHitRate: parseFloat(process.env.ALERT_CACHE_HIT_RATE_THRESHOLD || '80'),
+          responseTime: parseFloat(
+            process.env.ALERT_RESPONSE_TIME_THRESHOLD || '2000',
+          ),
+          databaseConnections: parseInt(
+            process.env.ALERT_DB_CONNECTIONS_THRESHOLD || '80',
+          ),
+          cacheHitRate: parseFloat(
+            process.env.ALERT_CACHE_HIT_RATE_THRESHOLD || '80',
+          ),
         },
         notifications: {
           email: process.env.ALERT_EMAIL_ENABLED === 'true',
@@ -290,7 +324,8 @@ class MonitoringService extends EventEmitter {
     const timeDiff = (now - this.lastMetricsTime) / 1000; // seconds
 
     const requestsPerSecond = this.requestCount / timeDiff;
-    const errorRate = this.requestCount > 0 ? (this.errorCount / this.requestCount) * 100 : 0;
+    const errorRate =
+      this.requestCount > 0 ? (this.errorCount / this.requestCount) * 100 : 0;
 
     const responseTimeStats = this.calculateResponseTimeStats();
 
@@ -328,10 +363,15 @@ class MonitoringService extends EventEmitter {
       const queryStats = optimizedDatabase.getQueryStats();
       const slowQueries = optimizedDatabase.getSlowQueries();
 
-      const totalQueries = queryStats.reduce((sum, stat) => sum + stat.count, 0);
-      const averageQueryTime = queryStats.length > 0
-        ? queryStats.reduce((sum, stat) => sum + stat.avgTime, 0) / queryStats.length
-        : 0;
+      const totalQueries = queryStats.reduce(
+        (sum, stat) => sum + stat.count,
+        0,
+      );
+      const averageQueryTime =
+        queryStats.length > 0
+          ? queryStats.reduce((sum, stat) => sum + stat.avgTime, 0) /
+            queryStats.length
+          : 0;
 
       return {
         connections: dbHealth.poolStats?.activeConnections || 0,
@@ -366,10 +406,14 @@ class MonitoringService extends EventEmitter {
   private async getCacheMetrics(): Promise<SystemMetrics['cache']> {
     try {
       const redisHealth = await enhancedRedis.healthCheck();
-      const cacheStats = enhancedRedis.getStats();
 
       return {
-        hitRate: parseFloat(redisHealth.stats?.hitRate?.replace('%', '') || '0'),
+        hitRate:
+          typeof redisHealth.stats?.hitRate === 'number'
+            ? redisHealth.stats.hitRate
+            : typeof redisHealth.info?.hitRate === 'string'
+            ? parseFloat(redisHealth.info.hitRate.replace('%', ''))
+            : 0,
         memoryUsage: 0, // Would get actual Redis memory usage
         keys: 0, // Would get actual Redis key count
         operationsPerSecond: 0, // Would calculate from Redis info
@@ -390,7 +434,6 @@ class MonitoringService extends EventEmitter {
 
   private async getJobMetrics(): Promise<SystemMetrics['jobs']> {
     try {
-      const jobHealth = await optimizedJobProcessor.healthCheck();
       const jobMetrics = optimizedJobProcessor.getMetrics();
 
       return {
@@ -416,48 +459,63 @@ class MonitoringService extends EventEmitter {
   }
 
   private checkAlerts(): void {
-    if (this.metrics.length === 0) return;
+    if (this.metrics.length === 0) {
+      return;
+    }
 
     const latestMetrics = this.metrics[this.metrics.length - 1];
+    if (!latestMetrics) {
+      return;
+    }
     const thresholds = this.config.alerts.thresholds;
 
     // Check CPU usage
     if (latestMetrics.system.cpu.usage > thresholds.cpu) {
-      this.createAlert('high', 'cpu',
+      this.createAlert(
+        'high',
+        'cpu',
         `High CPU usage: ${latestMetrics.system.cpu.usage.toFixed(2)}%`,
-        { usage: latestMetrics.system.cpu.usage }
+        { usage: latestMetrics.system.cpu.usage },
       );
     }
 
     // Check memory usage
     if (latestMetrics.system.memory.percentage > thresholds.memory) {
-      this.createAlert('high', 'memory',
+      this.createAlert(
+        'high',
+        'memory',
         `High memory usage: ${latestMetrics.system.memory.percentage.toFixed(2)}%`,
-        { usage: latestMetrics.system.memory.percentage }
+        { usage: latestMetrics.system.memory.percentage },
       );
     }
 
     // Check error rate
     if (latestMetrics.application.errorRate > thresholds.errorRate) {
-      this.createAlert('medium', 'error_rate',
+      this.createAlert(
+        'medium',
+        'error_rate',
         `High error rate: ${latestMetrics.application.errorRate.toFixed(2)}%`,
-        { errorRate: latestMetrics.application.errorRate }
+        { errorRate: latestMetrics.application.errorRate },
       );
     }
 
     // Check response time
     if (latestMetrics.application.responseTime.p95 > thresholds.responseTime) {
-      this.createAlert('medium', 'response_time',
+      this.createAlert(
+        'medium',
+        'response_time',
         `High response time: ${latestMetrics.application.responseTime.p95}ms`,
-        { responseTime: latestMetrics.application.responseTime.p95 }
+        { responseTime: latestMetrics.application.responseTime.p95 },
       );
     }
 
     // Check cache hit rate
     if (latestMetrics.cache.hitRate < thresholds.cacheHitRate) {
-      this.createAlert('low', 'cache_hit_rate',
+      this.createAlert(
+        'low',
+        'cache_hit_rate',
         `Low cache hit rate: ${latestMetrics.cache.hitRate.toFixed(2)}%`,
-        { hitRate: latestMetrics.cache.hitRate }
+        { hitRate: latestMetrics.cache.hitRate },
       );
     }
   }
@@ -466,7 +524,7 @@ class MonitoringService extends EventEmitter {
     severity: Alert['severity'],
     type: string,
     message: string,
-    metadata: Record<string, any>
+    metadata: Record<string, unknown>,
   ): void {
     const alert: Alert = {
       id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -481,7 +539,7 @@ class MonitoringService extends EventEmitter {
     this.alerts.push(alert);
 
     // Keep only recent alerts
-    const cutoffTime = Date.now() - (24 * 60 * 60 * 1000); // 24 hours
+    const cutoffTime = Date.now() - 24 * 60 * 60 * 1000; // 24 hours
     this.alerts = this.alerts.filter(a => a.timestamp > cutoffTime);
 
     // Emit alert event
@@ -538,23 +596,47 @@ class MonitoringService extends EventEmitter {
 
     logger.info('Report generated', {
       timestamp: report.timestamp,
-      metricsCount: report.metrics.length,
+      metricsSampleSize: report.metrics.sampleSize,
       activeAlerts: report.alerts.length,
     });
   }
 
-  private getAggregatedMetrics(): any {
+  private getAggregatedMetrics(): AggregatedMetrics {
     // Calculate aggregated metrics for the reporting period
     const recentMetrics = this.metrics.slice(-10); // Last 10 data points
 
-    if (recentMetrics.length === 0) return {};
+    if (recentMetrics.length === 0) {
+      return {
+        averageCpuUsage: 0,
+        averageMemoryUsage: 0,
+        averageResponseTime: 0,
+        totalRequests: 0,
+        totalErrors: 0,
+        sampleSize: 0,
+      };
+    }
 
     return {
-      averageCpuUsage: recentMetrics.reduce((sum, m) => sum + m.system.cpu.usage, 0) / recentMetrics.length,
-      averageMemoryUsage: recentMetrics.reduce((sum, m) => sum + m.system.memory.percentage, 0) / recentMetrics.length,
-      averageResponseTime: recentMetrics.reduce((sum, m) => sum + m.application.responseTime.average, 0) / recentMetrics.length,
-      totalRequests: recentMetrics.reduce((sum, m) => sum + m.application.requestsPerSecond, 0),
-      totalErrors: recentMetrics.reduce((sum, m) => sum + m.application.errorRate, 0),
+      averageCpuUsage:
+        recentMetrics.reduce((sum, m) => sum + m.system.cpu.usage, 0) /
+        recentMetrics.length,
+      averageMemoryUsage:
+        recentMetrics.reduce((sum, m) => sum + m.system.memory.percentage, 0) /
+        recentMetrics.length,
+      averageResponseTime:
+        recentMetrics.reduce(
+          (sum, m) => sum + m.application.responseTime.average,
+          0,
+        ) / recentMetrics.length,
+      totalRequests: recentMetrics.reduce(
+        (sum, m) => sum + m.application.requestsPerSecond,
+        0,
+      ),
+      totalErrors: recentMetrics.reduce(
+        (sum, m) => sum + m.application.errorRate,
+        0,
+      ),
+      sampleSize: recentMetrics.length,
     };
   }
 
@@ -623,13 +705,9 @@ class MonitoringService extends EventEmitter {
     }
   }
 
-  async getHealthStatus(): Promise<{
-    healthy: boolean;
-    metrics: SystemMetrics;
-    alerts: Alert[];
-    services: any;
-  }> {
-    const latestMetrics = this.metrics.length > 0 ? this.metrics[this.metrics.length - 1] : null;
+  async getHealthStatus(): Promise<MonitoringHealthStatus> {
+    const latestMetrics =
+      this.metrics.length > 0 ? this.metrics[this.metrics.length - 1] : null;
     const activeAlerts = this.alerts.filter(a => !a.resolved);
     const criticalAlerts = activeAlerts.filter(a => a.severity === 'critical');
 
@@ -637,7 +715,7 @@ class MonitoringService extends EventEmitter {
 
     return {
       healthy,
-      metrics: latestMetrics || {} as SystemMetrics,
+      metrics: latestMetrics || ({} as SystemMetrics),
       alerts: activeAlerts,
       services: {
         database: await optimizedDatabase.healthCheck(),

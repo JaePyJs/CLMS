@@ -13,7 +13,7 @@ import {
   createStudentActivity,
   endStudentActivity,
 } from '@/services/studentService';
-import { GradeCategory, ActivityType, ActivityStatus } from '@prisma/client';
+import { GradeCategory, student_activities_activity_type, ActivityStatus } from '@prisma/client';
 import { logger } from '@/utils/logger';
 import { requirePermission } from '@/middleware/authorization.middleware';
 import { Permission } from '@/config/permissions';
@@ -74,21 +74,23 @@ router.get('/:id',
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Student ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const student = await getStudentByBarcode(id);
 
     if (!student) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Student not found',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const response: ApiResponse = {
@@ -134,11 +136,12 @@ router.post('/',
       !gradeLevel ||
       !gradeCategory
     ) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const student = await createStudent({
@@ -180,11 +183,12 @@ router.put('/:id',
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Student ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const {
@@ -236,11 +240,12 @@ router.delete('/:id',
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Student ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     await deleteStudent(id);
@@ -300,7 +305,7 @@ router.get('/activities/all',
     }
 
     if (activityType) {
-      options.activityType = activityType as ActivityType;
+      options.activityType = activityType as student_activities_activity_type;
     }
 
     if (status) {
@@ -366,17 +371,18 @@ router.post('/activities',
       req.body;
 
     if (!studentId || !activityType) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Missing required fields: studentId, activityType',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const activity = await createStudentActivity({
-      studentId,
-      activityType,
-      equipmentId,
+      student_id: studentId,
+      activity_type: activityType,
+      equipment_id: equipmentId,
       timeLimitMinutes,
       notes,
     });
@@ -410,11 +416,12 @@ router.patch('/activities/:id/end',
   try {
     const { id } = req.params;
     if (!id) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Activity ID is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const activity = await endStudentActivity(id);
@@ -450,21 +457,23 @@ router.post('/scan',
     const { barcode } = req.body;
 
     if (!barcode) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         error: 'Barcode is required',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const student = await getStudentByBarcode(barcode);
 
     if (!student) {
-      return res.status(404).json({
+      res.status(404).json({
         success: false,
         error: 'Student not found',
         timestamp: new Date().toISOString(),
       });
+      return;
     }
 
     const response: ApiResponse = {

@@ -52,11 +52,7 @@ interface MaintenanceInsight {
   description: string
 }
 
-const UTILIZATION_COLORS = {
-  high: '#ef4444',    // red
-  medium: '#f59e0b',  // yellow
-  low: '#10b981'      // green
-}
+
 
 export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = false }: EquipmentUtilizationAnalyticsProps) {
   const [selectedView, setSelectedView] = useState<'overview' | 'utilization' | 'patterns' | 'maintenance'>('overview')
@@ -71,28 +67,39 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
   }, [data, timeframe])
 
   const processEquipmentData = (analyticsData: any) => {
-    // Process utilization data
-    const utilization = analyticsData.utilizationByType?.map((item: any) => ({
-      ...item,
-      status: getUtilizationStatus(item.utilizationRate),
-      avgSessionDuration: Math.random() * 60 + 15, // Mock 15-75 min
-      maintenanceAlerts: Math.floor(Math.random() * 3)
-    })) || []
+    // Process utilization data with safe defaults
+    const utilization = (analyticsData?.utilizationByType ?? []).map((item: any) => {
+      const rate = Number(item?.utilizationRate ?? 0)
+      return {
+        type: String(item?.type ?? 'Unknown'),
+        total: Number(item?.total ?? 0),
+        inUse: Number(item?.inUse ?? 0),
+        utilizationRate: rate,
+        status: getUtilizationStatus(rate),
+        avgSessionDuration: Math.random() * 60 + 15, // Mock 15-75 min
+        maintenanceAlerts: Math.floor(Math.random() * 3)
+      } as UtilizationData
+    })
     setUtilizationData(utilization)
 
-    // Process peak usage times
-    const peakTimes = analyticsData.peakUsageTimes?.map((time: any) => ({
-      ...time,
+    // Process peak usage times with safe defaults
+    const peakTimes = (analyticsData?.peakUsageTimes ?? []).map((time: any) => ({
+      hour: Number(time?.hour ?? 0),
+      sessions: Number(time?.sessions ?? 0),
+      timeRange: String(time?.timeRange ?? ''),
       utilizationRate: Math.random() * 40 + 60 // Mock 60-100% during peak
-    })) || []
+    })) as PeakUsageTime[]
     setPeakUsageTimes(peakTimes)
 
-    // Process maintenance insights
-    const maintenance = analyticsData.maintenanceInsights?.maintenanceSchedule?.map((item: any) => ({
-      ...item,
+    // Process maintenance insights with safe defaults
+    const schedule = analyticsData?.maintenanceInsights?.maintenanceSchedule ?? []
+    const maintenance = schedule.map((item: any) => ({
+      equipmentId: String(item?.equipmentId ?? 'UNKNOWN'),
+      nextMaintenance: String(item?.nextMaintenance ?? ''),
+      type: (item?.type === 'Preventive' || item?.type === 'Corrective' ? item.type : 'Preventive'),
       urgency: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : 'low',
-      description: generateMaintenanceDescription(item.type)
-    })) || []
+      description: generateMaintenanceDescription(String(item?.type ?? 'Preventive'))
+    })) as MaintenanceInsight[]
     setMaintenanceInsights(maintenance)
   }
 
@@ -119,7 +126,7 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
     }
 
     const typeDesc = descriptions[type as keyof typeof descriptions] || []
-    return typeDesc[Math.floor(Math.random() * typeDesc.length)]
+    return typeDesc[Math.floor(Math.random() * typeDesc.length)] || 'Maintenance required'
   }
 
   const getUrgencyColor = (urgency: string) => {
@@ -222,7 +229,7 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
               <Bar
                 dataKey="utilizationRate"
                 name="Utilization %"
-                fill={(entry: any) => UTILIZATION_COLORS[entry.status]}
+                fill="#3b82f6"
                 radius={[8, 8, 0, 0]}
               />
             </BarChart>
@@ -298,12 +305,6 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
                 dataKey="utilizationRate"
                 cornerRadius={10}
                 fill="#8884d8"
-                label={({ position, value }) => {
-                  if (position === 'inside') {
-                    return `${value.toFixed(1)}%`
-                  }
-                  return null
-                }}
               />
               <Tooltip
                 contentStyle={{
@@ -585,7 +586,7 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
       </div>
 
       {/* Analytics Tabs */}
-      <Tabs value={selectedView} onValueChange={(value: any) => setSelectedView(value)} className="space-y-4">
+      <Tabs value={selectedView} onValueChange={(value: string) => setSelectedView(value as 'overview' | 'utilization' | 'patterns' | 'maintenance')} className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="utilization">Utilization</TabsTrigger>

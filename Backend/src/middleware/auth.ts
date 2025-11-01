@@ -10,6 +10,7 @@ export interface EnhancedJWTPayload extends JWTPayload {
   sub?: string
   iss?: string
   aud?: string
+  permissions?: string[]
 }
 
 // Extend Request interface to include user

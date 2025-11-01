@@ -5,7 +5,7 @@
  * and performance monitoring in the CLMS application.
  */
 
-import { imageOptimizationService } from '@/services/imageOptimizationService';
+import { imageOptimizationService } from '../services/imageOptimizationService';
 
 // Common image sizes for the CLMS application
 export const IMAGE_SIZES = {
@@ -84,11 +84,12 @@ export const generateDensitySrcSet = (
     .map(density => {
       const w = width ? width * density : undefined;
       const h = height ? height * density : undefined;
-      const url = imageOptimizationService.generateOptimizedUrl(baseUrl, {
-        width: w,
-        height: h,
+      const config: any = {
         quality: Math.max(quality - (density - 1) * 10, 50), // Reduce quality for higher densities
-      });
+      };
+      if (w !== undefined) config.width = w;
+      if (h !== undefined) config.height = h;
+      const url = imageOptimizationService.generateOptimizedUrl(baseUrl, config);
       return `${url} ${density}x`;
     })
     .join(', ');
@@ -100,8 +101,13 @@ export const generateDensitySrcSet = (
 export const getOptimalDimensions = (
   useCase: keyof typeof IMAGE_SIZES,
   size: 'small' | 'medium' | 'large' = 'medium'
-) => {
-  return IMAGE_SIZES[useCase][size];
+): { width: number; height: number } => {
+  const useCaseConfig = IMAGE_SIZES[useCase] as Record<string, { width: number; height: number }>;
+  if (size in useCaseConfig) {
+    return useCaseConfig[size];
+  }
+  // Fallback to medium if size doesn't exist
+  return 'medium' in useCaseConfig ? useCaseConfig['medium'] : Object.values(useCaseConfig)[0];
 };
 
 /**
@@ -128,12 +134,13 @@ export const preloadCriticalImages = async (
   imageUrls: string[],
   priority: 'high' | 'low' = 'high'
 ): Promise<void[]> => {
-  const promises = imageUrls.map(url =>
-    imageOptimizationService.preloadImage(url, priority).catch(error => {
+  const promises = imageUrls.map(async url => {
+    try {
+      await imageOptimizationService.preloadImage(url, priority);
+    } catch (error) {
       console.warn(`Failed to preload image: ${url}`, error);
-      return null;
-    })
-  );
+    }
+  });
 
   return Promise.all(promises);
 };
@@ -169,7 +176,7 @@ export const getImageExtension = (url: string): string | null => {
   try {
     const urlObj = new URL(url, window.location.origin);
     const match = urlObj.pathname.match(/\.([a-zA-Z0-9]+)$/);
-    return match ? match[1].toLowerCase() : null;
+    return match?.[1]?.toLowerCase() || null;
   } catch {
     return null;
   }
@@ -291,7 +298,7 @@ export const ASPECT_RATIOS = {
 export const getImagePriority = (
   position: 'above-fold' | 'below-fold' | 'hidden'
 ): 'high' | 'low' | 'auto' => {
-  const priorities = {
+  const priorities: Record<'above-fold' | 'below-fold' | 'hidden', 'high' | 'low' | 'auto'> = {
     'above-fold': 'high',
     'below-fold': 'auto',
     'hidden': 'low',

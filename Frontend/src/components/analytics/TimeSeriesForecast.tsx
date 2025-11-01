@@ -323,7 +323,7 @@ export function TimeSeriesForecast({
                 {/* Reference line between historical and predicted */}
                 {showHistorical && showPredictions && (
                   <ReferenceLine
-                    x={chartData.find(d => d.hasPrediction)?.date}
+                    x={chartData.find(d => d.hasPrediction)?.date || ''}
                     stroke="hsl(var(--border))"
                     strokeDasharray="3 3"
                     strokeWidth={1}
