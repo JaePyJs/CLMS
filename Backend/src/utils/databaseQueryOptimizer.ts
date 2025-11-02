@@ -135,7 +135,7 @@ export class DatabaseQueryOptimizer {
     // Remove sensitive data from logs
     if (sanitized.data) {
       if (Array.isArray(sanitized.data)) {
-        sanitized.data = sanitized.data.map(item => 
+        sanitized.data = sanitized.data.map((item: any) => 
           this.sanitizeSensitiveFields(item)
         );
       } else {
@@ -214,7 +214,7 @@ export class DatabaseQueryOptimizer {
   /**
    * Execute multiple queries in parallel
    */
-  async parallelQueries<T>(queries: Array<() => Promise<T>>): Promise<T[]> {
+  async parallelQueries<T = any>(queries: Array<() => Promise<any>>): Promise<any[]> {
     const startTime = Date.now();
     
     try {
@@ -255,7 +255,14 @@ export class DatabaseQueryOptimizer {
     const { batchSize = 10, transaction = false, skipDuplicates = true } = options;
     
     if (transaction) {
-      return this.prisma.$transaction(operations);
+      // For transactions, we need to execute the operations within a transaction callback
+      return this.prisma.$transaction(async (tx) => {
+        const results: T[] = [];
+        for (const operation of operations) {
+          results.push(await operation());
+        }
+        return results;
+      });
     }
 
     // Process in batches to avoid overwhelming the database
@@ -343,7 +350,7 @@ export class DatabaseQueryOptimizer {
             take: limit,
           }),
           () => this.prisma.students.count({ where: { is_active: true } }),
-        ]);
+        ]) as [any[], number];
 
         return {
           students,
@@ -424,7 +431,7 @@ export class DatabaseQueryOptimizer {
               ],
             },
           }),
-        ]);
+        ]) as [any[], number];
 
         return {
           books,
@@ -486,7 +493,7 @@ export class DatabaseQueryOptimizer {
             take: limit,
           }),
           () => this.prisma.equipment.count({ where: { status: 'AVAILABLE' } }),
-        ]);
+        ]) as [any[], number];
 
         return {
           equipment,
@@ -533,7 +540,7 @@ export class DatabaseQueryOptimizer {
               },
             },
           }),
-        ]);
+        ]) as [number, number, number, number, number, number, number, number];
 
         return {
           students: {

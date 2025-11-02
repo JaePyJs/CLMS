@@ -83,7 +83,6 @@ export class SessionManager {
         lastActivity: now,
         ipAddress,
         userAgent,
-        deviceId,
         mfaVerified: false,
         sessionFlags: {
           suspiciousActivity: false,
@@ -91,6 +90,10 @@ export class SessionManager {
           deviceTrusted: false
         }
       };
+
+      if (deviceId) {
+        sessionData.deviceId = deviceId;
+      }
 
       // Store session in Redis
       const sessionKey = `session:${sessionId}`;

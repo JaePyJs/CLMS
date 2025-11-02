@@ -554,7 +554,7 @@ export class TypeInference {
     return {
       type: 'date',
       confidence,
-      format,
+      ...(format && { format }),
       errors,
       sampleValues
     };

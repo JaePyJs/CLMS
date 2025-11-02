@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { Request, Response, NextFunction } from 'express';
 import type { TransformableInfo } from 'logform';
-import winston from 'winston';
+import * as winston from 'winston';
 import { buildLogEntry, getCurrentTimestamp } from './common';
 
 type Metadata = Record<string, unknown>;

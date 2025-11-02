@@ -171,7 +171,7 @@ export class ServiceErrorHandler {
   handleError(error: unknown, operation: string, context?: ErrorContext): void {
     handleError(error, `${this.serviceName}.${operation}`, {
       logLevel: 'error',
-      context
+      ...(context && { context })
     });
   }
 }
@@ -295,7 +295,11 @@ export class BatchErrorHandler {
    * Add an error to the batch
    */
   addError(error: unknown, operation: string, context?: ErrorContext): void {
-    this.errors.push({ error, operation, context });
+    this.errors.push({ 
+      error, 
+      operation, 
+      ...(context && { context })
+    });
   }
 
   /**

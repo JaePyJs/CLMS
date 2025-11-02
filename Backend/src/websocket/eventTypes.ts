@@ -1189,12 +1189,10 @@ export function createWebSocketEvent<TPayload>(
     metadata?: Partial<EventMetadata>;
   } = {}
 ): BaseWebSocketEvent<TPayload> {
-  return {
+  const event: BaseWebSocketEvent<TPayload> = {
     id: options.id || crypto.randomUUID(),
     type,
     timestamp: new Date(),
-    userId: options.userId || undefined,
-    sessionId: options.sessionId || undefined,
     payload,
     metadata: {
       source: 'client',
@@ -1202,6 +1200,15 @@ export function createWebSocketEvent<TPayload>(
       ...options.metadata,
     },
   };
+
+  if (options.userId) {
+    event.userId = options.userId;
+  }
+  if (options.sessionId) {
+    event.sessionId = options.sessionId;
+  }
+
+  return event;
 }
 
 /**
@@ -1213,13 +1220,20 @@ export function createEventResponse<TPayload>(
   payload?: TPayload,
   error?: EventError
 ): EventResponse<TPayload> {
-  return {
+  const response: EventResponse<TPayload> = {
     eventId,
     success,
     timestamp: new Date(),
-    payload: payload || undefined,
-    error,
   };
+
+  if (payload !== undefined) {
+    response.payload = payload;
+  }
+  if (error !== undefined) {
+    response.error = error;
+  }
+
+  return response;
 }
 
 /**

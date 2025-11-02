@@ -450,7 +450,7 @@ export class BarcodeService {
     // Generate summary report
     const summary: BarcodeGenerationSummary = {
       totalStudents: students.length,
-      success_count,
+      success_count: successCount,
       errorCount,
       outputDir: this.studentBarcodeDir,
       results,
@@ -466,7 +466,7 @@ export class BarcodeService {
     await this.generatePrintableSheet(results.filter(r => r.success));
 
     logger.info(
-      `Barcode generation complete: ${success_count} success, ${errorCount} errors`,
+      `Barcode generation complete: ${successCount} success, ${errorCount} errors`,
     );
     return summary;
   }

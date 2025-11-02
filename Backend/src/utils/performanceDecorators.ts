@@ -149,7 +149,7 @@ export class PerformanceUtils {
         operation,
         duration,
         success: true,
-        metadata
+        ...(metadata && { metadata })
       });
       
       return { result, duration };
@@ -410,7 +410,7 @@ export function usePerformanceMonitor(category: string) {
         operation,
         duration,
         success,
-        metadata
+        ...(metadata && { metadata })
       });
     }
   };

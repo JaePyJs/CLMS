@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { ApiResponse } from '@/types';
-import { equipmentService } from '@/services/enhancedEquipmentService';
+import { equipmentService, releaseEquipment, getEquipmentUsageHistory } from '@/services/enhancedEquipmentService';
+import { prisma } from '@/utils/prisma';
 import {
   equipment_status,
   equipment_type,
@@ -149,7 +150,7 @@ router.post('/', requirePermission(Permission.EQUIPMENT_CREATE), async (req: Req
       return;
     }
 
-    const equipment = await equipmentService.createEquipment({
+    const equipmentData: any = {
       equipmentId,
       name,
       type,
@@ -159,14 +160,22 @@ router.post('/', requirePermission(Permission.EQUIPMENT_CREATE), async (req: Req
       description,
       category,
       specifications,
-      purchaseDate: purchaseDate ? new Date(purchaseDate) : undefined,
       purchaseCost,
       serialNumber,
       assetTag,
-      warrantyExpiry: warrantyExpiry ? new Date(warrantyExpiry) : undefined,
       maintenanceInterval,
       tags,
-    });
+    };
+
+    if (purchaseDate) {
+      equipmentData.purchaseDate = new Date(purchaseDate);
+    }
+
+    if (warrantyExpiry) {
+      equipmentData.warrantyExpiry = new Date(warrantyExpiry);
+    }
+
+    const equipment = await equipmentService.createEquipment(equipmentData);
 
     const response: ApiResponse = {
       success: true,
@@ -228,7 +237,7 @@ router.put('/:id', requirePermission(Permission.EQUIPMENT_UPDATE), async (req: R
       tags,
     } = req.body;
 
-    const equipment = await equipmentService.updateEquipment(id, {
+    const updateData: any = {
       equipmentId,
       name,
       type,
@@ -239,20 +248,32 @@ router.put('/:id', requirePermission(Permission.EQUIPMENT_UPDATE), async (req: R
       status,
       category,
       specifications,
-      purchaseDate: purchaseDate ? new Date(purchaseDate) : undefined,
       purchaseCost,
       serialNumber,
       assetTag,
-      warrantyExpiry: warrantyExpiry ? new Date(warrantyExpiry) : undefined,
       maintenanceInterval,
       conditionRating,
-      lastMaintenance: lastMaintenance ? new Date(lastMaintenance) : undefined,
-      nextMaintenance: nextMaintenance ? new Date(nextMaintenance) : undefined,
       totalUsageHours,
       notes,
       isActive,
       tags,
-    });
+    };
+
+    // Only add Date properties if they have values
+    if (purchaseDate) {
+      updateData.purchaseDate = new Date(purchaseDate);
+    }
+    if (warrantyExpiry) {
+      updateData.warrantyExpiry = new Date(warrantyExpiry);
+    }
+    if (lastMaintenance) {
+      updateData.lastMaintenance = new Date(lastMaintenance);
+    }
+    if (nextMaintenance) {
+      updateData.nextMaintenance = new Date(nextMaintenance);
+    }
+
+    const equipment = await equipmentService.updateEquipment(id, updateData);
 
     const response: ApiResponse = {
       success: true,
@@ -371,13 +392,7 @@ router.post('/use', requirePermission(Permission.EQUIPMENT_ASSIGN), async (req: 
       return;
     }
 
-    const activity = await equipmentService.useEquipment({
-      equipment_id: equipmentId,
-      student_id: studentId,
-      activity_type: activityType as student_activities_activity_type,
-      timeLimitMinutes,
-      notes,
-    });
+    const activity = await equipmentService.useEquipment(equipmentId, studentId, activityType as student_activities_activity_type);
 
     const response: ApiResponse = {
       success: true,
@@ -414,7 +429,7 @@ router.post('/release', requirePermission(Permission.EQUIPMENT_ASSIGN), async (r
       return;
     }
 
-    const activity = await equipmentService.releaseEquipment(activityId);
+    const activity = await releaseEquipment(activityId);
 
     const response: ApiResponse = {
       success: true,
@@ -546,17 +561,23 @@ router.post('/maintenance', requirePermission(Permission.EQUIPMENT_MAINTENANCE),
       return;
     }
 
-    const maintenance = await equipmentService.createMaintenance({
+    const maintenanceData: any = {
       equipmentId,
       maintenanceType: maintenanceType as equipment_maintenance_maintenance_type,
       description,
       cost,
       vendor,
-      scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
       priority: priority as equipment_maintenance_priority,
       estimatedDuration,
       warrantyClaim,
-    });
+    };
+
+    // Only add scheduledDate if it has a value
+    if (scheduledDate) {
+      maintenanceData.scheduledDate = new Date(scheduledDate);
+    }
+
+    const maintenance = await equipmentService.createMaintenance(maintenanceData);
 
     const response: ApiResponse = {
       success: true,
@@ -580,7 +601,7 @@ router.post('/maintenance', requirePermission(Permission.EQUIPMENT_MAINTENANCE),
 });
 
 // CREATE CONDITION REPORT
-router.post('/condition-reports', requirePermission(Permission.EQUIPMENT_ASSESS), async (req: Request, res: Response) => {
+router.post('/condition-reports', requirePermission(Permission.EQUIPMENT_ASSIGN), async (req: Request, res: Response) => {
   try {
     const {
       equipmentId,
@@ -661,7 +682,7 @@ router.get('/usage/history', requirePermission(Permission.EQUIPMENT_VIEW), async
       limit: parseInt(limit as string),
     };
 
-    const result = await equipmentService.getEquipmentUsageHistory(options);
+    const result = await getEquipmentUsageHistory(options);
 
     const response: ApiResponse = {
       success: true,
@@ -729,7 +750,7 @@ router.get('/categories/list', requirePermission(Permission.EQUIPMENT_VIEW), asy
       distinct: ['category'],
     });
 
-    const categoryList = categories.map(c => ({
+    const categoryList = categories.map((c: any) => ({
       name: c.category,
       count: c._count.id,
     }));
@@ -767,7 +788,7 @@ router.get('/locations/list', requirePermission(Permission.EQUIPMENT_VIEW), asyn
       distinct: ['location'],
     });
 
-    const locationList = locations.map(l => ({
+    const locationList = locations.map((l: any) => ({
       name: l.location,
       count: l._count.id,
     }));

@@ -125,6 +125,8 @@ export class ImportTransactionManager {
       
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i];
+        if (!batch) continue; // Skip undefined batches
+        
         const batchId = this.generateBatchId();
         
         this.logger.debug('Processing batch', {
@@ -143,7 +145,7 @@ export class ImportTransactionManager {
         );
 
         // Update transaction status
-        transaction.processedRecords += batch.records.length;
+        transaction.processedRecords += batch.length; // Use batch.length instead of batch.records.length
         transaction.successRecords += batchResult.successRecords;
         transaction.errorRecords += batchResult.errorRecords;
         transaction.createdRecords.push(...batchResult.createdRecordIds);
@@ -411,7 +413,7 @@ export class ImportTransactionManager {
     
     // Check if student exists
     const existingStudent = await this.prisma.students.findUnique({
-      where: { student_id }
+      where: { student_id: studentId }
     });
 
     if (existingStudent) {
@@ -509,7 +511,7 @@ export class ImportTransactionManager {
     
     // Check if equipment exists
     const existingEquipment = await this.prisma.equipment.findUnique({
-      where: { equipment_id }
+      where: { equipment_id: equipmentId }
     });
 
     if (existingEquipment) {
