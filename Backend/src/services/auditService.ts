@@ -243,7 +243,7 @@ class AuditService {
       ip_address,
       user_agent,
       success,
-      error_message,
+      error_message: errorMessage,
     });
   }
 

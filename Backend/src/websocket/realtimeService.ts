@@ -122,7 +122,7 @@ class RealtimeService {
           const elapsedMinutes = Math.floor(
             (Date.now() - new Date(session.session_start).getTime()) / (1000 * 60)
           );
-          const remainingMinutes = session.max_time_minutes - elapsedMinutes;
+          const remainingMinutes = session.equipment.max_time_minutes - elapsedMinutes;
 
           // Send alerts at 5, 2, and 1 minute remaining
           if ([5, 2, 1].includes(remainingMinutes)) {
@@ -131,7 +131,7 @@ class RealtimeService {
               equipmentId: session.equipment_id,
               studentId: session.student_id,
               remainingMinutes,
-              timeLimit: session.max_time_minutes
+              timeLimit: session.equipment.max_time_minutes
             });
           }
 

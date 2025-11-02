@@ -30,6 +30,8 @@ export enum Permission {
   EQUIPMENT_UPDATE = 'equipment:update',
   EQUIPMENT_DELETE = 'equipment:delete',
   EQUIPMENT_ASSIGN = 'equipment:assign',
+  EQUIPMENT_RESERVE = 'equipment:reserve',
+  EQUIPMENT_MAINTENANCE = 'equipment:maintenance',
 
   // Activity Tracking
   ACTIVITIES_VIEW = 'activities:view',
@@ -194,6 +196,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.EQUIPMENT_UPDATE,
     Permission.EQUIPMENT_DELETE,
     Permission.EQUIPMENT_ASSIGN,
+    Permission.EQUIPMENT_RESERVE,
+    Permission.EQUIPMENT_MAINTENANCE,
 
     // Full Activity Management
     Permission.ACTIVITIES_VIEW,
@@ -298,6 +302,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     // Equipment Management
     Permission.EQUIPMENT_VIEW,
     Permission.EQUIPMENT_ASSIGN,
+    Permission.EQUIPMENT_RESERVE,
+    Permission.EQUIPMENT_MAINTENANCE,
 
     // Activity Management
     Permission.ACTIVITIES_VIEW,

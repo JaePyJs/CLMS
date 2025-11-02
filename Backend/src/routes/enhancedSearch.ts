@@ -438,7 +438,7 @@ router.get('/equipment', requirePermission(Permission.EQUIPMENT_VIEW), async (re
       limit = '20',
     } = req.query;
 
-    const searchOptions = {
+    const searchOptions: any = {
       query: query as string,
       type: type as string,
       status: status as string,
@@ -448,13 +448,19 @@ router.get('/equipment', requirePermission(Permission.EQUIPMENT_VIEW), async (re
       requiresSupervision: requiresSupervision === 'true',
       maintenanceDue: maintenanceDue === 'true',
       conditionRating: conditionRating as string,
-      minUsageHours: minUsageHours ? parseInt(minUsageHours as string) : undefined,
-      maxUsageHours: maxUsageHours ? parseInt(maxUsageHours as string) : undefined,
       sortBy: sortBy as any,
       sortOrder: sortOrder as any,
       page: parseInt(page as string),
       limit: parseInt(limit as string),
     };
+
+    // Conditionally add optional properties to avoid exactOptionalPropertyTypes issues
+    if (minUsageHours) {
+      searchOptions.minUsageHours = parseInt(minUsageHours as string);
+    }
+    if (maxUsageHours) {
+      searchOptions.maxUsageHours = parseInt(maxUsageHours as string);
+    }
 
     const result = await searchEquipment(searchOptions);
 
@@ -495,6 +501,12 @@ router.get('/global', async (req: Request, res: Response) => {
       entityType = 'all',
       page = '1',
       limit = '10',
+      bookIds,
+      studentIds,
+      equipmentIds,
+      isbns,
+      accessionNumbers,
+      studentNumbers,
     } = req.query;
 
     if (!query || (query as string).length < 2) {
@@ -643,9 +655,9 @@ router.get('/students/suggestions', async (req: Request, res: Response) => {
       page: 1,
     });
 
-    const uniqueNames = [...new Set(suggestions.students.map(s => `${s.first_name} ${s.last_name}`))];
-    const uniqueStudentIds = [...new Set(suggestions.students.map(s => s.student_id).filter(Boolean))];
-    const uniqueGrades = [...new Set(suggestions.students.map(s => s.grade_level).filter(Boolean))];
+    const uniqueNames = Array.from(new Set(suggestions.students.map(s => `${s.first_name} ${s.last_name}`)));
+    const uniqueStudentIds = Array.from(new Set(suggestions.students.map(s => s.student_id).filter(Boolean)));
+    const uniqueGrades = Array.from(new Set(suggestions.students.map(s => s.grade_level).filter(Boolean)));
 
     const response: ApiResponse = {
       success: true,
@@ -692,9 +704,9 @@ router.get('/equipment/suggestions', async (req: Request, res: Response) => {
       page: 1,
     });
 
-    const uniqueNames = [...new Set(suggestions.equipment.map(e => e.name))];
-    const uniqueTypes = [...new Set(suggestions.equipment.map(e => e.type).filter(Boolean))];
-    const uniqueLocations = [...new Set(suggestions.equipment.map(e => e.location).filter(Boolean))];
+    const uniqueNames = Array.from(new Set(suggestions.equipment.map(e => e.name)));
+    const uniqueTypes = Array.from(new Set(suggestions.equipment.map(e => e.type).filter(Boolean)));
+    const uniqueLocations = Array.from(new Set(suggestions.equipment.map(e => e.location).filter(Boolean)));
 
     const response: ApiResponse = {
       success: true,
@@ -834,6 +846,15 @@ router.get('/saved/:id',
     const { id } = req.params;
     const userId = (req as any).user?.id;
 
+    if (!id) {
+      res.status(400).json({
+        success: false,
+        error: 'Search ID is required',
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
     const savedSearch = await savedSearchService.getSavedSearchById(id, userId);
 
     if (!savedSearch) {
@@ -895,7 +916,7 @@ router.put('/saved/:id',
 
     const { name, description, entityType, searchParams, isPublic, enableNotifications } = req.body;
 
-    const savedSearch = await savedSearchService.updateSavedSearch(id, userId, {
+    const savedSearch = await savedSearchService.updateSavedSearch(id, userId as string, {
       name,
       description,
       entityType,
@@ -945,7 +966,7 @@ router.delete('/saved/:id',
       return;
     }
 
-    await savedSearchService.deleteSavedSearch(id, userId);
+    await savedSearchService.deleteSavedSearch(id, userId as string);
 
     const response: ApiResponse = {
       success: true,

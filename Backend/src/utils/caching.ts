@@ -81,12 +81,12 @@ class CacheManager {
         const now = Date.now();
         let cleaned = 0;
 
-        for (const [key, entry] of this.memoryCache.entries()) {
+        Array.from(this.memoryCache.entries()).forEach(([key, entry]) => {
           if (entry.expires < now) {
             this.memoryCache.delete(key);
             cleaned++;
           }
-        }
+        });
 
         if (cleaned > 0) {
           logger.debug(`Cleaned ${cleaned} expired cache entries`);
@@ -195,12 +195,12 @@ class CacheManager {
           invalidated = keys.length;
         }
       } else {
-        for (const [key, entry] of this.memoryCache.entries()) {
+        Array.from(this.memoryCache.entries()).forEach(([key, entry]) => {
           if (entry.tags.includes(tag)) {
             this.memoryCache.delete(key);
             invalidated++;
           }
-        }
+        });
       }
 
       logger.debug(`Invalidated ${invalidated} cache entries with tag: ${tag}`);
@@ -223,12 +223,12 @@ class CacheManager {
         }
       } else {
         const regex = new RegExp(pattern.replace('*', '.*'));
-        for (const key of this.memoryCache.keys()) {
+        Array.from(this.memoryCache.keys()).forEach(key => {
           if (regex.test(key)) {
             this.memoryCache.delete(key);
             invalidated++;
           }
-        }
+        });
       }
 
       logger.debug(

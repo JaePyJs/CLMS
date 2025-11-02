@@ -2,6 +2,7 @@ import { users_role as UserRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { getRolePermissions } from '../config/permissions';
 import { UsersRepository } from '@/repositories';
+import { prisma } from '@/utils/prisma';
 
 export interface CreateUserInput {
   username: string;
@@ -37,15 +38,24 @@ export const userService = {
     const page = filters?.offset ? Math.floor(filters.offset / (filters?.limit || 50)) + 1 : 1;
     const limit = filters?.limit || 50;
 
-    const result = await usersRepository.getUsers({
-      role: filters?.role,
-      isActive: filters?.isActive,
-      search: filters?.search,
+    const getUsersParams: any = {
       page,
       limit,
       sortBy: 'created_at',
       sortOrder: 'desc',
-    });
+    };
+
+    if (filters?.role !== undefined) {
+      getUsersParams.role = filters.role;
+    }
+    if (filters?.isActive !== undefined) {
+      getUsersParams.isActive = filters.isActive;
+    }
+    if (filters?.search !== undefined) {
+      getUsersParams.search = filters.search;
+    }
+
+    const result = await usersRepository.getUsers(getUsersParams);
 
     return {
       users: result.users,
@@ -69,14 +79,21 @@ export const userService = {
     const hashedPassword = await bcrypt.hash(data.password, parseInt(process.env.BCRYPT_ROUNDS || '12'));
 
     // Create user using repository
-    const user = await usersRepository.createUser({
+    const createUserData: any = {
       username: data.username,
       password: hashedPassword,
-      email: data.email,
-      full_name: data.fullName,
       role: data.role || UserRole.LIBRARIAN,
       permissions: data.permissions || [],
-    });
+    };
+
+    if (data.email !== undefined) {
+      createUserData.email = data.email;
+    }
+    if (data.fullName !== undefined) {
+      createUserData.full_name = data.fullName;
+    }
+
+    const user = await usersRepository.createUser(createUserData);
 
     return user;
   },
@@ -163,12 +180,12 @@ export const userService = {
 
   // Deactivate user
   async deactivateUser(id: string) {
-    return await this.updateUser(id, { is_active: false });
+    return await this.updateUser(id, { isActive: false });
   },
 
   // Activate user
   async activateUser(id: string) {
-    return await this.updateUser(id, { is_active: true });
+    return await this.updateUser(id, { isActive: true });
   },
 
   // Update user role
@@ -206,7 +223,7 @@ export const userService = {
       role: user.role,
       rolePermissions,
       customPermissions,
-      allPermissions: [...new Set([...rolePermissions, ...customPermissions])],
+      allPermissions: Array.from(new Set([...rolePermissions, ...customPermissions])),
     };
   },
 

@@ -5,19 +5,11 @@ src/routes/automation.ts(43,9): error TS2322: Type 'undefined' is not assignable
 src/routes/automation.ts(59,7): error TS2322: Type 'undefined' is not assignable to type 'Response<any, Record<string, any>>'.
 src/routes/automation.ts(85,7): error TS2322: Type 'undefined' is not assignable to type 'Response<any, Record<string, any>>'.
 src/routes/enhancedEquipment.ts(4,10): error TS2614: Module '"@/config/database"' has no exported member 'prisma'. Did you mean to use 'import prisma from "@/config/database"' instead?
-src/routes/enhancedEquipment.ts(395,45): error TS2554: Expected 3 arguments, but got 1.
-src/routes/enhancedEquipment.ts(438,45): error TS2554: Expected 2 arguments, but got 1.
-src/routes/enhancedEquipment.ts(691,68): error TS2345: Argument of type '{ equipment_id: string; student_id: string; activityType: student_activities_activity_type; startDate: Date | undefined; endDate: Date | undefined; page: number; limit: number; }' is not assignable to parameter of type 'string'.
+src/routes/enhancedEquipment.ts(685,68): error TS2345: Argument of type '{ equipment_id: string; student_id: string; activityType: student_activities_activity_type; startDate: Date | undefined; endDate: Date | undefined; page: number; limit: number; }' is not assignable to parameter of type 'string'.
 src/routes/enhancedSearch.ts(919,68): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
   Type 'undefined' is not assignable to type 'string'.
 src/routes/enhancedSearch.ts(969,48): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
   Type 'undefined' is not assignable to type 'string'.
-src/routes/equipment.ts(410,15): error TS2551: Property 'equipmentId' does not exist on type 'GetEquipmentUsageHistoryOptions'. Did you mean 'equipment_id'?
-src/routes/equipment.ts(414,15): error TS2551: Property 'studentId' does not exist on type 'GetEquipmentUsageHistoryOptions'. Did you mean 'student_id'?
-src/routes/equipment.ts(591,66): error TS2379: Argument of type '{ equipmentId: any; maintenanceType: any; description: any; cost: any; vendor: any; scheduledDate: Date | undefined; priority: any; estimatedDuration: any; warrantyClaim: any; }' is not assignable to parameter of type 'CreateMaintenanceData' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-  Types of property 'scheduledDate' are incompatible.
-    Type 'Date | undefined' is not assignable to type 'Date'.
-      Type 'undefined' is not assignable to type 'Date'.
 src/routes/errors.routes.ts(47,65): error TS2379: Argument of type '{ category: string; severity: string; resolved: boolean; startDate: Date | undefined; endDate: Date | undefined; search: string; tags: string[] | undefined; }' is not assignable to parameter of type 'ErrorReportFilter' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
   Types of property 'startDate' are incompatible.
     Type 'Date | undefined' is not assignable to type 'Date'.
@@ -504,7 +496,7 @@ src/services/auditService.ts(89,9): error TS2322: Type '{ id: string; entity: Au
         Type 'Record<string, any> | null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
           Type 'null' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue'.
 src/services/auditService.ts(131,7): error TS2561: Object literal may only specify known properties, but 'entity_id' does not exist in type 'AuditLogEntry'. Did you mean to write 'entityId'?
-src/services/auditService.ts(149,52): error TS2304: Cannot find name 'newValues'.
+src/services/auditService.ts(149,52): error TS2552: Cannot find name 'newValues'. Did you mean 'new_values'?
 src/services/auditService.ts(155,7): error TS2561: Object literal may only specify known properties, but 'entity_id' does not exist in type 'AuditLogEntry'. Did you mean to write 'entityId'?
 src/services/auditService.ts(156,39): error TS2304: Cannot find name 'oldValues'.
 src/services/auditService.ts(157,39): error TS2304: Cannot find name 'newValues'.
@@ -864,16 +856,3 @@ src/services/usbScannerService.ts(171,78): error TS2339: Property 'usage' does n
 src/services/usbScannerService.ts(601,62): error TS2339: Property 'path' does not exist on type 'HID'.
 src/services/usbScannerService.ts(608,9): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
   Type 'undefined' is not assignable to type 'string'.
-src/services/user.service.ts(40,51): error TS2379: Argument of type '{ role: $Enums.users_role | undefined; isActive: boolean | undefined; search: string | undefined; page: number; limit: number; sortBy: "created_at"; sortOrder: "desc"; }' is not assignable to parameter of type '{ role?: users_role; isActive?: boolean; search?: string; page?: number; limit?: number; sortBy?: "email" | "username" | "role" | "created_at" | "last_login_at" | "full_name"; sortOrder?: "asc" | "desc"; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-  Types of property 'role' are incompatible.
-    Type 'users_role | undefined' is not assignable to type 'users_role'.
-      Type 'undefined' is not assignable to type 'users_role'.
-src/services/user.service.ts(72,51): error TS2379: Argument of type '{ username: string; password: string; email: string | undefined; full_name: string | undefined; role: $Enums.users_role; permissions: string[]; }' is not assignable to parameter of type '{ username: string; password: string; email?: string; full_name?: string; role?: users_role; permissions?: string[]; }' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
-  Types of property 'email' are incompatible.
-    Type 'string | undefined' is not assignable to type 'string'.
-      Type 'undefined' is not assignable to type 'string'.
-src/services/user.service.ts(166,40): error TS2561: Object literal may only specify known properties, but 'is_active' does not exist in type 'UpdateUserInput'. Did you mean to write 'isActive'?
-src/services/user.service.ts(171,40): error TS2561: Object literal may only specify known properties, but 'is_active' does not exist in type 'UpdateUserInput'. Did you mean to write 'isActive'?
-src/services/user.service.ts(177,24): error TS2552: Cannot find name 'prisma'. Did you mean '__prisma'?
-src/services/user.service.ts(182,37): error TS2304: Cannot find name 'prisma'.
-src/utils/databaseQueryOptimizer.ts(138,45): error TS7006: Parameter 'item' implicitly has an 'any' type.

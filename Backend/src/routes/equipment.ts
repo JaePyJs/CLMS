@@ -407,11 +407,11 @@ router.get('/usage/history', requirePermission(Permission.EQUIPMENT_VIEW), async
     };
 
     if (equipmentId) {
-      options.equipmentId = equipmentId as string;
+      options.equipment_id = equipmentId as string;
     }
 
     if (studentId) {
-      options.studentId = studentId as string;
+      options.student_id = studentId as string;
     }
 
     if (activityType) {
@@ -536,7 +536,6 @@ router.post('/reservations/check-conflicts', requirePermission(Permission.EQUIPM
       });
       return;
     }
-    }
 
     const conflicts = await equipmentService.checkReservationConflicts(
       equipmentId,
@@ -595,7 +594,7 @@ router.post('/maintenance', requirePermission(Permission.EQUIPMENT_MAINTENANCE),
       description,
       cost,
       vendor,
-      scheduledDate: scheduledDate ? new Date(scheduledDate) : undefined,
+      scheduledDate: scheduledDate ? new Date(scheduledDate) : new Date(),
       priority,
       estimatedDuration,
       warrantyClaim,
@@ -623,7 +622,7 @@ router.post('/maintenance', requirePermission(Permission.EQUIPMENT_MAINTENANCE),
 });
 
 // CREATE CONDITION REPORT
-router.post('/condition-reports', requirePermission(Permission.EQUIPMENT_ASSESS), async (req: Request, res: Response) => {
+router.post('/condition-reports', requirePermission(Permission.EQUIPMENT_ASSIGN), async (req: Request, res: Response) => {
   try {
     const {
       equipmentId,

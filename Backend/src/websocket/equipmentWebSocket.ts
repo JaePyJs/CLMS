@@ -20,7 +20,7 @@ export interface AuthenticatedWebSocket extends WebSocket {
 
 export class EquipmentWebSocketService {
   private wss: WebSocketServer;
-  private heartbeatInterval: NodeJS.Timeout;
+  private heartbeatInterval!: NodeJS.Timeout; // Definite assignment assertion
   private connections: Map<string, AuthenticatedWebSocket> = new Map();
 
   constructor(wss: WebSocketServer) {

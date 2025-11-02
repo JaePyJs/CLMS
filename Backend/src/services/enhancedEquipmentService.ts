@@ -97,6 +97,16 @@ export interface CreateConditionReportData {
   witnessNames?: string[];
 }
 
+export interface GetEquipmentUsageHistoryOptions {
+  equipment_id?: string;
+  student_id?: string;
+  activityType?: student_activities_activity_type;
+  startDate?: Date;
+  endDate?: Date;
+  page?: number;
+  limit?: number;
+}
+
 export interface EquipmentUsageMetrics {
   totalEquipment: number;
   available: number;
@@ -336,7 +346,7 @@ export class EquipmentService {
           next_maintenance: data.maintenanceInterval
             ? new Date(Date.now() + data.maintenanceInterval * 24 * 60 * 60 * 1000)
             : null,
-          tags: data.tags ? { tags } : null,
+          tags: data.tags ? { tags: data.tags } : null,
           status: EquipmentStatus.AVAILABLE,
           condition_rating: EquipmentConditionRating.EXCELLENT,
         },
@@ -895,6 +905,246 @@ export class EquipmentService {
         client.send(message);
       }
     });
+  }
+
+  async getEquipmentUsageHistory(equipmentId: string) {
+    try {
+      const equipment = await prisma.equipment.findUnique({
+        where: { id: equipmentId },
+        include: {
+          activities: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  student_id: true,
+                  first_name: true,
+                  last_name: true,
+                  email: true,
+                },
+              },
+            },
+            orderBy: { start_time: 'desc' },
+          },
+          maintenanceRecords: {
+            include: {
+              performedBy: {
+                select: {
+                  id: true,
+                  username: true,
+                  first_name: true,
+                  last_name: true,
+                },
+              },
+            },
+            orderBy: { scheduledDate: 'desc' },
+          },
+          reservations: {
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  student_id: true,
+                  first_name: true,
+                  last_name: true,
+                  email: true,
+                },
+              },
+            },
+            orderBy: { reservationDate: 'desc' },
+          },
+        },
+      });
+
+      if (!equipment) {
+        throw new Error('Equipment not found');
+      }
+
+      return {
+        equipment: {
+          id: equipment.id,
+          equipment_id: equipment.equipment_id,
+          name: equipment.name,
+          type: equipment.type,
+          status: equipment.status,
+        },
+        activities: equipment.activities,
+        maintenanceRecords: equipment.maintenanceRecords,
+        reservations: equipment.reservations,
+      };
+    } catch (error) {
+      console.error('Error fetching equipment usage history:', error);
+      throw error;
+    }
+  }
+
+  async getEquipmentByEquipmentId(equipment_id: string) {
+    try {
+      const equipment = await prisma.equipment.findUnique({
+        where: { equipment_id },
+        include: {
+          activities: {
+            where: { status: StudentActivitiesStatus.ACTIVE },
+            orderBy: { start_time: 'desc' },
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  student_id: true,
+                  first_name: true,
+                  last_name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          maintenanceRecords: {
+            orderBy: { scheduledDate: 'desc' },
+            take: 5,
+          },
+          reservations: {
+            where: { status: EquipmentReservationsStatus.ACTIVE },
+            orderBy: { reservationDate: 'desc' },
+            include: {
+              student: {
+                select: {
+                  id: true,
+                  student_id: true,
+                  first_name: true,
+                  last_name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return equipment;
+    } catch (error) {
+      console.error('Error fetching equipment by equipment_id:', error);
+      throw error;
+    }
+  }
+
+  async useEquipment(equipmentId: string, studentId: string, activityType: student_activities_activity_type) {
+    try {
+      // Check if equipment exists and is available
+      const equipment = await prisma.equipment.findUnique({
+        where: { id: equipmentId },
+      });
+
+      if (!equipment) {
+        throw new Error('Equipment not found');
+      }
+
+      if (equipment.status !== EquipmentStatus.AVAILABLE) {
+        throw new Error('Equipment is not available for use');
+      }
+
+      // Create activity record
+      const activity = await prisma.studentActivities.create({
+        data: {
+          student_id: studentId,
+          equipment_id: equipmentId,
+          activity_type: activityType,
+          start_time: new Date(),
+          status: StudentActivitiesStatus.ACTIVE,
+        },
+        include: {
+          student: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+            },
+          },
+          equipment: {
+            select: {
+              id: true,
+              equipment_id: true,
+              name: true,
+              type: true,
+            },
+          },
+        },
+      });
+
+      // Update equipment status to IN_USE
+      await prisma.equipment.update({
+        where: { id: equipmentId },
+        data: { status: EquipmentStatus.IN_USE },
+      });
+
+      // Broadcast the update
+      this.broadcastEquipmentUpdate('USE', equipment);
+
+      return activity;
+    } catch (error) {
+      console.error('Error using equipment:', error);
+      throw error;
+    }
+  }
+
+  async releaseEquipment(equipmentId: string, studentId: string) {
+    try {
+      // Find active activity
+      const activity = await prisma.studentActivities.findFirst({
+        where: {
+          equipment_id: equipmentId,
+          student_id: studentId,
+          status: StudentActivitiesStatus.ACTIVE,
+        },
+      });
+
+      if (!activity) {
+        throw new Error('No active activity found for this equipment and student');
+      }
+
+      // Update activity to completed
+      const updatedActivity = await prisma.studentActivities.update({
+        where: { id: activity.id },
+        data: {
+          end_time: new Date(),
+          status: StudentActivitiesStatus.COMPLETED,
+        },
+        include: {
+          student: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+              email: true,
+            },
+          },
+          equipment: {
+            select: {
+              id: true,
+              equipment_id: true,
+              name: true,
+              type: true,
+            },
+          },
+        },
+      });
+
+      // Update equipment status to AVAILABLE
+      const equipment = await prisma.equipment.update({
+        where: { id: equipmentId },
+        data: { status: EquipmentStatus.AVAILABLE },
+      });
+
+      // Broadcast the update
+      this.broadcastEquipmentUpdate('RELEASE', equipment);
+
+      return updatedActivity;
+    } catch (error) {
+      console.error('Error releasing equipment:', error);
+      throw error;
+    }
   }
 }
 
