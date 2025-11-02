@@ -15,5 +15,6 @@ Here are some project rules you should add to maintain quality and consistency w
 - Double-check your work thoroughly before marking any task as completed.
 - Any third-party library updates require compatibility verification with React 19 and TypeScript.
 - Maintain transparency and document progress clearly in PLANNING.md at all times.
+- only update markdown files (README.md, PLANNING.md)
 
 These rules help keep your project stable, easy to navigate, and aligned with your migration goals.
