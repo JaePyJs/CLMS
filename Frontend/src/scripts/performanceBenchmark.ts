@@ -114,7 +114,7 @@ class PerformanceBenchmark {
       });
 
       const passed = violations.filter(v => v.severity === 'error').length === 0;
-      const score = this.calculateScore(config, violations);
+      const score = this.calculateScore(violations);
 
       const result: BenchmarkResult = {
         name: config.name,
@@ -273,7 +273,7 @@ class PerformanceBenchmark {
   }
 
   public getLatestResult(): BenchmarkResult | null {
-    return this.results.length > 0 ? this.results[this.results.length - 1] : null;
+    return this.results.length > 0 ? (this.results[this.results.length - 1] ?? null) : null;
   }
 
   public compareResults(benchmarkName: string, limit: number = 10): {
@@ -295,6 +295,14 @@ class PerformanceBenchmark {
 
     const latest = relevantResults[relevantResults.length - 1];
     const previous = relevantResults[relevantResults.length - 2];
+
+    if (!latest || !previous) {
+      return {
+        trend: 'stable' as const,
+        changePercentage: 0,
+        results: relevantResults
+      };
+    }
 
     const changePercentage = ((latest.score - previous.score) / previous.score) * 100;
 

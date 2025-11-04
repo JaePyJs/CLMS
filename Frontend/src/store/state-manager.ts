@@ -3,7 +3,7 @@
  * Combines multiple state management patterns for optimal performance and developer experience
  */
 
-import React from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { persist, createJSONStorage } from 'zustand/middleware';
@@ -87,7 +87,7 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
 
     setState: (updater: T | ((prev: T) => T)) => {
       set((prev: { state: T }) => ({
-        state: typeof updater === 'function' ? (updater as Function)(prev.state) : updater
+        state: typeof updater === 'function' ? (updater as (state: any) => any)(prev.state) : updater
       }));
     },
 
@@ -130,12 +130,20 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
         ? sessionStorage
         : persistConfig.customStorage || localStorage;
 
-    storeWithMiddleware = persist(createStore, {
+    const persistOptions: any = {
       name,
       storage: createJSONStorage(() => storage),
       partialize: persistConfig.partialize || ((state: T) => state),
-      onRehydrateStorage: persistConfig.onRehydrateStorage,
-    });
+    };
+
+    if (persistConfig.onRehydrateStorage) {
+      persistOptions.onRehydrateStorage = persistConfig.onRehydrateStorage;
+    }
+
+    storeWithMiddleware = persist(
+      createStore as any,
+      persistOptions
+    ) as any;
   }
 
   // Apply selector middleware
@@ -166,12 +174,14 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
     },
 
     subscribe: (callback) => {
-      return useStore.subscribe(
-        (s) => s.state,
-        (state, previousState) => {
-          callback(state, previousState);
+      let previousState = useStore.getState().state;
+      return useStore.subscribe((storeState) => {
+        const currentState = storeState.state;
+        if (currentState !== previousState) {
+          callback(currentState, previousState);
+          previousState = currentState;
         }
-      );
+      });
     },
 
     effect: (effect) => {
@@ -240,9 +250,9 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
  * Hook to use the state store
  */
 export function useStateStore<T>(store: EnhancedStateStore<T>): [T, StateUpdater<T>] {
-  const [state, setState] = React.useState(store.getState());
+  const [state, setState] = useState(store.getState());
 
-  React.useEffect(() => {
+  useEffect(() => {
     const unsubscribe = store.subscribe((newState) => {
       setState(newState);
     });
@@ -260,9 +270,9 @@ export function useStateStoreSelector<T, R>(
   store: EnhancedStateStore<T>,
   selector: StateSelector<T, R>
 ): R {
-  const [selectedState, setSelectedState] = React.useState(() => selector(store.getState()));
+  const [selectedState, setSelectedState] = useState(() => selector(store.getState()));
 
-  React.useEffect(() => {
+  useEffect(() => {
     const unsubscribe = store.subscribe((newState) => {
       const newSelectedState = selector(newState);
       setSelectedState(newSelectedState);
@@ -281,9 +291,9 @@ export function useStateStoreComputed<T, R>(
   store: EnhancedStateStore<T>,
   computedKey: string
 ): R {
-  const [computedValue, setComputedValue] = React.useState(() => store.computed[computedKey]);
+  const [computedValue, setComputedValue] = useState(() => store.computed[computedKey]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const unsubscribe = store.subscribe(() => {
       const newComputedValue = store.computed[computedKey];
       setComputedValue(newComputedValue);
@@ -299,14 +309,14 @@ export function useStateStoreComputed<T, R>(
  * Hook to use actions from the state store
  */
 export function useStateStoreActions<T>(store: EnhancedStateStore<T>) {
-  return React.useCallback(() => store.actions, [store]);
+  return useCallback(() => store.actions, [store]);
 }
 
 /**
  * Hook to use async actions from the state store
  */
 export function useStateStoreAsyncActions<T>(store: EnhancedStateStore<T>) {
-  return React.useCallback(() => store.asyncActions, [store]);
+  return useCallback(() => store.asyncActions, [store]);
 }
 
 /**

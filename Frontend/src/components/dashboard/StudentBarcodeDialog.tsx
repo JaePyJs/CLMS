@@ -62,7 +62,7 @@ export function StudentBarcodeDialog({
   student
 }: StudentBarcodeDialogProps) {
   const mobileState = useMobileOptimization();
-  const { isMobile } = mobileState;
+  const { isMobile: _isMobile } = mobileState;
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 

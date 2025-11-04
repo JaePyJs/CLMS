@@ -22,7 +22,7 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
     return response.data.user
   }
 
-  const message = response.error || response.message || 'Unable to fetch current user'
+  const message = typeof response.error === 'string' ? response.error : response.error?.message || response.message || 'Unable to fetch current user'
   throw new Error(message)
 }
 

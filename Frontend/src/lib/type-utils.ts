@@ -42,16 +42,6 @@ export type DeepMutable<T> = {
 export type ArrayElement<T> = T extends (infer U)[] ? U : never;
 
 /**
- * Extract the return type of a function
- */
-export type ReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
-
-/**
- * Extract the parameters of a function as a tuple
- */
-export type Parameters<T> = T extends (...args: infer P) => any ? P : never;
-
-/**
  * Create a function type with the same parameters but different return type
  */
 export type OverwriteReturnType<T, NewReturn> = T extends (...args: infer P) => any
@@ -135,14 +125,14 @@ export type TypedFunction<T extends Record<string, any>, R> = (
 /**
  * Create a type that represents a constructor
  */
-export type Constructor<T = {}, Args extends any[] = any[]> = new (
+export type Constructor<T = unknown, Args extends any[] = any[]> = new (
   ...args: Args
 ) => T;
 
 /**
  * Create a type that represents an abstract constructor
  */
-export type AbstractConstructor<T = {}, Args extends any[] = any[]> = abstract new (
+export type AbstractConstructor<T = unknown, Args extends any[] = any[]> = abstract new (
   ...args: Args
 ) => T;
 

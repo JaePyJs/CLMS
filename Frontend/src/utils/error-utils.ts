@@ -52,23 +52,38 @@ export function categorizeError(error: Error): ErrorType {
   const message = error.message.toLowerCase();
   const stack = error.stack?.toLowerCase() || '';
 
-  if (message.includes('network') || message.includes('fetch') ||
-      message.includes('connection') || stack.includes('fetch')) {
+  if (
+    message.includes('network') ||
+    message.includes('fetch') ||
+    message.includes('connection') ||
+    stack.includes('fetch')
+  ) {
     return 'NETWORK_ERROR';
   }
 
-  if (message.includes('unauthorized') || message.includes('authentication') ||
-      message.includes('login') || message.includes('token')) {
+  if (
+    message.includes('unauthorized') ||
+    message.includes('authentication') ||
+    message.includes('login') ||
+    message.includes('token')
+  ) {
     return 'AUTHENTICATION_ERROR';
   }
 
-  if (message.includes('validation') || message.includes('invalid') ||
-      message.includes('required') || message.includes('format')) {
+  if (
+    message.includes('validation') ||
+    message.includes('invalid') ||
+    message.includes('required') ||
+    message.includes('format')
+  ) {
     return 'VALIDATION_ERROR';
   }
 
-  if (message.includes('timeout') || message.includes('timeout') ||
-      stack.includes('timeout')) {
+  if (
+    message.includes('timeout') ||
+    message.includes('timeout') ||
+    stack.includes('timeout')
+  ) {
     return 'TIMEOUT_ERROR';
   }
 
@@ -91,7 +106,7 @@ export function generateErrorId(): string {
  * @param errorType - Categorized error type
  * @param retryCount - Number of retry attempts
  */
-export async function reportError(
+export async function reportApplicationError(
   error: Error,
   errorInfo: ErrorInfo | null,
   errorId: string,
@@ -103,8 +118,8 @@ export async function reportError(
       id: errorId,
       timestamp: Date.now(),
       error: error.message,
-      stack: error.stack,
-      componentStack: errorInfo?.componentStack,
+      stack: error.stack || undefined,
+      componentStack: errorInfo?.componentStack || undefined,
       userAgent: navigator.userAgent,
       url: window.location.href,
       errorType,
@@ -113,7 +128,9 @@ export async function reportError(
     };
 
     // Store error in localStorage for debugging
-    const existingErrors = JSON.parse(localStorage.getItem('clms_error_reports') || '[]');
+    const existingErrors = JSON.parse(
+      localStorage.getItem('clms_error_reports') || '[]'
+    );
     existingErrors.push(report);
 
     // Keep only last 50 errors to prevent storage bloat
@@ -123,17 +140,18 @@ export async function reportError(
 
     localStorage.setItem('clms_error_reports', JSON.stringify(existingErrors));
 
-    // Send to backend if online
-    if (navigator.onLine) {
-      await fetch('/api/errors/report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(report),
-      }).catch(() => {
-        // Ignore errors when reporting errors to avoid infinite loops
-        console.warn('Failed to send error report to backend');
-      });
-    }
+    // Send to backend if online (disabled - endpoint doesn't exist)
+    // TODO: Enable when /api/errors/report endpoint is implemented
+    // if (navigator.onLine) {
+    //   await fetch('/api/errors/report', {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify(report),
+    //   }).catch(() => {
+    //     // Ignore errors when reporting errors to avoid infinite loops
+    //     console.warn('Failed to send error report to backend');
+    //   });
+    // }
   } catch (reportingError) {
     console.error('Failed to report error:', reportingError);
   }
@@ -144,15 +162,17 @@ export async function reportError(
  * @param testEndpoint - Optional endpoint to test connectivity
  * @returns Promise resolving to connection status
  */
-export async function checkConnection(testEndpoint: string = '/health'): Promise<boolean> {
+export async function checkConnection(
+  testEndpoint: string = '/health'
+): Promise<boolean> {
   if (!navigator.onLine) {
     return false;
   }
 
   try {
-    const response = await fetch(testEndpoint, { 
+    const response = await fetch(testEndpoint, {
       method: 'HEAD',
-      cache: 'no-cache'
+      cache: 'no-cache',
     });
     return response.ok;
   } catch {

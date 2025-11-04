@@ -8,7 +8,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Upload, CheckCircle, AlertCircle, Info, Loader2, FileText, Users, BookOpen, Eye, FileSpreadsheet, FileDown, ArrowRight, ArrowLeft, RefreshCw, Database, Zap } from 'lucide-react';
 import { toast } from 'sonner';
@@ -31,40 +30,6 @@ interface FieldMapping {
   required: boolean;
 }
 
-interface StudentRecord {
-  studentId?: string;
-  firstName?: string;
-  lastName?: string;
-  gradeLevel?: string;
-  gradeCategory?: string;
-  section?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  parentName?: string;
-  parentPhone?: string;
-  parentEmail?: string;
-  isActive?: boolean;
-}
-
-interface BookRecord {
-  accessionNo?: string;
-  title?: string;
-  author?: string;
-  isbn?: string;
-  edition?: string;
-  volume?: string;
-  pages?: number;
-  publisher?: string;
-  year?: number;
-  sourceOfFund?: string;
-  costPrice?: number;
-  remarks?: string;
-  category?: string;
-  totalCopies?: number;
-  availableCopies?: number;
-}
-
 interface PreviewData {
   headers: string[];
   rows: any[][];
@@ -82,7 +47,7 @@ export default function EnhancedImportManager() {
   const [importProgress, setImportProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const parseFile = useCallback(async (file: File): Promise<PreviewData> => {
+  const parseFile = useCallback((file: File): Promise<{ headers: string[]; rows: any[]; totalRows: number }> => {
     return new Promise((resolve, reject) => {
       const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
@@ -92,7 +57,8 @@ export default function EnhancedImportManager() {
           preview: 10,
           complete: (results) => {
             if (results.errors.length > 0) {
-              reject(new Error(`CSV parsing error: ${results.errors[0].message}`));
+              const firstError = results.errors[0];
+              reject(new Error(`CSV parsing error: ${firstError?.message || 'Unknown error'}`));
             } else {
               const headers = results.meta.fields || [];
               const rows = results.data as any[];
@@ -109,41 +75,51 @@ export default function EnhancedImportManager() {
         const reader = new FileReader();
         reader.onload = (e) => {
           try {
-            const data = new Uint8Array(e.target?.result as ArrayBuffer);
+            const result = e.target?.result;
+            if (!result) {
+              reject(new Error('Failed to read file'));
+              return;
+            }
+            const data = new Uint8Array(result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
             const sheetName = workbook.SheetNames[0];
+            if (!sheetName) {
+              reject(new Error('No sheets found in Excel file'));
+              return;
+            }
             const worksheet = workbook.Sheets[sheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            const jsonData: any[][] = (XLSX.utils.sheet_to_json as any)(worksheet, { header: 1 });
 
             if (jsonData.length === 0) {
               reject(new Error('Excel file is empty'));
               return;
             }
 
-            const headers = jsonData[0] as string[];
-            const rows = jsonData.slice(1, 11).map(row => {
-              const obj: any = {};
+            const headers = (jsonData[0] as string[]) || [];
+            const dataRows = jsonData.slice(1) as any[][];
+            const objectRows = dataRows.map((row: any[]) => {
+              const obj: Record<string, any> = {};
               headers.forEach((header, index) => {
-                obj[header] = (row as any)[index] || '';
+                obj[header] = row[index] || '';
               });
               return obj;
             });
 
             resolve({
               headers,
-              rows,
-              totalRows: jsonData.length - 1
+              rows: objectRows.slice(0, 10),
+              totalRows: dataRows.length
             });
           } catch (error) {
-            reject(error);
+            reject(new Error(`Excel parsing error: ${error instanceof Error ? error.message : 'Unknown error'}`));
           }
         };
         reader.readAsArrayBuffer(file);
       } else {
-        reject(new Error('Unsupported file format. Please use CSV or Excel files.'));
+        reject(new Error('Unsupported file format. Please use CSV, XLS, or XLSX files.'));
       }
     });
-  });
+  }, []);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -231,7 +207,7 @@ export default function EnhancedImportManager() {
 
       // Special handling for name field
       if (mapped.name && !mapped.firstName && !mapped.lastName) {
-        const nameParts = mapped.name.split(',').map(p => p.trim());
+        const nameParts = mapped.name.split(',').map((p: string) => p.trim());
         if (nameParts.length >= 2) {
           mapped.lastName = nameParts[0];
           mapped.firstName = nameParts[1];
@@ -457,7 +433,7 @@ export default function EnhancedImportManager() {
                         <TableRow key={rowIndex}>
                           {previewData.headers.map((header, colIndex) => (
                             <TableCell key={colIndex} className="font-mono text-xs">
-                              {row[header] || '-'}
+                              {(row as Record<string, any>)[header] || '-'}
                             </TableCell>
                           ))}
                         </TableRow>

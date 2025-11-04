@@ -101,6 +101,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       mediaQuery.addListener(handleChange);
       return () => mediaQuery.removeListener(handleChange);
     }
+    
+    // Fallback for unsupported browsers
+    return undefined;
   }, []);
 
   // Update resolved theme when theme changes

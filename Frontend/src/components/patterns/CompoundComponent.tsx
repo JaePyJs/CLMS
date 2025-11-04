@@ -53,11 +53,11 @@ export function CompoundComponentProvider({
   children,
 }: CompoundComponentProps) {
   const contextValue: CompoundComponentContextValue = {
-    value,
-    onValueChange,
-    disabled,
-    error,
-    size,
+    ...(value !== undefined && { value }),
+    ...(onValueChange && { onValueChange }),
+    ...(disabled !== undefined && { disabled }),
+    ...(error !== undefined && { error }),
+    ...(size && { size }),
   };
 
   return (
@@ -236,7 +236,7 @@ export function createCompoundComponent<T extends Record<string, ComponentType<a
 /**
  * Example: Creating a Tab component using the compound pattern
  */
-export const Tab = createCompoundComponent({
+export const Tab = createCompoundComponent('Tab', {
   Root: CompoundComponentProvider,
 
   List: createSubComponent('TabList', 'flex border-b border-gray-200'),
@@ -255,7 +255,7 @@ export const Tab = createCompoundComponent({
 /**
  * Example: Creating an Accordion component using the compound pattern
  */
-export const Accordion = createCompoundComponent({
+export const Accordion = createCompoundComponent('Accordion', {
   Root: CompoundComponentProvider,
 
   Item: createSubComponent('AccordionItem', 'border border-gray-200 rounded-lg mb-2'),
@@ -274,7 +274,7 @@ export const Accordion = createCompoundComponent({
 /**
  * Example: Creating a Card component using the compound pattern
  */
-export const Card = createCompoundComponent({
+export const Card = createCompoundComponent('Card', {
   Root: createSubComponent('CardRoot', 'bg-white border border-gray-200 rounded-lg shadow-sm'),
 
   Header: createSubComponent('CardHeader', 'px-6 py-4 border-b border-gray-200'),

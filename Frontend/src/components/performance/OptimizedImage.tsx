@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, memo, forwardRef, useImperativeHandle } from 'react';
-import type { ComponentType, ReactNode } from 'react';
+import type { ComponentType } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 interface OptimizedImageProps {
@@ -7,24 +7,24 @@ interface OptimizedImageProps {
   alt: string;
   width?: number | undefined;
   height?: number | undefined;
-  className?: string;
-  placeholder?: string;
-  blurDataURL?: string;
-  priority?: boolean;
-  quality?: number;
-  format?: 'webp' | 'avif' | 'png' | 'jpg';
-  sizes?: string;
-  srcSet?: string;
-  onLoad?: () => void;
-  onError?: () => void;
-  lazy?: boolean;
-  fadeDuration?: number;
-  style?: React.CSSProperties;
-  aspectRatio?: number;
-  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
-  decoding?: 'async' | 'auto' | 'sync';
-  loading?: 'lazy' | 'eager';
-  fetchPriority?: 'high' | 'low' | 'auto';
+  className?: string | undefined;
+  placeholder?: string | undefined;
+  blurDataURL?: string | undefined;
+  priority?: boolean | undefined;
+  quality?: number | undefined;
+  format?: 'webp' | 'avif' | 'png' | 'jpg' | undefined;
+  sizes?: string | undefined;
+  srcSet?: string | undefined;
+  onLoad?: (() => void) | undefined;
+  onError?: (() => void) | undefined;
+  lazy?: boolean | undefined;
+  fadeDuration?: number | undefined;
+  style?: React.CSSProperties | undefined;
+  aspectRatio?: number | undefined;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down' | undefined;
+  decoding?: 'async' | 'auto' | 'sync' | undefined;
+  loading?: 'lazy' | 'eager' | undefined;
+  fetchPriority?: 'high' | 'low' | 'auto' | undefined;
 }
 
 interface ImageState {
@@ -82,7 +82,7 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>((props,
     objectFit = 'cover',
     decoding = 'async',
     loading = 'lazy',
-    fetchPriority = 'auto',
+    fetchPriority = 'auto'
   } = props;
   const [imageState, setImageState] = useState<ImageState>({
     isLoading: true,
@@ -168,6 +168,8 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>((props,
         document.head.removeChild(link);
       };
     }
+    // Return undefined for cases where preloading is not needed
+    return undefined;
   }, [priority, src]);
 
   // Calculate aspect ratio style
@@ -239,11 +241,11 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>((props,
         srcSet={generatedSrcSet}
         sizes={sizes}
         alt={alt}
-        width={width}
-        height={height}
+        {...(width !== undefined ? { width } : {})}
+        {...(height !== undefined ? { height } : {})}
         loading={priority ? 'eager' : loading}
         decoding={decoding}
-        fetchPriority={priority ? 'high' : fetchPriority}
+        {...(fetchPriority && fetchPriority !== 'auto' ? { fetchPriority } : {})}
         className={`w-full h-full object-${objectFit} transition-opacity duration-${fadeDuration} ${
           imageState.isLoaded ? 'opacity-100' : 'opacity-0'
         }`}

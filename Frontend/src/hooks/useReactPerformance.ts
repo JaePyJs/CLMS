@@ -1,5 +1,4 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-// eslint-disable-next-line no-redeclare
 import { performance } from './perf_hooks';
 
 interface ComponentMetrics {
@@ -159,7 +158,7 @@ export const useOptimizedCalculation = <T,>(
   const [result, setResult] = useState<T>(() => calculation());
   const [isCalculating, setIsCalculating] = useState(false);
 
-  const calculateRef = useRef<T>(() => calculation());
+  const calculateRef = useRef<T>(calculation());
   const dependenciesRef = useRef(dependencies);
 
   useEffect(() => {
@@ -204,6 +203,7 @@ export const useOptimizedCalculation = <T,>(
         }
       }
     }
+    return undefined;
   }, [dependencies, memoize, debounceMs, throttleMs, performCalculation]);
 
   return {

@@ -1,66 +1,81 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import type { Request, Response, NextFunction } from 'express';
-import type { TransformableInfo } from 'logform';
 import * as winston from 'winston';
-import { buildLogEntry, getCurrentTimestamp } from './common';
+import * as path from 'path';
+import * as fs from 'fs';
 
-type Metadata = Record<string, unknown>;
-
+// Ensure logs directory exists
 const logsDir = path.join(process.cwd(), 'logs');
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-const customFormat = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+// Custom log format
+const logFormat = winston.format.combine(
+  winston.format.timestamp({
+    format: 'YYYY-MM-DD HH:mm:ss.SSS',
+  }),
   winston.format.errors({ stack: true }),
-  winston.format.printf(buildLogEntry),
+  winston.format.json(),
+  winston.format.prettyPrint()
 );
 
+// Console format for development
+const consoleFormat = winston.format.combine(
+  winston.format.colorize(),
+  winston.format.timestamp({
+    format: 'HH:mm:ss',
+  }),
+  winston.format.printf(({ timestamp, level, message, ...meta }) => {
+    let log = `${timestamp} [${level}]: ${message}`;
+    
+    // Add metadata if present
+    if (Object.keys(meta).length > 0) {
+      log += `\n${JSON.stringify(meta, null, 2)}`;
+    }
+    
+    return log;
+  })
+);
+
+// Create logger instance
 export const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL ?? 'info',
-  format: customFormat,
+  level: process.env['LOG_LEVEL'] || 'info',
+  format: logFormat,
   defaultMeta: {
     service: 'clms-backend',
-    environment: process.env.NODE_ENV ?? 'development',
+    environment: process.env['NODE_ENV'] || 'development',
   },
   transports: [
+    // Error log file
     new winston.transports.File({
       filename: path.join(logsDir, 'error.log'),
       level: 'error',
-      maxsize: 5_242_880,
+      maxsize: 5242880, // 5MB
       maxFiles: 5,
       format: winston.format.combine(
         winston.format.timestamp(),
-        winston.format.json(),
+        winston.format.json()
       ),
     }),
+    
+    // Combined log file
     new winston.transports.File({
       filename: path.join(logsDir, 'combined.log'),
-      maxsize: 5_242_880,
-      maxFiles: 10,
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
       format: winston.format.combine(
         winston.format.timestamp(),
-        winston.format.json(),
-      ),
-    }),
-    new winston.transports.File({
-      filename: path.join(logsDir, 'audit.log'),
-      level: 'info',
-      maxsize: 10_485_760,
-      maxFiles: 20,
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.json(),
+        winston.format.json()
       ),
     }),
   ],
+  
+  // Handle exceptions and rejections
   exceptionHandlers: [
     new winston.transports.File({
       filename: path.join(logsDir, 'exceptions.log'),
     }),
   ],
+  
   rejectionHandlers: [
     new winston.transports.File({
       filename: path.join(logsDir, 'rejections.log'),
@@ -68,296 +83,146 @@ export const logger = winston.createLogger({
   ],
 });
 
-if (process.env.NODE_ENV !== 'production') {
+// Add console transport in development
+if (process.env['NODE_ENV'] !== 'production') {
   logger.add(
     new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple(),
-        customFormat,
-      ),
-    }),
+      format: consoleFormat,
+    })
   );
 }
 
-const withTimestamp = (): string => getCurrentTimestamp();
+// Logger utility functions
+export class Logger {
+  private static instance: Logger;
+  private winston: winston.Logger;
 
-export const auditLogger = {
-  log: (
-    action: string,
-    entity: string,
-    entity_id: string,
-    id: string,
-    details?: Metadata,
-  ): void => {
-    const payload: Metadata = {
-      type: 'audit',
-      action,
-      entity,
-      entity_id,
-      id,
-      timestamp: withTimestamp(),
+  private constructor() {
+    this.winston = logger;
+  }
+
+  public static getInstance(): Logger {
+    if (!Logger.instance) {
+      Logger.instance = new Logger();
+    }
+    return Logger.instance;
+  }
+
+  // Standard logging methods
+  public error(message: string, meta?: any): void {
+    this.winston.error(message, meta);
+  }
+
+  public warn(message: string, meta?: any): void {
+    this.winston.warn(message, meta);
+  }
+
+  public info(message: string, meta?: any): void {
+    this.winston.info(message, meta);
+  }
+
+  public debug(message: string, meta?: any): void {
+    this.winston.debug(message, meta);
+  }
+
+  // HTTP request logging
+  public httpRequest(req: any, res: any, responseTime: number): void {
+    const logData = {
+      method: req.method,
+      url: req.originalUrl,
+      statusCode: res.statusCode,
+      responseTime: `${responseTime}ms`,
+      userAgent: req.get('User-Agent'),
+      ip: req.ip || req.connection.remoteAddress,
+      userId: req.user?.id,
     };
 
-    if (details) {
-      payload.details = details;
+    if (res.statusCode >= 400) {
+      this.error('HTTP Request Error', logData);
+    } else {
+      this.info('HTTP Request', logData);
     }
+  }
 
-    logger.info('AUDIT', payload);
-  },
-  studentAccess: (student_id: string, id: string, action: string): void => {
-    auditLogger.log(action, 'Student', student_id, id);
-  },
-  bookTransaction: (
-    book_id: string,
-    student_id: string,
-    id: string,
-    action: string,
-  ): void => {
-    auditLogger.log(action, 'Book', book_id, id, { student_id });
-  },
-  equipmentUsage: (
-    equipment_id: string,
-    student_id: string,
-    id: string,
-    action: string,
-  ): void => {
-    auditLogger.log(action, 'Equipment', equipment_id, id, { student_id });
-  },
-  systemConfig: (
-    configKey: string,
-    id: string,
-    oldValue?: unknown,
-    newValue?: unknown,
-  ): void => {
-    auditLogger.log('CONFIG_UPDATE', 'SystemConfig', configKey, id, {
-      oldValue,
-      newValue,
+  // Database operation logging
+  public dbOperation(operation: string, table: string, duration: number, meta?: any): void {
+    this.debug('Database Operation', {
+      operation,
+      table,
+      duration: `${duration}ms`,
+      ...meta,
     });
-  },
-  dataImport: (
-    entity_type: string,
-    id: string,
-    recordCount: number,
-    success: boolean,
-  ): void => {
-    auditLogger.log('DATA_IMPORT', entity_type, 'BULK', id, {
-      recordCount,
-      success,
+  }
+
+  // Authentication logging
+  public authEvent(event: string, userId?: string, meta?: any): void {
+    this.info('Authentication Event', {
+      event,
+      userId,
+      timestamp: new Date().toISOString(),
+      ...meta,
     });
-  },
-};
+  }
 
-export const performanceLogger = {
-  start: (operation: string, metadata?: Metadata): number => {
-    const startTime = Date.now();
-    logger.debug('PERF_START', { operation, startTime, ...(metadata ?? {}) });
-    return startTime;
-  },
-  end: (operation: string, startTime: number, metadata?: Metadata): void => {
-    const duration = Date.now() - startTime;
-    logger.info('PERF_END', { operation, duration, ...(metadata ?? {}) });
-
-    if (duration > 5_000) {
-      logger.warn('SLOW_OPERATION', {
-        operation,
-        duration,
-        ...(metadata ?? {}),
-      });
-    }
-  },
-  database: (query: string, duration: number, rowCount?: number): void => {
-    logger.debug('DB_QUERY', { query, duration, rowCount });
-  },
-  googleSheets: (
-    operation: string,
-    duration: number,
-    rowCount?: number,
-  ): void => {
-    logger.info('GOOGLE_SHEETS', { operation, duration, rowCount });
-  },
-};
-
-export const securityLogger = {
-  login: (
-    id: string,
-    success: boolean,
-    ip: string,
-    userAgent?: string,
-  ): void => {
-    logger.info('AUTH_LOGIN', { id, success, ip, userAgent });
-  },
-  logout: (id: string, ip: string): void => {
-    logger.info('AUTH_LOGOUT', { id, ip });
-  },
-  failedAuth: (identifier: string, reason: string, ip: string): void => {
-    logger.warn('AUTH_FAILED', { identifier, reason, ip });
-  },
-  permissionDenied: (
-    id: string,
-    resource: string,
-    action: string,
-    ip: string,
-  ): void => {
-    logger.warn('PERMISSION_DENIED', { id, resource, action, ip });
-  },
-  suspiciousActivity: (description: string, details: Metadata): void => {
-    logger.error('SECURITY_ALERT', { description, ...details });
-  },
-};
-
-export const automationLogger = {
-  jobStart: (jobName: string, jobId: string, config?: Metadata): void => {
-    logger.info('JOB_START', { jobName, jobId, ...(config ? { config } : {}) });
-  },
-  jobSuccess: (
-    jobName: string,
-    jobId: string,
-    duration: number,
-    result?: unknown,
-  ): void => {
-    logger.info('JOB_SUCCESS', { jobName, jobId, duration, result });
-  },
-  jobFailure: (
-    jobName: string,
-    jobId: string,
-    duration: number,
-    error: Error,
-  ): void => {
-    logger.error('JOB_FAILURE', {
-      jobName,
-      jobId,
-      duration,
-      error: error.message,
-      stack: error.stack,
+  // Security event logging
+  public securityEvent(event: string, severity: 'low' | 'medium' | 'high', meta?: any): void {
+    const logMethod = severity === 'high' ? 'error' : severity === 'medium' ? 'warn' : 'info';
+    
+    this[logMethod]('Security Event', {
+      event,
+      severity,
+      timestamp: new Date().toISOString(),
+      ...meta,
     });
-  },
-  jobRetry: (
-    jobName: string,
-    jobId: string,
-    attempt: number,
-    maxAttempts: number,
-    error: Error,
-  ): void => {
-    logger.warn('JOB_RETRY', {
-      jobName,
-      jobId,
-      attempt,
-      maxAttempts,
-      error: error.message,
+  }
+
+  // Performance logging
+  public performance(operation: string, duration: number, meta?: any): void {
+    const level = duration > 1000 ? 'warn' : 'info';
+    
+    this[level]('Performance Metric', {
+      operation,
+      duration: `${duration}ms`,
+      ...meta,
     });
-  },
-  scheduleUpdate: (jobName: string, schedule: string, nextRun: Date): void => {
-    logger.info('SCHEDULE_UPDATE', { jobName, schedule, nextRun });
-  },
-};
+  }
 
-export const healthLogger = {
-  check: (
-    service: string,
-    status: 'UP' | 'DOWN',
-    responseTime?: number,
-    details?: Metadata,
-  ): void => {
-    const level: 'info' | 'error' = status === 'UP' ? 'info' : 'error';
-    const payload: Metadata = {
-      service,
-      status,
-      responseTime,
-      ...(details ?? {}),
-    };
-    logger[level]('HEALTH_CHECK', payload);
-  },
-  dependencyFailure: (dependency: string, error: Error): void => {
-    logger.error('DEPENDENCY_FAILURE', { dependency, error: error.message });
-  },
-  resourceUsage: (cpu: number, memory: number, disk: number): void => {
-    logger.info('RESOURCE_USAGE', { cpu, memory, disk });
-  },
-};
-
-export const createRequestLogger = () => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const start = Date.now();
-    const { method, url, ip } = req;
-    const userAgent = req.get('User-Agent');
-
-    logger.info('REQUEST_START', {
-      method,
-      url,
-      ip,
-      userAgent,
-      timestamp: withTimestamp(),
+  // Business logic logging
+  public business(event: string, meta?: any): void {
+    this.info('Business Event', {
+      event,
+      timestamp: new Date().toISOString(),
+      ...meta,
     });
+  }
 
-    res.once('finish', () => {
-      const duration = Date.now() - start;
-      const { statusCode } = res;
-      const contentLength = res.get('Content-Length');
-
-      logger.info('REQUEST_END', {
-        method,
-        url,
-        ip,
-        statusCode,
-        duration,
-        contentLength,
-      });
-
-      if (duration > 1_000) {
-        logger.warn('SLOW_REQUEST', {
-          method,
-          url,
-          duration,
-          statusCode,
-        });
-      }
+  // Error with context
+  public errorWithContext(error: Error, context: string, meta?: any): void {
+    this.error(`${context}: ${error.message}`, {
+      error: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+      },
+      context,
+      ...meta,
     });
+  }
 
-    next();
-  };
-};
-
-export const logError = (error: Error, context?: Metadata): void => {
-  logger.error('APPLICATION_ERROR', {
-    message: error.message,
-    stack: error.stack,
-    name: error.name,
-    ...(context ?? {}),
-  });
-};
-
-export const structuredLogger = {
-  event: (eventName: string, data: Metadata): void => {
-    logger.info('EVENT', { eventName, ...data });
-  },
-  metric: (
-    metricName: string,
-    value: number,
-    unit?: string,
-    tags?: Record<string, string | number | boolean | undefined>,
-  ): void => {
-    logger.info('METRIC', { metricName, value, unit, ...(tags ?? {}) });
-  },
-  trace: (traceId: string, operation: string, data: Metadata): void => {
-    logger.debug('TRACE', { traceId, operation, ...data });
-  },
-};
-
-export const shutdownLogger = {
-  starting: (signal: string): void => {
-    logger.info('SHUTDOWN_START', { signal, timestamp: withTimestamp() });
-  },
-  completed: (signal: string, duration: number): void => {
-    logger.info('SHUTDOWN_COMPLETE', {
-      signal,
-      duration,
-      timestamp: withTimestamp(),
+  // Structured logging for API responses
+  public apiResponse(req: any, res: any, data?: any): void {
+    this.info('API Response', {
+      method: req.method,
+      url: req.originalUrl,
+      statusCode: res.statusCode,
+      userId: req.user?.id,
+      responseData: data ? JSON.stringify(data).substring(0, 200) : undefined,
     });
-  },
-  cleanupTask: (task: string, success: boolean, duration?: number): void => {
-    logger.info('CLEANUP_TASK', { task, success, duration });
-  },
-};
+  }
+}
 
+// Export singleton instance
+export const loggerInstance = Logger.getInstance();
+
+// Export default logger for backward compatibility
 export default logger;

@@ -87,6 +87,8 @@ const NotificationCenter: React.FC = () => {
         };
       }
     }
+    // Return undefined for cases where cleanup is not needed
+    return undefined;
   }, [isConnected, user, handleRealTimeNotification]);
 
   const fetchNotifications = useCallback(async () => {
@@ -95,16 +97,22 @@ const NotificationCenter: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await notificationApi.getNotifications({
+      const params: any = {
         unreadOnly: filter === 'unread',
         limit: 50,
-        type: typeFilter !== 'all' ? typeFilter : undefined,
-      });
+      };
+
+      if (typeFilter !== 'all') {
+        params.type = typeFilter;
+      }
+
+      const response = await notificationApi.getNotifications(params);
       setNotifications(response.data.notifications);
       setUnreadCount(response.data.unreadCount);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      toast.error('Failed to fetch notifications');
+      // Silently handle errors for non-existent endpoint
+      // Don't show toast errors to avoid rendering error objects
     } finally {
       setLoading(false);
     }
@@ -123,8 +131,7 @@ const NotificationCenter: React.FC = () => {
     }, 30000);
     
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, typeFilter, token]); // fetchNotifications will be captured by closure when effect re-runs
+  }, [filter, typeFilter, token, fetchNotifications]); // fetchNotifications will be captured by closure when effect re-runs
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {

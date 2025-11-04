@@ -3,6 +3,7 @@ import { Users, Plus, Edit, Trash2, Shield, ShieldAlert, ShieldCheck, Key, Searc
 import userApi from '../../services/userApi';
 import type { User, UserRole, CreateUserInput } from '../../services/userApi';
 import { useToast } from '../ToastContainer';
+import { useForm } from '../../hooks';
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -437,17 +438,26 @@ const CreateUserModal: React.FC<{
   onClose: () => void;
   onSubmit: (data: CreateUserInput) => void;
 }> = ({ onClose, onSubmit }) => {
-  const [formData, setFormData] = useState<CreateUserInput>({
-    username: '',
-    password: '',
-    email: '',
-    fullName: '',
-    role: 'LIBRARIAN',
+  const [createForm, createFormActions] = useForm({
+    initialValues: {
+      username: '',
+      password: '',
+      email: '',
+      fullName: '',
+      role: 'LIBRARIAN',
+    },
+    validationSchema: {
+      username: { required: true },
+      password: { required: true },
+      email: { required: false },
+      fullName: { required: false },
+      role: { required: true }
+    }
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit(createForm.values as CreateUserInput);
   };
 
   return (
@@ -462,8 +472,8 @@ const CreateUserModal: React.FC<{
             <input
               type="text"
               required
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              value={createForm.values.username}
+              onChange={(e) => createFormActions.setValue('username', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -475,8 +485,8 @@ const CreateUserModal: React.FC<{
             <input
               type="password"
               required
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              value={createForm.values.password}
+              onChange={(e) => createFormActions.setValue('password', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -487,8 +497,8 @@ const CreateUserModal: React.FC<{
             </label>
             <input
               type="text"
-              value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+              value={createForm.values.fullName}
+              onChange={(e) => createFormActions.setValue('fullName', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -497,8 +507,8 @@ const CreateUserModal: React.FC<{
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              value={createForm.values.email}
+              onChange={(e) => createFormActions.setValue('email', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -507,8 +517,8 @@ const CreateUserModal: React.FC<{
             <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
             <select
               required
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+              value={createForm.values.role}
+              onChange={(e) => createFormActions.setValue('role', e.target.value as UserRole)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="LIBRARIAN">Librarian</option>
@@ -547,16 +557,24 @@ const EditUserModal: React.FC<{
   onClose: () => void;
   onSubmit: (data: any) => void;
 }> = ({ user, onClose, onSubmit }) => {
-  const [formData, setFormData] = useState({
-    username: user.username,
-    fullName: user.fullName || '',
-    email: user.email || '',
-    role: user.role,
+  const [editForm, editFormActions] = useForm({
+    initialValues: {
+      username: user.username,
+      fullName: user.fullName || '',
+      email: user.email || '',
+      role: user.role,
+    },
+    validationSchema: {
+      username: { required: true },
+      fullName: { required: false },
+      email: { required: false },
+      role: { required: true }
+    }
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    onSubmit(editForm.values);
   };
 
   return (
@@ -571,8 +589,8 @@ const EditUserModal: React.FC<{
             <input
               type="text"
               required
-              value={formData.username}
-              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              value={editForm.values.username}
+              onChange={(e) => editFormActions.setValue('username', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -583,8 +601,8 @@ const EditUserModal: React.FC<{
             </label>
             <input
               type="text"
-              value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+              value={editForm.values.fullName}
+              onChange={(e) => editFormActions.setValue('fullName', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -593,8 +611,8 @@ const EditUserModal: React.FC<{
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              value={editForm.values.email}
+              onChange={(e) => editFormActions.setValue('email', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -603,8 +621,8 @@ const EditUserModal: React.FC<{
             <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
             <select
               required
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+              value={editForm.values.role}
+              onChange={(e) => editFormActions.setValue('role', e.target.value as UserRole)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="LIBRARIAN">Librarian</option>

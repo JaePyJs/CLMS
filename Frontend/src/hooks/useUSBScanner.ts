@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import QrScanner from 'qr-scanner';
 import { toast } from 'sonner';
 
 interface ScannerConfig {
@@ -156,6 +157,7 @@ export function useUSBScanner(config: ScannerConfig = { enabled: true }) {
         }
       };
     }
+    return undefined;
   }, [enabled, handleKeyPress]);
 
   const reset = useCallback(() => {
@@ -226,16 +228,20 @@ export function useQRScanner() {
     ctx.drawImage(video, 0, 0);
 
     // Extract QR code (you would use a QR code library like jsQR here)
-    // For now, this is a placeholder
+    // Camera-based QR scanning using qr-scanner library
     
-    // TODO: Integrate jsQR library
-    // const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    // const code = jsQR(imageData.data, imageData.width, imageData.height);
-    // if (code) {
-    //   setResult(code.data);
-    //   stopScanning();
-    //   return;
-    // }
+    // Use QrScanner to scan the canvas directly
+    QrScanner.scanImage(canvas, { returnDetailedScanResult: true })
+      .then(result => {
+        if (result?.data) {
+          setResult(result.data);
+          stopScanning();
+        }
+      })
+      .catch(error => {
+        console.warn('QR scan failed:', error);
+        // Continue to next frame if QR not found
+      });
 
     // Continue scanning
     if (scanningRef.current) {

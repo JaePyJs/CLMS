@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { studentsApi } from '@/lib/api';
-import { Upload, FileText, AlertCircle, CheckCircle2, Download, ArrowRight, Settings, File, Users, Loader2, ChevronRight, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle2, Download, ArrowRight, Settings, File as FileIcon, Users, Loader2, ChevronRight, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
@@ -188,8 +188,25 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
         try {
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
+          
+          if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+            reject(new Error('No sheets found in the file'));
+            return;
+          }
+          
           const sheetName = workbook.SheetNames[0];
+          if (!sheetName) {
+            reject(new Error('No sheets found in workbook'));
+            return;
+          }
+          
           const worksheet = workbook.Sheets[sheetName];
+          
+          if (!worksheet) {
+            reject(new Error('Could not access worksheet'));
+            return;
+          }
+          
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
           if (jsonData.length === 0) {
@@ -279,7 +296,8 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
         const result = await studentsApi.importStudents(data.file, data.fieldMappings, true);
         return result.data;
       } catch (error: any) {
-        throw new Error(error?.error || error?.message || 'Preview failed');
+        const message = error?.error || error?.message || 'Preview failed';
+        throw new Error(typeof message === 'string' ? message : message?.message || 'Preview failed');
       }
     },
     onSuccess: (result: any) => {
@@ -329,7 +347,8 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
         const result = await studentsApi.importStudents(data.file, data.fieldMappings, false);
         return result.data;
       } catch (error: any) {
-        throw new Error(error?.error || error?.message || 'Import failed');
+        const message = error?.error || error?.message || 'Import failed';
+        throw new Error(typeof message === 'string' ? message : message?.message || 'Import failed');
       }
     },
     onSuccess: (result: any) => {
@@ -508,7 +527,7 @@ export function StudentImportDialog({ open, onOpenChange }: StudentImportDialogP
                       className="hidden"
                     />
                     <Button onClick={() => fileInputRef.current?.click()}>
-                      <File className="h-4 w-4 mr-2" />
+                      <FileIcon className="h-4 w-4 mr-2" />
                       Choose File
                     </Button>
                   </div>

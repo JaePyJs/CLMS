@@ -20,12 +20,28 @@ export const useHealthCheck = () => {
       try {
         const result = await automationApi.health();
         setBackendConnection(true);
-        return result;
+
+        // Ensure we return a safe object with timestamp
+        if (result.success && result.data) {
+          return {
+            timestamp: result.data.timestamp || new Date().toISOString(),
+            connected: true,
+          };
+        }
+
+        // If result exists but success is false
+        return {
+          timestamp: new Date().toISOString(),
+          connected: false,
+        };
       } catch (error) {
-        console.log(error);
+        console.log('Health check error:', error);
         setBackendConnection(false);
         // Return a safe fallback instead of throwing
-        return { timestamp: new Date().toISOString(), connected: false };
+        return {
+          timestamp: new Date().toISOString(),
+          connected: false,
+        };
       }
     },
     refetchInterval: 30000, // Check every 30 seconds
@@ -228,8 +244,8 @@ export const useActivityTimeline = (limit?: number) => {
         return fallbackActivities;
       }
     },
-    enabled: true, // Enable fetching when ready
-    refetchInterval: 15000, // Refresh every 15 seconds
+    enabled: false, // Disable until endpoint exists
+    refetchInterval: false,
     retry: false,
   });
 };
@@ -247,8 +263,8 @@ export const useNotifications = () => {
         return [];
       }
     },
-    enabled: true, // Enable fetching when ready
-    refetchInterval: 60000, // Refresh every minute
+    enabled: false, // Disable until endpoint exists
+    refetchInterval: false,
     retry: false,
   });
 };

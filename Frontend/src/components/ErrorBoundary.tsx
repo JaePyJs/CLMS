@@ -23,7 +23,7 @@ export { ErrorBoundaryFallback } from './ErrorBoundaryFallback';
 export {
   categorizeError,
   generateErrorId,
-  reportError,
+  reportApplicationError,
   checkConnection,
   handleReauthentication,
   refreshPage,

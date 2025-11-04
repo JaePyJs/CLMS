@@ -265,8 +265,8 @@ class ErrorBoundary extends Component<Props, State> {
         id: this.state.errorId,
         timestamp: Date.now(),
         error: error.message,
-        stack: error.stack || undefined,
-        componentStack: errorInfo.componentStack,
+        ...(error.stack && { stack: error.stack }),
+        ...(errorInfo.componentStack && { componentStack: errorInfo.componentStack }),
         userAgent: navigator.userAgent,
         url: window.location.href,
         errorType: this.state.errorType,
@@ -286,16 +286,17 @@ class ErrorBoundary extends Component<Props, State> {
 
       localStorage.setItem('clms_error_reports', JSON.stringify(existingErrors));
 
-      // Send to backend if online
-      if (navigator.onLine) {
-        await fetch('/api/errors/report', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(report),
-        }).catch(() => {
-          // Ignore errors when reporting errors to avoid infinite loops
-        });
-      }
+      // Send to backend if online (disabled - endpoint doesn't exist)
+      // TODO: Enable when /api/errors/report endpoint is implemented
+      // if (navigator.onLine) {
+      //   await fetch('/api/errors/report', {
+      //     method: 'POST',
+      //     headers: { 'Content-Type': 'application/json' },
+      //     body: JSON.stringify(report),
+      //   }).catch(() => {
+      //     // Ignore errors when reporting errors to avoid infinite loops
+      //   });
+      // }
     } catch (reportingError) {
       console.error('Failed to report error:', reportingError);
     }
@@ -437,6 +438,23 @@ User Agent: ${report.userAgent}
     }
   };
 
+  private getErrorMessage = (): string => {
+    if (!this.state.error) return 'Unknown error';
+
+    // If error has a message property (API error object)
+    if (typeof this.state.error === 'object' && this.state.error.message) {
+      return this.state.error.message;
+    }
+
+    // If error is a string
+    if (typeof this.state.error === 'string') {
+      return this.state.error;
+    }
+
+    // Fallback to toString for Error objects
+    return this.state.error.toString();
+  };
+
   public override render() {
     if (this.state.hasError) {
       // Custom fallback UI
@@ -518,7 +536,7 @@ User Agent: ${report.userAgent}
                     </span>
                   </div>
                   <p className="text-sm text-slate-700 dark:text-slate-300 font-mono break-all">
-                    {this.state.error?.toString()}
+                    {this.getErrorMessage()}
                   </p>
                   {this.state.retryCount > 0 && (
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">

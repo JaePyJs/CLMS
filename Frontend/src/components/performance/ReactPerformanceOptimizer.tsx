@@ -1,14 +1,13 @@
 import React, {
-  memo,
-  useMemo,
-  useCallback,
   useState,
   useEffect,
+  useCallback,
+  useMemo,
   useRef,
-  Profiler
+  memo,
+  Profiler,
 } from 'react';
 import type { ComponentType, ReactNode, ProfilerOnRenderCallback } from 'react';
-import { VariableSizeList as List } from 'react-window';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -158,48 +157,52 @@ export const VirtualizedList = <T,>({
   overscanCount = 5,
   className = '',
 }: VirtualizedListProps<T>) => {
-  const itemData = useMemo(() => ({
-    items,
-    renderItem,
-  }), [items, renderItem]);
-
-  const getItemSize = useCallback((index: number) => {
-    if (typeof itemHeight === 'function') {
-      return itemHeight(index);
-    }
-    return itemHeight;
-  }, [itemHeight]);
-
-  const Row = memo(({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const { items, renderItem } = itemData;
-    const item = items[index];
-
-    return (
-      <div style={style}>
-        {renderItem(item, index)}
-      </div>
-    );
-  });
-
-  Row.displayName = 'VirtualizedRow';
+  const [scrollTop, setScrollTop] = useState(0);
+  
+  const containerHeight = typeof height === 'number' ? height : 400;
+  const itemSize = typeof itemHeight === 'function' ? 50 : itemHeight;
+  
+  const startIndex = Math.floor(scrollTop / itemSize);
+  const endIndex = Math.min(
+    startIndex + Math.ceil(containerHeight / itemSize) + overscanCount,
+    items.length
+  );
+  
+  const visibleItems = items.slice(startIndex, endIndex);
+  
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  };
 
   return (
-    <div className={className} style={{ height, width }}>
-      <List
-        height={height}
-        width={width}
-        itemCount={items.length}
-        itemSize={getItemSize}
-        overscanCount={overscanCount}
-        itemData={itemData}
-      >
-        {Row}
-      </List>
+    <div 
+      className={className} 
+      style={{ 
+        height: containerHeight, 
+        width, 
+        overflow: 'auto',
+        position: 'relative'
+      }}
+      onScroll={handleScroll}
+    >
+      <div style={{ height: items.length * itemSize, position: 'relative' }}>
+        {visibleItems.map((item, index) => (
+          <div
+            key={startIndex + index}
+            style={{
+              position: 'absolute',
+              top: (startIndex + index) * itemSize,
+              height: itemSize,
+              width: '100%',
+            }}
+          >
+            {renderItem(item, startIndex + index)}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
-
-VirtualizedList.displayName = 'VirtualizedList';
 
 // Expensive calculation hook
 export const useExpensiveCalculation = <T,>(

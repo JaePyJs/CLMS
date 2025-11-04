@@ -1,6 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMobileOptimization, useTouchOptimization, getResponsiveClasses } from '@/hooks/useMobileOptimization';
+import { useMultipleLoadingStates } from '@/hooks/useLoadingState';
+import { useSearchFilters } from '@/hooks/useSearchFilters';
+import { useMultipleModals } from '@/hooks/useModalState';
+import { useForm } from '@/hooks/useFormState';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { studentsApi, utilitiesApi } from '@/lib/api';
 import {
   Card,
@@ -90,57 +95,121 @@ export function StudentManagement() {
   const { isMobile, isTablet } = mobileState;
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
 
-  // State management
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterGrade, setFilterGrade] = useState<string>('all');
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
-  const [showBulkActions, setShowBulkActions] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
-
-  // Fetch students with TanStack Query
-  const { data: studentsResponse } = useQuery({
-    queryKey: ['students'],
-    queryFn: async (): Promise<StudentsApiResponse> => {
+  // Data refresh with query
+  const [studentsRefreshState, studentsRefreshActions] = useDataRefresh(
+    async (): Promise<StudentsApiResponse> => {
       const response = await studentsApi.getStudents();
       const data = response.data as StudentsApiResponse | undefined;
       return data ?? { students: [], total: 0, pagination: {} };
     },
-    staleTime: 2 * 60 * 1000,
+    {
+      initialData: { students: [], total: 0, pagination: {} },
+      interval: 5 * 60 * 1000, // Refresh every 5 minutes
+    }
+  );
+
+  const students = studentsRefreshState.data?.students || [];
+
+  // Search and filter state
+  const [searchFilters, filterActions] = useSearchFilters({
+    defaultSearchTerm: '',
+    defaultFilters: { status: 'all', grade: 'all' },
   });
 
-  const students = studentsResponse?.students || [];
+  // Manual filtering based on search state
+  const filteredStudents = useMemo(() => {
+    let filtered = students;
 
-  // Dialog states
-  const [showAddStudent, setShowAddStudent] = useState(false);
-  const [showEditStudent, setShowEditStudent] = useState(false);
-  const [showStudentDetails, setShowStudentDetails] = useState(false);
-  const [showBulkImport, setShowBulkImport] = useState(false);
-  const [showStudentBarcode, setShowStudentBarcode] = useState(false);
+    // Apply search term
+    if (searchFilters.searchTerm) {
+      const term = searchFilters.searchTerm.toLowerCase();
+      filtered = filtered.filter((student: Student) =>
+        student.firstName.toLowerCase().includes(term) ||
+        student.lastName.toLowerCase().includes(term) ||
+        student.studentId.toLowerCase().includes(term)
+      );
+    }
+
+    // Apply status filter
+    if (searchFilters.filters.status && searchFilters.filters.status !== 'all') {
+      filtered = filtered.filter((student: Student) =>
+        searchFilters.filters.status === 'active' ? student.isActive : !student.isActive
+      );
+    }
+
+    // Apply grade filter
+    if (searchFilters.filters.grade && searchFilters.filters.grade !== 'all') {
+      filtered = filtered.filter((student: Student) => student.gradeCategory === searchFilters.filters.grade);
+    }
+
+    return filtered;
+  }, [students, searchFilters.searchTerm, searchFilters.filters]);
+
+  // Modal states
+  const [modalStates, modalActions] = useMultipleModals({
+    addStudent: false,
+    editStudent: false,
+    studentDetails: false,
+    bulkImport: false,
+    studentBarcode: false,
+  });
+
+  const studentDetailsData = modalStates.studentDetails.data;
+
+
+  // Form state for new student
+  const [formState, formActions] = useForm({
+    initialValues: {
+      firstName: '',
+      lastName: '',
+      gradeLevel: '',
+      section: '',
+      email: '',
+      phone: '',
+      parentName: '',
+      parentPhone: '',
+      parentEmail: '',
+      emergencyContact: '',
+      address: '',
+      notes: '',
+    },
+    validationSchema: {
+      firstName: { required: true, minLength: 1 },
+      lastName: { required: true, minLength: 1 },
+      gradeLevel: { required: true },
+    },
+  });
+
+  const newStudent = formState.values;
+  const formErrors = formState.errors;
+
+  // Loading states for different operations
+  const [loadingStates, loadingActions] = useMultipleLoadingStates({
+    generatingQRCodes: {},
+    printingIDs: {},
+    exporting: {},
+    sendingNotifications: {},
+  });
+
+  // Component state
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  
+  // Missing state variables
+  const [isSendingNotifications, setIsSendingNotifications] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-
-  // Form states
-  const [newStudent, setNewStudent] = useState({
-    firstName: '',
-    lastName: '',
-    gradeLevel: '',
-    section: '',
-    email: '',
-    phone: '',
-    parentName: '',
-    parentPhone: '',
-    parentEmail: '',
-    emergencyContact: '',
-    address: '',
-    notes: ''
-  });
-
-  // Loading states
+  const [showStudentDetails, setShowStudentDetails] = useState(false);
+  const [showStudentBarcode, setShowStudentBarcode] = useState(false);
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [isGeneratingQRCodes, setIsGeneratingQRCodes] = useState(false);
   const [isPrintingIDs, setIsPrintingIDs] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [isSendingNotifications, setIsSendingNotifications] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterGrade, setFilterGrade] = useState('');
+  const [showEditStudent, setShowEditStudent] = useState(false);
 
   // Mutations
   const createStudentMutation = useMutation({
@@ -148,21 +217,8 @@ export function StudentManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast.success('Student added successfully!');
-      setShowAddStudent(false);
-      setNewStudent({
-        firstName: '',
-        lastName: '',
-        gradeLevel: '',
-        section: '',
-        email: '',
-        phone: '',
-        parentName: '',
-        parentPhone: '',
-        parentEmail: '',
-        emergencyContact: '',
-        address: '',
-        notes: ''
-      });
+      modalActions.addStudent.close();
+      formActions.resetForm();
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.error || 'Failed to add student');
@@ -175,8 +231,7 @@ export function StudentManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast.success('Student updated successfully!');
-      setShowEditStudent(false);
-      setSelectedStudent(null);
+      modalActions.editStudent.close();
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.error || 'Failed to update student');
@@ -308,32 +363,6 @@ export function StudentManagement() {
     }
   };
 
-  // Filter and search logic
-  useEffect(() => {
-    if (!students) return;
-    let filtered = students;
-
-    if (searchTerm) {
-      filtered = filtered.filter((student: Student) =>
-        student.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.studentId.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter((student: Student) =>
-        filterStatus === 'active' ? student.isActive : !student.isActive
-      );
-    }
-
-    if (filterGrade !== 'all') {
-      filtered = filtered.filter((student: Student) => student.gradeCategory === filterGrade);
-    }
-
-    setFilteredStudents(filtered);
-  }, [students, searchTerm, filterStatus, filterGrade]);
-
   // Handler functions
   const handleAddStudent = async () => {
     if (!newStudent.firstName || !newStudent.lastName || !newStudent.gradeLevel) {
@@ -385,34 +414,34 @@ export function StudentManagement() {
   };
 
   const handleGenerateQRCodes = async () => {
-    setIsGeneratingQRCodes(true);
+    loadingActions.generatingQRCodes.start();
     try {
       await generateQRCodesMutation.mutateAsync();
     } catch (error) {
       // Error handled by mutation
     } finally {
-      setIsGeneratingQRCodes(false);
+      loadingActions.generatingQRCodes.finish();
     }
   };
 
   const handlePrintIDCards = async () => {
-    setIsPrintingIDs(true);
+    loadingActions.printingIDs.start();
     try {
       await generateBarcodesMutation.mutateAsync();
       toast.success('ID cards printed successfully!');
     } catch (error) {
       // Error handled by mutation
     } finally {
-      setIsPrintingIDs(false);
+      loadingActions.printingIDs.finish();
     }
   };
 
   const handleExportStudents = async () => {
-    setIsExporting(true);
+    loadingActions.exporting.start();
     try {
       const csvContent = [
         'Student ID,First Name,Last Name,Grade,Section,Status,Email,Phone,Join Date,Total Sessions',
-        ...filteredStudents.map(s =>
+        ...filteredStudents.map((s: Student) =>
           `${s.studentId},${s.firstName},${s.lastName},${s.gradeLevel},${s.section || ''},${s.isActive ? 'Active' : 'Inactive'},${s.email || ''},${s.phone || ''},${s.joinDate},${s.totalSessions}`
         )
       ].join('\n');
@@ -431,7 +460,7 @@ export function StudentManagement() {
     } catch (error) {
       toast.error('Failed to export students');
     } finally {
-      setIsExporting(false);
+      loadingActions.exporting.finish();
     }
   };
 
@@ -558,14 +587,20 @@ export function StudentManagement() {
           const tabs = ['overview', 'students', 'bulk', 'reports'];
           const currentIndex = tabs.indexOf(activeTab);
           if (currentIndex < tabs.length - 1) {
-            setActiveTab(tabs[currentIndex + 1]);
+            const nextTab = tabs[currentIndex + 1];
+            if (nextTab) {
+              setActiveTab(nextTab);
+            }
           }
         } else if (gesture === 'swipe-right') {
           // Navigate to previous tab
           const tabs = ['overview', 'students', 'bulk', 'reports'];
           const currentIndex = tabs.indexOf(activeTab);
           if (currentIndex > 0) {
-            setActiveTab(tabs[currentIndex - 1]);
+            const previousTab = tabs[currentIndex - 1];
+            if (previousTab) {
+              setActiveTab(previousTab);
+            }
           }
         }
       }
@@ -700,7 +735,7 @@ export function StudentManagement() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {filteredStudents.slice(0, 3).map(student => (
+                {filteredStudents.slice(0, 3).map((student: Student) => (
                   <div key={student.id} className="flex items-center justify-between p-3 rounded-lg border">
                     <div className="flex items-center gap-3">
                       <div className={`w-2 h-2 rounded-full ${student.isActive ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -809,7 +844,7 @@ export function StudentManagement() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {filteredStudents.map(student => (
+                {filteredStudents.map((student: Student) => (
                   <div
                     key={student.id}
                     className={`p-4 rounded-lg border ${
@@ -1182,7 +1217,7 @@ export function StudentManagement() {
                 <label className="text-sm font-medium">First Name *</label>
                 <Input
                   value={newStudent.firstName}
-                  onChange={(e) => setNewStudent({ ...newStudent, firstName: e.target.value })}
+                  onChange={(e) => formActions.setValue('firstName', e.target.value)}
                   placeholder="First name"
                 />
               </div>
@@ -1190,7 +1225,7 @@ export function StudentManagement() {
                 <label className="text-sm font-medium">Last Name *</label>
                 <Input
                   value={newStudent.lastName}
-                  onChange={(e) => setNewStudent({ ...newStudent, lastName: e.target.value })}
+                  onChange={(e) => formActions.setValue('lastName', e.target.value)}
                   placeholder="Last name"
                 />
               </div>
@@ -1198,7 +1233,7 @@ export function StudentManagement() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Grade Level *</label>
-                <Select value={newStudent.gradeLevel} onValueChange={(value) => setNewStudent({ ...newStudent, gradeLevel: value })}>
+                <Select value={newStudent.gradeLevel} onValueChange={(value) => formActions.setValue('gradeLevel', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select grade" />
                   </SelectTrigger>
@@ -1222,7 +1257,7 @@ export function StudentManagement() {
                 <label className="text-sm font-medium">Section</label>
                 <Input
                   value={newStudent.section}
-                  onChange={(e) => setNewStudent({ ...newStudent, section: e.target.value })}
+                  onChange={(e) => formActions.setValue('section', e.target.value)}
                   placeholder="Section"
                 />
               </div>
@@ -1233,7 +1268,7 @@ export function StudentManagement() {
                 <Input
                   type="email"
                   value={newStudent.email}
-                  onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
+                  onChange={(e) => formActions.setValue('email', e.target.value)}
                   placeholder="student@email.com"
                 />
               </div>
@@ -1241,7 +1276,7 @@ export function StudentManagement() {
                 <label className="text-sm font-medium">Phone</label>
                 <Input
                   value={newStudent.phone}
-                  onChange={(e) => setNewStudent({ ...newStudent, phone: e.target.value })}
+                  onChange={(e) => formActions.setValue('phone', e.target.value)}
                   placeholder="+63 912 345 6789"
                 />
               </div>
@@ -1251,7 +1286,7 @@ export function StudentManagement() {
                 <label className="text-sm font-medium">Parent Name</label>
                 <Input
                   value={newStudent.parentName}
-                  onChange={(e) => setNewStudent({ ...newStudent, parentName: e.target.value })}
+                  onChange={(e) => formActions.setValue('parentName', e.target.value)}
                   placeholder="Parent/Guardian name"
                 />
               </div>
@@ -1259,7 +1294,7 @@ export function StudentManagement() {
                 <label className="text-sm font-medium">Parent Phone</label>
                 <Input
                   value={newStudent.parentPhone}
-                  onChange={(e) => setNewStudent({ ...newStudent, parentPhone: e.target.value })}
+                  onChange={(e) => formActions.setValue('parentPhone', e.target.value)}
                   placeholder="+63 912 345 6788"
                 />
               </div>
@@ -1268,7 +1303,7 @@ export function StudentManagement() {
               <label className="text-sm font-medium">Address</label>
               <Input
                 value={newStudent.address}
-                onChange={(e) => setNewStudent({ ...newStudent, address: e.target.value })}
+                onChange={(e) => formActions.setValue('address', e.target.value)}
                 placeholder="Student address"
               />
             </div>
@@ -1276,7 +1311,7 @@ export function StudentManagement() {
               <label className="text-sm font-medium">Notes</label>
               <Input
                 value={newStudent.notes}
-                onChange={(e) => setNewStudent({ ...newStudent, notes: e.target.value })}
+                onChange={(e) => formActions.setValue('notes', e.target.value)}
                 placeholder="Additional notes"
               />
             </div>

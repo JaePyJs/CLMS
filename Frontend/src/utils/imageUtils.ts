@@ -103,11 +103,12 @@ export const getOptimalDimensions = (
   size: 'small' | 'medium' | 'large' = 'medium'
 ): { width: number; height: number } => {
   const useCaseConfig = IMAGE_SIZES[useCase] as Record<string, { width: number; height: number }>;
-  if (size in useCaseConfig) {
+  if (size in useCaseConfig && useCaseConfig[size]) {
     return useCaseConfig[size];
   }
   // Fallback to medium if size doesn't exist
-  return 'medium' in useCaseConfig ? useCaseConfig['medium'] : Object.values(useCaseConfig)[0];
+  const fallback = 'medium' in useCaseConfig ? useCaseConfig['medium'] : Object.values(useCaseConfig)[0];
+  return fallback ?? { width: 800, height: 600 }; // Default fallback with nullish coalescing
 };
 
 /**

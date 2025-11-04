@@ -163,7 +163,7 @@ vi.stubGlobal('requestAnimationFrame', vi.fn().mockImplementation(cb => setTimeo
 vi.stubGlobal('cancelAnimationFrame', vi.fn().mockImplementation(id => clearTimeout(id)));
 
 // Mock file APIs
-vi.stubGlobal('File', vi.fn().mockImplementation((bits: any[], name: string, options: FilePropertyBag = {}) => ({
+const MockFile = vi.fn().mockImplementation((bits: any[], name: string, options: FilePropertyBag = {}) => ({
   name,
   size: bits.reduce((acc, bit) => acc + bit.length, 0),
   type: options.type || '',
@@ -173,7 +173,9 @@ vi.stubGlobal('File', vi.fn().mockImplementation((bits: any[], name: string, opt
   text: vi.fn().mockResolvedValue(''),
   arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
   bytes: vi.fn().mockResolvedValue(new Uint8Array()),
-})));
+}));
+
+vi.stubGlobal('File', MockFile);
 
 vi.stubGlobal('Blob', vi.fn().mockImplementation((bits: any[], options: BlobPropertyBag = {}) => ({
   size: bits.reduce((acc, bit) => acc + bit.length, 0),

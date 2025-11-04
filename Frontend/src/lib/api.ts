@@ -45,8 +45,8 @@ class ApiClient {
   }
 
   // Generic POST request
-  async post<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    const response = await this.client.post<ApiResponse<T>>(url, data);
+  async post<T>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
+    const response = await this.client.post<ApiResponse<T>>(url, data, config);
     return response.data;
   }
 
@@ -236,6 +236,101 @@ export const utilitiesApi = {
 
   // Get documentation health status
   getDocumentationHealth: () => apiClient.get('/api/utilities/documentation/health'),
+
+  // Real-time Documentation Update Methods
+  // Get documentation version information
+  getDocumentationVersion: () => apiClient.get('/api/utilities/documentation/version'),
+
+  // Get documentation change history
+  getDocumentationHistory: (params?: { limit?: number; offset?: number; since?: string }) =>
+    apiClient.get('/api/utilities/documentation/history', params),
+
+  // Submit documentation update
+  submitDocumentationUpdate: (updateData: {
+    type: 'content_change' | 'structure_change' | 'metadata_update' | 'version_update';
+    changes: Array<{
+      file: string;
+      section?: string;
+      oldContent?: string;
+      newContent?: string;
+      changeType: 'added' | 'modified' | 'deleted' | 'moved';
+    }>;
+    metadata: {
+      impactLevel: 'low' | 'medium' | 'high' | 'critical';
+      requiresReview: boolean;
+      description?: string;
+    };
+  }) => apiClient.post('/api/utilities/documentation/updates', updateData),
+
+  // Get pending documentation updates
+  getPendingUpdates: () => apiClient.get('/api/utilities/documentation/updates/pending'),
+
+  // Approve documentation update
+  approveDocumentationUpdate: (updateId: string, approvalData?: { notes?: string }) =>
+    apiClient.post(`/api/utilities/documentation/updates/${updateId}/approve`, approvalData),
+
+  // Reject documentation update
+  rejectDocumentationUpdate: (updateId: string, rejectionData: { reason: string; notes?: string }) =>
+    apiClient.post(`/api/utilities/documentation/updates/${updateId}/reject`, rejectionData),
+
+  // Get documentation update status
+  getUpdateStatus: (updateId: string) =>
+    apiClient.get(`/api/utilities/documentation/updates/${updateId}/status`),
+
+  // Rollback documentation to previous version
+  rollbackDocumentation: (versionHash: string, rollbackData?: { reason?: string }) =>
+    apiClient.post('/api/utilities/documentation/rollback', { versionHash, ...rollbackData }),
+
+  // Get documentation conflicts
+  getDocumentationConflicts: () => apiClient.get('/api/utilities/documentation/conflicts'),
+
+  // Resolve documentation conflict
+  resolveDocumentationConflict: (conflictId: string, resolution: {
+    strategy: 'accept_incoming' | 'accept_current' | 'merge_manual';
+    mergedContent?: string;
+    notes?: string;
+  }) => apiClient.post(`/api/utilities/documentation/conflicts/${conflictId}/resolve`, resolution),
+
+  // Subscribe to real-time documentation updates
+  subscribeToUpdates: (subscriptionData: {
+    types: Array<'content_change' | 'structure_change' | 'metadata_update' | 'version_update'>;
+    files?: string[];
+    impactLevels?: Array<'low' | 'medium' | 'high' | 'critical'>;
+  }) => apiClient.post('/api/utilities/documentation/subscribe', subscriptionData),
+
+  // Unsubscribe from real-time documentation updates
+  unsubscribeFromUpdates: (subscriptionId: string) =>
+    apiClient.delete(`/api/utilities/documentation/subscribe/${subscriptionId}`),
+
+  // Validate documentation integrity
+  validateDocumentationIntegrity: () => apiClient.post('/api/utilities/documentation/validate'),
+
+  // Get documentation metrics
+  getDocumentationMetrics: (params?: { period?: 'day' | 'week' | 'month'; includeDetails?: boolean }) =>
+    apiClient.get('/api/utilities/documentation/metrics', params),
+
+  // Sync documentation with external sources
+  syncDocumentationSources: (syncData?: { sources?: string[]; forceSync?: boolean }) =>
+    apiClient.post('/api/utilities/documentation/sync', syncData),
+
+  // Get documentation sync status
+  getDocumentationSyncStatus: () => apiClient.get('/api/utilities/documentation/sync/status'),
+
+  // Create documentation snapshot
+  createDocumentationSnapshot: (snapshotData: { name: string; description?: string; tags?: string[] }) =>
+    apiClient.post('/api/utilities/documentation/snapshots', snapshotData),
+
+  // Get documentation snapshots
+  getDocumentationSnapshots: (params?: { limit?: number; offset?: number }) =>
+    apiClient.get('/api/utilities/documentation/snapshots', params),
+
+  // Restore from documentation snapshot
+  restoreFromSnapshot: (snapshotId: string, restoreData?: { preserveCurrentAsSnapshot?: boolean }) =>
+    apiClient.post(`/api/utilities/documentation/snapshots/${snapshotId}/restore`, restoreData),
+
+  // Delete documentation snapshot
+  deleteDocumentationSnapshot: (snapshotId: string) =>
+    apiClient.delete(`/api/utilities/documentation/snapshots/${snapshotId}`),
 
   // QR Code Methods
   // Generate QR codes for all students

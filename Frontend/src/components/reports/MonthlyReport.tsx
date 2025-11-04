@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,11 +11,7 @@ export default function MonthlyReport() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [stats, setStats] = useState<any>(null);
 
-  useEffect(() => {
-    fetchMonthlyReport();
-  }, [month, year]);
-
-  const fetchMonthlyReport = async () => {
+  const fetchMonthlyReport = useCallback(async () => {
     try {
       const response = await reportsApi.getMonthlyReport(month, year);
       if (response.success && response.data) {
@@ -24,7 +20,11 @@ export default function MonthlyReport() {
     } catch (error) {
       console.error('Failed to fetch monthly report:', error);
     }
-  };
+  }, [month, year]);
+
+  useEffect(() => {
+    fetchMonthlyReport();
+  }, [fetchMonthlyReport]);
 
   return (
     <div className="space-y-6">

@@ -1,33 +1,33 @@
-import type { ReactNode } from 'react';
+import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from '../contexts/AuthContext';
-import { ThemeProvider } from '../contexts/ThemeContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
-// Create a test query client
-const createTestQueryClient = () =>
-  new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0, // Disable caching for tests
-      },
-      mutations: {
-        retry: false,
-      },
+// Create a test query client with disabled retries and caching
+export const createTestQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      gcTime: 0,
+      staleTime: 0,
     },
-  });
+    mutations: {
+      retry: false,
+    },
+  },
+});
 
-// Test wrapper component that includes all necessary providers
 interface TestProvidersProps {
-  children: ReactNode;
+  children: React.ReactNode;
   queryClient?: QueryClient;
 }
 
-export const TestProviders = ({ children, queryClient }: TestProvidersProps) => {
-  const testQueryClient = queryClient || createTestQueryClient();
-
+export const TestProviders: React.FC<TestProvidersProps> = ({ 
+  children, 
+  queryClient = createTestQueryClient() 
+}) => {
   return (
-    <QueryClientProvider client={testQueryClient}>
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
           {children}
@@ -36,5 +36,3 @@ export const TestProviders = ({ children, queryClient }: TestProvidersProps) => 
     </QueryClientProvider>
   );
 };
-
-export { createTestQueryClient };

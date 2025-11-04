@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 import { DashboardCardSkeleton, LoadingSpinner } from '@/components/LoadingStates'
 import { useBreakpoint } from '@/hooks/useBreakpoint'
+import { useMultipleLoadingStates, useAsyncData, useForm } from '@/hooks'
 import PredictiveInsights from '@/components/analytics/PredictiveInsights'
 import UsageHeatMap from '@/components/analytics/UsageHeatMap'
 import TimeSeriesForecast from '@/components/analytics/TimeSeriesForecast'
@@ -34,15 +35,39 @@ import {
 import { Clock, Activity, RefreshCw } from 'lucide-react';
 
 export function AnalyticsDashboard() {
+  // Simplified UI state management
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month'>('week')
   const [selectedChart, setSelectedChart] = useState('overview')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isExporting, setIsExporting] = useState(false)
-  const [predictiveInsights, setPredictiveInsights] = useState<any[]>([])
-  const [heatMapData, setHeatMapData] = useState<any[]>([])
-  const [forecastData, setForecastData] = useState<any[]>([])
   const [selectedMetric, setSelectedMetric] = useState<'student_visits' | 'equipment_usage' | 'book_circulation'>('student_visits')
-  const [comprehensiveData, setComprehensiveData] = useState<any>(null)
+
+  // Consolidated loading states
+  const [loadingStates, loadingActions] = useMultipleLoadingStates({
+    data: { isLoading: false },
+    export: { isLoading: false },
+    refresh: { isLoading: false }
+  })
+
+  // Consolidated analytics data states
+  const [analyticsStates, analyticsActions] = useMultipleLoadingStates({
+    insights: { data: [] },
+    heatmap: { data: [] },
+    forecast: { data: [] },
+    comprehensive: { data: null }
+  })
+
+  // Export form management
+  const [exportForm, exportFormActions] = useForm({
+    initialValues: {
+      format: 'csv',
+      timeframe: selectedPeriod,
+      sections: []
+    },
+    onSubmit: async (values) => {
+      await handleExport(values.format, values.sections)
+    }
+  })
+
+  // Last refresh timestamp
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
 
@@ -99,64 +124,98 @@ export function AnalyticsDashboard() {
   const overviewChartHeight = isLargeScreen ? 400 : 280
   const activityChartHeight = isLargeScreen ? 300 : 240
 
-  // Fetch comprehensive analytics data
-  const fetchComprehensiveData = useCallback(async () => {
+  // Async data fetching hooks
+  const comprehensiveDataFetcher = useAsyncData(async () => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics/library-metrics?timeframe=${selectedPeriod}`)
+    if (!response.ok) throw new Error('Failed to fetch comprehensive data')
+    const result = await response.json()
+    return result.data
+  }, {
+    immediate: false,
+    onSuccess: (data) => analyticsActions.comprehensive.finish(data),
+    onError: (error) => analyticsActions.comprehensive.error(error.message)
+  })
+
+  const insightsDataFetcher = useAsyncData(async () => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics/insights?timeframe=${selectedPeriod}`)
+    if (!response.ok) throw new Error('Failed to fetch insights')
+    const result = await response.json()
+    return result.data.insights || []
+  }, {
+    immediate: false,
+    onSuccess: (data) => analyticsActions.insights.finish(data),
+    onError: (error) => analyticsActions.insights.error(error.message)
+  })
+
+  const heatMapDataFetcher = useAsyncData(async () => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics/heatmap?timeframe=${selectedPeriod}`)
+    if (!response.ok) throw new Error('Failed to fetch heat map data')
+    const result = await response.json()
+    return result.data.heatMapData || []
+  }, {
+    immediate: false,
+    onSuccess: (data) => analyticsActions.heatmap.finish(data),
+    onError: (error) => analyticsActions.heatmap.error(error.message)
+  })
+
+  const forecastDataFetcher = useAsyncData(async () => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics/forecast?metric=${selectedMetric}&timeframe=${selectedPeriod}&periods=7`)
+    if (!response.ok) throw new Error('Failed to fetch forecast data')
+    const result = await response.json()
+    return result.data.forecastData || []
+  }, {
+    immediate: false,
+    onSuccess: (data) => analyticsActions.forecast.finish(data),
+    onError: (error) => analyticsActions.forecast.error(error.message)
+  })
+
+  // Main data fetching function
+  const fetchAllData = useCallback(async () => {
+    loadingActions.data.start()
+    
     try {
-      setIsLoading(true)
-
-      // Fetch comprehensive library metrics
-      const metricsResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/library-metrics?timeframe=${selectedPeriod}`)
-      if (metricsResponse.ok) {
-        const metricsData = await metricsResponse.json()
-        setComprehensiveData(metricsData.data)
-      }
-
-      // Fetch predictive insights
-      const insightsResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/insights?timeframe=${selectedPeriod}`)
-      if (insightsResponse.ok) {
-        const insightsData = await insightsResponse.json()
-        setPredictiveInsights(insightsData.data.insights || [])
-      }
-
-      // Fetch heat map data
-      const heatMapResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/heatmap?timeframe=${selectedPeriod}`)
-      if (heatMapResponse.ok) {
-        const heatMapResult = await heatMapResponse.json()
-        setHeatMapData(heatMapResult.data.heatMapData || [])
-      }
-
-      // Fetch forecast data
-      const forecastResponse = await fetch(`${import.meta.env.VITE_API_URL}/analytics/forecast?metric=${selectedMetric}&timeframe=${selectedPeriod}&periods=7`)
-      if (forecastResponse.ok) {
-        const forecastResult = await forecastResponse.json()
-        setForecastData(forecastResult.data.forecastData || [])
-      }
-
+      await Promise.all([
+        comprehensiveDataFetcher.refetch(),
+        insightsDataFetcher.refetch(),
+        heatMapDataFetcher.refetch(),
+        forecastDataFetcher.refetch()
+      ])
+      
       setLastRefresh(new Date())
     } catch (error) {
       console.error('Failed to fetch analytics data:', error)
     } finally {
-      setIsLoading(false)
+      loadingActions.data.finish()
     }
-  }, [selectedPeriod, selectedMetric])
+  }, [
+    selectedPeriod, 
+    selectedMetric, 
+    comprehensiveDataFetcher, 
+    insightsDataFetcher, 
+    heatMapDataFetcher, 
+    forecastDataFetcher, 
+    loadingActions.data, 
+    setLastRefresh
+  ])
 
   // Initial data fetch
   useEffect(() => {
-    fetchComprehensiveData()
-  }, [fetchComprehensiveData])
+    fetchAllData()
+  }, [fetchAllData])
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchComprehensiveData()
+      fetchAllData()
     }, 30000) // 30 seconds
 
     return () => clearInterval(interval)
-  }, [fetchComprehensiveData])
+  }, [fetchAllData])
 
+  // Export handler
   const handleExport = async (format: 'csv' | 'json' | 'pdf', sections: string[]) => {
     try {
-      setIsExporting(true)
+      loadingActions.export.start()
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics/export`, {
         method: 'POST',
@@ -184,7 +243,7 @@ export function AnalyticsDashboard() {
     } catch (error) {
       console.error('Export failed:', error)
     } finally {
-      setIsExporting(false)
+      loadingActions.export.finish()
     }
   }
 
@@ -194,7 +253,10 @@ export function AnalyticsDashboard() {
   }
 
   const handleRefresh = () => {
-    fetchComprehensiveData()
+    loadingActions.refresh.start()
+    fetchAllData().finally(() => {
+      loadingActions.refresh.finish()
+    })
   }
 
 
@@ -219,14 +281,14 @@ export function AnalyticsDashboard() {
               <SelectItem value="month">This Month</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loadingStates.data.isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loadingStates.data.isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <ExportAnalytics
             timeframe={selectedPeriod}
             onExport={handleExport}
-            isExporting={isExporting}
+            isExporting={loadingStates.export.isLoading}
           />
         </div>
       </div>
@@ -234,8 +296,8 @@ export function AnalyticsDashboard() {
       {/* Comprehensive Metrics Cards */}
       <MetricsCards
         timeframe={selectedPeriod}
-        data={comprehensiveData}
-        isLoading={isLoading}
+        data={analyticsStates.comprehensive.data}
+        isLoading={loadingStates.data.isLoading}
         onRefresh={handleRefresh}
       />
 
@@ -256,8 +318,8 @@ export function AnalyticsDashboard() {
         <TabsContent value="overview" className="space-y-4">
           <BookCirculationAnalytics
             timeframe={selectedPeriod}
-            data={comprehensiveData}
-            isLoading={isLoading}
+            data={analyticsStates.comprehensive.data}
+            isLoading={analyticsStates.comprehensive.isLoading}
           />
         </TabsContent>
 
@@ -265,8 +327,8 @@ export function AnalyticsDashboard() {
         <TabsContent value="circulation" className="space-y-4">
           <BookCirculationAnalytics
             timeframe={selectedPeriod}
-            data={comprehensiveData}
-            isLoading={isLoading}
+            data={analyticsStates.comprehensive.data}
+            isLoading={loadingStates.data.isLoading}
           />
         </TabsContent>
 
@@ -274,8 +336,8 @@ export function AnalyticsDashboard() {
         <TabsContent value="equipment" className="space-y-4">
           <EquipmentUtilizationAnalytics
             timeframe={selectedPeriod}
-            data={comprehensiveData}
-            isLoading={isLoading}
+            data={analyticsStates.comprehensive.data}
+            isLoading={loadingStates.data.isLoading}
           />
         </TabsContent>
 
@@ -283,14 +345,14 @@ export function AnalyticsDashboard() {
         <TabsContent value="fines" className="space-y-4">
           <FineCollectionAnalytics
             timeframe={selectedPeriod}
-            data={comprehensiveData}
-            isLoading={isLoading}
+            data={analyticsStates.comprehensive.data}
+            isLoading={loadingStates.data.isLoading}
           />
         </TabsContent>
 
         {/* Predictive Insights Tab */}
         <TabsContent value="insights" className="space-y-4">
-          {isLoading ? (
+          {loadingStates.data.isLoading ? (
             <div className="grid gap-4 md:grid-cols-2">
               {[1, 2, 3, 4].map(i => (
                 <Card key={i}>
@@ -305,7 +367,7 @@ export function AnalyticsDashboard() {
             </div>
           ) : (
             <PredictiveInsights
-              insights={predictiveInsights}
+              insights={analyticsStates.insights.data}
               timeframe={selectedPeriod}
               onTimeframeChange={setSelectedPeriod}
               onInsightAction={handleInsightAction}
@@ -334,7 +396,7 @@ export function AnalyticsDashboard() {
             </Select>
           </div>
 
-          {isLoading ? (
+          {loadingStates.data.isLoading ? (
             <Card>
               <CardContent className="py-12">
                 <LoadingSpinner />
@@ -342,7 +404,7 @@ export function AnalyticsDashboard() {
             </Card>
           ) : (
             <TimeSeriesForecast
-              data={forecastData}
+              data={analyticsStates.forecast.data}
               metric={selectedMetric}
               timeframe={selectedPeriod}
               onMetricChange={setSelectedMetric}
@@ -353,7 +415,7 @@ export function AnalyticsDashboard() {
 
         {/* Heat Map Tab */}
         <TabsContent value="heatmap" className="space-y-4">
-          {isLoading ? (
+          {loadingStates.data.isLoading ? (
             <Card>
               <CardContent className="py-12">
                 <LoadingSpinner />
@@ -361,7 +423,7 @@ export function AnalyticsDashboard() {
             </Card>
           ) : (
             <UsageHeatMap
-              data={heatMapData}
+              data={analyticsStates.heatmap.data}
               filterType="all"
               onCellClick={(data) => console.log('Heat map cell clicked:', data)}
             />
@@ -632,8 +694,8 @@ export function AnalyticsDashboard() {
           <Badge variant="outline" className="text-xs">
             {selectedPeriod === 'day' ? 'Today' : selectedPeriod === 'week' ? 'This Week' : 'This Month'}
           </Badge>
-          <Badge variant={comprehensiveData ? "default" : "secondary"} className="text-xs">
-            {comprehensiveData ? 'Live Data' : 'Sample Data'}
+          <Badge variant={analyticsStates.comprehensive.data ? "default" : "secondary"} className="text-xs">
+            {analyticsStates.comprehensive.data ? 'Live Data' : 'Sample Data'}
           </Badge>
         </div>
       </div>

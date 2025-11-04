@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { settingsApi } from '@/lib/api';
 
-interface GoogleSheetsConfig {
+interface GoogleSheetsConfigData {
   spreadsheetId: string;
   credentialsUploaded: boolean;
   connectionStatus: 'connected' | 'disconnected' | 'error';
@@ -46,7 +46,7 @@ const SYNC_SCHEDULES = [
   { value: '0 12 * * *', label: 'Daily at Noon' },
 ];
 
-const DEFAULT_CONFIG: GoogleSheetsConfig = {
+const DEFAULT_CONFIG: GoogleSheetsConfigData = {
   spreadsheetId: '',
   credentialsUploaded: false,
   connectionStatus: 'disconnected',
@@ -58,7 +58,7 @@ const DEFAULT_CONFIG: GoogleSheetsConfig = {
 
 export default function GoogleSheetsConfig() {
   const queryClient = useQueryClient();
-  const [localConfig, setLocalConfig] = useState<GoogleSheetsConfig>(DEFAULT_CONFIG);
+  const [localConfig, setLocalConfig] = useState<GoogleSheetsConfigData>(DEFAULT_CONFIG);
 
   // Fetch Google Sheets configuration
   const { data: config = DEFAULT_CONFIG, isLoading, error } = useQuery({
@@ -66,7 +66,7 @@ export default function GoogleSheetsConfig() {
     queryFn: async () => {
       try {
         const response = await settingsApi.getGoogleSheetsConfig();
-        const data = (response.data as GoogleSheetsConfig) || DEFAULT_CONFIG;
+        const data = (response.data as GoogleSheetsConfigData) || DEFAULT_CONFIG;
         setLocalConfig(data);
         return data;
       } catch (err: any) {

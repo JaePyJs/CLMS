@@ -6,9 +6,8 @@
 # Features: Volume mounting for instant code changes, development tools enabled
 # ============================================================================
 
-version: '3.8'
-
 services:
+
   # ============================================================================
   # MySQL Database - Primary Data Store
   # ============================================================================
@@ -52,7 +51,7 @@ services:
     container_name: clms-redis-dev
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -139,10 +138,11 @@ services:
       DATABASE_URL: mysql://clms_user:clms_password@mysql:3306/clms_database?connection_limit=20&pool_timeout=10000
       KOHA_DATABASE_URL: mysql://koha_user:koha_password@koha-mysql:3306/koha_database
       REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_PORT: 6380
       CORS_ORIGIN: http://localhost:3000
       LOG_LEVEL: debug
-      JWT_SECRET: dev_jwt_secret_change_in_production
+      JWT_SECRET: your-super-secret-jwt-key-for-clms-documentation-system-32-chars
+      JWT_REFRESH_SECRET: your-super-secret-refresh-key-for-clms-documentation-system-32-chars
       BCRYPT_ROUNDS: 10
     volumes:
       # Mount source code for hot-reload

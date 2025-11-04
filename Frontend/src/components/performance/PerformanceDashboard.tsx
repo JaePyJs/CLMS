@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -68,9 +68,6 @@ export function PerformanceDashboard() {
   const logs = usePerformanceLogs();
   const { sessionId, flush, getSummary } = usePerformanceSession();
   
-  // State for refresh functionality
-  const [refreshKey, setRefreshKey] = useState(0);
-  
   // Mock performance monitor object
   const performanceMonitor = {
     clear: () => {
@@ -105,7 +102,6 @@ export function PerformanceDashboard() {
 
   const handleClear = () => {
     performanceMonitor.clear();
-    setRefreshKey(prev => prev + 1);
   };
 
   return (

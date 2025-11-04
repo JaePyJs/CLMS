@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -10,14 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search, BookOpen, Filter, X, TrendingUp, Star, ChevronDown, Eye, Users, Sparkles } from 'lucide-react';
 import { apiClient } from '@/lib/api';
@@ -42,6 +33,10 @@ interface Book {
   created_at?: string;
   updated_at?: string;
   book_checkouts?: any[];
+}
+
+interface EnhancedBookSearchProps {
+  onNavigateToDetails?: (bookId: string) => void;
 }
 
 interface SearchFilters {
@@ -92,7 +87,7 @@ interface PopularBooks {
   books: Book[];
 }
 
-export default function EnhancedBookSearch() {
+export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBookSearchProps = {}) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<SearchSuggestion>({
     titles: [],
@@ -106,7 +101,6 @@ export default function EnhancedBookSearch() {
   const [availableBooks, setAvailableBooks] = useState<Book[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [filters, setFilters] = useState<SearchFilters>({
     sortBy: 'title',
     sortOrder: 'asc',
@@ -115,15 +109,54 @@ export default function EnhancedBookSearch() {
   const [showFilters, setShowFilters] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const suggestionTimeoutRef = useRef<NodeJS.Timeout | undefined>();
+  const suggestionTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+
+  // Fetch popular books
+  const fetchPopularBooks = useCallback(async () => {
+    try {
+      const response = await apiClient.get<PopularBooks>('/api/search/popular', { limit: 8 });
+
+      if (response.success && response.data) {
+        setPopularBooks(response.data.books);
+      }
+    } catch (error) {
+      console.error('Failed to fetch popular books:', error);
+    }
+  }, []);
+
+  // Fetch new books
+  const fetchNewBooks = useCallback(async () => {
+    try {
+      const response = await apiClient.get<PopularBooks>('/api/search/new', { limit: 8 });
+
+      if (response.success && response.data) {
+        setNewBooks(response.data.books);
+      }
+    } catch (error) {
+      console.error('Failed to fetch new books:', error);
+    }
+  }, []);
+
+  // Fetch available books
+  const fetchAvailableBooks = useCallback(async () => {
+    try {
+      const response = await apiClient.get<PopularBooks>('/api/search/available', { limit: 8 });
+
+      if (response.success && response.data) {
+        setAvailableBooks(response.data.books);
+      }
+    } catch (error) {
+      console.error('Failed to fetch available books:', error);
+    }
+  }, []);
 
   // Fetch popular books on mount
   useEffect(() => {
     fetchPopularBooks();
     fetchNewBooks();
     fetchAvailableBooks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchPopularBooks, fetchNewBooks, fetchAvailableBooks]);
 
   // Fetch suggestions with debouncing
   const fetchSuggestions = useCallback(async (searchQuery: string) => {
@@ -132,7 +165,7 @@ export default function EnhancedBookSearch() {
       return;
     }
 
-    setLoadingSuggestions(true);
+    setLoading(true);
     try {
       const response = await apiClient.get<SearchSuggestion>('/api/search/suggestions', {
         query: searchQuery,
@@ -147,7 +180,7 @@ export default function EnhancedBookSearch() {
       console.error('Failed to fetch suggestions:', error);
       // Don't show error toast for suggestions
     } finally {
-      setLoadingSuggestions(false);
+      setLoading(false);
     }
   }, []);
 
@@ -229,44 +262,6 @@ export default function EnhancedBookSearch() {
     }
   };
 
-  // Fetch popular books
-  const fetchPopularBooks = async () => {
-    try {
-      const response = await apiClient.get<PopularBooks>('/api/search/popular', { limit: 8 });
-
-      if (response.success && response.data) {
-        setPopularBooks(response.data.books);
-      }
-    } catch (error) {
-      console.error('Failed to fetch popular books:', error);
-    }
-  };
-
-  // Fetch new books
-  const fetchNewBooks = async () => {
-    try {
-      const response = await apiClient.get<PopularBooks>('/api/search/new', { limit: 8 });
-
-      if (response.success && response.data) {
-        setNewBooks(response.data.books);
-      }
-    } catch (error) {
-      console.error('Failed to fetch new books:', error);
-    }
-  };
-
-  // Fetch available books
-  const fetchAvailableBooks = async () => {
-    try {
-      const response = await apiClient.get<PopularBooks>('/api/search/available', { limit: 8 });
-
-      if (response.success && response.data) {
-        setAvailableBooks(response.data.books);
-      }
-    } catch (error) {
-      console.error('Failed to fetch available books:', error);
-    }
-  };
 
   // Fetch recommendations
   const fetchRecommendations = async (book?: Book) => {
@@ -847,7 +842,13 @@ export default function EnhancedBookSearch() {
                   key={book.id}
                   className="hover:shadow-md transition-shadow cursor-pointer group"
                   onClick={() => {
-                    // TODO: Navigate to book details
+                    // Navigate to book details
+                    if (onNavigateToDetails) {
+                      onNavigateToDetails(book.id);
+                    } else {
+                      // Fallback to hash navigation for simple routing
+                      window.location.hash = `book/${book.id}`;
+                    }
                     console.log('Navigate to book details:', book.id);
                   }}
                 >
@@ -943,7 +944,13 @@ export default function EnhancedBookSearch() {
                   key={book.id}
                   className="hover:shadow-md transition-shadow cursor-pointer group"
                   onClick={() => {
-                    // TODO: Navigate to book details
+                    // Navigate to book details
+                    if (onNavigateToDetails) {
+                      onNavigateToDetails(book.id);
+                    } else {
+                      // Fallback to hash navigation for simple routing
+                      window.location.hash = `book/${book.id}`;
+                    }
                     console.log('Navigate to recommended book:', book.id);
                   }}
                 >

@@ -5,6 +5,7 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useAppStore } from '@/store/useAppStore';
 import { useTouchOptimization } from '@/hooks/useMobileOptimization';
 import { Wifi, WifiOff, AlertCircle, ChevronUp, X, Home, Camera, Library, Users, BookOpen, Laptop, BarChart, Settings } from 'lucide-react';
+import type { AppNotification } from '@/services/notificationApi';
 
 interface NavigationItem {
   id: string;
@@ -168,7 +169,7 @@ export const MobileBottomNavigation: React.FC<MobileBottomNavigationProps> = ({
               >
                 <div className="relative">
                   <Icon className={`h-5 w-5 ${isActive ? item.color : ''}`} />
-                  {notifications?.some((n: any) => n.type === item.id) && (
+                  {notifications?.some((n: AppNotification) => n.type === item.id) && (
                     <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full" />
                   )}
                 </div>
