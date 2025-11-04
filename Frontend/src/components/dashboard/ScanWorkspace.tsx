@@ -19,7 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useCameraScanner, useUsbScanner, useManualEntry } from '@/lib/scanner';
+import { useUsbScanner, useManualEntry } from '@/lib/scanner';
 import selfServiceApi from '@/services/selfServiceApi';
 import { useStudentActivity } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
@@ -66,11 +66,7 @@ export function ScanWorkspace() {
   const [statistics, setStatistics] = useState<any>(null);
 
   const { isOnline, lastScanResult } = useAppStore();
-  const {
-    startCamera,
-    stopCamera,
-  } = useCameraScanner();
-  const { toggleListening } = useUsbScanner();
+  const { toggleListening, isListening, currentInput, lastScannedCode } = useUsbScanner();
   const { isOpen, input, setIsOpen, setInput, handleSubmit } = useManualEntry();
   const { mutate: logActivity } = useStudentActivity();
 
@@ -152,14 +148,14 @@ export function ScanWorkspace() {
                 firstName: result.student.name?.split(' ')[0] || '',
                 lastName: result.student.name?.split(' ').slice(1).join(' ') || result.student.name || '',
                 gradeLevel: result.student.gradeLevel,
-                gradeCategory: result.student.gradeCategory || '',
+                gradeCategory: result.student.gradeLevel || '', // Use gradeLevel as gradeCategory
                 section: result.student.section || '',
-              }
+              } as Student
             : undefined,
           barcode,
-          type: 'student',
+          type: 'student' as const,
           timestamp: Date.now(),
-        });
+        } as ScanResult);
 
         if (result.activity) {
           setTimeLimit(result.activity.timeLimit);

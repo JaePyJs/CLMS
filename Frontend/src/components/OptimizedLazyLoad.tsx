@@ -71,13 +71,14 @@ class ErrorBoundary extends React.Component<
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('LazyLoad Error Boundary:', error, errorInfo);
   }
 
-  render() {
+  override render() {
     if (this.state.hasError) {
-      return this.props.fallback || <ErrorFallback message={this.state.error?.message} />;
+      const errorMessage = this.state.error?.message;
+      return this.props.fallback || <ErrorFallback {...(errorMessage && { message: errorMessage })} />;
     }
 
     return this.props.children;

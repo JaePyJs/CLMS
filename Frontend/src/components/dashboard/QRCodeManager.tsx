@@ -54,7 +54,7 @@ export function QRCodeManager() {
           { duration: 5000 }
         );
       } else {
-        throw new Error(response.error || 'Generation failed');
+        throw new Error(typeof response.error === 'string' ? response.error : response.error?.message || 'Generation failed');
       }
     } catch (error) {
       console.error('QR generation error:', error);

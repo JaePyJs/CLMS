@@ -13,12 +13,14 @@ export type BreakpointKey = keyof typeof BREAKPOINTS
 
 export function useBreakpoint(target: BreakpointKey) {
   const [matches, setMatches] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth >= BREAKPOINTS[target] : false,
+    typeof window !== 'undefined' ? window.innerWidth >= (BREAKPOINTS[target] ?? 0) : false,
   )
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
     const handler = () => {
-      setMatches(window.innerWidth >= BREAKPOINTS[target])
+      setMatches(window.innerWidth >= (BREAKPOINTS[target] ?? 0))
     }
 
     handler()
@@ -37,16 +39,18 @@ export function useCurrentBreakpoint(): BreakpointKey {
   const [current, setCurrent] = useState<BreakpointKey>('xs')
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
     const handler = () => {
       const width = window.innerWidth
       const found = (Object.keys(BREAKPOINTS) as BreakpointKey[])
-        .sort((a, b) => BREAKPOINTS[a] - BREAKPOINTS[b])
+        .sort((a, b) => (BREAKPOINTS[a] ?? 0) - (BREAKPOINTS[b] ?? 0))
         .reduce<BreakpointKey>((acc, key) => {
-          if (width >= BREAKPOINTS[key]) {
+          if (width >= (BREAKPOINTS[key] ?? 0)) {
             return key
           }
           return acc
-        }, 'xs')
+        }, 'xs' as BreakpointKey)
 
       setCurrent(found)
     }

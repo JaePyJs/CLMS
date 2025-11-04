@@ -169,7 +169,7 @@ export const createLazyLoad = <T extends ComponentType<any>>(
   options: Partial<LazyLoadProps> = {}
 ) => {
   const {
-    loader = <LoadingIndicator />,
+    loader: _loader = <LoadingIndicator />,
     fallback = <LoadingIndicator />,
     delay = 200,
     maxRetries = 3,

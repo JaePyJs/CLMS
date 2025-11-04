@@ -88,7 +88,7 @@ interface EquipmentMetrics {
 export function EnhancedEquipmentDashboard() {
   // Mobile optimization
   const mobileState = useMobileOptimization()
-  const { isMobile, isTablet } = mobileState
+  const { isMobile, isTablet: _isTablet } = mobileState
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization()
 
   // State management

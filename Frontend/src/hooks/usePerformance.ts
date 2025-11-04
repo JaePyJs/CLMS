@@ -19,7 +19,7 @@ interface PerformanceMetrics {
   bundleSize: number;
 }
 
-interface PerformanceEntry {
+interface HookPerformanceEntry {
   name: string;
   startTime: number;
   duration: number;
@@ -50,7 +50,7 @@ const PERFORMANCE_CONFIG: PerformanceConfig = {
 
 // Global performance store
 class PerformanceStore {
-  private entries: PerformanceEntry[] = [];
+  private entries: HookPerformanceEntry[] = [];
   private observers: PerformanceObserver[] = [];
   private isSupported = 'performance' in window && 'PerformanceObserver' in window;
 
@@ -126,7 +126,7 @@ class PerformanceStore {
     }
   }
 
-  addEntry(entry: PerformanceEntry): void {
+  addEntry(entry: HookPerformanceEntry): void {
     if (!PERFORMANCE_CONFIG.enableMonitoring) return;
 
     // Sample rate filtering
@@ -145,7 +145,7 @@ class PerformanceStore {
     }
   }
 
-  private async reportEntry(entry: PerformanceEntry): Promise<void> {
+  private async reportEntry(entry: HookPerformanceEntry): Promise<void> {
     try {
       if (!navigator.sendBeacon) return;
 
@@ -162,7 +162,7 @@ class PerformanceStore {
     }
   }
 
-  getEntries(type?: PerformanceEntry['type']): PerformanceEntry[] {
+  getEntries(type?: HookPerformanceEntry['type']): HookPerformanceEntry[] {
     if (type) {
       return this.entries.filter(entry => entry.type === type);
     }
@@ -312,47 +312,46 @@ export const useTrackedQuery = <T>(
 ) => {
   const startTime = useRef<number>(0);
 
-  const enhancedOptions: UseQueryOptions<T> = {
+  const query = useQuery({
+    queryKey,
+    queryFn: () => {
+      startTime.current = performance.now();
+      return queryFn();
+    },
     ...options,
-    onSuccess: (data) => {
-      if (PERFORMANCE_CONFIG.enableAPITracking && startTime.current) {
-        const duration = performance.now() - startTime.current;
+  });
+
+  // Handle success/error with useEffect (React Query v5 pattern)
+  useEffect(() => {
+    if (PERFORMANCE_CONFIG.enableAPITracking && startTime.current) {
+      const duration = performance.now() - startTime.current;
+      
+      if (query.isSuccess && query.data !== undefined) {
         performanceStore.addEntry({
-          name: `api-${queryKey.join('-')}`,
+          name: `api-${Array.isArray(queryKey) ? queryKey.join('-') : String(queryKey)}`,
           startTime: startTime.current,
           duration,
           type: 'api',
           metadata: {
-            queryKey: queryKey.join('.'),
+            queryKey: Array.isArray(queryKey) ? queryKey.join('.') : String(queryKey),
             success: true,
           },
         });
-      }
-      options?.onSuccess?.(data);
-    },
-    onError: (error) => {
-      if (PERFORMANCE_CONFIG.enableAPITracking && startTime.current) {
-        const duration = performance.now() - startTime.current;
+      } else if (query.isError) {
         performanceStore.addEntry({
-          name: `api-${queryKey.join('-')}`,
+          name: `api-${Array.isArray(queryKey) ? queryKey.join('-') : String(queryKey)}`,
           startTime: startTime.current,
           duration,
           type: 'api',
           metadata: {
-            queryKey: queryKey.join('.'),
+            queryKey: Array.isArray(queryKey) ? queryKey.join('.') : String(queryKey),
             success: false,
-            error: error.message,
+            error: query.error?.message || 'Unknown error',
           },
         });
       }
-      options?.onError?.(error);
-    },
-  };
-
-  const query = useQuery(queryKey, () => {
-    startTime.current = performance.now();
-    return queryFn();
-  }, enhancedOptions);
+    }
+  }, [query.isSuccess, query.isError, query.data, query.error, queryKey]);
 
   return query;
 };
@@ -364,15 +363,21 @@ export const useTrackedMutation = <T, V>(
 ) => {
   const startTime = useRef<number>(0);
 
-  const enhancedOptions = {
-    ...options,
+  const mutation = useMutation({
+    mutationFn,
     onMutate: async (variables: V) => {
       startTime.current = performance.now();
       return options?.onMutate?.(variables);
     },
-    onSuccess: (data: T, variables: V, context: any) => {
-      if (PERFORMANCE_CONFIG.enableAPITracking && startTime.current) {
-        const duration = performance.now() - startTime.current;
+    ...options,
+  });
+
+  // Handle success/error with useEffect (React Query v5 pattern)
+  useEffect(() => {
+    if (PERFORMANCE_CONFIG.enableAPITracking && startTime.current) {
+      const duration = performance.now() - startTime.current;
+      
+      if (mutation.isSuccess && mutation.data !== undefined) {
         performanceStore.addEntry({
           name: `mutation-${mutationFn.name || 'unknown'}`,
           startTime: startTime.current,
@@ -380,15 +385,10 @@ export const useTrackedMutation = <T, V>(
           type: 'api',
           metadata: {
             success: true,
-            variables: JSON.stringify(variables)?.slice(0, 100), // Limit size
+            variables: mutation.variables ? JSON.stringify(mutation.variables)?.slice(0, 100) : '', // Limit size
           },
         });
-      }
-      options?.onSuccess?.(data, variables, context);
-    },
-    onError: (error: Error, variables: V, context: any) => {
-      if (PERFORMANCE_CONFIG.enableAPITracking && startTime.current) {
-        const duration = performance.now() - startTime.current;
+      } else if (mutation.isError) {
         performanceStore.addEntry({
           name: `mutation-${mutationFn.name || 'unknown'}`,
           startTime: startTime.current,
@@ -396,16 +396,15 @@ export const useTrackedMutation = <T, V>(
           type: 'api',
           metadata: {
             success: false,
-            error: error.message,
-            variables: JSON.stringify(variables)?.slice(0, 100),
+            error: mutation.error?.message || 'Unknown error',
+            variables: mutation.variables ? JSON.stringify(mutation.variables)?.slice(0, 100) : '',
           },
         });
       }
-      options?.onError?.(error, variables, context);
-    },
-  };
+    }
+  }, [mutation.isSuccess, mutation.isError, mutation.data, mutation.error, mutation.variables, mutationFn.name]);
 
-  return useMutation(mutationFn, enhancedOptions);
+  return mutation;
 };
 
 // Hook for lazy loading with performance tracking

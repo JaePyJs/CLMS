@@ -45,14 +45,18 @@
   "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.56.0",
-    "axe-playwright": "^2.0.1"
+    "@types/socket.io": "^3.0.1",
+    "axe-playwright": "^2.0.1",
+    "socket.io": "^4.8.1"
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
   },
   "dependencies": {
+    "@types/nodemailer": "^7.0.3",
     "canvas": "^3.2.0",
+    "nodemailer": "^7.0.10",
     "ref-tools-mcp": "^3.0.1"
   }
 }

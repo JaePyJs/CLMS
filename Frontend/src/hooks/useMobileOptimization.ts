@@ -30,18 +30,22 @@ export const defaultBreakpoints: BreakpointConfig = {
 
 export const useMobileOptimization = (customBreakpoints?: Partial<BreakpointConfig>): MobileOptimizationState => {
   const breakpoints = { ...defaultBreakpoints, ...customBreakpoints };
-  const width = typeof window !== 'undefined' ? window.innerWidth : 1200;
-  const height = typeof window !== 'undefined' ? window.innerHeight : 800;
+
+  // First, get window size
+  const { width: windowWidth, height: windowHeight } = useWindowSize();
+
+  // Then use window dimensions for other calculations
+  const width = windowWidth || 1200;
+  const height = windowHeight || 800;
   const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
   const isLandscape = width > height;
-  
+
+  // Then use media queries (React Hooks)
   const isMobile = useMediaQuery(`(max-width: ${breakpoints.mobile - 1}px)`);
   const isTablet = useMediaQuery(`(min-width: ${breakpoints.mobile}px) and (max-width: ${breakpoints.tablet - 1}px)`);
   const isDesktop = useMediaQuery(`(min-width: ${breakpoints.tablet}px) and (max-width: ${breakpoints.desktop - 1}px)`);
   const isLarge = useMediaQuery(`(min-width: ${breakpoints.desktop}px) and (max-width: ${breakpoints.large - 1}px)`);
   const isExtraLarge = useMediaQuery(`(min-width: ${breakpoints.large}px)`);
-
-  const { width: windowWidth, height: windowHeight } = useWindowSize();
 
   return {
     isMobile,
@@ -112,6 +116,7 @@ export const useTouchOptimization = (config: Partial<TouchOptimizationConfig> = 
     }
     
     clearTouchStart();
+    return undefined;
   }, [touchStart, touchConfig]);
 
   const clearTouchStart = useCallback(() => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { RefreshCw, Download, TrendingUp, AlertCircle, CheckCircle, Image } from 'lucide-react';
+import { RefreshCw, Download, TrendingUp, AlertCircle, CheckCircle, Image as ImageIcon } from 'lucide-react';
 import { imageOptimizationService } from '@/services/imageOptimizationService';
 
 interface PerformanceStats {
@@ -126,7 +126,7 @@ const ImagePerformanceMonitor: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Image className="h-6 w-6" />
+            <ImageIcon className="h-6 w-6" />
             Image Performance Monitor
           </h2>
           <p className="text-muted-foreground">
@@ -154,7 +154,7 @@ const ImagePerformanceMonitor: React.FC = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Images</CardTitle>
-            <Image className="h-4 w-4 text-muted-foreground" />
+            <ImageIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalImages}</div>

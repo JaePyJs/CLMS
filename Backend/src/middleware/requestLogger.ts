@@ -1,244 +1,252 @@
 import { Request, Response, NextFunction } from 'express';
+import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
-import logger from '../utils/logger';
 
-// Extend Express Request to include custom properties
+// Extend Request interface to include custom properties
 declare global {
   namespace Express {
     interface Request {
-      requestId?: string;
-      startTime?: number;
+      requestId: string;
+      startTime: number;
     }
   }
 }
 
-interface LogContext {
-  requestId: string;
-  method: string;
-  url: string;
-  userId?: string;
-  ip: string;
-  userAgent: string;
-  duration?: number;
-  statusCode?: number;
-  error?: string;
-}
-
-/**
- * Request logging middleware
- * Logs all incoming requests with detailed context
- */
-export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
+// Request logging middleware
+export const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
   // Generate unique request ID
   req.requestId = uuidv4();
   req.startTime = Date.now();
 
-  // Extract request context
-  const context: LogContext = {
-    requestId: req.requestId || 'unknown',
-    method: req.method,
-    url: req.originalUrl || req.url,
-    userId: (req as any).user?.id,
-    ip: req.ip || req.socket.remoteAddress || 'unknown',
-    userAgent: req.get('user-agent') || 'unknown',
-  };
+  // Add request ID to response headers
+  res.setHeader('X-Request-ID', req.requestId);
+
+  // Skip logging for health checks and static assets
+  const skipPaths = ['/health', '/favicon.ico', '/robots.txt'];
+  const shouldSkip = skipPaths.some(path => req.path.startsWith(path)) ||
+                    req.path.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg)$/);
+
+  if (shouldSkip) {
+    return next();
+  }
 
   // Log incoming request
-  logger.info('Incoming request', {
-    ...context,
-    body: sanitizeBody(req.body),
-    query: req.query,
-    params: req.params,
-  });
-
-  // Capture response
-  const originalSend = res.send;
-  const originalJson = res.json;
-
-  // Override res.send
-  res.send = function (data: any) {
-    res.send = originalSend;
-    logResponse(req, res, context);
-    return originalSend.call(this, data);
+  const requestLog: any = {
+    requestId: req.requestId,
+    method: req.method,
+    url: req.originalUrl,
+    path: req.path,
+    query: Object.keys(req.query).length > 0 ? req.query : undefined,
+    userAgent: req.get('User-Agent'),
+    ip: req.ip || req.connection.remoteAddress,
+    contentType: req.get('Content-Type'),
+    contentLength: req.get('Content-Length'),
+    referer: req.get('Referer'),
+    timestamp: new Date().toISOString(),
   };
 
-  // Override res.json
-  res.json = function (data: any) {
-    res.json = originalJson;
-    logResponse(req, res, context);
-    return originalJson.call(this, data);
-  };
+  // Add body for non-GET requests (excluding sensitive data)
+  if (req.method !== 'GET' && req.body) {
+    const sanitizedBody = sanitizeRequestBody(req.body);
+    if (Object.keys(sanitizedBody).length > 0) {
+      requestLog.body = sanitizedBody;
+    }
+  }
 
-  // Handle response finish event
-  res.on('finish', () => {
-    logResponse(req, res, context);
-  });
+  logger.info('Incoming Request', requestLog);
+
+  // Override res.end to log response
+  const originalEnd = res.end;
+  res.end = function(chunk?: any, encoding?: any): Response {
+    const responseTime = Date.now() - req.startTime;
+    
+    // Log response
+    const responseLog = {
+      requestId: req.requestId,
+      method: req.method,
+      url: req.originalUrl,
+      statusCode: res.statusCode,
+      responseTime: `${responseTime}ms`,
+      contentLength: res.get('Content-Length'),
+      contentType: res.get('Content-Type'),
+      timestamp: new Date().toISOString(),
+    };
+
+    // Determine log level based on status code
+    if (res.statusCode >= 500) {
+      logger.error('Response Error', responseLog);
+    } else if (res.statusCode >= 400) {
+      logger.warn('Response Warning', responseLog);
+    } else {
+      logger.info('Response Success', responseLog);
+    }
+
+    // Log slow requests
+    if (responseTime > 1000) {
+      logger.warn('Slow Request', {
+        ...responseLog,
+        performance: 'slow',
+        threshold: '1000ms',
+      });
+    }
+
+    // Call original end method
+    return originalEnd.call(this, chunk, encoding);
+  };
 
   next();
 };
 
-/**
- * Log response details
- */
-function logResponse(req: Request, res: Response, context: LogContext) {
-  const duration = req.startTime ? Date.now() - req.startTime : 0;
-  const statusCode = res.statusCode;
-
-  const logData = {
-    ...context,
-    duration: `${duration}ms`,
-    statusCode,
-    success: statusCode < 400,
-  };
-
-  // Log based on status code
-  if (statusCode >= 500) {
-    logger.error('Request failed with server error', logData);
-  } else if (statusCode >= 400) {
-    logger.warn('Request failed with client error', logData);
-  } else if (duration > 5000) {
-    logger.warn('Slow request detected', logData);
-  } else {
-    logger.info('Request completed', logData);
-  }
-}
-
-/**
- * Sanitize sensitive data from request body
- */
-function sanitizeBody(body: any): any {
+// Sanitize request body to remove sensitive information
+const sanitizeRequestBody = (body: any): any => {
   if (!body || typeof body !== 'object') {
-    return body;
+    return {};
   }
 
   const sensitiveFields = [
     'password',
     'token',
     'secret',
-    'apiKey',
-    'accessToken',
-    'refreshToken',
-    'creditCard',
+    'key',
+    'auth',
+    'authorization',
+    'cookie',
+    'session',
+    'csrf',
     'ssn',
+    'social_security',
+    'credit_card',
+    'card_number',
+    'cvv',
+    'pin',
   ];
 
   const sanitized = { ...body };
 
-  for (const field of sensitiveFields) {
-    if (field in sanitized) {
-      sanitized[field] = '***REDACTED***';
+  const sanitizeObject = (obj: any): any => {
+    if (Array.isArray(obj)) {
+      return obj.map(item => sanitizeObject(item));
     }
-  }
 
-  return sanitized;
-}
+    if (obj && typeof obj === 'object') {
+      const result: any = {};
+      
+      for (const [key, value] of Object.entries(obj)) {
+        const lowerKey = key.toLowerCase();
+        
+        if (sensitiveFields.some(field => lowerKey.includes(field))) {
+          result[key] = '[REDACTED]';
+        } else if (typeof value === 'object') {
+          result[key] = sanitizeObject(value);
+        } else {
+          result[key] = value;
+        }
+      }
+      
+      return result;
+    }
 
-/**
- * Error logging middleware
- * Logs all unhandled errors with full context
- */
-export const errorLogger = (
-  err: Error,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const duration = req.startTime ? Date.now() - req.startTime : 0;
-
-  const errorContext = {
-    requestId: req.requestId,
-    method: req.method,
-    url: req.originalUrl || req.url,
-    userId: (req as any).user?.id,
-    ip: req.ip || req.socket.remoteAddress || 'unknown',
-    duration: `${duration}ms`,
-    error: {
-      name: err.name,
-      message: err.message,
-      stack: err.stack,
-    },
+    return obj;
   };
 
-  logger.error('Unhandled error', errorContext);
-
-  next(err);
+  return sanitizeObject(sanitized);
 };
 
-/**
- * Performance monitoring middleware
- * Tracks slow endpoints and query performance
- */
-export const performanceMonitor = (req: Request, res: Response, next: NextFunction) => {
-  const start = Date.now();
+// Performance monitoring middleware
+export const performanceLogger = (req: Request, res: Response, next: NextFunction): void => {
+  const startTime = process.hrtime.bigint();
 
   res.on('finish', () => {
-    const duration = Date.now() - start;
-    
-    // Log slow requests (over 3 seconds)
-    if (duration > 3000) {
-      logger.warn('Performance warning: Slow endpoint', {
-        requestId: req.requestId,
-        method: req.method,
-        url: req.originalUrl || req.url,
-        duration: `${duration}ms`,
-        statusCode: res.statusCode,
-      });
-    }
+    const endTime = process.hrtime.bigint();
+    const duration = Number(endTime - startTime) / 1000000; // Convert to milliseconds
 
-    // Track endpoint metrics (could be sent to monitoring service)
-    trackMetric('api.request.duration', duration, {
+    const performanceLog = {
+      requestId: req.requestId,
       method: req.method,
-      endpoint: req.route?.path || req.path,
+      url: req.originalUrl,
       statusCode: res.statusCode,
-    });
+      duration: `${duration.toFixed(2)}ms`,
+      memoryUsage: process.memoryUsage(),
+      cpuUsage: process.cpuUsage(),
+    };
+
+    // Log performance metrics
+    if (duration > 5000) { // 5 seconds
+      logger.error('Very Slow Request', performanceLog);
+    } else if (duration > 2000) { // 2 seconds
+      logger.warn('Slow Request', performanceLog);
+    } else if (duration > 1000) { // 1 second
+      logger.info('Moderate Request', performanceLog);
+    }
   });
 
   next();
 };
 
-/**
- * Track metrics (placeholder for actual metrics service)
- */
-function trackMetric(name: string, value: number, tags: Record<string, any>) {
-  // In production, this would send to Prometheus, DataDog, etc.
-  // For now, we'll log it
-  logger.debug('Metric tracked', { metric: name, value, tags });
-}
+// Request correlation middleware for distributed tracing
+export const correlationLogger = (req: Request, res: Response, next: NextFunction): void => {
+  // Check for existing correlation ID from upstream services
+  const correlationId = req.get('X-Correlation-ID') || 
+                       req.get('X-Request-ID') || 
+                       req.requestId || 
+                       uuidv4();
 
-/**
- * Request ID middleware
- * Ensures all requests have a unique ID for tracing
- */
-export const requestId = (req: Request, res: Response, next: NextFunction) => {
-  const id = req.get('X-Request-ID') || uuidv4();
-  req.requestId = id;
-  res.setHeader('X-Request-ID', id);
+  // Set correlation ID
+  req.requestId = correlationId;
+  res.setHeader('X-Correlation-ID', correlationId);
+
+  // Add to logger context
+  logger.defaultMeta = {
+    ...logger.defaultMeta,
+    correlationId,
+  };
+
   next();
 };
 
-/**
- * Rate limit logging
- * Logs when rate limits are hit
- */
-export const rateLimitLogger = (req: Request, res: Response, next: NextFunction) => {
-  const remaining = res.getHeader('X-RateLimit-Remaining');
-  
-  if (remaining !== undefined && Number(remaining) < 10) {
-    logger.warn('Rate limit approaching', {
-      requestId: req.requestId,
-      url: req.originalUrl || req.url,
-      userId: (req as any).user?.id,
-      remaining,
+// Security logging middleware
+export const securityLogger = (req: Request, res: Response, next: NextFunction): void => {
+  const securityLog = {
+    requestId: req.requestId,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    method: req.method,
+    url: req.originalUrl,
+    timestamp: new Date().toISOString(),
+  };
+
+  // Log suspicious patterns
+  const suspiciousPatterns = [
+    /\.\./,  // Directory traversal
+    /<script/i,  // XSS attempts
+    /union.*select/i,  // SQL injection
+    /javascript:/i,  // JavaScript injection
+    /eval\(/i,  // Code injection
+  ];
+
+  const urlAndQuery = req.originalUrl + JSON.stringify(req.body || {});
+  const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(urlAndQuery));
+
+  if (isSuspicious) {
+    logger.warn('Suspicious Request Detected', {
+      ...securityLog,
+      severity: 'medium',
+      reason: 'Pattern match',
     });
   }
 
+  // Log failed authentication attempts
+  res.on('finish', () => {
+    if (res.statusCode === 401 && req.path.includes('/auth')) {
+      logger.warn('Failed Authentication Attempt', {
+        ...securityLog,
+        statusCode: res.statusCode,
+        severity: 'high',
+      });
+    }
+  });
+
   next();
 };
 
-export default {
-  requestLogger,
-  errorLogger,
-  performanceMonitor,
-  requestId,
-  rateLimitLogger,
-};
+export default requestLogger;

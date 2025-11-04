@@ -24,7 +24,7 @@ import {
   Calendar,
 } from 'lucide-react';
 
-interface UserProfile {
+interface UserProfileData {
   id: string;
   username: string;
   role: 'ADMIN' | 'LIBRARIAN' | 'STAFF';
@@ -41,7 +41,7 @@ interface ActivityLog {
 }
 
 export default function UserProfile() {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [changingPassword, setChangingPassword] = useState(false);

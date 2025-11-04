@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Clock, CheckCircle, XCircle, AlertTriangle, FileText, Send, Eye, Users, Info, Loader2 } from 'lucide-react';
+import { useMultipleLoadingStates, useMultipleModals, useForm } from '@/hooks';
 
 // Types
 interface AccessRequest {
@@ -61,17 +62,52 @@ interface NewAccessRequest {
 
 const AccessRequestManager: React.FC = () => {
   const [requests, setRequests] = useState<AccessRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState('my-requests');
-  const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<AccessRequest | null>(null);
-  const [newRequest, setNewRequest] = useState<NewAccessRequest>({
-    targetType: 'student',
-    accessType: 'VIEW',
-    justification: 'EDUCATIONAL_PURPOSE',
-    justificationText: '',
-    duration: 24
+
+  // Consolidated loading states
+  const [loadingStates, loadingActions] = useMultipleLoadingStates({
+    fetchRequests: { isLoading: false },
+    submitRequest: { isLoading: false },
+    approveRequest: { isLoading: false },
+    denyRequest: { isLoading: false }
+  });
+
+  // Consolidated modal/dialog states
+  const [modalStates, modalActions] = useMultipleModals({
+    newRequestDialog: false,
+    requestDetailsDialog: false
+  });
+
+  // UI state management
+  const [uiState, uiActions] = useForm({
+    initialValues: {
+      activeTab: 'my-requests',
+      selectedRequest: null as AccessRequest | null
+    },
+    validationSchema: {}
+  });
+
+  // Form state for new request
+  const [newRequestForm, formActions] = useForm({
+    initialValues: {
+      targetType: 'student',
+      accessType: 'VIEW',
+      justification: 'EDUCATIONAL_PURPOSE',
+      justificationText: '',
+      duration: 24
+    },
+    validationSchema: {
+      justificationText: { required: true },
+      duration: {
+        required: true,
+        minLength: 1,
+        custom: (value: any) => {
+          if (!value || value < 1 || value > 168) {
+            return 'Duration must be between 1 and 168 hours';
+          }
+          return null;
+        }
+      }
+    }
   });
 
   // Mock user data - in real app, this would come from auth context
@@ -86,7 +122,7 @@ const AccessRequestManager: React.FC = () => {
   // Fetch access requests
   const fetchAccessRequests = async () => {
     try {
-      setLoading(true);
+      loadingActions.fetchRequests.start();
 
       // Mock API call - in real app, this would be an actual API call
       const mockRequests: AccessRequest[] = [
@@ -134,9 +170,9 @@ const AccessRequestManager: React.FC = () => {
       // Filter requests based on user role and active tab
       let filteredRequests = mockRequests;
 
-      if (activeTab === 'my-requests') {
+      if (uiState.values.activeTab === 'my-requests') {
         filteredRequests = mockRequests.filter(req => req.requesterId === currentUser.id);
-      } else if (activeTab === 'pending-approval' && isApprover) {
+      } else if (uiState.values.activeTab === 'pending-approval' && isApprover) {
         filteredRequests = mockRequests.filter(req => req.status === 'pending');
       }
 
@@ -145,20 +181,20 @@ const AccessRequestManager: React.FC = () => {
     } catch (error) {
       console.error('Failed to fetch access requests:', error);
     } finally {
-      setLoading(false);
+      loadingActions.fetchRequests.finish();
     }
   };
 
   useEffect(() => {
     fetchAccessRequests();
-  }, [activeTab]);
+  }, [uiState.values.activeTab]);
 
   const handleSubmitRequest = async () => {
     try {
-      setSubmitting(true);
+      loadingActions.submitRequest.start();
 
       // Validate form
-      if (!newRequest.justificationText.trim()) {
+      if (!newRequestForm.values.justificationText.trim()) {
         alert('Please provide a justification for your request');
         return;
       }
@@ -169,7 +205,11 @@ const AccessRequestManager: React.FC = () => {
         requesterId: currentUser.id,
         requesterName: currentUser.name,
         requesterRole: currentUser.role,
-        ...newRequest,
+        targetType: newRequestForm.values.targetType,
+        accessType: newRequestForm.values.accessType,
+        justification: newRequestForm.values.justification,
+        justificationText: newRequestForm.values.justificationText,
+        duration: newRequestForm.values.duration,
         status: 'pending',
         createdAt: new Date().toISOString(),
         metadata: {
@@ -179,14 +219,8 @@ const AccessRequestManager: React.FC = () => {
       };
 
       setRequests(prev => [newRequestData, ...prev]);
-      setShowNewRequestDialog(false);
-      setNewRequest({
-        targetType: 'student',
-        accessType: 'VIEW',
-        justification: 'EDUCATIONAL_PURPOSE',
-        justificationText: '',
-        duration: 24
-      });
+      modalActions.newRequestDialog.close();
+      formActions.reset();
 
       alert('Access request submitted successfully');
 
@@ -194,12 +228,14 @@ const AccessRequestManager: React.FC = () => {
       console.error('Failed to submit request:', error);
       alert('Failed to submit request. Please try again.');
     } finally {
-      setSubmitting(false);
+      loadingActions.submitRequest.finish();
     }
   };
 
   const handleApproveRequest = async (requestId: string) => {
     try {
+      loadingActions.approveRequest.start();
+
       // Mock API call
       setRequests(prev => prev.map(req =>
         req.id === requestId
@@ -218,11 +254,15 @@ const AccessRequestManager: React.FC = () => {
     } catch (error) {
       console.error('Failed to approve request:', error);
       alert('Failed to approve request. Please try again.');
+    } finally {
+      loadingActions.approveRequest.finish();
     }
   };
 
   const handleDenyRequest = async (requestId: string) => {
     try {
+      loadingActions.denyRequest.start();
+
       const reason = prompt('Please provide a reason for denying this request:');
       if (!reason) return;
 
@@ -238,6 +278,8 @@ const AccessRequestManager: React.FC = () => {
     } catch (error) {
       console.error('Failed to deny request:', error);
       alert('Failed to deny request. Please try again.');
+    } finally {
+      loadingActions.denyRequest.finish();
     }
   };
 
@@ -267,7 +309,7 @@ const AccessRequestManager: React.FC = () => {
     return justification.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  if (loading) {
+  if (loadingStates.fetchRequests.isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -290,7 +332,7 @@ const AccessRequestManager: React.FC = () => {
           </p>
         </div>
 
-        <Button onClick={() => setShowNewRequestDialog(true)}>
+        <Button onClick={() => modalActions.newRequestDialog.open()}>
           <Send className="h-4 w-4 mr-2" />
           New Access Request
         </Button>
@@ -307,7 +349,7 @@ const AccessRequestManager: React.FC = () => {
       </Alert>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={uiState.values.activeTab} onValueChange={(value) => uiActions.setFieldValue('activeTab', value)}>
         <TabsList>
           <TabsTrigger value="my-requests">My Requests</TabsTrigger>
           <TabsTrigger value="pending-approval" disabled={!isApprover}>
@@ -339,7 +381,7 @@ const AccessRequestManager: React.FC = () => {
                 isApprover={isApprover}
                 onApprove={handleApproveRequest}
                 onDeny={handleDenyRequest}
-                onSelect={setSelectedRequest}
+                onSelect={(request) => uiActions.setFieldValue('selectedRequest', request)}
               />
             </CardContent>
           </Card>
@@ -363,7 +405,7 @@ const AccessRequestManager: React.FC = () => {
                 isApprover={isApprover}
                 onApprove={handleApproveRequest}
                 onDeny={handleDenyRequest}
-                onSelect={setSelectedRequest}
+                onSelect={(request) => uiActions.setFieldValue('selectedRequest', request)}
                 showActions={true}
               />
             </CardContent>
@@ -388,7 +430,7 @@ const AccessRequestManager: React.FC = () => {
                 isApprover={isApprover}
                 onApprove={handleApproveRequest}
                 onDeny={handleDenyRequest}
-                onSelect={setSelectedRequest}
+                onSelect={(request) => uiActions.setFieldValue('selectedRequest', request)}
               />
             </CardContent>
           </Card>
@@ -396,7 +438,7 @@ const AccessRequestManager: React.FC = () => {
       </Tabs>
 
       {/* New Request Dialog */}
-      <Dialog open={showNewRequestDialog} onOpenChange={setShowNewRequestDialog}>
+      <Dialog open={modalStates.newRequestDialog.isOpen} onOpenChange={(open) => modalActions.newRequestDialog.setIsOpen(open)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>New Access Request</DialogTitle>
@@ -410,8 +452,8 @@ const AccessRequestManager: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="targetType">Target Type</Label>
                 <Select
-                  value={newRequest.targetType}
-                  onValueChange={(value: any) => setNewRequest(prev => ({ ...prev, targetType: value }))}
+                  value={newRequestForm.values.targetType}
+                  onValueChange={(value: any) => formActions.setFieldValue('targetType', value)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -428,8 +470,8 @@ const AccessRequestManager: React.FC = () => {
               <div className="space-y-2">
                 <Label htmlFor="accessType">Access Type</Label>
                 <Select
-                  value={newRequest.accessType}
-                  onValueChange={(value: any) => setNewRequest(prev => ({ ...prev, accessType: value }))}
+                  value={newRequestForm.values.accessType}
+                  onValueChange={(value: any) => formActions.setFieldValue('accessType', value)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -449,8 +491,8 @@ const AccessRequestManager: React.FC = () => {
             <div className="space-y-2">
               <Label htmlFor="justification">Justification Category</Label>
               <Select
-                value={newRequest.justification}
-                onValueChange={(value: any) => setNewRequest(prev => ({ ...prev, justification: value }))}
+                value={newRequestForm.values.justification}
+                onValueChange={(value: any) => formActions.setFieldValue('justification', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -473,8 +515,8 @@ const AccessRequestManager: React.FC = () => {
               <Textarea
                 id="justificationText"
                 placeholder="Please provide a detailed explanation of why you need this access..."
-                value={newRequest.justificationText}
-                onChange={(e) => setNewRequest(prev => ({ ...prev, justificationText: e.target.value }))}
+                value={newRequestForm.values.justificationText}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => formActions.setFieldValue('justificationText', e.target.value)}
                 rows={4}
               />
             </div>
@@ -486,8 +528,8 @@ const AccessRequestManager: React.FC = () => {
                 type="number"
                 min="1"
                 max="168"
-                value={newRequest.duration}
-                onChange={(e) => setNewRequest(prev => ({ ...prev, duration: parseInt(e.target.value) || 1 }))}
+                value={newRequestForm.values.duration}
+                onChange={(e) => formActions.setFieldValue('duration', parseInt(e.target.value) || 1)}
               />
               <p className="text-sm text-muted-foreground">
                 Maximum duration is 168 hours (7 days)
@@ -496,11 +538,11 @@ const AccessRequestManager: React.FC = () => {
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowNewRequestDialog(false)}>
+            <Button variant="outline" onClick={() => modalActions.newRequestDialog.close()}>
               Cancel
             </Button>
-            <Button onClick={handleSubmitRequest} disabled={submitting}>
-              {submitting ? (
+            <Button onClick={handleSubmitRequest} disabled={loadingStates.submitRequest.isLoading}>
+              {loadingStates.submitRequest.isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Submitting...
@@ -517,12 +559,12 @@ const AccessRequestManager: React.FC = () => {
       </Dialog>
 
       {/* Request Details Dialog */}
-      {selectedRequest && (
-        <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
+      {uiState.values.selectedRequest && (
+        <Dialog open={!!uiState.values.selectedRequest} onOpenChange={() => uiActions.setFieldValue('selectedRequest', null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                {getStatusIcon(selectedRequest.status)}
+                {getStatusIcon(uiState.values.selectedRequest.status)}
                 Access Request Details
               </DialogTitle>
             </DialogHeader>
@@ -532,14 +574,14 @@ const AccessRequestManager: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Request ID</Label>
-                    <p className="font-mono text-sm">{selectedRequest.id}</p>
+                    <p className="font-mono text-sm">{uiState.values.selectedRequest.id}</p>
                   </div>
                   <div>
                     <Label>Status</Label>
                     <div className="flex items-center gap-2 mt-1">
-                      {getStatusIcon(selectedRequest.status)}
-                      <Badge className={getStatusColor(selectedRequest.status)}>
-                        {selectedRequest.status.toUpperCase()}
+                      {getStatusIcon(uiState.values.selectedRequest.status)}
+                      <Badge className={getStatusColor(uiState.values.selectedRequest.status)}>
+                        {uiState.values.selectedRequest.status.toUpperCase()}
                       </Badge>
                     </div>
                   </div>
@@ -548,64 +590,64 @@ const AccessRequestManager: React.FC = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Requester</Label>
-                    <p>{selectedRequest.requesterName} ({selectedRequest.requesterRole})</p>
+                    <p>{uiState.values.selectedRequest.requesterName} ({uiState.values.selectedRequest.requesterRole})</p>
                   </div>
                   <div>
                     <Label>Created</Label>
-                    <p>{new Date(selectedRequest.createdAt).toLocaleString()}</p>
+                    <p>{new Date(uiState.values.selectedRequest.createdAt).toLocaleString()}</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Target Type</Label>
-                    <p className="capitalize">{selectedRequest.targetType}</p>
+                    <p className="capitalize">{uiState.values.selectedRequest.targetType}</p>
                   </div>
                   <div>
                     <Label>Access Type</Label>
-                    <p className="capitalize">{selectedRequest.accessType}</p>
+                    <p className="capitalize">{uiState.values.selectedRequest.accessType}</p>
                   </div>
                 </div>
 
                 <div>
                   <Label>Justification</Label>
-                  <p className="font-medium">{getJustificationLabel(selectedRequest.justification)}</p>
+                  <p className="font-medium">{getJustificationLabel(uiState.values.selectedRequest.justification)}</p>
                 </div>
 
                 <div>
                   <Label>Detailed Justification</Label>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {selectedRequest.justificationText}
+                    {uiState.values.selectedRequest.justificationText}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Duration</Label>
-                    <p>{selectedRequest.duration} hours</p>
+                    <p>{uiState.values.selectedRequest.duration} hours</p>
                   </div>
                   <div>
                     <Label>Expires</Label>
                     <p>
-                      {selectedRequest.expiresAt
-                        ? new Date(selectedRequest.expiresAt).toLocaleString()
+                      {uiState.values.selectedRequest.expiresAt
+                        ? new Date(uiState.values.selectedRequest.expiresAt).toLocaleString()
                         : 'N/A'
                       }
                     </p>
                   </div>
                 </div>
 
-                {selectedRequest.approvedBy && (
+                {uiState.values.selectedRequest.approvedBy && (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Approved By</Label>
-                      <p>{selectedRequest.approvedBy}</p>
+                      <p>{uiState.values.selectedRequest.approvedBy}</p>
                     </div>
                     <div>
                       <Label>Approved At</Label>
                       <p>
-                        {selectedRequest.approvedAt
-                          ? new Date(selectedRequest.approvedAt).toLocaleString()
+                        {uiState.values.selectedRequest.approvedAt
+                          ? new Date(uiState.values.selectedRequest.approvedAt).toLocaleString()
                           : 'N/A'
                         }
                       </p>
@@ -616,32 +658,32 @@ const AccessRequestManager: React.FC = () => {
                 <div className="space-y-2">
                   <Label>Metadata</Label>
                   <div className="text-sm text-muted-foreground space-y-1">
-                    <p>IP Address: {selectedRequest.metadata.ipAddress}</p>
-                    <p>User Agent: {selectedRequest.metadata.userAgent}</p>
+                    <p>IP Address: {uiState.values.selectedRequest.metadata.ipAddress}</p>
+                    <p>User Agent: {uiState.values.selectedRequest.metadata.userAgent}</p>
                   </div>
                 </div>
               </div>
             </ScrollArea>
 
             <div className="flex justify-end gap-2 mt-4">
-              <Button variant="outline" onClick={() => setSelectedRequest(null)}>
+              <Button variant="outline" onClick={() => uiActions.setFieldValue('selectedRequest', null)}>
                 Close
               </Button>
-              {isApprover && selectedRequest.status === 'pending' && (
+              {isApprover && uiState.values.selectedRequest.status === 'pending' && (
                 <>
                   <Button
                     variant="destructive"
                     onClick={() => {
-                      handleDenyRequest(selectedRequest.id);
-                      setSelectedRequest(null);
+                      handleDenyRequest(uiState.values.selectedRequest.id);
+                      uiActions.setFieldValue('selectedRequest', null);
                     }}
                   >
                     Deny
                   </Button>
                   <Button
                     onClick={() => {
-                      handleApproveRequest(selectedRequest.id);
-                      setSelectedRequest(null);
+                      handleApproveRequest(uiState.values.selectedRequest.id);
+                      uiActions.setFieldValue('selectedRequest', null);
                     }}
                   >
                     Approve

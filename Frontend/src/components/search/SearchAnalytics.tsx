@@ -29,7 +29,7 @@ import { Search, TrendingUp, Clock, Zap, Database, Users, BookOpen, Monitor, Act
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 
-interface SearchAnalytics {
+interface SearchAnalyticsData {
   totalSearches: number;
   averageResponseTime: number;
   averageSearchesPerDay?: number;
@@ -92,7 +92,7 @@ interface UserBehavior {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
 export default function SearchAnalytics() {
-  const [analytics, setAnalytics] = useState<SearchAnalytics | null>(null);
+  const [analytics, setAnalytics] = useState<SearchAnalyticsData | null>(null);
   const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics | null>(null);
   const [userBehavior, setUserBehavior] = useState<UserBehavior | null>(null);
   const [loading, setLoading] = useState(false);
@@ -113,7 +113,7 @@ export default function SearchAnalytics() {
       ]);
 
       if (analyticsRes.success) {
-        setAnalytics(analyticsRes.data as SearchAnalytics);
+        setAnalytics(analyticsRes.data as SearchAnalyticsData);
       }
 
       if (performanceRes.success) {

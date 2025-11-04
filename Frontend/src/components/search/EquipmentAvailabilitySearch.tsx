@@ -2,7 +2,6 @@ import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -99,7 +98,6 @@ export default function EquipmentAvailabilitySearch() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchResults, setSearchResults] = useState<EquipmentSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [filters, setFilters] = useState<EquipmentSearchOptions>({
     sortBy: 'name',
     sortOrder: 'asc',
@@ -108,7 +106,7 @@ export default function EquipmentAvailabilitySearch() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const suggestionTimeoutRef = useRef<NodeJS.Timeout>();
+  const suggestionTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Fetch suggestions with debouncing
   const fetchSuggestions = useCallback(async (searchQuery: string) => {
@@ -117,7 +115,7 @@ export default function EquipmentAvailabilitySearch() {
       return;
     }
 
-    setLoadingSuggestions(true);
+    setLoading(true);
     try {
       const response = await apiClient.get('/api/search/equipment/suggestions', {
         params: {
@@ -127,12 +125,12 @@ export default function EquipmentAvailabilitySearch() {
       });
 
       if (response.success && response.data) {
-        setSuggestions(response.data);
+        setSuggestions(response.data as EquipmentSuggestion);
       }
     } catch (error) {
       console.error('Failed to fetch equipment suggestions:', error);
     } finally {
-      setLoadingSuggestions(false);
+      setLoading(false);
     }
   }, []);
 
@@ -193,12 +191,12 @@ export default function EquipmentAvailabilitySearch() {
 
       if (response.success && response.data) {
         if (resetPagination) {
-          setSearchResults(response.data);
+          setSearchResults(response.data as EquipmentSearchResult);
         } else {
           // Append results for pagination
           setSearchResults(prev => ({
-            ...response.data,
-            equipment: [...(prev?.equipment || []), ...response.data.equipment],
+            ...(response.data as EquipmentSearchResult),
+            equipment: [...(prev?.equipment || []), ...(response.data as EquipmentSearchResult).equipment],
           }));
         }
         setCurrentPage(page);
@@ -257,7 +255,7 @@ export default function EquipmentAvailabilitySearch() {
 
   // Export results
   const exportResults = () => {
-    if (!searchResults) return;
+    if (!searchResults || searchResults.equipment.length === 0) return;
 
     const data = searchResults.equipment.map(equipment => ({
       'Equipment ID': equipment.equipment_id,
@@ -274,10 +272,16 @@ export default function EquipmentAvailabilitySearch() {
       'Next Available': equipment.nextAvailableDate || 'Available Now',
     }));
 
-    const csv = [
-      Object.keys(data[0]).join(','),
-      ...data.map(row => Object.values(row).map(v => `"${v}"`).join(','))
-    ].join('\n');
+    const csvRows = [Object.keys(data[0] || {}).join(',')];
+    data.forEach(row => {
+      const values: string[] = [];
+      Object.keys(row).forEach(key => {
+        const value = row[key as keyof typeof row];
+        values.push(`"${String(value ?? '')}"`);
+      });
+      csvRows.push(values.join(','));
+    });
+    const csv = csvRows.join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -495,7 +499,14 @@ export default function EquipmentAvailabilitySearch() {
               <Select
                 value={filters.sortBy || ''}
                 onValueChange={(value: string) => {
-                  setFilters({ ...filters, sortBy: value as 'name' | 'type' | 'status' | 'usageHours' | 'condition' | 'location' });
+                  const sortBy = value as 'name' | 'type' | 'status' | 'usageHours' | 'condition' | 'location';
+                  const newFilters = { ...filters };
+                  if (value) {
+                    newFilters.sortBy = sortBy;
+                  } else {
+                    delete newFilters.sortBy;
+                  }
+                  setFilters(newFilters);
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -516,7 +527,14 @@ export default function EquipmentAvailabilitySearch() {
               <Select
                 value={filters.sortOrder || ''}
                 onValueChange={(value: string) => {
-                  setFilters({ ...filters, sortOrder: value as 'asc' | 'desc' });
+                  const sortOrder = value as 'asc' | 'desc';
+                  const newFilters = { ...filters };
+                  if (value) {
+                    newFilters.sortOrder = sortOrder;
+                  } else {
+                    delete newFilters.sortOrder;
+                  }
+                  setFilters(newFilters);
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -630,7 +648,14 @@ export default function EquipmentAvailabilitySearch() {
                     placeholder="0"
                     value={filters.minUsageHours || ''}
                     onChange={(e) => {
-                      setFilters({ ...filters, minUsageHours: e.target.value ? parseInt(e.target.value) : undefined });
+                      const minUsageHours = e.target.value ? parseInt(e.target.value) : undefined;
+                      const newFilters = { ...filters };
+                      if (minUsageHours !== undefined) {
+                        newFilters.minUsageHours = minUsageHours;
+                      } else {
+                        delete newFilters.minUsageHours;
+                      }
+                      setFilters(newFilters);
                       setCurrentPage(1);
                       performSearch();
                     }}
@@ -644,8 +669,14 @@ export default function EquipmentAvailabilitySearch() {
                     placeholder="9999"
                     value={filters.maxUsageHours || ''}
                     onChange={(e) => {
-                      const value = e.target.value ? parseInt(e.target.value) : undefined;
-                      setFilters({ ...filters, maxUsageHours: value });
+                      const maxUsageHours = e.target.value ? parseInt(e.target.value) : undefined;
+                      const newFilters = { ...filters };
+                      if (maxUsageHours !== undefined) {
+                        newFilters.maxUsageHours = maxUsageHours;
+                      } else {
+                        delete newFilters.maxUsageHours;
+                      }
+                      setFilters(newFilters);
                       setCurrentPage(1);
                       performSearch();
                     }}

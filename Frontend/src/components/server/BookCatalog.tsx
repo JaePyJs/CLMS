@@ -20,14 +20,22 @@ export default async function BookCatalogServer({
   availableOnly = false
 }: BookCatalogProps) {
   // Server-side data fetching with caching
-  const books = await getBooks({
-    category: category || undefined,
+  const params: any = {
     limit,
-    searchQuery: searchQuery || undefined,
     sortBy,
     sortOrder,
     availableOnly
-  });
+  };
+  
+  if (category) {
+    params.category = category;
+  }
+  
+  if (searchQuery) {
+    params.searchQuery = searchQuery;
+  }
+  
+  const books = await getBooks(params);
 
   // Server component - no client-side state
   return (

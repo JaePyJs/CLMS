@@ -145,7 +145,7 @@ export const useUsbScanner = () => {
   const [currentInput, setCurrentInput] = useState('');
   const [lastScannedCode, setLastScannedCode] = useState('');
   const inputBufferRef = useRef('');
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const setLastScanResult = useAppStore((state) => state.setLastScanResult);
 
@@ -361,6 +361,7 @@ export const useManualEntry = () => {
     } else {
       toast.error('Please enter at least 3 characters');
       playScanSound('error');
+      return undefined;
     }
   }, [input, setLastScanResult]);
 

@@ -137,8 +137,8 @@ export function usePerformanceLogs() {
  * Hook for performance session management
  */
 export function usePerformanceSession() {
-  const { sessionId, userId, setUserId, clearUserId } = usePerformanceContext();
-  return { sessionId, userId, setUserId, clearUserId };
+  const { sessionId, userId, setUserId, clearUserId, flush, getSummary } = usePerformanceContext();
+  return { sessionId, userId, setUserId, clearUserId, flush, getSummary };
 }
 
 export default PerformanceProvider;

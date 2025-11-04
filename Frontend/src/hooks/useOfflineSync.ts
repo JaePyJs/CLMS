@@ -13,12 +13,6 @@ interface OfflineAction {
   maxRetries: number;
 }
 
-interface SyncQueue {
-  actions: OfflineAction[];
-  lastSync: number;
-  isOnline: boolean;
-}
-
 // IndexedDB setup
 const DB_NAME = 'clms-offline-db';
 const DB_VERSION = 1;
@@ -179,8 +173,10 @@ class OfflineSyncService {
 
       // Remove successfully synced actions
       for (let i = 0; i < results.length; i++) {
-        if (results[i].status === 'fulfilled') {
-          await this.removeAction(actions[i].id);
+        const result = results[i];
+        const action = actions[i];
+        if (result?.status === 'fulfilled' && action) {
+          await this.removeAction(action.id);
         }
       }
 
@@ -218,7 +214,7 @@ class OfflineSyncService {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           })
         },
-        body: type !== 'delete' ? JSON.stringify(data) : undefined,
+        ...(type !== 'delete' && { body: JSON.stringify(data) }),
       };
 
       const response = await fetch(endpoint, options);
@@ -268,7 +264,7 @@ class OfflineSyncService {
 
       const action = await store.get(id);
       if (action) {
-        action.retryCount = retryCount;
+        (action as any).retryCount = retryCount;
         await store.put(action);
       }
     } catch (error) {

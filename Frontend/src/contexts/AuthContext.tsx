@@ -63,10 +63,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     retry: false,
-    onSuccess: (currentUser) => {
-      localStorage.setItem('clms_user', JSON.stringify(currentUser))
-    },
   })
+
+  // Handle successful auth query with useEffect (React Query v5 pattern)
+  useEffect(() => {
+    if (authQuery.data) {
+      localStorage.setItem('clms_user', JSON.stringify(authQuery.data))
+    }
+  }, [authQuery.data])
 
   const logout = useCallback(() => {
     performLogout()
@@ -94,7 +98,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         })
 
         if (response.success && response.data) {
-          const { token: accessToken, user } = response.data
+          const { accessToken, user } = response.data
 
           localStorage.setItem('clms_token', accessToken)
           localStorage.setItem('clms_user', JSON.stringify(user))
@@ -112,7 +116,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return true
         }
 
-        toast.error(response.error || 'Login failed')
+        toast.error(typeof response.error === 'string' ? response.error : response.error?.message || 'Login failed')
         return false
       } catch (error) {
         console.error('Login error:', error)
@@ -134,7 +138,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setToken(storedToken)
 
     try {
-      const currentUser = await primeAuthState(queryClient)
+      const currentUser: AuthUser = await primeAuthState(queryClient)
       queryClient.setQueryData(authKeys.current(), currentUser)
       return true
     } catch (error) {
@@ -148,7 +152,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkAuth()
   }, [checkAuth])
 
-  const user: AuthUser | null = authQuery.data ?? null
+  const user: AuthUser | null = authQuery.data || null
   const isAuthenticated = Boolean(token && user)
   const isLoading = token ? authQuery.isPending : false
 

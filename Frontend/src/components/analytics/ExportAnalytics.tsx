@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Download, Clock, BarChart, FileText, Settings, FileSpreadsheet, Calendar, File } from 'lucide-react'
+import { Download, Clock, BarChart, FileText, Settings, FileSpreadsheet, Calendar, File as FileIcon } from 'lucide-react'
 
 interface ExportAnalyticsProps {
   timeframe: 'day' | 'week' | 'month'
@@ -88,7 +88,7 @@ export function ExportAnalytics({ timeframe, onExport, isExporting = false }: Ex
       id: 'demographics',
       name: 'User Demographics',
       description: 'Student usage patterns by grade and category',
-      icon: File,
+      icon: FileIcon,
       defaultIncluded: false
     }
   ]
@@ -114,7 +114,7 @@ export function ExportAnalytics({ timeframe, onExport, isExporting = false }: Ex
       id: 'json',
       name: 'JSON Data',
       description: 'Structured data format for developers and APIs',
-      icon: File,
+      icon: FileIcon,
       fileSize: '~1-2 MB',
       processingTime: '~15 seconds'
     }

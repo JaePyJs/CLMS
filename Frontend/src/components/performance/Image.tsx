@@ -48,7 +48,7 @@ interface ImageProps {
   maxRetries?: number;
 }
 
-const Image: ComponentType<ImageProps> = forwardRef<HTMLDivElement, ImageProps>(({
+const PerformanceImage: ComponentType<ImageProps> = forwardRef<HTMLDivElement, ImageProps>(({
   src,
   alt,
   useCase,
@@ -258,14 +258,12 @@ const Image: ComponentType<ImageProps> = forwardRef<HTMLDivElement, ImageProps>(
             alt={alt}
             width={width}
             height={height}
-            priority={priority}
             quality={quality}
             format={format}
             sizes={responsiveSizes}
             srcSet={generatedSrcSet}
             onLoad={handleLoad}
             onError={handleError}
-            lazy={lazy && !priority}
             placeholder={placeholder === 'blur' ? blurPlaceholder : undefined}
             aspectRatio={aspectRatio}
             objectFit={objectFit}
@@ -301,21 +299,19 @@ const Image: ComponentType<ImageProps> = forwardRef<HTMLDivElement, ImageProps>(
         ref={imageRef}
         src={imageState.currentSrc}
         alt={alt}
-        {...(width !== undefined ? { width } : {})}
-        {...(height !== undefined ? { height } : {})}
-        priority={priority}
-        quality={quality}
-        format={format}
-        sizes={responsiveSizes}
-        srcSet={generatedSrcSet}
+        width={width ?? undefined}
+        height={height ?? undefined}
+        quality={quality ?? undefined}
+        format={format ?? undefined}
+        sizes={responsiveSizes ?? undefined}
+        srcSet={generatedSrcSet ?? undefined}
         onLoad={handleLoad}
         onError={handleError}
-        lazy={lazy && !priority}
         placeholder={placeholder === 'blur' ? blurPlaceholder : undefined}
-        aspectRatio={aspectRatio}
-        objectFit={objectFit}
+        aspectRatio={aspectRatio ?? undefined}
+        objectFit={objectFit ?? undefined}
         loading={priority ? 'eager' : (lazy ? 'lazy' : 'eager')}
-        fetchPriority={fetchPriority}
+        fetchPriority={fetchPriority ?? undefined}
         className="w-full h-full"
       />
 
@@ -329,31 +325,31 @@ const Image: ComponentType<ImageProps> = forwardRef<HTMLDivElement, ImageProps>(
   );
 });
 
-Image.displayName = 'Image';
+PerformanceImage.displayName = 'PerformanceImage';
 
-export default Image;
+export default PerformanceImage;
 
 // Specialized components for common use cases
 export const AvatarImage: ComponentType<Omit<ImageProps, 'useCase' | 'size'>> = (props) => (
-  <Image {...props} useCase="AVATAR" />
+  <PerformanceImage {...props} useCase="AVATAR" />
 );
 
 export const StudentPhotoImage: ComponentType<Omit<ImageProps, 'useCase' | 'size'>> = (props) => (
-  <Image {...props} useCase="STUDENT_PHOTO" />
+  <PerformanceImage {...props} useCase="STUDENT_PHOTO" />
 );
 
 export const BookCoverImage: ComponentType<Omit<ImageProps, 'useCase' | 'size'>> = (props) => (
-  <Image {...props} useCase="BOOK_COVER" />
+  <PerformanceImage {...props} useCase="BOOK_COVER" />
 );
 
 export const EquipmentImage: ComponentType<Omit<ImageProps, 'useCase' | 'size'>> = (props) => (
-  <Image {...props} useCase="EQUIPMENT" />
+  <PerformanceImage {...props} useCase="EQUIPMENT" />
 );
 
 export const BarcodeImage: ComponentType<Omit<ImageProps, 'useCase' | 'size'>> = (props) => (
-  <Image {...props} useCase="BARCODE" lazy={false} priority={true} />
+  <PerformanceImage {...props} useCase="BARCODE" lazy={false} priority={true} />
 );
 
 export const BackgroundImage: ComponentType<Omit<ImageProps, 'useCase' | 'size'>> = (props) => (
-  <Image {...props} useCase="BACKGROUND" lazy={false} priority={props.priority || false} />
+  <PerformanceImage {...props} useCase="BACKGROUND" lazy={false} priority={props.priority || false} />
 );

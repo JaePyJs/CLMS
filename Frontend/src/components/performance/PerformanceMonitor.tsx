@@ -11,7 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Activity, Zap, Clock, Database, AlertTriangle, CheckCircle, Download, RefreshCw, Play, Pause, FileText, BarChart3, Monitor, Gauge, Target, TrendingUp, TrendingDown, Timer } from 'lucide-react';
+import { Activity, Zap, Clock, Database, AlertTriangle, CheckCircle, Download, RefreshCw, Play, Pause, FileText, BarChart3, Monitor, Gauge, Target, TrendingUp, TrendingDown } from 'lucide-react';
 import { performanceMonitoringService } from '@/services/performanceMonitoringService';
 import type { PerformanceReport, ComponentPerformance } from '@/services/performanceMonitoringService';
 
@@ -122,7 +122,6 @@ const PerformanceMonitor: React.FC = () => {
   const [componentMetrics, setComponentMetrics] = useState<ComponentPerformance[]>([]);
   const [insights, setInsights] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
-  const [historicalReports, setHistoricalReports] = useState<PerformanceReport[]>([]);
 
   useEffect(() => {
     // Load existing data
@@ -153,7 +152,6 @@ const PerformanceMonitor: React.FC = () => {
   const generateReport = useCallback(() => {
     const report = performanceMonitoringService.generateReport();
     setCurrentReport(report);
-    setHistoricalReports(prev => [...prev.slice(-9), report]);
     setInsights(performanceMonitoringService.getPerformanceInsights());
   }, []);
 

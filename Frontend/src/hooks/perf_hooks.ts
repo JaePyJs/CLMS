@@ -1,4 +1,5 @@
-/* eslint-disable no-redeclare */
+import { useState, useEffect } from 'react';
+
 /**
  * Performance Hooks
  *
@@ -43,17 +44,17 @@ export const performance = {
 
 // Performance observer for monitoring
 export class PerformanceObserver {
-  private callback: PerformanceObserverCallback;
+  private callback: (entries: PerformanceObserverEntryList, observer: PerformanceObserver) => void;
   private observer: PerformanceObserver | null = null;
 
-  constructor(callback: PerformanceObserverCallback) {
+  constructor(callback: (entries: PerformanceObserverEntryList, observer: PerformanceObserver) => void) {
     this.callback = callback;
   }
 
   observe(options: PerformanceObserverInit): void {
     if (typeof window !== 'undefined' && window.PerformanceObserver) {
-      this.observer = new window.PerformanceObserver(this.callback);
-      this.observer.observe(options);
+      this.observer = new (window as any).PerformanceObserver(this.callback);
+      this.observer?.observe(options);
     }
   }
 
@@ -63,13 +64,65 @@ export class PerformanceObserver {
       this.observer = null;
     }
   }
+}
 
-  takeRecords(): PerformanceEntryList {
-    if (this.observer) {
-      return this.observer.takeRecords();
-    }
-    return [];
-  }
+// React hook for performance monitoring
+export function usePerformanceMonitor(componentName: string) {
+  const [metrics, setMetrics] = useState<Record<string, number>>({});
+  const startTime = performance.now();
+
+  useEffect(() => {
+    const endTime = performance.now();
+    const renderTime = endTime - startTime;
+    
+    setMetrics(prev => ({
+      ...prev,
+      [`${componentName}_render`]: renderTime
+    }));
+
+    performance.mark(`${componentName}_render_end`);
+    performance.measure(
+      `${componentName}_render`,
+      `${componentName}_render_start`,
+      `${componentName}_render_end`
+    );
+
+    return () => {
+      // Type cast to access non-standard performance methods
+      const perf = performance as any;
+      perf.clearMarks(`${componentName}_render_start`);
+      perf.clearMarks(`${componentName}_render_end`);
+      perf.clearMeasures(`${componentName}_render`);
+    };
+  }, [componentName]);
+
+  return metrics;
+}
+
+// Custom performance hooks
+export function useRenderCount(componentName: string) {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    setCount(prev => prev + 1);
+    performance.mark(`${componentName}_render_count_${count + 1}`);
+  });
+
+  return count;
+}
+
+export function useRenderTime(componentName: string) {
+  const [renderTime, setRenderTime] = useState(0);
+  
+  useEffect(() => {
+    const start = performance.now();
+    return () => {
+      const end = performance.now();
+      setRenderTime(end - start);
+    };
+  });
+
+  return renderTime;
 }
 
 // Types
@@ -95,7 +148,7 @@ export interface PerformanceObserverEntryList {
   getEntriesByType(type: string): PerformanceEntry[];
 }
 
-export interface PerformanceObserver {
+export interface IPerformanceObserver {
   observe(options: PerformanceObserverInit): void;
   disconnect(): void;
   takeRecords(): PerformanceObserverEntryList;
@@ -153,7 +206,7 @@ export const calculateMetrics = {
   pageLoadTime: (): number => {
     const navTiming = getNavigationTiming();
     if (navTiming) {
-      return navTiming.loadEventEnd - navTiming.navigationStart;
+      return navTiming.loadEventEnd - (navTiming as any).navigationStart || navTiming.loadEventEnd - navTiming.startTime;
     }
     return timing.loadEventEnd - timing.navigationStart;
   },
@@ -162,7 +215,7 @@ export const calculateMetrics = {
   domContentLoadedTime: (): number => {
     const navTiming = getNavigationTiming();
     if (navTiming) {
-      return navTiming.domContentLoadedEventEnd - navTiming.navigationStart;
+      return navTiming.domContentLoadedEventEnd - (navTiming as any).navigationStart || navTiming.domContentLoadedEventEnd - navTiming.startTime;
     }
     return timing.domContentLoadedEventEnd - timing.navigationStart;
   },
@@ -212,7 +265,8 @@ export const performanceUtils = {
   measure: (name: string, startMark: string, endMark?: string): number => {
     performance.measure(name, startMark, endMark);
     const entries = performance.getEntriesByName(name, 'measure');
-    return entries.length > 0 ? entries[entries.length - 1].duration : 0;
+    const lastEntry = entries.length > 0 ? entries[entries.length - 1] : null;
+    return lastEntry?.duration || 0;
   },
 
   // Get memory usage

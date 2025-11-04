@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { useMobileOptimization, useTouchOptimization } from '@/hooks/useMobileOptimization';
+import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { toast } from 'sonner';
-import { Camera, CameraOff, Zap, History, CheckCircle, XCircle, AlertCircle, RotateCcw, Flashlight, FlashlightOff, Keyboard, X, Search } from 'lucide-react';
+import { Camera, CameraOff, Zap, History as HistoryIcon, CheckCircle, XCircle, AlertCircle, RotateCcw, Flashlight, FlashlightOff, Keyboard, X, Search } from 'lucide-react';
 
 interface ScanResult {
   id: string;
@@ -33,7 +33,6 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
 }) => {
   const { isMobile } = useMobileOptimization();
   const { queueAction } = useOfflineSync();
-  const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
 
   // Scanner state
   const [isScanning, setIsScanning] = useState(false);
@@ -64,7 +63,7 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
           facingMode: isMobile ? 'environment' : 'user',
           width: { ideal: 1280 },
           height: { ideal: 720 },
-          // @ts-ignore - torch is not in standard MediaTrackConstraints but supported by browsers
+          // @ts-expect-error - torch is not in standard MediaTrackConstraints but supported by browsers
           torch: flashlightEnabled,
         },
       };
@@ -107,7 +106,7 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
 
       if (capabilities.torch) {
         await track.applyConstraints({
-          // @ts-ignore - torch is not in standard MediaTrackConstraints but supported by browsers
+          // @ts-expect-error - torch is not in standard MediaTrackConstraints but supported by browsers
           advanced: [{ torch: !flashlightEnabled }],
         });
         setFlashlightEnabled(!flashlightEnabled);
@@ -257,7 +256,7 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
                   onClick={() => setShowHistory(!showHistory)}
                   className="flex items-center gap-1"
                 >
-                  <History className="h-4 w-4" />
+                  <HistoryIcon className="h-4 w-4" />
                   {scanHistory.length}
                 </Button>
               )}

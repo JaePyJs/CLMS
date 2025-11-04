@@ -1,66 +1,118 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import express, { Request, Response, Application } from 'express';
+import { createServer } from 'http';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import compression from 'compression';
+import { env, getAllowedOrigins } from './config/env';
+import { connectDatabase } from './config/database';
+import { logger } from './utils/logger';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { requestLogger } from './middleware/requestLogger';
+import { apiRoutes } from './routes/index';
+import { websocketServer } from './websocket/websocketServer';
 
-console.log('[DEBUG server.ts] Loading full app module...');
-import { app } from './app';
-console.log('[DEBUG server.ts] App module loaded');
-import { logger } from '@/utils/logger';
-console.log('[DEBUG server.ts] Logger loaded');
+// Create Express application
+const app: Application = express();
 
-// Graceful shutdown handler
-const gracefulShutdown = async (signal: string) => {
-  logger.info(`Received ${signal}, starting graceful shutdown...`);
+// Initialize database connection
+connectDatabase().catch((error) => {
+  logger.error('Failed to connect to database:', error);
+  process.exit(1);
+});
 
-  try {
-    // Shutdown application
-    await app.shutdown();
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
+}));
 
-    logger.info('Graceful shutdown completed');
-    process.exit(0);
-  } catch (error) {
-    logger.error('Error during graceful shutdown', {
-      error: (error as Error).message,
-    });
-    process.exit(1);
-  }
-};
+// CORS configuration
+  app.use(cors({
+    origin: getAllowedOrigins(),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  }));
 
-// Handle signals
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: env.RATE_LIMIT_WINDOW,
+  max: env.RATE_LIMIT_MAX,
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', limiter);
 
-// Handle uncaught exceptions
-process.on('uncaughtException', error => {
-  logger.error('Uncaught Exception', {
-    error: error.message,
-    stack: error.stack,
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Compression middleware
+app.use(compression());
+
+// Request logging middleware
+app.use(requestLogger);
+
+// API routes
+app.use('/api', apiRoutes);
+
+// Health check endpoint
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: env['NODE_ENV'],
   });
-  process.exit(1);
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection', { reason, promise });
-  process.exit(1);
+// Root endpoint
+app.get('/', (_req: Request, res: Response) => {
+  res.status(200).json({
+    message: 'CLMS Backend API',
+    version: '2.0.0',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+  });
 });
 
-// Start the server
-const port = parseInt(process.env.PORT || '3001', 10);
-console.log('[DEBUG server.ts] About to call app.start() with port:', port);
+// 404 handler
+app.use(notFoundHandler);
 
-// Use an async IIFE to await the start
-(async () => {
-  try {
-    console.log('[DEBUG server.ts] Inside async IIFE');
-    await app.start(port);
-    console.log('[DEBUG server.ts] app.start() completed');
-    // Server is now running, keep process alive
-  } catch (error) {
-    console.log('[DEBUG server.ts] Error caught:', error);
-    logger.error('Failed to start server', {
-      error: (error as Error).message,
-    });
-    process.exit(1);
-  }
-})();
-console.log('[DEBUG server.ts] After IIFE definition');
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
+// Create HTTP server
+const httpServer = createServer(app);
+
+// Initialize WebSocket server
+websocketServer.initialize(httpServer);
+
+// Log server configuration
+logger.info(`🚀 Server configured successfully`);
+logger.info(`📊 Environment: ${process.env['NODE_ENV'] || 'development'}`);
+logger.info(`🔒 Security: Helmet, CORS, Rate Limiting enabled`);
+logger.info(`📝 Logging: Request logging and error handling configured`);
+logger.info(`🔌 WebSocket: Real-time communication enabled`);
+
+// Start server
+const PORT = env.PORT || 3001;
+const HOST = '0.0.0.0'; // Bind to IPv4 only to avoid port conflicts
+httpServer.listen(PORT, HOST, () => {
+  logger.info(`✅ CLMS Backend API running on port ${PORT}`);
+  logger.info(`🌐 HTTP: http://localhost:${PORT}`);
+  logger.info(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
+});
+
+export { app as server, httpServer };

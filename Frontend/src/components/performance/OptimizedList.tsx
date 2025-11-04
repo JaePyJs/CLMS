@@ -7,7 +7,6 @@ import React, {
   useEffect,
 } from 'react';
 import type { ComponentType, ReactNode, Key } from 'react';
-import { FixedSizeList as List, VariableSizeList as VariableList } from 'react-window';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -74,9 +73,9 @@ interface SearchFilterProps<T> {
   searchable?: boolean;
   sortable?: boolean;
   filterable?: boolean;
-  searchPlaceholder?: string;
-  sortOptions?: Array<{ key: keyof T; label: string; direction?: 'asc' | 'desc' }>;
-  filterOptions?: Array<{ key: keyof T; label: string; options: Array<{ value: any; label: string }> }>;
+  searchPlaceholder?: string | undefined;
+  sortOptions?: Array<{ key: keyof T; label: string; direction?: 'asc' | 'desc' }> | undefined;
+  filterOptions?: Array<{ key: keyof T; label: string; options: Array<{ value: any; label: string }> }> | undefined;
   onSearch: (query: string) => void;
   onSort: (key: keyof T, direction: 'asc' | 'desc') => void;
   onFilter: (key: keyof T, value: any) => void;
@@ -250,7 +249,7 @@ export const OptimizedList = <T,>({
     // Apply search
     if (searchQuery) {
       result = result.filter(item => {
-        return Object.values(item).some(value =>
+        return Object.values(item as Record<string, unknown>).some(value =>
           String(value).toLowerCase().includes(searchQuery.toLowerCase())
         );
       });
@@ -307,7 +306,7 @@ export const OptimizedList = <T,>({
   // Get item key
   const getItemKey = useCallback((index: number): Key => {
     const item = filteredItems[index];
-    if (itemKey) {
+    if (item && itemKey) {
       return itemKey(item, index);
     }
     return index;
@@ -323,6 +322,10 @@ export const OptimizedList = <T,>({
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
         </div>
       );
+    }
+
+    if (!item) {
+      return <div style={style}></div>;
     }
 
     return <>{renderItem(item, index, style)}</>;
@@ -352,8 +355,141 @@ export const OptimizedList = <T,>({
     renderItem,
   }), [filteredItems, renderItem]);
 
-  // Determine which list component to use
-  const ListComponent = variableSize ? VariableList : List;
+// Custom List component to replace react-window
+interface CustomListProps {
+  height: number;
+  width: number | string;
+  itemCount: number;
+  itemSize: number | ((index: number) => number);
+  itemData: any;
+  itemKey?: (index: number, data: any) => Key;
+  overscanCount?: number;
+  onScroll?: (info: { scrollOffset: number; scrollDirection: 'forward' | 'backward' }) => void;
+  children: ComponentType<{ index: number; style: React.CSSProperties; data: any }>;
+}
+
+const CustomList = React.forwardRef<any, CustomListProps>(({
+  height,
+  width,
+  itemCount,
+  itemSize,
+  itemData,
+  itemKey,
+  overscanCount = 5,
+  onScroll,
+  children: RowComponent,
+}, ref) => {
+  const [scrollTop, setScrollTop] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  const getItemHeight = useCallback((index: number) => {
+    return typeof itemSize === 'function' ? itemSize(index) : itemSize;
+  }, [itemSize]);
+  
+  const itemHeights = useMemo(() => {
+    const heights: number[] = [];
+    let totalHeight = 0;
+    for (let i = 0; i < itemCount; i++) {
+      const height = getItemHeight(i);
+      heights.push(totalHeight);
+      totalHeight += height;
+    }
+    return { heights, totalHeight };
+  }, [itemCount, getItemHeight]);
+  
+  const getVisibleRange = useCallback(() => {
+    const { heights } = itemHeights;
+    let startIndex = 0;
+    let endIndex = itemCount - 1;
+    
+    // Find start index
+    for (let i = 0; i < heights.length; i++) {
+      if ((heights[i] ?? 0) + getItemHeight(i) > scrollTop) {
+        startIndex = Math.max(0, i - overscanCount);
+        break;
+      }
+    }
+    
+    // Find end index
+    for (let i = startIndex; i < heights.length; i++) {
+      if ((heights[i] ?? 0) > scrollTop + height) {
+        endIndex = Math.min(itemCount - 1, i + overscanCount);
+        break;
+      }
+    }
+    
+    return { startIndex, endIndex };
+  }, [scrollTop, height, itemCount, itemHeights, overscanCount, getItemHeight]);
+  
+  const { startIndex, endIndex } = getVisibleRange();
+  
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const newScrollTop = e.currentTarget.scrollTop;
+    const scrollDirection = newScrollTop > scrollTop ? 'forward' : 'backward';
+    setScrollTop(newScrollTop);
+    
+    if (onScroll) {
+      onScroll({ scrollOffset: newScrollTop, scrollDirection });
+    }
+  }, [scrollTop, onScroll]);
+  
+  React.useImperativeHandle(ref, () => ({
+    _outerRef: containerRef.current,
+    scrollTo: (offset: number) => {
+      if (containerRef.current) {
+        containerRef.current.scrollTop = offset;
+      }
+    },
+    scrollToItem: (index: number) => {
+      if (containerRef.current && itemHeights.heights[index] !== undefined) {
+        containerRef.current.scrollTop = itemHeights.heights[index];
+      }
+    }
+  }));
+  
+  const visibleItems = [];
+  for (let i = startIndex; i <= endIndex; i++) {
+    const top = itemHeights.heights[i] || 0;
+    const itemHeight = getItemHeight(i);
+    const key = itemKey ? itemKey(i, itemData) : i;
+    
+    visibleItems.push(
+      <RowComponent
+        key={key}
+        index={i}
+        style={{
+          position: 'absolute',
+          top,
+          height: itemHeight,
+          width: '100%',
+        }}
+        data={itemData}
+      />
+    );
+  }
+  
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        height,
+        width,
+        overflow: 'auto',
+        position: 'relative',
+      }}
+      onScroll={handleScroll}
+    >
+      <div style={{ height: itemHeights.totalHeight, position: 'relative' }}>
+        {visibleItems}
+      </div>
+    </div>
+  );
+});
+
+CustomList.displayName = 'CustomList';
+
+// Determine which list component to use - react-window only has List component
+  const ListComponent = CustomList;
   const actualItemCount = infiniteScroll ? (itemCount || filteredItems.length) : filteredItems.length;
 
   return (
@@ -363,9 +499,9 @@ export const OptimizedList = <T,>({
           searchable={searchable}
           sortable={sortable}
           filterable={filterable}
-          searchPlaceholder={searchPlaceholder}
-          sortOptions={sortOptions}
-          filterOptions={filterOptions}
+          searchPlaceholder={searchPlaceholder ?? undefined}
+          sortOptions={sortOptions ?? undefined}
+          filterOptions={filterOptions ?? undefined}
           onSearch={handleSearch}
           onSort={handleSort}
           onFilter={handleFilter}

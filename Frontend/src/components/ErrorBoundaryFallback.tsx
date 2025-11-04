@@ -22,7 +22,7 @@ import { Card } from '@/components/ui/card';
 import {
   categorizeError,
   generateErrorId,
-  reportError,
+  reportApplicationError,
   checkConnection,
   handleReauthentication,
   refreshPage,
@@ -303,7 +303,7 @@ export function ErrorBoundaryFallback({
 
   // Effect for error reporting
   useEffect(() => {
-    reportError(error, null, errorId, errorType, retryCount);
+    reportApplicationError(error, null, errorId, errorType, retryCount);
     
     if (onError) {
       onError(error, errorId, errorType);

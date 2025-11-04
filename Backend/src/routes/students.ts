@@ -1,500 +1,357 @@
 import { Router, Request, Response } from 'express';
-import { ApiResponse } from '@/types';
-import {
-  type GetStudentActivitiesOptions,
-  type GetStudentsOptions,
-  getStudentByBarcode,
-  getStudents,
-  createStudent,
-  updateStudent,
-  deleteStudent,
-  getStudentActivities,
-  getActiveSessions,
-  createStudentActivity,
-  endStudentActivity,
-} from '@/services/studentService';
-import { GradeCategory, student_activities_activity_type, ActivityStatus } from '@prisma/client';
-import { logger } from '@/utils/logger';
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { Permission } from '@/config/permissions';
-import { auditMiddleware, ferpaAccessCheck, parentalConsentCheck } from '@/middleware/ferpa.middleware';
+import { asyncHandler } from '../middleware/errorHandler';
+import { authenticate } from '../middleware/authenticate';
+import { StudentService, CreateStudentData, UpdateStudentData } from '../services/studentService';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
-// Get all students
-router.get('/', 
-  auditMiddleware('LIST_STUDENTS'),
-  ferpaAccessCheck('READ'),
-  requirePermission(Permission.STUDENTS_VIEW), 
-  async (req: Request, res: Response) => {
+// GET /api/v1/students - List all students
+router.get('/', authenticate, asyncHandler(async (req: Request, res: Response): Promise<void> => {
   try {
-    const { gradeCategory, isActive, page = '1', limit = '50' } = req.query;
-
-    const options: GetStudentsOptions = {
-      page: parseInt(page as string),
-      limit: parseInt(limit as string),
-    };
-
-    if (gradeCategory) {
-      options.gradeCategory = gradeCategory as GradeCategory;
-    }
-
-    if (isActive !== undefined) {
-      options.isActive = isActive === 'true';
-    }
-
-    const result = await getStudents(options);
-
-    const response: ApiResponse = {
-      success: true,
-      data: result,
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
-  } catch (error) {
-    logger.error('Error fetching students', {
-      error: (error as Error).message,
+    logger.info('List all students request', { 
+      userId: req.user!.userId,
+      username: req.user!.username,
+      ip: req.ip 
     });
+
+    const students = await StudentService.listStudents();
+    
+    logger.info('Students list retrieved successfully', { 
+      count: students.length,
+      userId: req.user!.userId,
+      ip: req.ip 
+    });
+
+    res.json({
+      success: true,
+      data: students,
+      count: students.length,
+    });
+  } catch (error) {
+    logger.error('List students failed', { 
+      userId: req.user?.userId,
+      ip: req.ip,
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+
     res.status(500).json({
       success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
+      message: 'Failed to retrieve students',
+      code: 'LIST_STUDENTS_FAILED',
     });
   }
-});
+}));
 
-// Get student by ID
-router.get('/:id', 
-  auditMiddleware('READ_STUDENT_DATA'),
-  ferpaAccessCheck('READ'),
-  parentalConsentCheck,
-  requirePermission(Permission.STUDENTS_VIEW), 
-  async (req: Request, res: Response) => {
+// GET /api/v1/students/:id - Get student by ID
+router.get('/:id', authenticate, asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+
+  // Validate ID parameter
+  if (!id) {
+    logger.warn('Get student failed: missing student ID', {
+      userId: req.user!.userId,
+      ip: req.ip
+    });
+
+    res.status(400).json({
+      success: false,
+      message: 'Student ID is required',
+      code: 'MISSING_STUDENT_ID',
+    });
+    return;
+  }
+
   try {
-    const { id } = req.params;
-    if (!id) {
-      res.status(400).json({
-        success: false,
-        error: 'Student ID is required',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+    logger.info('Get student by ID request', { 
+      studentId: id,
+      userId: req.user!.userId,
+      username: req.user!.username,
+      ip: req.ip 
+    });
 
-    const student = await getStudentByBarcode(id);
+    const student = await StudentService.getStudentById(id);
+    
+    logger.info('Student retrieved successfully', { 
+      studentId: id,
+      student_number: student.student_id,
+      userId: req.user!.userId,
+      ip: req.ip 
+    });
 
-    if (!student) {
-      res.status(404).json({
-        success: false,
-        error: 'Student not found',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    const response: ApiResponse = {
+    res.json({
       success: true,
       data: student,
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
+    });
   } catch (error) {
-    logger.error('Error fetching student', {
-      error: (error as Error).message,
-      id: req.params.id,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+    if (error instanceof Error && error.message === 'Student not found') {
+      logger.warn('Student not found', {
+        studentId: id,
+        userId: req.user!.userId,
+        ip: req.ip
+      });
 
-// Create new student
-router.post('/', 
-  auditMiddleware('CREATE_STUDENT'),
-  ferpaAccessCheck('WRITE'),
-  requirePermission(Permission.STUDENTS_CREATE), 
-  async (req: Request, res: Response) => {
-  try {
-    const {
-      studentId,
-      firstName,
-      lastName,
-      gradeLevel,
-      gradeCategory,
-      section,
-    } = req.body;
-
-    if (
-      !studentId ||
-      !firstName ||
-      !lastName ||
-      !gradeLevel ||
-      !gradeCategory
-    ) {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
-        error: 'Missing required fields',
-        timestamp: new Date().toISOString(),
+        message: 'Student not found',
+        code: 'STUDENT_NOT_FOUND',
       });
       return;
     }
 
-    const student = await createStudent({
-      studentId,
-      firstName,
-      lastName,
-      gradeLevel,
-      gradeCategory,
-      section,
+    logger.error('Get student failed', { 
+      studentId: id,
+      userId: req.user?.userId,
+      ip: req.ip,
+      error: error instanceof Error ? error.message : 'Unknown error' 
     });
 
-    const response: ApiResponse = {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve student',
+      code: 'GET_STUDENT_FAILED',
+    });
+  }
+}));
+
+// POST /api/v1/students - Create new student
+router.post('/', authenticate, asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const studentData: CreateStudentData = req.body;
+
+  // Validate required fields
+  const requiredFields = ['student_id', 'first_name', 'last_name', 'grade_level', 'grade_category'];
+  const missingFields = requiredFields.filter(field => !studentData[field as keyof CreateStudentData]);
+  
+  if (missingFields.length > 0) {
+    logger.warn('Student creation failed: missing required fields', {
+      missingFields,
+      userId: req.user!.userId,
+      ip: req.ip
+    });
+
+    res.status(400).json({
+      success: false,
+      message: `Missing required fields: ${missingFields.join(', ')}`,
+      code: 'MISSING_REQUIRED_FIELDS',
+    });
+    return;
+  }
+
+  try {
+    logger.info('Create student request', { 
+      student_id: studentData.student_id,
+      name: `${studentData.first_name} ${studentData.last_name}`,
+      userId: req.user!.userId,
+      username: req.user!.username,
+      ip: req.ip 
+    });
+
+    const student = await StudentService.createStudent(studentData);
+    
+    logger.info('Student created successfully', { 
+      studentId: student.id,
+      student_id: student.student_id,
+      userId: req.user!.userId,
+      ip: req.ip 
+    });
+
+    res.status(201).json({
       success: true,
       data: student,
       message: 'Student created successfully',
-      timestamp: new Date().toISOString(),
-    };
-    res.status(201).json(response);
+    });
   } catch (error) {
-    logger.error('Error creating student', {
-      error: (error as Error).message,
-      body: req.body,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
+    if (error instanceof Error && error.message.includes('already exists')) {
+      logger.warn('Student creation failed: duplicate student ID', {
+        student_id: studentData.student_id,
+        userId: req.user!.userId,
+        ip: req.ip
+      });
 
-// Update student
-router.put('/:id', 
-  auditMiddleware('UPDATE_STUDENT'),
-  ferpaAccessCheck('WRITE'),
-  requirePermission(Permission.STUDENTS_UPDATE), 
-  async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      res.status(400).json({
+      res.status(409).json({
         success: false,
-        error: 'Student ID is required',
-        timestamp: new Date().toISOString(),
+        message: 'Student with this ID already exists',
+        code: 'STUDENT_ID_EXISTS',
       });
       return;
     }
 
-    const {
-      firstName,
-      lastName,
-      gradeLevel,
-      gradeCategory,
-      section,
-      isActive,
-    } = req.body;
-
-    const student = await updateStudent(id, {
-      firstName,
-      lastName,
-      gradeLevel,
-      gradeCategory,
-      section,
-      isActive,
+    logger.error('Student creation failed', { 
+      student_id: studentData.student_id,
+      userId: req.user?.userId,
+      ip: req.ip,
+      error: error instanceof Error ? error.message : 'Unknown error' 
     });
 
-    const response: ApiResponse = {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create student',
+      code: 'CREATE_STUDENT_FAILED',
+    });
+  }
+}));
+
+// PUT /api/v1/students/:id - Update student
+router.put('/:id', authenticate, asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const updateData: UpdateStudentData = req.body;
+
+  // Validate ID parameter
+  if (!id) {
+    logger.warn('Update student failed: missing student ID', {
+      userId: req.user!.userId,
+      ip: req.ip
+    });
+
+    res.status(400).json({
+      success: false,
+      message: 'Student ID is required',
+      code: 'MISSING_STUDENT_ID',
+    });
+    return;
+  }
+
+  // Check if there's at least one field to update
+  const allowedFields = ['first_name', 'last_name', 'grade_level', 'grade_category', 'section', 'max_concurrent_reservations', 'is_active', 'equipment_ban', 'equipment_ban_reason', 'equipment_ban_until', 'fine_balance'];
+  const updateFields = Object.keys(updateData).filter(field => allowedFields.includes(field));
+  
+  if (updateFields.length === 0) {
+    logger.warn('Update student failed: no valid fields to update', {
+      studentId: id,
+      userId: req.user!.userId,
+      ip: req.ip
+    });
+
+    res.status(400).json({
+      success: false,
+      message: 'No valid fields provided for update',
+      code: 'NO_UPDATE_FIELDS',
+    });
+    return;
+  }
+
+  try {
+    logger.info('Update student request', { 
+      studentId: id,
+      updateFields,
+      userId: req.user!.userId,
+      username: req.user!.username,
+      ip: req.ip 
+    });
+
+    const student = await StudentService.updateStudent(id, updateData);
+    
+    logger.info('Student updated successfully', { 
+      studentId: id,
+      student_id: student.student_id,
+      userId: req.user!.userId,
+      ip: req.ip 
+    });
+
+    res.json({
       success: true,
       data: student,
       message: 'Student updated successfully',
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
+    });
   } catch (error) {
-    logger.error('Error updating student', {
-      error: (error as Error).message,
-      id: req.params.id,
-      body: req.body,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
-
-// Delete student
-router.delete('/:id', 
-  auditMiddleware('DELETE_STUDENT'),
-  ferpaAccessCheck('DELETE'),
-  requirePermission(Permission.STUDENTS_DELETE), 
-  async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      res.status(400).json({
-        success: false,
-        error: 'Student ID is required',
-        timestamp: new Date().toISOString(),
+    if (error instanceof Error && error.message === 'Student not found') {
+      logger.warn('Update student failed: student not found', {
+        studentId: id,
+        userId: req.user!.userId,
+        ip: req.ip
       });
-      return;
-    }
 
-    await deleteStudent(id);
-
-    const response: ApiResponse = {
-      success: true,
-      message: 'Student deleted successfully',
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
-  } catch (error) {
-    logger.error('Error deleting student', {
-      error: (error as Error).message,
-      id: req.params.id,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
-
-// Get student activities
-router.get('/activities/all', 
-  auditMiddleware('READ_STUDENT_ACTIVITIES'),
-  ferpaAccessCheck('READ'),
-  requirePermission(Permission.ACTIVITIES_VIEW), 
-  async (req: Request, res: Response) => {
-  try {
-    const {
-      studentId,
-      startDate,
-      endDate,
-      activityType,
-      status,
-      page = '1',
-      limit = '50',
-    } = req.query;
-
-    const options: GetStudentActivitiesOptions = {
-      page: parseInt(page as string),
-      limit: parseInt(limit as string),
-    };
-
-    if (studentId) {
-      options.studentId = studentId as string;
-    }
-
-    if (startDate) {
-      options.startDate = new Date(startDate as string);
-    }
-
-    if (endDate) {
-      options.endDate = new Date(endDate as string);
-    }
-
-    if (activityType) {
-      options.activityType = activityType as student_activities_activity_type;
-    }
-
-    if (status) {
-      options.status = status as ActivityStatus;
-    }
-
-    const result = await getStudentActivities(options);
-
-    const response: ApiResponse = {
-      success: true,
-      data: result,
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
-  } catch (error) {
-    logger.error('Error fetching student activities', {
-      error: (error as Error).message,
-      query: req.query,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
-
-// Get active sessions
-router.get('/activities/active', 
-  auditMiddleware('LIST_ACTIVE_SESSIONS'),
-  requirePermission(Permission.ACTIVITIES_VIEW), 
-  async (req: Request, res: Response) => {
-  try {
-    const activities = await getActiveSessions();
-
-    const response: ApiResponse = {
-      success: true,
-      data: activities,
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
-  } catch (error) {
-    logger.error('Error fetching active sessions', {
-      error: (error as Error).message,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
-
-// Create student activity
-router.post('/activities', 
-  auditMiddleware('CREATE_STUDENT_ACTIVITY'),
-  requirePermission(Permission.ACTIVITIES_CREATE), 
-  async (req: Request, res: Response) => {
-  try {
-    const { studentId, activityType, equipmentId, timeLimitMinutes, notes } =
-      req.body;
-
-    if (!studentId || !activityType) {
-      res.status(400).json({
-        success: false,
-        error: 'Missing required fields: studentId, activityType',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    const activity = await createStudentActivity({
-      student_id: studentId,
-      activity_type: activityType,
-      equipment_id: equipmentId,
-      timeLimitMinutes,
-      notes,
-    });
-
-    const response: ApiResponse = {
-      success: true,
-      data: activity,
-      message: 'Student activity created successfully',
-      timestamp: new Date().toISOString(),
-    };
-    res.status(201).json(response);
-  } catch (error) {
-    logger.error('Error creating student activity', {
-      error: (error as Error).message,
-      body: req.body,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
-
-// End student activity
-router.patch('/activities/:id/end', 
-  auditMiddleware('END_STUDENT_ACTIVITY'),
-  requirePermission(Permission.ACTIVITIES_UPDATE), 
-  async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      res.status(400).json({
-        success: false,
-        error: 'Activity ID is required',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    const activity = await endStudentActivity(id);
-
-    const response: ApiResponse = {
-      success: true,
-      data: activity,
-      message: 'Student activity ended successfully',
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
-  } catch (error) {
-    logger.error('Error ending student activity', {
-      error: (error as Error).message,
-      id: req.params.id,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
-  }
-});
-
-// Scan student barcode
-router.post('/scan', 
-  auditMiddleware('SCAN_STUDENT_BARCODE'),
-  ferpaAccessCheck('READ'),
-  requirePermission(Permission.STUDENTS_VIEW), 
-  async (req: Request, res: Response) => {
-  try {
-    const { barcode } = req.body;
-
-    if (!barcode) {
-      res.status(400).json({
-        success: false,
-        error: 'Barcode is required',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    const student = await getStudentByBarcode(barcode);
-
-    if (!student) {
       res.status(404).json({
         success: false,
-        error: 'Student not found',
-        timestamp: new Date().toISOString(),
+        message: 'Student not found',
+        code: 'STUDENT_NOT_FOUND',
       });
       return;
     }
 
-    const response: ApiResponse = {
-      success: true,
-      message: 'Student found successfully',
-      data: student,
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
-  } catch (error) {
-    logger.error('Error scanning student barcode', {
-      error: (error as Error).message,
-      body: req.body,
+    logger.error('Student update failed', { 
+      studentId: id,
+      userId: req.user?.userId,
+      ip: req.ip,
+      error: error instanceof Error ? error.message : 'Unknown error' 
     });
+
     res.status(500).json({
       success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
+      message: 'Failed to update student',
+      code: 'UPDATE_STUDENT_FAILED',
     });
   }
-});
+}));
+
+// DELETE /api/v1/students/:id - Delete student
+router.delete('/:id', authenticate, asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+
+  // Validate ID parameter
+  if (!id) {
+    logger.warn('Delete student failed: missing student ID', {
+      userId: req.user!.userId,
+      ip: req.ip
+    });
+
+    res.status(400).json({
+      success: false,
+      message: 'Student ID is required',
+      code: 'MISSING_STUDENT_ID',
+    });
+    return;
+  }
+
+  try {
+    logger.info('Delete student request', { 
+      studentId: id,
+      userId: req.user!.userId,
+      username: req.user!.username,
+      ip: req.ip 
+    });
+
+    await StudentService.deleteStudent(id);
+    
+    logger.info('Student deleted successfully', { 
+      studentId: id,
+      userId: req.user!.userId,
+      ip: req.ip 
+    });
+
+    res.json({
+      success: true,
+      message: 'Student deleted successfully',
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Student not found') {
+      logger.warn('Delete student failed: student not found', {
+        studentId: id,
+        userId: req.user!.userId,
+        ip: req.ip
+      });
+
+      res.status(404).json({
+        success: false,
+        message: 'Student not found',
+        code: 'STUDENT_NOT_FOUND',
+      });
+      return;
+    }
+
+    logger.error('Student deletion failed', { 
+      studentId: id,
+      userId: req.user?.userId,
+      ip: req.ip,
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete student',
+      code: 'DELETE_STUDENT_FAILED',
+    });
+  }
+}));
 
 export default router;

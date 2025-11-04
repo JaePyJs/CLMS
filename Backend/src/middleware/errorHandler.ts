@@ -1,218 +1,243 @@
 import { Request, Response, NextFunction } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { CLMSError, ErrorFactory, getErrorResponse, NotFoundError, ValidationError, RateLimitError } from '@/errors/error-types';
-import { logger } from '@/utils/logger';
+import { Prisma } from '@prisma/client';
+import { ZodError } from 'zod';
+import { logger } from '../utils/logger';
+import { env } from '../config/env';
 
-// Request interface extension
-declare global {
-  namespace Express {
-    interface Request {
-      requestId?: string;
-      // Remove user property declaration to avoid conflicts with auth.ts
-    }
+// Custom error classes
+export class AppError extends Error {
+  public readonly statusCode: number;
+  public readonly isOperational: boolean;
+  public readonly code?: string | undefined;
+
+  constructor(
+    message: string,
+    statusCode: number = 500,
+    isOperational: boolean = true,
+    code?: string | undefined
+  ) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = isOperational;
+    this.code = code;
+    
+    Error.captureStackTrace(this, this.constructor);
   }
 }
 
-// Error handler middleware
-export function errorHandler(
-  error: any,
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void {
-  // Generate request ID if not present
-  const requestId = req.requestId || uuidv4();
-  req.requestId = requestId;
-
-  // Create CLMS error
-  const clmsError = ErrorFactory.createError(error, {
-    requestId,
-    method: req.method,
-    url: req.url,
-    userAgent: req.get('User-Agent'),
-    ip: req.ip,
-    userId: req.user?.id,
-  });
-
-  // Log the error
-  clmsError.logError();
-
-  // Send error response
-  const errorResponse = getErrorResponse(clmsError, requestId);
-
-  // Add security headers
-  res.setHeader('X-Request-ID', requestId);
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-
-  res.status(clmsError.statusCode).json(errorResponse);
+export class ValidationError extends AppError {
+  constructor(message: string, _details?: any) {
+    super(message, 400, true, 'VALIDATION_ERROR');
+    this.name = 'ValidationError';
+  }
 }
 
+export class AuthenticationError extends AppError {
+  constructor(message: string = 'Authentication failed') {
+    super(message, 401, true, 'AUTHENTICATION_ERROR');
+    this.name = 'AuthenticationError';
+  }
+}
+
+export class AuthorizationError extends AppError {
+  constructor(message: string = 'Access denied') {
+    super(message, 403, true, 'AUTHORIZATION_ERROR');
+    this.name = 'AuthorizationError';
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(resource: string = 'Resource') {
+    super(`${resource} not found`, 404, true, 'NOT_FOUND_ERROR');
+    this.name = 'NotFoundError';
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(message: string) {
+    super(message, 409, true, 'CONFLICT_ERROR');
+    this.name = 'ConflictError';
+  }
+}
+
+export class RateLimitError extends AppError {
+  constructor(message: string = 'Too many requests') {
+    super(message, 429, true, 'RATE_LIMIT_ERROR');
+    this.name = 'RateLimitError';
+  }
+}
+
+// Error response interface
+interface ErrorResponse {
+  error: {
+    message: string;
+    code?: string;
+    statusCode: number;
+    timestamp: string;
+    path: string;
+    method: string;
+    details?: any;
+    stack?: string;
+  };
+}
+
+// Handle different types of errors
+const handlePrismaError = (error: Prisma.PrismaClientKnownRequestError): AppError => {
+  switch (error.code) {
+    case 'P2002':
+      return new ConflictError(
+        `Duplicate entry: ${error.meta?.['target'] || 'unique constraint violation'}`
+      );
+    case 'P2025':
+      return new NotFoundError('Record');
+    case 'P2003':
+      return new ValidationError('Foreign key constraint violation');
+    case 'P2014':
+      return new ValidationError('Invalid ID provided');
+    default:
+      logger.error('Unhandled Prisma error:', { code: error.code, message: error.message });
+      return new AppError('Database operation failed', 500, true, 'DATABASE_ERROR');
+  }
+};
+
+const handleZodError = (error: ZodError): ValidationError => {
+  const details = error.issues.map((err: any) => ({
+    field: err.path.join('.'),
+    message: err.message,
+    code: err.code,
+  }));
+
+  const message = `Validation failed: ${details.map((d: any) => `${d.field} ${d.message}`).join(', ')}`;
+  
+  return new ValidationError(message, details);
+};
+
+const handleJWTError = (error: Error): AuthenticationError => {
+  if (error.name === 'JsonWebTokenError') {
+    return new AuthenticationError('Invalid token');
+  }
+  if (error.name === 'TokenExpiredError') {
+    return new AuthenticationError('Token expired');
+  }
+  return new AuthenticationError('Authentication failed');
+};
+
+// Main error handler middleware
+export const errorHandler = (
+  error: Error,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): void => {
+  let appError: AppError;
+
+  // Convert known errors to AppError
+  if (error instanceof AppError) {
+    appError = error;
+  } else if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    appError = handlePrismaError(error);
+  } else if (error instanceof ZodError) {
+    appError = handleZodError(error);
+  } else if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+    appError = handleJWTError(error);
+  } else if (error.name === 'MulterError') {
+    appError = new ValidationError(`File upload error: ${error.message}`);
+  } else {
+    // Unknown error
+    appError = new AppError(
+      env.NODE_ENV === 'production' ? 'Internal server error' : error.message,
+      500,
+      false
+    );
+  }
+
+  // Log error
+  const errorLog = {
+    message: appError.message,
+    statusCode: appError.statusCode,
+    code: appError.code,
+    stack: appError.stack,
+    url: req.originalUrl,
+    method: req.method,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    userId: (req as any).user?.id,
+    body: req.method !== 'GET' ? req.body : undefined,
+    query: req.query,
+    params: req.params,
+  };
+
+  if (appError.statusCode >= 500) {
+    logger.error('Server Error:', errorLog);
+  } else {
+    logger.warn('Client Error:', errorLog);
+  }
+
+  // Prepare error response
+  const errorResponse: ErrorResponse = {
+    error: {
+      message: appError.message,
+      ...(appError.code && { code: appError.code }),
+      statusCode: appError.statusCode,
+      timestamp: new Date().toISOString(),
+      path: req.originalUrl,
+      method: req.method,
+    },
+  };
+
+  // Add stack trace in development
+  if (env['NODE_ENV'] === 'development' && appError.stack) {
+    errorResponse.error.stack = appError.stack;
+  }
+
+  // Add details for validation errors
+  if (error instanceof ZodError) {
+    errorResponse.error.details = error.issues.map((err: any) => ({
+      field: err.path.join('.'),
+      message: err.message,
+      code: err.code,
+    }));
+  }
+
+  res.status(appError.statusCode).json(errorResponse);
+};
+
 // Async error wrapper
-export function asyncHandler<T>(
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<T>
-) {
+export const asyncHandler = (
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<any>
+) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
-}
+};
 
 // 404 handler
-export function notFoundHandler(req: Request, res: Response, next: NextFunction): void {
-  const error = new NotFoundError(`Route ${req.method} ${req.path}`, undefined, {
-    requestId: req.requestId,
-    method: req.method,
-    path: req.path
-  });
+export const notFoundHandler = (req: Request, _res: Response, next: NextFunction): void => {
+  const error = new NotFoundError(`Route ${req.originalUrl}`);
   next(error);
-}
+};
 
-// Request logging middleware
-export function requestLogger(req: Request, res: Response, next: NextFunction): void {
-  const requestId = uuidv4();
-  req.requestId = requestId;
-
-  const startTime = Date.now();
-
-  // Log request
-  logger.info('Request started', {
-    requestId,
-    method: req.method,
-    url: req.url,
-    userAgent: req.get('User-Agent'),
-    ip: req.ip,
-    userId: req.user?.id,
+// Unhandled promise rejection handler
+process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
+  logger.error('Unhandled Promise Rejection:', {
+    reason: reason?.message || reason,
+    stack: reason?.stack,
+    promise: promise.toString(),
   });
+  
+  // Graceful shutdown
+  process.exit(1);
+});
 
-  // Override res.end to log response
-  const originalEnd = res.end;
-  res.end = function(chunk?: any, encoding?: any): any {
-    const duration = Date.now() - startTime;
+// Uncaught exception handler
+process.on('uncaughtException', (error: Error) => {
+  logger.error('Uncaught Exception:', {
+    message: error.message,
+    stack: error.stack,
+  });
+  
+  // Graceful shutdown
+  process.exit(1);
+});
 
-    logger.info('Request completed', {
-      requestId,
-      statusCode: res.statusCode,
-      duration: `${duration}ms`,
-      contentLength: res.get('Content-Length'),
-    });
-
-    originalEnd.call(this, chunk, encoding);
-  };
-
-  next();
-}
-
-// Validation middleware using Zod schemas
-export function validateRequest(schema: {
-  body?: any;
-  query?: any;
-  params?: any;
-}) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    try {
-      // Validate body
-      if (schema.body) {
-        const result = schema.body.safeParse(req.body);
-        if (!result.success) {
-          throw new ValidationError(
-            'Request body validation failed',
-            result.error.issues.map((issue: any) => ({
-              field: issue.path.join('.'),
-              message: issue.message,
-              code: issue.code,
-            })),
-            { requestId: req.requestId }
-          );
-        }
-        req.body = result.data;
-      }
-
-      // Validate query
-      if (schema.query) {
-        const result = schema.query.safeParse(req.query);
-        if (!result.success) {
-          throw new ValidationError(
-            'Query parameters validation failed',
-            result.error.issues.map((issue: any) => ({
-              field: issue.path.join('.'),
-              message: issue.message,
-              code: issue.code,
-            })),
-            { requestId: req.requestId }
-          );
-        }
-        req.query = result.data;
-      }
-
-      // Validate params
-      if (schema.params) {
-        const result = schema.params.safeParse(req.params);
-        if (!result.success) {
-          throw new ValidationError(
-            'URL parameters validation failed',
-            result.error.issues.map((issue: any) => ({
-              field: issue.path.join('.'),
-              message: issue.message,
-              code: issue.code,
-            })),
-            { requestId: req.requestId }
-          );
-        }
-        req.params = result.data;
-      }
-
-      next();
-    } catch (error) {
-      next(error);
-    }
-  };
-}
-
-// Rate limiting middleware
-export function createRateLimiter(options: {
-  windowMs: number;
-  max: number;
-  message?: string;
-  skipSuccessfulRequests?: boolean;
-}) {
-  const requests = new Map<string, { count: number; resetTime: number }>();
-
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const key = req.ip || 'unknown';
-    const now = Date.now();
-    const windowStart = now - options.windowMs;
-
-    // Clean up old entries
-    for (const [k, v] of requests.entries()) {
-      if (v.resetTime < now) {
-        requests.delete(k);
-      }
-    }
-
-    // Get or create request count
-    let requestData = requests.get(key);
-    if (!requestData || requestData.resetTime < now) {
-      requestData = { count: 0, resetTime: now + options.windowMs };
-      requests.set(key, requestData);
-    }
-
-    requestData.count++;
-
-    // Check if limit exceeded
-    if (requestData.count > options.max) {
-      const error = new RateLimitError(
-        options.message || 'Too many requests',
-        Math.ceil((requestData.resetTime - now) / 1000),
-        { requestId: req.requestId, ip: req.ip }
-      );
-      return next(error);
-    }
-
-    // Set rate limit headers
-    res.setHeader('X-RateLimit-Limit', options.max);
-    res.setHeader('X-RateLimit-Remaining', Math.max(0, options.max - requestData.count));
-    res.setHeader('X-RateLimit-Reset', Math.ceil(requestData.resetTime / 1000));
-
-    next();
-  };
-}
+export default errorHandler;

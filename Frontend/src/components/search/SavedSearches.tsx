@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -27,6 +28,7 @@ import {
 import { Search, Star, Bookmark, Edit, Trash2, Eye, Users, BookOpen, Monitor, Plus, Copy, Share2, Bell, Clock, TrendingUp } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
+import { useMultipleLoadingStates, useMultipleModals, useForm } from '@/hooks';
 
 interface SavedSearch {
   id: string;
@@ -43,33 +45,57 @@ interface SavedSearch {
   useCount: number;
 }
 
-interface SavedSearchFormData {
-  name: string;
-  description: string;
-  entityType: 'books' | 'students' | 'equipment' | 'global';
-  searchParams: any;
-  isPublic: boolean;
-  enableNotifications: boolean;
-}
-
 export default function SavedSearches() {
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [popularSearches, setPopularSearches] = useState<SavedSearch[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [editingSearch, setEditingSearch] = useState<SavedSearch | null>(null);
-  const [activeTab, setActiveTab] = useState('my-searches');
-  const [filterEntityType, setFilterEntityType] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // Form state
-  const [formData, setFormData] = useState<SavedSearchFormData>({
-    name: '',
-    description: '',
-    entityType: 'books',
-    searchParams: {},
-    isPublic: false,
-    enableNotifications: false,
+  // Consolidated loading states
+  const [loadingStates, loadingActions] = useMultipleLoadingStates({
+    loadSearches: { isLoading: false },
+    createSearch: { isLoading: false },
+    updateSearch: { isLoading: false },
+    deleteSearch: { isLoading: false }
+  });
+
+  // Consolidated modal/dialog states
+  const [modalStates, modalActions] = useMultipleModals({
+    createDialog: false,
+    editDialog: false,
+    deleteDialog: false,
+    shareDialog: false
+  });
+
+  // Search/filter state
+  const [searchFilters, searchFilterActions] = useForm({
+    initialValues: {
+      activeTab: 'my-searches',
+      filterEntityType: 'all',
+      searchQuery: '',
+      editingSearch: null as SavedSearch | null
+    },
+    validationSchema: {}
+  });
+
+  // Derived state for easier access
+  const searchQuery = searchFilters.values.searchQuery;
+  const loading = loadingStates.loadSearches.isLoading;
+  const setShowCreateDialog = (show: boolean) => modalActions.createDialog.setState(show);
+  const setFormData = (data: any) => formActions.setValues(data);
+
+  // Form state for create/edit
+  const [formData, formActions] = useForm({
+    initialValues: {
+      name: '',
+      description: '',
+      entityType: 'books',
+      searchParams: {},
+      isPublic: false,
+      enableNotifications: false,
+    },
+    validationSchema: {
+      name: { required: true },
+      entityType: { required: true }
+    }
   });
 
   // Load saved searches on mount
@@ -79,17 +105,17 @@ export default function SavedSearches() {
   }, []);
 
   const loadSavedSearches = async () => {
-    setLoading(true);
+    loadingActions.loadSearches.start();
     try {
       const response = await apiClient.get('/api/search/saved');
       if (response.success && response.data) {
-        setSavedSearches(response.data.searches || []);
+        setSavedSearches((response.data as any).searches || []);
       }
     } catch (error) {
       console.error('Failed to load saved searches:', error);
       toast.error('Failed to load saved searches');
     } finally {
-      setLoading(false);
+      loadingActions.loadSearches.finish();
     }
   };
 
@@ -97,7 +123,7 @@ export default function SavedSearches() {
     try {
       const response = await apiClient.get('/api/search/saved/popular');
       if (response.success && response.data) {
-        setPopularSearches(response.data);
+        setPopularSearches(Array.isArray(response.data) ? response.data : []);
       }
     } catch (error) {
       console.error('Failed to load popular searches:', error);
@@ -105,42 +131,48 @@ export default function SavedSearches() {
   };
 
   const createSavedSearch = async () => {
-    if (!formData.name.trim() || !formData.entityType) {
+    if (!formData.values.name.trim() || !formData.values.entityType) {
       toast.error('Name and entity type are required');
       return;
     }
 
+    loadingActions.createSearch.start();
     try {
-      const response = await apiClient.post('/api/search/saved', formData);
+      const response = await apiClient.post('/api/search/saved', formData.values);
       if (response.success) {
         toast.success('Saved search created successfully');
-        setShowCreateDialog(false);
-        resetForm();
+        modalActions.createDialog.close();
+        formActions.reset();
         loadSavedSearches();
       }
     } catch (error) {
       console.error('Failed to create saved search:', error);
       toast.error('Failed to create saved search');
+    } finally {
+      loadingActions.createSearch.finish();
     }
   };
 
   const updateSavedSearch = async () => {
-    if (!editingSearch || !formData.name.trim()) {
+    if (!searchFilters.values.editingSearch || !formData.values.name.trim()) {
       toast.error('Name is required');
       return;
     }
 
+    loadingActions.updateSearch.start();
     try {
-      const response = await apiClient.put(`/api/search/saved/${editingSearch.id}`, formData);
+      const response = await apiClient.put(`/api/search/saved/${searchFilters.values.editingSearch.id}`, formData.values);
       if (response.success) {
         toast.success('Saved search updated successfully');
-        setEditingSearch(null);
-        resetForm();
+        searchFilterActions.setValue('editingSearch', null);
+        formActions.reset();
         loadSavedSearches();
       }
     } catch (error) {
       console.error('Failed to update saved search:', error);
       toast.error('Failed to update saved search');
+    } finally {
+      loadingActions.updateSearch.finish();
     }
   };
 
@@ -149,6 +181,7 @@ export default function SavedSearches() {
       return;
     }
 
+    loadingActions.deleteSearch.start();
     try {
       const response = await apiClient.delete(`/api/search/saved/${id}`);
       if (response.success) {
@@ -158,6 +191,8 @@ export default function SavedSearches() {
     } catch (error) {
       console.error('Failed to delete saved search:', error);
       toast.error('Failed to delete saved search');
+    } finally {
+      loadingActions.deleteSearch.finish();
     }
   };
 
@@ -180,8 +215,8 @@ export default function SavedSearches() {
   };
 
   const editSavedSearch = (search: SavedSearch) => {
-    setEditingSearch(search);
-    setFormData({
+    searchFilterActions.setFieldValue('editingSearch', search);
+    formActions.setValues({
       name: search.name,
       description: search.description || '',
       entityType: search.entityType,
@@ -192,7 +227,7 @@ export default function SavedSearches() {
   };
 
   const resetForm = () => {
-    setFormData({
+    formActions.setValues({
       name: '',
       description: '',
       entityType: 'books',
@@ -247,9 +282,9 @@ export default function SavedSearches() {
   };
 
   const filteredSearches = savedSearches.filter(search => {
-    const matchesQuery = search.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (search.description?.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesEntityType = filterEntityType === 'all' || search.entityType === filterEntityType;
+    const matchesQuery = search.name.toLowerCase().includes(searchFilters.values.searchQuery.toLowerCase()) ||
+                         (search.description?.toLowerCase().includes(searchFilters.values.searchQuery.toLowerCase()));
+    const matchesEntityType = searchFilters.values.filterEntityType === 'all' || search.entityType === searchFilters.values.filterEntityType;
     return matchesQuery && matchesEntityType;
   });
 
@@ -266,7 +301,7 @@ export default function SavedSearches() {
           </p>
         </div>
 
-        <Button onClick={() => setShowCreateDialog(true)}>
+        <Button onClick={() => modalActions.createDialog.open()}>
           <Plus className="w-4 h-4 mr-2" />
           Create New Search
         </Button>
@@ -280,15 +315,15 @@ export default function SavedSearches() {
               <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search your saved searches..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchFilters.values.searchQuery}
+                onChange={(e) => searchFilterActions.setFieldValue('searchQuery', e.target.value)}
                 className="pl-10"
               />
             </div>
 
             <Select
-              value={filterEntityType}
-              onValueChange={setFilterEntityType}
+              value={searchFilters.values.filterEntityType}
+              onValueChange={(value) => searchFilterActions.setFieldValue('filterEntityType', value)}
             >
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Filter by type" />
@@ -306,7 +341,7 @@ export default function SavedSearches() {
       </Card>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={searchFilters.values.activeTab} onValueChange={(value) => searchFilterActions.setFieldValue('activeTab', value)}>
         <TabsList>
           <TabsTrigger value="my-searches">
             <Star className="w-4 h-4 mr-2" />
@@ -528,20 +563,20 @@ export default function SavedSearches() {
       </Tabs>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={showCreateDialog || !!editingSearch} onOpenChange={(open) => {
+      <Dialog open={modalStates.createDialog.isOpen || !!searchFilters.values.editingSearch} onOpenChange={(open) => {
         if (!open) {
-          setShowCreateDialog(false);
-          setEditingSearch(null);
+          modalActions.createDialog.close();
+          searchFilterActions.setFieldValue('editingSearch', null);
           resetForm();
         }
       }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {editingSearch ? 'Edit Saved Search' : 'Create New Saved Search'}
+              {searchFilters.values.editingSearch ? 'Edit Saved Search' : 'Create New Saved Search'}
             </DialogTitle>
             <DialogDescription>
-              {editingSearch ? 'Update your saved search parameters' : 'Save your current search for future use'}
+              {searchFilters.values.editingSearch ? 'Update your saved search parameters' : 'Save your current search for future use'}
             </DialogDescription>
           </DialogHeader>
 
@@ -550,8 +585,8 @@ export default function SavedSearches() {
               <label className="text-sm font-medium">Name *</label>
               <Input
                 placeholder="Enter search name..."
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                value={formData.values.name}
+                onChange={(e) => formActions.setFieldValue('name', e.target.value)}
               />
             </div>
 
@@ -559,8 +594,8 @@ export default function SavedSearches() {
               <label className="text-sm font-medium">Description</label>
               <Textarea
                 placeholder="Optional description..."
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                value={formData.values.description}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => formActions.setFieldValue('description', e.target.value)}
                 rows={3}
               />
             </div>
@@ -568,8 +603,8 @@ export default function SavedSearches() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Entity Type *</label>
               <Select
-                value={formData.entityType}
-                onValueChange={(value: any) => setFormData({ ...formData, entityType: value })}
+                value={formData.values.entityType}
+                onValueChange={(value: any) => formActions.setFieldValue('entityType', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -591,8 +626,8 @@ export default function SavedSearches() {
                 </p>
               </div>
               <Switch
-                checked={formData.isPublic}
-                onCheckedChange={(checked) => setFormData({ ...formData, isPublic: checked })}
+                checked={formData.values.isPublic}
+                onCheckedChange={(checked) => formActions.setFieldValue('isPublic', checked)}
               />
             </div>
 
@@ -604,8 +639,8 @@ export default function SavedSearches() {
                 </p>
               </div>
               <Switch
-                checked={formData.enableNotifications}
-                onCheckedChange={(checked) => setFormData({ ...formData, enableNotifications: checked })}
+                checked={formData.values.enableNotifications}
+                onCheckedChange={(checked) => formActions.setFieldValue('enableNotifications', checked)}
               />
             </div>
           </div>
@@ -614,15 +649,15 @@ export default function SavedSearches() {
             <Button
               variant="outline"
               onClick={() => {
-                setShowCreateDialog(false);
-                setEditingSearch(null);
+                modalActions.createDialog.close();
+                searchFilterActions.setFieldValue('editingSearch', null);
                 resetForm();
               }}
             >
               Cancel
             </Button>
-            <Button onClick={editingSearch ? updateSavedSearch : createSavedSearch}>
-              {editingSearch ? 'Update' : 'Create'}
+            <Button onClick={searchFilters.values.editingSearch ? updateSavedSearch : createSavedSearch}>
+              {searchFilters.values.editingSearch ? 'Update' : 'Create'}
             </Button>
           </DialogFooter>
         </DialogContent>

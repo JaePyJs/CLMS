@@ -2,7 +2,6 @@ import { useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -96,7 +95,6 @@ export default function AdvancedStudentSearch() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchResults, setSearchResults] = useState<StudentSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [filters, setFilters] = useState<StudentSearchOptions>({
     sortBy: 'name',
     sortOrder: 'asc',
@@ -115,7 +113,7 @@ export default function AdvancedStudentSearch() {
       return;
     }
 
-    setLoadingSuggestions(true);
+    setLoading(true);
     try {
       const response = await apiClient.get('/api/search/students/suggestions', {
         params: {
@@ -130,7 +128,7 @@ export default function AdvancedStudentSearch() {
     } catch (error) {
       console.error('Failed to fetch student suggestions:', error);
     } finally {
-      setLoadingSuggestions(false);
+      setLoading(false);
     }
   }, []);
 

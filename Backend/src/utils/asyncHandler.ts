@@ -1,9 +1,16 @@
-import type { NextFunction, Request, Response, RequestHandler } from 'express';
+/**
+ * Async Handler Utility
+ * Wraps async route handlers to catch errors
+ */
 
-type AsyncMiddleware = (req: Request, res: Response, next: NextFunction) => Promise<unknown>;
+import { Request, Response, NextFunction } from 'express';
 
-export function asyncHandler(handler: AsyncMiddleware): RequestHandler {
-  return (req, res, next) => {
-    Promise.resolve(handler(req, res, next)).catch(next);
+export const asyncHandler = (
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<any>
+) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
   };
-}
+};
+
+export default asyncHandler;

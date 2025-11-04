@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useCallback, useEffect, useRef, useMemo, useState } from 'react';
 import type { EnhancedStateStore, StateSelector, StateUpdater } from '@/store/state-manager';
 
 /**
@@ -11,7 +11,7 @@ import type { EnhancedStateStore, StateSelector, StateUpdater } from '@/store/st
 export function useEnhancedState<T>(
   store: EnhancedStateStore<T>
 ): [T, StateUpdater<T>, EnhancedStateStore<T>] {
-  const [state, setState] = React.useState(store.getState());
+  const [state, setState] = useState(store.getState());
 
   // Subscribe to store changes
   useEffect(() => {
@@ -223,7 +223,7 @@ export function useOptimisticState<T>(
   const updateWithOptimism = useCallback<StateUpdater<T>>((updater) => {
     // Apply optimistic update immediately
     const optimisticUpdate = typeof updater === 'function'
-      ? (updater as Function)(optimisticState)
+      ? (updater as (state: T) => T)(optimisticState)
       : updater;
 
     setOptimisticState(optimisticUpdate);
@@ -253,7 +253,7 @@ export function useDebouncedState<T>(
 ): [T, StateUpdater<T>, T] {
   const [state, setState] = useEnhancedState(store);
   const [debouncedState, setDebouncedState] = React.useState<T>(state);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const debouncedSetState = useCallback<StateUpdater<T>>((updater) => {
     setState(updater);
@@ -264,7 +264,7 @@ export function useDebouncedState<T>(
 
     timeoutRef.current = setTimeout(() => {
       setDebouncedState(typeof updater === 'function'
-        ? (updater as Function)(store.getState())
+        ? (updater as (state: T) => T)(store.getState())
         : updater
       );
     }, delay);
@@ -303,7 +303,7 @@ export function useUndoRedoState<T>(
 
   const updateWithHistory = useCallback<StateUpdater<T>>((updater) => {
     const newState = typeof updater === 'function'
-      ? (updater as Function)(state)
+      ? (updater as (state: T) => T)(state)
       : updater;
 
     setState(newState);
@@ -326,16 +326,22 @@ export function useUndoRedoState<T>(
   const undo = useCallback(() => {
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
-      setCurrentIndex(newIndex);
-      setState(history[newIndex]);
+      const previousState = history[newIndex];
+      if (previousState !== undefined) {
+        setCurrentIndex(newIndex);
+        setState(previousState);
+      }
     }
   }, [currentIndex, history, setState]);
 
   const redo = useCallback(() => {
     if (currentIndex < history.length - 1) {
       const newIndex = currentIndex + 1;
-      setCurrentIndex(newIndex);
-      setState(history[newIndex]);
+      const nextState = history[newIndex];
+      if (nextState !== undefined) {
+        setCurrentIndex(newIndex);
+        setState(nextState);
+      }
     }
   }, [currentIndex, history, setState]);
 
@@ -365,7 +371,7 @@ export function useValidatedState<T>(
 
   const validateAndUpdate = useCallback<StateUpdater<T>>((updater) => {
     const newState = typeof updater === 'function'
-      ? (updater as Function)(state)
+      ? (updater as (state: T) => T)(state)
       : updater;
 
     const validationError = validator(newState);
@@ -418,7 +424,6 @@ export function useCachedState<T>(
         data,
         timestamp: Date.now(),
       }));
-      setLastUpdate(Date.now());
     } catch (error) {
       console.error('Cache write error:', error);
     }
@@ -426,7 +431,7 @@ export function useCachedState<T>(
 
   const updateWithCache = useCallback<StateUpdater<T>>((updater) => {
     const newState = typeof updater === 'function'
-      ? (updater as Function)(state)
+      ? (updater as (state: T) => T)(state)
       : updater;
 
     setState(newState);

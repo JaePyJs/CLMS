@@ -11,7 +11,8 @@ import { AddStudentDialog } from './AddStudentDialog'
 import { RealTimeDashboard } from './RealTimeDashboard'
 import { utilitiesApi } from '@/lib/api'
 import { toast } from 'sonner'
-import { Users, Monitor, Clock, TrendingUp, AlertCircle, CheckCircle, Activity, Wifi, CalendarDays, FileText, Shield, Download, Printer, Maximize2, Minimize2, AlertTriangle, Settings, BarChart3, Eye, Edit, ExternalLink, Bell } from 'lucide-react';
+// Simplified icon imports - only what this component actually uses
+import { CheckCircle, Activity, Clock, TrendingUp, AlertTriangle, Settings, BarChart3, Download, Printer, Maximize2, Minimize2, Bell, Wifi, CalendarDays, Eye, Users, Monitor, Shield, AlertCircle, ExternalLink, Edit, FileText } from 'lucide-react'
 
 interface DashboardOverviewProps {
   onTabChange?: (tab: string) => void;
@@ -70,9 +71,11 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
 
         // Show key metrics in toast
         const report = response.data as { summary: { totalStudents: number; todayActivities: number; equipmentUtilization: number } }
-        toast(`${report.summary.totalStudents} students, ${report.summary.todayActivities} activities today, ${report.summary.equipmentUtilization}% equipment utilization`)
+        if (report?.summary && typeof report.summary.totalStudents === 'number') {
+          toast.info(`${report.summary.totalStudents} students, ${report.summary.todayActivities} activities today, ${report.summary.equipmentUtilization}% equipment utilization`)
+        }
       } else {
-        toast.error(response.error || 'Failed to generate report')
+        toast.error(typeof response.error === 'string' ? response.error : response.error?.message || 'Failed to generate report')
       }
     } catch (error) {
       console.error('Error generating report:', error)
@@ -91,7 +94,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
         const data = response.data as { estimatedDuration?: string }
         toast.success(`Backup initiated! ${data?.estimatedDuration ?? 'Unknown'} estimated duration.`)
       } else {
-        toast.error(response.error || 'Failed to initiate backup')
+        toast.error(typeof response.error === 'string' ? response.error : response.error?.message || 'Failed to initiate backup')
       }
     } catch (error) {
       console.error('Error initiating backup:', error)
@@ -555,7 +558,11 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
 
               {healthData && typeof healthData === 'object' && healthData !== null && 'timestamp' in healthData && (
                 <div className="text-xs text-muted-foreground text-center pt-2 border-t">
-                  Last check: {new Date((healthData as any).timestamp).toLocaleTimeString()}
+                  Last check: {new Date(
+                    typeof healthData.timestamp === 'string' || typeof healthData.timestamp === 'number'
+                      ? healthData.timestamp
+                      : new Date().toISOString()
+                  ).toLocaleTimeString()}
                 </div>
               )}
             </CardContent>

@@ -58,7 +58,7 @@
     "react-dom": "^19.2.0",
     "react-error-boundary": "^6.0.0",
     "react-hook-form": "^7.45.4",
-    "react-window": "^2.2.1",
+    "react-window": "^2.2.2",
     "react-window-infinite-loader": "^2.0.0",
     "recharts": "^2.8.0",
     "sonner": "^1.4.0",
@@ -99,5 +99,11 @@
     "vite-plugin-imagemin": "^0.6.1",
     "vite-plugin-pwa": "^0.20.5",
     "vitest": "^1.0.4"
+  },
+  "overrides": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.0.0"
   }
 }

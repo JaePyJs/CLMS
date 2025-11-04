@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Table,
@@ -120,24 +119,24 @@ const AuditLogViewer: React.FC = () => {
       setLoading(true);
 
       // Mock API call - in real app, this would be an actual API call
-      const mockLogs: AuditLogEntry[] = Array.from({ length: 150 }, (_, index) => ({
+      const mockLogs = Array.from({ length: 150 }, (_, index) => ({
         id: `audit_${Date.now()}_${index}`,
         timestamp: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString(),
         userId: `user_${Math.floor(Math.random() * 100)}`,
-        userRole: ['TEACHER', 'LIBRARIAN', 'ADMIN', 'STAFF'][Math.floor(Math.random() * 4)],
+        userRole: ['TEACHER', 'LIBRARIAN', 'ADMIN', 'STAFF'][Math.floor(Math.random() * 4)] as AuditLogEntry['userRole'],
         sessionId: `session_${Math.random().toString(36).substr(2, 9)}`,
         requestId: `req_${Math.random().toString(36).substr(2, 9)}`,
-        endpoint: ['/api/students', '/api/activities', '/api/books', '/api/equipment'][Math.floor(Math.random() * 4)],
-        method: ['GET', 'POST', 'PUT', 'DELETE'][Math.floor(Math.random() * 4)],
+        endpoint: ['/api/students', '/api/activities', '/api/books', '/api/equipment'][Math.floor(Math.random() * 4)] as AuditLogEntry['endpoint'],
+        method: ['GET', 'POST', 'PUT', 'DELETE'][Math.floor(Math.random() * 4)] as AuditLogEntry['method'],
         ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         entityType: ['student', 'activity', 'book', 'equipment'][Math.floor(Math.random() * 4)],
         entityId: `entity_${Math.floor(Math.random() * 1000)}`,
-        action: ['READ', 'CREATE', 'UPDATE', 'DELETE', 'EXPORT', 'SEARCH'][Math.floor(Math.random() * 6)] as any,
+        action: ['READ', 'CREATE', 'UPDATE', 'DELETE', 'EXPORT', 'SEARCH'][Math.floor(Math.random() * 6)] as AuditLogEntry['action'],
         fieldsAccessed: ['name', 'email', 'grade', 'section'].slice(0, Math.floor(Math.random() * 4) + 1),
         sensitiveFieldsAccessed: Math.random() > 0.7 ? ['email', 'phone'] : [],
         encryptedFieldsAccessed: Math.random() > 0.8 ? ['ssn', 'medical_info'] : [],
-        dataAccessLevel: ['PUBLIC', 'LIMITED', 'SENSITIVE', 'RESTRICTED', 'CONFIDENTIAL'][Math.floor(Math.random() * 5)] as any,
+        dataAccessLevel: ['PUBLIC', 'LIMITED', 'SENSITIVE', 'RESTRICTED', 'CONFIDENTIAL'][Math.floor(Math.random() * 5)] as AuditLogEntry['dataAccessLevel'],
         recordsAffected: Math.floor(Math.random() * 100),
         dataSize: Math.floor(Math.random() * 10000),
         responseStatus: Math.random() > 0.1 ? 200 : [400, 401, 403, 404, 500][Math.floor(Math.random() * 5)],
@@ -163,7 +162,7 @@ const AuditLogViewer: React.FC = () => {
           databaseQueryCount: Math.floor(Math.random() * 10) + 1,
           apiRate: Math.floor(Math.random() * 100)
         }
-      }));
+      })) as AuditLogEntry[];
 
       // Apply filters
       let filteredLogs = mockLogs.filter(log => {
@@ -401,7 +400,15 @@ const AuditLogViewer: React.FC = () => {
                   <Label>User Role</Label>
                   <Select
                     value={filters.userRole || ''}
-                    onValueChange={(value) => setFilters(prev => ({ ...prev, userRole: value || undefined }))}
+                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
+                      const newFilters = { ...prev };
+                      if (value === '') {
+                        delete newFilters.userRole;
+                      } else {
+                        newFilters.userRole = value;
+                      }
+                      return newFilters;
+                    })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All Roles" />
@@ -420,7 +427,15 @@ const AuditLogViewer: React.FC = () => {
                   <Label>Entity Type</Label>
                   <Select
                     value={filters.entityType || ''}
-                    onValueChange={(value) => setFilters(prev => ({ ...prev, entityType: value || undefined }))}
+                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
+                      const newFilters = { ...prev };
+                      if (value === '') {
+                        delete newFilters.entityType;
+                      } else {
+                        newFilters.entityType = value;
+                      }
+                      return newFilters;
+                    })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All Entities" />
@@ -439,7 +454,15 @@ const AuditLogViewer: React.FC = () => {
                   <Label>Action</Label>
                   <Select
                     value={filters.action || ''}
-                    onValueChange={(value) => setFilters(prev => ({ ...prev, action: value || undefined }))}
+                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
+                      const newFilters = { ...prev };
+                      if (value === '') {
+                        delete newFilters.action;
+                      } else {
+                        newFilters.action = value;
+                      }
+                      return newFilters;
+                    })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All Actions" />
@@ -460,7 +483,15 @@ const AuditLogViewer: React.FC = () => {
                   <Label>Data Access Level</Label>
                   <Select
                     value={filters.dataAccessLevel || ''}
-                    onValueChange={(value) => setFilters(prev => ({ ...prev, dataAccessLevel: value || undefined }))}
+                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
+                      const newFilters = { ...prev };
+                      if (value === '') {
+                        delete newFilters.dataAccessLevel;
+                      } else {
+                        newFilters.dataAccessLevel = value;
+                      }
+                      return newFilters;
+                    })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All Levels" />
@@ -480,10 +511,15 @@ const AuditLogViewer: React.FC = () => {
                   <Label>Success Status</Label>
                   <Select
                     value={filters.success !== undefined ? (filters.success ? 'true' : 'false') : ''}
-                    onValueChange={(value) => setFilters(prev => ({
-                      ...prev,
-                      success: value ? value === 'true' : undefined
-                    }))}
+                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
+                      const newFilters = { ...prev };
+                      if (value === '') {
+                        delete newFilters.success;
+                      } else {
+                        newFilters.success = value === 'true';
+                      }
+                      return newFilters;
+                    })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All Status" />
@@ -501,10 +537,15 @@ const AuditLogViewer: React.FC = () => {
                   <div className="space-y-2">
                     <Checkbox
                       checked={filters.hasSecurityFlags || false}
-                      onCheckedChange={(checked) => setFilters(prev => ({
-                        ...prev,
-                        hasSecurityFlags: checked || undefined
-                      }))}
+                      onCheckedChange={(checked) => setFilters((prev: FilterOptions): FilterOptions => {
+                        const newFilters = { ...prev };
+                        if (checked === true) {
+                          newFilters.hasSecurityFlags = true;
+                        } else {
+                          delete newFilters.hasSecurityFlags;
+                        }
+                        return newFilters;
+                      })}
                     >
                       Has Security Flags
                     </Checkbox>
@@ -515,10 +556,15 @@ const AuditLogViewer: React.FC = () => {
                   <Label>FERPA Required</Label>
                   <Select
                     value={filters.ferpaRequired !== undefined ? (filters.ferpaRequired ? 'true' : 'false') : ''}
-                    onValueChange={(value) => setFilters(prev => ({
-                      ...prev,
-                      ferpaRequired: value ? value === 'true' : undefined
-                    }))}
+                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
+                      const newFilters = { ...prev };
+                      if (value === '') {
+                        delete newFilters.ferpaRequired;
+                      } else {
+                        newFilters.ferpaRequired = value === 'true';
+                      }
+                      return newFilters;
+                    })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All" />

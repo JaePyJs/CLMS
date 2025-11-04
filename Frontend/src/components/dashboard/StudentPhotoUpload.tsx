@@ -22,7 +22,7 @@ export function StudentPhotoUpload({
   onUploadComplete
 }: StudentPhotoUploadProps) {
   const mobileState = useMobileOptimization();
-  const { isMobile, isTablet, width } = mobileState;
+  const { isMobile, isTablet: _isTablet, width: _width } = mobileState;
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(currentPhotoUrl || null);
   const [showCamera, setShowCamera] = useState(false);

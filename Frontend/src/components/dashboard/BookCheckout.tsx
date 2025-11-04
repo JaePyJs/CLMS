@@ -1,4 +1,4 @@
-import React, { useState, Suspense, useEffect, lazy } from 'react';
+import { useState, Suspense, useEffect, lazy } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useMultipleLoadingStates, useMultipleModals, useForm } from '@/hooks';
 
 // Lazy load CheckoutHistory component
 const CheckoutHistory = lazy(() => import('./CheckoutHistory'));
@@ -17,7 +18,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { BookOpen, User, CheckCircle, AlertCircle, RotateCcw, Scan, History } from 'lucide-react';
+import { BookOpen, User, CheckCircle, AlertCircle, RotateCcw, Scan, History as HistoryIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -57,22 +58,50 @@ interface Checkout {
 }
 
 export default function BookCheckout() {
-  // Checkout state
-  const [checkoutStep, setCheckoutStep] = useState<'student' | 'book' | 'confirm'>('student');
-  const [studentBarcode, setStudentBarcode] = useState('');
-  const [bookBarcode, setBookBarcode] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
-  const [dueDate, setDueDate] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  // Return state
-  const [returnBarcode, setReturnBarcode] = useState('');
-  const [activeCheckout, setActiveCheckout] = useState<Checkout | null>(null);
-  const [showReturnConfirm, setShowReturnConfirm] = useState(false);
-
-  // Tab state
+  // Tab management (keeping simple useState for UI state)
   const [activeTab, setActiveTab] = useState('checkout');
+
+  // Consolidated loading states for all operations
+  const [loadingStates, loadingActions] = useMultipleLoadingStates({
+    scanStudent: { isLoading: false },
+    scanBook: { isLoading: false },
+    confirmCheckout: { isLoading: false },
+    scanReturn: { isLoading: false },
+    confirmReturn: { isLoading: false }
+  })
+
+  // Consolidated modal states
+  const [modalStates, modalActions] = useMultipleModals({
+    returnConfirm: false
+  })
+
+  // Checkout form management
+  const [checkoutForm, checkoutFormActions] = useForm({
+    initialValues: {
+      studentBarcode: '',
+      bookBarcode: '',
+      selectedStudent: null,
+      selectedBook: null,
+      dueDate: '',
+      checkoutStep: 'student' as 'student' | 'book' | 'confirm'
+    },
+    validationSchema: {
+      studentBarcode: { required: true },
+      bookBarcode: { required: true },
+      dueDate: { required: true }
+    }
+  })
+
+  // Return form management  
+  const [returnForm, returnFormActions] = useForm({
+    initialValues: {
+      returnBarcode: '',
+      activeCheckout: null
+    },
+    validationSchema: {
+      returnBarcode: { required: true }
+    }
+  })
 
   // Calculate default due date (7 days from now)
   const getDefaultDueDate = (): string => {
@@ -83,17 +112,18 @@ export default function BookCheckout() {
 
   // Initialize due date
   useEffect(() => {
-    setDueDate(getDefaultDueDate());
+    checkoutFormActions.setValue('dueDate', getDefaultDueDate());
   }, []);
 
   // Scan student
   const handleScanStudent = async () => {
+    const studentBarcode = checkoutForm.values.studentBarcode;
     if (!studentBarcode.trim()) {
       toast.error('Please enter a student ID or barcode');
       return;
     }
 
-    setLoading(true);
+    loadingActions.scanStudent.start();
     try {
       const token = localStorage.getItem('clms_token');
       const response = await axios.get(
@@ -103,8 +133,8 @@ export default function BookCheckout() {
 
       if (response.data.success && response.data.data.students.length > 0) {
         const student = response.data.data.students[0];
-        setSelectedStudent(student);
-        setCheckoutStep('book');
+        checkoutFormActions.setValue('selectedStudent', student);
+        checkoutFormActions.setValue('checkoutStep', 'book');
         toast.success(`Student found: ${student.firstName} ${student.lastName}`);
       } else {
         toast.error('Student not found');
@@ -112,18 +142,19 @@ export default function BookCheckout() {
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to find student');
     } finally {
-      setLoading(false);
+      loadingActions.scanStudent.finish();
     }
   };
 
   // Scan book
   const handleScanBook = async () => {
+    const bookBarcode = checkoutForm.values.bookBarcode;
     if (!bookBarcode.trim()) {
       toast.error('Please enter a book accession number or barcode');
       return;
     }
 
-    setLoading(true);
+    loadingActions.scanBook.start();
     try {
       const token = localStorage.getItem('clms_token');
       const response = await axios.get(
@@ -139,8 +170,8 @@ export default function BookCheckout() {
           return;
         }
 
-        setSelectedBook(book);
-        setCheckoutStep('confirm');
+        checkoutFormActions.setValue('selectedBook', book);
+        checkoutFormActions.setValue('checkoutStep', 'confirm');
         toast.success(`Book found: ${book.title}`);
       } else {
         toast.error('Book not found');
@@ -148,18 +179,19 @@ export default function BookCheckout() {
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to find book');
     } finally {
-      setLoading(false);
+      loadingActions.scanBook.finish();
     }
   };
 
   // Confirm checkout
   const handleConfirmCheckout = async () => {
+    const { selectedStudent, selectedBook, dueDate } = checkoutForm.values;
     if (!selectedStudent || !selectedBook || !dueDate) {
       toast.error('Missing required information');
       return;
     }
 
-    setLoading(true);
+    loadingActions.confirmCheckout.start();
     try {
       const token = localStorage.getItem('clms_token');
       const response = await axios.post(
@@ -179,28 +211,31 @@ export default function BookCheckout() {
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to checkout book');
     } finally {
-      setLoading(false);
+      loadingActions.confirmCheckout.finish();
     }
   };
 
   // Reset checkout flow
   const resetCheckout = () => {
-    setCheckoutStep('student');
-    setStudentBarcode('');
-    setBookBarcode('');
-    setSelectedStudent(null);
-    setSelectedBook(null);
-    setDueDate(getDefaultDueDate());
+    checkoutFormActions.reset({
+      studentBarcode: '',
+      bookBarcode: '',
+      selectedStudent: null,
+      selectedBook: null,
+      dueDate: getDefaultDueDate(),
+      checkoutStep: 'student'
+    });
   };
 
   // Scan book for return
   const handleScanReturn = async () => {
+    const returnBarcode = returnForm.values.returnBarcode;
     if (!returnBarcode.trim()) {
       toast.error('Please enter a book accession number or barcode');
       return;
     }
 
-    setLoading(true);
+    loadingActions.scanReturn.start();
     try {
       const token = localStorage.getItem('clms_token');
 
@@ -217,8 +252,8 @@ export default function BookCheckout() {
         );
 
         if (checkout) {
-          setActiveCheckout(checkout);
-          setShowReturnConfirm(true);
+          returnFormActions.setValue('activeCheckout', checkout);
+          modalActions.returnConfirm.open();
         } else {
           toast.error('No active checkout found for this book');
         }
@@ -226,15 +261,16 @@ export default function BookCheckout() {
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to find checkout');
     } finally {
-      setLoading(false);
+      loadingActions.scanReturn.finish();
     }
   };
 
   // Confirm return
   const handleConfirmReturn = async () => {
+    const { activeCheckout } = returnForm.values;
     if (!activeCheckout) return;
 
-    setLoading(true);
+    loadingActions.confirmReturn.start();
     try {
       const token = localStorage.getItem('clms_token');
       const response = await axios.post(
@@ -251,14 +287,16 @@ export default function BookCheckout() {
           toast.success('Book returned successfully!');
         }
 
-        setReturnBarcode('');
-        setActiveCheckout(null);
-        setShowReturnConfirm(false);
+        returnFormActions.reset({
+          returnBarcode: '',
+          activeCheckout: null
+        });
+        modalActions.returnConfirm.close();
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to return book');
     } finally {
-      setLoading(false);
+      loadingActions.confirmReturn.finish();
     }
   };
 
@@ -280,7 +318,7 @@ export default function BookCheckout() {
             Return Book
           </TabsTrigger>
           <TabsTrigger value="history">
-            <History className="h-4 w-4 mr-2" />
+            <HistoryIcon className="h-4 w-4 mr-2" />
             History
           </TabsTrigger>
         </TabsList>
@@ -295,22 +333,22 @@ export default function BookCheckout() {
             <CardContent className="space-y-6">
               {/* Step Indicator */}
               <div className="flex items-center justify-between">
-                <div className={`flex items-center gap-2 ${checkoutStep === 'student' ? 'text-primary' : 'text-muted-foreground'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep === 'student' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <div className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'student' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'student' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                     1
                   </div>
                   <span className="font-medium">Student</span>
                 </div>
                 <div className="flex-1 h-0.5 bg-border mx-4" />
-                <div className={`flex items-center gap-2 ${checkoutStep === 'book' ? 'text-primary' : 'text-muted-foreground'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep === 'book' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <div className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'book' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'book' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                     2
                   </div>
                   <span className="font-medium">Book</span>
                 </div>
                 <div className="flex-1 h-0.5 bg-border mx-4" />
-                <div className={`flex items-center gap-2 ${checkoutStep === 'confirm' ? 'text-primary' : 'text-muted-foreground'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep === 'confirm' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <div className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'confirm' ? 'text-primary' : 'text-muted-foreground'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'confirm' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                     3
                   </div>
                   <span className="font-medium">Confirm</span>
@@ -318,7 +356,7 @@ export default function BookCheckout() {
               </div>
 
               {/* Step 1: Scan Student */}
-              {checkoutStep === 'student' && (
+              {checkoutForm.values.checkoutStep === 'student' && (
                 <div className="space-y-4">
                   <Alert>
                     <User className="h-4 w-4" />
@@ -334,13 +372,13 @@ export default function BookCheckout() {
                       <Input
                         id="studentBarcode"
                         placeholder="Enter student ID or scan barcode..."
-                        value={studentBarcode}
-                        onChange={(e) => setStudentBarcode(e.target.value)}
+                        value={checkoutForm.values.studentBarcode}
+                        onChange={(e) => checkoutFormActions.setValue('studentBarcode', e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleScanStudent()}
                         autoFocus
                       />
-                      <Button onClick={handleScanStudent} disabled={loading}>
-                        {loading ? 'Searching...' : <><Scan className="h-4 w-4 mr-2" />Find</>}
+                      <Button onClick={handleScanStudent} disabled={loadingStates.scanStudent.isLoading}>
+                        {loadingStates.scanStudent.isLoading ? 'Searching...' : <><Scan className="h-4 w-4 mr-2" />Find</>}
                       </Button>
                     </div>
                   </div>
@@ -348,13 +386,13 @@ export default function BookCheckout() {
               )}
 
               {/* Step 2: Scan Book */}
-              {checkoutStep === 'book' && selectedStudent && (
+              {checkoutForm.values.checkoutStep === 'book' && checkoutForm.values.selectedStudent && (
                 <div className="space-y-4">
                   <Alert>
                     <CheckCircle className="h-4 w-4" />
                     <AlertTitle>Student Selected</AlertTitle>
                     <AlertDescription>
-                      {selectedStudent.firstName} {selectedStudent.lastName} - {selectedStudent.gradeLevel} {selectedStudent.section}
+                      {checkoutForm.values.selectedStudent.firstName} {checkoutForm.values.selectedStudent.lastName} - {checkoutForm.values.selectedStudent.gradeLevel} {checkoutForm.values.selectedStudent.section}
                     </AlertDescription>
                   </Alert>
 
@@ -372,25 +410,25 @@ export default function BookCheckout() {
                       <Input
                         id="bookBarcode"
                         placeholder="Enter accession number or scan barcode..."
-                        value={bookBarcode}
-                        onChange={(e) => setBookBarcode(e.target.value)}
+                        value={checkoutForm.values.bookBarcode}
+                        onChange={(e) => checkoutFormActions.setValue('bookBarcode', e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleScanBook()}
                         autoFocus
                       />
-                      <Button onClick={handleScanBook} disabled={loading}>
-                        {loading ? 'Searching...' : <><Scan className="h-4 w-4 mr-2" />Find</>}
+                      <Button onClick={handleScanBook} disabled={loadingStates.scanBook.isLoading}>
+                        {loadingStates.scanBook.isLoading ? 'Searching...' : <><Scan className="h-4 w-4 mr-2" />Find</>}
                       </Button>
                     </div>
                   </div>
 
-                  <Button variant="outline" onClick={() => setCheckoutStep('student')}>
+                  <Button variant="outline" onClick={() => checkoutFormActions.setValue('checkoutStep', 'student')}>
                     Back to Student Selection
                   </Button>
                 </div>
               )}
 
               {/* Step 3: Confirm */}
-              {checkoutStep === 'confirm' && selectedStudent && selectedBook && (
+              {checkoutForm.values.checkoutStep === 'confirm' && checkoutForm.values.selectedStudent && checkoutForm.values.selectedBook && (
                 <div className="space-y-4">
                   <Alert>
                     <CheckCircle className="h-4 w-4" />
@@ -409,9 +447,9 @@ export default function BookCheckout() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="text-sm space-y-1">
-                        <div><strong>Name:</strong> {selectedStudent.firstName} {selectedStudent.lastName}</div>
-                        <div><strong>ID:</strong> {selectedStudent.studentId}</div>
-                        <div><strong>Grade:</strong> {selectedStudent.gradeLevel} {selectedStudent.section}</div>
+                        <div><strong>Name:</strong> {checkoutForm.values.selectedStudent.firstName} {checkoutForm.values.selectedStudent.lastName}</div>
+                        <div><strong>ID:</strong> {checkoutForm.values.selectedStudent.studentId}</div>
+                        <div><strong>Grade:</strong> {checkoutForm.values.selectedStudent.gradeLevel} {checkoutForm.values.selectedStudent.section}</div>
                       </CardContent>
                     </Card>
 
@@ -423,12 +461,12 @@ export default function BookCheckout() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="text-sm space-y-1">
-                        <div><strong>Title:</strong> {selectedBook.title}</div>
-                        <div><strong>Author:</strong> {selectedBook.author}</div>
-                        <div><strong>Accession No:</strong> {selectedBook.accessionNo}</div>
+                        <div><strong>Title:</strong> {checkoutForm.values.selectedBook.title}</div>
+                        <div><strong>Author:</strong> {checkoutForm.values.selectedBook.author}</div>
+                        <div><strong>Accession No:</strong> {checkoutForm.values.selectedBook.accessionNo}</div>
                         <div>
-                          <Badge variant={selectedBook.availableCopies > 0 ? "default" : "destructive"}>
-                            {selectedBook.availableCopies} / {selectedBook.totalCopies} Available
+                          <Badge variant={checkoutForm.values.selectedBook.availableCopies > 0 ? "default" : "destructive"}>
+                            {checkoutForm.values.selectedBook.availableCopies} / {checkoutForm.values.selectedBook.totalCopies} Available
                           </Badge>
                         </div>
                       </CardContent>
@@ -439,18 +477,18 @@ export default function BookCheckout() {
                       <Input
                         id="dueDate"
                         type="date"
-                        value={dueDate}
-                        onChange={(e) => setDueDate(e.target.value)}
+                        value={checkoutForm.values.dueDate}
+                        onChange={(e) => checkoutFormActions.setValue('dueDate', e.target.value)}
                         min={new Date().toISOString().split('T')[0]}
                       />
                     </div>
                   </div>
 
                   <div className="flex gap-2">
-                    <Button onClick={handleConfirmCheckout} disabled={loading} className="flex-1">
-                      {loading ? 'Processing...' : <><CheckCircle className="h-4 w-4 mr-2" />Confirm Checkout</>}
+                    <Button onClick={handleConfirmCheckout} disabled={loadingStates.confirmCheckout.isLoading} className="flex-1">
+                      {loadingStates.confirmCheckout.isLoading ? 'Processing...' : <><CheckCircle className="h-4 w-4 mr-2" />Confirm Checkout</>}
                     </Button>
-                    <Button variant="outline" onClick={() => setCheckoutStep('book')}>
+                    <Button variant="outline" onClick={() => checkoutFormActions.setValue('checkoutStep', 'book')}>
                       Back
                     </Button>
                     <Button variant="ghost" onClick={resetCheckout}>
@@ -485,13 +523,13 @@ export default function BookCheckout() {
                   <Input
                     id="returnBarcode"
                     placeholder="Enter accession number or scan barcode..."
-                    value={returnBarcode}
-                    onChange={(e) => setReturnBarcode(e.target.value)}
+                    value={returnForm.values.returnBarcode}
+                    onChange={(e) => returnFormActions.setValue('returnBarcode', e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleScanReturn()}
                     autoFocus
                   />
-                  <Button onClick={handleScanReturn} disabled={loading}>
-                    {loading ? 'Searching...' : <><Scan className="h-4 w-4 mr-2" />Find</>}
+                  <Button onClick={handleScanReturn} disabled={loadingStates.scanReturn.isLoading}>
+                    {loadingStates.scanReturn.isLoading ? 'Searching...' : <><Scan className="h-4 w-4 mr-2" />Find</>}
                   </Button>
                 </div>
               </div>
@@ -512,28 +550,28 @@ export default function BookCheckout() {
       </Tabs>
 
       {/* Return Confirmation Dialog */}
-      <Dialog open={showReturnConfirm} onOpenChange={setShowReturnConfirm}>
+      <Dialog open={!!modalStates.returnConfirm} onOpenChange={(open) => modalActions.returnConfirm.setState(open)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Book Return</DialogTitle>
             <DialogDescription>Review the checkout details below</DialogDescription>
           </DialogHeader>
 
-          {activeCheckout && (
+          {returnForm.values.activeCheckout && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <div><strong>Book:</strong> {activeCheckout.book.title}</div>
-                <div><strong>Student:</strong> {activeCheckout.student.firstName} {activeCheckout.student.lastName}</div>
-                <div><strong>Checkout Date:</strong> {new Date(activeCheckout.checkoutDate).toLocaleDateString()}</div>
-                <div><strong>Due Date:</strong> {new Date(activeCheckout.dueDate).toLocaleDateString()}</div>
+                <div><strong>Book:</strong> {returnForm.values.activeCheckout.book.title}</div>
+                <div><strong>Student:</strong> {returnForm.values.activeCheckout.student.firstName} {returnForm.values.activeCheckout.student.lastName}</div>
+                <div><strong>Checkout Date:</strong> {new Date(returnForm.values.activeCheckout.checkoutDate).toLocaleDateString()}</div>
+                <div><strong>Due Date:</strong> {new Date(returnForm.values.activeCheckout.dueDate).toLocaleDateString()}</div>
 
-                {activeCheckout.overdueDays > 0 && (
+                {returnForm.values.activeCheckout.overdueDays > 0 && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Overdue</AlertTitle>
                     <AlertDescription>
-                      <div>{activeCheckout.overdueDays} day(s) overdue</div>
-                      <div className="font-bold">Fine: ₱{parseFloat(activeCheckout.fineAmount).toFixed(2)}</div>
+                      <div>{returnForm.values.activeCheckout.overdueDays} day(s) overdue</div>
+                      <div className="font-bold">Fine: ₱{parseFloat(returnForm.values.activeCheckout.fineAmount).toFixed(2)}</div>
                     </AlertDescription>
                   </Alert>
                 )}
@@ -542,11 +580,11 @@ export default function BookCheckout() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowReturnConfirm(false)}>
+            <Button variant="outline" onClick={() => modalActions.returnConfirm.close()}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmReturn} disabled={loading}>
-              {loading ? 'Processing...' : 'Confirm Return'}
+            <Button onClick={handleConfirmReturn} disabled={loadingStates.confirmReturn.isLoading}>
+              {loadingStates.confirmReturn.isLoading ? 'Processing...' : 'Confirm Return'}
             </Button>
           </DialogFooter>
         </DialogContent>

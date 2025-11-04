@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { Button } from '@/components/ui/button';
@@ -7,16 +7,17 @@ import { useHealthCheck } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import LoginForm from '@/components/auth/LoginForm';
 import { toast } from 'sonner';
 import NotificationCenter from '@/components/NotificationCenter';
 import WebSocketProvider from '@/contexts/WebSocketContext';
 import { ResponsiveDrawer } from '@/components/layout/ResponsiveDrawer';
 import { useMobileOptimization, usePerformanceOptimization, useTouchOptimization } from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
-import Image from '@/components/performance/Image';
+import PerformanceImage from '@/components/performance/Image';
 import MobileBottomNavigation from '@/components/mobile/MobileBottomNavigation';
 import PWAInstallPrompt from '@/components/mobile/PWAInstallPrompt';
+import { LoadingSpinner, DashboardCardSkeleton, CardSkeleton, TableSkeleton } from '@/components/LoadingStates';
 import {
   LogOut,
   User,
@@ -87,18 +88,74 @@ const SettingsPage = React.lazy(
   () => import('@/components/settings/SettingsPage')
 );
 
-// Loading fallback
-const LoadingFallback = () => (
+// Enhanced loading fallbacks with skeleton screens
+const LoadingSpinnerFallback = () => (
   <div className="flex items-center justify-center h-64">
     <div className="text-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-      <p className="text-muted-foreground">Loading...</p>
+      <LoadingSpinner size="lg" />
+      <p className="text-muted-foreground mt-4">Loading...</p>
+    </div>
+  </div>
+);
+
+const DashboardSkeleton = () => (
+  <div className="space-y-6">
+    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <DashboardCardSkeleton />
+      <DashboardCardSkeleton />
+      <DashboardCardSkeleton />
+      <DashboardCardSkeleton />
+    </div>
+    <div className="grid gap-6 lg:grid-cols-2">
+      <CardSkeleton className="h-80" />
+      <CardSkeleton className="h-80" />
+    </div>
+  </div>
+);
+
+const TableSkeletonFallback = () => (
+  <div className="space-y-4">
+    <div className="flex justify-between items-center">
+      <CardSkeleton className="h-10 w-64" />
+      <CardSkeleton className="h-10 w-32" />
+    </div>
+    <TableSkeleton rows={10} columns={4} />
+  </div>
+);
+
+const SettingsSkeleton = () => (
+  <div className="space-y-6">
+    <CardSkeleton className="h-20" />
+    <div className="grid gap-6 md:grid-cols-2">
+      <CardSkeleton className="h-64" />
+      <CardSkeleton className="h-64" />
     </div>
   </div>
 );
 
 export default function App() {
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated, isLoading } = useAuth();
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, show only the login form
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <LoginForm onLoginSuccess={() => {}} />
+      </div>
+    );
+  }
 
   // Dev-only ErrorBoundary test route
   if (import.meta.env.DEV && typeof window !== 'undefined' && window.location.pathname === '/dev/error') {
@@ -343,7 +400,7 @@ export default function App() {
       >
         {/* Background Image with Optimized Loading */}
         <div className="fixed inset-0 pointer-events-none z-0">
-          <Image
+          <PerformanceImage
             src="/Background.png"
             alt="Background"
             useCase="BACKGROUND"
@@ -356,14 +413,14 @@ export default function App() {
         </div>
 
         {/* Enhanced Header */}
-        <header className="bg-white/95 dark:bg-card/95 border-b border-slate-200 dark:border-border sticky top-0 z-50 backdrop-blur-md shadow-sm transition-all duration-200">
+        <header role="banner" className="bg-white/95 dark:bg-card/95 border-b border-slate-200 dark:border-border sticky top-0 z-50 backdrop-blur-md shadow-sm transition-all duration-200">
           <div className="px-3 sm:px-4 lg:px-8 py-2 sm:py-3 lg:py-4">
             {/* Top Row - Main Navigation */}
             <div className="flex items-center justify-between gap-2 sm:gap-4 flex-wrap lg:flex-nowrap">
               {/* Left Side - Logo and Title */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 <div className="flex-shrink-0">
-                  <Image
+                  <PerformanceImage
                     src="/src/assets/School_logo.png"
                     alt="Educational Library Management System Logo"
                     useCase="AVATAR"
@@ -802,13 +859,12 @@ export default function App() {
         </div>
 
         {/* Main Content */}
-        <main className="px-3 sm:px-4 lg:px-8 py-4 sm:py-6 max-w-[1920px] mx-auto relative z-10">
-          <ProtectedRoute requiredRole="ADMIN">
-            <Tabs
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="space-y-6"
-            >
+        <main role="main" className="px-3 sm:px-4 lg:px-8 py-4 sm:py-6 max-w-[1920px] mx-auto relative z-10">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="space-y-6"
+          >
               {/* Desktop Tabs - Hidden on Mobile */}
               <div className="hidden lg:block">
                 <TabsList className="w-full lg:w-auto flex-wrap lg:flex-nowrap">
@@ -863,9 +919,9 @@ export default function App() {
                 aria-labelledby="tab-dashboard"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<DashboardSkeleton />}>
                   <DashboardOverview onTabChange={setActiveTab} />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* Activity Tab */}
@@ -877,9 +933,9 @@ export default function App() {
                 aria-labelledby="tab-scan"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<LoadingSpinnerFallback />}>
                   <ScanWorkspace />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* Students Tab */}
@@ -891,9 +947,9 @@ export default function App() {
                 aria-labelledby="tab-students"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<TableSkeletonFallback />}>
                   <StudentManagement />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* Books Tab */}
@@ -905,9 +961,9 @@ export default function App() {
                 aria-labelledby="tab-books"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<TableSkeletonFallback />}>
                   <BookCatalog />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* Checkout Tab */}
@@ -919,9 +975,9 @@ export default function App() {
                 aria-labelledby="tab-checkout"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<CardSkeleton className="h-96" />}>
                   <BookCheckout />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* Equipment Tab */}
@@ -933,9 +989,9 @@ export default function App() {
                 aria-labelledby="tab-equipment"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<TableSkeletonFallback />}>
                   <EquipmentDashboard />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* Automation Tab */}
@@ -947,9 +1003,9 @@ export default function App() {
                 aria-labelledby="tab-automation"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<DashboardSkeleton />}>
                   <AutomationDashboard />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* Analytics Tab */}
@@ -961,9 +1017,9 @@ export default function App() {
                 aria-labelledby="tab-analytics"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<DashboardSkeleton />}>
                   <AnalyticsDashboard />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* Reports Tab */}
@@ -975,9 +1031,9 @@ export default function App() {
                 aria-labelledby="tab-reports"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<CardSkeleton className="h-96" />}>
                   <ReportsBuilder />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* QR Codes Tab */}
@@ -989,9 +1045,9 @@ export default function App() {
                 aria-labelledby="tab-qrcodes"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<CardSkeleton className="h-96" />}>
                   <QRCodeManager />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* Import Tab */}
@@ -1003,9 +1059,9 @@ export default function App() {
                 aria-labelledby="tab-import"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<CardSkeleton className="h-96" />}>
                   <ImportData />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* Barcodes Tab */}
@@ -1017,9 +1073,9 @@ export default function App() {
                 aria-labelledby="tab-barcodes"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<CardSkeleton className="h-96" />}>
                   <BarcodeManager />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
 
               {/* Settings Tab */}
@@ -1031,12 +1087,11 @@ export default function App() {
                 aria-labelledby="tab-settings"
                 tabIndex={0}
               >
-                <React.Suspense fallback={<LoadingFallback />}>
+                <Suspense fallback={<SettingsSkeleton />}>
                   <SettingsPage />
-                </React.Suspense>
+                </Suspense>
               </TabsContent>
             </Tabs>
-          </ProtectedRoute>
         </main>
 
         {/* PWA Install Prompt */}
@@ -1119,5 +1174,5 @@ export default function App() {
         </footer>
       </div>
     </WebSocketProvider>
-   );
+  );
 }

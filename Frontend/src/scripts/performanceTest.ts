@@ -5,7 +5,6 @@
  */
 
 import { performanceMonitoringService } from '@/services/performanceMonitoringService';
-import { performanceBenchmark, BENCHMARK_CONFIGS } from './performanceBenchmark';
 
 interface TestScenario {
   name: string;
@@ -79,7 +78,7 @@ class PerformanceTest {
             await this.executeStep(step.action);
           }
         } catch (error) {
-          const errorMessage = `Step failed: ${step.action} - ${error.message}`;
+          const errorMessage = `Step failed: ${step.action} - ${error instanceof Error ? error.message : String(error)}`;
           errors.push(errorMessage);
           console.error(`  ❌ ${errorMessage}`);
           passed = false;
@@ -133,16 +132,17 @@ class PerformanceTest {
 
       return result;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const result = {
         scenario: scenario.name,
         passed: false,
         duration: Date.now() - startTime,
         metrics: {},
-        errors: [`Test execution failed: ${error.message}`],
+        errors: [`Test execution failed: ${errorMessage}`],
       };
 
       this.testResults.push(result);
-      console.error(`❌ Test ${scenario.name} FAILED: ${error.message}`);
+      console.error(`❌ Test ${scenario.name} FAILED: ${errorMessage}`);
 
       return result;
     } finally {
@@ -354,12 +354,13 @@ class PerformanceTest {
         results.push(result);
       } catch (error) {
         console.error(`❌ Failed to run test: ${scenario.name}`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
         results.push({
           scenario: scenario.name,
           passed: false,
           duration: 0,
           metrics: {},
-          errors: [`Test execution failed: ${error.message}`],
+          errors: [`Test execution failed: ${errorMessage}`],
         });
       }
 

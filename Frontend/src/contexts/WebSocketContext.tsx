@@ -4,7 +4,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import type { WebSocketState } from '@/hooks/useWebSocket';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface WebSocketContextType extends WebSocketState {
+export interface WebSocketContextType extends WebSocketState {
   // Connection methods
   connect: () => void;
   disconnect: () => void;
@@ -56,19 +56,19 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     onMessage: (message) => {
       switch (message.type) {
         case 'student_activity_update':
-          setRecentActivities(prev => [message.data, ...prev.slice(0, 49)]);
+          setRecentActivities((prev: any[]) => [message.data, ...prev.slice(0, 49)]);
           break;
         case 'equipment_status_update':
-          setEquipmentStatus(prev => ({
+          setEquipmentStatus((prev: any) => ({
             ...prev,
             [message.data.equipmentId]: message.data
           }));
           break;
         case 'system_notification':
-          setNotifications(prev => [message.data, ...prev.slice(0, 49)]);
+          setNotifications((prev: any[]) => [message.data, ...prev.slice(0, 49)]);
           break;
         case 'dashboard_data':
-          setDashboardData(prev => ({
+          setDashboardData((prev: any) => ({
             ...prev,
             [message.data.dataType]: message.data.data
           }));
@@ -108,6 +108,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
       return () => clearTimeout(timeoutId);
     }
+    return undefined;
   }, [ws.isConnected, user, refreshDashboard]);
 
   const contextValue: WebSocketContextType = {

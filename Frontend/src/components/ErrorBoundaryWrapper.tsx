@@ -4,18 +4,18 @@
  */
 
 import React, { useCallback } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, ErrorInfo } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import type { FallbackProps } from 'react-error-boundary';
 import { ErrorBoundaryFallback } from './ErrorBoundaryFallback';
-import { reportError, categorizeError, generateErrorId } from '@/utils/error-utils';
+import { reportApplicationError, categorizeError, generateErrorId, type ErrorType } from '@/utils/error-utils';
 
 /**
  * Props for ErrorBoundaryWrapper component
  */
 interface ErrorBoundaryWrapperProps {
   /** Child components to wrap with error boundary */
-  children: ReactNode;
+  children?: ReactNode;
   /** Maximum number of retry attempts before disabling auto-retry */
   maxRetries?: number;
   /** Enable/disable retry functionality */
@@ -50,33 +50,33 @@ export function ErrorBoundaryWrapper({
   onError,
   onReset,
   resetKeys,
-  resetOnPropsChange = true,
+  resetOnPropsChange: _resetOnPropsChange = true,
   isolate = false
 }: ErrorBoundaryWrapperProps) {
   
   /**
-   * Enhanced error handler that maintains compatibility with the original ErrorBoundary
+   * Enhanced error handler that maintains compatibility with react-error-boundary
    */
-  const handleError = useCallback((error: Error, errorInfo: React.ErrorInfo) => {
+  const handleError = useCallback((error: Error, info: ErrorInfo) => {
     // Generate error metadata
     const errorId = generateErrorId();
     const errorType = categorizeError(error);
     
     // Report error using the centralized error reporting system
-    reportError(error, errorInfo, errorId, errorType, 0);
+    reportApplicationError(error, info, errorId, errorType, 0);
     
     // Log error details for debugging
     console.group(`🚨 ErrorBoundary: ${errorType}`);
     console.error('Error:', error);
     console.error('Error ID:', errorId);
-    console.error('Component Stack:', errorInfo.componentStack || 'No component stack available');
+    console.error('Component Stack:', info.componentStack || 'No component stack available');
     console.error('Error Type:', errorType);
     console.groupEnd();
     
     // Call custom error handler if provided
     if (onError) {
       try {
-        onError(error, errorInfo);
+        onError(error, info);
       } catch (handlerError) {
         console.error('Error in custom error handler:', handlerError);
       }
@@ -86,13 +86,17 @@ export function ErrorBoundaryWrapper({
   /**
    * Enhanced reset handler
    */
-  const handleReset = useCallback((details: { reason: 'imperative-api' } | { reason: 'keys'; prev: any[] | undefined; next: any[] | undefined }) => {
+  const handleReset = useCallback((details: { reason: 'imperative-api'; args: any[] } | { reason: 'keys'; prev: any[] | undefined; next: any[] | undefined }) => {
     console.log(`🔄 ErrorBoundary Reset: ${details.reason}`, details);
     
     // Call custom reset handler if provided
     if (onReset) {
       try {
-        onReset(details);
+        // Convert the details to match our interface
+        const convertedDetails = details.reason === 'imperative-api' 
+          ? { reason: 'imperative-api' as const }
+          : { reason: 'keys' as const, prev: details.prev, next: details.next };
+        onReset(convertedDetails);
       } catch (resetError) {
         console.error('Error in custom reset handler:', resetError);
       }
@@ -105,15 +109,21 @@ export function ErrorBoundaryWrapper({
   const renderFallback = useCallback((props: FallbackProps) => {
     const FallbackComponent = CustomFallback || ErrorBoundaryFallback;
     
+    // Create a wrapper for the onError prop to match ErrorBoundaryFallback's expected signature
+    const fallbackOnError = (_error: Error, _errorId: string, _errorType: ErrorType) => {
+      // We don't need to do anything here as the error is already handled by handleError
+      // This is just to satisfy the ErrorBoundaryFallback component's interface
+    };
+    
     return (
       <FallbackComponent
         {...props}
         maxRetries={maxRetries}
         enableRetry={enableRetry}
-        onError={handleError}
+        onError={fallbackOnError}
       />
     );
-  }, [CustomFallback, maxRetries, enableRetry, handleError]);
+  }, [CustomFallback, maxRetries, enableRetry]);
 
   // If isolation is enabled, wrap in an additional error boundary
   if (isolate) {
@@ -122,14 +132,14 @@ export function ErrorBoundaryWrapper({
         FallbackComponent={renderFallback}
         onError={handleError}
         onReset={handleReset}
-        resetKeys={resetKeys || undefined}
+        resetKeys={resetKeys || []}
         // Note: react-error-boundary v6 does not support resetOnPropsChange; kept for wrapper API compatibility
       >
         <ErrorBoundary
           FallbackComponent={renderFallback}
           onError={handleError}
           onReset={handleReset}
-          resetKeys={resetKeys || undefined}
+          resetKeys={resetKeys || []}
         >
           {children}
         </ErrorBoundary>
@@ -142,7 +152,7 @@ export function ErrorBoundaryWrapper({
       FallbackComponent={renderFallback}
       onError={handleError}
       onReset={handleReset}
-      resetKeys={resetKeys || undefined}
+      resetKeys={resetKeys || []}
       // Note: react-error-boundary v6 does not support resetOnPropsChange; kept for wrapper API compatibility
     >
       {children}
@@ -157,11 +167,18 @@ export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
   errorBoundaryProps?: Omit<ErrorBoundaryWrapperProps, 'children'>
 ) {
-  const WrappedComponent = React.forwardRef<any, P>((props, ref) => (
-    <ErrorBoundaryWrapper {...errorBoundaryProps}>
-      <Component {...props} ref={ref} />
-    </ErrorBoundaryWrapper>
-  ));
+  const WrappedComponent = React.forwardRef<any, P>((props, ref) => {
+    const componentProps = { ...props } as any;
+    if (ref) {
+      componentProps.ref = ref;
+    }
+    
+    return (
+      <ErrorBoundaryWrapper {...(errorBoundaryProps || {})}>
+        <Component {...componentProps} />
+      </ErrorBoundaryWrapper>
+    );
+  });
 
   WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
   

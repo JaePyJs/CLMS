@@ -93,7 +93,10 @@ class ApiClient {
     }
   }
 
-  private buildUrl(url: string, params?: Record<string, string | number>): string {
+  private buildUrl(
+    url: string,
+    params?: Record<string, string | number>
+  ): string {
     const baseUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
 
     if (!params || Object.keys(params).length === 0) {
@@ -132,7 +135,9 @@ class ApiClient {
     }
   }
 
-  private async handleHttpError(response: Response): Promise<ApiResponse<never>> {
+  private async handleHttpError(
+    response: Response
+  ): Promise<ApiResponse<never>> {
     let errorData: unknown;
 
     try {
@@ -142,12 +147,15 @@ class ApiClient {
     }
 
     const apiError: ApiError = {
-      message: typeof errorData === 'object' && errorData && 'message' in errorData
-        ? String(errorData.message)
-        : `HTTP ${response.status}: ${response.statusText}`,
+      message:
+        typeof errorData === 'object' && errorData && 'message' in errorData
+          ? String(errorData.message)
+          : `HTTP ${response.status}: ${response.statusText}`,
       status: response.status,
       code: response.status.toString(),
-      details: typeof errorData === 'object' ? errorData as Record<string, unknown> : undefined,
+      ...(typeof errorData === 'object' && errorData
+        ? { details: errorData as Record<string, unknown> }
+        : {}),
     };
 
     return {
@@ -178,11 +186,14 @@ class ApiClient {
   }
 
   // HTTP methods with proper typing
-  async get<T>(url: string, params?: Record<string, string | number>): Promise<ApiResponse<T>> {
+  async get<T>(
+    url: string,
+    params?: Record<string, string | number>
+  ): Promise<ApiResponse<T>> {
     return this.request<T>({
       method: 'GET',
       url,
-      params,
+      ...(params ? { params } : {}),
     });
   }
 
@@ -198,8 +209,8 @@ class ApiClient {
       method: 'POST',
       url,
       data,
-      headers: options?.headers,
-      params: options?.params,
+      ...(options?.headers ? { headers: options.headers } : {}),
+      ...(options?.params ? { params: options.params } : {}),
     });
   }
 
@@ -215,8 +226,8 @@ class ApiClient {
       method: 'PUT',
       url,
       data,
-      headers: options?.headers,
-      params: options?.params,
+      ...(options?.headers ? { headers: options.headers } : {}),
+      ...(options?.params ? { params: options.params } : {}),
     });
   }
 
@@ -232,8 +243,8 @@ class ApiClient {
       method: 'PATCH',
       url,
       data,
-      headers: options?.headers,
-      params: options?.params,
+      ...(options?.headers ? { headers: options.headers } : {}),
+      ...(options?.params ? { params: options.params } : {}),
     });
   }
 
@@ -316,13 +327,14 @@ class ApiClient {
       data?: unknown;
     }
   ): Promise<void> {
+    const authToken = this.getAuthToken();
     const response = await fetch(`${this.baseURL}${url}`, {
       method: options?.method || 'GET',
       headers: {
         ...this.defaultHeaders,
-        Authorization: this.getAuthToken() ? `Bearer ${this.getAuthToken()}` : '',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       },
-      body: options?.data ? JSON.stringify(options.data) : undefined,
+      ...(options?.data ? { body: JSON.stringify(options.data) } : {}),
     });
 
     if (!response.ok) {

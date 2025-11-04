@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiClient } from '@/lib/api-client';
-import type { ApiResponse, ApiError, HttpMethod } from '@/types';
+import type { ApiError, HttpMethod } from '@/types';
 
 interface UseTypedApiOptions<T> {
   immediate?: boolean;
@@ -78,10 +78,35 @@ export function useTypedApi<T>(
     }));
 
     try {
-      const response = await apiClient.request<unknown>({
-        ...config,
-        ...customConfig,
-      });
+      const finalConfig = { ...config, ...customConfig };
+      let response: any;
+
+      // Use the appropriate public method based on HTTP method
+      switch (finalConfig.method) {
+        case 'GET':
+          response = await apiClient.get<unknown>(finalConfig.url, finalConfig.params);
+          break;
+        case 'POST':
+          response = await apiClient.post<unknown>(finalConfig.url, finalConfig.data, 
+            finalConfig.params ? { params: finalConfig.params } : {}
+          );
+          break;
+        case 'PUT':
+          response = await apiClient.put<unknown>(finalConfig.url, finalConfig.data, 
+            finalConfig.params ? { params: finalConfig.params } : {}
+          );
+          break;
+        case 'PATCH':
+          response = await apiClient.patch<unknown>(finalConfig.url, finalConfig.data, 
+            finalConfig.params ? { params: finalConfig.params } : {}
+          );
+          break;
+        case 'DELETE':
+          response = await apiClient.delete<unknown>(finalConfig.url);
+          break;
+        default:
+          throw new Error(`Unsupported HTTP method: ${finalConfig.method}`);
+      }
 
       if (!mountedRef.current) return;
 
@@ -246,7 +271,7 @@ export function useTypedPaginatedApi<T>(
  */
 export function useTypedMutation<TRequest, TResponse>(
   config: {
-    method: 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
     url: string;
   },
   options: {
@@ -275,19 +300,36 @@ export function useTypedMutation<TRequest, TResponse>(
         optimisticUpdate(requestData);
       }
 
-      const response = await apiClient.request<TResponse>({
-        method: config.method,
-        url: config.url,
-        data: requestData,
-      });
+      let response: any;
+
+      // Use the appropriate public method based on HTTP method
+      switch (config.method) {
+        case 'GET':
+          response = await apiClient.get<TResponse>(config.url);
+          break;
+        case 'POST':
+          response = await apiClient.post<TResponse>(config.url, requestData);
+          break;
+        case 'PUT':
+          response = await apiClient.put<TResponse>(config.url, requestData);
+          break;
+        case 'PATCH':
+          response = await apiClient.patch<TResponse>(config.url, requestData);
+          break;
+        case 'DELETE':
+          response = await apiClient.delete<TResponse>(config.url);
+          break;
+        default:
+          throw new Error(`Unsupported HTTP method: ${config.method}`);
+      }
 
       if (!response.success) {
         throw new Error(response.error || 'Mutation failed');
       }
 
-      setData(response.data);
-      onSuccess?.(response.data);
-      return response.data;
+      setData(response.data ?? null);
+      onSuccess?.(response.data!);
+      return response.data!;
     } catch (err) {
       const apiError: ApiError = {
         message: err instanceof Error ? err.message : 'Mutation failed',
@@ -364,6 +406,7 @@ export function useTypedRealTime<T>(
 
       return () => clearInterval(intervalId);
     }
+    return undefined;
   }, [isPolling, interval, result]);
 
   return {

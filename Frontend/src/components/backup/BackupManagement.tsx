@@ -12,7 +12,7 @@ import {
   Shield,
   AlertTriangle,
   FileArchive,
-  History,
+  History as HistoryIcon,
   Play,
 } from 'lucide-react';
 import backupApi from '../../services/backupApi';
@@ -242,7 +242,7 @@ const BackupManagement: React.FC = () => {
                 <p className="text-sm text-gray-600">Incremental</p>
                 <p className="text-2xl font-bold text-green-600">{statistics.incrementalBackups}</p>
               </div>
-              <History className="w-8 h-8 text-green-600" />
+              <HistoryIcon className="w-8 h-8 text-green-600" />
             </div>
           </div>
 
@@ -366,7 +366,7 @@ const BackupManagement: React.FC = () => {
                             : 'bg-green-100 text-green-800 border-green-300'
                         }`}
                       >
-                        {backup.type === 'FULL' ? <Database className="w-3 h-3" /> : <History className="w-3 h-3" />}
+                        {backup.type === 'FULL' ? <Database className="w-3 h-3" /> : <HistoryIcon className="w-3 h-3" />}
                         {backup.type}
                       </span>
                     </td>

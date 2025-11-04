@@ -166,8 +166,8 @@ class PerformanceMonitoringService {
         const navEntry = entries[0] as PerformanceNavigationTiming;
         if (navEntry) {
           this.metrics.ttfb = navEntry.responseStart - navEntry.requestStart;
-          this.metrics.domContentLoaded = navEntry.domContentLoadedEventEnd - navEntry.navigationStart;
-          this.metrics.loadComplete = navEntry.loadEventEnd - navEntry.navigationStart;
+          this.metrics.domContentLoaded = navEntry.domContentLoadedEventEnd - ((navEntry as any).navigationStart || navEntry.startTime);
+          this.metrics.loadComplete = navEntry.loadEventEnd - ((navEntry as any).navigationStart || navEntry.startTime);
         }
       });
       navObserver.observe({ entryTypes: ['navigation'] });
@@ -488,7 +488,7 @@ class PerformanceMonitoringService {
   }
 
   public getLatestReport(): PerformanceReport | null {
-    return this.reports.length > 0 ? this.reports[this.reports.length - 1] : null;
+    return this.reports.length > 0 ? (this.reports[this.reports.length - 1] ?? null) : null;
   }
 
   public exportData(): string {
@@ -505,12 +505,12 @@ class PerformanceMonitoringService {
   }
 
   public async runLighthouseAudit(): Promise<any> {
-    if (!window.lighthouse) {
+    if (!(window as any).lighthouse) {
       throw new Error('Lighthouse is not available');
     }
 
     try {
-      const result = await window.lighthouse(window.location.href, {
+      const result = await (window as any).lighthouse(window.location.href, {
         only: ['performance', 'accessibility', 'best-practices', 'seo'],
         port: 8080,
       });
@@ -563,7 +563,7 @@ class PerformanceMonitoringService {
     const averageCls = recentReports.reduce((sum, r) => sum + r.metrics.cls, 0) / recentReports.length;
 
     const latestReport = recentReports[recentReports.length - 1];
-    const recommendations = latestReport.recommendations;
+    const recommendations = latestReport?.recommendations || [];
 
     return {
       trends,
@@ -573,7 +573,7 @@ class PerformanceMonitoringService {
         averageFid,
         averageCls,
         improvementAreas: recommendations.slice(0, 3),
-        strongAreas: this.identifyStrongAreas(latestReport.metrics),
+        strongAreas: latestReport ? this.identifyStrongAreas(latestReport.metrics) : [],
       },
     };
   }

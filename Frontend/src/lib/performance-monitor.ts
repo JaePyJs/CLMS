@@ -7,18 +7,18 @@ export interface PerformanceMetric {
   name: string;
   value: number;
   timestamp: number;
-  tags?: Record<string, string>;
+  tags?: Record<string, string> | undefined;
   type: 'duration' | 'counter' | 'gauge' | 'histogram';
-  unit?: string;
+  unit?: string | undefined;
 }
 
-export interface PerformanceEntry {
+export interface CustomPerformanceEntry {
   name: string;
   startTime: number;
-  duration?: number;
-  metadata?: Record<string, unknown>;
+  duration?: number | undefined;
+  metadata?: Record<string, unknown> | undefined;
   status: 'started' | 'completed' | 'error';
-  error?: Error;
+  error?: Error | undefined;
 }
 
 export interface LogEntry {
@@ -50,7 +50,7 @@ class PerformanceMonitor {
   private config: PerformanceConfig;
   private metrics: PerformanceMetric[] = [];
   private logs: LogEntry[] = [];
-  private activeEntries: Map<string, PerformanceEntry> = new Map();
+  private activeEntries: Map<string, CustomPerformanceEntry> = new Map();
   private flushTimer: number | null = null;
   private sessionId: string;
   private userId: string | null = null;
@@ -128,11 +128,13 @@ class PerformanceMonitor {
         const lcpObserver = new PerformanceObserver((list) => {
           const entries = list.getEntries();
           const lastEntry = entries[entries.length - 1];
-          this.recordMetric('largest_contentful_paint', lastEntry.startTime, {
-            type: 'duration',
-            unit: 'ms',
-            tags: { element: (lastEntry as any).element?.tagName || (lastEntry as any).url || 'unknown' },
-          });
+          if (lastEntry) {
+            this.recordMetric('largest_contentful_paint', lastEntry.startTime, {
+              type: 'duration',
+              unit: 'ms',
+              tags: { element: (lastEntry as any).element?.tagName || (lastEntry as any).url || 'unknown' },
+            });
+          }
         });
         lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
       } catch (e) {
@@ -348,7 +350,7 @@ class PerformanceMonitor {
    */
   start(name: string, metadata?: Record<string, unknown>): string {
     const id = `${name}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const entry: PerformanceEntry = {
+    const entry: CustomPerformanceEntry = {
       name,
       startTime: performance.now(),
       metadata,
@@ -414,13 +416,16 @@ class PerformanceMonitor {
     // Apply custom metric transformations
     if (this.config.customMetrics[name]) {
       const transformedValue = this.config.customMetrics[name](value);
-      this.metrics.push({
+      const metric: PerformanceMetric = {
         name: `${name}_transformed`,
         value: transformedValue,
         timestamp: Date.now(),
         type: 'gauge',
-        tags: options?.tags,
-      });
+      };
+      if (options?.tags) {
+        metric.tags = options.tags;
+      }
+      this.metrics.push(metric);
     }
 
     // Buffer management
@@ -464,10 +469,15 @@ class PerformanceMonitor {
       level,
       message,
       timestamp: Date.now(),
-      context,
-      userId: this.userId || undefined,
       sessionId: this.sessionId,
     };
+
+    if (context) {
+      logEntry.context = context;
+    }
+    if (this.userId) {
+      logEntry.userId = this.userId;
+    }
 
     this.logs.push(logEntry);
 

@@ -1,505 +1,272 @@
 import { Router, Request, Response } from 'express';
-import { ApiResponse } from '@/types';
-import {
-  type GetBookCheckoutsOptions,
-  type GetBooksOptions,
-  getBooks,
-  getBookById,
-  getBookByAccessionNo,
-  getBookByIsbn,
-  createBook,
-  updateBook,
-  deleteBook,
-  checkoutBook,
-  returnBook,
-  getBookCheckouts,
-  getOverdueBooks,
-} from '@/services/bookService';
-import { book_checkouts_status } from '@prisma/client';
-import { logger } from '@/utils/logger';
-import { requirePermission } from '@/middleware/authorization.middleware';
-import { Permission } from '@/config/permissions';
-import { auditMiddleware } from '@/middleware/ferpa.middleware';
+import { asyncHandler } from '../middleware/errorHandler';
+import { authenticate } from '../middleware/authenticate';
+import { BookService } from '../services/bookService';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
-// Get all books
-router.get('/', requirePermission(Permission.BOOKS_VIEW), async (req: Request, res: Response): Promise<void> => {
+// GET /api/v1/books
+router.get('/', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Get books request', {
+    query: req.query,
+    userId: (req as any).user?.id
+  });
+
   try {
-    const {
-      category,
-      subcategory,
-      isActive,
-      page = '1',
-      limit = '50',
-      search,
-    } = req.query;
+    const result = await BookService.listBooks(req.query as any);
 
-    const options: GetBooksOptions = {
-      page: parseInt(page as string),
-      limit: parseInt(limit as string),
-    };
-
-    if (category) {
-      options.category = category as string;
-    }
-
-    if (subcategory) {
-      options.subcategory = subcategory as string;
-    }
-
-    if (isActive !== undefined) {
-      options.isActive = isActive === 'true';
-    }
-
-    if (search) {
-      options.search = search as string;
-    }
-
-    const result = await getBooks(options);
-
-    const response: ApiResponse = {
+    res.json({
       success: true,
-      data: result,
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
+      data: result.books,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        pages: Math.ceil(result.total / result.limit)
+      }
+    });
   } catch (error) {
-    logger.error('Error fetching books', {
-      error: (error as Error).message,
-      query: req.query,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('Error retrieving books', { error: error instanceof Error ? error.message : 'Unknown error' });
+    throw error;
   }
-});
+}));
 
-// Get book by ID
-router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+// GET /api/v1/books/:id
+router.get('/:id', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Get book by ID request', {
+    bookId: req.params['id'],
+    userId: (req as any).user?.id
+  });
+
   try {
-    const { id } = req.params;
-    if (!id) {
-      res.status(400).json({
-        success: false,
-        error: 'Book ID is required',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+    const book = await BookService.getBookById(req.params['id']);
 
-    const book = await getBookById(id);
-
-    if (!book) {
-      res.status(404).json({
-        success: false,
-        error: 'Book not found',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    const response: ApiResponse = {
+    res.json({
       success: true,
-      data: book,
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
+      data: book
+    });
   } catch (error) {
-    logger.error('Error fetching book', {
-      error: (error as Error).message,
-      id: req.params.id,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('Error retrieving book', { bookId: req.params['id'], error: error instanceof Error ? error.message : 'Unknown error' });
+    throw error;
   }
-});
+}));
 
-// Create new book
-router.post('/', async (req: Request, res: Response): Promise<void> => {
+// POST /api/v1/books
+router.post('/', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Create book request', {
+    title: req.body.title,
+    isbn: req.body.isbn,
+    createdBy: (req as any).user?.id
+  });
+
   try {
-    const {
-      isbn,
-      accessionNo,
-      title,
-      author,
-      publisher,
-      category,
-      subcategory,
-      location,
-      totalCopies,
-      availableCopies,
-    } = req.body;
+    const book = await BookService.createBook(req.body);
 
-    if (!accessionNo || !title || !author || !category) {
-      res.status(400).json({
-        success: false,
-        error: 'Missing required fields: accessionNo, title, author, category',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    const book = await createBook({
-      isbn,
-      accession_no: accessionNo,
-      title,
-      author,
-      publisher,
-      category,
-      subcategory,
-      location,
-      totalCopies,
-      availableCopies,
-    });
-
-    const response: ApiResponse = {
+    res.status(201).json({
       success: true,
-      data: book,
-      message: 'Book created successfully',
-      timestamp: new Date().toISOString(),
-    };
-    res.status(201).json(response);
+      data: book
+    });
   } catch (error) {
-    logger.error('Error creating book', {
-      error: (error as Error).message,
-      body: req.body,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('Error creating book', { error: error instanceof Error ? error.message : 'Unknown error' });
+    throw error;
   }
-});
+}));
 
-// Update book
-router.put('/:id', async (req: Request, res: Response): Promise<void> => {
+// PUT /api/v1/books/:id
+router.put('/:id', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Update book request', {
+    bookId: req.params['id'],
+    updatedBy: (req as any).user?.id,
+    fields: Object.keys(req.body)
+  });
+
   try {
-    const { id } = req.params;
-    if (!id) {
-      res.status(400).json({
-        success: false,
-        error: 'Book ID is required',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+    const book = await BookService.updateBook(req.params['id'], req.body);
 
-    const {
-      isbn,
-      accessionNo,
-      title,
-      author,
-      publisher,
-      category,
-      subcategory,
-      location,
-      totalCopies,
-      availableCopies,
-      isActive,
-    } = req.body;
-
-    const book = await updateBook(id, {
-      isbn,
-      accession_no: accessionNo,
-      title,
-      author,
-      publisher,
-      category,
-      subcategory,
-      location,
-      total_copies: totalCopies,
-      available_copies: availableCopies,
-      is_active: isActive,
-    });
-
-    const response: ApiResponse = {
+    res.json({
       success: true,
-      data: book,
-      message: 'Book updated successfully',
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
+      data: book
+    });
   } catch (error) {
-    logger.error('Error updating book', {
-      error: (error as Error).message,
-      id: req.params.id,
-      body: req.body,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('Error updating book', { bookId: req.params['id'], error: error instanceof Error ? error.message : 'Unknown error' });
+    throw error;
   }
-});
+}));
 
-// Delete book
-router.delete('/:id', async (req: Request, res: Response): Promise<void> => {
+// PATCH /api/v1/books/:id
+router.patch('/:id', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Partial update book request', {
+    bookId: req.params['id'],
+    updatedBy: (req as any).user?.id,
+    fields: Object.keys(req.body)
+  });
+
   try {
-    const { id } = req.params;
-    if (!id) {
-      res.status(400).json({
-        success: false,
-        error: 'Book ID is required',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
+    const book = await BookService.updateBook(req.params['id'], req.body);
 
-    await deleteBook(id);
-
-    const response: ApiResponse = {
+    res.json({
       success: true,
-      message: 'Book deleted successfully',
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
+      data: book
+    });
   } catch (error) {
-    logger.error('Error deleting book', {
-      error: (error as Error).message,
-      id: req.params.id,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('Error updating book', { bookId: req.params['id'], error: error instanceof Error ? error.message : 'Unknown error' });
+    throw error;
   }
-});
+}));
 
-// Search book by barcode (accession number)
-router.post('/scan', async (req: Request, res: Response): Promise<void> => {
+// DELETE /api/v1/books/:id
+router.delete('/:id', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Delete book request', {
+    bookId: req.params['id'],
+    deletedBy: (req as any).user?.id
+  });
+
   try {
-    const { barcode } = req.body;
+    await BookService.deleteBook(req.params['id']);
 
-    if (!barcode) {
-      res.status(400).json({
-        success: false,
-        error: 'Barcode is required',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    // Try to find by accession number first
-    let book = await getBookByAccessionNo(barcode);
-
-    // If not found, try by ISBN
-    if (!book) {
-      book = await getBookByIsbn(barcode);
-    }
-
-    if (!book) {
-      res.status(404).json({
-        success: false,
-        error: 'Book not found',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    const response: ApiResponse = {
+    res.json({
       success: true,
-      message: 'Book found successfully',
-      data: book,
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
+      message: 'Book deleted successfully'
+    });
   } catch (error) {
-    logger.error('Error scanning book barcode', {
-      error: (error as Error).message,
-      body: req.body,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('Error deleting book', { bookId: req.params['id'], error: error instanceof Error ? error.message : 'Unknown error' });
+    throw error;
   }
-});
+}));
 
-// Check out book
-router.post('/checkout', 
-  auditMiddleware('BOOK_CHECKOUT'),
-  async (req: Request, res: Response): Promise<void> => {
+// GET /api/v1/books/:id/availability
+router.get('/:id/availability', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Check book availability request', {
+    bookId: req.params['id'],
+    userId: (req as any).user?.id
+  });
+
   try {
-    const { bookId, studentId, dueDate, notes } = req.body;
+    const availability = await BookService.getBookAvailability(req.params['id']);
 
-    if (!bookId || !studentId || !dueDate) {
-      res.status(400).json({
-        success: false,
-        error: 'Missing required fields: bookId, studentId, dueDate',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    const checkout = await checkoutBook({
-      book_id: bookId,
-      student_id: studentId,
-      due_date: new Date(dueDate),
-      notes,
-    });
-
-    const response: ApiResponse = {
+    res.json({
       success: true,
-      data: checkout,
-      message: 'Book checked out successfully',
-      timestamp: new Date().toISOString(),
-    };
-    res.status(201).json(response);
+      data: availability
+    });
   } catch (error) {
-    logger.error('Error checking out book', {
-      error: (error as Error).message,
-      body: req.body,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('Error checking book availability', { bookId: req.params['id'], error: error instanceof Error ? error.message : 'Unknown error' });
+    throw error;
   }
-});
+}));
 
-// Return book
-router.post('/return', 
-  auditMiddleware('BOOK_RETURN'),
-  async (req: Request, res: Response): Promise<void> => {
+// POST /api/v1/books/:id/reserve
+router.post('/:id/reserve', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Reserve book request', {
+    bookId: req.params['id'],
+    userId: (req as any).user?.id
+  });
+
+  // TODO: Implement book reservation
+  res.status(501).json({
+    message: 'Book reservation feature not yet implemented',
+    endpoint: 'POST /api/v1/books/:id/reserve',
+    status: 'pending_implementation'
+  });
+}));
+
+// DELETE /api/v1/books/:id/reserve
+router.delete('/:id/reserve', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Cancel book reservation request', {
+    bookId: req.params['id'],
+    userId: (req as any).user?.id
+  });
+
+  // TODO: Implement cancel book reservation
+  res.status(501).json({
+    message: 'Cancel book reservation feature not yet implemented',
+    endpoint: 'DELETE /api/v1/books/:id/reserve',
+    status: 'pending_implementation'
+  });
+}));
+
+// GET /api/v1/books/:id/history
+router.get('/:id/history', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Get book history request', {
+    bookId: req.params['id'],
+    userId: (req as any).user?.id,
+    query: req.query
+  });
+
   try {
-    const { checkoutId } = req.body;
+    const history = await BookService.getBookHistory(req.params['id'], {
+      page: req.query['page'] ? parseInt(req.query['page'] as string, 10) : 1,
+      limit: req.query['limit'] ? parseInt(req.query['limit'] as string, 10) : 10,
+      dateFrom: req.query['dateFrom'] ? new Date(req.query['dateFrom'] as string) : undefined,
+      dateTo: req.query['dateTo'] ? new Date(req.query['dateTo'] as string) : undefined
+    });
 
-    if (!checkoutId) {
-      res.status(400).json({
-        success: false,
-        error: 'Checkout ID is required',
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-
-    const checkout = await returnBook(checkoutId);
-
-    const response: ApiResponse = {
+    res.json({
       success: true,
-      data: checkout,
-      message: 'Book returned successfully',
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
+      data: history.history,
+      pagination: {
+        total: history.total,
+        page: history.page,
+        limit: history.limit,
+        pages: Math.ceil(history.total / history.limit)
+      }
+    });
   } catch (error) {
-    logger.error('Error returning book', {
-      error: (error as Error).message,
-      body: req.body,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('Error retrieving book history', { bookId: req.params['id'], error: error instanceof Error ? error.message : 'Unknown error' });
+    throw error;
   }
-});
+}));
 
-// Get book checkouts
-router.get('/checkouts/all', 
-  auditMiddleware('LIST_BOOK_CHECKOUTS'),
-  async (req: Request, res: Response): Promise<void> => {
+// GET /api/v1/books/search
+router.get('/search', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Advanced book search request', {
+    query: req.query,
+    userId: (req as any).user?.id
+  });
+
   try {
-    const {
-      bookId,
-      studentId,
-      status,
-      startDate,
-      endDate,
-      page = '1',
-      limit = '50',
-    } = req.query;
-
-    const options: GetBookCheckoutsOptions = {
-      page: parseInt(page as string),
-      limit: parseInt(limit as string),
+    const query = (req.query.q as string) || (req.query.search as string);
+    const filters = {
+      category: req.query.category as string,
+      author: req.query.author as string,
+      isbn: req.query.isbn as string,
+      available: req.query.available === 'true' ? true : req.query.available === 'false' ? false : undefined,
+      page: req.query.page ? parseInt(req.query.page as string, 10) : 1,
+      limit: req.query.limit ? parseInt(req.query.limit as string, 10) : 10,
+      sortBy: req.query.sortBy as any,
+      sortOrder: req.query.sortOrder as any
     };
 
-    if (bookId) {
-      options.book_id = bookId as string;
-    }
+    const result = await BookService.searchBooks(query, filters);
 
-    if (studentId) {
-      options.student_id = studentId as string;
-    }
-
-    if (status) {
-      options.status = status as book_checkouts_status;
-    }
-
-    if (startDate) {
-      options.startDate = new Date(startDate as string);
-    }
-
-    if (endDate) {
-      options.endDate = new Date(endDate as string);
-    }
-
-    const result = await getBookCheckouts(options);
-
-    const response: ApiResponse = {
+    res.json({
       success: true,
-      data: result,
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
+      data: result.books,
+      total: result.total
+    });
   } catch (error) {
-    logger.error('Error fetching book checkouts', {
-      error: (error as Error).message,
-      query: req.query,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('Error searching books', { error: error instanceof Error ? error.message : 'Unknown error' });
+    throw error;
   }
-});
+}));
 
-// Get overdue books
-router.get('/checkouts/overdue', 
-  auditMiddleware('LIST_OVERDUE_BOOKS'),
-  async (req: Request, res: Response): Promise<void> => {
+// GET /api/v1/books/categories
+router.get('/categories', authenticate, asyncHandler(async (req: Request, res: Response) => {
+  logger.info('Get book categories request', {
+    userId: (req as any).user?.id
+  });
+
   try {
-    const overdueBooks = await getOverdueBooks();
+    const categories = await BookService.getCategories();
 
-    const response: ApiResponse = {
+    res.json({
       success: true,
-      data: overdueBooks,
-      timestamp: new Date().toISOString(),
-    };
-    res.json(response);
+      data: categories
+    });
   } catch (error) {
-    logger.error('Error fetching overdue books', {
-      error: (error as Error).message,
-    });
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      message: (error as Error).message,
-      timestamp: new Date().toISOString(),
-    });
+    logger.error('Error retrieving categories', { error: error instanceof Error ? error.message : 'Unknown error' });
+    throw error;
   }
-});
+}));
 
 export default router;

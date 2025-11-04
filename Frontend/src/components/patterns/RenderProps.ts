@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ReactNode, ComponentType, ReactElement } from 'react';
+import type { ReactNode, ComponentType } from 'react';
 
 /**
  * Render prop patterns for flexible component composition
@@ -40,14 +40,18 @@ export interface DataProviderProps<T> {
 
 export function DataProvider<T>({ data, children, render, component: Component }: DataProviderProps<T>) {
   const renderFunction = render || (typeof children === 'function' ? children : undefined);
-  const ChildComponent = Component || (typeof children === 'object' ? children as ComponentType<T> : undefined);
+  
+  // Only use Component prop, don't try to cast children to ComponentType
+  const ChildComponent = Component;
 
   if (renderFunction) {
     return React.createElement(React.Fragment, null, renderFunction(data));
   }
 
   if (ChildComponent) {
-    return React.createElement(ChildComponent, data);
+    // Ensure data is treated as props object
+    const props = typeof data === 'object' && data !== null ? data : { data } as any;
+    return React.createElement(ChildComponent as any, props);
   }
 
   if (typeof children !== 'function') {
@@ -428,7 +432,7 @@ export function withRenderProps<T extends Record<string, any>>(
 /**
  * Utility to determine if a prop is a render function
  */
-export function isRenderFunction(prop: any): prop is Function {
+export function isRenderFunction(prop: any): prop is (...args: any[]) => any {
   return typeof prop === 'function';
 }
 

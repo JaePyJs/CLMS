@@ -17,10 +17,10 @@ export interface ApiErrorPayload {
 export interface AppApiError {
   status: number;
   message: string;
-  code?: string;
-  timestamp?: string;
+  code?: string | undefined;
+  timestamp?: string | undefined;
   validationErrors: ValidationErrorDetail[];
-  raw?: unknown;
+  raw?: unknown | undefined;
 }
 
 export function normalizeApiError(

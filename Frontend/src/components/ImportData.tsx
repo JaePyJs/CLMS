@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Settings, Zap, Database, FileText } from 'lucide-react';
 import EnhancedImportManager from './Import/EnhancedImportManager';

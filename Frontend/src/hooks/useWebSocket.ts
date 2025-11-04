@@ -57,8 +57,11 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
   const getWebSocketUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws?token=${encodeURIComponent(token || '')}`;
+    const host = window.location.hostname;
+    const port = import.meta.env.VITE_WS_URL ?
+      new URL(import.meta.env.VITE_WS_URL).port :
+      '3001'; // Use backend port by default
+    const wsUrl = `${protocol}//${host}:${port}/ws?token=${encodeURIComponent(token || '')}`;
     return wsUrl;
   }, [token]);
 
@@ -208,14 +211,16 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
           case 'equipment_status_update':
             toast.warning(`Equipment update: ${message.data.equipmentName} - ${message.data.status}`);
             break;
-          case 'system_notification':
+          case 'system_notification': {
             const notificationType = message.data.notificationType as keyof typeof toast;
+            const title = typeof message.data.title === 'string' ? message.data.title : message.data.title?.message || 'Notification';
             if (notificationType && typeof toast[notificationType] === 'function') {
-              (toast[notificationType] as (message: string) => void)(message.data.title);
+              (toast[notificationType] as (message: string) => void)(title);
             } else {
-              toast.info(message.data.title);
+              toast.info(title);
             }
             break;
+          }
           case 'emergency_alert':
             toast.error(`🚨 EMERGENCY: ${message.data.message}`);
             break;
@@ -422,7 +427,7 @@ export const useDashboardWebSocket = () => {
 
   const handleDashboardMessage = useCallback((message: WebSocketMessage) => {
     if (message.type === 'dashboard_data') {
-      setDashboardData(prev => ({
+      setDashboardData((prev: any) => ({
         ...prev,
         [message.data.dataType]: message.data.data
       }));
@@ -470,7 +475,7 @@ export const useEquipmentWebSocket = () => {
 
   const handleEquipmentMessage = useCallback((message: WebSocketMessage) => {
     if (message.type === 'equipment_status_update') {
-      setEquipmentStatus(prev => ({
+      setEquipmentStatus((prev: any) => ({
         ...prev,
         [message.data.equipmentId]: message.data
       }));
