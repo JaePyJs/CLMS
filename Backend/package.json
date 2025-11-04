@@ -39,7 +39,9 @@
     "dotenv": "^16.4.7",
     "zod": "^3.23.8",
     "date-fns": "^4.1.0",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "socket.io": "^4.8.1",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

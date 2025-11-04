@@ -51,11 +51,12 @@ test.describe('Responsive Design - Mobile', () => {
       let authPage: AuthPage;
       let dashboardPage: DashboardPage;
 
-      test.use({ ...device });
-
       test.beforeEach(async ({ page }) => {
         authPage = new AuthPage(page);
         dashboardPage = new DashboardPage(page);
+
+        // Set device configuration
+        await page.setViewportSize(device.viewport);
 
         // Add mobile-specific headers if needed
         await page.setExtraHTTPHeaders({

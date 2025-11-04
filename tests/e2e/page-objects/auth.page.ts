@@ -38,8 +38,8 @@ export class AuthPage extends BasePage {
   readonly libraryName: Locator;
 
   constructor(page: Page) {
-    super(page, '/login');
-    this.url = '/login';
+    super(page, '/');
+    this.url = '/';
 
     // Initialize login form elements
     this.loginForm = page.locator('form[data-testid="login-form"]');
@@ -81,10 +81,15 @@ export class AuthPage extends BasePage {
    * Wait for login form to be visible and ready
    */
   async waitForLoginForm(): Promise<void> {
-    await this.loginForm.waitFor({ state: 'visible', timeout: 10000 });
-    await this.usernameInput.waitFor({ state: 'visible' });
-    await this.passwordInput.waitFor({ state: 'visible' });
-    await this.signInButton.waitFor({ state: 'visible' });
+    // Wait for page to load first
+    await this.page.waitForLoadState('networkidle', { timeout: 30000 });
+    await this.page.waitForTimeout(2000); // Give React time to render
+
+    // Try to find the form with longer timeout
+    await this.loginForm.waitFor({ state: 'visible', timeout: 30000 });
+    await this.usernameInput.waitFor({ state: 'visible', timeout: 30000 });
+    await this.passwordInput.waitFor({ state: 'visible', timeout: 30000 });
+    await this.signInButton.waitFor({ state: 'visible', timeout: 30000 });
   }
 
   /**

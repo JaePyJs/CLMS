@@ -26,7 +26,6 @@ export default defineConfig({
     timezoneId: 'America/New_York',
     userAgent: 'CLMS-E2E-Test',
     colorScheme: 'light',
-    reducedMotion: 'reduce',
   },
   projects: [
     {

@@ -494,7 +494,7 @@ export default function App() {
                     className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
                   />
                   {isRefreshing && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                    <span className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full" />
                   )}
                 </Button>
 
@@ -769,7 +769,7 @@ export default function App() {
                     >
                       <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                       {isRefreshing && (
-                        <span className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                        <span className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full" />
                       )}
                     </Button>
                     <Button
