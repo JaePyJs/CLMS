@@ -132,7 +132,7 @@ self.addEventListener('activate', (event) => {
         await Promise.all(deletePromises);
 
         // Take control of all pages
-        await clients.claim();
+        await self.clients.claim();
         console.log('[SW] Activation completed successfully');
       } catch (error) {
         console.error('[SW] Activation failed:', error);

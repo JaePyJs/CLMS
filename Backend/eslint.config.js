@@ -1,13 +1,13 @@
-const js = require('@eslint/js');
-const tseslintModule = require('@typescript-eslint/eslint-plugin');
-const tsParserModule = require('@typescript-eslint/parser');
+import js from '@eslint/js';
+import tseslintModule from '@typescript-eslint/eslint-plugin';
+import tsParserModule from '@typescript-eslint/parser';
 
 const tseslint = tseslintModule.default ?? tseslintModule;
 const tsParser = tsParserModule.default ?? tsParserModule;
 
 const tsFiles = ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'];
 
-const tsRecommended = tseslint.configs['flat/recommended'].map(config => {
+const tsRecommended = tseslint.configs['flat/recommended'].map((config) => {
   if (!config.languageOptions) {
     return config;
   }
@@ -20,7 +20,6 @@ const tsRecommended = tseslint.configs['flat/recommended'].map(config => {
       parserOptions: {
         ...config.languageOptions.parserOptions,
         project: './tsconfig.json',
-        tsconfigRootDir: __dirname,
         sourceType: 'module',
       },
     },
@@ -67,7 +66,7 @@ const sharedRules = {
   'no-useless-catch': 'off',
 };
 
-module.exports = [
+export default [
   {
     ignores: baseIgnores,
   },

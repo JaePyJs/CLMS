@@ -5,22 +5,18 @@
 # Features: Volume mounting, fast refresh, debugging support
 # ============================================================================
 
-FROM node:20-alpine AS development
+FROM node:20-bullseye AS development
 
-# Install system dependencies
-RUN apk add --no-cache \
-    curl \
-    bash \
+# Install system dependencies for native modules
+RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
-    autoconf \
-    automake \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    libwebp-dev \
-    nasm \
-    libtool
+    curl \
+    bash \
+    libssl-dev \
+    libffi-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
@@ -29,14 +25,17 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Install all dependencies (including devDependencies)
-RUN npm install --legacy-peer-deps --no-optional --ignore-scripts
+RUN npm install --legacy-peer-deps
 
 # Copy application source (overridden by volume mount in development)
 COPY . .
 
+# Install correct rollup dependency for glibc
+RUN npm install @rollup/rollup-linux-x64-gnu --save-dev
+
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001 && \
+RUN groupadd -g 1001 nodejs && \
+    useradd -u 1001 -g nodejs nextjs && \
     chown -R nextjs:nodejs /app
 
 # Switch to non-root user

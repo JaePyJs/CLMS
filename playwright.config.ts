@@ -89,9 +89,7 @@ export default defineConfig({
     /* Color scheme preference */
     colorScheme: 'light',
 
-    /* Reduced motion for accessibility testing */
-    reducedMotion: 'reduce',
-  },
+    },
 
   /* Configure projects for comprehensive cross-browser testing */
   projects: [
