@@ -1,4 +1,5 @@
-import { PrismaClient, students_grade_category } from '@prisma/client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
@@ -7,8 +8,8 @@ export interface CreateStudentData {
   student_id: string;
   first_name: string;
   last_name: string;
-  grade_level: string;
-  grade_category: students_grade_category;
+  grade_level: number;
+  grade_category?: string;
   section?: string;
   is_active?: boolean;
 }
@@ -16,8 +17,8 @@ export interface CreateStudentData {
 export interface UpdateStudentData {
   first_name?: string;
   last_name?: string;
-  grade_level?: string;
-  grade_category?: students_grade_category;
+  grade_level?: number;
+  grade_category?: string;
   section?: string;
   is_active?: boolean;
 }
@@ -27,7 +28,7 @@ export class StudentService {
     try {
       logger.info('Creating student', {
         student_id: data.student_id,
-        name: `${data.first_name} ${data.last_name}`
+        name: `${data.first_name} ${data.last_name}`,
       });
 
       const student = await prisma.students.create({
@@ -42,15 +43,15 @@ export class StudentService {
         },
       });
 
-      logger.info('Student created successfully', { 
-        student_id: student.student_id 
+      logger.info('Student created successfully', {
+        student_id: student.student_id,
       });
 
       return student;
     } catch (error) {
       logger.error('Student creation failed', {
         student_id: data.student_id,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -68,12 +69,18 @@ export class StudentService {
 
       return student;
     } catch (error) {
-      logger.error('Get student by ID failed', { id, error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Get student by ID failed', {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
 
-  public static async updateStudent(id: string, data: UpdateStudentData): Promise<any> {
+  public static async updateStudent(
+    id: string,
+    data: UpdateStudentData,
+  ): Promise<any> {
     try {
       logger.info('Updating student', { id });
 
@@ -88,7 +95,10 @@ export class StudentService {
       logger.info('Student updated successfully', { id });
       return student;
     } catch (error) {
-      logger.error('Student update failed', { id, error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Student update failed', {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -96,10 +106,25 @@ export class StudentService {
   public static async deleteStudent(id: string): Promise<void> {
     try {
       logger.info('Deleting student', { id });
+
+      // Delete in proper order to avoid foreign key constraint violations
+      // First delete all related records
+      await prisma.student_activities.deleteMany({
+        where: { student_id: id },
+      });
+
+      await prisma.book_checkouts.deleteMany({
+        where: { student_id: id },
+      });
+
+      // Finally delete the student
       await prisma.students.delete({ where: { id } });
       logger.info('Student deleted successfully', { id });
     } catch (error) {
-      logger.error('Student deletion failed', { id, error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Student deletion failed', {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -111,7 +136,9 @@ export class StudentService {
       });
       return students;
     } catch (error) {
-      logger.error('List students failed', { error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('List students failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }

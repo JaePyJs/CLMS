@@ -4,7 +4,21 @@ import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useAppStore } from '@/store/useAppStore';
 import { useTouchOptimization } from '@/hooks/useMobileOptimization';
-import { Wifi, WifiOff, AlertCircle, ChevronUp, X, Home, Camera, Library, Users, BookOpen, Laptop, BarChart, Settings } from 'lucide-react';
+import {
+  Wifi,
+  WifiOff,
+  AlertCircle,
+  ChevronUp,
+  X,
+  Home,
+  Camera,
+  Library,
+  Users,
+  BookOpen,
+  Laptop,
+  BarChart,
+  Settings,
+} from 'lucide-react';
 import type { AppNotification } from '@/services/notificationApi';
 
 interface NavigationItem {
@@ -102,7 +116,9 @@ export const MobileBottomNavigation: React.FC<MobileBottomNavigationProps> = ({
   // Find current navigation item
   const getCurrentItem = () => {
     const allItems = [...mobileNavigationItems, ...moreNavigationItems];
-    return allItems.find(item => item.id === activeTab) || mobileNavigationItems[0];
+    return (
+      allItems.find((item) => item.id === activeTab) || mobileNavigationItems[0]
+    );
   };
 
   const currentItem = getCurrentItem();
@@ -117,8 +133,6 @@ export const MobileBottomNavigation: React.FC<MobileBottomNavigationProps> = ({
       navigator.vibrate(50);
     }
   };
-
-
 
   return (
     <>
@@ -169,13 +183,13 @@ export const MobileBottomNavigation: React.FC<MobileBottomNavigationProps> = ({
               >
                 <div className="relative">
                   <Icon className={`h-5 w-5 ${isActive ? item.color : ''}`} />
-                  {notifications?.some((n: AppNotification) => n.type === item.id) && (
+                  {notifications?.some(
+                    (n: AppNotification) => n.type === item.id
+                  ) && (
                     <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full" />
                   )}
                 </div>
-                <span className="text-xs font-medium">
-                  {item.label}
-                </span>
+                <span className="text-xs font-medium">{item.label}</span>
                 {item.shortcut && (
                   <span className="text-[10px] text-slate-400 dark:text-slate-500">
                     {item.shortcut}
@@ -206,7 +220,10 @@ export const MobileBottomNavigation: React.FC<MobileBottomNavigationProps> = ({
 
       {/* More Options Overlay */}
       {showMore && (
-        <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowMore(false)}>
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => setShowMore(false)}
+        >
           <div
             className="absolute bottom-20 left-4 right-4 bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl p-4"
             onClick={(e) => e.stopPropagation()}
@@ -236,7 +253,9 @@ export const MobileBottomNavigation: React.FC<MobileBottomNavigationProps> = ({
                     variant={isActive ? 'default' : 'outline'}
                     size="sm"
                     className={`flex flex-col items-center gap-2 h-auto py-3 rounded-lg transition-all ${
-                      isActive ? item.color : 'text-slate-600 dark:text-slate-400'
+                      isActive
+                        ? item.color
+                        : 'text-slate-600 dark:text-slate-400'
                     }`}
                     onClick={() => handleNavigation(item)}
                   >
@@ -255,7 +274,11 @@ export const MobileBottomNavigation: React.FC<MobileBottomNavigationProps> = ({
             {/* Current Tab Info */}
             <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg">
               <div className="flex items-center gap-2">
-                {currentItem && <currentItem.icon className={`h-4 w-4 ${currentItem.color}`} />}
+                {currentItem && (
+                  <currentItem.icon
+                    className={`h-4 w-4 ${currentItem.color}`}
+                  />
+                )}
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   Currently: {currentItem?.label || 'Dashboard'}
                 </span>

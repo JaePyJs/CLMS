@@ -1,9 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, Users, BookOpen, Download, CheckCircle2, AlertCircle, Star } from 'lucide-react';
+import {
+  TrendingUp,
+  Users,
+  BookOpen,
+  Download,
+  CheckCircle2,
+  AlertCircle,
+  Star,
+} from 'lucide-react';
 import { reportsApi } from '@/lib/api';
 import { exportReportToCSV } from '@/lib/export-utils';
 
@@ -17,7 +31,13 @@ interface WeeklyStats {
   };
   popularBooks: Array<{ title: string; count: number }>;
   popularCategories: Array<{ name: string; count: number }>;
-  dailyBreakdown: Array<{ date: string; dayOfWeek: string; visits: number; checkouts: number; uniqueStudents: number }>;
+  dailyBreakdown: Array<{
+    date: string;
+    dayOfWeek: string;
+    visits: number;
+    checkouts: number;
+    uniqueStudents: number;
+  }>;
 }
 
 export default function WeeklyReport() {
@@ -38,9 +58,9 @@ export default function WeeklyReport() {
     try {
       // Calculate the date for the week based on offset
       const date = new Date();
-      date.setDate(date.getDate() - (weekOffset * 7));
+      date.setDate(date.getDate() - weekOffset * 7);
       const dateStr = date.toISOString().split('T')[0];
-      
+
       const response = await reportsApi.getWeeklyReport(dateStr);
       if (response.success && response.data) {
         setStats(response.data as WeeklyStats);
@@ -56,8 +76,10 @@ export default function WeeklyReport() {
   };
 
   const exportReport = (format: 'pdf' | 'csv') => {
-    if (!stats) return;
-    
+    if (!stats) {
+      return;
+    }
+
     if (format === 'csv') {
       exportReportToCSV(stats, 'weekly');
       showMessage('success', 'Report exported successfully');
@@ -155,24 +177,30 @@ export default function WeeklyReport() {
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Check-Ins</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Total Check-Ins
+                </CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.summary.totalVisits}</div>
-                <p className="text-xs text-muted-foreground">
-                  This week
-                </p>
+                <div className="text-2xl font-bold">
+                  {stats.summary.totalVisits}
+                </div>
+                <p className="text-xs text-muted-foreground">This week</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Unique Students</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Unique Students
+                </CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.summary.uniqueStudents}</div>
+                <div className="text-2xl font-bold">
+                  {stats.summary.uniqueStudents}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Different visitors
                 </p>
@@ -181,29 +209,31 @@ export default function WeeklyReport() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Books Circulated</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Books Circulated
+                </CardTitle>
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.summary.totalCheckouts}</div>
-                <p className="text-xs text-muted-foreground">
-                  Checked out
-                </p>
+                <div className="text-2xl font-bold">
+                  {stats.summary.totalCheckouts}
+                </div>
+                <p className="text-xs text-muted-foreground">Checked out</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg Daily Visits</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Avg Daily Visits
+                </CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
                   {Math.round(stats.summary.totalVisits / 7)}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Per day average
-                </p>
+                <p className="text-xs text-muted-foreground">Per day average</p>
               </CardContent>
             </Card>
           </div>
@@ -220,8 +250,13 @@ export default function WeeklyReport() {
               <CardContent>
                 <div className="space-y-2">
                   {stats.popularBooks.slice(0, 5).map((book, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <span className="text-sm">{index + 1}. {book.title}</span>
+                    <div
+                      key={index}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="text-sm">
+                        {index + 1}. {book.title}
+                      </span>
                       <Badge variant="outline">{book.count}x</Badge>
                     </div>
                   ))}
@@ -239,7 +274,10 @@ export default function WeeklyReport() {
               <CardContent>
                 <div className="space-y-2">
                   {stats.popularCategories.map((cat, index) => (
-                    <div key={index} className="flex items-center justify-between">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between"
+                    >
                       <span className="text-sm">{cat.name}</span>
                       <Badge variant="outline">{cat.count} books</Badge>
                     </div>
@@ -257,8 +295,13 @@ export default function WeeklyReport() {
             <CardContent>
               <div className="space-y-2">
                 {stats.dailyBreakdown.map((day) => (
-                  <div key={day.date} className="flex items-center justify-between p-2 border rounded">
-                    <span className="font-medium">{day.dayOfWeek} - {day.date}</span>
+                  <div
+                    key={day.date}
+                    className="flex items-center justify-between p-2 border rounded"
+                  >
+                    <span className="font-medium">
+                      {day.dayOfWeek} - {day.date}
+                    </span>
                     <div className="flex gap-2">
                       <Badge variant="outline">{day.visits} visits</Badge>
                       <Badge variant="outline">{day.checkouts} checkouts</Badge>

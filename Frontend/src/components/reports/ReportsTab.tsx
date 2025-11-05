@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Calendar,
-  TrendingUp,
-  BarChart3,
-  FileText,
-} from 'lucide-react';
+import { Calendar, TrendingUp, BarChart3, FileText } from 'lucide-react';
 
 // Import report components
 const DailyReport = React.lazy(() => import('./DailyReport'));
@@ -34,7 +29,11 @@ export default function ReportsTab() {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="daily">
             <Calendar className="w-4 h-4 mr-2" />

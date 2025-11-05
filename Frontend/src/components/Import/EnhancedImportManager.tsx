@@ -7,9 +7,39 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Upload, CheckCircle, AlertCircle, Info, Loader2, FileText, Users, BookOpen, Eye, FileSpreadsheet, FileDown, ArrowRight, ArrowLeft, RefreshCw, Database, Zap } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Upload,
+  CheckCircle,
+  AlertCircle,
+  Info,
+  Loader2,
+  FileText,
+  Users,
+  BookOpen,
+  Eye,
+  FileSpreadsheet,
+  FileDown,
+  ArrowRight,
+  ArrowLeft,
+  RefreshCw,
+  Database,
+  Zap,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -47,83 +77,107 @@ export default function EnhancedImportManager() {
   const [importProgress, setImportProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const parseFile = useCallback((file: File): Promise<{ headers: string[]; rows: any[]; totalRows: number }> => {
-    return new Promise((resolve, reject) => {
-      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+  const parseFile = useCallback(
+    (
+      file: File
+    ): Promise<{ headers: string[]; rows: any[]; totalRows: number }> => {
+      return new Promise((resolve, reject) => {
+        const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
-      if (fileExtension === 'csv') {
-        Papa.parse(file, {
-          header: true,
-          preview: 10,
-          complete: (results) => {
-            if (results.errors.length > 0) {
-              const firstError = results.errors[0];
-              reject(new Error(`CSV parsing error: ${firstError?.message || 'Unknown error'}`));
-            } else {
-              const headers = results.meta.fields || [];
-              const rows = results.data as any[];
+        if (fileExtension === 'csv') {
+          Papa.parse(file, {
+            header: true,
+            preview: 10,
+            complete: (results) => {
+              if (results.errors.length > 0) {
+                const firstError = results.errors[0];
+                reject(
+                  new Error(
+                    `CSV parsing error: ${firstError?.message || 'Unknown error'}`
+                  )
+                );
+              } else {
+                const headers = results.meta.fields || [];
+                const rows = results.data as any[];
+                resolve({
+                  headers,
+                  rows: rows.slice(0, 10),
+                  totalRows: results.data.length,
+                });
+              }
+            },
+            error: (error) => reject(error),
+          });
+        } else if (['xlsx', 'xls'].includes(fileExtension || '')) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const result = e.target?.result;
+              if (!result) {
+                reject(new Error('Failed to read file'));
+                return;
+              }
+              const data = new Uint8Array(result as ArrayBuffer);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const sheetName = workbook.SheetNames[0];
+              if (!sheetName) {
+                reject(new Error('No sheets found in Excel file'));
+                return;
+              }
+              const worksheet = workbook.Sheets[sheetName];
+              const jsonData: any[][] = (XLSX.utils.sheet_to_json as any)(
+                worksheet,
+                { header: 1 }
+              );
+
+              if (jsonData.length === 0) {
+                reject(new Error('Excel file is empty'));
+                return;
+              }
+
+              const headers = (jsonData[0] as string[]) || [];
+              const dataRows = jsonData.slice(1) as any[][];
+              const objectRows = dataRows.map((row: any[]) => {
+                const obj: Record<string, any> = {};
+                headers.forEach((header, index) => {
+                  obj[header] = row[index] || '';
+                });
+                return obj;
+              });
+
               resolve({
                 headers,
-                rows: rows.slice(0, 10),
-                totalRows: results.data.length
+                rows: objectRows.slice(0, 10),
+                totalRows: dataRows.length,
               });
+            } catch (error) {
+              reject(
+                new Error(
+                  `Excel parsing error: ${error instanceof Error ? error.message : 'Unknown error'}`
+                )
+              );
             }
-          },
-          error: (error) => reject(error)
-        });
-      } else if (['xlsx', 'xls'].includes(fileExtension || '')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            const result = e.target?.result;
-            if (!result) {
-              reject(new Error('Failed to read file'));
-              return;
-            }
-            const data = new Uint8Array(result as ArrayBuffer);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            if (!sheetName) {
-              reject(new Error('No sheets found in Excel file'));
-              return;
-            }
-            const worksheet = workbook.Sheets[sheetName];
-            const jsonData: any[][] = (XLSX.utils.sheet_to_json as any)(worksheet, { header: 1 });
+          };
+          reader.readAsArrayBuffer(file);
+        } else {
+          reject(
+            new Error(
+              'Unsupported file format. Please use CSV, XLS, or XLSX files.'
+            )
+          );
+        }
+      });
+    },
+    []
+  );
 
-            if (jsonData.length === 0) {
-              reject(new Error('Excel file is empty'));
-              return;
-            }
-
-            const headers = (jsonData[0] as string[]) || [];
-            const dataRows = jsonData.slice(1) as any[][];
-            const objectRows = dataRows.map((row: any[]) => {
-              const obj: Record<string, any> = {};
-              headers.forEach((header, index) => {
-                obj[header] = row[index] || '';
-              });
-              return obj;
-            });
-
-            resolve({
-              headers,
-              rows: objectRows.slice(0, 10),
-              totalRows: dataRows.length
-            });
-          } catch (error) {
-            reject(new Error(`Excel parsing error: ${error instanceof Error ? error.message : 'Unknown error'}`));
-          }
-        };
-        reader.readAsArrayBuffer(file);
-      } else {
-        reject(new Error('Unsupported file format. Please use CSV, XLS, or XLSX files.'));
-      }
-    });
-  }, []);
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const selectedFile = event.target.files?.[0];
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      return;
+    }
 
     setFile(selectedFile);
     setResult(null);
@@ -146,44 +200,80 @@ export default function EnhancedImportManager() {
     }
   };
 
-  const detectFieldMapping = (headers: string[], type: string): FieldMapping[] => {
-    const availableFields = headers.map(h => h.toLowerCase().trim());
+  const detectFieldMapping = (
+    headers: string[],
+    type: string
+  ): FieldMapping[] => {
+    const availableFields = headers.map((h) => h.toLowerCase().trim());
 
     if (type === 'students') {
-      const studentFields = ['name', 'firstname', 'lastname', 'studentid', 'gradelevel', 'gradecategory', 'section', 'email', 'phone'];
+      const studentFields = [
+        'name',
+        'firstname',
+        'lastname',
+        'studentid',
+        'gradelevel',
+        'gradecategory',
+        'section',
+        'email',
+        'phone',
+      ];
       const mapping: FieldMapping[] = [];
 
-      availableFields.forEach(header => {
+      availableFields.forEach((header) => {
         if (studentFields.includes(header)) {
           let target = header;
-          if (header === 'firstname') target = 'firstName';
-          if (header === 'lastname') target = 'lastName';
-          if (header === 'studentid') target = 'studentId';
-          if (header === 'gradelevel') target = 'gradeLevel';
-          if (header === 'gradecategory') target = 'gradeCategory';
+          if (header === 'firstname') {
+            target = 'firstName';
+          }
+          if (header === 'lastname') {
+            target = 'lastName';
+          }
+          if (header === 'studentid') {
+            target = 'studentId';
+          }
+          if (header === 'gradelevel') {
+            target = 'gradeLevel';
+          }
+          if (header === 'gradecategory') {
+            target = 'gradeCategory';
+          }
 
           mapping.push({
             source: header,
             target,
-            required: ['name', 'firstname', 'lastname', 'gradelevel'].includes(header)
+            required: ['name', 'firstname', 'lastname', 'gradelevel'].includes(
+              header
+            ),
           });
         }
       });
 
       return mapping;
     } else if (type === 'books') {
-      const bookFields = ['accessionno', 'title', 'author', 'isbn', 'edition', 'category', 'publisher', 'year'];
+      const bookFields = [
+        'accessionno',
+        'title',
+        'author',
+        'isbn',
+        'edition',
+        'category',
+        'publisher',
+        'year',
+      ];
       const mapping: FieldMapping[] = [];
 
-      availableFields.forEach(header => {
+      availableFields.forEach((header) => {
         if (bookFields.includes(header)) {
           let target = header;
-          if (header === 'accessionno') target = 'accessionNo';
+          if (header === 'accessionno') {
+            target = 'accessionNo';
+          }
 
           mapping.push({
             source: header,
             target,
-            required: ['accessionno', 'title', 'author'].includes(header)
+            required: ['accessionno', 'title', 'author'].includes(header),
           });
         }
       });
@@ -195,10 +285,10 @@ export default function EnhancedImportManager() {
   };
 
   const applyFieldMapping = (rows: any[]): any[] => {
-    return rows.map(row => {
+    return rows.map((row) => {
       const mapped: any = {};
 
-      fieldMapping.forEach(mapping => {
+      fieldMapping.forEach((mapping) => {
         const sourceValue = row[mapping.source];
         if (sourceValue !== undefined && sourceValue !== '') {
           mapped[mapping.target] = sourceValue;
@@ -251,18 +341,25 @@ export default function EnhancedImportManager() {
       formData.append('file', file);
       formData.append('mapping', JSON.stringify(fieldMapping));
 
-      const endpoint = activeTab === 'students' ? '/import/students' : '/import/books';
+      const endpoint =
+        activeTab === 'students' ? '/import/students' : '/import/books';
 
-      const response = await axios.post(`${API_BASE_URL}${endpoint}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`,
-        },
-        onUploadProgress: (progressEvent) => {
-          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total!);
-          setImportProgress(progress);
-        },
-      });
+      const response = await axios.post(
+        `${API_BASE_URL}${endpoint}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`,
+          },
+          onUploadProgress: (progressEvent) => {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total!
+            );
+            setImportProgress(progress);
+          },
+        }
+      );
 
       setResult(response.data.data);
       setFile(null);
@@ -270,9 +367,13 @@ export default function EnhancedImportManager() {
       setFieldMapping([]);
       setShowPreview(false);
 
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
 
-      toast.success(`Import completed: ${response.data.data.importedRecords} ${activeTab} imported`);
+      toast.success(
+        `Import completed: ${response.data.data.importedRecords} ${activeTab} imported`
+      );
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to import data');
     } finally {
@@ -281,7 +382,10 @@ export default function EnhancedImportManager() {
     }
   };
 
-  const downloadTemplate = async (type: 'students' | 'books', format: 'csv' | 'xlsx') => {
+  const downloadTemplate = async (
+    type: 'students' | 'books',
+    format: 'csv' | 'xlsx'
+  ) => {
     const token = localStorage.getItem('clms_token');
     if (!token) {
       toast.error('Please login first to download templates');
@@ -301,9 +405,12 @@ export default function EnhancedImportManager() {
           ['Johnson, Mike', '9', 'A', 'mike.johnson@school.edu', '555-0125'],
         ];
 
-        data = [headers, ...sampleData].map(row => row.join(',')).join('\n');
+        data = [headers, ...sampleData].map((row) => row.join(',')).join('\n');
         filename = `students-template.${format}`;
-        mimeType = format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        mimeType =
+          format === 'csv'
+            ? 'text/csv'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
         if (format === 'xlsx') {
           const worksheet = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
@@ -312,16 +419,51 @@ export default function EnhancedImportManager() {
           data = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
         }
       } else {
-        const headers = ['accessionNo', 'title', 'author', 'isbn', 'category', 'publisher', 'year'];
+        const headers = [
+          'accessionNo',
+          'title',
+          'author',
+          'isbn',
+          'category',
+          'publisher',
+          'year',
+        ];
         const sampleData = [
-          ['B001', 'To Kill a Mockingbird', 'Harper Lee', '9780061120084', 'Fiction', 'J.B. Lippincott & Co.', '1960'],
-          ['B002', '1984', 'George Orwell', '9780451524935', 'Fiction', 'Secker & Warburg', '1949'],
-          ['B003', 'The Great Gatsby', 'F. Scott Fitzgerald', '9780743273565', 'Fiction', 'Charles Scribner\'s Sons', '1925'],
+          [
+            'B001',
+            'To Kill a Mockingbird',
+            'Harper Lee',
+            '9780061120084',
+            'Fiction',
+            'J.B. Lippincott & Co.',
+            '1960',
+          ],
+          [
+            'B002',
+            '1984',
+            'George Orwell',
+            '9780451524935',
+            'Fiction',
+            'Secker & Warburg',
+            '1949',
+          ],
+          [
+            'B003',
+            'The Great Gatsby',
+            'F. Scott Fitzgerald',
+            '9780743273565',
+            'Fiction',
+            "Charles Scribner's Sons",
+            '1925',
+          ],
         ];
 
-        data = [headers, ...sampleData].map(row => row.join(',')).join('\n');
+        data = [headers, ...sampleData].map((row) => row.join(',')).join('\n');
         filename = `books-template.${format}`;
-        mimeType = format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        mimeType =
+          format === 'csv'
+            ? 'text/csv'
+            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
         if (format === 'xlsx') {
           const worksheet = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
@@ -348,7 +490,9 @@ export default function EnhancedImportManager() {
   };
 
   const renderPreview = () => {
-    if (!previewData) return null;
+    if (!previewData) {
+      return null;
+    }
 
     return (
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
@@ -359,7 +503,8 @@ export default function EnhancedImportManager() {
               File Preview - {file?.name}
             </DialogTitle>
             <DialogDescription>
-              Preview of first 10 rows from {previewData.totalRows} total records
+              Preview of first 10 rows from {previewData.totalRows} total
+              records
             </DialogDescription>
           </DialogHeader>
 
@@ -370,7 +515,8 @@ export default function EnhancedImportManager() {
               <div>
                 <p className="font-medium">{file?.name}</p>
                 <p className="text-sm text-gray-600">
-                  {previewData.totalRows} rows • {previewData.headers.length} columns
+                  {previewData.totalRows} rows • {previewData.headers.length}{' '}
+                  columns
                 </p>
               </div>
             </div>
@@ -378,7 +524,9 @@ export default function EnhancedImportManager() {
             {/* Field Mapping */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Field Mapping Configuration</CardTitle>
+                <CardTitle className="text-base">
+                  Field Mapping Configuration
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -387,12 +535,16 @@ export default function EnhancedImportManager() {
                       <AlertCircle className="h-4 w-4" />
                       <AlertTitle>No fields detected</AlertTitle>
                       <AlertDescription>
-                        Please ensure your file contains recognizable column headers.
+                        Please ensure your file contains recognizable column
+                        headers.
                       </AlertDescription>
                     </Alert>
                   ) : (
                     fieldMapping.map((mapping, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 p-2 border rounded"
+                      >
                         <ArrowRight className="h-4 w-4 text-gray-400" />
                         <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">
                           {mapping.source}
@@ -402,7 +554,9 @@ export default function EnhancedImportManager() {
                           {mapping.target}
                         </span>
                         {mapping.required && (
-                          <Badge variant="destructive" className="text-xs">Required</Badge>
+                          <Badge variant="destructive" className="text-xs">
+                            Required
+                          </Badge>
                         )}
                       </div>
                     ))
@@ -432,7 +586,10 @@ export default function EnhancedImportManager() {
                       {previewData.rows.map((row, rowIndex) => (
                         <TableRow key={rowIndex}>
                           {previewData.headers.map((header, colIndex) => (
-                            <TableCell key={colIndex} className="font-mono text-xs">
+                            <TableCell
+                              key={colIndex}
+                              className="font-mono text-xs"
+                            >
                               {(row as Record<string, any>)[header] || '-'}
                             </TableCell>
                           ))}
@@ -487,7 +644,9 @@ export default function EnhancedImportManager() {
   };
 
   const renderImportResult = () => {
-    if (!result) return null;
+    if (!result) {
+      return null;
+    }
 
     return (
       <Card className="mt-6">
@@ -506,7 +665,10 @@ export default function EnhancedImportManager() {
               <CheckCircle className="h-4 w-4 mr-1" />
               Imported: {result.importedRecords}
             </Badge>
-            <Badge variant="outline" className="justify-center py-2 border-yellow-500 text-yellow-600">
+            <Badge
+              variant="outline"
+              className="justify-center py-2 border-yellow-500 text-yellow-600"
+            >
               <AlertCircle className="h-4 w-4 mr-1" />
               Skipped: {result.skippedRecords}
             </Badge>
@@ -523,10 +685,14 @@ export default function EnhancedImportManager() {
               <AlertDescription>
                 <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
                   {result.errors.slice(0, 10).map((error, index) => (
-                    <div key={index} className="text-sm">• {error}</div>
+                    <div key={index} className="text-sm">
+                      • {error}
+                    </div>
                   ))}
                   {result.errors.length > 10 && (
-                    <div className="text-sm italic">... and {result.errors.length - 10} more</div>
+                    <div className="text-sm italic">
+                      ... and {result.errors.length - 10} more
+                    </div>
                   )}
                 </div>
               </AlertDescription>
@@ -542,10 +708,7 @@ export default function EnhancedImportManager() {
               <RefreshCw className="h-4 w-4 mr-2" />
               Import Another File
             </Button>
-            <Button
-              onClick={() => window.location.reload()}
-              className="flex-1"
-            >
+            <Button onClick={() => window.location.reload()} className="flex-1">
               <Zap className="h-4 w-4 mr-2" />
               Start Fresh
             </Button>
@@ -558,8 +721,13 @@ export default function EnhancedImportManager() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Enhanced Import Manager</h2>
-        <p className="text-muted-foreground">Import students and books from CSV or Excel files with intelligent field mapping</p>
+        <h2 className="text-3xl font-bold tracking-tight">
+          Enhanced Import Manager
+        </h2>
+        <p className="text-muted-foreground">
+          Import students and books from CSV or Excel files with intelligent
+          field mapping
+        </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -581,9 +749,11 @@ export default function EnhancedImportManager() {
             <AlertDescription>
               <strong>Supported formats:</strong> CSV, XLS, XLSX
               <br />
-              <strong>Auto-detects:</strong> Name format, field mapping, data types
+              <strong>Auto-detects:</strong> Name format, field mapping, data
+              types
               <br />
-              <strong>Template formats:</strong> Standard (name, grade, section) or Detailed (separate first/last names)
+              <strong>Template formats:</strong> Standard (name, grade, section)
+              or Detailed (separate first/last names)
             </AlertDescription>
           </Alert>
 
@@ -695,9 +865,11 @@ export default function EnhancedImportManager() {
             <AlertDescription>
               <strong>Supported formats:</strong> CSV, XLS, XLSX
               <br />
-              <strong>Auto-detects:</strong> Field mapping, data types, categories
+              <strong>Auto-detects:</strong> Field mapping, data types,
+              categories
               <br />
-              <strong>Template formats:</strong> Basic (accession, title, author) or Detailed (complete metadata)
+              <strong>Template formats:</strong> Basic (accession, title,
+              author) or Detailed (complete metadata)
             </AlertDescription>
           </Alert>
 

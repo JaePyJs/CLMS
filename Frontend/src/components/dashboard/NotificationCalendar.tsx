@@ -212,8 +212,8 @@ export function NotificationCalendar() {
                             notif.priority === 'high'
                               ? 'border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20'
                               : notif.priority === 'medium'
-                              ? 'border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20'
-                              : 'border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                                ? 'border-orange-300 dark:border-orange-700 text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/20'
+                                : 'border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
                           }`}
                         >
                           {notif.priority}

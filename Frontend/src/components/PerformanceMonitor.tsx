@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Activity, AlertTriangle, CheckCircle, BarChart3, Clock, Zap, Timer } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  BarChart3,
+  Clock,
+  Zap,
+  Timer,
+} from 'lucide-react';
 
 interface PerformanceMetrics {
   loadTime: number;
@@ -27,11 +35,17 @@ export default function PerformanceMonitor() {
   }, []);
 
   const collectPerformanceMetrics = () => {
-    if (!window.performance) return;
+    if (!window.performance) {
+      return;
+    }
 
-    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+    const navigation = performance.getEntriesByType(
+      'navigation'
+    )[0] as PerformanceNavigationTiming;
     const paint = performance.getEntriesByType('paint');
-    const fcp = paint.find(entry => entry.name === 'first-contentful-paint')?.startTime || 0;
+    const fcp =
+      paint.find((entry) => entry.name === 'first-contentful-paint')
+        ?.startTime || 0;
 
     // Simulate LCP (in real implementation, you'd use the PerformanceObserver)
     const lcp = Math.max(fcp + 1000, Math.random() * 2000 + 1000);
@@ -48,7 +62,8 @@ export default function PerformanceMonitor() {
     const memoryUsage = memory ? memory.usedJSHeapSize / 1024 / 1024 : 0;
 
     // Calculate render time
-    const renderTime = navigation.loadEventEnd - navigation.domContentLoadedEventStart;
+    const renderTime =
+      navigation.loadEventEnd - navigation.domContentLoadedEventStart;
 
     setMetrics({
       loadTime: navigation.loadEventEnd - navigation.startTime,
@@ -58,7 +73,7 @@ export default function PerformanceMonitor() {
       firstInputDelay: fid,
       bundleSize,
       memoryUsage,
-      renderTime
+      renderTime,
     });
   };
 
@@ -71,28 +86,48 @@ export default function PerformanceMonitor() {
   const getPerformanceGrade = (value: number, type: string) => {
     switch (type) {
       case 'loadTime':
-        if (value < 3000) return { grade: 'A', color: 'text-green-600' };
-        if (value < 5000) return { grade: 'B', color: 'text-yellow-600' };
+        if (value < 3000) {
+          return { grade: 'A', color: 'text-green-600' };
+        }
+        if (value < 5000) {
+          return { grade: 'B', color: 'text-yellow-600' };
+        }
         return { grade: 'C', color: 'text-red-600' };
 
       case 'fcp':
-        if (value < 1800) return { grade: 'A', color: 'text-green-600' };
-        if (value < 3000) return { grade: 'B', color: 'text-yellow-600' };
+        if (value < 1800) {
+          return { grade: 'A', color: 'text-green-600' };
+        }
+        if (value < 3000) {
+          return { grade: 'B', color: 'text-yellow-600' };
+        }
         return { grade: 'C', color: 'text-red-600' };
 
       case 'lcp':
-        if (value < 2500) return { grade: 'A', color: 'text-green-600' };
-        if (value < 4000) return { grade: 'B', color: 'text-yellow-600' };
+        if (value < 2500) {
+          return { grade: 'A', color: 'text-green-600' };
+        }
+        if (value < 4000) {
+          return { grade: 'B', color: 'text-yellow-600' };
+        }
         return { grade: 'C', color: 'text-red-600' };
 
       case 'cls':
-        if (value < 0.1) return { grade: 'A', color: 'text-green-600' };
-        if (value < 0.25) return { grade: 'B', color: 'text-yellow-600' };
+        if (value < 0.1) {
+          return { grade: 'A', color: 'text-green-600' };
+        }
+        if (value < 0.25) {
+          return { grade: 'B', color: 'text-yellow-600' };
+        }
         return { grade: 'C', color: 'text-red-600' };
 
       case 'fid':
-        if (value < 100) return { grade: 'A', color: 'text-green-600' };
-        if (value < 300) return { grade: 'B', color: 'text-yellow-600' };
+        if (value < 100) {
+          return { grade: 'A', color: 'text-green-600' };
+        }
+        if (value < 300) {
+          return { grade: 'B', color: 'text-yellow-600' };
+        }
         return { grade: 'C', color: 'text-red-600' };
 
       default:
@@ -148,69 +183,108 @@ export default function PerformanceMonitor() {
       label: 'Load Time',
       value: formatTime(metrics.loadTime),
       grade: getPerformanceGrade(metrics.loadTime, 'loadTime'),
-      description: 'Total page load time'
+      description: 'Total page load time',
     },
     {
       icon: Zap,
       label: 'First Contentful Paint',
       value: formatTime(metrics.firstContentfulPaint),
       grade: getPerformanceGrade(metrics.firstContentfulPaint, 'fcp'),
-      description: 'Time to first meaningful content'
+      description: 'Time to first meaningful content',
     },
     {
       icon: Timer,
       label: 'Largest Contentful Paint',
       value: formatTime(metrics.largestContentfulPaint),
       grade: getPerformanceGrade(metrics.largestContentfulPaint, 'lcp'),
-      description: 'Time to load largest element'
+      description: 'Time to load largest element',
     },
     {
       icon: Activity,
       label: 'Cumulative Layout Shift',
       value: metrics.cumulativeLayoutShift.toFixed(3),
       grade: getPerformanceGrade(metrics.cumulativeLayoutShift, 'cls'),
-      description: 'Visual stability score'
+      description: 'Visual stability score',
     },
     {
       icon: BarChart3,
       label: 'First Input Delay',
       value: formatTime(metrics.firstInputDelay),
       grade: getPerformanceGrade(metrics.firstInputDelay, 'fid'),
-      description: 'Responsiveness to user input'
+      description: 'Responsiveness to user input',
     },
     {
       icon: Zap,
       label: 'Bundle Size',
       value: formatSize(metrics.bundleSize),
-      grade: { grade: metrics.bundleSize < 1500000 ? 'A' : metrics.bundleSize < 2000000 ? 'B' : 'C', color: metrics.bundleSize < 1500000 ? 'text-green-600' : metrics.bundleSize < 2000000 ? 'text-yellow-600' : 'text-red-600' },
-      description: 'JavaScript bundle size'
+      grade: {
+        grade:
+          metrics.bundleSize < 1500000
+            ? 'A'
+            : metrics.bundleSize < 2000000
+              ? 'B'
+              : 'C',
+        color:
+          metrics.bundleSize < 1500000
+            ? 'text-green-600'
+            : metrics.bundleSize < 2000000
+              ? 'text-yellow-600'
+              : 'text-red-600',
+      },
+      description: 'JavaScript bundle size',
     },
     {
       icon: Activity,
       label: 'Memory Usage',
       value: `${metrics.memoryUsage.toFixed(1)}MB`,
-      grade: { grade: metrics.memoryUsage < 50 ? 'A' : metrics.memoryUsage < 100 ? 'B' : 'C', color: metrics.memoryUsage < 50 ? 'text-green-600' : metrics.memoryUsage < 100 ? 'text-yellow-600' : 'text-red-600' },
-      description: 'Current memory consumption'
+      grade: {
+        grade:
+          metrics.memoryUsage < 50
+            ? 'A'
+            : metrics.memoryUsage < 100
+              ? 'B'
+              : 'C',
+        color:
+          metrics.memoryUsage < 50
+            ? 'text-green-600'
+            : metrics.memoryUsage < 100
+              ? 'text-yellow-600'
+              : 'text-red-600',
+      },
+      description: 'Current memory consumption',
     },
     {
       icon: Clock,
       label: 'Render Time',
       value: formatTime(metrics.renderTime),
       grade: getPerformanceGrade(metrics.renderTime, 'loadTime'),
-      description: 'Time to render the page'
-    }
+      description: 'Time to render the page',
+    },
   ];
 
-  const averageGrade = metricsData.reduce((acc, metric) => {
-    const grade = metric.grade.grade;
-    if (grade === 'A') return acc + 3;
-    if (grade === 'B') return acc + 2;
-    if (grade === 'C') return acc + 1;
-    return acc;
-  }, 0) / metricsData.length;
+  const averageGrade =
+    metricsData.reduce((acc, metric) => {
+      const grade = metric.grade.grade;
+      if (grade === 'A') {
+        return acc + 3;
+      }
+      if (grade === 'B') {
+        return acc + 2;
+      }
+      if (grade === 'C') {
+        return acc + 1;
+      }
+      return acc;
+    }, 0) / metricsData.length;
 
-  const overallGrade = averageGrade >= 2.5 ? 'A' : averageGrade >= 1.5 ? 'B' : 'C';
-  const overallColor = overallGrade === 'A' ? 'text-green-600' : overallGrade === 'B' ? 'text-yellow-600' : 'text-red-600';
+  const overallGrade =
+    averageGrade >= 2.5 ? 'A' : averageGrade >= 1.5 ? 'B' : 'C';
+  const overallColor =
+    overallGrade === 'A'
+      ? 'text-green-600'
+      : overallGrade === 'B'
+        ? 'text-yellow-600'
+        : 'text-red-600';
 
   return (
     <Card className="w-full max-w-4xl">
@@ -225,7 +299,10 @@ export default function PerformanceMonitor() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className={`text-lg font-bold ${overallColor}`}>
+          <Badge
+            variant="outline"
+            className={`text-lg font-bold ${overallColor}`}
+          >
             Grade {overallGrade}
           </Badge>
           <Button variant="outline" size="sm" onClick={refreshMetrics}>
@@ -251,7 +328,10 @@ export default function PerformanceMonitor() {
               <div key={index} className="p-4 border rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <Icon className="w-4 h-4 text-muted-foreground" />
-                  <Badge variant="outline" className={`text-xs ${metric.grade.color}`}>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${metric.grade.color}`}
+                  >
                     {metric.grade.grade}
                   </Badge>
                 </div>
@@ -276,7 +356,8 @@ export default function PerformanceMonitor() {
             {metrics.loadTime > 3000 && (
               <li className="flex items-center gap-2">
                 <AlertTriangle className="w-3 h-3 text-yellow-500" />
-                Consider lazy loading non-critical components to improve load time
+                Consider lazy loading non-critical components to improve load
+                time
               </li>
             )}
             {metrics.bundleSize > 1500000 && (
@@ -297,12 +378,15 @@ export default function PerformanceMonitor() {
                 High input delay. Consider optimizing JavaScript execution
               </li>
             )}
-            {metrics.loadTime < 3000 && metrics.bundleSize < 1500000 && metrics.cumulativeLayoutShift < 0.1 && (
-              <li className="flex items-center gap-2 text-green-600">
-                <CheckCircle className="w-3 h-3" />
-                Great performance! All key metrics are within recommended ranges
-              </li>
-            )}
+            {metrics.loadTime < 3000 &&
+              metrics.bundleSize < 1500000 &&
+              metrics.cumulativeLayoutShift < 0.1 && (
+                <li className="flex items-center gap-2 text-green-600">
+                  <CheckCircle className="w-3 h-3" />
+                  Great performance! All key metrics are within recommended
+                  ranges
+                </li>
+              )}
           </ul>
         </div>
       </CardContent>

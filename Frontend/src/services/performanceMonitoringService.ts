@@ -78,7 +78,8 @@ class PerformanceMonitoringService {
 
   public static getInstance(): PerformanceMonitoringService {
     if (!PerformanceMonitoringService.instance) {
-      PerformanceMonitoringService.instance = new PerformanceMonitoringService();
+      PerformanceMonitoringService.instance =
+        new PerformanceMonitoringService();
     }
     return PerformanceMonitoringService.instance;
   }
@@ -107,7 +108,7 @@ class PerformanceMonitoringService {
   }
 
   private initializeObservers(): void {
-    if (typeof window === 'undefined' || !window.PerformanceObserver) {
+    if (!window?.PerformanceObserver) {
       return;
     }
 
@@ -152,7 +153,9 @@ class PerformanceMonitoringService {
       // Observer for First Contentful Paint (FCP)
       const fcpObserver = new PerformanceObserver((list) => {
         const entries = list.getEntries();
-        const fcpEntry = entries.find(entry => entry.name === 'first-contentful-paint');
+        const fcpEntry = entries.find(
+          (entry) => entry.name === 'first-contentful-paint'
+        );
         if (fcpEntry) {
           this.metrics.fcp = fcpEntry.startTime;
         }
@@ -166,8 +169,12 @@ class PerformanceMonitoringService {
         const navEntry = entries[0] as PerformanceNavigationTiming;
         if (navEntry) {
           this.metrics.ttfb = navEntry.responseStart - navEntry.requestStart;
-          this.metrics.domContentLoaded = navEntry.domContentLoadedEventEnd - ((navEntry as any).navigationStart || navEntry.startTime);
-          this.metrics.loadComplete = navEntry.loadEventEnd - ((navEntry as any).navigationStart || navEntry.startTime);
+          this.metrics.domContentLoaded =
+            navEntry.domContentLoadedEventEnd -
+            ((navEntry as any).navigationStart || navEntry.startTime);
+          this.metrics.loadComplete =
+            navEntry.loadEventEnd -
+            ((navEntry as any).navigationStart || navEntry.startTime);
         }
       });
       navObserver.observe({ entryTypes: ['navigation'] });
@@ -180,7 +187,8 @@ class PerformanceMonitoringService {
 
         entries.forEach((entry) => {
           const resource = entry as PerformanceResourceTiming;
-          this.metrics.totalResourceSize += (resource as any).decodedBodySize || 0;
+          this.metrics.totalResourceSize +=
+            (resource as any).decodedBodySize || 0;
           this.metrics.totalTransferSize += resource.transferSize;
         });
       });
@@ -192,7 +200,9 @@ class PerformanceMonitoringService {
   }
 
   public startMonitoring(): void {
-    if (this.isMonitoring) return;
+    if (this.isMonitoring) {
+      return;
+    }
 
     this.isMonitoring = true;
     this.resetMetrics();
@@ -216,9 +226,11 @@ class PerformanceMonitoringService {
   }
 
   public stopMonitoring(): void {
-    if (!this.isMonitoring) return;
+    if (!this.isMonitoring) {
+      return;
+    }
 
-    this.observers.forEach(observer => observer.disconnect());
+    this.observers.forEach((observer) => observer.disconnect());
     this.observers = [];
     this.isMonitoring = false;
 
@@ -226,7 +238,9 @@ class PerformanceMonitoringService {
   }
 
   private startMemoryMonitoring(): void {
-    if (!window.performance || !(window.performance as any).memory) return;
+    if (!window.performance || !(window.performance as any).memory) {
+      return;
+    }
 
     const updateMemoryUsage = () => {
       const memory = (window.performance as any).memory;
@@ -276,13 +290,15 @@ class PerformanceMonitoringService {
         const response = await originalFetch(...args);
         const endTime = performance.now();
         const duration = endTime - startTime;
-        this.metrics.apiResponseTime = (this.metrics.apiResponseTime + duration) / 2;
+        this.metrics.apiResponseTime =
+          (this.metrics.apiResponseTime + duration) / 2;
 
         return response;
       } catch (error) {
         const endTime = performance.now();
         const duration = endTime - startTime;
-        this.metrics.apiResponseTime = (this.metrics.apiResponseTime + duration) / 2;
+        this.metrics.apiResponseTime =
+          (this.metrics.apiResponseTime + duration) / 2;
         throw error;
       }
     };
@@ -307,18 +323,24 @@ class PerformanceMonitoringService {
       const interactionTime = now - lastInteractionTime;
 
       if (interactionTime < interactionThreshold) {
-        this.metrics.interactionTime = (this.metrics.interactionTime + interactionTime) / 2;
+        this.metrics.interactionTime =
+          (this.metrics.interactionTime + interactionTime) / 2;
       }
 
       lastInteractionTime = now;
     };
 
-    ['click', 'keydown', 'touchstart'].forEach(eventType => {
-      document.addEventListener(eventType, measureInteraction, { passive: true });
+    ['click', 'keydown', 'touchstart'].forEach((eventType) => {
+      document.addEventListener(eventType, measureInteraction, {
+        passive: true,
+      });
     });
   }
 
-  public recordComponentRender(componentName: string, renderTime: number): void {
+  public recordComponentRender(
+    componentName: string,
+    renderTime: number
+  ): void {
     if (!this.componentMetrics.has(componentName)) {
       this.componentMetrics.set(componentName, {
         name: componentName,
@@ -395,10 +417,18 @@ class PerformanceMonitoringService {
   private calculateGrade(): 'A' | 'B' | 'C' | 'D' | 'F' {
     const score = this.calculateScore();
 
-    if (score >= 90) return 'A';
-    if (score >= 80) return 'B';
-    if (score >= 70) return 'C';
-    if (score >= 60) return 'D';
+    if (score >= 90) {
+      return 'A';
+    }
+    if (score >= 80) {
+      return 'B';
+    }
+    if (score >= 70) {
+      return 'C';
+    }
+    if (score >= 60) {
+      return 'D';
+    }
     return 'F';
   }
 
@@ -406,29 +436,49 @@ class PerformanceMonitoringService {
     let score = 100;
 
     // LCP scoring (0-100ms = 100, 1000ms+ = 0)
-    if (this.metrics.lcp > 1000) score -= 25;
-    else if (this.metrics.lcp > 500) score -= 15;
-    else if (this.metrics.lcp > 250) score -= 8;
+    if (this.metrics.lcp > 1000) {
+      score -= 25;
+    } else if (this.metrics.lcp > 500) {
+      score -= 15;
+    } else if (this.metrics.lcp > 250) {
+      score -= 8;
+    }
 
     // FID scoring (0-100ms = 100, 300ms+ = 0)
-    if (this.metrics.fid > 300) score -= 20;
-    else if (this.metrics.fid > 200) score -= 12;
-    else if (this.metrics.fid > 100) score -= 6;
+    if (this.metrics.fid > 300) {
+      score -= 20;
+    } else if (this.metrics.fid > 200) {
+      score -= 12;
+    } else if (this.metrics.fid > 100) {
+      score -= 6;
+    }
 
     // CLS scoring (0-0.1 = 100, 0.25+ = 0)
-    if (this.metrics.cls > 0.25) score -= 25;
-    else if (this.metrics.cls > 0.1) score -= 15;
-    else if (this.metrics.cls > 0.05) score -= 8;
+    if (this.metrics.cls > 0.25) {
+      score -= 25;
+    } else if (this.metrics.cls > 0.1) {
+      score -= 15;
+    } else if (this.metrics.cls > 0.05) {
+      score -= 8;
+    }
 
     // Memory usage scoring
-    if (this.metrics.memoryUsage > 100) score -= 15;
-    else if (this.metrics.memoryUsage > 50) score -= 8;
-    else if (this.metrics.memoryUsage > 30) score -= 4;
+    if (this.metrics.memoryUsage > 100) {
+      score -= 15;
+    } else if (this.metrics.memoryUsage > 50) {
+      score -= 8;
+    } else if (this.metrics.memoryUsage > 30) {
+      score -= 4;
+    }
 
     // Error count scoring
-    if (this.metrics.errorCount > 5) score -= 15;
-    else if (this.metrics.errorCount > 2) score -= 8;
-    else if (this.metrics.errorCount > 0) score -= 4;
+    if (this.metrics.errorCount > 5) {
+      score -= 15;
+    } else if (this.metrics.errorCount > 2) {
+      score -= 8;
+    } else if (this.metrics.errorCount > 0) {
+      score -= 4;
+    }
 
     return Math.max(0, Math.min(100, score));
   }
@@ -437,39 +487,57 @@ class PerformanceMonitoringService {
     const recommendations: string[] = [];
 
     if (this.metrics.lcp > 2500) {
-      recommendations.push('Largest Contentful Paint is slow. Optimize images and reduce server response time.');
+      recommendations.push(
+        'Largest Contentful Paint is slow. Optimize images and reduce server response time.'
+      );
     }
 
     if (this.metrics.fid > 300) {
-      recommendations.push('First Input Delay is high. Reduce JavaScript execution time and break up long tasks.');
+      recommendations.push(
+        'First Input Delay is high. Reduce JavaScript execution time and break up long tasks.'
+      );
     }
 
     if (this.metrics.cls > 0.1) {
-      recommendations.push('Cumulative Layout Shift is high. Ensure images have dimensions and avoid inserting content above existing content.');
+      recommendations.push(
+        'Cumulative Layout Shift is high. Ensure images have dimensions and avoid inserting content above existing content.'
+      );
     }
 
     if (this.metrics.memoryUsage > 50) {
-      recommendations.push('Memory usage is high. Consider implementing component unloading and memory cleanup.');
+      recommendations.push(
+        'Memory usage is high. Consider implementing component unloading and memory cleanup.'
+      );
     }
 
     if (this.metrics.componentRenders > 100) {
-      recommendations.push('High number of component renders. Consider using React.memo and useMemo/useCallback.');
+      recommendations.push(
+        'High number of component renders. Consider using React.memo and useMemo/useCallback.'
+      );
     }
 
     if (this.metrics.apiResponseTime > 1000) {
-      recommendations.push('API response time is slow. Consider implementing caching and optimizing backend queries.');
+      recommendations.push(
+        'API response time is slow. Consider implementing caching and optimizing backend queries.'
+      );
     }
 
     if (this.metrics.errorCount > 0) {
-      recommendations.push('Errors detected. Implement proper error boundaries and improve error handling.');
+      recommendations.push(
+        'Errors detected. Implement proper error boundaries and improve error handling.'
+      );
     }
 
     if (this.metrics.resourceCount > 100) {
-      recommendations.push('High number of resources. Consider bundling and reducing HTTP requests.');
+      recommendations.push(
+        'High number of resources. Consider bundling and reducing HTTP requests.'
+      );
     }
 
     if (recommendations.length === 0) {
-      recommendations.push('Performance is excellent! Continue monitoring for regressions.');
+      recommendations.push(
+        'Performance is excellent! Continue monitoring for regressions.'
+      );
     }
 
     return recommendations;
@@ -488,7 +556,9 @@ class PerformanceMonitoringService {
   }
 
   public getLatestReport(): PerformanceReport | null {
-    return this.reports.length > 0 ? (this.reports[this.reports.length - 1] ?? null) : null;
+    return this.reports.length > 0
+      ? (this.reports[this.reports.length - 1] ?? null)
+      : null;
   }
 
   public exportData(): string {
@@ -523,7 +593,13 @@ class PerformanceMonitoringService {
   }
 
   public getPerformanceInsights(): {
-    trends: Array<{ timestamp: number; score: number; lcp: number; fid: number; cls: number }>;
+    trends: Array<{
+      timestamp: number;
+      score: number;
+      lcp: number;
+      fid: number;
+      cls: number;
+    }>;
     summary: {
       averageScore: number;
       averageLcp: number;
@@ -549,7 +625,7 @@ class PerformanceMonitoringService {
       };
     }
 
-    const trends = recentReports.map(report => ({
+    const trends = recentReports.map((report) => ({
       timestamp: report.timestamp,
       score: report.score,
       lcp: report.metrics.lcp,
@@ -557,10 +633,17 @@ class PerformanceMonitoringService {
       cls: report.metrics.cls,
     }));
 
-    const averageScore = recentReports.reduce((sum, r) => sum + r.score, 0) / recentReports.length;
-    const averageLcp = recentReports.reduce((sum, r) => sum + r.metrics.lcp, 0) / recentReports.length;
-    const averageFid = recentReports.reduce((sum, r) => sum + r.metrics.fid, 0) / recentReports.length;
-    const averageCls = recentReports.reduce((sum, r) => sum + r.metrics.cls, 0) / recentReports.length;
+    const averageScore =
+      recentReports.reduce((sum, r) => sum + r.score, 0) / recentReports.length;
+    const averageLcp =
+      recentReports.reduce((sum, r) => sum + r.metrics.lcp, 0) /
+      recentReports.length;
+    const averageFid =
+      recentReports.reduce((sum, r) => sum + r.metrics.fid, 0) /
+      recentReports.length;
+    const averageCls =
+      recentReports.reduce((sum, r) => sum + r.metrics.cls, 0) /
+      recentReports.length;
 
     const latestReport = recentReports[recentReports.length - 1];
     const recommendations = latestReport?.recommendations || [];
@@ -573,7 +656,9 @@ class PerformanceMonitoringService {
         averageFid,
         averageCls,
         improvementAreas: recommendations.slice(0, 3),
-        strongAreas: latestReport ? this.identifyStrongAreas(latestReport.metrics) : [],
+        strongAreas: latestReport
+          ? this.identifyStrongAreas(latestReport.metrics)
+          : [],
       },
     };
   }
@@ -581,19 +666,34 @@ class PerformanceMonitoringService {
   private identifyStrongAreas(metrics: PerformanceMetrics): string[] {
     const strongAreas: string[] = [];
 
-    if (metrics.lcp < 2500) strongAreas.push('Fast Largest Contentful Paint');
-    if (metrics.fid < 100) strongAreas.push('Quick First Input Delay');
-    if (metrics.cls < 0.1) strongAreas.push('Low Layout Shift');
-    if (metrics.memoryUsage < 30) strongAreas.push('Efficient Memory Usage');
-    if (metrics.errorCount === 0) strongAreas.push('Error-Free Operation');
-    if (metrics.apiResponseTime < 500) strongAreas.push('Fast API Responses');
+    if (metrics.lcp < 2500) {
+      strongAreas.push('Fast Largest Contentful Paint');
+    }
+    if (metrics.fid < 100) {
+      strongAreas.push('Quick First Input Delay');
+    }
+    if (metrics.cls < 0.1) {
+      strongAreas.push('Low Layout Shift');
+    }
+    if (metrics.memoryUsage < 30) {
+      strongAreas.push('Efficient Memory Usage');
+    }
+    if (metrics.errorCount === 0) {
+      strongAreas.push('Error-Free Operation');
+    }
+    if (metrics.apiResponseTime < 500) {
+      strongAreas.push('Fast API Responses');
+    }
 
-    return strongAreas.length > 0 ? strongAreas : ['Performance monitoring active'];
+    return strongAreas.length > 0
+      ? strongAreas
+      : ['Performance monitoring active'];
   }
 }
 
 // Export singleton instance
-export const performanceMonitoringService = PerformanceMonitoringService.getInstance();
+export const performanceMonitoringService =
+  PerformanceMonitoringService.getInstance();
 export default performanceMonitoringService;
 
 // Export types

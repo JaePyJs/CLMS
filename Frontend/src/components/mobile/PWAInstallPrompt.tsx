@@ -24,43 +24,50 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
   onDismiss,
 }) => {
   const { isMobile } = useMobileOptimization();
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const [installStatus, setInstallStatus] = useState<'idle' | 'installing' | 'success' | 'error'>('idle');
+  const [installStatus, setInstallStatus] = useState<
+    'idle' | 'installing' | 'success' | 'error'
+  >('idle');
 
   // Check if app is already installed
   const checkIfInstalled = useCallback(() => {
     // Check if running in standalone mode
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                        (window.navigator as any).standalone === true ||
-                        document.referrer.includes('android-app://');
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true ||
+      document.referrer.includes('android-app://');
 
     // Check if app is installed (different methods for different platforms)
-    const isInInstalledState = isStandalone ||
-                              localStorage.getItem('pwa-installed') === 'true';
+    const isInInstalledState =
+      isStandalone || localStorage.getItem('pwa-installed') === 'true';
 
     setIsInstalled(isInInstalledState);
     return isInInstalledState;
   }, []);
 
   // Handle beforeinstallprompt event
-  const handleBeforeInstallPrompt = useCallback((e: Event) => {
-    // Prevent the mini-infobar from appearing on mobile
-    e.preventDefault();
+  const handleBeforeInstallPrompt = useCallback(
+    (e: Event) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
 
-    const promptEvent = e as BeforeInstallPromptEvent;
-    setDeferredPrompt(promptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      setDeferredPrompt(promptEvent);
 
-    // Only show prompt if not dismissed and not installed
-    if (!dismissed && !checkIfInstalled()) {
-      // Show prompt after a delay
-      setTimeout(() => {
-        setShowPrompt(true);
-      }, 3000);
-    }
-  }, [dismissed, checkIfInstalled]);
+      // Only show prompt if not dismissed and not installed
+      if (!dismissed && !checkIfInstalled()) {
+        // Show prompt after a delay
+        setTimeout(() => {
+          setShowPrompt(true);
+        }, 3000);
+      }
+    },
+    [dismissed, checkIfInstalled]
+  );
 
   // Handle app installed event
   const handleAppInstalled = useCallback(() => {
@@ -109,7 +116,6 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
       // Clear the deferred prompt
       setDeferredPrompt(null);
       setShowPrompt(false);
-
     } catch (error) {
       console.error('[PWAInstall] Install failed:', error);
       setInstallStatus('error');
@@ -173,19 +179,25 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
     checkIfInstalled();
 
     // Check if user previously dismissed the prompt
-    const wasDismissed = localStorage.getItem('pwa-install-dismissed') === 'true';
+    const wasDismissed =
+      localStorage.getItem('pwa-install-dismissed') === 'true';
     setDismissed(wasDismissed);
   }, [checkIfInstalled]);
 
   // Set up event listeners
   useEffect(() => {
-    if (!isMobile) return;
+    if (!isMobile) {
+      return;
+    }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener(
+        'beforeinstallprompt',
+        handleBeforeInstallPrompt
+      );
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, [isMobile, handleBeforeInstallPrompt, handleAppInstalled]);
@@ -230,15 +242,21 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
           <div className="grid grid-cols-3 gap-2">
             <div className="flex flex-col items-center gap-1 p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg">
               <Zap className="h-4 w-4 text-yellow-500" />
-              <span className="text-xs text-slate-600 dark:text-slate-400">Fast</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Fast
+              </span>
             </div>
             <div className="flex flex-col items-center gap-1 p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg">
               <Wifi className="h-4 w-4 text-green-500" />
-              <span className="text-xs text-slate-600 dark:text-slate-400">Offline</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Offline
+              </span>
             </div>
             <div className="flex flex-col items-center gap-1 p-2 bg-white/50 dark:bg-slate-800/50 rounded-lg">
               <Shield className="h-4 w-4 text-blue-500" />
-              <span className="text-xs text-slate-600 dark:text-slate-400">Secure</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Secure
+              </span>
             </div>
           </div>
 
@@ -279,8 +297,13 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
                 </div>
                 <ol className="space-y-1">
                   {instructions.steps.map((step, index) => (
-                    <li key={index} className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-2">
-                      <span className="text-blue-500 font-medium">{index + 1}.</span>
+                    <li
+                      key={index}
+                      className="text-xs text-slate-600 dark:text-slate-400 flex items-start gap-2"
+                    >
+                      <span className="text-blue-500 font-medium">
+                        {index + 1}.
+                      </span>
                       {step}
                     </li>
                   ))}
@@ -311,7 +334,8 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
             <div className="flex items-center gap-2 p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
               <Info className="h-4 w-4 text-red-600 dark:text-red-400" />
               <span className="text-sm text-red-800 dark:text-red-200">
-                Installation failed. Please try again or follow the manual instructions.
+                Installation failed. Please try again or follow the manual
+                instructions.
               </span>
             </div>
           )}
@@ -320,19 +344,27 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
           <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
             <div className="flex items-center gap-2">
               <Check className="h-3 w-3 text-green-500" />
-              <span className="text-xs text-slate-600 dark:text-slate-400">Works offline</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Works offline
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-3 w-3 text-green-500" />
-              <span className="text-xs text-slate-600 dark:text-slate-400">Full-screen mode</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Full-screen mode
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-3 w-3 text-green-500" />
-              <span className="text-xs text-slate-600 dark:text-slate-400">Push notifications</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Push notifications
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Check className="h-3 w-3 text-green-500" />
-              <span className="text-xs text-slate-600 dark:text-slate-400">Faster loading</span>
+              <span className="text-xs text-slate-600 dark:text-slate-400">
+                Faster loading
+              </span>
             </div>
           </div>
         </div>

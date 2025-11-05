@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,7 +36,15 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UserPlus, Edit, Trash2, Search, AlertCircle, UserCheck, UserX } from 'lucide-react';
+import {
+  UserPlus,
+  Edit,
+  Trash2,
+  Search,
+  AlertCircle,
+  UserCheck,
+  UserX,
+} from 'lucide-react';
 import { settingsApi } from '@/lib/api';
 
 interface User {
@@ -64,7 +78,11 @@ export default function UserManagement() {
   const [formData, setFormData] = useState<UserFormData>(EMPTY_FORM);
 
   // Fetch users with TanStack Query
-  const { data: users = [], isLoading, error } = useQuery({
+  const {
+    data: users = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
       const response = await settingsApi.getUsers();
@@ -186,7 +204,9 @@ export default function UserManagement() {
   };
 
   const formatDate = (date: Date | null) => {
-    if (!date) return 'Never';
+    if (!date) {
+      return 'Never';
+    }
     return new Date(date).toLocaleString();
   };
 
@@ -233,7 +253,6 @@ export default function UserManagement() {
 
   return (
     <div className="space-y-6">
-
       <Card>
         <CardHeader>
           <CardTitle>User Management</CardTitle>
@@ -275,14 +294,19 @@ export default function UserManagement() {
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={6}
+                      className="text-center text-muted-foreground"
+                    >
                       No users found
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredUsers.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.username}</TableCell>
+                      <TableCell className="font-medium">
+                        {user.username}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={getRoleBadgeVariant(user.role)}>
                           {user.role}
@@ -380,7 +404,9 @@ export default function UserManagement() {
               <Input
                 id="password"
                 type="password"
-                placeholder={editingUser ? 'Enter new password' : 'Enter password'}
+                placeholder={
+                  editingUser ? 'Enter new password' : 'Enter password'
+                }
                 value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
@@ -441,8 +467,8 @@ export default function UserManagement() {
               {createMutation.isPending || updateMutation.isPending
                 ? 'Saving...'
                 : editingUser
-                ? 'Update User'
-                : 'Create User'}
+                  ? 'Update User'
+                  : 'Create User'}
             </Button>
           </DialogFooter>
         </DialogContent>

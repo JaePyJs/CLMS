@@ -1,22 +1,37 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-import { DashboardCardSkeleton, LoadingSpinner } from '@/components/LoadingStates'
-import { useBreakpoint } from '@/hooks/useBreakpoint'
-import { useMultipleLoadingStates, useAsyncData, useForm } from '@/hooks'
-import PredictiveInsights from '@/components/analytics/PredictiveInsights'
-import UsageHeatMap from '@/components/analytics/UsageHeatMap'
-import TimeSeriesForecast from '@/components/analytics/TimeSeriesForecast'
-import AdvancedReporting from '@/components/dashboard/AdvancedReporting'
-import MetricsCards from '@/components/analytics/MetricsCards'
-import BookCirculationAnalytics from '@/components/analytics/BookCirculationAnalytics'
-import EquipmentUtilizationAnalytics from '@/components/analytics/EquipmentUtilizationAnalytics'
-import FineCollectionAnalytics from '@/components/analytics/FineCollectionAnalytics'
-import ExportAnalytics from '@/components/analytics/ExportAnalytics'
+import {
+  DashboardCardSkeleton,
+  LoadingSpinner,
+} from '@/components/LoadingStates';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { useMultipleLoadingStates, useAsyncData, useForm } from '@/hooks';
+import PredictiveInsights from '@/components/analytics/PredictiveInsights';
+import UsageHeatMap from '@/components/analytics/UsageHeatMap';
+import TimeSeriesForecast from '@/components/analytics/TimeSeriesForecast';
+import AdvancedReporting from '@/components/dashboard/AdvancedReporting';
+import MetricsCards from '@/components/analytics/MetricsCards';
+import BookCirculationAnalytics from '@/components/analytics/BookCirculationAnalytics';
+import EquipmentUtilizationAnalytics from '@/components/analytics/EquipmentUtilizationAnalytics';
+import FineCollectionAnalytics from '@/components/analytics/FineCollectionAnalytics';
+import ExportAnalytics from '@/components/analytics/ExportAnalytics';
 import {
   BarChart,
   Bar,
@@ -30,48 +45,51 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
-} from 'recharts'
+  ResponsiveContainer,
+} from 'recharts';
 import { Clock, Activity, RefreshCw } from 'lucide-react';
 
 export function AnalyticsDashboard() {
   // Simplified UI state management
-  const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month'>('week')
-  const [selectedChart, setSelectedChart] = useState('overview')
-  const [selectedMetric, setSelectedMetric] = useState<'student_visits' | 'equipment_usage' | 'book_circulation'>('student_visits')
+  const [selectedPeriod, setSelectedPeriod] = useState<
+    'day' | 'week' | 'month'
+  >('week');
+  const [selectedChart, setSelectedChart] = useState('overview');
+  const [selectedMetric, setSelectedMetric] = useState<
+    'student_visits' | 'equipment_usage' | 'book_circulation'
+  >('student_visits');
 
   // Consolidated loading states
   const [loadingStates, loadingActions] = useMultipleLoadingStates({
     data: { isLoading: false },
     export: { isLoading: false },
-    refresh: { isLoading: false }
-  })
+    refresh: { isLoading: false },
+  });
 
   // Consolidated analytics data states
   const [analyticsStates, analyticsActions] = useMultipleLoadingStates({
     insights: { data: [] },
     heatmap: { data: [] },
     forecast: { data: [] },
-    comprehensive: { data: null }
-  })
+    comprehensive: { data: null },
+  });
 
   // Export form management
   const [exportForm, exportFormActions] = useForm({
     initialValues: {
       format: 'csv',
       timeframe: selectedPeriod,
-      sections: []
+      sections: [],
     },
     onSubmit: async (values) => {
-      await handleExport(values.format, values.sections)
-    }
-  })
+      await handleExport(values.format, values.sections);
+    },
+  });
 
   // Last refresh timestamp
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-
-  const isLargeScreen = useBreakpoint('lg')
+  const isLargeScreen = useBreakpoint('lg');
 
   // Mock data for charts
   const mockUsageData = {
@@ -85,7 +103,7 @@ export function AnalyticsDashboard() {
       { time: '2PM', students: 25, computers: 18, gaming: 7 },
       { time: '3PM', students: 20, computers: 14, gaming: 6 },
       { time: '4PM', students: 12, computers: 8, gaming: 4 },
-      { time: '5PM', students: 6, computers: 4, gaming: 2 }
+      { time: '5PM', students: 6, computers: 4, gaming: 2 },
     ],
     week: [
       { day: 'Mon', students: 45, computers: 30, gaming: 15 },
@@ -94,15 +112,15 @@ export function AnalyticsDashboard() {
       { day: 'Thu', students: 55, computers: 38, gaming: 17 },
       { day: 'Fri', students: 58, computers: 40, gaming: 18 },
       { day: 'Sat', students: 35, computers: 24, gaming: 11 },
-      { day: 'Sun', students: 20, computers: 14, gaming: 6 }
+      { day: 'Sun', students: 20, computers: 14, gaming: 6 },
     ],
     month: [
       { week: 'Week 1', students: 220, computers: 150, gaming: 70 },
       { week: 'Week 2', students: 245, computers: 168, gaming: 77 },
       { week: 'Week 3', students: 238, computers: 163, gaming: 75 },
-      { week: 'Week 4', students: 252, computers: 173, gaming: 79 }
-    ]
-  }
+      { week: 'Week 4', students: 252, computers: 173, gaming: 79 },
+    ],
+  };
 
   const mockActivityData = [
     { name: 'Computer Use', value: 45, color: 'hsl(var(--primary))' },
@@ -110,168 +128,207 @@ export function AnalyticsDashboard() {
     { name: 'Book Borrowing', value: 25, color: '#10b981' },
     { name: 'Book Return', value: 20, color: '#f59e0b' },
     { name: 'VR Sessions', value: 5, color: '#ef4444' },
-    { name: 'Study', value: 15, color: '#6366f1' }
-  ]
+    { name: 'Study', value: 15, color: '#6366f1' },
+  ];
 
   const mockGradeDistribution = [
     { grade: 'Primary', students: 25, percentage: 20 },
     { grade: 'Grade School', students: 50, percentage: 40 },
     { grade: 'Junior High', students: 35, percentage: 28 },
-    { grade: 'Senior High', students: 15, percentage: 12 }
-  ]
+    { grade: 'Senior High', students: 15, percentage: 12 },
+  ];
 
-  const currentUsageData = mockUsageData[selectedPeriod]
-  const overviewChartHeight = isLargeScreen ? 400 : 280
-  const activityChartHeight = isLargeScreen ? 300 : 240
+  const currentUsageData = mockUsageData[selectedPeriod];
+  const overviewChartHeight = isLargeScreen ? 400 : 280;
+  const activityChartHeight = isLargeScreen ? 300 : 240;
 
   // Async data fetching hooks
-  const comprehensiveDataFetcher = useAsyncData(async () => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics/library-metrics?timeframe=${selectedPeriod}`)
-    if (!response.ok) throw new Error('Failed to fetch comprehensive data')
-    const result = await response.json()
-    return result.data
-  }, {
-    immediate: false,
-    onSuccess: (data) => analyticsActions.comprehensive.finish(data),
-    onError: (error) => analyticsActions.comprehensive.error(error.message)
-  })
+  const comprehensiveDataFetcher = useAsyncData(
+    async () => {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/analytics/library-metrics?timeframe=${selectedPeriod}`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to fetch comprehensive data');
+      }
+      const result = await response.json();
+      return result.data;
+    },
+    {
+      immediate: false,
+      onSuccess: (data) => analyticsActions.comprehensive.finish(data),
+      onError: (error) => analyticsActions.comprehensive.error(error.message),
+    }
+  );
 
-  const insightsDataFetcher = useAsyncData(async () => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics/insights?timeframe=${selectedPeriod}`)
-    if (!response.ok) throw new Error('Failed to fetch insights')
-    const result = await response.json()
-    return result.data.insights || []
-  }, {
-    immediate: false,
-    onSuccess: (data) => analyticsActions.insights.finish(data),
-    onError: (error) => analyticsActions.insights.error(error.message)
-  })
+  const insightsDataFetcher = useAsyncData(
+    async () => {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/analytics/insights?timeframe=${selectedPeriod}`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to fetch insights');
+      }
+      const result = await response.json();
+      return result.data.insights || [];
+    },
+    {
+      immediate: false,
+      onSuccess: (data) => analyticsActions.insights.finish(data),
+      onError: (error) => analyticsActions.insights.error(error.message),
+    }
+  );
 
-  const heatMapDataFetcher = useAsyncData(async () => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics/heatmap?timeframe=${selectedPeriod}`)
-    if (!response.ok) throw new Error('Failed to fetch heat map data')
-    const result = await response.json()
-    return result.data.heatMapData || []
-  }, {
-    immediate: false,
-    onSuccess: (data) => analyticsActions.heatmap.finish(data),
-    onError: (error) => analyticsActions.heatmap.error(error.message)
-  })
+  const heatMapDataFetcher = useAsyncData(
+    async () => {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/analytics/heatmap?timeframe=${selectedPeriod}`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to fetch heat map data');
+      }
+      const result = await response.json();
+      return result.data.heatMapData || [];
+    },
+    {
+      immediate: false,
+      onSuccess: (data) => analyticsActions.heatmap.finish(data),
+      onError: (error) => analyticsActions.heatmap.error(error.message),
+    }
+  );
 
-  const forecastDataFetcher = useAsyncData(async () => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics/forecast?metric=${selectedMetric}&timeframe=${selectedPeriod}&periods=7`)
-    if (!response.ok) throw new Error('Failed to fetch forecast data')
-    const result = await response.json()
-    return result.data.forecastData || []
-  }, {
-    immediate: false,
-    onSuccess: (data) => analyticsActions.forecast.finish(data),
-    onError: (error) => analyticsActions.forecast.error(error.message)
-  })
+  const forecastDataFetcher = useAsyncData(
+    async () => {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/analytics/forecast?metric=${selectedMetric}&timeframe=${selectedPeriod}&periods=7`
+      );
+      if (!response.ok) {
+        throw new Error('Failed to fetch forecast data');
+      }
+      const result = await response.json();
+      return result.data.forecastData || [];
+    },
+    {
+      immediate: false,
+      onSuccess: (data) => analyticsActions.forecast.finish(data),
+      onError: (error) => analyticsActions.forecast.error(error.message),
+    }
+  );
 
   // Main data fetching function
   const fetchAllData = useCallback(async () => {
-    loadingActions.data.start()
-    
+    loadingActions.data.start();
+
     try {
       await Promise.all([
         comprehensiveDataFetcher.refetch(),
         insightsDataFetcher.refetch(),
         heatMapDataFetcher.refetch(),
-        forecastDataFetcher.refetch()
-      ])
-      
-      setLastRefresh(new Date())
+        forecastDataFetcher.refetch(),
+      ]);
+
+      setLastRefresh(new Date());
     } catch (error) {
-      console.error('Failed to fetch analytics data:', error)
+      console.error('Failed to fetch analytics data:', error);
     } finally {
-      loadingActions.data.finish()
+      loadingActions.data.finish();
     }
   }, [
-    selectedPeriod, 
-    selectedMetric, 
-    comprehensiveDataFetcher, 
-    insightsDataFetcher, 
-    heatMapDataFetcher, 
-    forecastDataFetcher, 
-    loadingActions.data, 
-    setLastRefresh
-  ])
+    selectedPeriod,
+    selectedMetric,
+    comprehensiveDataFetcher,
+    insightsDataFetcher,
+    heatMapDataFetcher,
+    forecastDataFetcher,
+    loadingActions.data,
+    setLastRefresh,
+  ]);
 
   // Initial data fetch
   useEffect(() => {
-    fetchAllData()
-  }, [fetchAllData])
+    fetchAllData();
+  }, [fetchAllData]);
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchAllData()
-    }, 30000) // 30 seconds
+      fetchAllData();
+    }, 30000); // 30 seconds
 
-    return () => clearInterval(interval)
-  }, [fetchAllData])
+    return () => clearInterval(interval);
+  }, [fetchAllData]);
 
   // Export handler
-  const handleExport = async (format: 'csv' | 'json' | 'pdf', sections: string[]) => {
+  const handleExport = async (
+    format: 'csv' | 'json' | 'pdf',
+    sections: string[]
+  ) => {
     try {
-      loadingActions.export.start()
+      loadingActions.export.start();
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics/export`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          format,
-          timeframe: selectedPeriod,
-          sections
-        })
-      })
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/analytics/export`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            format,
+            timeframe: selectedPeriod,
+            sections,
+          }),
+        }
+      );
 
       if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `analytics-${selectedPeriod}-${new Date().toISOString().split('T')[0]}.${format}`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `analytics-${selectedPeriod}-${new Date().toISOString().split('T')[0]}.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
       }
     } catch (error) {
-      console.error('Export failed:', error)
+      console.error('Export failed:', error);
     } finally {
-      loadingActions.export.finish()
+      loadingActions.export.finish();
     }
-  }
+  };
 
   const handleInsightAction = async (insight: any, action: string) => {
-    console.log('Insight action:', insight, action)
+    console.log('Insight action:', insight, action);
     // Implement insight action handling
-  }
+  };
 
   const handleRefresh = () => {
-    loadingActions.refresh.start()
+    loadingActions.refresh.start();
     fetchAllData().finally(() => {
-      loadingActions.refresh.finish()
-    })
-  }
-
+      loadingActions.refresh.finish();
+    });
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Advanced Analytics Dashboard</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Advanced Analytics Dashboard
+          </h2>
           <p className="text-muted-foreground">
-            Comprehensive library analytics with real-time insights and reporting.
+            Comprehensive library analytics with real-time insights and
+            reporting.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={selectedPeriod} onValueChange={(value: any) => setSelectedPeriod(value)}>
+          <Select
+            value={selectedPeriod}
+            onValueChange={(value: any) => setSelectedPeriod(value)}
+          >
             <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
@@ -281,8 +338,15 @@ export function AnalyticsDashboard() {
               <SelectItem value="month">This Month</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loadingStates.data.isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loadingStates.data.isLoading ? 'animate-spin' : ''}`} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={loadingStates.data.isLoading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${loadingStates.data.isLoading ? 'animate-spin' : ''}`}
+            />
             Refresh
           </Button>
           <ExportAnalytics
@@ -302,7 +366,11 @@ export function AnalyticsDashboard() {
       />
 
       {/* Enhanced Analytics with Predictive Insights */}
-      <Tabs value={selectedChart} onValueChange={setSelectedChart} className="space-y-4">
+      <Tabs
+        value={selectedChart}
+        onValueChange={setSelectedChart}
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-8">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="circulation">Book Circulation</TabsTrigger>
@@ -354,7 +422,7 @@ export function AnalyticsDashboard() {
         <TabsContent value="insights" className="space-y-4">
           {loadingStates.data.isLoading ? (
             <div className="grid gap-4 md:grid-cols-2">
-              {[1, 2, 3, 4].map(i => (
+              {[1, 2, 3, 4].map((i) => (
                 <Card key={i}>
                   <CardHeader>
                     <DashboardCardSkeleton />
@@ -384,14 +452,19 @@ export function AnalyticsDashboard() {
                 Predict future trends based on historical data patterns
               </p>
             </div>
-            <Select value={selectedMetric} onValueChange={(value: any) => setSelectedMetric(value)}>
+            <Select
+              value={selectedMetric}
+              onValueChange={(value: any) => setSelectedMetric(value)}
+            >
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="student_visits">Student Visits</SelectItem>
                 <SelectItem value="equipment_usage">Equipment Usage</SelectItem>
-                <SelectItem value="book_circulation">Book Circulation</SelectItem>
+                <SelectItem value="book_circulation">
+                  Book Circulation
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -425,7 +498,9 @@ export function AnalyticsDashboard() {
             <UsageHeatMap
               data={analyticsStates.heatmap.data}
               filterType="all"
-              onCellClick={(data) => console.log('Heat map cell clicked:', data)}
+              onCellClick={(data) =>
+                console.log('Heat map cell clicked:', data)
+              }
             />
           )}
         </TabsContent>
@@ -442,9 +517,19 @@ export function AnalyticsDashboard() {
             <CardContent>
               <ResponsiveContainer width="100%" height={overviewChartHeight}>
                 <LineChart data={currentUsageData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                    opacity={0.3}
+                  />
                   <XAxis
-                    dataKey={selectedPeriod === 'month' ? 'week' : selectedPeriod === 'week' ? 'day' : 'time'}
+                    dataKey={
+                      selectedPeriod === 'month'
+                        ? 'week'
+                        : selectedPeriod === 'week'
+                          ? 'day'
+                          : 'time'
+                    }
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
@@ -453,7 +538,7 @@ export function AnalyticsDashboard() {
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px',
-                      color: 'hsl(var(--foreground))'
+                      color: 'hsl(var(--foreground))',
                     }}
                     labelStyle={{ color: 'hsl(var(--foreground))' }}
                   />
@@ -516,7 +601,7 @@ export function AnalyticsDashboard() {
                       contentStyle={{
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
+                        borderRadius: '8px',
                       }}
                       labelStyle={{ color: 'hsl(var(--foreground))' }}
                       itemStyle={{ color: 'hsl(var(--foreground))' }}
@@ -529,16 +614,24 @@ export function AnalyticsDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Popular Times</CardTitle>
-                <CardDescription>
-                  Busiest hours and activities
-                </CardDescription>
+                <CardDescription>Busiest hours and activities</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={activityChartHeight}>
                   <BarChart data={currentUsageData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                      opacity={0.3}
+                    />
                     <XAxis
-                      dataKey={selectedPeriod === 'month' ? 'week' : selectedPeriod === 'week' ? 'day' : 'time'}
+                      dataKey={
+                        selectedPeriod === 'month'
+                          ? 'week'
+                          : selectedPeriod === 'week'
+                            ? 'day'
+                            : 'time'
+                      }
                       tick={{ fill: 'hsl(var(--muted-foreground))' }}
                     />
                     <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
@@ -547,12 +640,16 @@ export function AnalyticsDashboard() {
                         backgroundColor: 'hsl(var(--card))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '8px',
-                        color: 'hsl(var(--foreground))'
+                        color: 'hsl(var(--foreground))',
                       }}
                       labelStyle={{ color: 'hsl(var(--foreground))' }}
                       cursor={{ fill: 'hsl(var(--primary) / 0.1)' }}
                     />
-                    <Bar dataKey="students" fill="hsl(var(--primary))" name="Students" />
+                    <Bar
+                      dataKey="students"
+                      fill="hsl(var(--primary))"
+                      name="Students"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -572,9 +669,19 @@ export function AnalyticsDashboard() {
             <CardContent>
               <ResponsiveContainer width="100%" height={overviewChartHeight}>
                 <BarChart data={currentUsageData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                    opacity={0.3}
+                  />
                   <XAxis
-                    dataKey={selectedPeriod === 'month' ? 'week' : selectedPeriod === 'week' ? 'day' : 'time'}
+                    dataKey={
+                      selectedPeriod === 'month'
+                        ? 'week'
+                        : selectedPeriod === 'week'
+                          ? 'day'
+                          : 'time'
+                    }
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
@@ -583,7 +690,7 @@ export function AnalyticsDashboard() {
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px',
-                      color: 'hsl(var(--foreground))'
+                      color: 'hsl(var(--foreground))',
                     }}
                     labelStyle={{ color: 'hsl(var(--foreground))' }}
                     cursor={{ fill: 'hsl(var(--primary) / 0.1)' }}
@@ -603,16 +710,16 @@ export function AnalyticsDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Grade Distribution</CardTitle>
-                <CardDescription>
-                  Student usage by grade level
-                </CardDescription>
+                <CardDescription>Student usage by grade level</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {mockGradeDistribution.map((grade) => (
                     <div key={grade.grade} className="space-y-2">
                       <div className="flex justify-between">
-                        <span className="text-sm font-medium">{grade.grade}</span>
+                        <span className="text-sm font-medium">
+                          {grade.grade}
+                        </span>
                         <span className="text-sm text-muted-foreground">
                           {grade.students} students ({grade.percentage}%)
                         </span>
@@ -641,28 +748,36 @@ export function AnalyticsDashboard() {
                   <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
                     <div>
                       <div className="font-medium">Primary (K-3)</div>
-                      <div className="text-sm text-muted-foreground">Supervised activities</div>
+                      <div className="text-sm text-muted-foreground">
+                        Supervised activities
+                      </div>
                     </div>
                     <Badge variant="outline">15 min</Badge>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
                     <div>
                       <div className="font-medium">Grade School (4-6)</div>
-                      <div className="text-sm text-muted-foreground">Basic computer access</div>
+                      <div className="text-sm text-muted-foreground">
+                        Basic computer access
+                      </div>
                     </div>
                     <Badge variant="outline">30 min</Badge>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
                     <div>
                       <div className="font-medium">Junior High (7-10)</div>
-                      <div className="text-sm text-muted-foreground">Full access + gaming</div>
+                      <div className="text-sm text-muted-foreground">
+                        Full access + gaming
+                      </div>
                     </div>
                     <Badge variant="outline">45 min</Badge>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
                     <div>
                       <div className="font-medium">Senior High (11-12)</div>
-                      <div className="text-sm text-muted-foreground">Premium access</div>
+                      <div className="text-sm text-muted-foreground">
+                        Premium access
+                      </div>
                     </div>
                     <Badge variant="outline">60 min</Badge>
                   </div>
@@ -692,15 +807,24 @@ export function AnalyticsDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs">
-            {selectedPeriod === 'day' ? 'Today' : selectedPeriod === 'week' ? 'This Week' : 'This Month'}
+            {selectedPeriod === 'day'
+              ? 'Today'
+              : selectedPeriod === 'week'
+                ? 'This Week'
+                : 'This Month'}
           </Badge>
-          <Badge variant={analyticsStates.comprehensive.data ? "default" : "secondary"} className="text-xs">
+          <Badge
+            variant={
+              analyticsStates.comprehensive.data ? 'default' : 'secondary'
+            }
+            className="text-xs"
+          >
             {analyticsStates.comprehensive.data ? 'Live Data' : 'Sample Data'}
           </Badge>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default AnalyticsDashboard
+export default AnalyticsDashboard;

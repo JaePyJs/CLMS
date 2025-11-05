@@ -15,13 +15,12 @@ const customRender = (
   const { queryClient, ...renderOptions } = options || {};
 
   return render(ui, {
-    wrapper: ({ children }) => (
+    wrapper: ({ children }) =>
       queryClient ? (
         <TestProviders queryClient={queryClient}>{children}</TestProviders>
       ) : (
         <TestProviders>{children}</TestProviders>
-      )
-    ),
+      ),
     ...renderOptions,
   });
 };

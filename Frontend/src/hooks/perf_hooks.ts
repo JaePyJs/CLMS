@@ -9,33 +9,53 @@ import { useState, useEffect } from 'react';
 // Performance API with fallbacks
 export const performance = {
   now: (): number => {
-    if (typeof window !== 'undefined' && window.performance && window.performance.now) {
+    if (
+      typeof window !== 'undefined' &&
+      window.performance &&
+      window.performance.now
+    ) {
       return window.performance.now();
     }
     return Date.now();
   },
 
   mark: (name: string): void => {
-    if (typeof window !== 'undefined' && window.performance && window.performance.mark) {
+    if (
+      typeof window !== 'undefined' &&
+      window.performance &&
+      window.performance.mark
+    ) {
       window.performance.mark(name);
     }
   },
 
   measure: (name: string, startMark: string, endMark?: string): void => {
-    if (typeof window !== 'undefined' && window.performance && window.performance.measure) {
+    if (
+      typeof window !== 'undefined' &&
+      window.performance &&
+      window.performance.measure
+    ) {
       window.performance.measure(name, startMark, endMark);
     }
   },
 
   getEntriesByName: (name: string, type?: string): PerformanceEntry[] => {
-    if (typeof window !== 'undefined' && window.performance && window.performance.getEntriesByName) {
+    if (
+      typeof window !== 'undefined' &&
+      window.performance &&
+      window.performance.getEntriesByName
+    ) {
       return window.performance.getEntriesByName(name, type);
     }
     return [];
   },
 
   getEntriesByType: (type: string): PerformanceEntry[] => {
-    if (typeof window !== 'undefined' && window.performance && window.performance.getEntriesByType) {
+    if (
+      typeof window !== 'undefined' &&
+      window.performance &&
+      window.performance.getEntriesByType
+    ) {
       return window.performance.getEntriesByType(type);
     }
     return [];
@@ -44,10 +64,18 @@ export const performance = {
 
 // Performance observer for monitoring
 export class PerformanceObserver {
-  private callback: (entries: PerformanceObserverEntryList, observer: PerformanceObserver) => void;
+  private callback: (
+    entries: PerformanceObserverEntryList,
+    observer: PerformanceObserver
+  ) => void;
   private observer: PerformanceObserver | null = null;
 
-  constructor(callback: (entries: PerformanceObserverEntryList, observer: PerformanceObserver) => void) {
+  constructor(
+    callback: (
+      entries: PerformanceObserverEntryList,
+      observer: PerformanceObserver
+    ) => void
+  ) {
     this.callback = callback;
   }
 
@@ -74,10 +102,10 @@ export function usePerformanceMonitor(componentName: string) {
   useEffect(() => {
     const endTime = performance.now();
     const renderTime = endTime - startTime;
-    
-    setMetrics(prev => ({
+
+    setMetrics((prev) => ({
       ...prev,
-      [`${componentName}_render`]: renderTime
+      [`${componentName}_render`]: renderTime,
     }));
 
     performance.mark(`${componentName}_render_end`);
@@ -102,9 +130,9 @@ export function usePerformanceMonitor(componentName: string) {
 // Custom performance hooks
 export function useRenderCount(componentName: string) {
   const [count, setCount] = useState(0);
-  
+
   useEffect(() => {
-    setCount(prev => prev + 1);
+    setCount((prev) => prev + 1);
     performance.mark(`${componentName}_render_count_${count + 1}`);
   });
 
@@ -113,7 +141,7 @@ export function useRenderCount(componentName: string) {
 
 export function useRenderTime(componentName: string) {
   const [renderTime, setRenderTime] = useState(0);
-  
+
   useEffect(() => {
     const start = performance.now();
     return () => {
@@ -162,7 +190,7 @@ export const memory = {
 };
 
 // Update memory stats if available
-if (typeof window !== 'undefined' && (window as any).performance && (window as any).performance.memory) {
+if (typeof window !== 'undefined' && (window as any).performance?.memory) {
   const perfMemory = (window as any).performance.memory;
   Object.assign(memory, {
     usedJSHeapSize: perfMemory.usedJSHeapSize || 0,
@@ -179,23 +207,39 @@ export const timing = {
 };
 
 // Update timing stats if available
-if (typeof window !== 'undefined' && window.performance && window.performance.timing) {
+if (
+  typeof window !== 'undefined' &&
+  window.performance &&
+  window.performance.timing
+) {
   Object.assign(timing, window.performance.timing);
 }
 
 // Resource timing utilities
 export const getResourceTiming = (): PerformanceResourceTiming[] => {
-  if (typeof window !== 'undefined' && window.performance && window.performance.getEntriesByType) {
-    return window.performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+  if (
+    typeof window !== 'undefined' &&
+    window.performance &&
+    window.performance.getEntriesByType
+  ) {
+    return window.performance.getEntriesByType(
+      'resource'
+    ) as PerformanceResourceTiming[];
   }
   return [];
 };
 
 // Navigation timing utilities
 export const getNavigationTiming = (): PerformanceNavigationTiming | null => {
-  if (typeof window !== 'undefined' && window.performance && window.performance.getEntriesByType) {
+  if (
+    typeof window !== 'undefined' &&
+    window.performance &&
+    window.performance.getEntriesByType
+  ) {
     const entries = window.performance.getEntriesByType('navigation');
-    return entries.length > 0 ? entries[0] as PerformanceNavigationTiming : null;
+    return entries.length > 0
+      ? (entries[0] as PerformanceNavigationTiming)
+      : null;
   }
   return null;
 };
@@ -206,7 +250,10 @@ export const calculateMetrics = {
   pageLoadTime: (): number => {
     const navTiming = getNavigationTiming();
     if (navTiming) {
-      return navTiming.loadEventEnd - (navTiming as any).navigationStart || navTiming.loadEventEnd - navTiming.startTime;
+      return (
+        navTiming.loadEventEnd - (navTiming as any).navigationStart ||
+        navTiming.loadEventEnd - navTiming.startTime
+      );
     }
     return timing.loadEventEnd - timing.navigationStart;
   },
@@ -215,33 +262,47 @@ export const calculateMetrics = {
   domContentLoadedTime: (): number => {
     const navTiming = getNavigationTiming();
     if (navTiming) {
-      return navTiming.domContentLoadedEventEnd - (navTiming as any).navigationStart || navTiming.domContentLoadedEventEnd - navTiming.startTime;
+      return (
+        navTiming.domContentLoadedEventEnd -
+          (navTiming as any).navigationStart ||
+        navTiming.domContentLoadedEventEnd - navTiming.startTime
+      );
     }
     return timing.domContentLoadedEventEnd - timing.navigationStart;
   },
 
   // Calculate first paint time
   firstPaintTime: (): number => {
-    const paintEntries = typeof window !== 'undefined' && window.performance && window.performance.getEntriesByType
-      ? window.performance.getEntriesByType('paint')
-      : [];
-    const firstPaint = paintEntries.find(entry => entry.name === 'first-paint');
+    const paintEntries =
+      typeof window !== 'undefined' &&
+      window.performance &&
+      window.performance.getEntriesByType
+        ? window.performance.getEntriesByType('paint')
+        : [];
+    const firstPaint = paintEntries.find(
+      (entry) => entry.name === 'first-paint'
+    );
     return firstPaint ? firstPaint.startTime : 0;
   },
 
   // Calculate first contentful paint time
   firstContentfulPaintTime: (): number => {
-    const paintEntries = typeof window !== 'undefined' && window.performance && window.performance.getEntriesByType
-      ? window.performance.getEntriesByType('paint')
-      : [];
-    const firstContentfulPaint = paintEntries.find(entry => entry.name === 'first-contentful-paint');
+    const paintEntries =
+      typeof window !== 'undefined' &&
+      window.performance &&
+      window.performance.getEntriesByType
+        ? window.performance.getEntriesByType('paint')
+        : [];
+    const firstContentfulPaint = paintEntries.find(
+      (entry) => entry.name === 'first-contentful-paint'
+    );
     return firstContentfulPaint ? firstContentfulPaint.startTime : 0;
   },
 
   // Calculate resource load time
   resourceLoadTime: (url: string): number => {
     const resources = getResourceTiming();
-    const resource = resources.find(r => r.name === url);
+    const resource = resources.find((r) => r.name === url);
     return resource ? resource.responseEnd - resource.requestStart : 0;
   },
 
@@ -290,7 +351,9 @@ export const performanceUtils = {
       fastestResource: null as PerformanceResourceTiming | null,
     };
 
-    if (resources.length === 0) return summary;
+    if (resources.length === 0) {
+      return summary;
+    }
 
     let totalSize = 0;
     let totalTransferSize = 0;
@@ -300,7 +363,7 @@ export const performanceUtils = {
     let slowestResource: PerformanceResourceTiming | null = null;
     let fastestResource: PerformanceResourceTiming | null = null;
 
-    resources.forEach(resource => {
+    resources.forEach((resource) => {
       const loadTime = resource.responseEnd - resource.requestStart;
       totalSize += (resource as any).decodedBodySize || 0;
       totalTransferSize += resource.transferSize || 0;

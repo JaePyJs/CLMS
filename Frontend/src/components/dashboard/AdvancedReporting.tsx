@@ -1,20 +1,57 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ButtonLoading } from '@/components/LoadingStates';
-import { FileText, Download, TrendingUp, BarChart3, Target, Users, Settings, AlertTriangle, CheckCircle, Clock, Plus, Trash2, Edit } from 'lucide-react';
+import {
+  FileText,
+  Download,
+  TrendingUp,
+  BarChart3,
+  Target,
+  Users,
+  Settings,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Plus,
+  Trash2,
+  Edit,
+} from 'lucide-react';
 
 interface ReportTemplate {
   id: string;
   name: string;
   description: string;
-  category: 'operational' | 'strategic' | 'administrative' | 'financial' | 'performance';
+  category:
+    | 'operational'
+    | 'strategic'
+    | 'administrative'
+    | 'financial'
+    | 'performance';
   type: 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'yearly' | 'on_demand';
   sections: ReportSection[];
   includeInsights: boolean;
@@ -28,7 +65,18 @@ interface ReportTemplate {
 
 interface ReportSection {
   id: string;
-  type: 'overview' | 'kpi' | 'chart' | 'table' | 'insights' | 'heatmap' | 'forecast' | 'roi' | 'benchmark' | 'reading_patterns' | 'space_utilization';
+  type:
+    | 'overview'
+    | 'kpi'
+    | 'chart'
+    | 'table'
+    | 'insights'
+    | 'heatmap'
+    | 'forecast'
+    | 'roi'
+    | 'benchmark'
+    | 'reading_patterns'
+    | 'space_utilization';
   title: string;
   enabled: boolean;
   order: number;
@@ -73,7 +121,9 @@ interface AlertConfig {
 export function AdvancedReporting() {
   const [activeTab, setActiveTab] = useState('templates');
   const [reportConfigs, setReportConfigs] = useState<ReportConfig[]>([]);
-  const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>([]);
+  const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>(
+    []
+  );
   const [alertConfigs, setAlertConfigs] = useState<AlertConfig[]>([]);
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [editingConfig, setEditingConfig] = useState<ReportConfig | null>(null);
@@ -84,14 +134,39 @@ export function AdvancedReporting() {
     {
       id: 'weekly_operational',
       name: 'Weekly Operational Report',
-      description: 'Comprehensive weekly operational overview with KPIs and insights',
+      description:
+        'Comprehensive weekly operational overview with KPIs and insights',
       category: 'operational',
       type: 'weekly',
       sections: [
-        { id: 'overview', type: 'overview', title: 'Library Overview', enabled: true, order: 1 },
-        { id: 'kpi', type: 'kpi', title: 'Key Performance Indicators', enabled: true, order: 2 },
-        { id: 'activities', type: 'table', title: 'Recent Activities', enabled: true, order: 3 },
-        { id: 'insights', type: 'insights', title: 'Predictive Insights', enabled: true, order: 4 }
+        {
+          id: 'overview',
+          type: 'overview',
+          title: 'Library Overview',
+          enabled: true,
+          order: 1,
+        },
+        {
+          id: 'kpi',
+          type: 'kpi',
+          title: 'Key Performance Indicators',
+          enabled: true,
+          order: 2,
+        },
+        {
+          id: 'activities',
+          type: 'table',
+          title: 'Recent Activities',
+          enabled: true,
+          order: 3,
+        },
+        {
+          id: 'insights',
+          type: 'insights',
+          title: 'Predictive Insights',
+          enabled: true,
+          order: 4,
+        },
       ],
       includeInsights: true,
       includeForecasts: false,
@@ -99,20 +174,51 @@ export function AdvancedReporting() {
       includeROI: false,
       includeBenchmarks: false,
       includeReadingPatterns: false,
-      includeSpaceUtilization: false
+      includeSpaceUtilization: false,
     },
     {
       id: 'monthly_strategic',
       name: 'Monthly Strategic Report',
-      description: 'Strategic analysis with ROI, benchmarks, and long-term trends',
+      description:
+        'Strategic analysis with ROI, benchmarks, and long-term trends',
       category: 'strategic',
       type: 'monthly',
       sections: [
-        { id: 'overview', type: 'overview', title: 'Executive Summary', enabled: true, order: 1 },
-        { id: 'kpi', type: 'kpi', title: 'Performance Metrics', enabled: true, order: 2 },
-        { id: 'roi', type: 'roi', title: 'Return on Investment', enabled: true, order: 3 },
-        { id: 'benchmarks', type: 'benchmark', title: 'Industry Benchmarks', enabled: true, order: 4 },
-        { id: 'insights', type: 'insights', title: 'Strategic Insights', enabled: true, order: 5 }
+        {
+          id: 'overview',
+          type: 'overview',
+          title: 'Executive Summary',
+          enabled: true,
+          order: 1,
+        },
+        {
+          id: 'kpi',
+          type: 'kpi',
+          title: 'Performance Metrics',
+          enabled: true,
+          order: 2,
+        },
+        {
+          id: 'roi',
+          type: 'roi',
+          title: 'Return on Investment',
+          enabled: true,
+          order: 3,
+        },
+        {
+          id: 'benchmarks',
+          type: 'benchmark',
+          title: 'Industry Benchmarks',
+          enabled: true,
+          order: 4,
+        },
+        {
+          id: 'insights',
+          type: 'insights',
+          title: 'Strategic Insights',
+          enabled: true,
+          order: 5,
+        },
       ],
       includeInsights: true,
       includeForecasts: true,
@@ -120,19 +226,44 @@ export function AdvancedReporting() {
       includeROI: true,
       includeBenchmarks: true,
       includeReadingPatterns: false,
-      includeSpaceUtilization: false
+      includeSpaceUtilization: false,
     },
     {
       id: 'reading_analytics',
       name: 'Student Reading Analytics',
-      description: 'Detailed analysis of student reading patterns and engagement',
+      description:
+        'Detailed analysis of student reading patterns and engagement',
       category: 'administrative',
       type: 'monthly',
       sections: [
-        { id: 'overview', type: 'overview', title: 'Reading Program Overview', enabled: true, order: 1 },
-        { id: 'reading_patterns', type: 'reading_patterns', title: 'Reading Patterns', enabled: true, order: 2 },
-        { id: 'activities', type: 'table', title: 'Top Readers', enabled: true, order: 3 },
-        { id: 'insights', type: 'insights', title: 'Reading Insights', enabled: true, order: 4 }
+        {
+          id: 'overview',
+          type: 'overview',
+          title: 'Reading Program Overview',
+          enabled: true,
+          order: 1,
+        },
+        {
+          id: 'reading_patterns',
+          type: 'reading_patterns',
+          title: 'Reading Patterns',
+          enabled: true,
+          order: 2,
+        },
+        {
+          id: 'activities',
+          type: 'table',
+          title: 'Top Readers',
+          enabled: true,
+          order: 3,
+        },
+        {
+          id: 'insights',
+          type: 'insights',
+          title: 'Reading Insights',
+          enabled: true,
+          order: 4,
+        },
       ],
       includeInsights: true,
       includeForecasts: false,
@@ -140,19 +271,44 @@ export function AdvancedReporting() {
       includeROI: false,
       includeBenchmarks: true,
       includeReadingPatterns: true,
-      includeSpaceUtilization: false
+      includeSpaceUtilization: false,
     },
     {
       id: 'space_utilization',
       name: 'Space Utilization Report',
-      description: 'Analysis of library space usage and optimization recommendations',
+      description:
+        'Analysis of library space usage and optimization recommendations',
       category: 'operational',
       type: 'weekly',
       sections: [
-        { id: 'overview', type: 'overview', title: 'Space Overview', enabled: true, order: 1 },
-        { id: 'space_utilization', type: 'space_utilization', title: 'Area Utilization', enabled: true, order: 2 },
-        { id: 'heatmap', type: 'heatmap', title: 'Usage Heat Map', enabled: true, order: 3 },
-        { id: 'insights', type: 'insights', title: 'Space Optimization Insights', enabled: true, order: 4 }
+        {
+          id: 'overview',
+          type: 'overview',
+          title: 'Space Overview',
+          enabled: true,
+          order: 1,
+        },
+        {
+          id: 'space_utilization',
+          type: 'space_utilization',
+          title: 'Area Utilization',
+          enabled: true,
+          order: 2,
+        },
+        {
+          id: 'heatmap',
+          type: 'heatmap',
+          title: 'Usage Heat Map',
+          enabled: true,
+          order: 3,
+        },
+        {
+          id: 'insights',
+          type: 'insights',
+          title: 'Space Optimization Insights',
+          enabled: true,
+          order: 4,
+        },
       ],
       includeInsights: true,
       includeForecasts: false,
@@ -160,8 +316,8 @@ export function AdvancedReporting() {
       includeROI: false,
       includeBenchmarks: false,
       includeReadingPatterns: false,
-      includeSpaceUtilization: true
-    }
+      includeSpaceUtilization: true,
+    },
   ];
 
   const mockReports: GeneratedReport[] = [
@@ -172,8 +328,9 @@ export function AdvancedReporting() {
       format: 'html',
       generated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
       status: 'completed',
-      summary: 'Library performance shows 15% increase in student engagement this week.',
-      filePath: '/reports/weekly_operational_1.html'
+      summary:
+        'Library performance shows 15% increase in student engagement this week.',
+      filePath: '/reports/weekly_operational_1.html',
     },
     {
       id: '2',
@@ -182,8 +339,9 @@ export function AdvancedReporting() {
       format: 'pdf',
       generated_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
       status: 'completed',
-      summary: 'ROI analysis shows 23.3% return on investment with positive trends in technology adoption.',
-      filePath: '/reports/monthly_strategic_2.pdf'
+      summary:
+        'ROI analysis shows 23.3% return on investment with positive trends in technology adoption.',
+      filePath: '/reports/monthly_strategic_2.pdf',
     },
     {
       id: '3',
@@ -193,7 +351,7 @@ export function AdvancedReporting() {
       generated_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
       status: 'generating',
       summary: 'Currently generating space utilization analysis...',
-    }
+    },
   ];
 
   const mockAlerts: AlertConfig[] = [
@@ -206,7 +364,7 @@ export function AdvancedReporting() {
       recipients: ['admin@library.edu'],
       is_active: true,
       cooldownPeriod: 30,
-      lastTriggered: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
+      lastTriggered: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     },
     {
       id: '2',
@@ -217,7 +375,7 @@ export function AdvancedReporting() {
       recipients: ['admin@library.edu', 'manager@library.edu'],
       is_active: true,
       cooldownPeriod: 15,
-      lastTriggered: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+      lastTriggered: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     },
     {
       id: '3',
@@ -227,8 +385,8 @@ export function AdvancedReporting() {
       operators: 'greater_than',
       recipients: ['admin@library.edu'],
       is_active: false,
-      cooldownPeriod: 60
-    }
+      cooldownPeriod: 60,
+    },
   ];
 
   useEffect(() => {
@@ -236,11 +394,14 @@ export function AdvancedReporting() {
     setAlertConfigs(mockAlerts);
   }, []);
 
-  const handleGenerateReport = async (template: ReportTemplate, format: string) => {
+  const handleGenerateReport = async (
+    template: ReportTemplate,
+    format: string
+  ) => {
     setIsGenerating(true);
     try {
       // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const newReport: GeneratedReport = {
         id: Date.now().toString(),
@@ -250,10 +411,10 @@ export function AdvancedReporting() {
         generated_at: new Date().toISOString(),
         status: 'completed',
         summary: `Generated ${template.name} in ${format} format successfully.`,
-        filePath: `/reports/${template.name}_${Date.now()}.${format}`
+        filePath: `/reports/${template.name}_${Date.now()}.${format}`,
       };
 
-      setGeneratedReports(prev => [newReport, ...prev]);
+      setGeneratedReports((prev) => [newReport, ...prev]);
     } catch (error) {
       console.error('Failed to generate report:', error);
     } finally {
@@ -263,42 +424,56 @@ export function AdvancedReporting() {
 
   const handleSaveConfig = (config: ReportConfig) => {
     if (editingConfig) {
-      setReportConfigs(prev => prev.map(c => c.id === editingConfig.id ? { ...config, id: editingConfig.id } : c));
+      setReportConfigs((prev) =>
+        prev.map((c) =>
+          c.id === editingConfig.id ? { ...config, id: editingConfig.id } : c
+        )
+      );
     } else {
       const newConfig: ReportConfig = { ...config, id: Date.now().toString() };
-      setReportConfigs(prev => [...prev, newConfig]);
+      setReportConfigs((prev) => [...prev, newConfig]);
     }
     setShowConfigDialog(false);
     setEditingConfig(null);
   };
 
   const handleDeleteConfig = (id: string) => {
-    setReportConfigs(prev => prev.filter(c => c.id !== id));
+    setReportConfigs((prev) => prev.filter((c) => c.id !== id));
   };
 
   const handleToggleAlert = (id: string) => {
-    setAlertConfigs(prev => prev.map(a =>
-      a.id === id ? { ...a, is_active: !a.is_active } : a
-    ));
+    setAlertConfigs((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, is_active: !a.is_active } : a))
+    );
   };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'operational': return 'bg-blue-100 text-blue-800';
-      case 'strategic': return 'bg-purple-100 text-purple-800';
-      case 'administrative': return 'bg-green-100 text-green-800';
-      case 'financial': return 'bg-yellow-100 text-yellow-800';
-      case 'performance': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'operational':
+        return 'bg-blue-100 text-blue-800';
+      case 'strategic':
+        return 'bg-purple-100 text-purple-800';
+      case 'administrative':
+        return 'bg-green-100 text-green-800';
+      case 'financial':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'performance':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'generating': return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'failed': return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      default: return null;
+      case 'completed':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'generating':
+        return <Clock className="h-4 w-4 text-yellow-500" />;
+      case 'failed':
+        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      default:
+        return null;
     }
   };
 
@@ -307,13 +482,19 @@ export function AdvancedReporting() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Advanced Reporting</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Advanced Reporting
+          </h2>
           <p className="text-muted-foreground">
             Generate comprehensive reports with advanced analytics and insights.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowConfigDialog(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowConfigDialog(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Custom Report
           </Button>
@@ -325,7 +506,11 @@ export function AdvancedReporting() {
       </div>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:grid-cols-6">
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
@@ -339,12 +524,17 @@ export function AdvancedReporting() {
         <TabsContent value="templates" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {reportTemplates.map((template) => (
-              <Card key={template.id} className="hover:shadow-md transition-shadow">
+              <Card
+                key={template.id}
+                className="hover:shadow-md transition-shadow"
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <CardTitle className="text-lg">{template.name}</CardTitle>
-                      <CardDescription className="mt-1">{template.description}</CardDescription>
+                      <CardDescription className="mt-1">
+                        {template.description}
+                      </CardDescription>
                     </div>
                     <Badge className={getCategoryColor(template.category)}>
                       {template.category}
@@ -359,17 +549,36 @@ export function AdvancedReporting() {
                     </div>
 
                     <div className="flex flex-wrap gap-1">
-                      {template.includeInsights && <Badge variant="secondary">Insights</Badge>}
-                      {template.includeROI && <Badge variant="secondary">ROI</Badge>}
-                      {template.includeBenchmarks && <Badge variant="secondary">Benchmarks</Badge>}
-                      {template.includeReadingPatterns && <Badge variant="secondary">Reading</Badge>}
-                      {template.includeSpaceUtilization && <Badge variant="secondary">Space</Badge>}
+                      {template.includeInsights && (
+                        <Badge variant="secondary">Insights</Badge>
+                      )}
+                      {template.includeROI && (
+                        <Badge variant="secondary">ROI</Badge>
+                      )}
+                      {template.includeBenchmarks && (
+                        <Badge variant="secondary">Benchmarks</Badge>
+                      )}
+                      {template.includeReadingPatterns && (
+                        <Badge variant="secondary">Reading</Badge>
+                      )}
+                      {template.includeSpaceUtilization && (
+                        <Badge variant="secondary">Space</Badge>
+                      )}
                     </div>
 
                     <div className="flex gap-2 pt-2">
-                      <Select onValueChange={(format) => handleGenerateReport(template, format)} disabled={isGenerating}>
+                      <Select
+                        onValueChange={(format) =>
+                          handleGenerateReport(template, format)
+                        }
+                        disabled={isGenerating}
+                      >
                         <SelectTrigger className="flex-1">
-                          <SelectValue placeholder={isGenerating ? "Generating..." : "Generate"} />
+                          <SelectValue
+                            placeholder={
+                              isGenerating ? 'Generating...' : 'Generate'
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="html">HTML</SelectItem>
@@ -398,13 +607,17 @@ export function AdvancedReporting() {
             <CardContent>
               <div className="space-y-4">
                 {generatedReports.map((report) => (
-                  <div key={report.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div
+                    key={report.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
                     <div className="flex items-center gap-3">
                       {getStatusIcon(report.status)}
                       <div>
                         <h4 className="font-medium">{report.name}</h4>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(report.generated_at).toLocaleString()} • {report.format.toUpperCase()}
+                          {new Date(report.generated_at).toLocaleString()} •{' '}
+                          {report.format.toUpperCase()}
                         </p>
                       </div>
                     </div>
@@ -441,7 +654,9 @@ export function AdvancedReporting() {
                 {reportConfigs.length === 0 ? (
                   <div className="text-center py-8">
                     <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium">No Report Configurations</h3>
+                    <h3 className="text-lg font-medium">
+                      No Report Configurations
+                    </h3>
                     <p className="text-muted-foreground mb-4">
                       Create your first custom report configuration.
                     </p>
@@ -452,11 +667,15 @@ export function AdvancedReporting() {
                   </div>
                 ) : (
                   reportConfigs.map((config) => (
-                    <div key={config.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={config.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="flex-1">
                         <h4 className="font-medium">{config.name}</h4>
                         <p className="text-sm text-muted-foreground">
-                          {config.type} • {config.format.toUpperCase()} • {config.recipients.length} recipients
+                          {config.type} • {config.format.toUpperCase()} •{' '}
+                          {config.recipients.length} recipients
                         </p>
                         {config.schedule && (
                           <p className="text-sm text-muted-foreground">
@@ -465,13 +684,21 @@ export function AdvancedReporting() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={config.is_active ? 'default' : 'secondary'}>
+                        <Badge
+                          variant={config.is_active ? 'default' : 'secondary'}
+                        >
                           {config.is_active ? 'Active' : 'Inactive'}
                         </Badge>
                         <Button variant="ghost" size="sm">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => config.id && handleDeleteConfig(config.id)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            config.id && handleDeleteConfig(config.id)
+                          }
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -495,15 +722,20 @@ export function AdvancedReporting() {
             <CardContent>
               <div className="space-y-4">
                 {alertConfigs.map((alert) => (
-                  <div key={alert.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div
+                    key={alert.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
                     <div className="flex-1">
                       <h4 className="font-medium">{alert.name}</h4>
                       <p className="text-sm text-muted-foreground">
-                        {alert.type.replace('_', ' ')} • Threshold: {alert.threshold} • {alert.recipients.length} recipients
+                        {alert.type.replace('_', ' ')} • Threshold:{' '}
+                        {alert.threshold} • {alert.recipients.length} recipients
                       </p>
                       {alert.lastTriggered && (
                         <p className="text-sm text-muted-foreground">
-                          Last triggered: {new Date(alert.lastTriggered).toLocaleString()}
+                          Last triggered:{' '}
+                          {new Date(alert.lastTriggered).toLocaleString()}
                         </p>
                       )}
                     </div>
@@ -636,15 +868,21 @@ export function AdvancedReporting() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span>Visits per Student</span>
-                    <span className="font-medium text-yellow-600">7.2 (8.5)</span>
+                    <span className="font-medium text-yellow-600">
+                      7.2 (8.5)
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Book Circulation</span>
-                    <span className="font-medium text-green-600">18.5 (15.2)</span>
+                    <span className="font-medium text-green-600">
+                      18.5 (15.2)
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span>Computer Usage</span>
-                    <span className="font-medium text-green-600">71.3% (65.0%)</span>
+                    <span className="font-medium text-green-600">
+                      71.3% (65.0%)
+                    </span>
                   </div>
                   <Button variant="outline" className="w-full mt-4">
                     View Details
@@ -676,8 +914,12 @@ export function AdvancedReporting() {
                       <SelectItem value="activities">Activities</SelectItem>
                       <SelectItem value="students">Students</SelectItem>
                       <SelectItem value="equipment">Equipment</SelectItem>
-                      <SelectItem value="reading-patterns">Reading Patterns</SelectItem>
-                      <SelectItem value="space-utilization">Space Utilization</SelectItem>
+                      <SelectItem value="reading-patterns">
+                        Reading Patterns
+                      </SelectItem>
+                      <SelectItem value="space-utilization">
+                        Space Utilization
+                      </SelectItem>
                       <SelectItem value="roi-data">ROI Analysis</SelectItem>
                     </SelectContent>
                   </Select>
@@ -729,10 +971,13 @@ export function AdvancedReporting() {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingConfig ? 'Edit Report Configuration' : 'Create Custom Report'}
+              {editingConfig
+                ? 'Edit Report Configuration'
+                : 'Create Custom Report'}
             </DialogTitle>
             <DialogDescription>
-              Configure a custom report with specific sections and delivery options.
+              Configure a custom report with specific sections and delivery
+              options.
             </DialogDescription>
           </DialogHeader>
 
@@ -751,7 +996,9 @@ export function AdvancedReporting() {
                   <SelectContent>
                     <SelectItem value="operational">Operational</SelectItem>
                     <SelectItem value="strategic">Strategic</SelectItem>
-                    <SelectItem value="administrative">Administrative</SelectItem>
+                    <SelectItem value="administrative">
+                      Administrative
+                    </SelectItem>
                     <SelectItem value="financial">Financial</SelectItem>
                   </SelectContent>
                 </Select>
@@ -823,10 +1070,17 @@ export function AdvancedReporting() {
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowConfigDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfigDialog(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={() => handleSaveConfig(editingConfig || {} as ReportConfig)}>
+            <Button
+              onClick={() =>
+                handleSaveConfig(editingConfig || ({} as ReportConfig))
+              }
+            >
               {editingConfig ? 'Update' : 'Create'} Configuration
             </Button>
           </div>

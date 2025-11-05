@@ -17,7 +17,7 @@ export function QRCodeDisplay({
   size = 150,
   margin = 1,
   color = { dark: '#000000', light: '#FFFFFF' },
-  className = ''
+  className = '',
 }: QRCodeDisplayProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [error, setError] = useState<string>('');
@@ -38,9 +38,9 @@ export function QRCodeDisplay({
         margin,
         color: {
           dark: color.dark || '#000000',
-          light: color.light || '#FFFFFF'
+          light: color.light || '#FFFFFF',
         },
-        errorCorrectionLevel: 'M'
+        errorCorrectionLevel: 'M',
       });
       setQrCodeUrl(url);
       setError('');
@@ -53,7 +53,9 @@ export function QRCodeDisplay({
 
   if (!value) {
     return (
-      <div className={`flex items-center justify-center h-36 w-36 bg-gray-100 border border-gray-300 rounded ${className}`}>
+      <div
+        className={`flex items-center justify-center h-36 w-36 bg-gray-100 border border-gray-300 rounded ${className}`}
+      >
         <span className="text-gray-500 text-xs text-center">No QR data</span>
       </div>
     );
@@ -61,7 +63,9 @@ export function QRCodeDisplay({
 
   if (error) {
     return (
-      <div className={`flex items-center justify-center h-36 w-36 bg-red-50 border border-red-200 rounded ${className}`}>
+      <div
+        className={`flex items-center justify-center h-36 w-36 bg-red-50 border border-red-200 rounded ${className}`}
+      >
         <span className="text-red-500 text-xs text-center">{error}</span>
       </div>
     );

@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { WebSocket } from 'ws';
 import { logger } from '../utils/logger';
-import { authService, JWTPayload } from '../services/authService';
 
 export interface ClientConnection {
   id: string;
@@ -54,19 +54,23 @@ export class ClientManager {
       userId: client.userId,
       username: client.username,
       role: client.role,
-      totalClients: this.clients.size
+      totalClients: this.clients.size,
     });
 
     // Notify other clients about new connection
-    this.broadcastToRole('staff', {
-      type: 'user_connected',
-      data: {
-        userId: client.userId,
-        username: client.username,
-        role: client.role,
-        connectedAt: client.connectedAt
-      }
-    }, client.id);
+    this.broadcastToRole(
+      'staff',
+      {
+        type: 'user_connected',
+        data: {
+          userId: client.userId,
+          username: client.username,
+          role: client.role,
+          connectedAt: client.connectedAt,
+        },
+      },
+      client.id,
+    );
   }
 
   /**
@@ -74,7 +78,9 @@ export class ClientManager {
    */
   removeClient(clientId: string): void {
     const client = this.clients.get(clientId);
-    if (!client) return;
+    if (!client) {
+      return;
+    }
 
     this.clients.delete(clientId);
     this.userIdToClientId.delete(client.userId);
@@ -84,19 +90,23 @@ export class ClientManager {
       clientId,
       userId: client.userId,
       username: client.username,
-      remainingClients: this.clients.size
+      remainingClients: this.clients.size,
     });
 
     // Notify other clients about disconnection
-    this.broadcastToRole('staff', {
-      type: 'user_disconnected',
-      data: {
-        userId: client.userId,
-        username: client.username,
-        role: client.role,
-        disconnectedAt: new Date()
-      }
-    }, clientId);
+    this.broadcastToRole(
+      'staff',
+      {
+        type: 'user_disconnected',
+        data: {
+          userId: client.userId,
+          username: client.username,
+          role: client.role,
+          disconnectedAt: new Date(),
+        },
+      },
+      clientId,
+    );
   }
 
   /**
@@ -125,7 +135,9 @@ export class ClientManager {
    * Get clients by role
    */
   getClientsByRole(role: string): ClientConnection[] {
-    return Array.from(this.clients.values()).filter(client => client.role === role);
+    return Array.from(this.clients.values()).filter(
+      client => client.role === role,
+    );
   }
 
   /**
@@ -133,7 +145,7 @@ export class ClientManager {
    */
   getClientsBySubscription(subscription: string): ClientConnection[] {
     return Array.from(this.clients.values()).filter(client =>
-      client.subscriptions.has(subscription)
+      client.subscriptions.has(subscription),
     );
   }
 
@@ -158,7 +170,7 @@ export class ClientManager {
       logger.debug('Client subscription added', {
         clientId,
         id: client.id,
-        subscription
+        subscription,
       });
     }
   }
@@ -173,7 +185,7 @@ export class ClientManager {
       logger.debug('Client subscription removed', {
         clientId,
         id: client.id,
-        subscription
+        subscription,
       });
     }
   }
@@ -191,7 +203,7 @@ export class ClientManager {
       const messagePayload = {
         id: this.generateMessageId(),
         timestamp: new Date().toISOString(),
-        ...message
+        ...message,
       };
 
       client.socket.send(JSON.stringify(messagePayload));
@@ -201,7 +213,7 @@ export class ClientManager {
       logger.error('Failed to send message to client', {
         clientId,
         id: client.id,
-        error: (error as Error).message
+        error: (error as Error).message,
       });
       return false;
     }
@@ -228,14 +240,16 @@ export class ClientManager {
     const messagePayload = {
       id: this.generateMessageId(),
       timestamp: new Date().toISOString(),
-      ...message
+      ...message,
     };
 
     let sentCount = 0;
     let failedCount = 0;
 
     this.clients.forEach((client, clientId) => {
-      if (excludeClientId && clientId === excludeClientId) return;
+      if (excludeClientId && clientId === excludeClientId) {
+        return;
+      }
       if (client.socket.readyState !== WebSocket.OPEN) {
         failedCount++;
         return;
@@ -249,7 +263,7 @@ export class ClientManager {
         logger.error('Failed to broadcast to client', {
           clientId,
           id: client.id,
-          error: (error as Error).message
+          error: (error as Error).message,
         });
         failedCount++;
       }
@@ -259,7 +273,7 @@ export class ClientManager {
       type: message.type,
       sentCount,
       failedCount,
-      totalClients: this.clients.size
+      totalClients: this.clients.size,
     });
   }
 
@@ -270,12 +284,14 @@ export class ClientManager {
     const messagePayload = {
       id: this.generateMessageId(),
       timestamp: new Date().toISOString(),
-      ...message
+      ...message,
     };
 
     let sentCount = 0;
     this.clients.forEach((client, clientId) => {
-      if (excludeClientId && clientId === excludeClientId) return;
+      if (excludeClientId && clientId === excludeClientId) {
+        return;
+      }
       if (client.role !== role || client.socket.readyState !== WebSocket.OPEN) {
         return;
       }
@@ -289,7 +305,7 @@ export class ClientManager {
           clientId,
           id: client.id,
           role,
-          error: (error as Error).message
+          error: (error as Error).message,
         });
       }
     });
@@ -298,24 +314,33 @@ export class ClientManager {
       role,
       type: message.type,
       sentCount,
-      totalRoleClients: this.getClientsByRole(role).length
+      totalRoleClients: this.getClientsByRole(role).length,
     });
   }
 
   /**
    * Broadcast message to clients subscribed to a topic
    */
-  broadcastToSubscription(subscription: string, message: any, excludeClientId?: string): void {
+  broadcastToSubscription(
+    subscription: string,
+    message: any,
+    excludeClientId?: string,
+  ): void {
     const messagePayload = {
       id: this.generateMessageId(),
       timestamp: new Date().toISOString(),
-      ...message
+      ...message,
     };
 
     let sentCount = 0;
     this.clients.forEach((client, clientId) => {
-      if (excludeClientId && clientId === excludeClientId) return;
-      if (!client.subscriptions.has(subscription) || client.socket.readyState !== WebSocket.OPEN) {
+      if (excludeClientId && clientId === excludeClientId) {
+        return;
+      }
+      if (
+        !client.subscriptions.has(subscription) ||
+        client.socket.readyState !== WebSocket.OPEN
+      ) {
         return;
       }
 
@@ -328,7 +353,7 @@ export class ClientManager {
           clientId,
           id: client.id,
           subscription,
-          error: (error as Error).message
+          error: (error as Error).message,
         });
       }
     });
@@ -337,7 +362,8 @@ export class ClientManager {
       subscription,
       type: message.type,
       sentCount,
-      totalSubscribedClients: this.getClientsBySubscription(subscription).length
+      totalSubscribedClients:
+        this.getClientsBySubscription(subscription).length,
     });
   }
 
@@ -353,14 +379,14 @@ export class ClientManager {
       timestamp: new Date(),
       priority,
       retries: 0,
-      maxRetries: priority === 'critical' ? 5 : 3
+      maxRetries: priority === 'critical' ? 5 : 3,
     };
 
     // Find or create queue for user's potential connections
     let queue: MessageQueue[] = [];
     this.messageQueues.forEach((clientQueue, clientId) => {
       const client = this.clients.get(clientId);
-      if (client && client.id === id) {
+      if (client?.id === id) {
         queue = clientQueue;
       }
     });
@@ -382,21 +408,37 @@ export class ClientManager {
       messageId: queuedMessage.id,
       type: message.type,
       priority,
-      queueSize: queue.length
+      queueSize: queue.length,
     });
   }
 
   /**
    * Get message priority based on type
    */
-  private getMessagePriority(type: string): 'low' | 'medium' | 'high' | 'critical' {
-    const criticalTypes = ['emergency_alert', 'system_shutdown', 'security_breach'];
-    const highTypes = ['student_checkout', 'equipment_malfunction', 'inventory_alert'];
+  private getMessagePriority(
+    type: string,
+  ): 'low' | 'medium' | 'high' | 'critical' {
+    const criticalTypes = [
+      'emergency_alert',
+      'system_shutdown',
+      'security_breach',
+    ];
+    const highTypes = [
+      'student_checkout',
+      'equipment_malfunction',
+      'inventory_alert',
+    ];
     const mediumTypes = ['student_checkin', 'activity_update', 'notification'];
 
-    if (criticalTypes.includes(type)) return 'critical';
-    if (highTypes.includes(type)) return 'high';
-    if (mediumTypes.includes(type)) return 'medium';
+    if (criticalTypes.includes(type)) {
+      return 'critical';
+    }
+    if (highTypes.includes(type)) {
+      return 'high';
+    }
+    if (mediumTypes.includes(type)) {
+      return 'medium';
+    }
     return 'low';
   }
 
@@ -410,7 +452,7 @@ export class ClientManager {
           logger.warn('Client failed heartbeat, terminating connection', {
             clientId,
             id: client.id,
-            username: client.username
+            username: client.username,
           });
           client.socket.terminate();
           this.removeClient(clientId);
@@ -425,7 +467,7 @@ export class ClientManager {
           logger.error('Failed to send ping to client', {
             clientId,
             id: client.id,
-            error: (error as Error).message
+            error: (error as Error).message,
           });
           this.removeClient(clientId);
         }
@@ -448,7 +490,7 @@ export class ClientManager {
             clientId,
             id: client.id,
             username: client.username,
-            lastActivity: client.lastActivity
+            lastActivity: client.lastActivity,
           });
           client.socket.terminate();
           this.removeClient(clientId);
@@ -459,7 +501,8 @@ export class ClientManager {
       this.messageQueues.forEach((queue, clientId) => {
         const filteredQueue = queue.filter(msg => {
           const messageAge = now.getTime() - msg.timestamp.getTime();
-          const maxAge = msg.priority === 'critical' ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000; // 24h for critical, 1h for others
+          const maxAge =
+            msg.priority === 'critical' ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000; // 24h for critical, 1h for others
           return messageAge < maxAge;
         });
 
@@ -495,7 +538,8 @@ export class ClientManager {
 
     clients.forEach(client => {
       // Count by role
-      connectionsByRole[client.role] = (connectionsByRole[client.role] || 0) + 1;
+      connectionsByRole[client.role] =
+        (connectionsByRole[client.role] || 0) + 1;
 
       // Calculate connection time
       totalConnectionTime += now.getTime() - client.connectedAt.getTime();
@@ -507,8 +551,9 @@ export class ClientManager {
     return {
       totalConnections: clients.length,
       connectionsByRole,
-      averageConnectionTime: clients.length > 0 ? totalConnectionTime / clients.length : 0,
-      subscriptionsCount
+      averageConnectionTime:
+        clients.length > 0 ? totalConnectionTime / clients.length : 0,
+      subscriptionsCount,
     };
   }
 
@@ -533,7 +578,7 @@ export class ClientManager {
       } catch (error) {
         logger.error('Error closing client connection during shutdown', {
           clientId,
-          error: (error as Error).message
+          error: (error as Error).message,
         });
       }
     });

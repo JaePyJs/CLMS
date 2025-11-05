@@ -1,8 +1,20 @@
-import { useState, useMemo } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
+import { useState, useMemo } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import {
   Line,
   XAxis,
@@ -13,8 +25,8 @@ import {
   ResponsiveContainer,
   Area,
   AreaChart,
-  ReferenceLine
-} from 'recharts'
+  ReferenceLine,
+} from 'recharts';
 import {
   TrendingUp,
   TrendingDown,
@@ -23,27 +35,29 @@ import {
   Download,
   Settings,
   Eye,
-  EyeOff
-} from 'lucide-react'
+  EyeOff,
+} from 'lucide-react';
 
 interface TimeSeriesData {
-  timestamp: Date
-  value: number
-  predicted?: number
-  upperBound?: number
-  lowerBound?: number
+  timestamp: Date;
+  value: number;
+  predicted?: number;
+  upperBound?: number;
+  lowerBound?: number;
 }
 
 interface TimeSeriesForecastProps {
-  data: TimeSeriesData[]
-  title?: string
-  description?: string
-  metric?: 'student_visits' | 'equipment_usage' | 'book_circulation'
-  timeframe?: 'day' | 'week' | 'month'
-  onMetricChange?: (metric: 'student_visits' | 'equipment_usage' | 'book_circulation') => void
-  onTimeframeChange?: (timeframe: 'day' | 'week' | 'month') => void
-  showConfidence?: boolean
-  showPredictions?: boolean
+  data: TimeSeriesData[];
+  title?: string;
+  description?: string;
+  metric?: 'student_visits' | 'equipment_usage' | 'book_circulation';
+  timeframe?: 'day' | 'week' | 'month';
+  onMetricChange?: (
+    metric: 'student_visits' | 'equipment_usage' | 'book_circulation'
+  ) => void;
+  onTimeframeChange?: (timeframe: 'day' | 'week' | 'month') => void;
+  showConfidence?: boolean;
+  showPredictions?: boolean;
 }
 
 const METRIC_CONFIG = {
@@ -51,21 +65,21 @@ const METRIC_CONFIG = {
     label: 'Student Visits',
     color: '#3b82f6',
     icon: Activity,
-    unit: 'visits'
+    unit: 'visits',
   },
   equipment_usage: {
     label: 'Equipment Usage',
     color: '#10b981',
     icon: Activity,
-    unit: 'sessions'
+    unit: 'sessions',
   },
   book_circulation: {
     label: 'Book Circulation',
     color: '#f59e0b',
     icon: Activity,
-    unit: 'transactions'
-  }
-}
+    unit: 'transactions',
+  },
+};
 
 export function TimeSeriesForecast({
   data,
@@ -76,37 +90,49 @@ export function TimeSeriesForecast({
   onMetricChange,
   onTimeframeChange,
   showConfidence = true,
-  showPredictions = true
+  showPredictions = true,
 }: TimeSeriesForecastProps) {
-  const [showHistorical, setShowHistorical] = useState(true)
-  const [showBounds, setShowBounds] = useState(true)
+  const [showHistorical, setShowHistorical] = useState(true);
+  const [showBounds, setShowBounds] = useState(true);
 
-  const config = METRIC_CONFIG[metric]
+  const config = METRIC_CONFIG[metric];
 
   // Process data for chart
   const chartData = useMemo(() => {
-    return data.map(d => ({
+    return data.map((d) => ({
       ...d,
       date: new Date(d.timestamp).toLocaleDateString(),
       timestamp: d.timestamp.getTime(),
-      hasPrediction: d.predicted !== undefined
-    }))
-  }, [data])
+      hasPrediction: d.predicted !== undefined,
+    }));
+  }, [data]);
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const historicalData = data.filter(d => d.predicted === undefined)
-    const predictedData = data.filter(d => d.predicted !== undefined)
+    const historicalData = data.filter((d) => d.predicted === undefined);
+    const predictedData = data.filter((d) => d.predicted !== undefined);
 
-    const historicalValues = historicalData.map(d => d.value)
-    const predictedValues = predictedData.map(d => d.predicted || 0)
+    const historicalValues = historicalData.map((d) => d.value);
+    const predictedValues = predictedData.map((d) => d.predicted || 0);
 
-    const lastHistorical = historicalValues[historicalValues.length - 1] || 0
-    const avgHistorical = historicalValues.reduce((sum, val) => sum + val, 0) / historicalValues.length || 0
-    const avgPredicted = predictedValues.reduce((sum, val) => sum + val, 0) / predictedValues.length || 0
+    const lastHistorical = historicalValues[historicalValues.length - 1] || 0;
+    const avgHistorical =
+      historicalValues.reduce((sum, val) => sum + val, 0) /
+        historicalValues.length || 0;
+    const avgPredicted =
+      predictedValues.reduce((sum, val) => sum + val, 0) /
+        predictedValues.length || 0;
 
-    const trend = avgPredicted > avgHistorical ? 'increasing' : avgPredicted < avgHistorical ? 'decreasing' : 'stable'
-    const trendPercent = avgHistorical > 0 ? Math.round(((avgPredicted - avgHistorical) / avgHistorical) * 100) : 0
+    const trend =
+      avgPredicted > avgHistorical
+        ? 'increasing'
+        : avgPredicted < avgHistorical
+          ? 'decreasing'
+          : 'stable';
+    const trendPercent =
+      avgHistorical > 0
+        ? Math.round(((avgPredicted - avgHistorical) / avgHistorical) * 100)
+        : 0;
 
     return {
       lastHistorical,
@@ -116,15 +142,23 @@ export function TimeSeriesForecast({
       trendPercent,
       totalHistorical: historicalData.length,
       totalPredicted: predictedData.length,
-      maxValue: Math.max(...data.map(d => Math.max(d.value, d.predicted || d.value, d.upperBound || d.value))),
-      minValue: Math.min(...data.map(d => Math.min(d.value, d.predicted || d.value, d.lowerBound || d.value)))
-    }
-  }, [data])
+      maxValue: Math.max(
+        ...data.map((d) =>
+          Math.max(d.value, d.predicted || d.value, d.upperBound || d.value)
+        )
+      ),
+      minValue: Math.min(
+        ...data.map((d) =>
+          Math.min(d.value, d.predicted || d.value, d.lowerBound || d.value)
+        )
+      ),
+    };
+  }, [data]);
 
   // Custom tooltip
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
+    if (active && payload?.length) {
+      const data = payload[0].payload;
       return (
         <div className="bg-background border rounded-lg shadow-lg p-3">
           <p className="text-sm font-medium mb-2">{label}</p>
@@ -135,14 +169,16 @@ export function TimeSeriesForecast({
           ))}
           {data.hasPrediction && (
             <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
-              <p>Confidence Range: {data.lowerBound} - {data.upperBound}</p>
+              <p>
+                Confidence Range: {data.lowerBound} - {data.upperBound}
+              </p>
             </div>
           )}
         </div>
-      )
+      );
     }
-    return null
-  }
+    return null;
+  };
 
   return (
     <Card>
@@ -154,7 +190,8 @@ export function TimeSeriesForecast({
               <span>{title || `${config.label} Forecast`}</span>
             </CardTitle>
             <CardDescription>
-              {description || `Time series analysis and prediction for ${config.label.toLowerCase()}`}
+              {description ||
+                `Time series analysis and prediction for ${config.label.toLowerCase()}`}
             </CardDescription>
           </div>
           <div className="flex items-center space-x-2">
@@ -191,7 +228,11 @@ export function TimeSeriesForecast({
               size="sm"
               onClick={() => setShowHistorical(!showHistorical)}
             >
-              {showHistorical ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {showHistorical ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </Button>
 
             <Button
@@ -210,12 +251,16 @@ export function TimeSeriesForecast({
           <div className="grid gap-4 md:grid-cols-5">
             <div className="p-3 bg-muted/30 rounded">
               <div className="text-2xl font-bold">{stats.avgHistorical}</div>
-              <div className="text-xs text-muted-foreground">Current Average</div>
+              <div className="text-xs text-muted-foreground">
+                Current Average
+              </div>
             </div>
 
             <div className="p-3 bg-muted/30 rounded">
               <div className="text-2xl font-bold">{stats.avgPredicted}</div>
-              <div className="text-xs text-muted-foreground">Predicted Average</div>
+              <div className="text-xs text-muted-foreground">
+                Predicted Average
+              </div>
             </div>
 
             <div className="p-3 bg-muted/30 rounded">
@@ -228,22 +273,31 @@ export function TimeSeriesForecast({
                   <Activity className="h-4 w-4 text-blue-600" />
                 )}
                 <div className="text-2xl font-bold">
-                  {stats.trendPercent > 0 ? '+' : ''}{stats.trendPercent}%
+                  {stats.trendPercent > 0 ? '+' : ''}
+                  {stats.trendPercent}%
                 </div>
               </div>
               <div className="text-xs text-muted-foreground">
-                {stats.trend === 'increasing' ? 'Increasing' : stats.trend === 'decreasing' ? 'Decreasing' : 'Stable'}
+                {stats.trend === 'increasing'
+                  ? 'Increasing'
+                  : stats.trend === 'decreasing'
+                    ? 'Decreasing'
+                    : 'Stable'}
               </div>
             </div>
 
             <div className="p-3 bg-muted/30 rounded">
               <div className="text-2xl font-bold">{stats.totalHistorical}</div>
-              <div className="text-xs text-muted-foreground">Historical Points</div>
+              <div className="text-xs text-muted-foreground">
+                Historical Points
+              </div>
             </div>
 
             <div className="p-3 bg-muted/30 rounded">
               <div className="text-2xl font-bold">{stats.totalPredicted}</div>
-              <div className="text-xs text-muted-foreground">Predicted Points</div>
+              <div className="text-xs text-muted-foreground">
+                Predicted Points
+              </div>
             </div>
           </div>
 
@@ -251,13 +305,20 @@ export function TimeSeriesForecast({
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="hsl(var(--border))"
+                  opacity={0.3}
+                />
                 <XAxis
                   dataKey="date"
                   tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                   tickFormatter={(value) => {
-                    const date = new Date(value)
-                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    const date = new Date(value);
+                    return date.toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    });
                   }}
                 />
                 <YAxis
@@ -323,7 +384,7 @@ export function TimeSeriesForecast({
                 {/* Reference line between historical and predicted */}
                 {showHistorical && showPredictions && (
                   <ReferenceLine
-                    x={chartData.find(d => d.hasPrediction)?.date || ''}
+                    x={chartData.find((d) => d.hasPrediction)?.date || ''}
                     stroke="hsl(var(--border))"
                     strokeDasharray="3 3"
                     strokeWidth={1}
@@ -362,10 +423,15 @@ export function TimeSeriesForecast({
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Current Trend:</span>
-                  <Badge variant={
-                    stats.trend === 'increasing' ? 'default' :
-                    stats.trend === 'decreasing' ? 'destructive' : 'secondary'
-                  }>
+                  <Badge
+                    variant={
+                      stats.trend === 'increasing'
+                        ? 'default'
+                        : stats.trend === 'decreasing'
+                          ? 'destructive'
+                          : 'secondary'
+                    }
+                  >
                     {stats.trend}
                   </Badge>
                 </div>
@@ -375,11 +441,15 @@ export function TimeSeriesForecast({
                 </div>
                 <div className="flex justify-between">
                   <span>Peak Value:</span>
-                  <span className="font-medium">{Math.round(stats.maxValue)}</span>
+                  <span className="font-medium">
+                    {Math.round(stats.maxValue)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Min Value:</span>
-                  <span className="font-medium">{Math.round(stats.minValue)}</span>
+                  <span className="font-medium">
+                    {Math.round(stats.minValue)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -404,7 +474,7 @@ export function TimeSeriesForecast({
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
-export default TimeSeriesForecast
+export default TimeSeriesForecast;

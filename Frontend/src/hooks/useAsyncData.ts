@@ -49,14 +49,18 @@ export function useAsyncData<T>(
   }, []);
 
   const execute = useCallback(async () => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current) {
+      return;
+    }
 
-    setState(prev => ({ ...prev, loading: true, error: null }));
+    setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
       const data = await asyncFn();
 
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) {
+        return;
+      }
 
       setState({
         data,
@@ -68,9 +72,12 @@ export function useAsyncData<T>(
       retryAttemptRef.current = 0;
       onSuccess?.(data);
     } catch (error) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) {
+        return;
+      }
 
-      const errorObj = error instanceof Error ? error : new Error('Unknown error');
+      const errorObj =
+        error instanceof Error ? error : new Error('Unknown error');
 
       // Retry logic
       if (retryAttemptRef.current < retryCount) {
@@ -83,7 +90,7 @@ export function useAsyncData<T>(
         return;
       }
 
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         loading: false,
         error: errorObj,
@@ -130,7 +137,10 @@ export function useAsyncData<T>(
  * Custom hook for paginated async data
  */
 export function useAsyncPaginatedData<T>(
-  asyncFn: (page: number, limit: number) => Promise<{ data: T[]; total: number }>,
+  asyncFn: (
+    page: number,
+    limit: number
+  ) => Promise<{ data: T[]; total: number }>,
   options: UseAsyncDataOptions<{ data: T[]; total: number }> & {
     pageSize?: number;
   } = {}
@@ -140,7 +150,10 @@ export function useAsyncPaginatedData<T>(
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(pageSize);
 
-  const paginatedAsyncFn = useCallback(() => asyncFn(page, limit), [asyncFn, page, limit]);
+  const paginatedAsyncFn = useCallback(
+    () => asyncFn(page, limit),
+    [asyncFn, page, limit]
+  );
 
   const result = useAsyncData(paginatedAsyncFn, asyncOptions);
 
@@ -149,11 +162,11 @@ export function useAsyncPaginatedData<T>(
   }, []);
 
   const nextPage = useCallback(() => {
-    setPage(prev => prev + 1);
+    setPage((prev) => prev + 1);
   }, []);
 
   const prevPage = useCallback(() => {
-    setPage(prev => Math.max(1, prev - 1));
+    setPage((prev) => Math.max(1, prev - 1));
   }, []);
 
   const changePageSize = useCallback((newLimit: number) => {
@@ -184,11 +197,10 @@ export function useAsyncPaginatedData<T>(
 /**
  * Custom hook for cached async data with React 18 Suspense support
  */
-export function useSuspenseData<T>(
-  key: string,
-  asyncFn: () => Promise<T>
-): T {
-  const cacheRef = useRef<Map<string, { data: T; timestamp: number }>>(new Map());
+export function useSuspenseData<T>(key: string, asyncFn: () => Promise<T>): T {
+  const cacheRef = useRef<Map<string, { data: T; timestamp: number }>>(
+    new Map()
+  );
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   const getCachedData = useCallback(() => {
@@ -199,12 +211,15 @@ export function useSuspenseData<T>(
     return null;
   }, [key]);
 
-  const setCachedData = useCallback((data: T) => {
-    cacheRef.current.set(key, {
-      data,
-      timestamp: Date.now(),
-    });
-  }, [key]);
+  const setCachedData = useCallback(
+    (data: T) => {
+      cacheRef.current.set(key, {
+        data,
+        timestamp: Date.now(),
+      });
+    },
+    [key]
+  );
 
   const cachedData = getCachedData();
 

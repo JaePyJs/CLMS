@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +33,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { DollarSign, Search, CheckCircle2, AlertCircle, Download, XCircle, Clock, BookOpen } from 'lucide-react';
+import {
+  DollarSign,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  Download,
+  XCircle,
+  Clock,
+  BookOpen,
+} from 'lucide-react';
 import { finesApi } from '@/lib/api';
 import { exportFinesToCSV } from '@/lib/export-utils';
 
@@ -70,9 +85,12 @@ export default function FinesManagement() {
   const fetchFines = async () => {
     setLoading(true);
     try {
-      const status = statusFilter === 'ALL' ? undefined : (statusFilter.toLowerCase() as 'outstanding' | 'paid');
+      const status =
+        statusFilter === 'ALL'
+          ? undefined
+          : (statusFilter.toLowerCase() as 'outstanding' | 'paid');
       const response = await finesApi.getFines(status);
-      
+
       if (response.success && response.data) {
         setFines((response.data as any).fines || []);
       } else {
@@ -93,7 +111,9 @@ export default function FinesManagement() {
   };
 
   const processFinePayment = async () => {
-    if (!selectedFine) return;
+    if (!selectedFine) {
+      return;
+    }
 
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount) || amount <= 0) {
@@ -105,7 +125,7 @@ export default function FinesManagement() {
       const response = await finesApi.recordPayment(selectedFine.checkoutId, {
         amountPaid: amount,
         paymentMethod: 'Cash',
-        notes: 'Payment processed'
+        notes: 'Payment processed',
       });
 
       if (response.success) {
@@ -162,7 +182,9 @@ export default function FinesManagement() {
   };
 
   const formatDate = (date: Date | null) => {
-    if (!date) return '-';
+    if (!date) {
+      return '-';
+    }
     return new Date(date).toLocaleDateString();
   };
 
@@ -198,9 +220,10 @@ export default function FinesManagement() {
     }
   };
 
-  const filteredFines = fines.filter((fine) =>
-    fine.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    fine.bookTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredFines = fines.filter(
+    (fine) =>
+      fine.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      fine.bookTitle.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const totalOutstanding = fines
@@ -242,7 +265,9 @@ export default function FinesManagement() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Outstanding
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -250,14 +275,17 @@ export default function FinesManagement() {
               {formatCurrency(totalOutstanding)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {fines.filter((f) => f.status === 'OUTSTANDING').length} unpaid fines
+              {fines.filter((f) => f.status === 'OUTSTANDING').length} unpaid
+              fines
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Collected</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Collected
+            </CardTitle>
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -277,9 +305,7 @@ export default function FinesManagement() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{fines.length}</div>
-            <p className="text-xs text-muted-foreground">
-              All time records
-            </p>
+            <p className="text-xs text-muted-foreground">All time records</p>
           </CardContent>
         </Card>
       </div>
@@ -291,9 +317,7 @@ export default function FinesManagement() {
             <DollarSign className="w-5 h-5" />
             Fines Management
           </CardTitle>
-          <CardDescription>
-            Track and manage overdue book fines
-          </CardDescription>
+          <CardDescription>Track and manage overdue book fines</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
@@ -349,7 +373,10 @@ export default function FinesManagement() {
               <TableBody>
                 {filteredFines.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={7}
+                      className="text-center text-muted-foreground"
+                    >
                       No fines found
                     </TableCell>
                   </TableRow>
@@ -365,7 +392,10 @@ export default function FinesManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="max-w-[200px] truncate" title={fine.bookTitle}>
+                        <div
+                          className="max-w-[200px] truncate"
+                          title={fine.bookTitle}
+                        >
                           {fine.bookTitle}
                         </div>
                       </TableCell>
@@ -446,7 +476,9 @@ export default function FinesManagement() {
                   Payment Amount
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2">₱</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2">
+                    ₱
+                  </span>
                   <Input
                     id="payment-amount"
                     type="number"
@@ -468,9 +500,7 @@ export default function FinesManagement() {
             >
               Cancel
             </Button>
-            <Button onClick={processFinePayment}>
-              Record Payment
-            </Button>
+            <Button onClick={processFinePayment}>Record Payment</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

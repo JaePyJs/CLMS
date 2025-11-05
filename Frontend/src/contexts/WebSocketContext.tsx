@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from 'react';
 import type { ReactNode } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import type { WebSocketState } from '@/hooks/useWebSocket';
@@ -20,10 +26,18 @@ export interface WebSocketContextType extends WebSocketState {
   requestDashboardData: (dataType: string, filters?: any) => boolean;
 
   // Communication methods
-  sendChatMessage: (message: string, targetRole?: string, targetUserId?: string) => boolean;
+  sendChatMessage: (
+    message: string,
+    targetRole?: string,
+    targetUserId?: string
+  ) => boolean;
 
   // Emergency methods
-  triggerEmergencyAlert: (alertType: string, message: string, location?: string) => boolean;
+  triggerEmergencyAlert: (
+    alertType: string,
+    message: string,
+    location?: string
+  ) => boolean;
 
   // Real-time data
   recentActivities: any[];
@@ -36,13 +50,17 @@ export interface WebSocketContextType extends WebSocketState {
   refreshDashboard: (dataType: string, filters?: any) => void;
 }
 
-const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
+const WebSocketContext = createContext<WebSocketContextType | undefined>(
+  undefined
+);
 
 interface WebSocketProviderProps {
   children: ReactNode;
 }
 
-export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
+export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
+  children,
+}) => {
   const { user } = useAuth();
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [equipmentStatus, setEquipmentStatus] = useState<any>({});
@@ -56,21 +74,27 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     onMessage: (message) => {
       switch (message.type) {
         case 'student_activity_update':
-          setRecentActivities((prev: any[]) => [message.data, ...prev.slice(0, 49)]);
+          setRecentActivities((prev: any[]) => [
+            message.data,
+            ...prev.slice(0, 49),
+          ]);
           break;
         case 'equipment_status_update':
           setEquipmentStatus((prev: any) => ({
             ...prev,
-            [message.data.equipmentId]: message.data
+            [message.data.equipmentId]: message.data,
           }));
           break;
         case 'system_notification':
-          setNotifications((prev: any[]) => [message.data, ...prev.slice(0, 49)]);
+          setNotifications((prev: any[]) => [
+            message.data,
+            ...prev.slice(0, 49),
+          ]);
           break;
         case 'dashboard_data':
           setDashboardData((prev: any) => ({
             ...prev,
-            [message.data.dataType]: message.data.data
+            [message.data.dataType]: message.data.data,
           }));
           break;
       }
@@ -83,7 +107,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     },
     onConnect: () => {
       console.log('WebSocket connected');
-    }
+    },
   });
 
   // Clear notifications
@@ -92,9 +116,12 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   }, []);
 
   // Refresh dashboard data
-  const refreshDashboard = useCallback((dataType: string, filters?: any) => {
-    ws.requestDashboardData(dataType, filters);
-  }, [ws.requestDashboardData]);
+  const refreshDashboard = useCallback(
+    (dataType: string, filters?: any) => {
+      ws.requestDashboardData(dataType, filters);
+    },
+    [ws.requestDashboardData]
+  );
 
   // Auto-refresh dashboard data when connected
   useEffect(() => {
@@ -118,7 +145,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     notifications,
     dashboardData,
     clearNotifications,
-    refreshDashboard
+    refreshDashboard,
   };
 
   return (
@@ -131,7 +158,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 export const useWebSocketContext = (): WebSocketContextType => {
   const context = useContext(WebSocketContext);
   if (context === undefined) {
-    throw new Error('useWebSocketContext must be used within a WebSocketProvider');
+    throw new Error(
+      'useWebSocketContext must be used within a WebSocketProvider'
+    );
   }
   return context;
 };

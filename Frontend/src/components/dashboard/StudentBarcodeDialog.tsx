@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { useMobileOptimization, getResponsiveClasses } from '@/hooks/useMobileOptimization';
+import {
+  useMobileOptimization,
+  getResponsiveClasses,
+} from '@/hooks/useMobileOptimization';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,7 +27,7 @@ import {
   Printer,
   Share2,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -59,20 +62,22 @@ interface StudentBarcodeDialogProps {
 export function StudentBarcodeDialog({
   open,
   onOpenChange,
-  student
+  student,
 }: StudentBarcodeDialogProps) {
   const mobileState = useMobileOptimization();
   const { isMobile: _isMobile } = mobileState;
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
-  if (!student) return null;
+  if (!student) {
+    return null;
+  }
 
   const handleGenerateCodes = async () => {
     setIsGenerating(true);
     try {
       // Simulate API call for generating codes
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       toast.success('Barcode and QR code generated successfully!');
     } catch (error) {
       toast.error('Failed to generate codes');
@@ -85,7 +90,7 @@ export function StudentBarcodeDialog({
     setIsPrinting(true);
     try {
       // Simulate printing
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       toast.success('ID card sent to printer!');
     } catch (error) {
       toast.error('Failed to print ID card');
@@ -99,7 +104,9 @@ export function StudentBarcodeDialog({
     const barcodeElement = document.querySelector('#barcode-svg svg');
     if (barcodeElement) {
       const svgData = new XMLSerializer().serializeToString(barcodeElement);
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const svgBlob = new Blob([svgData], {
+        type: 'image/svg+xml;charset=utf-8',
+      });
       const svgUrl = URL.createObjectURL(svgBlob);
 
       const downloadLink = document.createElement('a');
@@ -134,7 +141,9 @@ export function StudentBarcodeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`max-w-4xl ${getResponsiveClasses('', mobileState)}`}>
+      <DialogContent
+        className={`max-w-4xl ${getResponsiveClasses('', mobileState)}`}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
@@ -163,35 +172,52 @@ export function StudentBarcodeDialog({
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-600">Student ID:</span>
-                    <span className="text-sm font-bold">{student.studentId}</span>
+                    <span className="text-sm font-medium text-gray-600">
+                      Student ID:
+                    </span>
+                    <span className="text-sm font-bold">
+                      {student.studentId}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-600">Grade:</span>
-                    <span className="text-sm">{student.gradeLevel} {student.section && `- Section ${student.section}`}</span>
+                    <span className="text-sm font-medium text-gray-600">
+                      Grade:
+                    </span>
+                    <span className="text-sm">
+                      {student.gradeLevel}{' '}
+                      {student.section && `- Section ${student.section}`}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-3 w-3 text-gray-400" />
                     <span className="text-sm text-gray-600">Joined:</span>
-                    <span className="text-sm">{formatDate(student.joinDate)}</span>
+                    <span className="text-sm">
+                      {formatDate(student.joinDate)}
+                    </span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   {student.email && (
                     <div className="flex items-center gap-2">
                       <Mail className="h-3 w-3 text-gray-400" />
-                      <span className="text-sm text-gray-600">{student.email}</span>
+                      <span className="text-sm text-gray-600">
+                        {student.email}
+                      </span>
                     </div>
                   )}
                   {student.phone && (
                     <div className="flex items-center gap-2">
                       <Phone className="h-3 w-3 text-gray-400" />
-                      <span className="text-sm text-gray-600">{student.phone}</span>
+                      <span className="text-sm text-gray-600">
+                        {student.phone}
+                      </span>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
                     <School className="h-3 w-3 text-gray-400" />
-                    <span className="text-sm text-gray-600">{student.totalSessions} library sessions</span>
+                    <span className="text-sm text-gray-600">
+                      {student.totalSessions} library sessions
+                    </span>
                   </div>
                 </div>
               </div>

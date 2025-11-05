@@ -18,8 +18,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Get system theme preference
   const getSystemTheme = (): ResolvedTheme => {
-    if (typeof window === 'undefined') return 'light';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (typeof window === 'undefined') {
+      return 'light';
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
   };
 
   // Resolve the actual theme to apply
@@ -33,17 +37,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Apply theme to document
   const applyTheme = (resolved: ResolvedTheme) => {
     const root = document.documentElement;
-    
+
     // Add transitioning class for smooth animation
     root.classList.add('theme-transitioning');
-    
+
     // Apply the theme
     if (resolved === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
-    
+
     // Update meta theme-color for mobile browsers
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
@@ -52,12 +56,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         resolved === 'dark' ? '#141b2e' : '#f8fafc'
       );
     }
-    
+
     // Remove transitioning class after animation
     setTimeout(() => {
       root.classList.remove('theme-transitioning');
     }, 300);
-    
+
     setResolvedTheme(resolved);
   };
 
@@ -79,7 +83,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Get saved theme or default to system
     const savedTheme = localStorage.getItem('clms_theme') as Theme | null;
     const initialTheme = savedTheme || 'system';
-    
+
     setThemeState(initialTheme);
     applyTheme(resolveTheme(initialTheme));
 
@@ -101,7 +105,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       mediaQuery.addListener(handleChange);
       return () => mediaQuery.removeListener(handleChange);
     }
-    
+
     // Fallback for unsupported browsers
     return undefined;
   }, []);
@@ -112,7 +116,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, resolvedTheme, setTheme, toggleTheme }}
+    >
       {children}
     </ThemeContext.Provider>
   );

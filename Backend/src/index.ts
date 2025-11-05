@@ -8,7 +8,9 @@ const server = http.createServer(app);
 
 // Start the server
 server.listen(env.PORT, env.HOST, () => {
-  logger.info(`🚀 Server running on ${env.HOST}:${env.PORT} in ${env['NODE_ENV']} mode`);
+  logger.info(
+    `🚀 Server running on ${env.HOST}:${env.PORT} in ${env['NODE_ENV']} mode`,
+  );
   logger.info(`📚 CLMS Backend API is ready!`);
 });
 

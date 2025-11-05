@@ -11,7 +11,12 @@ interface ToastData {
 }
 
 interface ToastContextType {
-  showToast: (type: ToastType, title: string, message: string, duration?: number) => void;
+  showToast: (
+    type: ToastType,
+    title: string,
+    message: string,
+    duration?: number
+  ) => void;
   success: (title: string, message: string, duration?: number) => void;
   error: (title: string, message: string, duration?: number) => void;
   warning: (title: string, message: string, duration?: number) => void;
@@ -28,7 +33,9 @@ export const useToast = () => {
   return context;
 };
 
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [toasts, setToasts] = useState<ToastData[]>([]);
 
   const showToast = useCallback(

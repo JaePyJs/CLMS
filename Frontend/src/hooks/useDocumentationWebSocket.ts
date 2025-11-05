@@ -7,7 +7,9 @@ import { toast } from 'sonner';
 
 export interface DocumentationWebSocketConfig {
   autoSubscribe: boolean;
-  subscriptionTypes: Array<'content_change' | 'structure_change' | 'metadata_update' | 'version_update'>;
+  subscriptionTypes: Array<
+    'content_change' | 'structure_change' | 'metadata_update' | 'version_update'
+  >;
   targetFiles?: string[];
   impactLevels?: Array<'low' | 'medium' | 'high' | 'critical'>;
   enableNotifications: boolean;
@@ -19,14 +21,21 @@ export interface DocumentationWebSocketHandlers {
   onUpdate?: (update: DocumentationUpdate) => void;
   onVersionChange?: (version: string) => void;
   onConflict?: (conflictId: string, details: any) => void;
-  onSyncStatusChange?: (status: 'synced' | 'syncing' | 'error' | 'offline') => void;
+  onSyncStatusChange?: (
+    status: 'synced' | 'syncing' | 'error' | 'offline'
+  ) => void;
   onValidationError?: (errors: any[]) => void;
   onSnapshotCreated?: (snapshot: any) => void;
 }
 
 const DEFAULT_CONFIG: DocumentationWebSocketConfig = {
   autoSubscribe: true,
-  subscriptionTypes: ['content_change', 'structure_change', 'metadata_update', 'version_update'],
+  subscriptionTypes: [
+    'content_change',
+    'structure_change',
+    'metadata_update',
+    'version_update',
+  ],
   enableNotifications: true,
   enableAutoApproval: false,
   conflictResolution: 'manual',
@@ -79,127 +88,150 @@ export const useDocumentationWebSocket = (
     }
   }, []);
 
-  const handleDocumentationUpdate = useCallback((data: any) => {
-    const update: DocumentationUpdate = {
-      id: data.id,
-      type: data.type,
-      timestamp: data.timestamp,
-      source: data.source || 'websocket',
-      changes: data.changes || [],
-      version: data.version,
-      author: data.author,
-      metadata: data.metadata,
-    };
+  const handleDocumentationUpdate = useCallback(
+    (data: any) => {
+      const update: DocumentationUpdate = {
+        id: data.id,
+        type: data.type,
+        timestamp: data.timestamp,
+        source: data.source || 'websocket',
+        changes: data.changes || [],
+        version: data.version,
+        author: data.author,
+        metadata: data.metadata,
+      };
 
-    // Filter by configuration
-    if (finalConfig.subscriptionTypes && !finalConfig.subscriptionTypes.includes(update.type)) {
-      return;
-    }
-
-    if (finalConfig.impactLevels && !finalConfig.impactLevels.includes(update.metadata.impactLevel)) {
-      return;
-    }
-
-    if (finalConfig.targetFiles && finalConfig.targetFiles.length > 0) {
-      const hasTargetFile = update.changes.some(change => 
-        finalConfig.targetFiles!.includes(change.file)
-      );
-      if (!hasTargetFile) {
+      // Filter by configuration
+      if (
+        finalConfig.subscriptionTypes &&
+        !finalConfig.subscriptionTypes.includes(update.type)
+      ) {
         return;
       }
-    }
 
-    // Notify Context7 service via subscription
-    // Instead of calling private method, we'll use the public subscribe mechanism
-    // The Context7 service should handle this through its WebSocket subscription setup
+      if (
+        finalConfig.impactLevels &&
+        !finalConfig.impactLevels.includes(update.metadata.impactLevel)
+      ) {
+        return;
+      }
 
-    // Show notification if enabled
-    if (finalConfig.enableNotifications) {
-      showUpdateNotification(update);
-    }
+      if (finalConfig.targetFiles && finalConfig.targetFiles.length > 0) {
+        const hasTargetFile = update.changes.some((change) =>
+          finalConfig.targetFiles!.includes(change.file)
+        );
+        if (!hasTargetFile) {
+          return;
+        }
+      }
 
-    // Auto-approve if enabled and applicable
-    if (finalConfig.enableAutoApproval && update.metadata.autoApproved) {
-      context7.approveUpdate(update.id).catch(console.error);
-    }
+      // Notify Context7 service via subscription
+      // Instead of calling private method, we'll use the public subscribe mechanism
+      // The Context7 service should handle this through its WebSocket subscription setup
 
-    // Call custom handler
-    handlersRef.current.onUpdate?.(update);
-  }, [finalConfig]);
+      // Show notification if enabled
+      if (finalConfig.enableNotifications) {
+        showUpdateNotification(update);
+      }
 
-  const handleVersionChange = useCallback((data: any) => {
-    const { version, previousVersion, changes: _changes } = data;
-    
-    if (finalConfig.enableNotifications) {
-      toast.info('Documentation Version Updated', {
-        description: `Updated from ${previousVersion} to ${version}`,
-      });
-    }
+      // Auto-approve if enabled and applicable
+      if (finalConfig.enableAutoApproval && update.metadata.autoApproved) {
+        context7.approveUpdate(update.id).catch(console.error);
+      }
 
-    handlersRef.current.onVersionChange?.(version);
-  }, [finalConfig.enableNotifications]);
+      // Call custom handler
+      handlersRef.current.onUpdate?.(update);
+    },
+    [finalConfig]
+  );
 
-  const handleConflict = useCallback((data: any) => {
-    const { conflictId, details } = data;
-    
-    if (finalConfig.enableNotifications) {
-      toast.warning('Documentation Conflict Detected', {
-        description: `Conflict in ${details.file || 'multiple files'}`,
-        action: {
-          label: 'Resolve',
-          onClick: () => {
-            // Navigate to conflict resolution UI
-            console.log('Navigate to conflict resolution for:', conflictId);
+  const handleVersionChange = useCallback(
+    (data: any) => {
+      const { version, previousVersion, changes: _changes } = data;
+
+      if (finalConfig.enableNotifications) {
+        toast.info('Documentation Version Updated', {
+          description: `Updated from ${previousVersion} to ${version}`,
+        });
+      }
+
+      handlersRef.current.onVersionChange?.(version);
+    },
+    [finalConfig.enableNotifications]
+  );
+
+  const handleConflict = useCallback(
+    (data: any) => {
+      const { conflictId, details } = data;
+
+      if (finalConfig.enableNotifications) {
+        toast.warning('Documentation Conflict Detected', {
+          description: `Conflict in ${details.file || 'multiple files'}`,
+          action: {
+            label: 'Resolve',
+            onClick: () => {
+              // Navigate to conflict resolution UI
+              console.log('Navigate to conflict resolution for:', conflictId);
+            },
           },
-        },
-      });
-    }
+        });
+      }
 
-    handlersRef.current.onConflict?.(conflictId, details);
-  }, [finalConfig.enableNotifications]);
+      handlersRef.current.onConflict?.(conflictId, details);
+    },
+    [finalConfig.enableNotifications]
+  );
 
-  const handleSyncStatusChange = useCallback((data: any) => {
-    const { status, message, details: _details } = data;
-    
-    if (finalConfig.enableNotifications && status === 'error') {
-      toast.error('Documentation Sync Error', {
-        description: message || 'Failed to sync documentation',
-      });
-    }
+  const handleSyncStatusChange = useCallback(
+    (data: any) => {
+      const { status, message, details: _details } = data;
 
-    handlersRef.current.onSyncStatusChange?.(status);
-  }, [finalConfig.enableNotifications]);
+      if (finalConfig.enableNotifications && status === 'error') {
+        toast.error('Documentation Sync Error', {
+          description: message || 'Failed to sync documentation',
+        });
+      }
 
-  const handleValidationError = useCallback((data: any) => {
-    const { errors } = data;
-    
-    if (finalConfig.enableNotifications) {
-      toast.error('Documentation Validation Failed', {
-        description: `${errors.length} validation error(s) found`,
-      });
-    }
+      handlersRef.current.onSyncStatusChange?.(status);
+    },
+    [finalConfig.enableNotifications]
+  );
 
-    handlersRef.current.onValidationError?.(errors);
-  }, [finalConfig.enableNotifications]);
+  const handleValidationError = useCallback(
+    (data: any) => {
+      const { errors } = data;
 
-  const handleSnapshotCreated = useCallback((data: any) => {
-    const { snapshot } = data;
-    
-    if (finalConfig.enableNotifications) {
-      toast.success('Documentation Snapshot Created', {
-        description: `Snapshot "${snapshot.name}" created successfully`,
-      });
-    }
+      if (finalConfig.enableNotifications) {
+        toast.error('Documentation Validation Failed', {
+          description: `${errors.length} validation error(s) found`,
+        });
+      }
 
-    handlersRef.current.onSnapshotCreated?.(snapshot);
-  }, [finalConfig.enableNotifications]);
+      handlersRef.current.onValidationError?.(errors);
+    },
+    [finalConfig.enableNotifications]
+  );
+
+  const handleSnapshotCreated = useCallback(
+    (data: any) => {
+      const { snapshot } = data;
+
+      if (finalConfig.enableNotifications) {
+        toast.success('Documentation Snapshot Created', {
+          description: `Snapshot "${snapshot.name}" created successfully`,
+        });
+      }
+
+      handlersRef.current.onSnapshotCreated?.(snapshot);
+    },
+    [finalConfig.enableNotifications]
+  );
 
   const showUpdateNotification = useCallback((update: DocumentationUpdate) => {
     const fileCount = update.changes.length;
     const primaryFile = update.changes[0]?.file || 'unknown';
-    const message = fileCount === 1 
-      ? `Updated ${primaryFile}`
-      : `Updated ${fileCount} files`;
+    const message =
+      fileCount === 1 ? `Updated ${primaryFile}` : `Updated ${fileCount} files`;
 
     switch (update.metadata.impactLevel) {
       case 'critical':
@@ -249,7 +281,12 @@ export const useDocumentationWebSocket = (
 
       // Subscribe via API for server-side filtering
       const subscriptionData: {
-        types: Array<'content_change' | 'structure_change' | 'metadata_update' | 'version_update'>;
+        types: Array<
+          | 'content_change'
+          | 'structure_change'
+          | 'metadata_update'
+          | 'version_update'
+        >;
         files?: string[];
         impactLevels?: Array<'low' | 'medium' | 'high' | 'critical'>;
       } = {
@@ -313,11 +350,11 @@ export const useDocumentationWebSocket = (
     }
 
     const originalOnMessage = (webSocketContext as any).onMessage;
-    
+
     // Enhance the existing onMessage handler
     (webSocketContext as any).onMessage = (message: any) => {
       handleWebSocketMessage(message);
-      
+
       // Call original handler if it exists
       if (originalOnMessage && typeof originalOnMessage === 'function') {
         originalOnMessage(message);
@@ -333,7 +370,12 @@ export const useDocumentationWebSocket = (
     return () => {
       (webSocketContext as any).onMessage = originalOnMessage;
     };
-  }, [webSocketContext.isConnected, handleWebSocketMessage, subscribe, finalConfig.autoSubscribe]);
+  }, [
+    webSocketContext.isConnected,
+    handleWebSocketMessage,
+    subscribe,
+    finalConfig.autoSubscribe,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -381,46 +423,50 @@ export const useDocumentationWebSocket = (
   }, []);
 
   // Create documentation snapshot
-  const createSnapshot = useCallback(async (name: string, description?: string, tags?: string[]) => {
-    try {
-      const snapshotData: {
-        name: string;
-        description?: string;
-        tags?: string[];
-      } = {
-        name,
-      };
+  const createSnapshot = useCallback(
+    async (name: string, description?: string, tags?: string[]) => {
+      try {
+        const snapshotData: {
+          name: string;
+          description?: string;
+          tags?: string[];
+        } = {
+          name,
+        };
 
-      if (description) {
-        snapshotData.description = description;
-      }
+        if (description) {
+          snapshotData.description = description;
+        }
 
-      if (tags) {
-        snapshotData.tags = tags;
-      }
+        if (tags) {
+          snapshotData.tags = tags;
+        }
 
-      const response = await utilitiesApi.createDocumentationSnapshot(snapshotData);
-      
-      if (response.success) {
-        toast.success(`Snapshot "${name}" created successfully`);
-        return response.data;
-      } else {
+        const response =
+          await utilitiesApi.createDocumentationSnapshot(snapshotData);
+
+        if (response.success) {
+          toast.success(`Snapshot "${name}" created successfully`);
+          return response.data;
+        } else {
+          toast.error('Failed to create snapshot');
+          return null;
+        }
+      } catch (error) {
+        console.error('Failed to create documentation snapshot:', error);
         toast.error('Failed to create snapshot');
         return null;
       }
-    } catch (error) {
-      console.error('Failed to create documentation snapshot:', error);
-      toast.error('Failed to create snapshot');
-      return null;
-    }
-  }, []);
+    },
+    []
+  );
 
   return {
     // State
     isSubscribed: isSubscribedRef.current,
     subscriptionId: subscriptionIdRef.current,
     isConnected: webSocketContext.isConnected,
-    
+
     // Actions
     subscribe,
     unsubscribe,
@@ -428,7 +474,7 @@ export const useDocumentationWebSocket = (
     forceSync,
     validateIntegrity,
     createSnapshot,
-    
+
     // WebSocket context
     webSocketContext,
   };

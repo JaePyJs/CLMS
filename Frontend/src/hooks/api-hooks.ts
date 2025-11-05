@@ -24,7 +24,8 @@ export const useHealthCheck = () => {
         // Ensure we return a safe object with timestamp
         if (result.success && result.data) {
           return {
-            timestamp: result.data.timestamp || new Date().toISOString(),
+            timestamp:
+              (result.data as any).timestamp || new Date().toISOString(),
             connected: true,
           };
         }
@@ -233,8 +234,8 @@ export const useActivityTimeline = (limit?: number) => {
         const activities = Array.isArray(rawTimeline?.timeline)
           ? rawTimeline.timeline
           : Array.isArray(rawTimeline)
-          ? rawTimeline
-          : [];
+            ? rawTimeline
+            : [];
         setActivities(activities);
         return activities;
       } catch (error) {

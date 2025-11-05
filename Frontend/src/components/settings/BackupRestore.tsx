@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +43,11 @@ export default function BackupRestore() {
   const queryClient = useQueryClient();
 
   // Fetch backups
-  const { data: backups = [], isLoading, error } = useQuery({
+  const {
+    data: backups = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['backups'],
     queryFn: async (): Promise<Backup[]> => {
       const response = await settingsApi.getBackups();
@@ -71,7 +81,11 @@ export default function BackupRestore() {
   });
 
   const handleDelete = (backupId: string) => {
-    if (!confirm('Are you sure you want to delete this backup? This action cannot be undone.')) {
+    if (
+      !confirm(
+        'Are you sure you want to delete this backup? This action cannot be undone.'
+      )
+    ) {
       return;
     }
     deleteMutation.mutate(backupId);
@@ -79,9 +93,12 @@ export default function BackupRestore() {
 
   const handleDownload = async (backupId: string, filename: string) => {
     try {
-      const response = await fetch(`/api/settings/backups/${backupId}/download`, {
-        credentials: 'include',
-      });
+      const response = await fetch(
+        `/api/settings/backups/${backupId}/download`,
+        {
+          credentials: 'include',
+        }
+      );
 
       if (!response.ok) {
         toast.error('Failed to download backup');
@@ -97,7 +114,7 @@ export default function BackupRestore() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       toast.success('Backup downloaded successfully!');
     } catch (error) {
       console.error('Failed to download backup:', error);
@@ -106,7 +123,9 @@ export default function BackupRestore() {
   };
 
   const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) {
+      return '0 Bytes';
+    }
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -134,11 +153,7 @@ export default function BackupRestore() {
           </Badge>
         );
       default:
-        return (
-          <Badge variant="secondary">
-            {status}
-          </Badge>
-        );
+        return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
@@ -191,7 +206,8 @@ export default function BackupRestore() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">
-                Backs up all students, books, equipment, activities, and system settings
+                Backs up all students, books, equipment, activities, and system
+                settings
               </p>
               <p className="text-sm text-muted-foreground">
                 Recommended: Create backups before major system updates
@@ -230,9 +246,7 @@ export default function BackupRestore() {
               {backups.length} {backups.length === 1 ? 'backup' : 'backups'}
             </Badge>
           </CardTitle>
-          <CardDescription>
-            Download or delete existing backups
-          </CardDescription>
+          <CardDescription>Download or delete existing backups</CardDescription>
         </CardHeader>
         <CardContent>
           {backups.length === 0 ? (
@@ -276,7 +290,9 @@ export default function BackupRestore() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDownload(backup.id, backup.filename)}
+                            onClick={() =>
+                              handleDownload(backup.id, backup.filename)
+                            }
                             disabled={backup.status !== 'COMPLETED'}
                           >
                             <Download className="w-4 h-4" />
@@ -325,7 +341,10 @@ export default function BackupRestore() {
           <div className="flex gap-2">
             <div className="font-semibold">3.</div>
             <div>
-              Run the restore script: <code className="bg-muted px-1 py-0.5 rounded">npm run restore:backup -- path/to/backup.sql</code>
+              Run the restore script:{' '}
+              <code className="bg-muted px-1 py-0.5 rounded">
+                npm run restore:backup -- path/to/backup.sql
+              </code>
             </div>
           </div>
           <div className="flex gap-2">
@@ -337,8 +356,9 @@ export default function BackupRestore() {
           <Alert className="mt-4">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Warning:</strong> Restoring a backup will replace all current data. This action cannot be undone.
-              Always create a new backup before restoring an old one.
+              <strong>Warning:</strong> Restoring a backup will replace all
+              current data. This action cannot be undone. Always create a new
+              backup before restoring an old one.
             </AlertDescription>
           </Alert>
         </CardContent>

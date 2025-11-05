@@ -7,211 +7,239 @@ import { logger } from '../utils/logger';
 const router = Router();
 
 // POST /api/v1/auth/login
-router.post('/login', asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { username, password } = req.body;
+router.post(
+  '/login',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { username, password } = req.body;
 
-  // Validate input
-  if (!username || !password) {
-    logger.warn('Login failed: missing username or password', {
-      ip: req.ip,
-      hasUsername: !!username,
-      hasPassword: !!password
-    });
+    // Validate input
+    if (!username || !password) {
+      logger.warn('Login failed: missing username or password', {
+        ip: req.ip,
+        hasUsername: !!username,
+        hasPassword: !!password,
+      });
 
-    res.status(400).json({
-      message: 'Username and password are required',
-      code: 'MISSING_CREDENTIALS',
-    });
-    return;
-  }
+      res.status(400).json({
+        message: 'Username and password are required',
+        code: 'MISSING_CREDENTIALS',
+      });
+      return;
+    }
 
-  try {
-    const result = await AuthService.login({ username, password });
-    
-    logger.info('Login successful', { 
-      username: result.user.username,
-      userId: result.user.id,
-      role: result.user.role,
-      ip: req.ip 
-    });
+    try {
+      const result = await AuthService.login({ username, password });
 
-    res.json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    logger.warn('Login failed', { 
-      username,
-      ip: req.ip,
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    });
+      logger.info('Login successful', {
+        username: result.user.username,
+        userId: result.user.id,
+        role: result.user.role,
+        ip: req.ip,
+      });
 
-    res.status(401).json({
-      success: false,
-      message: error instanceof Error ? error.message : 'Login failed',
-      code: 'LOGIN_FAILED',
-    });
-  }
-}));
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.warn('Login failed', {
+        username,
+        ip: req.ip,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(401).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Login failed',
+        code: 'LOGIN_FAILED',
+      });
+    }
+  }),
+);
 
 // POST /api/v1/auth/register
-router.post('/register', asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { username, password, email, full_name, role } = req.body;
+router.post(
+  '/register',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { username, password, email, full_name, role } = req.body;
 
-  // Validate input
-  if (!username || !password) {
-    logger.warn('Registration failed: missing username or password', {
-      ip: req.ip,
-      hasUsername: !!username,
-      hasPassword: !!password
-    });
+    // Validate input
+    if (!username || !password) {
+      logger.warn('Registration failed: missing username or password', {
+        ip: req.ip,
+        hasUsername: !!username,
+        hasPassword: !!password,
+      });
 
-    res.status(400).json({
-      message: 'Username and password are required',
-      code: 'MISSING_CREDENTIALS',
-    });
-    return;
-  }
+      res.status(400).json({
+        message: 'Username and password are required',
+        code: 'MISSING_CREDENTIALS',
+      });
+      return;
+    }
 
-  if (password.length < 6) {
-    logger.warn('Registration failed: password too short', {
-      username,
-      ip: req.ip
-    });
+    if (password.length < 6) {
+      logger.warn('Registration failed: password too short', {
+        username,
+        ip: req.ip,
+      });
 
-    res.status(400).json({
-      message: 'Password must be at least 6 characters long',
-      code: 'PASSWORD_TOO_SHORT',
-    });
-    return;
-  }
+      res.status(400).json({
+        message: 'Password must be at least 6 characters long',
+        code: 'PASSWORD_TOO_SHORT',
+      });
+      return;
+    }
 
-  try {
-    const result = await AuthService.register({ username, password, email, full_name, role });
-    
-    logger.info('Registration successful', { 
-      username: result.user.username,
-      userId: result.user.id,
-      role: result.user.role,
-      ip: req.ip 
-    });
+    try {
+      const result = await AuthService.register({
+        username,
+        password,
+        email,
+        full_name,
+        role,
+      });
 
-    res.status(201).json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    logger.warn('Registration failed', { 
-      username,
-      ip: req.ip,
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    });
+      logger.info('Registration successful', {
+        username: result.user.username,
+        userId: result.user.id,
+        role: result.user.role,
+        ip: req.ip,
+      });
 
-    const status = error instanceof Error && error.message.includes('already exists') ? 409 : 400;
+      res.status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.warn('Registration failed', {
+        username,
+        ip: req.ip,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
 
-    res.status(status).json({
-      success: false,
-      message: error instanceof Error ? error.message : 'Registration failed',
-      code: 'REGISTRATION_FAILED',
-    });
-  }
-}));
+      const status =
+        error instanceof Error && error.message.includes('already exists')
+          ? 409
+          : 400;
+
+      res.status(status).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Registration failed',
+        code: 'REGISTRATION_FAILED',
+      });
+    }
+  }),
+);
 
 // POST /api/v1/auth/logout
-router.post('/logout', authenticate, asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  try {
-    await AuthService.logout(req.user!.userId);
-    
-    logger.info('Logout successful', { 
-      userId: req.user!.userId,
-      username: req.user!.username,
-      ip: req.ip 
-    });
+router.post(
+  '/logout',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    try {
+      await AuthService.logout(req.user.userId);
 
-    res.json({
-      success: true,
-      message: 'Logged out successfully',
-    });
-  } catch (error) {
-    logger.error('Logout error', { 
-      userId: req.user?.userId,
-      ip: req.ip,
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    });
+      logger.info('Logout successful', {
+        userId: req.user.userId,
+        username: req.user.username,
+        ip: req.ip,
+      });
 
-    res.status(500).json({
-      success: false,
-      message: 'Logout failed',
-      code: 'LOGOUT_FAILED',
-    });
-  }
-}));
+      res.json({
+        success: true,
+        message: 'Logged out successfully',
+      });
+    } catch (error) {
+      logger.error('Logout error', {
+        userId: req.user?.userId,
+        ip: req.ip,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Logout failed',
+        code: 'LOGOUT_FAILED',
+      });
+    }
+  }),
+);
 
 // POST /api/v1/auth/refresh
-router.post('/refresh', asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  const { refreshToken } = req.body;
+router.post(
+  '/refresh',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { refreshToken } = req.body;
 
-  if (!refreshToken) {
-    logger.warn('Token refresh failed: no refresh token provided', { ip: req.ip });
+    if (!refreshToken) {
+      logger.warn('Token refresh failed: no refresh token provided', {
+        ip: req.ip,
+      });
 
-    res.status(400).json({
-      message: 'Refresh token is required',
-      code: 'MISSING_REFRESH_TOKEN',
-    });
-    return;
-  }
+      res.status(400).json({
+        message: 'Refresh token is required',
+        code: 'MISSING_REFRESH_TOKEN',
+      });
+      return;
+    }
 
-  try {
-    const result = await AuthService.refreshToken(refreshToken);
-    
-    logger.info('Token refresh successful', { ip: req.ip });
+    try {
+      const result = await AuthService.refreshToken(refreshToken);
 
-    res.json({
-      success: true,
-      data: result,
-    });
-  } catch (error) {
-    logger.warn('Token refresh failed', { 
-      ip: req.ip,
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    });
+      logger.info('Token refresh successful', { ip: req.ip });
 
-    res.status(401).json({
-      success: false,
-      message: 'Invalid refresh token',
-      code: 'INVALID_REFRESH_TOKEN',
-    });
-  }
-}));
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.warn('Token refresh failed', {
+        ip: req.ip,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(401).json({
+        success: false,
+        message: 'Invalid refresh token',
+        code: 'INVALID_REFRESH_TOKEN',
+      });
+    }
+  }),
+);
 
 // GET /api/v1/auth/me
-router.get('/me', authenticate, asyncHandler(async (req: Request, res: Response): Promise<void> => {
-  try {
-    const user = await AuthService.getCurrentUser(req.user!.userId);
-    
-    logger.info('Get current user successful', { 
-      userId: req.user!.userId,
-      username: req.user!.username,
-      ip: req.ip 
-    });
+router.get(
+  '/me',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    try {
+      const user = await AuthService.getCurrentUser(req.user.userId);
 
-    res.json({
-      success: true,
-      data: user,
-    });
-  } catch (error) {
-    logger.error('Get current user failed', { 
-      userId: req.user?.userId,
-      ip: req.ip,
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    });
+      logger.info('Get current user successful', {
+        userId: req.user.userId,
+        username: req.user.username,
+        ip: req.ip,
+      });
 
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get user information',
-      code: 'GET_USER_FAILED',
-    });
-  }
-}));
+      res.json({
+        success: true,
+        data: user,
+      });
+    } catch (error) {
+      logger.error('Get current user failed', {
+        userId: req.user?.userId,
+        ip: req.ip,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get user information',
+        code: 'GET_USER_FAILED',
+      });
+    }
+  }),
+);
 
 export default router;

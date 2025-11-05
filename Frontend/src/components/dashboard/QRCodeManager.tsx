@@ -9,7 +9,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { QrCode, Download, CheckCircle2, XCircle, Loader2, Printer, Eye, FileText } from 'lucide-react';
+import {
+  QrCode,
+  Download,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Printer,
+  Eye,
+  FileText,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { utilitiesApi } from '@/lib/api';
 
@@ -54,7 +63,11 @@ export function QRCodeManager() {
           { duration: 5000 }
         );
       } else {
-        throw new Error(typeof response.error === 'string' ? response.error : response.error?.message || 'Generation failed');
+        throw new Error(
+          typeof (response as any).error === 'string'
+            ? (response as any).error
+            : (response as any).error?.message || 'Generation failed'
+        );
       }
     } catch (error) {
       console.error('QR generation error:', error);

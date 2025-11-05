@@ -5,7 +5,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +23,7 @@ import {
   Download,
   RefreshCw,
   FileUp,
-  Table
+  Table,
 } from 'lucide-react';
 
 interface CSVImportDialogProps {
@@ -49,7 +49,7 @@ export function CSVImportDialog({
   description = 'Upload a CSV file to import multiple records',
   templateColumns,
   onImport,
-  entityName = 'records'
+  entityName = 'records',
 }: CSVImportDialogProps) {
   const { isMobile } = useMobileOptimization();
   const [file, setFile] = useState<File | null>(null);
@@ -66,7 +66,9 @@ export function CSVImportDialog({
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      return;
+    }
 
     // Validate file type
     if (!selectedFile.name.endsWith('.csv')) {
@@ -94,7 +96,7 @@ export function CSVImportDialog({
       setProgress(30);
 
       // Parse CSV
-      const lines = text.split('\n').filter(line => line.trim());
+      const lines = text.split('\n').filter((line) => line.trim());
       if (lines.length === 0) {
         throw new Error('CSV file is empty');
       }
@@ -104,15 +106,19 @@ export function CSVImportDialog({
       if (!firstLine) {
         throw new Error('CSV file has no valid header row');
       }
-      const headers = firstLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      const headers = firstLine
+        .split(',')
+        .map((h) => h.trim().replace(/^"|"$/g, ''));
       setProgress(50);
 
       // Validate headers
-      const missingColumns = templateColumns.filter(col => !headers.includes(col));
+      const missingColumns = templateColumns.filter(
+        (col) => !headers.includes(col)
+      );
       if (missingColumns.length > 0) {
         setErrors([
           `Missing required columns: ${missingColumns.join(', ')}`,
-          `Expected columns: ${templateColumns.join(', ')}`
+          `Expected columns: ${templateColumns.join(', ')}`,
         ]);
         setProgress(0);
         setIsProcessing(false);
@@ -120,8 +126,10 @@ export function CSVImportDialog({
       }
 
       // Parse rows
-      const rows = lines.slice(1, Math.min(6, lines.length)).map(line => {
-        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const rows = lines.slice(1, Math.min(6, lines.length)).map((line) => {
+        const values = line
+          .split(',')
+          .map((v) => v.trim().replace(/^"|"$/g, ''));
         return values;
       });
 
@@ -134,21 +142,26 @@ export function CSVImportDialog({
       setPreview({
         headers,
         rows,
-        totalRows: lines.length - 1
+        totalRows: lines.length - 1,
       });
 
       setProgress(100);
       toast.success(`Parsed ${lines.length - 1} ${entityName} successfully`);
     } catch (error) {
       console.error('CSV parsing error:', error);
-      setErrors([error instanceof Error ? error.message : 'Failed to parse CSV file']);
+      setErrors([
+        error instanceof Error ? error.message : 'Failed to parse CSV file',
+      ]);
       toast.error('Failed to parse CSV file');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const validateData = (headers: string[], rows: string[][]): {
+  const validateData = (
+    headers: string[],
+    rows: string[][]
+  ): {
     valid: number;
     invalid: number;
     warnings: string[];
@@ -181,14 +194,16 @@ export function CSVImportDialog({
   };
 
   const handleImport = async () => {
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     setIsProcessing(true);
     setProgress(0);
 
     try {
       const text = await file.text();
-      const lines = text.split('\n').filter(line => line.trim());
+      const lines = text.split('\n').filter((line) => line.trim());
       if (lines.length === 0) {
         setPreview(null);
         return;
@@ -198,11 +213,15 @@ export function CSVImportDialog({
         setPreview(null);
         return;
       }
-      const headers = firstLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      const headers = firstLine
+        .split(',')
+        .map((h) => h.trim().replace(/^"|"$/g, ''));
 
       // Parse all rows into objects
-      const data = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const data = lines.slice(1).map((line) => {
+        const values = line
+          .split(',')
+          .map((v) => v.trim().replace(/^"|"$/g, ''));
         const obj: any = {};
         headers.forEach((header, index) => {
           obj[header] = values[index] || '';
@@ -254,7 +273,13 @@ export function CSVImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className={isMobile ? 'w-full max-w-full h-full' : 'max-w-3xl max-h-[90vh] overflow-y-auto'}>
+      <DialogContent
+        className={
+          isMobile
+            ? 'w-full max-w-full h-full'
+            : 'max-w-3xl max-h-[90vh] overflow-y-auto'
+        }
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -322,7 +347,9 @@ export function CSVImportDialog({
                     <span className="font-medium">Processing CSV file...</span>
                   </div>
                   <Progress value={progress} className="h-2" />
-                  <p className="text-sm text-muted-foreground">{progress}% complete</p>
+                  <p className="text-sm text-muted-foreground">
+                    {progress}% complete
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -371,19 +398,25 @@ export function CSVImportDialog({
                         <div className="text-2xl font-bold text-blue-600">
                           {preview.totalRows}
                         </div>
-                        <div className="text-xs text-muted-foreground">Total Rows</div>
+                        <div className="text-xs text-muted-foreground">
+                          Total Rows
+                        </div>
                       </div>
                       <div className="text-center p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
                         <div className="text-2xl font-bold text-green-600">
                           {validationResult.valid}
                         </div>
-                        <div className="text-xs text-muted-foreground">Valid</div>
+                        <div className="text-xs text-muted-foreground">
+                          Valid
+                        </div>
                       </div>
                       <div className="text-center p-3 bg-red-50 dark:bg-red-950/20 rounded-lg">
                         <div className="text-2xl font-bold text-red-600">
                           {validationResult.invalid}
                         </div>
-                        <div className="text-xs text-muted-foreground">Invalid</div>
+                        <div className="text-xs text-muted-foreground">
+                          Invalid
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -413,14 +446,19 @@ export function CSVImportDialog({
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Table className="h-4 w-4" />
-                      <span className="font-medium">Preview (First 5 rows)</span>
+                      <span className="font-medium">
+                        Preview (First 5 rows)
+                      </span>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b">
                             {preview.headers.map((header, index) => (
-                              <th key={index} className="text-left p-2 font-medium">
+                              <th
+                                key={index}
+                                className="text-left p-2 font-medium"
+                              >
                                 {header}
                               </th>
                             ))}
@@ -432,7 +470,9 @@ export function CSVImportDialog({
                               {row.map((cell, cellIndex) => (
                                 <td key={cellIndex} className="p-2">
                                   {cell || (
-                                    <span className="text-muted-foreground italic">empty</span>
+                                    <span className="text-muted-foreground italic">
+                                      empty
+                                    </span>
                                   )}
                                 </td>
                               ))}
@@ -449,12 +489,20 @@ export function CSVImportDialog({
         </div>
 
         <DialogFooter className={isMobile ? 'flex-col gap-2' : ''}>
-          <Button variant="outline" onClick={handleClose} disabled={isProcessing}>
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={isProcessing}
+          >
             Cancel
           </Button>
           <Button
             onClick={handleImport}
-            disabled={!preview || isProcessing || validationResult?.invalid === preview?.totalRows}
+            disabled={
+              !preview ||
+              isProcessing ||
+              validationResult?.invalid === preview?.totalRows
+            }
             className="w-full sm:w-auto"
           >
             {isProcessing ? (

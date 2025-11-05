@@ -1,12 +1,20 @@
 /**
  * Example: Using New State Management Hooks
- * 
+ *
  * This file demonstrates how to use the new custom hooks to simplify components
  * and consolidate state management patterns across the CLMS application.
  */
 
 // No React import needed - using JSX transform
-import { useLoadingState, useModalState, useSearchFilters, useForm, useDataRefresh, useMultipleModals, useActionState } from '@/hooks';
+import {
+  useLoadingState,
+  useModalState,
+  useSearchFilters,
+  useForm,
+  useDataRefresh,
+  useMultipleModals,
+  useActionState,
+} from '@/hooks';
 
 // ============================================================================
 // Example 1: Simplified Loading State Management
@@ -24,10 +32,10 @@ function StudentListExample() {
   // const [isLoading, setIsLoading] = useState(false);
   // const [error, setError] = useState<string | null>(null);
   // const [data, setData] = useState<Student[]>([]);
-  
+
   // Use the new loading state hook:
   const [state, actions] = useLoadingState({
-    data: []
+    data: [],
   });
 
   const fetchStudents = async () => {
@@ -43,13 +51,10 @@ function StudentListExample() {
 
   return (
     <div>
-      <button 
-        onClick={fetchStudents}
-        disabled={state.isLoading}
-      >
+      <button onClick={fetchStudents} disabled={state.isLoading}>
         {state.isLoading ? 'Loading...' : 'Fetch Students'}
       </button>
-      
+
       {state.error && <div className="error">{state.error}</div>}
       {state.data && state.data.length > 0 && (
         <ul>
@@ -70,7 +75,7 @@ function StudentModalExample() {
   // Instead of managing modal state manually:
   // const [isModalOpen, setIsModalOpen] = useState(false);
   // const [modalData, setModalData] = useState(null);
-  
+
   // Use the new modal state hook:
   const [state, actions] = useModalState();
 
@@ -80,16 +85,12 @@ function StudentModalExample() {
 
   return (
     <>
-      <button onClick={() => openStudentForm()}>
-        Add New Student
-      </button>
-      
+      <button onClick={() => openStudentForm()}>Add New Student</button>
+
       <dialog open={state.isOpen}>
         <form onSubmit={() => actions.close()}>
-          <h3>
-            {state.data ? 'Edit Student' : 'Add New Student'}
-          </h3>
-          
+          <h3>{state.data ? 'Edit Student' : 'Add New Student'}</h3>
+
           {state.data && (
             <input
               type="text"
@@ -97,7 +98,7 @@ function StudentModalExample() {
               placeholder="Student Name"
             />
           )}
-          
+
           <div>
             <button type="submit">Save</button>
             <button type="button" onClick={actions.close}>
@@ -121,7 +122,7 @@ function StudentSearchExample() {
   // const [statusFilter, setStatusFilter] = useState('');
   // const [sortBy, setSortBy] = useState('name');
   // const [sortOrder, setSortOrder] = useState('asc');
-  
+
   // Use the new search filters hook:
   const [state, actions, computed] = useSearchFilters({
     defaultFilters: { gradeLevel: '', isActive: '' },
@@ -136,16 +137,19 @@ function StudentSearchExample() {
   ];
 
   // Apply filters to data
-  const filteredStudents = students.filter(student => {
-    const matchesSearch = !state.searchTerm || 
+  const filteredStudents = students.filter((student) => {
+    const matchesSearch =
+      !state.searchTerm ||
       student.name.toLowerCase().includes(state.searchTerm.toLowerCase());
-    
-    const matchesGrade = !state.filters.gradeLevel || 
+
+    const matchesGrade =
+      !state.filters.gradeLevel ||
       student.gradeLevel === state.filters.gradeLevel;
-    
-    const matchesStatus = !state.filters.isActive || 
+
+    const matchesStatus =
+      !state.filters.isActive ||
       student.isActive.toString() === state.filters.isActive;
-    
+
     return matchesSearch && matchesGrade && matchesStatus;
   });
 
@@ -158,7 +162,7 @@ function StudentSearchExample() {
         value={state.searchTerm}
         onChange={(e) => actions.setSearchTerm(e.target.value)}
       />
-      
+
       {/* Filter Controls */}
       <select
         value={state.filters.gradeLevel || ''}
@@ -169,7 +173,7 @@ function StudentSearchExample() {
         <option value="10">Grade 10</option>
         <option value="11">Grade 11</option>
       </select>
-      
+
       <select
         value={state.filters.isActive || ''}
         onChange={(e) => actions.setFilter('isActive', e.target.value)}
@@ -178,29 +182,27 @@ function StudentSearchExample() {
         <option value="true">Active</option>
         <option value="false">Inactive</option>
       </select>
-      
+
       {/* Sort Controls */}
       <button onClick={() => actions.setSortBy('name')}>
         Sort by Name {state.sortBy === 'name' && `(${state.sortOrder})`}
       </button>
-      
+
       {/* Clear Filters */}
       {computed.hasActiveFilters && (
-        <button onClick={actions.clearFilters}>
-          Clear Filters
-        </button>
+        <button onClick={actions.clearFilters}>Clear Filters</button>
       )}
-      
+
       {/* Results */}
       <div>
         Found {filteredStudents.length} students
         {computed.hasActiveFilters && ' (filtered)'}
       </div>
-      
+
       <ul>
-        {filteredStudents.map(student => (
+        {filteredStudents.map((student) => (
           <li key={student.id}>
-            {student.name} - Grade {student.gradeLevel} - 
+            {student.name} - Grade {student.gradeLevel} -
             {student.isActive ? 'Active' : 'Inactive'}
           </li>
         ))}
@@ -219,7 +221,7 @@ function StudentFormExample() {
   // const [errors, setErrors] = useState({});
   // const [touched, setTouched] = useState({});
   // const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Use the new form state hook:
   const [state, actions] = useForm({
     initialValues: {
@@ -230,9 +232,9 @@ function StudentFormExample() {
     },
     validationSchema: {
       name: { required: true, minLength: 2 },
-      email: { 
-        required: true, 
-        pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/ 
+      email: {
+        required: true,
+        pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
       },
       gradeLevel: { required: true },
     },
@@ -268,7 +270,7 @@ function StudentFormExample() {
           <span className="error">{state.errors.name}</span>
         )}
       </div>
-      
+
       <div>
         <input
           type="email"
@@ -281,7 +283,7 @@ function StudentFormExample() {
           <span className="error">{state.errors.email}</span>
         )}
       </div>
-      
+
       <div>
         <select
           value={state.values.gradeLevel}
@@ -297,9 +299,9 @@ function StudentFormExample() {
           <span className="error">{state.errors.gradeLevel}</span>
         )}
       </div>
-      
-      <button 
-        type="submit" 
+
+      <button
+        type="submit"
         disabled={state.isSubmitting || Object.keys(state.errors).length > 0}
       >
         {state.isSubmitting ? 'Submitting...' : 'Submit'}
@@ -318,10 +320,10 @@ function DashboardExample() {
   // const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   // const [isRefreshing, setIsRefreshing] = useState(false);
   // const refreshInterval = useRef<NodeJS.Timeout>();
-  
+
   // Use the new data refresh hook:
   const [state, actions] = useDataRefresh(
-    () => fetch('/api/dashboard-metrics').then(res => res.json()),
+    () => fetch('/api/dashboard-metrics').then((res) => res.json()),
     {
       interval: 30000, // Refresh every 30 seconds
       onSuccess: (data) => {
@@ -337,29 +339,26 @@ function DashboardExample() {
     <div>
       <div>
         <h2>Dashboard Metrics</h2>
-        
+
         <div>
-          <button 
-            onClick={actions.refresh}
-            disabled={state.isRefreshing}
-          >
+          <button onClick={actions.refresh} disabled={state.isRefreshing}>
             {state.isRefreshing ? 'Refreshing...' : 'Refresh Now'}
           </button>
-          
+
           {state.lastRefreshTime && (
             <span>
               Last updated: {state.lastRefreshTime.toLocaleTimeString()}
             </span>
           )}
         </div>
-        
+
         {state.error && (
           <div className="error">
             Failed to refresh: {state.error.message}
             <button onClick={actions.clearError}>Dismiss</button>
           </div>
         )}
-        
+
         {state.data && (
           <div>
             <h3>Today's Activity</h3>
@@ -368,10 +367,8 @@ function DashboardExample() {
             <p>Equipment in Use: {state.data.equipmentInUse}</p>
           </div>
         )}
-        
-        {!state.data && !state.error && (
-          <div>Loading dashboard...</div>
-        )}
+
+        {!state.data && !state.error && <div>Loading dashboard...</div>}
       </div>
     </div>
   );
@@ -393,21 +390,25 @@ function MultiModalExample() {
   return (
     <div>
       {/* Buttons to open different modals */}
-      <button onClick={() => actions.addStudent.open()}>
-        Add Student
-      </button>
-      
-      <button onClick={() => actions.editStudent.open({ id: '1', name: 'John' })}>
+      <button onClick={() => actions.addStudent.open()}>Add Student</button>
+
+      <button
+        onClick={() => actions.editStudent.open({ id: '1', name: 'John' })}
+      >
         Edit Student
       </button>
-      
-      <button onClick={() => actions.deleteConfirm.open({ 
-        studentId: '1', 
-        studentName: 'John Doe' 
-      })}>
+
+      <button
+        onClick={() =>
+          actions.deleteConfirm.open({
+            studentId: '1',
+            studentName: 'John Doe',
+          })
+        }
+      >
         Delete Student
       </button>
-      
+
       {/* Student Form Modal */}
       <dialog open={states.addStudent.isOpen}>
         <form onSubmit={() => actions.addStudent.close()}>
@@ -419,16 +420,13 @@ function MultiModalExample() {
           </button>
         </form>
       </dialog>
-      
+
       {/* Edit Student Modal */}
       <dialog open={states.editStudent.isOpen}>
         <form onSubmit={() => actions.editStudent.close()}>
           <h3>Edit Student</h3>
           {states.editStudent.data && (
-            <input
-              type="text"
-              defaultValue={states.editStudent.data.name}
-            />
+            <input type="text" defaultValue={states.editStudent.data.name} />
           )}
           <button type="submit">Save</button>
           <button type="button" onClick={actions.editStudent.close}>
@@ -436,7 +434,7 @@ function MultiModalExample() {
           </button>
         </form>
       </dialog>
-      
+
       {/* Delete Confirmation Modal */}
       <dialog open={states.deleteConfirm.isOpen}>
         <form onSubmit={() => actions.deleteConfirm.close()}>
@@ -470,11 +468,11 @@ function ExportExample() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ format, data }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Export failed');
       }
-      
+
       const blob = await response.blob();
       return blob;
     },
@@ -502,35 +500,26 @@ function ExportExample() {
   return (
     <div>
       <h3>Export Student Data</h3>
-      
+
       <div>
-        <button 
-          onClick={() => handleExport('csv')}
-          disabled={state.isLoading}
-        >
+        <button onClick={() => handleExport('csv')} disabled={state.isLoading}>
           Export as CSV
         </button>
-        
-        <button 
-          onClick={() => handleExport('xlsx')}
-          disabled={state.isLoading}
-        >
+
+        <button onClick={() => handleExport('xlsx')} disabled={state.isLoading}>
           Export as Excel
         </button>
-        
-        <button 
-          onClick={() => handleExport('pdf')}
-          disabled={state.isLoading}
-        >
+
+        <button onClick={() => handleExport('pdf')} disabled={state.isLoading}>
           Export as PDF
         </button>
       </div>
-      
+
       {state.isLoading && (
         <div>
           <div className="progress-bar">
-            <div 
-              className="progress-fill" 
+            <div
+              className="progress-fill"
               style={{ width: `${state.progress}%` }}
             />
           </div>
@@ -538,7 +527,7 @@ function ExportExample() {
           <button onClick={actions.cancel}>Cancel</button>
         </div>
       )}
-      
+
       {state.error && (
         <div className="error">
           Export failed: {state.error}
@@ -570,9 +559,9 @@ function CompleteStudentManagerExample() {
       gradeLevel: { required: true },
     },
   });
-  
+
   const [refreshState, refreshActions] = useDataRefresh(
-    () => fetch('/api/students').then(res => res.json()),
+    () => fetch('/api/students').then((res) => res.json()),
     {
       interval: 60000, // Refresh every minute
       onSuccess: (students) => {
@@ -588,7 +577,7 @@ function CompleteStudentManagerExample() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
-      
+
       modalActions.close();
       refreshActions.refresh();
       formActions.resetForm();
@@ -602,44 +591,42 @@ function CompleteStudentManagerExample() {
       <div className="header">
         <h2>Student Management</h2>
         <div>
-          <button 
+          <button
             onClick={refreshActions.refresh}
             disabled={refreshState.isRefreshing}
           >
             {refreshState.isRefreshing ? 'Refreshing...' : 'Refresh'}
           </button>
-          <button onClick={() => modalActions.open()}>
-            Add Student
-          </button>
+          <button onClick={() => modalActions.open()}>Add Student</button>
         </div>
       </div>
-      
+
       {loadingState.error && (
         <div className="error">
           {loadingState.error}
           <button onClick={loadingActions.reset}>Dismiss</button>
         </div>
       )}
-      
+
       {loadingState.isLoading ? (
         <div>Loading students...</div>
       ) : (
-        <div className="student-list">
-          {/* Render student list */}
-        </div>
+        <div className="student-list">{/* Render student list */}</div>
       )}
-      
+
       <dialog open={modalState.isOpen}>
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          handleSubmit(formState.values);
-        }}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSubmit(formState.values);
+          }}
+        >
           <h3>Add New Student</h3>
-          
+
           {formState.errors.general && (
             <div className="error">{formState.errors.general}</div>
           )}
-          
+
           <div>
             <input
               placeholder="Student Name"
@@ -651,7 +638,7 @@ function CompleteStudentManagerExample() {
               <span className="error">{formState.errors.name}</span>
             )}
           </div>
-          
+
           <div>
             <input
               type="email"
@@ -664,11 +651,13 @@ function CompleteStudentManagerExample() {
               <span className="error">{formState.errors.email}</span>
             )}
           </div>
-          
+
           <div>
             <select
               value={formState.values.gradeLevel}
-              onChange={(e) => formActions.setValue('gradeLevel', e.target.value)}
+              onChange={(e) =>
+                formActions.setValue('gradeLevel', e.target.value)
+              }
               onBlur={() => formActions.setTouched('gradeLevel')}
             >
               <option value="">Select Grade</option>
@@ -680,29 +669,25 @@ function CompleteStudentManagerExample() {
               <span className="error">{formState.errors.gradeLevel}</span>
             )}
           </div>
-          
+
           <div>
             <label>
               <input
                 type="checkbox"
                 checked={formState.values.isActive}
-                onChange={(e) => formActions.setValue('isActive', e.target.checked)}
+                onChange={(e) =>
+                  formActions.setValue('isActive', e.target.checked)
+                }
               />
               Active Student
             </label>
           </div>
-          
+
           <div>
-            <button 
-              type="submit" 
-              disabled={formState.isSubmitting}
-            >
+            <button type="submit" disabled={formState.isSubmitting}>
               {formState.isSubmitting ? 'Saving...' : 'Save'}
             </button>
-            <button 
-              type="button" 
-              onClick={modalActions.close}
-            >
+            <button type="button" onClick={modalActions.close}>
               Cancel
             </button>
           </div>

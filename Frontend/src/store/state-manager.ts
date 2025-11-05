@@ -61,15 +61,23 @@ export interface StateStoreConfig<T> {
   };
   middlewares?: StateMiddleware<T>[];
   effects?: StateEffect<T>[];
-  actions?: Record<string, (state: T, setState: StateUpdater<T>) => (...args: any[]) => void>;
-  asyncActions?: Record<string, (state: T, setState: StateUpdater<T>) => (...args: any[]) => Promise<any>>;
+  actions?: Record<
+    string,
+    (state: T, setState: StateUpdater<T>) => (...args: any[]) => void
+  >;
+  asyncActions?: Record<
+    string,
+    (state: T, setState: StateUpdater<T>) => (...args: any[]) => Promise<any>
+  >;
   computed?: Record<string, (state: T) => any>;
 }
 
 /**
  * Create an enhanced state store
  */
-export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateStore<T> {
+export function createStateStore<T>(
+  config: StateStoreConfig<T>
+): EnhancedStateStore<T> {
   const {
     name,
     initialState,
@@ -87,7 +95,10 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
 
     setState: (updater: T | ((prev: T) => T)) => {
       set((prev: { state: T }) => ({
-        state: typeof updater === 'function' ? (updater as (state: any) => any)(prev.state) : updater
+        state:
+          typeof updater === 'function'
+            ? (updater as (state: any) => any)(prev.state)
+            : updater,
       }));
     },
 
@@ -106,7 +117,7 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
 
     batch: (updates: Array<() => void>) => {
       set(() => {
-        updates.forEach(update => update());
+        updates.forEach((update) => update());
       });
     },
 
@@ -124,11 +135,12 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
   let storeWithMiddleware = createStore;
 
   if (persistConfig?.enabled) {
-    const storage = persistConfig.storage === 'localStorage'
-      ? localStorage
-      : persistConfig.storage === 'sessionStorage'
-        ? sessionStorage
-        : persistConfig.customStorage || localStorage;
+    const storage =
+      persistConfig.storage === 'localStorage'
+        ? localStorage
+        : persistConfig.storage === 'sessionStorage'
+          ? sessionStorage
+          : persistConfig.customStorage || localStorage;
 
     const persistOptions: any = {
       name,
@@ -140,10 +152,7 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
       persistOptions.onRehydrateStorage = persistConfig.onRehydrateStorage;
     }
 
-    storeWithMiddleware = persist(
-      createStore as any,
-      persistOptions
-    ) as any;
+    storeWithMiddleware = persist(createStore as any, persistOptions) as any;
   }
 
   // Apply selector middleware
@@ -221,7 +230,10 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
   Object.entries(asyncActionDefinitions).forEach(([name, action]) => {
     enhancedStore.asyncActions[name] = async (...args: any[]) => {
       const currentStore = useStore.getState();
-      return await action(currentStore.getState(), currentStore.setState)(...args);
+      return await action(
+        currentStore.getState(),
+        currentStore.setState
+      )(...args);
     };
   });
 
@@ -234,12 +246,12 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
   });
 
   // Apply middlewares
-  middlewares.forEach(middleware => {
+  middlewares.forEach((middleware) => {
     middleware(enhancedStore.state, enhancedStore.setState);
   });
 
   // Apply global effects
-  globalEffects.forEach(effect => {
+  globalEffects.forEach((effect) => {
     enhancedStore.effect(effect);
   });
 
@@ -249,7 +261,9 @@ export function createStateStore<T>(config: StateStoreConfig<T>): EnhancedStateS
 /**
  * Hook to use the state store
  */
-export function useStateStore<T>(store: EnhancedStateStore<T>): [T, StateUpdater<T>] {
+export function useStateStore<T>(
+  store: EnhancedStateStore<T>
+): [T, StateUpdater<T>] {
   const [state, setState] = useState(store.getState());
 
   useEffect(() => {
@@ -270,7 +284,9 @@ export function useStateStoreSelector<T, R>(
   store: EnhancedStateStore<T>,
   selector: StateSelector<T, R>
 ): R {
-  const [selectedState, setSelectedState] = useState(() => selector(store.getState()));
+  const [selectedState, setSelectedState] = useState(() =>
+    selector(store.getState())
+  );
 
   useEffect(() => {
     const unsubscribe = store.subscribe((newState) => {
@@ -291,7 +307,9 @@ export function useStateStoreComputed<T, R>(
   store: EnhancedStateStore<T>,
   computedKey: string
 ): R {
-  const [computedValue, setComputedValue] = useState(() => store.computed[computedKey]);
+  const [computedValue, setComputedValue] = useState(
+    () => store.computed[computedKey]
+  );
 
   useEffect(() => {
     const unsubscribe = store.subscribe(() => {
@@ -361,9 +379,14 @@ export const StoreUtils = {
   /**
    * Create a deep selector for nested state
    */
-  deepSelect: <T extends Record<string, any>, R>(path: Array<string | number>) => (state: T): R => {
-    return path.reduce((current: any, key) => current?.[key], state as any) as R;
-  },
+  deepSelect:
+    <T extends Record<string, any>, R>(path: Array<string | number>) =>
+    (state: T): R => {
+      return path.reduce(
+        (current: any, key) => current?.[key],
+        state as any
+      ) as R;
+    },
 
   /**
    * Create a memoized selector

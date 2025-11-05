@@ -41,27 +41,38 @@ export async function getBooks(params: GetBooksParams = {}): Promise<Book[]> {
     // Build query string
     const queryParams = new URLSearchParams();
 
-    if (params.category) queryParams.append('category', params.category);
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.searchQuery) queryParams.append('search', params.searchQuery);
-    if (params.sortBy) queryParams.append('sortBy', params.sortBy);
-    if (params.sortOrder) queryParams.append('sortOrder', params.sortOrder);
-    if (params.availableOnly) queryParams.append('availableOnly', 'true');
+    if (params.category) {
+      queryParams.append('category', params.category);
+    }
+    if (params.limit) {
+      queryParams.append('limit', params.limit.toString());
+    }
+    if (params.searchQuery) {
+      queryParams.append('search', params.searchQuery);
+    }
+    if (params.sortBy) {
+      queryParams.append('sortBy', params.sortBy);
+    }
+    if (params.sortOrder) {
+      queryParams.append('sortOrder', params.sortOrder);
+    }
+    if (params.availableOnly) {
+      queryParams.append('availableOnly', 'true');
+    }
 
     const queryString = queryParams.toString();
     const url = `/api/books${queryString ? `?${queryString}` : ''}`;
 
     // For server components, we need to use the full URL
-    const fullUrl = typeof window === 'undefined'
-      ? `http://localhost:3001${url}`
-      : url;
+    const fullUrl =
+      typeof window === 'undefined' ? `http://localhost:3001${url}` : url;
 
     const response = await fetch(fullUrl, {
       headers: {
         'Content-Type': 'application/json',
         // For server components, we might need to handle auth differently
         ...(typeof window !== 'undefined' && {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         }),
       },
       // Add caching for server components
@@ -89,15 +100,14 @@ export async function getBooks(params: GetBooksParams = {}): Promise<Book[]> {
 export async function getBookById(id: string): Promise<Book | null> {
   try {
     const url = `/api/books/${id}`;
-    const fullUrl = typeof window === 'undefined'
-      ? `http://localhost:3001${url}`
-      : url;
+    const fullUrl =
+      typeof window === 'undefined' ? `http://localhost:3001${url}` : url;
 
     const response = await fetch(fullUrl, {
       headers: {
         'Content-Type': 'application/json',
         ...(typeof window !== 'undefined' && {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         }),
       },
       ...(typeof window === 'undefined' && {
@@ -126,15 +136,14 @@ export async function getBookById(id: string): Promise<Book | null> {
 export async function getBookCategories(): Promise<string[]> {
   try {
     const url = '/api/books/categories';
-    const fullUrl = typeof window === 'undefined'
-      ? `http://localhost:3001${url}`
-      : url;
+    const fullUrl =
+      typeof window === 'undefined' ? `http://localhost:3001${url}` : url;
 
     const response = await fetch(fullUrl, {
       headers: {
         'Content-Type': 'application/json',
         ...(typeof window !== 'undefined' && {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         }),
       },
       ...(typeof window === 'undefined' && {

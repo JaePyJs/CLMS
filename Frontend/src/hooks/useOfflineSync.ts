@@ -80,7 +80,9 @@ class OfflineSyncService {
   }
 
   // Queue an action for offline sync
-  async queueAction(action: Omit<OfflineAction, 'id' | 'timestamp' | 'retryCount'>): Promise<void> {
+  async queueAction(
+    action: Omit<OfflineAction, 'id' | 'timestamp' | 'retryCount'>
+  ): Promise<void> {
     if (!this.db) {
       await this.initializeDB();
     }
@@ -97,11 +99,15 @@ class OfflineSyncService {
       const store = transaction.objectStore(STORE_NAME);
       await store.add(offlineAction);
 
-      console.log('[OfflineSync] Action queued:', offlineAction.type, offlineAction.endpoint);
+      console.log(
+        '[OfflineSync] Action queued:',
+        offlineAction.type,
+        offlineAction.endpoint
+      );
 
       // Show notification for queued action
       if (!this.isOnline) {
-        toast.info('Action saved for when you\'re back online');
+        toast.info("Action saved for when you're back online");
       }
 
       // Update app store with queue count
@@ -137,7 +143,8 @@ class OfflineSyncService {
           }
         };
 
-        request.onerror = () => reject(new Error('Failed to fetch queued actions'));
+        request.onerror = () =>
+          reject(new Error('Failed to fetch queued actions'));
       });
     } catch (error) {
       console.error('[OfflineSync] Failed to get queued actions:', error);
@@ -162,14 +169,16 @@ class OfflineSyncService {
         return;
       }
 
-      toast.info(`Syncing ${actions.length} action${actions.length > 1 ? 's' : ''}...`);
-
-      const results = await Promise.allSettled(
-        actions.map(action => this.processAction(action))
+      toast.info(
+        `Syncing ${actions.length} action${actions.length > 1 ? 's' : ''}...`
       );
 
-      const successful = results.filter(r => r.status === 'fulfilled').length;
-      const failed = results.filter(r => r.status === 'rejected').length;
+      const results = await Promise.allSettled(
+        actions.map((action) => this.processAction(action))
+      );
+
+      const successful = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.filter((r) => r.status === 'rejected').length;
 
       // Remove successfully synced actions
       for (let i = 0; i < results.length; i++) {
@@ -184,14 +193,18 @@ class OfflineSyncService {
       await this.updateQueueCount();
 
       if (successful > 0) {
-        toast.success(`Synced ${successful} action${successful > 1 ? 's' : ''}`);
+        toast.success(
+          `Synced ${successful} action${successful > 1 ? 's' : ''}`
+        );
       }
 
       if (failed > 0) {
         toast.error(`${failed} action${failed > 1 ? 's' : ''} failed to sync`);
       }
 
-      console.log(`[OfflineSync] Sync completed: ${successful} successful, ${failed} failed`);
+      console.log(
+        `[OfflineSync] Sync completed: ${successful} successful, ${failed} failed`
+      );
     } catch (error) {
       console.error('[OfflineSync] Sync failed:', error);
       toast.error('Failed to sync offline actions');
@@ -206,13 +219,14 @@ class OfflineSyncService {
 
     try {
       const options: RequestInit = {
-        method: type === 'create' ? 'POST' : type === 'update' ? 'PUT' : 'DELETE',
+        method:
+          type === 'create' ? 'POST' : type === 'update' ? 'PUT' : 'DELETE',
         headers: {
           'Content-Type': 'application/json',
           // Add auth headers if available
           ...(localStorage.getItem('token') && {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          })
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          }),
         },
         ...(type !== 'delete' && { body: JSON.stringify(data) }),
       };
@@ -230,12 +244,16 @@ class OfflineSyncService {
       // Update retry count
       if (retryCount < maxRetries) {
         await this.updateActionRetry(action.id, retryCount + 1);
-        console.log(`[OfflineSync] Action ${action.id} will be retried (${retryCount + 1}/${maxRetries})`);
+        console.log(
+          `[OfflineSync] Action ${action.id} will be retried (${retryCount + 1}/${maxRetries})`
+        );
         throw error; // Will be retried
       } else {
         // Max retries reached, remove action
         await this.removeAction(action.id);
-        console.error(`[OfflineSync] Action ${action.id} failed after ${maxRetries} retries`);
+        console.error(
+          `[OfflineSync] Action ${action.id} failed after ${maxRetries} retries`
+        );
         toast.error('Action failed to sync and was removed');
       }
     }
@@ -243,7 +261,9 @@ class OfflineSyncService {
 
   // Remove action from queue
   private async removeAction(id: string): Promise<void> {
-    if (!this.db) return;
+    if (!this.db) {
+      return;
+    }
 
     try {
       const transaction = this.db.transaction([STORE_NAME], 'readwrite');
@@ -255,8 +275,13 @@ class OfflineSyncService {
   }
 
   // Update action retry count
-  private async updateActionRetry(id: string, retryCount: number): Promise<void> {
-    if (!this.db) return;
+  private async updateActionRetry(
+    id: string,
+    retryCount: number
+  ): Promise<void> {
+    if (!this.db) {
+      return;
+    }
 
     try {
       const transaction = this.db.transaction([STORE_NAME], 'readwrite');
@@ -280,7 +305,9 @@ class OfflineSyncService {
 
   // Clear all queued actions
   async clearQueue(): Promise<void> {
-    if (!this.db) return;
+    if (!this.db) {
+      return;
+    }
 
     try {
       const transaction = this.db.transaction([STORE_NAME], 'readwrite');
@@ -297,7 +324,11 @@ class OfflineSyncService {
   }
 
   // Get sync status
-  getSyncStatus(): { isOnline: boolean; queueCount: number; lastSync: number | null } {
+  getSyncStatus(): {
+    isOnline: boolean;
+    queueCount: number;
+    lastSync: number | null;
+  } {
     return {
       isOnline: this.isOnline,
       queueCount: useAppStore.getState().offlineQueueCount,
@@ -425,7 +456,7 @@ export const offlineAPI = {
       /\/api\/analytics/,
     ];
 
-    return cacheablePatterns.some(pattern => pattern.test(url));
+    return cacheablePatterns.some((pattern) => pattern.test(url));
   },
 
   // Check if request should be queued for offline
@@ -438,8 +469,10 @@ export const offlineAPI = {
       /\/api\/activities/,
     ];
 
-    return queueableMethods.includes(method.toUpperCase()) &&
-           queueablePatterns.some(pattern => pattern.test(url));
+    return (
+      queueableMethods.includes(method.toUpperCase()) &&
+      queueablePatterns.some((pattern) => pattern.test(url))
+    );
   },
 };
 

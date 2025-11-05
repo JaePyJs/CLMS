@@ -1,6 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { performanceMonitor } from '@/lib/performance-monitor';
 import type { PerformanceMetric, LogEntry } from '@/lib/performance-monitor';
 
@@ -34,7 +40,10 @@ interface PerformanceProviderProps {
   };
 }
 
-export function PerformanceProvider({ children, config }: PerformanceProviderProps) {
+export function PerformanceProvider({
+  children,
+  config,
+}: PerformanceProviderProps) {
   const [metrics, setMetrics] = useState<PerformanceMetric[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [userId, setUserIdState] = useState<string | null>(null);
@@ -45,7 +54,9 @@ export function PerformanceProvider({ children, config }: PerformanceProviderPro
     if (config) {
       // Note: In a real implementation, you'd need to reinitialize the monitor
       // For now, we'll just log that config was updated
-      performanceMonitor.info('Performance provider config updated', { config });
+      performanceMonitor.info('Performance provider config updated', {
+        config,
+      });
     }
   }, [config]);
 
@@ -112,7 +123,9 @@ export function PerformanceProvider({ children, config }: PerformanceProviderPro
 export function usePerformanceContext() {
   const context = useContext(PerformanceContext);
   if (!context) {
-    throw new Error('usePerformanceContext must be used within a PerformanceProvider');
+    throw new Error(
+      'usePerformanceContext must be used within a PerformanceProvider'
+    );
   }
   return context;
 }
@@ -137,7 +150,8 @@ export function usePerformanceLogs() {
  * Hook for performance session management
  */
 export function usePerformanceSession() {
-  const { sessionId, userId, setUserId, clearUserId, flush, getSummary } = usePerformanceContext();
+  const { sessionId, userId, setUserId, clearUserId, flush, getSummary } =
+    usePerformanceContext();
   return { sessionId, userId, setUserId, clearUserId, flush, getSummary };
 }
 

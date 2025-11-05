@@ -109,3 +109,47 @@ model student_activities {
 
   student       students @relation(fields: [student_id], references: [id])
 }
+
+model system_settings {
+  id                          String   @id @default(cuid())
+  key                         String   @unique
+  value                       String
+  description                 String?
+  category                    String   @default("general")
+  updated_by                  String?
+  created_at                  DateTime @default(now())
+  updated_at                  DateTime @updatedAt
+}
+
+model error_logs {
+  id          String   @id @default(cuid())
+  level       String   // ERROR, WARN, INFO
+  message     String
+  stack       String?
+  userId      String?
+  endpoint    String?
+  method      String?
+  userAgent   String?
+  ipAddress   String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model app_notifications {
+  id          String   @id @default(cuid())
+  userId      String?
+  type        String   // OVERDUE_BOOK, FINE_ADDED, BOOK_DUE_SOON, etc.
+  title       String
+  message     String
+  priority    String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  read        Boolean  @default(false)
+  readAt      DateTime?
+  actionUrl   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime?
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}

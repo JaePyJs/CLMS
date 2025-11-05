@@ -1,5 +1,11 @@
 import { useState, Suspense, useEffect, lazy } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +24,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { BookOpen, User, CheckCircle, AlertCircle, RotateCcw, Scan, History as HistoryIcon } from 'lucide-react';
+import {
+  BookOpen,
+  User,
+  CheckCircle,
+  AlertCircle,
+  RotateCcw,
+  Scan,
+  History as HistoryIcon,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -67,13 +81,13 @@ export default function BookCheckout() {
     scanBook: { isLoading: false },
     confirmCheckout: { isLoading: false },
     scanReturn: { isLoading: false },
-    confirmReturn: { isLoading: false }
-  })
+    confirmReturn: { isLoading: false },
+  });
 
   // Consolidated modal states
   const [modalStates, modalActions] = useMultipleModals({
-    returnConfirm: false
-  })
+    returnConfirm: false,
+  });
 
   // Checkout form management
   const [checkoutForm, checkoutFormActions] = useForm({
@@ -83,25 +97,25 @@ export default function BookCheckout() {
       selectedStudent: null,
       selectedBook: null,
       dueDate: '',
-      checkoutStep: 'student' as 'student' | 'book' | 'confirm'
+      checkoutStep: 'student' as 'student' | 'book' | 'confirm',
     },
     validationSchema: {
       studentBarcode: { required: true },
       bookBarcode: { required: true },
-      dueDate: { required: true }
-    }
-  })
+      dueDate: { required: true },
+    },
+  });
 
-  // Return form management  
+  // Return form management
   const [returnForm, returnFormActions] = useForm({
     initialValues: {
       returnBarcode: '',
-      activeCheckout: null
+      activeCheckout: null,
     },
     validationSchema: {
-      returnBarcode: { required: true }
-    }
-  })
+      returnBarcode: { required: true },
+    },
+  });
 
   // Calculate default due date (7 days from now)
   const getDefaultDueDate = (): string => {
@@ -135,7 +149,9 @@ export default function BookCheckout() {
         const student = response.data.data.students[0];
         checkoutFormActions.setValue('selectedStudent', student);
         checkoutFormActions.setValue('checkoutStep', 'book');
-        toast.success(`Student found: ${student.firstName} ${student.lastName}`);
+        toast.success(
+          `Student found: ${student.firstName} ${student.lastName}`
+        );
       } else {
         toast.error('Student not found');
       }
@@ -223,7 +239,7 @@ export default function BookCheckout() {
       selectedStudent: null,
       selectedBook: null,
       dueDate: getDefaultDueDate(),
-      checkoutStep: 'student'
+      checkoutStep: 'student',
     });
   };
 
@@ -247,8 +263,8 @@ export default function BookCheckout() {
 
       if (response.data.success) {
         const checkouts = response.data.data.checkouts || [];
-        const checkout = checkouts.find((c: Checkout) =>
-          c.book.accessionNo === returnBarcode.trim()
+        const checkout = checkouts.find(
+          (c: Checkout) => c.book.accessionNo === returnBarcode.trim()
         );
 
         if (checkout) {
@@ -268,7 +284,9 @@ export default function BookCheckout() {
   // Confirm return
   const handleConfirmReturn = async () => {
     const { activeCheckout } = returnForm.values;
-    if (!activeCheckout) return;
+    if (!activeCheckout) {
+      return;
+    }
 
     loadingActions.confirmReturn.start();
     try {
@@ -289,7 +307,7 @@ export default function BookCheckout() {
 
         returnFormActions.reset({
           returnBarcode: '',
-          activeCheckout: null
+          activeCheckout: null,
         });
         modalActions.returnConfirm.close();
       }
@@ -303,8 +321,12 @@ export default function BookCheckout() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Book Checkout & Return</h2>
-        <p className="text-muted-foreground">Manage book borrowing and returns</p>
+        <h2 className="text-3xl font-bold tracking-tight">
+          Book Checkout & Return
+        </h2>
+        <p className="text-muted-foreground">
+          Manage book borrowing and returns
+        </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -328,27 +350,41 @@ export default function BookCheckout() {
           <Card>
             <CardHeader>
               <CardTitle>Book Checkout Process</CardTitle>
-              <CardDescription>Scan student ID, then scan book to checkout</CardDescription>
+              <CardDescription>
+                Scan student ID, then scan book to checkout
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Step Indicator */}
               <div className="flex items-center justify-between">
-                <div className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'student' ? 'text-primary' : 'text-muted-foreground'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'student' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <div
+                  className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'student' ? 'text-primary' : 'text-muted-foreground'}`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'student' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                  >
                     1
                   </div>
                   <span className="font-medium">Student</span>
                 </div>
                 <div className="flex-1 h-0.5 bg-border mx-4" />
-                <div className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'book' ? 'text-primary' : 'text-muted-foreground'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'book' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <div
+                  className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'book' ? 'text-primary' : 'text-muted-foreground'}`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'book' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                  >
                     2
                   </div>
                   <span className="font-medium">Book</span>
                 </div>
                 <div className="flex-1 h-0.5 bg-border mx-4" />
-                <div className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'confirm' ? 'text-primary' : 'text-muted-foreground'}`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'confirm' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <div
+                  className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'confirm' ? 'text-primary' : 'text-muted-foreground'}`}
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'confirm' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                  >
                     3
                   </div>
                   <span className="font-medium">Confirm</span>
@@ -373,12 +409,29 @@ export default function BookCheckout() {
                         id="studentBarcode"
                         placeholder="Enter student ID or scan barcode..."
                         value={checkoutForm.values.studentBarcode}
-                        onChange={(e) => checkoutFormActions.setValue('studentBarcode', e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleScanStudent()}
+                        onChange={(e) =>
+                          checkoutFormActions.setValue(
+                            'studentBarcode',
+                            e.target.value
+                          )
+                        }
+                        onKeyPress={(e) =>
+                          e.key === 'Enter' && handleScanStudent()
+                        }
                         autoFocus
                       />
-                      <Button onClick={handleScanStudent} disabled={loadingStates.scanStudent.isLoading}>
-                        {loadingStates.scanStudent.isLoading ? 'Searching...' : <><Scan className="h-4 w-4 mr-2" />Find</>}
+                      <Button
+                        onClick={handleScanStudent}
+                        disabled={loadingStates.scanStudent.isLoading}
+                      >
+                        {loadingStates.scanStudent.isLoading ? (
+                          'Searching...'
+                        ) : (
+                          <>
+                            <Scan className="h-4 w-4 mr-2" />
+                            Find
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -386,117 +439,195 @@ export default function BookCheckout() {
               )}
 
               {/* Step 2: Scan Book */}
-              {checkoutForm.values.checkoutStep === 'book' && checkoutForm.values.selectedStudent && (
-                <div className="space-y-4">
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertTitle>Student Selected</AlertTitle>
-                    <AlertDescription>
-                      {checkoutForm.values.selectedStudent.firstName} {checkoutForm.values.selectedStudent.lastName} - {checkoutForm.values.selectedStudent.gradeLevel} {checkoutForm.values.selectedStudent.section}
-                    </AlertDescription>
-                  </Alert>
+              {checkoutForm.values.checkoutStep === 'book' &&
+                checkoutForm.values.selectedStudent && (
+                  <div className="space-y-4">
+                    <Alert>
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertTitle>Student Selected</AlertTitle>
+                      <AlertDescription>
+                        {checkoutForm.values.selectedStudent.firstName}{' '}
+                        {checkoutForm.values.selectedStudent.lastName} -{' '}
+                        {checkoutForm.values.selectedStudent.gradeLevel}{' '}
+                        {checkoutForm.values.selectedStudent.section}
+                      </AlertDescription>
+                    </Alert>
 
-                  <Alert>
-                    <BookOpen className="h-4 w-4" />
-                    <AlertTitle>Step 2: Scan Book</AlertTitle>
-                    <AlertDescription>
-                      Enter or scan the book's accession number
-                    </AlertDescription>
-                  </Alert>
+                    <Alert>
+                      <BookOpen className="h-4 w-4" />
+                      <AlertTitle>Step 2: Scan Book</AlertTitle>
+                      <AlertDescription>
+                        Enter or scan the book's accession number
+                      </AlertDescription>
+                    </Alert>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="bookBarcode">Book Accession Number</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="bookBarcode">Book Accession Number</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="bookBarcode"
+                          placeholder="Enter accession number or scan barcode..."
+                          value={checkoutForm.values.bookBarcode}
+                          onChange={(e) =>
+                            checkoutFormActions.setValue(
+                              'bookBarcode',
+                              e.target.value
+                            )
+                          }
+                          onKeyPress={(e) =>
+                            e.key === 'Enter' && handleScanBook()
+                          }
+                          autoFocus
+                        />
+                        <Button
+                          onClick={handleScanBook}
+                          disabled={loadingStates.scanBook.isLoading}
+                        >
+                          {loadingStates.scanBook.isLoading ? (
+                            'Searching...'
+                          ) : (
+                            <>
+                              <Scan className="h-4 w-4 mr-2" />
+                              Find
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        checkoutFormActions.setValue('checkoutStep', 'student')
+                      }
+                    >
+                      Back to Student Selection
+                    </Button>
+                  </div>
+                )}
+
+              {/* Step 3: Confirm */}
+              {checkoutForm.values.checkoutStep === 'confirm' &&
+                checkoutForm.values.selectedStudent &&
+                checkoutForm.values.selectedBook && (
+                  <div className="space-y-4">
+                    <Alert>
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertTitle>Ready to Checkout</AlertTitle>
+                      <AlertDescription>
+                        Review the details below and confirm
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="grid gap-4">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            Student Information
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm space-y-1">
+                          <div>
+                            <strong>Name:</strong>{' '}
+                            {checkoutForm.values.selectedStudent.firstName}{' '}
+                            {checkoutForm.values.selectedStudent.lastName}
+                          </div>
+                          <div>
+                            <strong>ID:</strong>{' '}
+                            {checkoutForm.values.selectedStudent.studentId}
+                          </div>
+                          <div>
+                            <strong>Grade:</strong>{' '}
+                            {checkoutForm.values.selectedStudent.gradeLevel}{' '}
+                            {checkoutForm.values.selectedStudent.section}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <BookOpen className="h-4 w-4" />
+                            Book Information
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm space-y-1">
+                          <div>
+                            <strong>Title:</strong>{' '}
+                            {checkoutForm.values.selectedBook.title}
+                          </div>
+                          <div>
+                            <strong>Author:</strong>{' '}
+                            {checkoutForm.values.selectedBook.author}
+                          </div>
+                          <div>
+                            <strong>Accession No:</strong>{' '}
+                            {checkoutForm.values.selectedBook.accessionNo}
+                          </div>
+                          <div>
+                            <Badge
+                              variant={
+                                checkoutForm.values.selectedBook
+                                  .availableCopies > 0
+                                  ? 'default'
+                                  : 'destructive'
+                              }
+                            >
+                              {checkoutForm.values.selectedBook.availableCopies}{' '}
+                              / {checkoutForm.values.selectedBook.totalCopies}{' '}
+                              Available
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="dueDate">Due Date</Label>
+                        <Input
+                          id="dueDate"
+                          type="date"
+                          value={checkoutForm.values.dueDate}
+                          onChange={(e) =>
+                            checkoutFormActions.setValue(
+                              'dueDate',
+                              e.target.value
+                            )
+                          }
+                          min={new Date().toISOString().split('T')[0]}
+                        />
+                      </div>
+                    </div>
+
                     <div className="flex gap-2">
-                      <Input
-                        id="bookBarcode"
-                        placeholder="Enter accession number or scan barcode..."
-                        value={checkoutForm.values.bookBarcode}
-                        onChange={(e) => checkoutFormActions.setValue('bookBarcode', e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleScanBook()}
-                        autoFocus
-                      />
-                      <Button onClick={handleScanBook} disabled={loadingStates.scanBook.isLoading}>
-                        {loadingStates.scanBook.isLoading ? 'Searching...' : <><Scan className="h-4 w-4 mr-2" />Find</>}
+                      <Button
+                        onClick={handleConfirmCheckout}
+                        disabled={loadingStates.confirmCheckout.isLoading}
+                        className="flex-1"
+                      >
+                        {loadingStates.confirmCheckout.isLoading ? (
+                          'Processing...'
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Confirm Checkout
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          checkoutFormActions.setValue('checkoutStep', 'book')
+                        }
+                      >
+                        Back
+                      </Button>
+                      <Button variant="ghost" onClick={resetCheckout}>
+                        Cancel
                       </Button>
                     </div>
                   </div>
-
-                  <Button variant="outline" onClick={() => checkoutFormActions.setValue('checkoutStep', 'student')}>
-                    Back to Student Selection
-                  </Button>
-                </div>
-              )}
-
-              {/* Step 3: Confirm */}
-              {checkoutForm.values.checkoutStep === 'confirm' && checkoutForm.values.selectedStudent && checkoutForm.values.selectedBook && (
-                <div className="space-y-4">
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertTitle>Ready to Checkout</AlertTitle>
-                    <AlertDescription>
-                      Review the details below and confirm
-                    </AlertDescription>
-                  </Alert>
-
-                  <div className="grid gap-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-sm flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          Student Information
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-sm space-y-1">
-                        <div><strong>Name:</strong> {checkoutForm.values.selectedStudent.firstName} {checkoutForm.values.selectedStudent.lastName}</div>
-                        <div><strong>ID:</strong> {checkoutForm.values.selectedStudent.studentId}</div>
-                        <div><strong>Grade:</strong> {checkoutForm.values.selectedStudent.gradeLevel} {checkoutForm.values.selectedStudent.section}</div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-sm flex items-center gap-2">
-                          <BookOpen className="h-4 w-4" />
-                          Book Information
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="text-sm space-y-1">
-                        <div><strong>Title:</strong> {checkoutForm.values.selectedBook.title}</div>
-                        <div><strong>Author:</strong> {checkoutForm.values.selectedBook.author}</div>
-                        <div><strong>Accession No:</strong> {checkoutForm.values.selectedBook.accessionNo}</div>
-                        <div>
-                          <Badge variant={checkoutForm.values.selectedBook.availableCopies > 0 ? "default" : "destructive"}>
-                            {checkoutForm.values.selectedBook.availableCopies} / {checkoutForm.values.selectedBook.totalCopies} Available
-                          </Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="dueDate">Due Date</Label>
-                      <Input
-                        id="dueDate"
-                        type="date"
-                        value={checkoutForm.values.dueDate}
-                        onChange={(e) => checkoutFormActions.setValue('dueDate', e.target.value)}
-                        min={new Date().toISOString().split('T')[0]}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button onClick={handleConfirmCheckout} disabled={loadingStates.confirmCheckout.isLoading} className="flex-1">
-                      {loadingStates.confirmCheckout.isLoading ? 'Processing...' : <><CheckCircle className="h-4 w-4 mr-2" />Confirm Checkout</>}
-                    </Button>
-                    <Button variant="outline" onClick={() => checkoutFormActions.setValue('checkoutStep', 'book')}>
-                      Back
-                    </Button>
-                    <Button variant="ghost" onClick={resetCheckout}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
+                )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -506,7 +637,9 @@ export default function BookCheckout() {
           <Card>
             <CardHeader>
               <CardTitle>Return Book</CardTitle>
-              <CardDescription>Scan the book's barcode to process return</CardDescription>
+              <CardDescription>
+                Scan the book's barcode to process return
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Alert>
@@ -524,12 +657,27 @@ export default function BookCheckout() {
                     id="returnBarcode"
                     placeholder="Enter accession number or scan barcode..."
                     value={returnForm.values.returnBarcode}
-                    onChange={(e) => returnFormActions.setValue('returnBarcode', e.target.value)}
+                    onChange={(e) =>
+                      returnFormActions.setValue(
+                        'returnBarcode',
+                        e.target.value
+                      )
+                    }
                     onKeyPress={(e) => e.key === 'Enter' && handleScanReturn()}
                     autoFocus
                   />
-                  <Button onClick={handleScanReturn} disabled={loadingStates.scanReturn.isLoading}>
-                    {loadingStates.scanReturn.isLoading ? 'Searching...' : <><Scan className="h-4 w-4 mr-2" />Find</>}
+                  <Button
+                    onClick={handleScanReturn}
+                    disabled={loadingStates.scanReturn.isLoading}
+                  >
+                    {loadingStates.scanReturn.isLoading ? (
+                      'Searching...'
+                    ) : (
+                      <>
+                        <Scan className="h-4 w-4 mr-2" />
+                        Find
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -539,39 +687,71 @@ export default function BookCheckout() {
 
         {/* HISTORY TAB */}
         <TabsContent value="history" className="space-y-4 mt-6">
-          <Suspense fallback={
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          }>
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            }
+          >
             <CheckoutHistory />
           </Suspense>
         </TabsContent>
       </Tabs>
 
       {/* Return Confirmation Dialog */}
-      <Dialog open={!!modalStates.returnConfirm} onOpenChange={(open) => modalActions.returnConfirm.setState(open)}>
+      <Dialog
+        open={!!modalStates.returnConfirm}
+        onOpenChange={(open) => modalActions.returnConfirm.setState(open)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Book Return</DialogTitle>
-            <DialogDescription>Review the checkout details below</DialogDescription>
+            <DialogDescription>
+              Review the checkout details below
+            </DialogDescription>
           </DialogHeader>
 
           {returnForm.values.activeCheckout && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <div><strong>Book:</strong> {returnForm.values.activeCheckout.book.title}</div>
-                <div><strong>Student:</strong> {returnForm.values.activeCheckout.student.firstName} {returnForm.values.activeCheckout.student.lastName}</div>
-                <div><strong>Checkout Date:</strong> {new Date(returnForm.values.activeCheckout.checkoutDate).toLocaleDateString()}</div>
-                <div><strong>Due Date:</strong> {new Date(returnForm.values.activeCheckout.dueDate).toLocaleDateString()}</div>
+                <div>
+                  <strong>Book:</strong>{' '}
+                  {returnForm.values.activeCheckout.book.title}
+                </div>
+                <div>
+                  <strong>Student:</strong>{' '}
+                  {returnForm.values.activeCheckout.student.firstName}{' '}
+                  {returnForm.values.activeCheckout.student.lastName}
+                </div>
+                <div>
+                  <strong>Checkout Date:</strong>{' '}
+                  {new Date(
+                    returnForm.values.activeCheckout.checkoutDate
+                  ).toLocaleDateString()}
+                </div>
+                <div>
+                  <strong>Due Date:</strong>{' '}
+                  {new Date(
+                    returnForm.values.activeCheckout.dueDate
+                  ).toLocaleDateString()}
+                </div>
 
                 {returnForm.values.activeCheckout.overdueDays > 0 && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Overdue</AlertTitle>
                     <AlertDescription>
-                      <div>{returnForm.values.activeCheckout.overdueDays} day(s) overdue</div>
-                      <div className="font-bold">Fine: ₱{parseFloat(returnForm.values.activeCheckout.fineAmount).toFixed(2)}</div>
+                      <div>
+                        {returnForm.values.activeCheckout.overdueDays} day(s)
+                        overdue
+                      </div>
+                      <div className="font-bold">
+                        Fine: ₱
+                        {parseFloat(
+                          returnForm.values.activeCheckout.fineAmount
+                        ).toFixed(2)}
+                      </div>
                     </AlertDescription>
                   </Alert>
                 )}
@@ -580,11 +760,19 @@ export default function BookCheckout() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => modalActions.returnConfirm.close()}>
+            <Button
+              variant="outline"
+              onClick={() => modalActions.returnConfirm.close()}
+            >
               Cancel
             </Button>
-            <Button onClick={handleConfirmReturn} disabled={loadingStates.confirmReturn.isLoading}>
-              {loadingStates.confirmReturn.isLoading ? 'Processing...' : 'Confirm Return'}
+            <Button
+              onClick={handleConfirmReturn}
+              disabled={loadingStates.confirmReturn.isLoading}
+            >
+              {loadingStates.confirmReturn.isLoading
+                ? 'Processing...'
+                : 'Confirm Return'}
             </Button>
           </DialogFooter>
         </DialogContent>

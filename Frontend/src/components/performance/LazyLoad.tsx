@@ -38,69 +38,83 @@ interface ErrorFallbackProps {
 }
 
 // Loading indicator component
-const LoadingIndicator = memo(({ size = 'md', message = 'Loading...', showSpinner = true, skeleton = false }: LoadingIndicatorProps) => {
-  if (skeleton) {
+const LoadingIndicator = memo(
+  ({
+    size = 'md',
+    message = 'Loading...',
+    showSpinner = true,
+    skeleton = false,
+  }: LoadingIndicatorProps) => {
+    if (skeleton) {
+      return (
+        <div className="animate-pulse">
+          <div className="bg-slate-200 dark:bg-slate-700 rounded-lg h-32 w-full mb-2"></div>
+          <div className="bg-slate-200 dark:bg-slate-700 rounded h-4 w-3/4 mb-2"></div>
+          <div className="bg-slate-200 dark:bg-slate-700 rounded h-4 w-1/2"></div>
+        </div>
+      );
+    }
+
     return (
-      <div className="animate-pulse">
-        <div className="bg-slate-200 dark:bg-slate-700 rounded-lg h-32 w-full mb-2"></div>
-        <div className="bg-slate-200 dark:bg-slate-700 rounded h-4 w-3/4 mb-2"></div>
-        <div className="bg-slate-200 dark:bg-slate-700 rounded h-4 w-1/2"></div>
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        {showSpinner && (
+          <Loader2
+            className={`animate-spin ${
+              size === 'sm' ? 'h-4 w-4' : size === 'lg' ? 'h-8 w-8' : 'h-6 w-6'
+            } text-primary mb-4`}
+          />
+        )}
+        <p className="text-sm text-muted-foreground font-medium">{message}</p>
       </div>
     );
   }
-
-  return (
-    <div className="flex flex-col items-center justify-center p-8 text-center">
-      {showSpinner && (
-        <Loader2
-          className={`animate-spin ${
-            size === 'sm' ? 'h-4 w-4' :
-            size === 'lg' ? 'h-8 w-8' : 'h-6 w-6'
-          } text-primary mb-4`}
-        />
-      )}
-      <p className="text-sm text-muted-foreground font-medium">{message}</p>
-    </div>
-  );
-});
+);
 
 // Error fallback component
-const ErrorFallback = memo(({ error, retryCount, onRetry, maxRetries, component = 'Component' }: ErrorFallbackProps) => {
-  const canRetry = retryCount < maxRetries;
+const ErrorFallback = memo(
+  ({
+    error,
+    retryCount,
+    onRetry,
+    maxRetries,
+    component = 'Component',
+  }: ErrorFallbackProps) => {
+    const canRetry = retryCount < maxRetries;
 
-  return (
-    <div className="flex flex-col items-center justify-center p-8 text-center">
-      <div className="rounded-full bg-red-100 dark:bg-red-900/20 p-3 mb-4">
-        <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
-      </div>
-      <h3 className="text-lg font-semibold text-foreground mb-2">
-        Failed to Load {component}
-      </h3>
-      <p className="text-sm text-muted-foreground mb-4 max-w-md">
-        {error.message || 'An error occurred while loading this component.'}
-      </p>
-      {canRetry && (
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">
-            Retry {retryCount} of {maxRetries}
-          </p>
-          <button
-            onClick={onRetry}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium"
-          >
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Try Again
-          </button>
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <div className="rounded-full bg-red-100 dark:bg-red-900/20 p-3 mb-4">
+          <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
         </div>
-      )}
-      {!canRetry && (
-        <p className="text-xs text-red-600 dark:text-red-400">
-          Maximum retries reached. Please refresh the page.
+        <h3 className="text-lg font-semibold text-foreground mb-2">
+          Failed to Load {component}
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4 max-w-md">
+          {error.message || 'An error occurred while loading this component.'}
         </p>
-      )}
-    </div>
-  );
-});
+        {canRetry && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Retry {retryCount} of {maxRetries}
+            </p>
+            <button
+              onClick={onRetry}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium"
+            >
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Try Again
+            </button>
+          </div>
+        )}
+        {!canRetry && (
+          <p className="text-xs text-red-600 dark:text-red-400">
+            Maximum retries reached. Please refresh the page.
+          </p>
+        )}
+      </div>
+    );
+  }
+);
 
 // Network detection component
 const NetworkStatus = memo(() => {
@@ -122,7 +136,7 @@ const NetworkStatus = memo(() => {
         const response = await fetch('/api/health', {
           method: 'HEAD',
           cache: 'no-store',
-          signal: AbortSignal.timeout(3000)
+          signal: AbortSignal.timeout(3000),
         });
         setHasConnection(response.ok);
       } catch (error) {
@@ -179,17 +193,18 @@ export const createLazyLoad = <T extends ComponentType<any>>(
     prefetch = false,
     threshold = 0.1,
     rootMargin = '50px',
-    trigger = true
+    trigger = true,
   } = options;
 
   const LazyComponent = lazy(importFunc);
 
   return memo((props: any) => {
-    const [loadingState, setLoadingState] = React.useState<LoadingState>('idle');
+    const [loadingState, setLoadingState] =
+      React.useState<LoadingState>('idle');
     const [currentRetryCount, setCurrentRetryCount] = React.useState(0);
 
     React.useCallback(() => {
-      setCurrentRetryCount(prev => prev + 1);
+      setCurrentRetryCount((prev) => prev + 1);
       setLoadingState('retry');
       onRetry?.();
 
@@ -199,11 +214,14 @@ export const createLazyLoad = <T extends ComponentType<any>>(
       }, 100);
     }, [onRetry]);
 
-    const handleError = React.useCallback((error: Error) => {
-      setLoadingState('error');
-      onError?.(error);
-      console.error('Lazy loading error:', error);
-    }, [onError]);
+    const handleError = React.useCallback(
+      (error: Error) => {
+        setLoadingState('error');
+        onError?.(error);
+        console.error('Lazy loading error:', error);
+      },
+      [onError]
+    );
 
     const handleLoad = React.useCallback(() => {
       setLoadingState('success');
@@ -218,7 +236,7 @@ export const createLazyLoad = <T extends ComponentType<any>>(
       if (prefetch && elementRef.current && trigger) {
         observerRef.current = new IntersectionObserver(
           (entries) => {
-            entries.forEach(entry => {
+            entries.forEach((entry) => {
               if (entry.isIntersecting) {
                 // Prefetch the component
                 importFunc();
@@ -259,19 +277,19 @@ export const createLazyLoad = <T extends ComponentType<any>>(
         <Suspense
           fallback={
             <div style={{ minHeight: delay ? '0px' : '200px' }}>
-              {delay === 0 ? fallback : (
-                <div style={{ opacity: 0, transition: 'opacity 0.3s ease-in-out' }}>
+              {delay === 0 ? (
+                fallback
+              ) : (
+                <div
+                  style={{ opacity: 0, transition: 'opacity 0.3s ease-in-out' }}
+                >
                   {fallback}
                 </div>
               )}
             </div>
           }
         >
-          <LazyComponent
-            {...props}
-            onError={handleError}
-            onLoad={handleLoad}
-          />
+          <LazyComponent {...props} onError={handleError} onLoad={handleLoad} />
         </Suspense>
       </div>
     );
@@ -288,87 +306,89 @@ export const preloadComponent = <T extends ComponentType<any>>(
 };
 
 // Intersection Observer based lazy loading for images
-export const LazyImage = memo(({
-  src,
-  alt,
-  className,
-  placeholder,
-  onLoad,
-  onError,
-  ...props
-}: {
-  src: string;
-  alt: string;
-  className?: string;
-  placeholder?: string;
-  onLoad?: () => void;
-  onError?: () => void;
-  [key: string]: any;
-}) => {
-  const [isLoaded, setIsLoaded] = React.useState(false);
-  const [isInView, setIsInView] = React.useState(false);
-  const [hasError, setHasError] = React.useState(false);
-  const imgRef = React.useRef<HTMLImageElement>(null);
+export const LazyImage = memo(
+  ({
+    src,
+    alt,
+    className,
+    placeholder,
+    onLoad,
+    onError,
+    ...props
+  }: {
+    src: string;
+    alt: string;
+    className?: string;
+    placeholder?: string;
+    onLoad?: () => void;
+    onError?: () => void;
+    [key: string]: any;
+  }) => {
+    const [isLoaded, setIsLoaded] = React.useState(false);
+    const [isInView, setIsInView] = React.useState(false);
+    const [hasError, setHasError] = React.useState(false);
+    const imgRef = React.useRef<HTMLImageElement>(null);
 
-  React.useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry && entry.isIntersecting) {
-          setIsInView(true);
-        }
-      },
-      { threshold: 0.1 }
-    );
+    React.useEffect(() => {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry && entry.isIntersecting) {
+            setIsInView(true);
+          }
+        },
+        { threshold: 0.1 }
+      );
 
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
-  React.useEffect(() => {
-    if (isInView && src && !isLoaded && !hasError) {
       if (imgRef.current) {
-        imgRef.current.src = src;
+        observer.observe(imgRef.current);
       }
-    }
-  }, [isInView, src, isLoaded, hasError]);
 
-  return (
-    <div className={`relative overflow-hidden ${className || ''}`}>
-      {!isLoaded && (
-        <div className="absolute inset-0 bg-slate-200 dark:bg-slate-700 animate-pulse flex items-center justify-center">
-          {placeholder ? (
-            <img
-              src={placeholder}
-              alt={alt}
-              className="w-full h-full object-cover opacity-50"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 to-slate-800" />
-          )}
-        </div>
-      )}
-      <img
-        ref={imgRef}
-        alt={alt}
-        className={`w-full h-full object-cover transition-opacity duration-300 ${
-          isLoaded ? 'opacity-100' : 'opacity-0'
-        } ${hasError ? 'opacity-50' : ''}`}
-        onLoad={() => {
-          setIsLoaded(true);
-          onLoad?.();
-        }}
-        onError={() => {
-          setHasError(true);
-          onError?.();
-        }}
-        {...props}
-      />
-    </div>
-  );
-});
+      return () => observer.disconnect();
+    }, []);
+
+    React.useEffect(() => {
+      if (isInView && src && !isLoaded && !hasError) {
+        if (imgRef.current) {
+          imgRef.current.src = src;
+        }
+      }
+    }, [isInView, src, isLoaded, hasError]);
+
+    return (
+      <div className={`relative overflow-hidden ${className || ''}`}>
+        {!isLoaded && (
+          <div className="absolute inset-0 bg-slate-200 dark:bg-slate-700 animate-pulse flex items-center justify-center">
+            {placeholder ? (
+              <img
+                src={placeholder}
+                alt={alt}
+                className="w-full h-full object-cover opacity-50"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 to-slate-800" />
+            )}
+          </div>
+        )}
+        <img
+          ref={imgRef}
+          alt={alt}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          } ${hasError ? 'opacity-50' : ''}`}
+          onLoad={() => {
+            setIsLoaded(true);
+            onLoad?.();
+          }}
+          onError={() => {
+            setHasError(true);
+            onError?.();
+          }}
+          {...props}
+        />
+      </div>
+    );
+  }
+);
 
 LazyImage.displayName = 'LazyImage';
 
@@ -382,14 +402,20 @@ export const BundleAnalyzer = memo(() => {
     // Analyze bundle size if performance API is available
     if ('performance' in window && 'memory' in performance) {
       const analyzeBundle = () => {
-        const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+        const navigation = performance.getEntriesByType(
+          'navigation'
+        )[0] as PerformanceNavigationTiming;
         if (navigation) {
-          setLoadTime(Math.round(navigation.loadEventEnd - navigation.loadEventStart));
+          setLoadTime(
+            Math.round(navigation.loadEventEnd - navigation.loadEventStart)
+          );
         }
 
         // Get resource timing info for chunks
-        const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
-        const jsResources = resources.filter(r => r.name.endsWith('.js'));
+        const resources = performance.getEntriesByType(
+          'resource'
+        ) as PerformanceResourceTiming[];
+        const jsResources = resources.filter((r) => r.name.endsWith('.js'));
         setChunkCount(jsResources.length);
 
         // Calculate approximate bundle size
@@ -421,7 +447,9 @@ export const withPerformanceMonitoring = <P extends object>(
 ) => {
   const MonitoredComponent = memo((props: P) => {
     const [renderCount, setRenderCount] = React.useState(0);
-    const [lastRenderTime, setLastRenderTime] = React.useState<number>(Date.now());
+    const [lastRenderTime, setLastRenderTime] = React.useState<number>(
+      Date.now()
+    );
 
     React.useEffect(() => {
       const now = Date.now();
@@ -432,11 +460,11 @@ export const withPerformanceMonitoring = <P extends object>(
         console.log(`Component ${Component.displayName} rendered:`, {
           renderCount: renderCount + 1,
           timeSinceLastRender: `${timeSinceLastRender}ms`,
-          props: Object.keys(props).slice(0, 3)
+          props: Object.keys(props).slice(0, 3),
         });
       }
 
-      setRenderCount(prev => prev + 1);
+      setRenderCount((prev) => prev + 1);
       setLastRenderTime(now);
     });
 
@@ -464,7 +492,7 @@ export const VirtualList = <T,>({
   containerHeight,
   renderItem,
   overscan = 5,
-  className
+  className,
 }: VirtualListProps<T>) => {
   const [scrollTop, setScrollTop] = React.useState(0);
   const [startIndex, setStartIndex] = React.useState(0);
@@ -505,7 +533,7 @@ export const VirtualList = <T,>({
               position: 'absolute',
               top: (startIndex + index) * itemHeight,
               height: itemHeight,
-              width: '100%'
+              width: '100%',
             }}
           >
             {renderItem(item, startIndex + index)}
@@ -538,5 +566,5 @@ export default {
   preloadCriticalComponents,
   LoadingIndicator,
   ErrorFallback,
-  NetworkStatus
+  NetworkStatus,
 };

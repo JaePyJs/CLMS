@@ -39,7 +39,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     onConnect,
     onDisconnect,
     onError,
-    onMessage
+    onMessage,
   } = options;
 
   const { user, token } = useAuth();
@@ -52,24 +52,24 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     isConnecting: false,
     error: null,
     lastMessage: null,
-    connectionAttempts: 0
+    connectionAttempts: 0,
   });
 
   const getWebSocketUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.hostname;
-    const port = import.meta.env.VITE_WS_URL ?
-      new URL(import.meta.env.VITE_WS_URL).port :
-      '3001'; // Use backend port by default
+    const port = import.meta.env.VITE_WS_URL
+      ? new URL(import.meta.env.VITE_WS_URL).port
+      : '3001'; // Use backend port by default
     const wsUrl = `${protocol}//${host}:${port}/ws?token=${encodeURIComponent(token || '')}`;
     return wsUrl;
   }, [token]);
 
   const createWebSocket = useCallback(() => {
     if (!token) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: 'Authentication token required for WebSocket connection'
+        error: 'Authentication token required for WebSocket connection',
       }));
       return null;
     }
@@ -79,10 +79,10 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
       return ws;
     } catch (error) {
       const errorMessage = `Failed to create WebSocket connection: ${(error as Error).message}`;
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         error: errorMessage,
-        isConnecting: false
+        isConnecting: false,
       }));
       onError?.(errorMessage);
       return null;
@@ -117,22 +117,25 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
   const connect = useCallback(() => {
     // Check if already connecting or connected using refs
-    if (wsRef.current?.readyState === WebSocket.CONNECTING || wsRef.current?.readyState === WebSocket.OPEN) {
+    if (
+      wsRef.current?.readyState === WebSocket.CONNECTING ||
+      wsRef.current?.readyState === WebSocket.OPEN
+    ) {
       return;
     }
 
     if (!token) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        error: 'Authentication required for WebSocket connection'
+        error: 'Authentication required for WebSocket connection',
       }));
       return;
     }
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       isConnecting: true,
-      error: null
+      error: null,
     }));
 
     const ws = createWebSocket();
@@ -144,23 +147,25 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
     ws.onopen = () => {
       console.log('WebSocket connected');
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         isConnected: true,
         isConnecting: false,
         error: null,
-        connectionAttempts: 0
+        connectionAttempts: 0,
       }));
 
       // Setup heartbeat
       setupHeartbeat();
 
       // Subscribe to specified channels
-      subscriptions.forEach(subscription => {
-        ws.send(JSON.stringify({
-          type: 'subscribe',
-          data: { subscription }
-        }));
+      subscriptions.forEach((subscription) => {
+        ws.send(
+          JSON.stringify({
+            type: 'subscribe',
+            data: { subscription },
+          })
+        );
       });
 
       onConnect?.();
@@ -171,9 +176,9 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
 
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
-          lastMessage: message
+          lastMessage: message,
         }));
 
         // Handle pong response
@@ -206,15 +211,26 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
         // Handle different message types
         switch (message.type) {
           case 'student_activity_update':
-            toast.info(`Student activity: ${message.data.studentName} - ${message.data.activityType}`);
+            toast.info(
+              `Student activity: ${message.data.studentName} - ${message.data.activityType}`
+            );
             break;
           case 'equipment_status_update':
-            toast.warning(`Equipment update: ${message.data.equipmentName} - ${message.data.status}`);
+            toast.warning(
+              `Equipment update: ${message.data.equipmentName} - ${message.data.status}`
+            );
             break;
           case 'system_notification': {
-            const notificationType = message.data.notificationType as keyof typeof toast;
-            const title = typeof message.data.title === 'string' ? message.data.title : message.data.title?.message || 'Notification';
-            if (notificationType && typeof toast[notificationType] === 'function') {
+            const notificationType = message.data
+              .notificationType as keyof typeof toast;
+            const title =
+              typeof message.data.title === 'string'
+                ? message.data.title
+                : message.data.title?.message || 'Notification';
+            if (
+              notificationType &&
+              typeof toast[notificationType] === 'function'
+            ) {
               (toast[notificationType] as (message: string) => void)(title);
             } else {
               toast.info(title);
@@ -236,31 +252,37 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
       console.log('WebSocket disconnected:', event.code, event.reason);
       clearHeartbeat();
 
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         isConnected: false,
-        isConnecting: false
+        isConnecting: false,
       }));
 
       onDisconnect?.();
 
       // Attempt reconnection if not a normal closure
-      if (event.code !== 1000 && state.connectionAttempts < maxReconnectAttempts) {
+      if (
+        event.code !== 1000 &&
+        state.connectionAttempts < maxReconnectAttempts
+      ) {
         const nextAttempt = state.connectionAttempts + 1;
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
-          connectionAttempts: nextAttempt
+          connectionAttempts: nextAttempt,
         }));
 
         reconnectTimeoutRef.current = setTimeout(() => {
-          console.log(`Attempting WebSocket reconnection (${nextAttempt}/${maxReconnectAttempts})`);
+          console.log(
+            `Attempting WebSocket reconnection (${nextAttempt}/${maxReconnectAttempts})`
+          );
           connect();
         }, reconnectInterval);
       } else if (state.connectionAttempts >= maxReconnectAttempts) {
-        const errorMessage = 'Failed to establish WebSocket connection after maximum attempts';
-        setState(prev => ({
+        const errorMessage =
+          'Failed to establish WebSocket connection after maximum attempts';
+        setState((prev) => ({
           ...prev,
-          error: errorMessage
+          error: errorMessage,
         }));
         onError?.(errorMessage);
         toast.error('Real-time connection failed');
@@ -270,10 +292,10 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
       const errorMessage = 'WebSocket connection error';
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         error: errorMessage,
-        isConnecting: false
+        isConnecting: false,
       }));
       onError?.(errorMessage);
     };
@@ -288,7 +310,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     onConnect,
     onDisconnect,
     onError,
-    onMessage
+    onMessage,
   ]);
 
   const disconnect = useCallback(() => {
@@ -305,7 +327,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
       isConnecting: false,
       error: null,
       lastMessage: null,
-      connectionAttempts: 0
+      connectionAttempts: 0,
     });
   }, [clearHeartbeat, clearReconnectTimeout]);
 
@@ -319,40 +341,55 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     }
   }, []);
 
-  const subscribe = useCallback((subscription: string) => {
-    return sendMessage({
-      type: 'subscribe',
-      data: { subscription }
-    });
-  }, [sendMessage]);
+  const subscribe = useCallback(
+    (subscription: string) => {
+      return sendMessage({
+        type: 'subscribe',
+        data: { subscription },
+      });
+    },
+    [sendMessage]
+  );
 
-  const unsubscribe = useCallback((subscription: string) => {
-    return sendMessage({
-      type: 'unsubscribe',
-      data: { subscription }
-    });
-  }, [sendMessage]);
+  const unsubscribe = useCallback(
+    (subscription: string) => {
+      return sendMessage({
+        type: 'unsubscribe',
+        data: { subscription },
+      });
+    },
+    [sendMessage]
+  );
 
-  const requestDashboardData = useCallback((dataType: string, filters?: any) => {
-    return sendMessage({
-      type: 'dashboard_request',
-      data: { dataType, filters }
-    });
-  }, [sendMessage]);
+  const requestDashboardData = useCallback(
+    (dataType: string, filters?: any) => {
+      return sendMessage({
+        type: 'dashboard_request',
+        data: { dataType, filters },
+      });
+    },
+    [sendMessage]
+  );
 
-  const sendChatMessage = useCallback((message: string, targetRole?: string, targetUserId?: string) => {
-    return sendMessage({
-      type: 'chat_message',
-      data: { message, targetRole, targetUserId }
-    });
-  }, [sendMessage]);
+  const sendChatMessage = useCallback(
+    (message: string, targetRole?: string, targetUserId?: string) => {
+      return sendMessage({
+        type: 'chat_message',
+        data: { message, targetRole, targetUserId },
+      });
+    },
+    [sendMessage]
+  );
 
-  const triggerEmergencyAlert = useCallback((alertType: string, message: string, location?: string) => {
-    return sendMessage({
-      type: 'emergency_alert',
-      data: { alertType, message, location, severity: 'critical' }
-    });
-  }, [sendMessage]);
+  const triggerEmergencyAlert = useCallback(
+    (alertType: string, message: string, location?: string) => {
+      return sendMessage({
+        type: 'emergency_alert',
+        data: { alertType, message, location, severity: 'critical' },
+      });
+    },
+    [sendMessage]
+  );
 
   // Auto-connect on mount
   useEffect(() => {
@@ -389,7 +426,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     unsubscribe,
     requestDashboardData,
     sendChatMessage,
-    triggerEmergencyAlert
+    triggerEmergencyAlert,
   };
 };
 
@@ -401,13 +438,13 @@ export const useWebSocketSubscription = (
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
 
   const handleNewMessage = useCallback((message: WebSocketMessage) => {
-    setMessages(prev => [...prev.slice(-99), message]); // Keep last 100 messages
+    setMessages((prev) => [...prev.slice(-99), message]); // Keep last 100 messages
   }, []);
 
   const ws = useWebSocket({
     ...options,
     subscriptions: [subscription],
-    onMessage: handleNewMessage
+    onMessage: handleNewMessage,
   });
 
   const clearMessages = useCallback(() => {
@@ -417,7 +454,7 @@ export const useWebSocketSubscription = (
   return {
     ...ws,
     messages,
-    clearMessages
+    clearMessages,
   };
 };
 
@@ -429,23 +466,26 @@ export const useDashboardWebSocket = () => {
     if (message.type === 'dashboard_data') {
       setDashboardData((prev: any) => ({
         ...prev,
-        [message.data.dataType]: message.data.data
+        [message.data.dataType]: message.data.data,
       }));
     }
   }, []);
 
   const ws = useWebSocketSubscription('dashboard', {
-    onMessage: handleDashboardMessage
+    onMessage: handleDashboardMessage,
   });
 
-  const refreshDashboard = useCallback((dataType: string, filters?: any) => {
-    ws.requestDashboardData(dataType, filters);
-  }, [ws]);
+  const refreshDashboard = useCallback(
+    (dataType: string, filters?: any) => {
+      ws.requestDashboardData(dataType, filters);
+    },
+    [ws]
+  );
 
   return {
     ...ws,
     dashboardData,
-    refreshDashboard
+    refreshDashboard,
   };
 };
 
@@ -455,17 +495,17 @@ export const useActivityWebSocket = () => {
 
   const handleActivityMessage = useCallback((message: WebSocketMessage) => {
     if (message.type === 'student_activity_update') {
-      setRecentActivities(prev => [message.data, ...prev.slice(0, 49)]); // Keep last 50
+      setRecentActivities((prev) => [message.data, ...prev.slice(0, 49)]); // Keep last 50
     }
   }, []);
 
   const ws = useWebSocketSubscription('activities', {
-    onMessage: handleActivityMessage
+    onMessage: handleActivityMessage,
   });
 
   return {
     ...ws,
-    recentActivities
+    recentActivities,
   };
 };
 
@@ -477,18 +517,18 @@ export const useEquipmentWebSocket = () => {
     if (message.type === 'equipment_status_update') {
       setEquipmentStatus((prev: any) => ({
         ...prev,
-        [message.data.equipmentId]: message.data
+        [message.data.equipmentId]: message.data,
       }));
     }
   }, []);
 
   const ws = useWebSocketSubscription('equipment', {
-    onMessage: handleEquipmentMessage
+    onMessage: handleEquipmentMessage,
   });
 
   return {
     ...ws,
-    equipmentStatus
+    equipmentStatus,
   };
 };
 
@@ -498,12 +538,12 @@ export const useNotificationWebSocket = () => {
 
   const handleNotificationMessage = useCallback((message: WebSocketMessage) => {
     if (message.type === 'system_notification') {
-      setNotifications(prev => [message.data, ...prev.slice(0, 49)]); // Keep last 50
+      setNotifications((prev) => [message.data, ...prev.slice(0, 49)]); // Keep last 50
     }
   }, []);
 
   const ws = useWebSocketSubscription('notifications', {
-    onMessage: handleNotificationMessage
+    onMessage: handleNotificationMessage,
   });
 
   const clearNotifications = useCallback(() => {
@@ -513,7 +553,7 @@ export const useNotificationWebSocket = () => {
   return {
     ...ws,
     notifications,
-    clearNotifications
+    clearNotifications,
   };
 };
 

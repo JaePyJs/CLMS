@@ -1,12 +1,18 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { logger } from '@/utils/logger';
-import { authService } from '@/services/authService';
-import { prisma } from '@/utils/prisma';
+import { AuthService } from '@/services/authService';
+// TODO: Fix prisma import path
+// import { prisma } from '@/utils/prisma';
 
 export interface EquipmentWebSocketMessage {
-  type: 'EQUIPMENT_UPDATE' | 'RESERVATION_UPDATE' | 'MAINTENANCE_UPDATE' | 'CONDITION_REPORT_UPDATE' | 'SESSION_UPDATE';
+  type:
+    | 'EQUIPMENT_UPDATE'
+    | 'RESERVATION_UPDATE'
+    | 'MAINTENANCE_UPDATE'
+    | 'CONDITION_REPORT_UPDATE'
+    | 'SESSION_UPDATE';
   action: 'CREATED' | 'UPDATED' | 'DELETED' | 'STARTED' | 'ENDED';
-  data: any;
+  data: unknown;
   equipmentId?: string;
   timestamp: string;
 }
@@ -16,6 +22,9 @@ export interface AuthenticatedWebSocket extends WebSocket {
   username?: string;
   role?: string;
   lastPing?: number;
+  connectionId?: string;
+  subscribedEquipment?: Set<string>;
+  subscribedAll?: boolean;
 }
 
 export class EquipmentWebSocketService {
@@ -33,7 +42,9 @@ export class EquipmentWebSocketService {
     this.heartbeatInterval = setInterval(() => {
       this.connections.forEach((ws, connectionId) => {
         if (ws.lastPing && Date.now() - ws.lastPing > 30000) {
-          logger.info('WebSocket connection timeout, closing', { connectionId });
+          logger.info('WebSocket connection timeout, closing', {
+            connectionId,
+          });
           ws.terminate();
           this.connections.delete(connectionId);
         } else if (ws.readyState === WebSocket.OPEN) {
@@ -57,7 +68,7 @@ export class EquipmentWebSocketService {
       this.connections.set(connectionId, ws);
 
       // Handle messages
-      ws.on('message', async (data) => {
+      ws.on('message', async data => {
         try {
           const message = JSON.parse(data.toString());
           await this.handleMessage(ws, message);
@@ -86,7 +97,7 @@ export class EquipmentWebSocketService {
       });
 
       // Handle errors
-      ws.on('error', (error) => {
+      ws.on('error', error => {
         logger.error('WebSocket error', {
           error: error.message,
           connectionId,
@@ -99,29 +110,38 @@ export class EquipmentWebSocketService {
     });
   }
 
-  private async handleMessage(ws: AuthenticatedWebSocket, message: any) {
+  private async handleMessage(
+    ws: AuthenticatedWebSocket,
+    message: Record<string, unknown>,
+  ) {
     const { type, data } = message;
 
     switch (type) {
       case 'AUTHENTICATE':
-        await this.handleAuthentication(ws, data);
+        await this.handleAuthentication(ws, data as { token: string });
         break;
       case 'SUBSCRIBE_EQUIPMENT':
-        this.handleEquipmentSubscription(ws, data);
+        this.handleEquipmentSubscription(ws, data as Record<string, unknown>);
         break;
       case 'UNSUBSCRIBE_EQUIPMENT':
-        this.handleEquipmentUnsubscription(ws, data);
+        this.handleEquipmentUnsubscription(ws, data as Record<string, unknown>);
         break;
       case 'EQUIPMENT_ACTION':
-        await this.handleEquipmentAction(ws, data);
+        await this.handleEquipmentAction(ws, data as Record<string, unknown>);
         break;
       default:
-        logger.warn('Unknown WebSocket message type', { type, connectionId: ws.connectionId });
+        logger.warn('Unknown WebSocket message type', {
+          type,
+          connectionId: ws.connectionId,
+        });
         this.sendError(ws, 'Unknown message type');
     }
   }
 
-  private async handleAuthentication(ws: AuthenticatedWebSocket, data: { token: string }) {
+  private async handleAuthentication(
+    ws: AuthenticatedWebSocket,
+    data: { token: string },
+  ) {
     try {
       const { token } = data;
       if (!token) {
@@ -129,25 +149,27 @@ export class EquipmentWebSocketService {
         return;
       }
 
-      const user = authService.verifyToken(token);
+      const user = AuthService.verifyToken(token);
       if (!user) {
         this.sendError(ws, 'Invalid authentication token');
         return;
       }
 
-      ws.userId = user.id;
+      ws.userId = user.userId;
       ws.username = user.username;
       ws.role = user.role;
 
       this.sendMessage(ws, {
         type: 'AUTHENTICATED',
-        data: { user: { id: user.id, username: user.username, role: user.role } },
+        data: {
+          user: { id: user.userId, username: user.username, role: user.role },
+        },
         timestamp: new Date().toISOString(),
       });
 
       logger.info('WebSocket authenticated', {
         connectionId: ws.connectionId,
-        userId: user.id,
+        userId: user.userId,
         username: user.username,
       });
     } catch (error) {
@@ -159,7 +181,10 @@ export class EquipmentWebSocketService {
     }
   }
 
-  private handleEquipmentSubscription(ws: AuthenticatedWebSocket, data: { equipmentId?: string }) {
+  private handleEquipmentSubscription(
+    ws: AuthenticatedWebSocket,
+    data: { equipmentId?: string },
+  ) {
     if (!ws.userId) {
       this.sendError(ws, 'Authentication required');
       return;
@@ -189,7 +214,10 @@ export class EquipmentWebSocketService {
     });
   }
 
-  private handleEquipmentUnsubscription(ws: AuthenticatedWebSocket, data: { equipmentId?: string }) {
+  private handleEquipmentUnsubscription(
+    ws: AuthenticatedWebSocket,
+    data: { equipmentId?: string },
+  ) {
     if (!ws.userId) {
       this.sendError(ws, 'Authentication required');
       return;
@@ -222,7 +250,10 @@ export class EquipmentWebSocketService {
     });
   }
 
-  private async handleEquipmentAction(ws: AuthenticatedWebSocket, data: any) {
+  private async handleEquipmentAction(
+    ws: AuthenticatedWebSocket,
+    data: Record<string, unknown>,
+  ) {
     if (!ws.userId) {
       this.sendError(ws, 'Authentication required');
       return;
@@ -234,13 +265,25 @@ export class EquipmentWebSocketService {
       let result;
       switch (action) {
         case 'START_SESSION':
-          result = await this.handleStartSession(ws.userId, equipmentId, payload);
+          result = await this.handleStartSession(
+            ws.userId,
+            String(equipmentId),
+            payload as Record<string, unknown>,
+          );
           break;
         case 'END_SESSION':
-          result = await this.handleEndSession(ws.userId, equipmentId, payload);
+          result = await this.handleEndSession(
+            ws.userId,
+            String(equipmentId),
+            payload as Record<string, unknown>,
+          );
           break;
         case 'UPDATE_STATUS':
-          result = await this.handleStatusUpdate(ws.userId, equipmentId, payload);
+          result = await this.handleStatusUpdate(
+            ws.userId,
+            String(equipmentId),
+            payload as Record<string, unknown>,
+          );
           break;
         default:
           this.sendError(ws, 'Unknown equipment action');
@@ -263,20 +306,32 @@ export class EquipmentWebSocketService {
     }
   }
 
-  private async handleStartSession(userId: string, equipmentId: string, payload: any) {
+  private async handleStartSession(
+    userId: string,
+    equipmentId: string,
+    payload: Record<string, unknown>,
+  ) {
     // Implementation for starting equipment session
     // This would interact with the equipment service
     logger.info('Starting equipment session', { userId, equipmentId, payload });
-    return { success: true, sessionId: 'session_' + Date.now() };
+    return { success: true, sessionId: `session_${Date.now()}` };
   }
 
-  private async handleEndSession(userId: string, equipmentId: string, payload: any) {
+  private async handleEndSession(
+    userId: string,
+    equipmentId: string,
+    payload: Record<string, unknown>,
+  ) {
     // Implementation for ending equipment session
     logger.info('Ending equipment session', { userId, equipmentId, payload });
     return { success: true };
   }
 
-  private async handleStatusUpdate(userId: string, equipmentId: string, payload: any) {
+  private async handleStatusUpdate(
+    userId: string,
+    equipmentId: string,
+    payload: Record<string, unknown>,
+  ) {
     // Implementation for updating equipment status
     logger.info('Updating equipment status', { userId, equipmentId, payload });
     return { success: true };
@@ -284,40 +339,43 @@ export class EquipmentWebSocketService {
 
   // Public broadcasting methods
   public broadcastEquipmentUpdate(message: EquipmentWebSocketMessage) {
-    this.broadcast(message, (ws) => {
+    this.broadcast(message, ws => {
       return this.shouldReceiveEquipmentUpdate(ws, message.equipmentId);
     });
   }
 
   public broadcastReservationUpdate(message: EquipmentWebSocketMessage) {
-    this.broadcast(message, (ws) => {
+    this.broadcast(message, ws => {
       return this.shouldReceiveEquipmentUpdate(ws, message.equipmentId);
     });
   }
 
   public broadcastMaintenanceUpdate(message: EquipmentWebSocketMessage) {
-    this.broadcast(message, (ws) => {
+    this.broadcast(message, ws => {
       return this.shouldReceiveEquipmentUpdate(ws, message.equipmentId);
     });
   }
 
   public broadcastConditionReportUpdate(message: EquipmentWebSocketMessage) {
-    this.broadcast(message, (ws) => {
+    this.broadcast(message, ws => {
       return this.shouldReceiveEquipmentUpdate(ws, message.equipmentId);
     });
   }
 
   public broadcastSessionUpdate(message: EquipmentWebSocketMessage) {
-    this.broadcast(message, (ws) => {
+    this.broadcast(message, ws => {
       return this.shouldReceiveEquipmentUpdate(ws, message.equipmentId);
     });
   }
 
-  private broadcast(message: EquipmentWebSocketMessage, filter?: (ws: AuthenticatedWebSocket) => boolean) {
+  private broadcast(
+    message: EquipmentWebSocketMessage,
+    filter?: (ws: AuthenticatedWebSocket) => boolean,
+  ) {
     const messageString = JSON.stringify(message);
     let sentCount = 0;
 
-    this.connections.forEach((ws) => {
+    this.connections.forEach(ws => {
       if (ws.readyState === WebSocket.OPEN && (!filter || filter(ws))) {
         try {
           ws.send(messageString);
@@ -338,16 +396,29 @@ export class EquipmentWebSocketService {
     });
   }
 
-  private shouldReceiveEquipmentUpdate(ws: AuthenticatedWebSocket, equipmentId?: string): boolean {
-    if (!ws.userId) return false;
+  private shouldReceiveEquipmentUpdate(
+    ws: AuthenticatedWebSocket,
+    equipmentId?: string,
+  ): boolean {
+    if (!ws.userId) {
+      return false;
+    }
 
-    if (ws.subscribedAll) return true;
-    if (equipmentId && ws.subscribedEquipment && ws.subscribedEquipment.has(equipmentId)) return true;
+    if (ws.subscribedAll) {
+      return true;
+    }
+    if (
+      equipmentId &&
+      ws.subscribedEquipment &&
+      ws.subscribedEquipment.has(equipmentId)
+    ) {
+      return true;
+    }
 
     return false;
   }
 
-  private sendMessage(ws: AuthenticatedWebSocket, message: any) {
+  private sendMessage(ws: AuthenticatedWebSocket, message: unknown) {
     if (ws.readyState === WebSocket.OPEN) {
       try {
         ws.send(JSON.stringify(message));
@@ -378,8 +449,10 @@ export class EquipmentWebSocketService {
 
   public getAuthenticatedClients(): number {
     let count = 0;
-    this.connections.forEach((ws) => {
-      if (ws.userId) count++;
+    this.connections.forEach(ws => {
+      if (ws.userId) {
+        count++;
+      }
     });
     return count;
   }
@@ -389,7 +462,7 @@ export class EquipmentWebSocketService {
       clearInterval(this.heartbeatInterval);
     }
 
-    this.connections.forEach((ws) => {
+    this.connections.forEach(ws => {
       ws.close(1000, 'Server shutting down');
     });
 

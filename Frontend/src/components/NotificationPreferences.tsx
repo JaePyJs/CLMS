@@ -9,7 +9,7 @@ import {
   User,
   Check,
   X,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -29,7 +29,8 @@ interface NotificationPreferencesData {
 const NotificationPreferences: React.FC<{
   onClose: () => void;
 }> = ({ onClose }) => {
-  const [preferences, setPreferences] = useState<NotificationPreferencesData | null>(null);
+  const [preferences, setPreferences] =
+    useState<NotificationPreferencesData | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -42,11 +43,13 @@ const NotificationPreferences: React.FC<{
       setLoading(true);
       const response = await fetch('/api/notifications/preferences', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
-      if (!response.ok) throw new Error('Failed to fetch preferences');
+      if (!response.ok) {
+        throw new Error('Failed to fetch preferences');
+      }
 
       const data = await response.json();
       setPreferences(data.data);
@@ -58,8 +61,12 @@ const NotificationPreferences: React.FC<{
     }
   };
 
-  const updatePreferences = async (updates: Partial<NotificationPreferencesData>) => {
-    if (!preferences) return;
+  const updatePreferences = async (
+    updates: Partial<NotificationPreferencesData>
+  ) => {
+    if (!preferences) {
+      return;
+    }
 
     try {
       setSaving(true);
@@ -67,12 +74,14 @@ const NotificationPreferences: React.FC<{
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify(updates),
       });
 
-      if (!response.ok) throw new Error('Failed to update preferences');
+      if (!response.ok) {
+        throw new Error('Failed to update preferences');
+      }
 
       const data = await response.json();
       setPreferences(data.data);
@@ -86,7 +95,9 @@ const NotificationPreferences: React.FC<{
   };
 
   const handleToggle = (key: keyof NotificationPreferencesData) => {
-    if (!preferences) return;
+    if (!preferences) {
+      return;
+    }
 
     const newValue = !preferences[key];
     updatePreferences({ [key]: newValue });
@@ -103,7 +114,7 @@ const NotificationPreferences: React.FC<{
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
           email: 'test@example.com', // This should be the user's actual email
@@ -141,7 +152,9 @@ const NotificationPreferences: React.FC<{
         <div className="bg-white rounded-lg p-6 w-full max-w-md">
           <div className="text-center py-8">
             <X className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-gray-600">Failed to load notification preferences</p>
+            <p className="text-gray-600">
+              Failed to load notification preferences
+            </p>
             <button
               onClick={onClose}
               className="mt-4 px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
@@ -159,7 +172,9 @@ const NotificationPreferences: React.FC<{
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Notification Preferences</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Notification Preferences
+          </h2>
           <button
             onClick={onClose}
             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
@@ -187,8 +202,12 @@ const NotificationPreferences: React.FC<{
               <div className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-gray-600" />
                 <div>
-                  <p className="font-medium text-gray-900">Email Notifications</p>
-                  <p className="text-sm text-gray-600">Receive notifications via email</p>
+                  <p className="font-medium text-gray-900">
+                    Email Notifications
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Receive notifications via email
+                  </p>
                 </div>
               </div>
               <button
@@ -199,7 +218,9 @@ const NotificationPreferences: React.FC<{
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    preferences.emailNotifications ? 'translate-x-6' : 'translate-x-1'
+                    preferences.emailNotifications
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -209,19 +230,27 @@ const NotificationPreferences: React.FC<{
               <div className="flex items-center gap-3">
                 <Bell className="w-5 h-5 text-gray-600" />
                 <div>
-                  <p className="font-medium text-gray-900">Real-time Notifications</p>
-                  <p className="text-sm text-gray-600">Get instant updates in your browser</p>
+                  <p className="font-medium text-gray-900">
+                    Real-time Notifications
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Get instant updates in your browser
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => handleToggle('realTimeNotifications')}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  preferences.realTimeNotifications ? 'bg-blue-600' : 'bg-gray-200'
+                  preferences.realTimeNotifications
+                    ? 'bg-blue-600'
+                    : 'bg-gray-200'
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    preferences.realTimeNotifications ? 'translate-x-6' : 'translate-x-1'
+                    preferences.realTimeNotifications
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -241,8 +270,12 @@ const NotificationPreferences: React.FC<{
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-blue-600" />
                 <div>
-                  <p className="font-medium text-gray-900">Due Date Reminders</p>
-                  <p className="text-sm text-gray-600">Get reminded before books are due</p>
+                  <p className="font-medium text-gray-900">
+                    Due Date Reminders
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Get reminded before books are due
+                  </p>
                 </div>
               </div>
               <button
@@ -253,7 +286,9 @@ const NotificationPreferences: React.FC<{
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    preferences.dueDateReminders ? 'translate-x-6' : 'translate-x-1'
+                    preferences.dueDateReminders
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -264,7 +299,9 @@ const NotificationPreferences: React.FC<{
                 <AlertTriangle className="w-5 h-5 text-orange-600" />
                 <div>
                   <p className="font-medium text-gray-900">Overdue Notices</p>
-                  <p className="text-sm text-gray-600">Alert when books are overdue</p>
+                  <p className="text-sm text-gray-600">
+                    Alert when books are overdue
+                  </p>
                 </div>
               </div>
               <button
@@ -275,7 +312,9 @@ const NotificationPreferences: React.FC<{
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    preferences.overdueNotices ? 'translate-x-6' : 'translate-x-1'
+                    preferences.overdueNotices
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -285,19 +324,27 @@ const NotificationPreferences: React.FC<{
               <div className="flex items-center gap-3">
                 <Check className="w-5 h-5 text-green-600" />
                 <div>
-                  <p className="font-medium text-gray-900">Return Confirmations</p>
-                  <p className="text-sm text-gray-600">Confirm when books are returned</p>
+                  <p className="font-medium text-gray-900">
+                    Return Confirmations
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Confirm when books are returned
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => handleToggle('returnConfirmations')}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  preferences.returnConfirmations ? 'bg-blue-600' : 'bg-gray-200'
+                  preferences.returnConfirmations
+                    ? 'bg-blue-600'
+                    : 'bg-gray-200'
                 }`}
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    preferences.returnConfirmations ? 'translate-x-6' : 'translate-x-1'
+                    preferences.returnConfirmations
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -317,7 +364,9 @@ const NotificationPreferences: React.FC<{
               <DollarSign className="w-5 h-5 text-green-600" />
               <div>
                 <p className="font-medium text-gray-900">Fine Alerts</p>
-                <p className="text-sm text-gray-600">Notify about new fines and payments</p>
+                <p className="text-sm text-gray-600">
+                  Notify about new fines and payments
+                </p>
               </div>
             </div>
             <button
@@ -347,8 +396,12 @@ const NotificationPreferences: React.FC<{
               <div className="flex items-center gap-3">
                 <Settings className="w-5 h-5 text-purple-600" />
                 <div>
-                  <p className="font-medium text-gray-900">System Maintenance</p>
-                  <p className="text-sm text-gray-600">Alert about system updates and downtime</p>
+                  <p className="font-medium text-gray-900">
+                    System Maintenance
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Alert about system updates and downtime
+                  </p>
                 </div>
               </div>
               <button
@@ -359,7 +412,9 @@ const NotificationPreferences: React.FC<{
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    preferences.systemMaintenance ? 'translate-x-6' : 'translate-x-1'
+                    preferences.systemMaintenance
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
                   }`}
                 />
               </button>
@@ -370,7 +425,9 @@ const NotificationPreferences: React.FC<{
                 <User className="w-5 h-5 text-indigo-600" />
                 <div>
                   <p className="font-medium text-gray-900">Account Alerts</p>
-                  <p className="text-sm text-gray-600">Security and account-related notifications</p>
+                  <p className="text-sm text-gray-600">
+                    Security and account-related notifications
+                  </p>
                 </div>
               </div>
               <button
@@ -381,7 +438,9 @@ const NotificationPreferences: React.FC<{
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    preferences.accountAlerts ? 'translate-x-6' : 'translate-x-1'
+                    preferences.accountAlerts
+                      ? 'translate-x-6'
+                      : 'translate-x-1'
                   }`}
                 />
               </button>
