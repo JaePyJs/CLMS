@@ -38,7 +38,7 @@ router.get(
       logger.info('Get attendance data for export', {
         startDate: start.toISOString(),
         endDate: end.toISOString(),
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       const data = await AttendanceExportService.getAttendanceData(start, end);
@@ -90,7 +90,7 @@ router.get(
       logger.info('Export attendance to CSV', {
         startDate: start.toISOString(),
         endDate: end.toISOString(),
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       const csv = await AttendanceExportService.exportToCSV(start, end);
@@ -146,7 +146,7 @@ router.get(
       logger.info('Get attendance summary', {
         startDate: start.toISOString(),
         endDate: end.toISOString(),
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       const summary = await AttendanceExportService.generateSummary(start, end);
@@ -197,7 +197,7 @@ router.get(
       logger.info('Prepare data for Google Sheets', {
         startDate: start.toISOString(),
         endDate: end.toISOString(),
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       const sheetsData = await AttendanceExportService.prepareGoogleSheetsData(

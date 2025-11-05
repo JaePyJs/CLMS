@@ -10,6 +10,11 @@ const router = Router();
 router.post(
   '/login',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const { username, password } = req.body;
 
     // Validate input
@@ -61,6 +66,11 @@ router.post(
 router.post(
   '/register',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const { username, password, email, full_name, role } = req.body;
 
     // Validate input
@@ -137,12 +147,17 @@ router.post(
   '/logout',
   authenticate,
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     try {
-      await AuthService.logout(req.user.userId);
+      await AuthService.logout(req.user!.userId);
 
       logger.info('Logout successful', {
-        userId: req.user.userId,
-        username: req.user.username,
+        userId: req.user!.userId,
+        username: req.user!.username,
         ip: req.ip,
       });
 
@@ -170,6 +185,11 @@ router.post(
 router.post(
   '/refresh',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
@@ -213,12 +233,17 @@ router.get(
   '/me',
   authenticate,
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     try {
-      const user = await AuthService.getCurrentUser(req.user.userId);
+      const user = await AuthService.getCurrentUser(req.user!.userId);
 
       logger.info('Get current user successful', {
-        userId: req.user.userId,
-        username: req.user.username,
+        userId: req.user!.userId,
+        username: req.user!.username,
         ip: req.ip,
       });
 

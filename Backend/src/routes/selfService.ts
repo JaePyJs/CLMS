@@ -13,6 +13,11 @@ router.use(authenticate);
 router.post(
   '/scan',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const { scanData } = req.body;
 
     if (!scanData) {
@@ -27,7 +32,7 @@ router.post(
     try {
       logger.info('Self-service scan request', {
         scanData: `${scanData.substring(0, 10)}...`, // Log partial barcode
-        userId: req.user.userId,
+        userId: req.user!.userId,
         ip: req.ip,
       });
 
@@ -37,13 +42,13 @@ router.post(
         logger.warn('Self-service scan failed', {
           scanData: `${scanData.substring(0, 10)}...`,
           reason: result.message,
-          userId: req.user.userId,
+          userId: req.user!.userId,
         });
       } else {
         logger.info('Self-service scan successful', {
           scanData: `${scanData.substring(0, 10)}...`,
           action: result.message,
-          userId: req.user.userId,
+          userId: req.user!.userId,
         });
       }
 
@@ -69,6 +74,11 @@ router.post(
 router.get(
   '/status/:scanData',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const { scanData } = req.params;
 
     if (!scanData) {
@@ -83,7 +93,7 @@ router.get(
     try {
       logger.info('Self-service status request', {
         scanData: `${scanData.substring(0, 10)}...`,
-        userId: req.user.userId,
+        userId: req.user!.userId,
         ip: req.ip,
       });
 
@@ -92,7 +102,7 @@ router.get(
       logger.info('Self-service status retrieved', {
         scanData: `${scanData.substring(0, 10)}...`,
         isCheckedIn: result.isCheckedIn,
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       res.json(result);
@@ -117,6 +127,11 @@ router.get(
 router.post(
   '/check-in',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const { scanData } = req.body;
 
     if (!scanData) {
@@ -131,7 +146,7 @@ router.post(
     try {
       logger.info('Self-service check-in request', {
         scanData: `${scanData.substring(0, 10)}...`,
-        userId: req.user.userId,
+        userId: req.user!.userId,
         ip: req.ip,
       });
 
@@ -162,13 +177,13 @@ router.post(
         logger.warn('Self-service check-in failed', {
           scanData: `${scanData.substring(0, 10)}...`,
           reason: result.message,
-          userId: req.user.userId,
+          userId: req.user!.userId,
         });
       } else {
         logger.info('Self-service check-in successful', {
           scanData: `${scanData.substring(0, 10)}...`,
           studentId: result.student!.id,
-          userId: req.user.userId,
+          userId: req.user!.userId,
         });
       }
 
@@ -194,6 +209,11 @@ router.post(
 router.post(
   '/check-out',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const { scanData } = req.body;
 
     if (!scanData) {
@@ -208,7 +228,7 @@ router.post(
     try {
       logger.info('Self-service check-out request', {
         scanData: `${scanData.substring(0, 10)}...`,
-        userId: req.user.userId,
+        userId: req.user!.userId,
         ip: req.ip,
       });
 
@@ -242,13 +262,13 @@ router.post(
         logger.warn('Self-service check-out failed', {
           scanData: `${scanData.substring(0, 10)}...`,
           reason: result.message,
-          userId: req.user.userId,
+          userId: req.user!.userId,
         });
       } else {
         logger.info('Self-service check-out successful', {
           scanData: `${scanData.substring(0, 10)}...`,
           studentId: result.student!.id,
-          userId: req.user.userId,
+          userId: req.user!.userId,
         });
       }
 
@@ -274,13 +294,18 @@ router.post(
 router.get(
   '/statistics',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const { startDate, endDate } = req.query;
 
     try {
       logger.info('Self-service statistics request', {
         startDate,
         endDate,
-        userId: req.user.userId,
+        userId: req.user!.userId,
         ip: req.ip,
       });
 
@@ -292,7 +317,7 @@ router.get(
       logger.info('Self-service statistics retrieved', {
         totalCheckIns: statistics.totalCheckIns,
         uniqueStudents: statistics.uniqueStudents,
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       res.json({

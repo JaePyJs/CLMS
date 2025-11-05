@@ -18,11 +18,9 @@
     },
 
     // Strict Type Checking Options
-    // ⚠️ BLOCKED: 74 strict mode errors (need <50 to enable)
-    // All errors are req.user possibly undefined (strictNullChecks)
-    "strict": false,
+    "strict": true,
     "noImplicitAny": true,
-    "strictNullChecks": false, // TODO: Fix 74 req.user undefined checks
+    "strictNullChecks": true,
     "strictFunctionTypes": true,
     "strictBindCallApply": true,
     "strictPropertyInitialization": false,

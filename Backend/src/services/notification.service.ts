@@ -187,6 +187,10 @@ export const notificationService = {
 
   // Schedule a notification for future delivery
   async scheduleNotification(data: CreateNotificationInput) {
+    if (!data.scheduled_for) {
+      throw new Error('scheduled_for is required for scheduled notifications');
+    }
+
     const delay = data.scheduled_for.getTime() - Date.now();
 
     notificationQueue.add('send-scheduled-notification', data, {
@@ -395,6 +399,9 @@ export const notificationService = {
 
   // Mark all notifications as read for a user
   async markAllAsRead(id?: string) {
+    if (!id) {
+      throw new Error('User ID is required');
+    }
     await NotificationsRepository.markAllAsRead(id);
     return { success: true };
   },
@@ -411,6 +418,9 @@ export const notificationService = {
 
   // Delete all read notifications
   async deleteReadNotifications(id?: string) {
+    if (!id) {
+      throw new Error('User ID is required');
+    }
     const deletedCount =
       await NotificationsRepository.deleteReadNotifications(id);
     return { deletedCount };

@@ -122,7 +122,7 @@ export class SelfService {
         isCheckedIn,
         student,
         currentActivity: activeActivity,
-        lastCheckOut: lastActivity?.end_time || null,
+        lastCheckOut: lastActivity?.end_time ?? undefined,
         canCheckIn,
         cooldownRemaining,
       };
@@ -257,11 +257,9 @@ export class SelfService {
       });
 
       // Calculate time spent
+      const endTime = updatedActivity.end_time ?? new Date();
       const timeSpent = Math.floor(
-        (updatedActivity.end_time.getTime() -
-          updatedActivity.start_time.getTime()) /
-          1000 /
-          60,
+        (endTime.getTime() - updatedActivity.start_time.getTime()) / 1000 / 60,
       ); // in minutes
 
       return {
@@ -335,6 +333,9 @@ export class SelfService {
       let averageTimeSpent = 0;
       if (completedActivities.length > 0) {
         const totalMinutes = completedActivities.reduce((sum, activity) => {
+          if (!activity.end_time) {
+            return sum;
+          }
           const minutes = Math.floor(
             (activity.end_time.getTime() - activity.start_time.getTime()) /
               1000 /

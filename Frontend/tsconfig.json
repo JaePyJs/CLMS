@@ -14,8 +14,8 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting - Strict Mode Ready (0 errors when enabled) */
-    "strict": false, // TODO: Enable after Backend strict mode is enabled
+    /* Linting - Strict Mode Enabled */
+    "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": false,
