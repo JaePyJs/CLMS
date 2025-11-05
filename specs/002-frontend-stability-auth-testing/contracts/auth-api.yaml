@@ -59,7 +59,7 @@ paths:
                   example: true
                   description: If true, token persists in localStorage; if false, sessionStorage
       responses:
-        '200':
+        "200":
           description: Login successful
           content:
             application/json:
@@ -71,7 +71,7 @@ paths:
                   - refreshToken
                 properties:
                   user:
-                    $ref: '#/components/schemas/User'
+                    $ref: "#/components/schemas/User"
                   accessToken:
                     type: string
                     format: jwt
@@ -97,36 +97,36 @@ paths:
                       full_name: System Administrator
                       role: ADMIN
                       is_active: true
-                      last_login_at: '2025-01-06T10:30:00Z'
-                      created_at: '2025-01-01T00:00:00Z'
+                      last_login_at: "2025-01-06T10:30:00Z"
+                      created_at: "2025-01-01T00:00:00Z"
                     accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbGcxMjNhYmMiLCJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzM2MTYwNjAwLCJleHAiOjE3MzY3NjU0MDB9.abcdef123456
                     refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbGcxMjNhYmMiLCJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzM2MTYwNjAwLCJleHAiOjE3Mzg3NTI2MDB9.xyz789
                     expiresIn: 604800
-        '401':
+        "401":
           description: Invalid credentials
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               examples:
                 invalidCredentials:
                   summary: Wrong username or password
                   value:
                     error: Invalid credentials
                     statusCode: 401
-                    timestamp: '2025-01-06T10:30:00Z'
+                    timestamp: "2025-01-06T10:30:00Z"
                 inactiveUser:
                   summary: User account deactivated
                   value:
                     error: User account is inactive
                     statusCode: 401
-                    timestamp: '2025-01-06T10:30:00Z'
-        '422':
+                    timestamp: "2025-01-06T10:30:00Z"
+        "422":
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationError'
+                $ref: "#/components/schemas/ValidationError"
               examples:
                 missingPassword:
                   summary: Password field missing
@@ -144,16 +144,16 @@ paths:
                     details:
                       - field: password
                         message: Password must be at least 6 characters
-        '500':
+        "500":
           description: Server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               example:
                 error: Internal server error
                 statusCode: 500
-                timestamp: '2025-01-06T10:30:00Z'
+                timestamp: "2025-01-06T10:30:00Z"
 
   /auth/register:
     post:
@@ -179,7 +179,7 @@ paths:
                   type: string
                   minLength: 3
                   maxLength: 50
-                  pattern: '^[a-zA-Z0-9_]+$'
+                  pattern: "^[a-zA-Z0-9_]+$"
                   example: newuser
                   description: Unique username (alphanumeric + underscore only)
                 password:
@@ -207,7 +207,7 @@ paths:
                   example: LIBRARIAN
                   description: User's role (defaults to ASSISTANT)
       responses:
-        '201':
+        "201":
           description: User created successfully
           content:
             application/json:
@@ -219,7 +219,7 @@ paths:
                   - refreshToken
                 properties:
                   user:
-                    $ref: '#/components/schemas/User'
+                    $ref: "#/components/schemas/User"
                   accessToken:
                     type: string
                     format: jwt
@@ -241,26 +241,26 @@ paths:
                   role: LIBRARIAN
                   is_active: true
                   last_login_at: null
-                  created_at: '2025-01-06T10:30:00Z'
+                  created_at: "2025-01-06T10:30:00Z"
                 accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
                 refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
                 expiresIn: 604800
-        '400':
+        "400":
           description: User already exists
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               example:
                 error: Username already exists
                 statusCode: 400
-                timestamp: '2025-01-06T10:30:00Z'
-        '422':
+                timestamp: "2025-01-06T10:30:00Z"
+        "422":
           description: Validation error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationError'
+                $ref: "#/components/schemas/ValidationError"
               examples:
                 invalidUsername:
                   summary: Username contains invalid characters
@@ -286,12 +286,12 @@ paths:
                     details:
                       - field: email
                         message: Invalid email format
-        '500':
+        "500":
           description: Server error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
 
   /auth/logout:
     post:
@@ -306,7 +306,7 @@ paths:
       security:
         - BearerAuth: []
       responses:
-        '200':
+        "200":
           description: Logout successful
           content:
             application/json:
@@ -316,16 +316,16 @@ paths:
                   message:
                     type: string
                     example: Logged out successfully
-        '401':
+        "401":
           description: Unauthorized (invalid or missing token)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               example:
                 error: Unauthorized
                 statusCode: 401
-                timestamp: '2025-01-06T10:30:00Z'
+                timestamp: "2025-01-06T10:30:00Z"
 
   /auth/me:
     get:
@@ -339,12 +339,12 @@ paths:
       security:
         - BearerAuth: []
       responses:
-        '200':
+        "200":
           description: User information retrieved
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: "#/components/schemas/User"
               example:
                 id: clg123abc
                 username: admin
@@ -352,43 +352,43 @@ paths:
                 full_name: System Administrator
                 role: ADMIN
                 is_active: true
-                last_login_at: '2025-01-06T10:30:00Z'
-                created_at: '2025-01-01T00:00:00Z'
-        '401':
+                last_login_at: "2025-01-06T10:30:00Z"
+                created_at: "2025-01-01T00:00:00Z"
+        "401":
           description: Unauthorized (invalid or missing token)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               examples:
                 missingToken:
                   summary: No token provided
                   value:
                     error: No authentication token provided
                     statusCode: 401
-                    timestamp: '2025-01-06T10:30:00Z'
+                    timestamp: "2025-01-06T10:30:00Z"
                 invalidToken:
                   summary: Invalid JWT signature
                   value:
                     error: Invalid token
                     statusCode: 401
-                    timestamp: '2025-01-06T10:30:00Z'
+                    timestamp: "2025-01-06T10:30:00Z"
                 expiredToken:
                   summary: Token expired
                   value:
                     error: Token expired
                     statusCode: 401
-                    timestamp: '2025-01-06T10:30:00Z'
-        '404':
+                    timestamp: "2025-01-06T10:30:00Z"
+        "404":
           description: User not found (token valid but user deleted)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               example:
                 error: User not found
                 statusCode: 404
-                timestamp: '2025-01-06T10:30:00Z'
+                timestamp: "2025-01-06T10:30:00Z"
 
   /auth/refresh:
     post:
@@ -414,7 +414,7 @@ paths:
                   example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
                   description: Valid refresh token (from /auth/login or /auth/register)
       responses:
-        '200':
+        "200":
           description: New access token issued
           content:
             application/json:
@@ -433,31 +433,31 @@ paths:
                     type: integer
                     example: 604800
                     description: Access token lifetime in seconds
-        '401':
+        "401":
           description: Invalid or expired refresh token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
               examples:
                 expiredRefreshToken:
                   summary: Refresh token expired
                   value:
                     error: Refresh token expired
                     statusCode: 401
-                    timestamp: '2025-01-06T10:30:00Z'
+                    timestamp: "2025-01-06T10:30:00Z"
                 invalidRefreshToken:
                   summary: Invalid refresh token signature
                   value:
                     error: Invalid refresh token
                     statusCode: 401
-                    timestamp: '2025-01-06T10:30:00Z'
-        '422':
+                    timestamp: "2025-01-06T10:30:00Z"
+        "422":
           description: Missing refresh token
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidationError'
+                $ref: "#/components/schemas/ValidationError"
               example:
                 error: Validation failed
                 statusCode: 422
@@ -518,12 +518,12 @@ components:
           type: string
           format: date-time
           nullable: true
-          example: '2025-01-06T10:30:00Z'
+          example: "2025-01-06T10:30:00Z"
           description: Timestamp of last successful login
         created_at:
           type: string
           format: date-time
-          example: '2025-01-01T00:00:00Z'
+          example: "2025-01-01T00:00:00Z"
           description: Timestamp of user creation
 
     Error:
@@ -544,7 +544,7 @@ components:
         timestamp:
           type: string
           format: date-time
-          example: '2025-01-06T10:30:00Z'
+          example: "2025-01-06T10:30:00Z"
           description: Error occurrence timestamp
 
     ValidationError:
@@ -590,8 +590,8 @@ components:
         full_name: System Administrator
         role: ADMIN
         is_active: true
-        last_login_at: '2025-01-06T10:30:00Z'
-        created_at: '2025-01-01T00:00:00Z'
+        last_login_at: "2025-01-06T10:30:00Z"
+        created_at: "2025-01-01T00:00:00Z"
 
     LibrarianUser:
       summary: Librarian user
@@ -602,8 +602,8 @@ components:
         full_name: Jane Smith
         role: LIBRARIAN
         is_active: true
-        last_login_at: '2025-01-06T09:15:00Z'
-        created_at: '2025-01-02T08:00:00Z'
+        last_login_at: "2025-01-06T09:15:00Z"
+        created_at: "2025-01-02T08:00:00Z"
 
     AssistantUser:
       summary: Assistant user
@@ -615,4 +615,4 @@ components:
         role: ASSISTANT
         is_active: true
         last_login_at: null
-        created_at: '2025-01-05T14:30:00Z'
+        created_at: "2025-01-05T14:30:00Z"

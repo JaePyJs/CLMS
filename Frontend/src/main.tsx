@@ -15,6 +15,24 @@ import { ThemeProvider } from './contexts/ThemeContext';
 // Initialize offline queue and event listeners
 initializeOfflineQueue();
 
+// Add global error handlers to prevent crashes
+window.addEventListener('error', (event) => {
+  console.error('Global error caught:', event.error);
+  // Prevent default browser error handling
+  event.preventDefault();
+  // Error is already logged, ErrorBoundary will handle UI
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+  // Prevent default browser error handling
+  event.preventDefault();
+  // Log to error tracking if needed
+  if (event.reason instanceof Error) {
+    console.error('Promise rejection stack:', event.reason.stack);
+  }
+});
+
 // Register Service Worker for PWA support
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

@@ -7,18 +7,21 @@
 ## Design Principles
 
 ### 1. Production-Readiness First
+
 - **Error Boundaries**: Every route wrapped in error boundary
 - **Loading States**: Clear loading indicators for all async operations
 - **Empty States**: Helpful messages when no data exists
 - **Graceful Degradation**: WebSocket failure → HTTP polling fallback
 
 ### 2. UI/UX Excellence
+
 - **Responsive**: Mobile (320px+), Tablet (768px+), Desktop (1024px+)
 - **Accessible**: WCAG 2.1 AA compliant, keyboard navigation, screen reader support
 - **Dark Mode**: Automatic system detection + manual toggle
 - **Animations**: Subtle, performant (< 16ms frame time)
 
 ### 3. Performance
+
 - **First Contentful Paint**: < 1.5s
 - **Time to Interactive**: < 3.5s
 - **Skeleton Loading**: Visible within 100ms
@@ -63,6 +66,7 @@
 #### Components
 
 **Form Fields**:
+
 - **Username Input**:
   - Type: Text
   - Placeholder: "Enter your username"
@@ -85,6 +89,7 @@
   - ARIA: `aria-label="Remember me on this device"`
 
 **Submit Button**:
+
 - Text: "Log In"
 - Type: Submit
 - States:
@@ -96,6 +101,7 @@
 - ARIA: `aria-label="Log in to your account"`
 
 **Links**:
+
 - **Forgot Password**: Navigate to `/forgot-password` (if implemented)
 - **Register**: Navigate to `/register` (if implemented)
 - Styling: Subtle, underlined on hover
@@ -103,6 +109,7 @@
 #### Interactions
 
 **1. Submit Flow (Success)**:
+
 ```
 User fills form → Clicks "Log In" → Button shows spinner
 → POST /api/auth/login (200) → Store tokens
@@ -111,6 +118,7 @@ User fills form → Clicks "Log In" → Button shows spinner
 ```
 
 **2. Submit Flow (Error - Invalid Credentials)**:
+
 ```
 User fills form → Clicks "Log In" → Button shows spinner
 → POST /api/auth/login (401) → Button shakes, turns red
@@ -119,6 +127,7 @@ User fills form → Clicks "Log In" → Button shows spinner
 ```
 
 **3. Submit Flow (Error - Network)**:
+
 ```
 User fills form → Clicks "Log In" → Button shows spinner
 → POST /api/auth/login (timeout/network error)
@@ -127,6 +136,7 @@ User fills form → Clicks "Log In" → Button shows spinner
 ```
 
 **4. Validation Errors**:
+
 ```
 User submits empty form → Inline errors appear:
   - "Username is required" (below username field, red text)
@@ -135,6 +145,7 @@ User submits empty form → Inline errors appear:
 ```
 
 **5. Auto-Login (Existing Session)**:
+
 ```
 User navigates to /login → AuthContext checks token
 → If valid token exists → Skip login, redirect to /dashboard
@@ -142,6 +153,7 @@ User navigates to /login → AuthContext checks token
 ```
 
 **6. Password Toggle**:
+
 ```
 User clicks eye icon → Password field type changes to "text"
 → Eye icon changes to "eye-slash" (🙈)
@@ -151,33 +163,39 @@ User clicks eye icon → Password field type changes to "text"
 #### States
 
 **Idle**:
+
 - Form fields empty or prefilled (if "Remember Me" was checked)
 - No error messages
 - Submit button enabled
 
 **Loading**:
+
 - Submit button disabled, shows spinner
 - Form fields disabled
 - Screen reader announces: "Logging in, please wait"
 
 **Success**:
+
 - Submit button shows checkmark (500ms)
 - Form fades out (300ms)
 - Navigate to `/dashboard`
 
 **Error (Validation)**:
+
 - Inline error messages below invalid fields
 - Fields with errors have red border
 - Submit button enabled
 - Focus on first invalid field
 
 **Error (Authentication)**:
+
 - Error banner above form: "Invalid username or password. Please try again."
 - Submit button enabled
 - Username and password fields cleared (security best practice)
 - Focus on username field
 
 **Error (Network)**:
+
 - Error banner: "Connection failed. Check your internet and try again."
 - Retry button appears
 - Submit button re-enabled
@@ -207,6 +225,7 @@ User clicks eye icon → Password field type changes to "text"
 #### Responsive Design
 
 **Mobile (320px - 767px)**:
+
 - Single column layout
 - Full-width form (90% viewport width)
 - Touch-friendly inputs (min 44px height)
@@ -214,11 +233,13 @@ User clicks eye icon → Password field type changes to "text"
 - Links stacked vertically
 
 **Tablet (768px - 1023px)**:
+
 - Centered form (max-width 400px)
 - Horizontal "Forgot Password" and "Register" links
 - Logo larger
 
 **Desktop (1024px+)**:
+
 - Centered form (max-width 450px)
 - Larger logo and branding
 - Background image/pattern (optional)
@@ -227,15 +248,18 @@ User clicks eye icon → Password field type changes to "text"
 #### Dark Mode
 
 **Auto-Detection**:
+
 ```typescript
-const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 ```
 
 **Toggle**:
+
 - Icon in top-right corner (sun/moon)
 - Persists preference in `localStorage.theme`
 
 **Color Adjustments**:
+
 - Background: White → Dark Gray (#1F2937)
 - Text: Black (#000000) → Light Gray (#F3F4F6)
 - Form fields: White → Dark (#374151)
@@ -285,6 +309,7 @@ const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 #### Components
 
 **Top Navigation Bar**:
+
 - **Logo**: "CLMS" (clickable, navigates to /dashboard)
 - **Menu Items**: Dashboard, Students, Books, Checkout, Equipment, Automation, Analytics, Reports, Import/Export, Settings, Documentation, System Admin
 - **User Menu**: Avatar (👤) → Dropdown with "Profile", "Settings", "Logout"
@@ -292,23 +317,27 @@ const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 - **Theme Toggle**: Sun/moon icon
 
 **Greeting Section**:
+
 - **User Name**: From `AuthContext.user.full_name` or `username`
 - **Role Badge**: `(Admin)`, `(Librarian)`, `(Assistant)`
 - **Last Login**: Timestamp from `AuthContext.user.last_login_at`
 
 **Statistics Cards** (4 cards):
+
 - **Total Students**: Count, icon (👥)
 - **Total Books**: Count, icon (📚)
 - **Active Checkouts**: Count, icon (📖)
 - **Overdue Checkouts**: Count with warning icon (⚠️) if > 0
 
 **Recent Checkouts List**:
+
 - **Items**: Last 3 checkouts (real-time via WebSocket)
 - **Format**: `{time} {studentName} {action} {bookTitle}`
 - **Actions**: "checked out", "returned", "renewed"
 - **View All Link**: Navigate to `/checkouts`
 
 **Equipment Sessions List**:
+
 - **Items**: Active sessions (real-time via WebSocket)
 - **Format**: `{equipmentName} - {studentName} (ends in {timeRemaining})`
 - **Countdown**: Live countdown timer
@@ -317,6 +346,7 @@ const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 #### Interactions
 
 **1. Page Load (Authenticated)**:
+
 ```
 User navigates to /dashboard → AuthContext checks token
 → If valid: Render dashboard, fetch data
@@ -326,6 +356,7 @@ User navigates to /dashboard → AuthContext checks token
 ```
 
 **2. Page Load (Unauthenticated)**:
+
 ```
 User navigates to /dashboard → AuthContext.isAuthenticated = false
 → Redirect to /login with `?redirect=/dashboard`
@@ -333,6 +364,7 @@ User navigates to /dashboard → AuthContext.isAuthenticated = false
 ```
 
 **3. Real-Time Updates (WebSocket)**:
+
 ```
 WebSocket message (type: 'dashboard_update') arrives
 → Extract new statistics (totalStudents, totalBooks, etc.)
@@ -342,6 +374,7 @@ WebSocket message (type: 'dashboard_update') arrives
 ```
 
 **4. Logout**:
+
 ```
 User clicks Avatar → Dropdown → "Logout"
 → Confirm modal: "Are you sure you want to log out?"
@@ -351,6 +384,7 @@ User clicks Avatar → Dropdown → "Logout"
 ```
 
 **5. Navigation**:
+
 ```
 User clicks "Students" in top nav
 → Navigate to /students
@@ -360,6 +394,7 @@ User clicks "Students" in top nav
 #### States
 
 **Loading (Initial)**:
+
 - Skeleton UI:
   - Gray rectangles for stat cards
   - Gray lines for recent checkouts
@@ -367,23 +402,27 @@ User clicks "Students" in top nav
 - Screen reader: "Loading dashboard, please wait"
 
 **Loaded (Data Available)**:
+
 - Statistics cards populated with numbers
 - Recent checkouts list shows items
 - Equipment sessions list shows items
 - WebSocket connected (green dot in top-right)
 
 **Loaded (Empty State - No Data)**:
+
 - Statistics cards show "0"
 - Recent checkouts: "No checkouts yet. Start by checking out a book!"
 - Equipment sessions: "No active sessions."
 
 **Error (Data Fetch Failed)**:
+
 - Error banner: "Failed to load dashboard data. Retrying..."
 - Retry button
 - Statistics cards show "---"
 - Lists show error message
 
 **Error (WebSocket Disconnected)**:
+
 - Warning banner: "Live updates unavailable. Reconnecting..."
 - Fallback to HTTP polling (every 30 seconds)
 - Status indicator: Yellow dot (reconnecting) or red dot (failed)
@@ -412,17 +451,20 @@ User clicks "Students" in top nav
 #### Responsive Design
 
 **Mobile (320px - 767px)**:
+
 - **Nav**: Hamburger menu (☰) → Slide-in sidebar
 - **Stat Cards**: Stacked vertically (1 per row)
 - **Lists**: Full-width, scrollable
 - **User Menu**: Bottom nav bar
 
 **Tablet (768px - 1023px)**:
+
 - **Nav**: Horizontal, scrollable if overflow
 - **Stat Cards**: 2 per row (2x2 grid)
 - **Lists**: Side-by-side (50/50)
 
 **Desktop (1024px+)**:
+
 - **Nav**: Full horizontal nav bar
 - **Stat Cards**: 4 in a row
 - **Lists**: Side-by-side with fixed max-width
@@ -430,6 +472,7 @@ User clicks "Students" in top nav
 #### Dark Mode
 
 **Color Adjustments**:
+
 - Background: White → Dark Gray (#1F2937)
 - Stat Cards: White → Dark (#374151), shadow → border
 - Text: Black → Light Gray (#F3F4F6)
@@ -471,6 +514,7 @@ User clicks "Students" in top nav
 #### Levels
 
 **1. Root Level** (App.tsx wraps entire app):
+
 - **UI**: Full-page error screen
 - **Message**: "The application encountered an error. Please reload the page."
 - **Actions**:
@@ -479,6 +523,7 @@ User clicks "Students" in top nav
   - "Report Issue" → Open GitHub issue (pre-filled with error)
 
 **2. Route Level** (Each route wrapped separately):
+
 - **UI**: Error within page layout (nav remains)
 - **Message**: "This page failed to load. Try going back or refreshing."
 - **Actions**:
@@ -487,6 +532,7 @@ User clicks "Students" in top nav
   - "Go Home" → Navigate to `/dashboard`
 
 **3. Component Level** (Form, table, etc.):
+
 - **UI**: Inline error message
 - **Message**: "This component failed to load. Please try again."
 - **Actions**:
@@ -496,14 +542,15 @@ User clicks "Students" in top nav
 #### Error Logging
 
 **Client-Side**:
+
 ```typescript
 function logError(error: Error, errorInfo: React.ErrorInfo) {
-  console.error('Error caught by boundary:', error, errorInfo);
-  
+  console.error("Error caught by boundary:", error, errorInfo);
+
   // Send to error tracking service (Sentry, LogRocket, etc.)
   // Example:
   // Sentry.captureException(error, { extra: { errorInfo } });
-  
+
   // Store in localStorage for debugging
   const errorLog = {
     timestamp: new Date().toISOString(),
@@ -512,16 +559,17 @@ function logError(error: Error, errorInfo: React.ErrorInfo) {
     componentStack: errorInfo.componentStack,
     userAgent: navigator.userAgent,
     userId: AuthContext.user?.id || null,
-    route: window.location.pathname
+    route: window.location.pathname,
   };
-  
-  const logs = JSON.parse(localStorage.getItem('errorLogs') || '[]');
+
+  const logs = JSON.parse(localStorage.getItem("errorLogs") || "[]");
   logs.push(errorLog);
-  localStorage.setItem('errorLogs', JSON.stringify(logs.slice(-10))); // Keep last 10
+  localStorage.setItem("errorLogs", JSON.stringify(logs.slice(-10))); // Keep last 10
 }
 ```
 
 **Auto-Recovery**:
+
 - If error count < 3 in 60 seconds: Auto-retry after 2 seconds
 - If error count >= 3: Show persistent error UI, disable auto-retry
 
@@ -550,8 +598,12 @@ function logError(error: Error, errorInfo: React.ErrorInfo) {
 
 ```css
 @keyframes shimmer {
-  0% { background-position: -1000px 0; }
-  100% { background-position: 1000px 0; }
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
 }
 
 .animate-shimmer {
@@ -579,12 +631,25 @@ function logError(error: Error, errorInfo: React.ErrorInfo) {
 ```
 
 **Spinner Component**:
+
 ```tsx
 function Spinner() {
   return (
     <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+        fill="none"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+      />
     </svg>
   );
 }
@@ -612,6 +677,7 @@ function Spinner() {
 ## Animations
 
 ### Principles
+
 - **Purposeful**: Animations guide attention, not distract
 - **Performant**: Use CSS transforms (GPU-accelerated)
 - **Respects Motion Preferences**: Disable for `prefers-reduced-motion`
@@ -619,6 +685,7 @@ function Spinner() {
 ### Examples
 
 **1. Button Press**:
+
 ```css
 .button {
   transition: transform 100ms ease-out;
@@ -629,11 +696,19 @@ function Spinner() {
 ```
 
 **2. Error Shake**:
+
 ```css
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-10px); }
-  75% { transform: translateX(10px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-10px);
+  }
+  75% {
+    transform: translateX(10px);
+  }
 }
 
 .error-shake {
@@ -642,10 +717,15 @@ function Spinner() {
 ```
 
 **3. Fade In**:
+
 ```css
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .fade-in {
@@ -654,6 +734,7 @@ function Spinner() {
 ```
 
 **4. Slide In (Notification)**:
+
 ```css
 @keyframes slideInRight {
   from {
@@ -672,30 +753,32 @@ function Spinner() {
 ```
 
 **5. Count Up (Statistics)**:
+
 ```typescript
 function CountUp({ end }: { end: number }) {
   const [count, setCount] = useState(0);
-  
+
   useEffect(() => {
     const duration = 1000; // 1 second
     const startTime = Date.now();
-    
+
     const timer = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       setCount(Math.floor(progress * end));
-      
+
       if (progress === 1) clearInterval(timer);
     }, 16); // 60fps
-    
+
     return () => clearInterval(timer);
   }, [end]);
-  
+
   return <span>{count.toLocaleString()}</span>;
 }
 ```
 
 **Reduced Motion**:
+
 ```css
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -725,18 +808,22 @@ function CountUp({ end }: { end: number }) {
 ### Types
 
 **Success** (Green):
+
 - Icon: ✅ Checkmark
 - Example: "Login successful!", "Settings saved!"
 
 **Info** (Blue):
+
 - Icon: ℹ️ Info
 - Example: "Reconnecting to server...", "New update available"
 
 **Warning** (Yellow):
+
 - Icon: ⚠️ Warning
 - Example: "Connection lost, retrying...", "Session expires soon"
 
 **Error** (Red):
+
 - Icon: ❌ Cross
 - Example: "Login failed", "Network error"
 
@@ -752,20 +839,20 @@ interface Toast {
 
 function ToastContainer() {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  
+
   const addToast = (toast: Omit<Toast, 'id'>) => {
     const id = Date.now().toString();
     setToasts((prev) => [...prev, { ...toast, id }]);
-    
+
     setTimeout(() => {
       removeToast(id);
     }, toast.duration || 3000);
   };
-  
+
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
-  
+
   return (
     <div className="fixed top-4 right-4 space-y-2 z-50">
       {toasts.map((toast) => (
@@ -787,6 +874,6 @@ function ToastContainer() {
 **Responsive Breakpoints**: 3 (Mobile 320px+, Tablet 768px+, Desktop 1024px+)  
 **Dark Mode**: Auto-detect + manual toggle  
 **Animations**: 5 types (button press, shake, fade, slide, count-up)  
-**Error Handling**: 3 levels (Root, Route, Component)  
+**Error Handling**: 3 levels (Root, Route, Component)
 
 **Next Step**: Commit all Phase 1 artifacts and proceed to Phase 2 (Implementation) ✅
