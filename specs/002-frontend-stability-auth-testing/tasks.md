@@ -180,7 +180,7 @@
   - Check AuthContext.isAuthenticated - ✅
   - Redirect to /login if not authenticated - ✅
   - Show loading spinner while checking auth - ✅
-- [ ] T049 [US2] Wrap dashboard routes with ProtectedRoute in Frontend/src/App.tsx
+- [x] T049 [US2] Wrap dashboard routes with ProtectedRoute in Frontend/src/App.tsx - ✅ COMPLETED (Main dashboard wrapped)
 
 **Auto-Login on Page Load**:
 
