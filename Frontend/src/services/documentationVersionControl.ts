@@ -76,7 +76,11 @@ export interface ConflictInfo {
     name: string;
     version: string;
   }>;
-  resolutionStrategy?: 'accept_current' | 'accept_incoming' | 'merge_manual' | 'merge_auto';
+  resolutionStrategy?:
+    | 'accept_current'
+    | 'accept_incoming'
+    | 'merge_manual'
+    | 'merge_auto';
   resolvedContent?: string;
   resolvedBy?: {
     id: string;
@@ -179,12 +183,12 @@ class DocumentationVersionControl {
       // This would typically call an API to create the version
       // For now, we'll simulate it
       const response = await this.simulateVersionCreation(versionData);
-      
+
       if (response.success) {
         this.currentVersion = response.data;
         return this.currentVersion;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Failed to create version:', error);
@@ -192,9 +196,16 @@ class DocumentationVersionControl {
     }
   }
 
-  private calculateNextVersion(versionType: 'major' | 'minor' | 'patch'): Omit<VersionInfo, 'timestamp' | 'author' | 'description' | 'tags'> {
-    const current = this.currentVersion || { major: 0, minor: 0, patch: 0, hash: '' };
-    
+  private calculateNextVersion(
+    versionType: 'major' | 'minor' | 'patch'
+  ): Omit<VersionInfo, 'timestamp' | 'author' | 'description' | 'tags'> {
+    const current = this.currentVersion || {
+      major: 0,
+      minor: 0,
+      patch: 0,
+      hash: '',
+    };
+
     switch (versionType) {
       case 'major':
         return {
@@ -224,10 +235,12 @@ class DocumentationVersionControl {
     return Math.random().toString(36).substr(2, 8);
   }
 
-  private async simulateVersionCreation(versionData: any): Promise<{ success: boolean; data: VersionInfo }> {
+  private async simulateVersionCreation(
+    versionData: any
+  ): Promise<{ success: boolean; data: VersionInfo }> {
     // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     return {
       success: true,
       data: {
@@ -249,7 +262,7 @@ class DocumentationVersionControl {
       versionTo: update.version.hash,
       timestamp: update.timestamp,
       author: update.author,
-      changes: update.changes.map(change => ({
+      changes: update.changes.map((change) => ({
         ...change,
         lineNumbers: this.calculateLineNumbers(change),
         metadata: {
@@ -266,7 +279,7 @@ class DocumentationVersionControl {
     };
 
     this.changeHistory.push(changeRecord);
-    
+
     // Keep only last 1000 changes in memory
     if (this.changeHistory.length > 1000) {
       this.changeHistory = this.changeHistory.slice(-1000);
@@ -279,12 +292,15 @@ class DocumentationVersionControl {
     return `change_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
   }
 
-  private calculateLineNumbers(change: any): { old: { start: number; end: number }; new: { start: number; end: number } } {
+  private calculateLineNumbers(change: any): {
+    old: { start: number; end: number };
+    new: { start: number; end: number };
+  } {
     // This would typically analyze the actual content to determine line numbers
     // For now, we'll provide a simplified implementation
     const oldLines = change.oldContent?.split('\n').length || 0;
     const newLines = change.newContent?.split('\n').length || 0;
-    
+
     return {
       old: { start: 1, end: oldLines },
       new: { start: 1, end: newLines },
@@ -293,9 +309,13 @@ class DocumentationVersionControl {
 
   private calculateComplexity(change: any): 'low' | 'medium' | 'high' {
     const contentLength = (change.newContent || change.oldContent || '').length;
-    
-    if (contentLength < 100) return 'low';
-    if (contentLength < 500) return 'medium';
+
+    if (contentLength < 100) {
+      return 'low';
+    }
+    if (contentLength < 500) {
+      return 'medium';
+    }
     return 'high';
   }
 
@@ -306,12 +326,12 @@ class DocumentationVersionControl {
 
     const uniqueFiles = new Set();
 
-    changes.forEach(change => {
+    changes.forEach((change) => {
       uniqueFiles.add(change.file);
-      
+
       const oldLines = change.oldContent?.split('\n').length || 0;
       const newLines = change.newContent?.split('\n').length || 0;
-      
+
       switch (change.changeType) {
         case 'added':
           linesAdded += newLines;
@@ -335,13 +355,15 @@ class DocumentationVersionControl {
   }
 
   // Change History
-  public async getChangeHistory(options: {
-    limit?: number;
-    offset?: number;
-    since?: string;
-    author?: string;
-    file?: string;
-  } = {}): Promise<ChangeRecord[]> {
+  public async getChangeHistory(
+    options: {
+      limit?: number;
+      offset?: number;
+      since?: string;
+      author?: string;
+      file?: string;
+    } = {}
+  ): Promise<ChangeRecord[]> {
     try {
       const response = await utilitiesApi.getDocumentationHistory(options);
       if (response.success && response.data) {
@@ -359,14 +381,17 @@ class DocumentationVersionControl {
   }
 
   // Conflict Management
-  public async detectConflicts(update: DocumentationUpdate): Promise<ConflictInfo[]> {
+  public async detectConflicts(
+    update: DocumentationUpdate
+  ): Promise<ConflictInfo[]> {
     const conflicts: ConflictInfo[] = [];
 
     for (const change of update.changes) {
       // Check for concurrent modifications
-      const existingChanges = this.changeHistory.filter(record => 
-        record.changes.some(c => c.file === change.file) &&
-        record.timestamp > (this.currentVersion?.timestamp || '0')
+      const existingChanges = this.changeHistory.filter(
+        (record) =>
+          record.changes.some((c) => c.file === change.file) &&
+          record.timestamp > (this.currentVersion?.timestamp || '0')
       );
 
       if (existingChanges.length > 0) {
@@ -384,7 +409,7 @@ class DocumentationVersionControl {
               name: update.author.name,
               version: `${update.version.major}.${update.version.minor}.${update.version.patch}`,
             },
-            ...existingChanges.map(c => ({
+            ...existingChanges.map((c) => ({
               id: c.author.id,
               name: c.author.name,
               version: c.versionTo,
@@ -413,13 +438,17 @@ class DocumentationVersionControl {
     }
   ): Promise<boolean> {
     try {
-      const response = await utilitiesApi.resolveDocumentationConflict(conflictId, resolution);
-      
+      const response = await utilitiesApi.resolveDocumentationConflict(
+        conflictId,
+        resolution
+      );
+
       if (response.success) {
         const conflict = this.conflicts.get(conflictId);
         if (conflict) {
           conflict.resolutionStrategy = resolution.strategy;
-          conflict.resolvedContent = resolution.mergedContent || conflict.currentContent;
+          conflict.resolvedContent =
+            resolution.mergedContent || conflict.currentContent;
           conflict.resolvedBy = {
             id: 'current_user',
             name: 'Current User',
@@ -428,7 +457,7 @@ class DocumentationVersionControl {
         }
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Failed to resolve conflict:', error);
@@ -437,18 +466,21 @@ class DocumentationVersionControl {
   }
 
   // Rollback functionality
-  public async rollbackToVersion(versionHash: string, reason?: string): Promise<boolean> {
+  public async rollbackToVersion(
+    versionHash: string,
+    reason?: string
+  ): Promise<boolean> {
     try {
-      const response = await utilitiesApi.rollbackDocumentation(versionHash, { 
-        reason: reason || 'Manual rollback' 
+      const response = await utilitiesApi.rollbackDocumentation(versionHash, {
+        reason: reason || 'Manual rollback',
       });
-      
+
       if (response.success) {
         // Update current version
         await this.getCurrentVersion();
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Failed to rollback to version:', error);
@@ -457,7 +489,10 @@ class DocumentationVersionControl {
   }
 
   // Comparison utilities
-  public compareVersions(version1: string, _version2: string): Promise<ChangeRecord[]> {
+  public compareVersions(
+    version1: string,
+    _version2: string
+  ): Promise<ChangeRecord[]> {
     // This would typically call an API to get the diff between versions
     return this.getChangeHistory({
       since: version1,
@@ -491,7 +526,7 @@ class DocumentationVersionControl {
   }> {
     try {
       const response = await utilitiesApi.validateDocumentationIntegrity();
-      
+
       if (response.success) {
         return {
           isValid: true,
@@ -499,7 +534,7 @@ class DocumentationVersionControl {
           warnings: [],
         };
       }
-      
+
       return {
         isValid: false,
         errors: ['Validation failed'],
@@ -543,14 +578,14 @@ class DocumentationVersionControl {
     if (data.version) {
       this.currentVersion = data.version;
     }
-    
+
     if (data.changes) {
       this.changeHistory = data.changes;
     }
-    
+
     if (data.conflicts) {
       this.conflicts.clear();
-      data.conflicts.forEach(conflict => {
+      data.conflicts.forEach((conflict) => {
         this.conflicts.set(conflict.id, conflict);
       });
     }
@@ -558,6 +593,7 @@ class DocumentationVersionControl {
 }
 
 // Export singleton instance
-export const documentationVersionControl = DocumentationVersionControl.getInstance();
+export const documentationVersionControl =
+  DocumentationVersionControl.getInstance();
 
 export default documentationVersionControl;

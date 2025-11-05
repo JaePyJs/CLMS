@@ -71,7 +71,9 @@ class PerformanceTest {
             const stepDuration = performance.now() - stepStartTime;
 
             if (step.timeout && stepDuration > step.timeout) {
-              errors.push(`Step timeout: ${step.action} took ${stepDuration.toFixed(2)}ms (limit: ${step.timeout}ms)`);
+              errors.push(
+                `Step timeout: ${step.action} took ${stepDuration.toFixed(2)}ms (limit: ${step.timeout}ms)`
+              );
               passed = false;
             }
           } else {
@@ -91,17 +93,23 @@ class PerformanceTest {
 
       // Validate results
       if (finalMetrics.renderTime > scenario.expectedResults.maxRenderTime) {
-        errors.push(`Render time exceeded: ${finalMetrics.renderTime.toFixed(2)}ms (limit: ${scenario.expectedResults.maxRenderTime}ms)`);
+        errors.push(
+          `Render time exceeded: ${finalMetrics.renderTime.toFixed(2)}ms (limit: ${scenario.expectedResults.maxRenderTime}ms)`
+        );
         passed = false;
       }
 
       if (finalMetrics.memoryUsage > scenario.expectedResults.maxMemoryUsage) {
-        errors.push(`Memory usage exceeded: ${finalMetrics.memoryUsage.toFixed(2)}MB (limit: ${(scenario.expectedResults.maxMemoryUsage / 1024 / 1024).toFixed(2)}MB)`);
+        errors.push(
+          `Memory usage exceeded: ${finalMetrics.memoryUsage.toFixed(2)}MB (limit: ${(scenario.expectedResults.maxMemoryUsage / 1024 / 1024).toFixed(2)}MB)`
+        );
         passed = false;
       }
 
       if (finalMetrics.errorCount > scenario.expectedResults.maxErrors) {
-        errors.push(`Error count exceeded: ${finalMetrics.errorCount} (limit: ${scenario.expectedResults.maxErrors})`);
+        errors.push(
+          `Error count exceeded: ${finalMetrics.errorCount} (limit: ${scenario.expectedResults.maxErrors})`
+        );
         passed = false;
       }
 
@@ -123,16 +131,19 @@ class PerformanceTest {
 
       this.testResults.push(result);
 
-      console.log(`${passed ? '✅' : '❌'} Test ${scenario.name}: ${passed ? 'PASSED' : 'FAILED'} (${duration.toFixed(2)}ms)`);
+      console.log(
+        `${passed ? '✅' : '❌'} Test ${scenario.name}: ${passed ? 'PASSED' : 'FAILED'} (${duration.toFixed(2)}ms)`
+      );
 
       if (errors.length > 0) {
         console.log('  Errors:');
-        errors.forEach(error => console.log(`    - ${error}`));
+        errors.forEach((error) => console.log(`    - ${error}`));
       }
 
       return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const result = {
         scenario: scenario.name,
         passed: false,
@@ -155,7 +166,7 @@ class PerformanceTest {
       case 'navigate_to_dashboard':
         // Simulate navigation
         window.location.hash = '#dashboard';
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         break;
 
       case 'load_students_list':
@@ -201,19 +212,19 @@ class PerformanceTest {
       case 'switch_theme':
         // Simulate theme switching
         document.body.classList.toggle('dark');
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
         break;
 
       case 'resize_window':
         // Simulate window resize
         window.dispatchEvent(new Event('resize'));
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         break;
 
       case 'scroll_page':
         // Simulate scrolling
         window.scrollTo({ top: 500, behavior: 'smooth' });
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise((resolve) => setTimeout(resolve, 200));
         break;
 
       case 'open_modal':
@@ -228,46 +239,61 @@ class PerformanceTest {
 
       default:
         // Default simulation
-        await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.random() * 100 + 50)
+        );
     }
   }
 
-  private async simulateApiCall(endpoint: string, delay: number): Promise<void> {
+  private async simulateApiCall(
+    endpoint: string,
+    delay: number
+  ): Promise<void> {
     const startTime = performance.now();
 
     // Simulate network latency
-    await new Promise(resolve => setTimeout(resolve, delay));
+    await new Promise((resolve) => setTimeout(resolve, delay));
 
     const endTime = performance.now();
-    console.log(`    🌐 API call to ${endpoint} took ${(endTime - startTime).toFixed(2)}ms`);
+    console.log(
+      `    🌐 API call to ${endpoint} took ${(endTime - startTime).toFixed(2)}ms`
+    );
   }
 
   private async simulateUserInput(): Promise<void> {
     // Simulate user interaction latency
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 200 + 100));
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.random() * 200 + 100)
+    );
   }
 
   private async simulateUserInteraction(): Promise<void> {
     // Simulate click or interaction
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 50 + 20));
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.random() * 50 + 20)
+    );
   }
 
   private async simulateFileUpload(): Promise<void> {
     // Simulate file upload progress
     const steps = 10;
     for (let i = 0; i < steps; i++) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      console.log(`    📤 Upload progress: ${((i + 1) / steps * 100).toFixed(0)}%`);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      console.log(
+        `    📤 Upload progress: ${(((i + 1) / steps) * 100).toFixed(0)}%`
+      );
     }
   }
 
-  public async runAllTests(): Promise<Array<{
-    scenario: string;
-    passed: boolean;
-    duration: number;
-    metrics: any;
-    errors: string[];
-  }>> {
+  public async runAllTests(): Promise<
+    Array<{
+      scenario: string;
+      passed: boolean;
+      duration: number;
+      metrics: any;
+      errors: string[];
+    }>
+  > {
     console.log('🚀 Starting comprehensive performance test suite...');
 
     const testScenarios: TestScenario[] = [
@@ -354,7 +380,8 @@ class PerformanceTest {
         results.push(result);
       } catch (error) {
         console.error(`❌ Failed to run test: ${scenario.name}`, error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         results.push({
           scenario: scenario.name,
           passed: false,
@@ -365,17 +392,21 @@ class PerformanceTest {
       }
 
       // Small delay between tests
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
-    const passedTests = results.filter(r => r.passed).length;
+    const passedTests = results.filter((r) => r.passed).length;
     const totalTests = results.length;
     const totalDuration = results.reduce((sum, r) => sum + r.duration, 0);
 
     console.log('📊 Test Results Summary:');
-    console.log(`  Passed: ${passedTests}/${totalTests} (${((passedTests / totalTests) * 100).toFixed(1)}%)`);
+    console.log(
+      `  Passed: ${passedTests}/${totalTests} (${((passedTests / totalTests) * 100).toFixed(1)}%)`
+    );
     console.log(`  Total Duration: ${totalDuration.toFixed(2)}ms`);
-    console.log(`  Average Duration: ${(totalDuration / totalTests).toFixed(2)}ms`);
+    console.log(
+      `  Average Duration: ${(totalDuration / totalTests).toFixed(2)}ms`
+    );
 
     return results;
   }
@@ -390,7 +421,7 @@ class PerformanceTest {
 
   public generateReport(): string {
     const results = this.getTestResults();
-    const passedTests = results.filter(r => r.passed).length;
+    const passedTests = results.filter((r) => r.passed).length;
     const totalTests = results.length;
 
     const report = {
@@ -409,13 +440,15 @@ class PerformanceTest {
     return JSON.stringify(report, null, 2);
   }
 
-  private generateRecommendations(results: Array<{ passed: boolean; errors: string[] }>): string[] {
+  private generateRecommendations(
+    results: Array<{ passed: boolean; errors: string[] }>
+  ): string[] {
     const recommendations: string[] = [];
     const commonErrors = new Map<string, number>();
 
     // Count common errors
-    results.forEach(result => {
-      result.errors.forEach(error => {
+    results.forEach((result) => {
+      result.errors.forEach((error) => {
         const count = commonErrors.get(error) || 0;
         commonErrors.set(error, count + 1);
       });
@@ -425,22 +458,32 @@ class PerformanceTest {
     commonErrors.forEach((count, error) => {
       if (count > results.length * 0.5) {
         if (error.includes('Render time')) {
-          recommendations.push('Consider optimizing component rendering with React.memo and useMemo');
+          recommendations.push(
+            'Consider optimizing component rendering with React.memo and useMemo'
+          );
         }
         if (error.includes('Memory usage')) {
-          recommendations.push('Implement proper cleanup and memory management');
+          recommendations.push(
+            'Implement proper cleanup and memory management'
+          );
         }
         if (error.includes('timeout')) {
-          recommendations.push('Improve API response times and implement better loading states');
+          recommendations.push(
+            'Improve API response times and implement better loading states'
+          );
         }
         if (error.includes('Error count')) {
-          recommendations.push('Add proper error boundaries and improve error handling');
+          recommendations.push(
+            'Add proper error boundaries and improve error handling'
+          );
         }
       }
     });
 
     if (recommendations.length === 0) {
-      recommendations.push('All tests passed! Continue monitoring for performance regressions.');
+      recommendations.push(
+        'All tests passed! Continue monitoring for performance regressions.'
+      );
     }
 
     return recommendations;

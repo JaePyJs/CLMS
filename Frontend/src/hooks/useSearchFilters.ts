@@ -29,10 +29,10 @@ interface FilterActions {
 
 /**
  * Hook for managing search and filter states consistently across components
- * 
+ *
  * @param options - Configuration options for the filter system
  * @returns [state, actions] - Current state and actions to modify it
- * 
+ *
  * @example
  * const [state, actions] = useSearchFilters({
  *   defaultSearchTerm: '',
@@ -43,7 +43,7 @@ interface FilterActions {
  *   ],
  *   pageSize: 25,
  * });
- * 
+ *
  * // Use in component
  * const filteredData = useMemo(() => {
  *   return applyFilters(data, state);
@@ -80,7 +80,7 @@ export function useSearchFilters(
   });
 
   const setSearchTerm = useCallback((term: string) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       searchTerm: term,
       page: 1, // Reset to first page when searching
@@ -88,7 +88,7 @@ export function useSearchFilters(
   }, []);
 
   const setFilter = useCallback((key: string, value: string | string[]) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       filters: {
         ...prev.filters,
@@ -99,7 +99,7 @@ export function useSearchFilters(
   }, []);
 
   const removeFilter = useCallback((key: string) => {
-    setState(prev => {
+    setState((prev) => {
       const newFilters = { ...prev.filters };
       delete newFilters[key];
       return {
@@ -111,7 +111,7 @@ export function useSearchFilters(
   }, []);
 
   const clearFilters = useCallback(() => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       filters: {},
       page: 1,
@@ -119,16 +119,21 @@ export function useSearchFilters(
   }, []);
 
   const setSortBy = useCallback((field: string) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       sortBy: field,
-      sortOrder: prev.sortBy === field ? (prev.sortOrder === 'asc' ? 'desc' : 'asc') : 'asc',
+      sortOrder:
+        prev.sortBy === field
+          ? prev.sortOrder === 'asc'
+            ? 'desc'
+            : 'asc'
+          : 'asc',
       page: 1,
     }));
   }, []);
 
   const toggleSortOrder = useCallback(() => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc',
       page: 1,
@@ -136,14 +141,14 @@ export function useSearchFilters(
   }, []);
 
   const setPage = useCallback((page: number) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       page: Math.max(1, page),
     }));
   }, []);
 
   const setPageSize = useCallback((size: number) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       pageSize: Math.max(1, size),
       page: 1, // Reset to first page when changing page size
@@ -182,7 +187,9 @@ export function useSearchFilters(
 
   // Computed values
   const hasActiveFilters = useMemo(() => {
-    return state.searchTerm.trim() !== '' || Object.keys(state.filters).length > 0;
+    return (
+      state.searchTerm.trim() !== '' || Object.keys(state.filters).length > 0
+    );
   }, [state.searchTerm, state.filters]);
 
   const isSortActive = useMemo(() => {
@@ -194,10 +201,10 @@ export function useSearchFilters(
 
 /**
  * Hook for managing table-specific filter states
- * 
+ *
  * @param options - Table-specific configuration options
  * @returns [state, actions, computed] - State, actions, and computed values
- * 
+ *
  * @example
  * const [state, actions, computed] = useTableFilters({
  *   data: students,
@@ -208,16 +215,14 @@ export function useSearchFilters(
  *   },
  * });
  */
-export function useTableFilters<T extends Record<string, any>>(
-  options: {
-    data: T[];
-    searchableFields?: string[];
-    filterableFields?: Record<string, FilterOption[]>;
-    defaultSortBy?: string;
-    defaultSortOrder?: 'asc' | 'desc';
-    defaultPageSize?: number;
-  }
-) {
+export function useTableFilters<T extends Record<string, any>>(options: {
+  data: T[];
+  searchableFields?: string[];
+  filterableFields?: Record<string, FilterOption[]>;
+  defaultSortBy?: string;
+  defaultSortOrder?: 'asc' | 'desc';
+  defaultPageSize?: number;
+}) {
   const {
     data,
     searchableFields = [],
@@ -234,10 +239,10 @@ export function useTableFilters<T extends Record<string, any>>(
     // Apply search term
     if (state.searchTerm.trim()) {
       const searchLower = state.searchTerm.toLowerCase().trim();
-      filtered = filtered.filter(item =>
-        searchableFields.some(field => {
+      filtered = filtered.filter((item) =>
+        searchableFields.some((field) => {
           const value = item[field];
-          return value && value.toString().toLowerCase().includes(searchLower);
+          return value?.toString().toLowerCase().includes(searchLower);
         })
       );
     }
@@ -247,13 +252,13 @@ export function useTableFilters<T extends Record<string, any>>(
       if (value && value.toString().trim() !== '') {
         if (Array.isArray(value)) {
           // Multi-select filter
-          filtered = filtered.filter(item =>
+          filtered = filtered.filter((item) =>
             value.includes(item[key]?.toString())
           );
         } else {
           // Single-select filter
-          filtered = filtered.filter(item =>
-            item[key]?.toString() === value.toString()
+          filtered = filtered.filter(
+            (item) => item[key]?.toString() === value.toString()
           );
         }
       }
@@ -264,11 +269,15 @@ export function useTableFilters<T extends Record<string, any>>(
       filtered.sort((a, b) => {
         const aVal = a[state.sortBy];
         const bVal = b[state.sortBy];
-        
+
         let comparison = 0;
-        if (aVal < bVal) comparison = -1;
-        if (aVal > bVal) comparison = 1;
-        
+        if (aVal < bVal) {
+          comparison = -1;
+        }
+        if (aVal > bVal) {
+          comparison = 1;
+        }
+
         return state.sortOrder === 'desc' ? -comparison : comparison;
       });
     }
@@ -288,7 +297,8 @@ export function useTableFilters<T extends Record<string, any>>(
     const totalItems = filteredData.length;
     const totalPages = Math.ceil(totalItems / state.pageSize);
     const currentPageItems = paginatedData.length;
-    const startItem = totalItems === 0 ? 0 : (state.page - 1) * state.pageSize + 1;
+    const startItem =
+      totalItems === 0 ? 0 : (state.page - 1) * state.pageSize + 1;
     const endItem = totalItems === 0 ? 0 : startItem + currentPageItems - 1;
 
     return {
@@ -305,32 +315,42 @@ export function useTableFilters<T extends Record<string, any>>(
   return [
     { ...state, filteredData: paginatedData },
     actions,
-    { ...computed, filteredData, paginationInfo, totalData: data }
+    { ...computed, filteredData, paginationInfo, totalData: data },
   ] as const;
 }
 
 /**
  * Hook for managing advanced filter builders
- * 
+ *
  * @param filterSchema - Schema defining available filters
  * @returns [state, actions, filterFunctions] - State and functions for building filters
  */
 export function useAdvancedFilters(
-  filterSchema: Record<string, {
-    type: 'text' | 'select' | 'multiselect' | 'date' | 'daterange' | 'number' | 'boolean';
-    label: string;
-    options?: FilterOption[];
-    placeholder?: string;
-  }>
+  filterSchema: Record<
+    string,
+    {
+      type:
+        | 'text'
+        | 'select'
+        | 'multiselect'
+        | 'date'
+        | 'daterange'
+        | 'number'
+        | 'boolean';
+      label: string;
+      options?: FilterOption[];
+      placeholder?: string;
+    }
+  >
 ) {
   const [state, setState] = useState<Record<string, any>>({});
 
   const setFilterValue = useCallback((key: string, value: any) => {
-    setState(prev => ({ ...prev, [key]: value }));
+    setState((prev) => ({ ...prev, [key]: value }));
   }, []);
 
   const removeFilter = useCallback((key: string) => {
-    setState(prev => {
+    setState((prev) => {
       const newState = { ...prev };
       delete newState[key];
       return newState;
@@ -347,22 +367,25 @@ export function useAdvancedFilters(
 
     Object.entries(state).forEach(([key, value]) => {
       const schema = filterSchema[key];
-      if (!schema || !value) return;
+      if (!schema || !value) {
+        return;
+      }
 
       switch (schema.type) {
         case 'text':
           functions[key] = (item) =>
             item[key]?.toString().toLowerCase().includes(value.toLowerCase());
           break;
-        
+
         case 'select':
           functions[key] = (item) => item[key]?.toString() === value.toString();
           break;
-        
+
         case 'multiselect':
-          functions[key] = (item) => Array.isArray(value) && value.includes(item[key]?.toString());
+          functions[key] = (item) =>
+            Array.isArray(value) && value.includes(item[key]?.toString());
           break;
-        
+
         case 'date':
           functions[key] = (item) => {
             const itemDate = new Date(item[key]);
@@ -370,7 +393,7 @@ export function useAdvancedFilters(
             return itemDate.toDateString() === filterDate.toDateString();
           };
           break;
-        
+
         case 'daterange':
           functions[key] = (item) => {
             const itemDate = new Date(item[key]);
@@ -379,7 +402,7 @@ export function useAdvancedFilters(
             return itemDate >= startDate && itemDate <= endDate;
           };
           break;
-        
+
         case 'number':
           functions[key] = (item) => {
             const itemValue = Number(item[key]);
@@ -387,7 +410,7 @@ export function useAdvancedFilters(
             return itemValue === filterValue;
           };
           break;
-        
+
         case 'boolean':
           functions[key] = (item) => item[key] === Boolean(value);
           break;
@@ -397,13 +420,18 @@ export function useAdvancedFilters(
     return functions;
   }, [state, filterSchema]);
 
-  const applyFilters = useCallback((data: any[]) => {
-    if (Object.keys(filterFunctions).length === 0) return data;
+  const applyFilters = useCallback(
+    (data: any[]) => {
+      if (Object.keys(filterFunctions).length === 0) {
+        return data;
+      }
 
-    return data.filter(item =>
-      Object.values(filterFunctions).every(fn => fn(item))
-    );
-  }, [filterFunctions]);
+      return data.filter((item) =>
+        Object.values(filterFunctions).every((fn) => fn(item))
+      );
+    },
+    [filterFunctions]
+  );
 
   const actions = {
     setFilterValue,

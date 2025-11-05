@@ -1,9 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle, AlertCircle, XCircle, RefreshCw, FileText, GitBranch, Database, TestTube, Package, Clock, Users, Activity } from 'lucide-react';
+import {
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  RefreshCw,
+  FileText,
+  GitBranch,
+  Database,
+  TestTube,
+  Package,
+  Clock,
+  Users,
+  Activity,
+} from 'lucide-react';
 import { utilitiesApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { context7 } from '@/services/context7';
@@ -70,19 +89,20 @@ export function DocumentationDashboard() {
   const [versionControl] = useState(() => documentationVersionControl);
   const [realTimeUpdates, setRealTimeUpdates] = useState(0);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
-  
+
   // Local state for updates and conflicts
   const [updates, setUpdates] = useState<DocumentationUpdate[]>([]);
   const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
-  const [syncStatus, _setSyncStatus] = useState<{ status: string; message?: string } | null>(null);
+  const [syncStatus, _setSyncStatus] = useState<{
+    status: string;
+    message?: string;
+  } | null>(null);
 
   // Initialize WebSocket for real-time documentation updates
-  const {
-    isConnected
-  } = useDocumentationWebSocket({
+  const { isConnected } = useDocumentationWebSocket({
     autoSubscribe: true,
     enableNotifications: true,
-    conflictResolution: 'manual'
+    conflictResolution: 'manual',
   });
 
   // Helper functions for managing updates and conflicts
@@ -90,46 +110,57 @@ export function DocumentationDashboard() {
     setUpdates([]);
   }, []);
 
-  const handleConflict = useCallback(async (conflictId: string, resolution: string) => {
-    try {
-      const success = await versionControl.resolveConflict(conflictId, {
-        strategy: resolution as 'accept_current' | 'accept_incoming' | 'merge_manual'
-      });
-      
-      if (success) {
-        setConflicts(prev => prev.filter(c => c.id !== conflictId));
-        toast.success('Conflict resolved successfully');
-      } else {
+  const handleConflict = useCallback(
+    async (conflictId: string, resolution: string) => {
+      try {
+        const success = await versionControl.resolveConflict(conflictId, {
+          strategy: resolution as
+            | 'accept_current'
+            | 'accept_incoming'
+            | 'merge_manual',
+        });
+
+        if (success) {
+          setConflicts((prev) => prev.filter((c) => c.id !== conflictId));
+          toast.success('Conflict resolved successfully');
+        } else {
+          toast.error('Failed to resolve conflict');
+        }
+      } catch (error) {
+        console.error('Error resolving conflict:', error);
         toast.error('Failed to resolve conflict');
       }
-    } catch (error) {
-      console.error('Error resolving conflict:', error);
-      toast.error('Failed to resolve conflict');
-    }
-  }, [versionControl]);
+    },
+    [versionControl]
+  );
 
   // Handle real-time documentation updates
-  const handleDocumentationUpdate = useCallback(async (update: any) => {
-    try {
-      // Apply the update through Context7 service
-      await context7Service.applyUpdate(update);
-      
-      // Track the change in version control
-      await versionControl.trackChange(update);
+  const handleDocumentationUpdate = useCallback(
+    async (update: any) => {
+      try {
+        // Apply the update through Context7 service
+        await context7Service.applyUpdate(update);
 
-      // Update local state
-      setRealTimeUpdates(prev => prev + 1);
-      setLastSyncTime(new Date());
-      
-      // Refresh documentation info to reflect changes
-      await fetchDocumentationInfo();
-      
-      toast.success(`Documentation updated: ${update.description || update.path}`);
-    } catch (error) {
-      console.error('Failed to handle documentation update:', error);
-      toast.error('Failed to apply documentation update');
-    }
-  }, [context7Service, versionControl]);
+        // Track the change in version control
+        await versionControl.trackChange(update);
+
+        // Update local state
+        setRealTimeUpdates((prev) => prev + 1);
+        setLastSyncTime(new Date());
+
+        // Refresh documentation info to reflect changes
+        await fetchDocumentationInfo();
+
+        toast.success(
+          `Documentation updated: ${update.description || update.path}`
+        );
+      } catch (error) {
+        console.error('Failed to handle documentation update:', error);
+        toast.error('Failed to apply documentation update');
+      }
+    },
+    [context7Service, versionControl]
+  );
 
   // Initialize Context7 service
   useEffect(() => {
@@ -141,12 +172,15 @@ export function DocumentationDashboard() {
           syncInterval: 30000, // 30 seconds
           conflictResolution: 'manual',
           enableVersioning: true,
-          enableNotifications: true
+          enableNotifications: true,
         });
 
         // Subscribe to documentation updates
-        context7Service.subscribe('documentation-dashboard', handleDocumentationUpdate);
-        
+        context7Service.subscribe(
+          'documentation-dashboard',
+          handleDocumentationUpdate
+        );
+
         // Load initial documentation state
         const initialState = await context7Service.getState();
         if (initialState) {
@@ -238,7 +272,9 @@ export function DocumentationDashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-        <span className="ml-2 text-sm text-gray-600">Loading documentation...</span>
+        <span className="ml-2 text-sm text-gray-600">
+          Loading documentation...
+        </span>
       </div>
     );
   }
@@ -247,7 +283,9 @@ export function DocumentationDashboard() {
     return (
       <div className="flex items-center justify-center h-64">
         <AlertCircle className="h-8 w-8 text-red-600" />
-        <span className="ml-2 text-sm text-gray-600">Failed to load documentation</span>
+        <span className="ml-2 text-sm text-gray-600">
+          Failed to load documentation
+        </span>
       </div>
     );
   }
@@ -255,8 +293,9 @@ export function DocumentationDashboard() {
   const totalEndpoints = docsInfo.features.backend.apiEndpoints;
   const totalServices = docsInfo.features.backend.services;
   const totalTables = docsInfo.features.backend.databaseTables;
-  const allDocsExist = docsInfo.documentation.claudeMd.exists &&
-                     docsInfo.documentation.readmeMd.exists;
+  const allDocsExist =
+    docsInfo.documentation.claudeMd.exists &&
+    docsInfo.documentation.readmeMd.exists;
 
   return (
     <div className="space-y-6">
@@ -285,11 +324,14 @@ export function DocumentationDashboard() {
             System Health
           </CardTitle>
           <CardDescription>
-            Last checked: {healthCheck ? formatLastUpdated(healthCheck.lastChecked) : 'Never'}
+            Last checked:{' '}
+            {healthCheck ? formatLastUpdated(healthCheck.lastChecked) : 'Never'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className={`rounded-lg p-4 border ${getHealthColor(healthCheck?.status || 'unknown')}`}>
+          <div
+            className={`rounded-lg p-4 border ${getHealthColor(healthCheck?.status || 'unknown')}`}
+          >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-center space-x-2">
                 {healthCheck?.checks.documentation ? (
@@ -334,7 +376,9 @@ export function DocumentationDashboard() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-              <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+              <div
+                className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}
+              />
               <div>
                 <div className="text-sm font-medium">WebSocket</div>
                 <div className="text-xs text-gray-500">
@@ -342,7 +386,7 @@ export function DocumentationDashboard() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
               <Clock className="h-4 w-4 text-blue-600" />
               <div>
@@ -350,7 +394,7 @@ export function DocumentationDashboard() {
                 <div className="text-xs text-gray-500">Live Updates</div>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
               <Users className="h-4 w-4 text-purple-600" />
               <div>
@@ -358,18 +402,20 @@ export function DocumentationDashboard() {
                 <div className="text-xs text-gray-500">Conflicts</div>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
               <RefreshCw className="h-4 w-4 text-green-600" />
               <div>
                 <div className="text-sm font-medium">
-                  {lastSyncTime ? formatLastUpdated(lastSyncTime.toISOString()) : 'Never'}
+                  {lastSyncTime
+                    ? formatLastUpdated(lastSyncTime.toISOString())
+                    : 'Never'}
                 </div>
                 <div className="text-xs text-gray-500">Last Sync</div>
               </div>
             </div>
           </div>
-          
+
           {/* Sync Status Indicator */}
           {syncStatus && (
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -380,28 +426,41 @@ export function DocumentationDashboard() {
                 </span>
               </div>
               {syncStatus.message && (
-                <p className="text-xs text-blue-600 mt-1">{syncStatus.message}</p>
+                <p className="text-xs text-blue-600 mt-1">
+                  {syncStatus.message}
+                </p>
               )}
             </div>
           )}
-          
+
           {/* Recent Updates */}
           {updates.length > 0 && (
             <div className="mt-4">
               <h4 className="text-sm font-medium mb-2">Recent Updates</h4>
               <div className="space-y-2 max-h-32 overflow-y-auto">
-                {updates.slice(0, 3).map((update: DocumentationUpdate, index: number) => (
-                  <div key={index} className="text-xs p-2 bg-green-50 border border-green-200 rounded">
-                    <div className="font-medium">{update.changes[0]?.file || 'Multiple files'}</div>
-                    <div className="text-gray-600">{update.type.replace('_', ' ')}</div>
-                    <div className="text-gray-500">{formatLastUpdated(update.timestamp)}</div>
-                  </div>
-                ))}
+                {updates
+                  .slice(0, 3)
+                  .map((update: DocumentationUpdate, index: number) => (
+                    <div
+                      key={index}
+                      className="text-xs p-2 bg-green-50 border border-green-200 rounded"
+                    >
+                      <div className="font-medium">
+                        {update.changes[0]?.file || 'Multiple files'}
+                      </div>
+                      <div className="text-gray-600">
+                        {update.type.replace('_', ' ')}
+                      </div>
+                      <div className="text-gray-500">
+                        {formatLastUpdated(update.timestamp)}
+                      </div>
+                    </div>
+                  ))}
               </div>
               {updates.length > 3 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="mt-2"
                   onClick={clearUpdates}
                 >
@@ -410,14 +469,15 @@ export function DocumentationDashboard() {
               )}
             </div>
           )}
-          
+
           {/* Conflicts Alert */}
           {conflicts.length > 0 && (
             <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-yellow-600" />
                 <span className="text-sm font-medium text-yellow-800">
-                  {conflicts.length} Documentation Conflict{conflicts.length > 1 ? 's' : ''} Detected
+                  {conflicts.length} Documentation Conflict
+                  {conflicts.length > 1 ? 's' : ''} Detected
                 </span>
               </div>
               <div className="mt-2 space-y-1">
@@ -427,11 +487,15 @@ export function DocumentationDashboard() {
                   </div>
                 ))}
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="mt-2"
-                onClick={() => conflicts.forEach((conflict: ConflictInfo) => handleConflict(conflict.id, 'accept_incoming'))}
+                onClick={() =>
+                  conflicts.forEach((conflict: ConflictInfo) =>
+                    handleConflict(conflict.id, 'accept_incoming')
+                  )
+                }
               >
                 Resolve All Conflicts
               </Button>
@@ -457,7 +521,11 @@ export function DocumentationDashboard() {
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Environment:</span>
               <Badge
-                variant={docsInfo.environment === 'production' ? 'default' : 'secondary'}
+                variant={
+                  docsInfo.environment === 'production'
+                    ? 'default'
+                    : 'secondary'
+                }
               >
                 {docsInfo.environment}
               </Badge>
@@ -490,19 +558,37 @@ export function DocumentationDashboard() {
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">CLAUDE.md:</span>
-              <Badge variant={docsInfo.documentation.claudeMd.exists ? 'default' : 'destructive'}>
+              <Badge
+                variant={
+                  docsInfo.documentation.claudeMd.exists
+                    ? 'default'
+                    : 'destructive'
+                }
+              >
                 {docsInfo.documentation.claudeMd.exists ? 'Present' : 'Missing'}
               </Badge>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">README.md:</span>
-              <Badge variant={docsInfo.documentation.readmeMd.exists ? 'default' : 'destructive'}>
+              <Badge
+                variant={
+                  docsInfo.documentation.readmeMd.exists
+                    ? 'default'
+                    : 'destructive'
+                }
+              >
                 {docsInfo.documentation.readmeMd.exists ? 'Present' : 'Missing'}
               </Badge>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">API Docs:</span>
-              <Badge variant={docsInfo.documentation.apiDocs.exists ? 'default' : 'secondary'}>
+              <Badge
+                variant={
+                  docsInfo.documentation.apiDocs.exists
+                    ? 'default'
+                    : 'secondary'
+                }
+              >
                 {docsInfo.documentation.apiDocs.exists ? 'Present' : 'Optional'}
               </Badge>
             </div>
@@ -512,8 +598,7 @@ export function DocumentationDashboard() {
                 <span>
                   {allDocsExist
                     ? 'All critical documentation files are present and up to date'
-                    : 'Some documentation files may be missing or outdated'
-                  }
+                    : 'Some documentation files may be missing or outdated'}
                 </span>
               </div>
             </div>
@@ -540,7 +625,9 @@ export function DocumentationDashboard() {
             <Card>
               <CardContent className="p-4 text-center">
                 <TestTube className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                <div className="text-2xl font-bold">{docsInfo.features.backend.tests}</div>
+                <div className="text-2xl font-bold">
+                  {docsInfo.features.backend.tests}
+                </div>
                 <div className="text-xs text-gray-500">Backend Tests</div>
               </CardContent>
             </Card>
@@ -566,28 +653,36 @@ export function DocumentationDashboard() {
             <Card>
               <CardContent className="p-4 text-center">
                 <TestTube className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                <div className="text-2xl font-bold">{docsInfo.features.frontend.tests}</div>
+                <div className="text-2xl font-bold">
+                  {docsInfo.features.frontend.tests}
+                </div>
                 <div className="text-xs text-gray-500">Frontend Tests</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
                 <Package className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                <div className="text-2xl font-bold">{docsInfo.features.frontend.components}</div>
+                <div className="text-2xl font-bold">
+                  {docsInfo.features.frontend.components}
+                </div>
                 <div className="text-xs text-gray-500">Components</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
                 <FileText className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
-                <div className="text-2xl font-bold">{docsInfo.features.frontend.pages}</div>
+                <div className="text-2xl font-bold">
+                  {docsInfo.features.frontend.pages}
+                </div>
                 <div className="text-xs text-gray-500">Pages</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
                 <Package className="h-8 w-8 mx-auto mb-2 text-gray-600" />
-                <div className="text-2xl font-bold">{docsInfo.features.frontend.assets}</div>
+                <div className="text-2xl font-bold">
+                  {docsInfo.features.frontend.assets}
+                </div>
                 <div className="text-xs text-gray-500">Assets</div>
               </CardContent>
             </Card>
@@ -611,7 +706,9 @@ export function DocumentationDashboard() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => window.open('/Docs/API_DOCUMENTATION.md', '_blank')}
+              onClick={() =>
+                window.open('/Docs/API_DOCUMENTATION.md', '_blank')
+              }
             >
               <FileText className="h-4 w-4 mr-2" />
               View API Docs

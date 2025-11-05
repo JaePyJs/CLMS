@@ -25,15 +25,26 @@ interface OptimizedListProps<T> {
   estimatedItemSize?: number;
   variableSize?: boolean;
   getItemSize?: (index: number) => number;
-  onScroll?: (scrollInfo: { scrollOffset: number; scrollDirection: 'forward' | 'backward' }) => void;
+  onScroll?: (scrollInfo: {
+    scrollOffset: number;
+    scrollDirection: 'forward' | 'backward';
+  }) => void;
   loadingIndicator?: ReactNode;
   emptyState?: ReactNode;
   searchPlaceholder?: string;
   searchable?: boolean;
   sortable?: boolean;
-  sortOptions?: Array<{ key: keyof T; label: string; direction?: 'asc' | 'desc' }>;
+  sortOptions?: Array<{
+    key: keyof T;
+    label: string;
+    direction?: 'asc' | 'desc';
+  }>;
   filterable?: boolean;
-  filterOptions?: Array<{ key: keyof T; label: string; options: Array<{ value: any; label: string }> }>;
+  filterOptions?: Array<{
+    key: keyof T;
+    label: string;
+    options: Array<{ value: any; label: string }>;
+  }>;
   infiniteScroll?: boolean;
   hasNextPage?: boolean;
   isNextPageLoading?: boolean;
@@ -46,7 +57,11 @@ interface ListRowProps<T> {
   style: React.CSSProperties;
   data: {
     items: T[];
-    renderItem: (item: T, index: number, style: React.CSSProperties) => ReactNode;
+    renderItem: (
+      item: T,
+      index: number,
+      style: React.CSSProperties
+    ) => ReactNode;
   };
 }
 
@@ -74,8 +89,16 @@ interface SearchFilterProps<T> {
   sortable?: boolean;
   filterable?: boolean;
   searchPlaceholder?: string | undefined;
-  sortOptions?: Array<{ key: keyof T; label: string; direction?: 'asc' | 'desc' }> | undefined;
-  filterOptions?: Array<{ key: keyof T; label: string; options: Array<{ value: any; label: string }> }> | undefined;
+  sortOptions?:
+    | Array<{ key: keyof T; label: string; direction?: 'asc' | 'desc' }>
+    | undefined;
+  filterOptions?:
+    | Array<{
+        key: keyof T;
+        label: string;
+        options: Array<{ value: any; label: string }>;
+      }>
+    | undefined;
   onSearch: (query: string) => void;
   onSort: (key: keyof T, direction: 'asc' | 'desc') => void;
   onFilter: (key: keyof T, value: any) => void;
@@ -97,28 +120,46 @@ const SearchFilter = <T,>({
   filteredCount,
 }: SearchFilterProps<T>) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentSort, setCurrentSort] = useState<{ key: keyof T; direction: 'asc' | 'desc' } | null>(null);
+  const [currentSort, setCurrentSort] = useState<{
+    key: keyof T;
+    direction: 'asc' | 'desc';
+  } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const query = event.target.value;
-    setSearchQuery(query);
-    onSearch(query);
-  }, [onSearch]);
+  const handleSearchChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const query = event.target.value;
+      setSearchQuery(query);
+      onSearch(query);
+    },
+    [onSearch]
+  );
 
-  const handleSort = useCallback((key: keyof T, direction: 'asc' | 'desc') => {
-    setCurrentSort({ key, direction });
-    onSort(key, direction);
-  }, [onSort]);
+  const handleSort = useCallback(
+    (key: keyof T, direction: 'asc' | 'desc') => {
+      setCurrentSort({ key, direction });
+      onSort(key, direction);
+    },
+    [onSort]
+  );
 
-  const handleFilter = useCallback((key: keyof T, value: any) => {
-    onFilter(key, value);
-  }, [onFilter]);
+  const handleFilter = useCallback(
+    (key: keyof T, value: any) => {
+      onFilter(key, value);
+    },
+    [onFilter]
+  );
 
-  const toggleSortDirection = useCallback((key: keyof T) => {
-    const newDirection = currentSort?.key === key && currentSort.direction === 'asc' ? 'desc' : 'asc';
-    handleSort(key, newDirection);
-  }, [currentSort, handleSort]);
+  const toggleSortDirection = useCallback(
+    (key: keyof T) => {
+      const newDirection =
+        currentSort?.key === key && currentSort.direction === 'asc'
+          ? 'desc'
+          : 'asc';
+      handleSort(key, newDirection);
+    },
+    [currentSort, handleSort]
+  );
 
   return (
     <div className="space-y-4 p-4 border-b">
@@ -147,15 +188,20 @@ const SearchFilter = <T,>({
                 {sortOptions.map((option) => (
                   <Button
                     key={String(option.key)}
-                    variant={currentSort?.key === option.key ? 'default' : 'outline'}
+                    variant={
+                      currentSort?.key === option.key ? 'default' : 'outline'
+                    }
                     size="sm"
                     onClick={() => toggleSortDirection(option.key)}
                     className="flex items-center gap-1"
                   >
                     {option.label}
-                    {currentSort?.key === option.key && (
-                      currentSort.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
-                    )}
+                    {currentSort?.key === option.key &&
+                      (currentSort.direction === 'asc' ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      ))}
                   </Button>
                 ))}
               </div>
@@ -188,7 +234,9 @@ const SearchFilter = <T,>({
         <div className="space-y-3">
           {filterOptions.map((filter) => (
             <div key={String(filter.key)} className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground min-w-fit">{filter.label}:</span>
+              <span className="text-sm text-muted-foreground min-w-fit">
+                {filter.label}:
+              </span>
               <select
                 className="flex-1 px-2 py-1 text-sm border rounded"
                 onChange={(e) => handleFilter(filter.key, e.target.value)}
@@ -238,7 +286,10 @@ export const OptimizedList = <T,>({
 }: OptimizedListProps<T>) => {
   const [filteredItems, setFilteredItems] = useState<T[]>(items);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentSort, setCurrentSort] = useState<{ key: keyof T; direction: 'asc' | 'desc' } | null>(null);
+  const [currentSort, setCurrentSort] = useState<{
+    key: keyof T;
+    direction: 'asc' | 'desc';
+  } | null>(null);
   const [currentFilters, setCurrentFilters] = useState<Record<string, any>>({});
   const listRef = useRef<any>(null);
 
@@ -248,8 +299,8 @@ export const OptimizedList = <T,>({
 
     // Apply search
     if (searchQuery) {
-      result = result.filter(item => {
-        return Object.values(item as Record<string, unknown>).some(value =>
+      result = result.filter((item) => {
+        return Object.values(item as Record<string, unknown>).some((value) =>
           String(value).toLowerCase().includes(searchQuery.toLowerCase())
         );
       });
@@ -258,9 +309,11 @@ export const OptimizedList = <T,>({
     // Apply filters
     Object.entries(currentFilters).forEach(([key, value]) => {
       if (value !== '' && value !== null && value !== undefined) {
-        result = result.filter(item => {
+        result = result.filter((item) => {
           const itemValue = (item as any)[key];
-          return String(itemValue).toLowerCase() === String(value).toLowerCase();
+          return (
+            String(itemValue).toLowerCase() === String(value).toLowerCase()
+          );
         });
       }
     });
@@ -271,8 +324,12 @@ export const OptimizedList = <T,>({
         const aValue = a[currentSort.key];
         const bValue = b[currentSort.key];
 
-        if (aValue < bValue) return currentSort.direction === 'asc' ? -1 : 1;
-        if (aValue > bValue) return currentSort.direction === 'asc' ? 1 : -1;
+        if (aValue < bValue) {
+          return currentSort.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return currentSort.direction === 'asc' ? 1 : -1;
+        }
         return 0;
       });
     }
@@ -297,200 +354,246 @@ export const OptimizedList = <T,>({
 
   // Handle filter
   const handleFilter = useCallback((key: keyof T, value: any) => {
-    setCurrentFilters(prev => ({
+    setCurrentFilters((prev) => ({
       ...prev,
       [String(key)]: value,
     }));
   }, []);
 
   // Get item key
-  const getItemKey = useCallback((index: number): Key => {
-    const item = filteredItems[index];
-    if (item && itemKey) {
-      return itemKey(item, index);
-    }
-    return index;
-  }, [filteredItems, itemKey]);
+  const getItemKey = useCallback(
+    (index: number): Key => {
+      const item = filteredItems[index];
+      if (item && itemKey) {
+        return itemKey(item, index);
+      }
+      return index;
+    },
+    [filteredItems, itemKey]
+  );
 
   // Render row
-  const renderRow = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const item = filteredItems[index];
+  const renderRow = useCallback(
+    ({ index, style }: { index: number; style: React.CSSProperties }) => {
+      const item = filteredItems[index];
 
-    if (!item && infiniteScroll && isNextPageLoading) {
+      if (!item && infiniteScroll && isNextPageLoading) {
+        return (
+          <div style={style} className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+          </div>
+        );
+      }
+
+      if (!item) {
+        return <div style={style}></div>;
+      }
+
+      return <>{renderItem(item, index, style)}</>;
+    },
+    [filteredItems, renderItem, infiniteScroll, isNextPageLoading]
+  );
+
+  // Handle scroll
+  const handleScroll = useCallback(
+    ({ scrollOffset, scrollDirection }: any) => {
+      if (onScroll) {
+        onScroll({ scrollOffset, scrollDirection });
+      }
+
+      // Infinite scroll loading
+      if (infiniteScroll && hasNextPage && !isNextPageLoading) {
+        const listElement = listRef.current;
+        if (listElement) {
+          const { scrollHeight, clientHeight, scrollTop } =
+            listElement._outerRef;
+          if (scrollHeight - scrollTop <= clientHeight * 1.5) {
+            loadNextPage?.();
+          }
+        }
+      }
+    },
+    [onScroll, infiniteScroll, hasNextPage, isNextPageLoading, loadNextPage]
+  );
+
+  // Item data for list
+  const itemData = useMemo(
+    () => ({
+      items: filteredItems,
+      renderItem,
+    }),
+    [filteredItems, renderItem]
+  );
+
+  // Custom List component to replace react-window
+  interface CustomListProps {
+    height: number;
+    width: number | string;
+    itemCount: number;
+    itemSize: number | ((index: number) => number);
+    itemData: any;
+    itemKey?: (index: number, data: any) => Key;
+    overscanCount?: number;
+    onScroll?: (info: {
+      scrollOffset: number;
+      scrollDirection: 'forward' | 'backward';
+    }) => void;
+    children: ComponentType<{
+      index: number;
+      style: React.CSSProperties;
+      data: any;
+    }>;
+  }
+
+  const CustomList = React.forwardRef<any, CustomListProps>(
+    (
+      {
+        height,
+        width,
+        itemCount,
+        itemSize,
+        itemData,
+        itemKey,
+        overscanCount = 5,
+        onScroll,
+        children: RowComponent,
+      },
+      ref
+    ) => {
+      const [scrollTop, setScrollTop] = useState(0);
+      const containerRef = useRef<HTMLDivElement>(null);
+
+      const getItemHeight = useCallback(
+        (index: number) => {
+          return typeof itemSize === 'function' ? itemSize(index) : itemSize;
+        },
+        [itemSize]
+      );
+
+      const itemHeights = useMemo(() => {
+        const heights: number[] = [];
+        let totalHeight = 0;
+        for (let i = 0; i < itemCount; i++) {
+          const height = getItemHeight(i);
+          heights.push(totalHeight);
+          totalHeight += height;
+        }
+        return { heights, totalHeight };
+      }, [itemCount, getItemHeight]);
+
+      const getVisibleRange = useCallback(() => {
+        const { heights } = itemHeights;
+        let startIndex = 0;
+        let endIndex = itemCount - 1;
+
+        // Find start index
+        for (let i = 0; i < heights.length; i++) {
+          if ((heights[i] ?? 0) + getItemHeight(i) > scrollTop) {
+            startIndex = Math.max(0, i - overscanCount);
+            break;
+          }
+        }
+
+        // Find end index
+        for (let i = startIndex; i < heights.length; i++) {
+          if ((heights[i] ?? 0) > scrollTop + height) {
+            endIndex = Math.min(itemCount - 1, i + overscanCount);
+            break;
+          }
+        }
+
+        return { startIndex, endIndex };
+      }, [
+        scrollTop,
+        height,
+        itemCount,
+        itemHeights,
+        overscanCount,
+        getItemHeight,
+      ]);
+
+      const { startIndex, endIndex } = getVisibleRange();
+
+      const handleScroll = useCallback(
+        (e: React.UIEvent<HTMLDivElement>) => {
+          const newScrollTop = e.currentTarget.scrollTop;
+          const scrollDirection =
+            newScrollTop > scrollTop ? 'forward' : 'backward';
+          setScrollTop(newScrollTop);
+
+          if (onScroll) {
+            onScroll({ scrollOffset: newScrollTop, scrollDirection });
+          }
+        },
+        [scrollTop, onScroll]
+      );
+
+      React.useImperativeHandle(ref, () => ({
+        _outerRef: containerRef.current,
+        scrollTo: (offset: number) => {
+          if (containerRef.current) {
+            containerRef.current.scrollTop = offset;
+          }
+        },
+        scrollToItem: (index: number) => {
+          if (
+            containerRef.current &&
+            itemHeights.heights[index] !== undefined
+          ) {
+            containerRef.current.scrollTop = itemHeights.heights[index];
+          }
+        },
+      }));
+
+      const visibleItems = [];
+      for (let i = startIndex; i <= endIndex; i++) {
+        const top = itemHeights.heights[i] || 0;
+        const itemHeight = getItemHeight(i);
+        const key = itemKey ? itemKey(i, itemData) : i;
+
+        visibleItems.push(
+          <RowComponent
+            key={key}
+            index={i}
+            style={{
+              position: 'absolute',
+              top,
+              height: itemHeight,
+              width: '100%',
+            }}
+            data={itemData}
+          />
+        );
+      }
+
       return (
-        <div style={style} className="flex items-center justify-center">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        <div
+          ref={containerRef}
+          style={{
+            height,
+            width,
+            overflow: 'auto',
+            position: 'relative',
+          }}
+          onScroll={handleScroll}
+        >
+          <div
+            style={{ height: itemHeights.totalHeight, position: 'relative' }}
+          >
+            {visibleItems}
+          </div>
         </div>
       );
     }
-
-    if (!item) {
-      return <div style={style}></div>;
-    }
-
-    return <>{renderItem(item, index, style)}</>;
-  }, [filteredItems, renderItem, infiniteScroll, isNextPageLoading]);
-
-  // Handle scroll
-  const handleScroll = useCallback(({ scrollOffset, scrollDirection }: any) => {
-    if (onScroll) {
-      onScroll({ scrollOffset, scrollDirection });
-    }
-
-    // Infinite scroll loading
-    if (infiniteScroll && hasNextPage && !isNextPageLoading) {
-      const listElement = listRef.current;
-      if (listElement) {
-        const { scrollHeight, clientHeight, scrollTop } = listElement._outerRef;
-        if (scrollHeight - scrollTop <= clientHeight * 1.5) {
-          loadNextPage?.();
-        }
-      }
-    }
-  }, [onScroll, infiniteScroll, hasNextPage, isNextPageLoading, loadNextPage]);
-
-  // Item data for list
-  const itemData = useMemo(() => ({
-    items: filteredItems,
-    renderItem,
-  }), [filteredItems, renderItem]);
-
-// Custom List component to replace react-window
-interface CustomListProps {
-  height: number;
-  width: number | string;
-  itemCount: number;
-  itemSize: number | ((index: number) => number);
-  itemData: any;
-  itemKey?: (index: number, data: any) => Key;
-  overscanCount?: number;
-  onScroll?: (info: { scrollOffset: number; scrollDirection: 'forward' | 'backward' }) => void;
-  children: ComponentType<{ index: number; style: React.CSSProperties; data: any }>;
-}
-
-const CustomList = React.forwardRef<any, CustomListProps>(({
-  height,
-  width,
-  itemCount,
-  itemSize,
-  itemData,
-  itemKey,
-  overscanCount = 5,
-  onScroll,
-  children: RowComponent,
-}, ref) => {
-  const [scrollTop, setScrollTop] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  
-  const getItemHeight = useCallback((index: number) => {
-    return typeof itemSize === 'function' ? itemSize(index) : itemSize;
-  }, [itemSize]);
-  
-  const itemHeights = useMemo(() => {
-    const heights: number[] = [];
-    let totalHeight = 0;
-    for (let i = 0; i < itemCount; i++) {
-      const height = getItemHeight(i);
-      heights.push(totalHeight);
-      totalHeight += height;
-    }
-    return { heights, totalHeight };
-  }, [itemCount, getItemHeight]);
-  
-  const getVisibleRange = useCallback(() => {
-    const { heights } = itemHeights;
-    let startIndex = 0;
-    let endIndex = itemCount - 1;
-    
-    // Find start index
-    for (let i = 0; i < heights.length; i++) {
-      if ((heights[i] ?? 0) + getItemHeight(i) > scrollTop) {
-        startIndex = Math.max(0, i - overscanCount);
-        break;
-      }
-    }
-    
-    // Find end index
-    for (let i = startIndex; i < heights.length; i++) {
-      if ((heights[i] ?? 0) > scrollTop + height) {
-        endIndex = Math.min(itemCount - 1, i + overscanCount);
-        break;
-      }
-    }
-    
-    return { startIndex, endIndex };
-  }, [scrollTop, height, itemCount, itemHeights, overscanCount, getItemHeight]);
-  
-  const { startIndex, endIndex } = getVisibleRange();
-  
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const newScrollTop = e.currentTarget.scrollTop;
-    const scrollDirection = newScrollTop > scrollTop ? 'forward' : 'backward';
-    setScrollTop(newScrollTop);
-    
-    if (onScroll) {
-      onScroll({ scrollOffset: newScrollTop, scrollDirection });
-    }
-  }, [scrollTop, onScroll]);
-  
-  React.useImperativeHandle(ref, () => ({
-    _outerRef: containerRef.current,
-    scrollTo: (offset: number) => {
-      if (containerRef.current) {
-        containerRef.current.scrollTop = offset;
-      }
-    },
-    scrollToItem: (index: number) => {
-      if (containerRef.current && itemHeights.heights[index] !== undefined) {
-        containerRef.current.scrollTop = itemHeights.heights[index];
-      }
-    }
-  }));
-  
-  const visibleItems = [];
-  for (let i = startIndex; i <= endIndex; i++) {
-    const top = itemHeights.heights[i] || 0;
-    const itemHeight = getItemHeight(i);
-    const key = itemKey ? itemKey(i, itemData) : i;
-    
-    visibleItems.push(
-      <RowComponent
-        key={key}
-        index={i}
-        style={{
-          position: 'absolute',
-          top,
-          height: itemHeight,
-          width: '100%',
-        }}
-        data={itemData}
-      />
-    );
-  }
-  
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        height,
-        width,
-        overflow: 'auto',
-        position: 'relative',
-      }}
-      onScroll={handleScroll}
-    >
-      <div style={{ height: itemHeights.totalHeight, position: 'relative' }}>
-        {visibleItems}
-      </div>
-    </div>
   );
-});
 
-CustomList.displayName = 'CustomList';
+  CustomList.displayName = 'CustomList';
 
-// Determine which list component to use - react-window only has List component
+  // Determine which list component to use - react-window only has List component
   const ListComponent = CustomList;
-  const actualItemCount = infiniteScroll ? (itemCount || filteredItems.length) : filteredItems.length;
+  const actualItemCount = infiniteScroll
+    ? itemCount || filteredItems.length
+    : filteredItems.length;
 
   return (
     <Card className={className}>
@@ -529,7 +632,9 @@ CustomList.displayName = 'CustomList';
               height={height}
               width={width}
               itemCount={actualItemCount}
-              itemSize={variableSize ? (getItemSize || (() => itemHeight)) : itemHeight}
+              itemSize={
+                variableSize ? getItemSize || (() => itemHeight) : itemHeight
+              }
               itemData={itemData}
               itemKey={getItemKey}
               overscanCount={overscanCount}
@@ -553,7 +658,9 @@ CustomList.displayName = 'CustomList';
 OptimizedList.displayName = 'OptimizedList';
 
 // Specialized list components for common use cases
-export const StudentList = (props: Omit<OptimizedListProps<any>, 'sortOptions' | 'filterOptions'>) => (
+export const StudentList = (
+  props: Omit<OptimizedListProps<any>, 'sortOptions' | 'filterOptions'>
+) => (
   <OptimizedList
     {...props}
     sortOptions={[
@@ -590,7 +697,9 @@ export const StudentList = (props: Omit<OptimizedListProps<any>, 'sortOptions' |
   />
 );
 
-export const BookList = (props: Omit<OptimizedListProps<any>, 'sortOptions' | 'filterOptions'>) => (
+export const BookList = (
+  props: Omit<OptimizedListProps<any>, 'sortOptions' | 'filterOptions'>
+) => (
   <OptimizedList
     {...props}
     sortOptions={[
@@ -625,7 +734,9 @@ export const BookList = (props: Omit<OptimizedListProps<any>, 'sortOptions' | 'f
   />
 );
 
-export const EquipmentList = (props: Omit<OptimizedListProps<any>, 'sortOptions' | 'filterOptions'>) => (
+export const EquipmentList = (
+  props: Omit<OptimizedListProps<any>, 'sortOptions' | 'filterOptions'>
+) => (
   <OptimizedList
     {...props}
     sortOptions={[

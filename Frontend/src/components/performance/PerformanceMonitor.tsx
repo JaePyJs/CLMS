@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -11,9 +17,30 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Activity, Zap, Clock, Database, AlertTriangle, CheckCircle, Download, RefreshCw, Play, Pause, FileText, BarChart3, Monitor, Gauge, Target, TrendingUp, TrendingDown } from 'lucide-react';
+import {
+  Activity,
+  Zap,
+  Clock,
+  Database,
+  AlertTriangle,
+  CheckCircle,
+  Download,
+  RefreshCw,
+  Play,
+  Pause,
+  FileText,
+  BarChart3,
+  Monitor,
+  Gauge,
+  Target,
+  TrendingUp,
+  TrendingDown,
+} from 'lucide-react';
 import { performanceMonitoringService } from '@/services/performanceMonitoringService';
-import type { PerformanceReport, ComponentPerformance } from '@/services/performanceMonitoringService';
+import type {
+  PerformanceReport,
+  ComponentPerformance,
+} from '@/services/performanceMonitoringService';
 
 interface MetricCardProps {
   title: string;
@@ -37,8 +64,14 @@ const MetricCard: React.FC<MetricCardProps> = ({
   color = 'text-blue-600',
 }) => {
   const percentage = target && actual ? (actual / target) * 100 : null;
-  const trendColor = trend === 'up' ? 'text-red-600' : trend === 'down' ? 'text-green-600' : 'text-gray-600';
-  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Activity;
+  const trendColor =
+    trend === 'up'
+      ? 'text-red-600'
+      : trend === 'down'
+        ? 'text-green-600'
+        : 'text-gray-600';
+  const TrendIcon =
+    trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Activity;
 
   return (
     <Card>
@@ -47,10 +80,16 @@ const MetricCard: React.FC<MetricCardProps> = ({
           <div className="flex items-center space-x-2">
             <div className={color}>{icon}</div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">{title}</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                {title}
+              </p>
               <p className="text-2xl font-bold">
                 {value}
-                {unit && <span className="text-sm font-normal text-muted-foreground ml-1">{unit}</span>}
+                {unit && (
+                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                    {unit}
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -84,7 +123,10 @@ interface PerformanceGradeProps {
   score: number;
 }
 
-const PerformanceGrade: React.FC<PerformanceGradeProps> = ({ grade, score }) => {
+const PerformanceGrade: React.FC<PerformanceGradeProps> = ({
+  grade,
+  score,
+}) => {
   const gradeColors = {
     A: 'text-green-600 bg-green-50',
     B: 'text-blue-600 bg-blue-50',
@@ -110,7 +152,9 @@ const PerformanceGrade: React.FC<PerformanceGradeProps> = ({ grade, score }) => 
       </div>
       <div>
         <div className="text-3xl font-bold">{grade}</div>
-        <div className="text-sm text-muted-foreground">Score: {score.toFixed(1)}/100</div>
+        <div className="text-sm text-muted-foreground">
+          Score: {score.toFixed(1)}/100
+        </div>
       </div>
     </div>
   );
@@ -118,8 +162,12 @@ const PerformanceGrade: React.FC<PerformanceGradeProps> = ({ grade, score }) => 
 
 const PerformanceMonitor: React.FC = () => {
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const [currentReport, setCurrentReport] = useState<PerformanceReport | null>(null);
-  const [componentMetrics, setComponentMetrics] = useState<ComponentPerformance[]>([]);
+  const [currentReport, setCurrentReport] = useState<PerformanceReport | null>(
+    null
+  );
+  const [componentMetrics, setComponentMetrics] = useState<
+    ComponentPerformance[]
+  >([]);
   const [insights, setInsights] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -179,14 +227,18 @@ const PerformanceMonitor: React.FC = () => {
 
   // Format time values
   const formatTime = (ms: number): string => {
-    if (ms < 1000) return `${ms.toFixed(0)}ms`;
+    if (ms < 1000) {
+      return `${ms.toFixed(0)}ms`;
+    }
     return `${(ms / 1000).toFixed(2)}s`;
   };
 
   // Format memory values
   const formatMemory = (bytes: number): string => {
     const mb = bytes / 1024 / 1024;
-    if (mb < 1024) return `${mb.toFixed(1)}MB`;
+    if (mb < 1024) {
+      return `${mb.toFixed(1)}MB`;
+    }
     return `${(mb / 1024).toFixed(1)}GB`;
   };
 
@@ -195,7 +247,9 @@ const PerformanceMonitor: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Monitor className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Generating performance report...</p>
+          <p className="text-muted-foreground">
+            Generating performance report...
+          </p>
           <Button onClick={generateReport} className="mt-4">
             Generate Report
           </Button>
@@ -219,7 +273,7 @@ const PerformanceMonitor: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            variant={isMonitoring ? "destructive" : "default"}
+            variant={isMonitoring ? 'destructive' : 'default'}
             onClick={isMonitoring ? stopMonitoring : startMonitoring}
           >
             {isMonitoring ? (
@@ -255,7 +309,10 @@ const PerformanceMonitor: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
-            <PerformanceGrade grade={currentReport.grade} score={currentReport.score} />
+            <PerformanceGrade
+              grade={currentReport.grade}
+              score={currentReport.score}
+            />
             <div className="text-right">
               <div className="text-sm text-muted-foreground">Last Updated</div>
               <div className="text-sm">
@@ -285,7 +342,11 @@ const PerformanceMonitor: React.FC = () => {
               icon={<Target className="h-5 w-5" />}
               target={2500}
               actual={currentReport.metrics.lcp}
-              color={currentReport.metrics.lcp < 2500 ? 'text-green-600' : 'text-red-600'}
+              color={
+                currentReport.metrics.lcp < 2500
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              }
             />
             <MetricCard
               title="First Input Delay"
@@ -293,7 +354,11 @@ const PerformanceMonitor: React.FC = () => {
               icon={<Zap className="h-5 w-5" />}
               target={100}
               actual={currentReport.metrics.fid}
-              color={currentReport.metrics.fid < 100 ? 'text-green-600' : 'text-red-600'}
+              color={
+                currentReport.metrics.fid < 100
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              }
             />
             <MetricCard
               title="Cumulative Layout Shift"
@@ -301,15 +366,25 @@ const PerformanceMonitor: React.FC = () => {
               icon={<Activity className="h-5 w-5" />}
               target={0.1}
               actual={currentReport.metrics.cls}
-              color={currentReport.metrics.cls < 0.1 ? 'text-green-600' : 'text-red-600'}
+              color={
+                currentReport.metrics.cls < 0.1
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              }
             />
             <MetricCard
               title="Memory Usage"
-              value={formatMemory(currentReport.metrics.memoryUsage * 1024 * 1024)}
+              value={formatMemory(
+                currentReport.metrics.memoryUsage * 1024 * 1024
+              )}
               icon={<Database className="h-5 w-5" />}
               target={50 * 1024 * 1024}
               actual={currentReport.metrics.memoryUsage * 1024 * 1024}
-              color={currentReport.metrics.memoryUsage < 50 ? 'text-green-600' : 'text-orange-600'}
+              color={
+                currentReport.metrics.memoryUsage < 50
+                  ? 'text-green-600'
+                  : 'text-orange-600'
+              }
             />
           </div>
 
@@ -321,9 +396,7 @@ const PerformanceMonitor: React.FC = () => {
                   <BarChart3 className="h-5 w-5" />
                   Performance Trends
                 </CardTitle>
-                <CardDescription>
-                  Performance metrics over time
-                </CardDescription>
+                <CardDescription>Performance metrics over time</CardDescription>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -331,13 +404,19 @@ const PerformanceMonitor: React.FC = () => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey="timestamp"
-                      tickFormatter={(value) => new Date(value).toLocaleTimeString()}
+                      tickFormatter={(value) =>
+                        new Date(value).toLocaleTimeString()
+                      }
                     />
                     <YAxis />
                     <Tooltip
-                      labelFormatter={(value) => new Date(value).toLocaleString()}
+                      labelFormatter={(value) =>
+                        new Date(value).toLocaleString()
+                      }
                       formatter={(value: number, name: string) => [
-                        name === 'score' ? `${value.toFixed(1)}` : formatTime(value),
+                        name === 'score'
+                          ? `${value.toFixed(1)}`
+                          : formatTime(value),
                         name === 'score' ? 'Score' : name.toUpperCase(),
                       ]}
                     />
@@ -376,19 +455,27 @@ const PerformanceMonitor: React.FC = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span>DOM Content Loaded</span>
-                  <span className="font-mono">{formatTime(currentReport.metrics.domContentLoaded)}</span>
+                  <span className="font-mono">
+                    {formatTime(currentReport.metrics.domContentLoaded)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Load Complete</span>
-                  <span className="font-mono">{formatTime(currentReport.metrics.loadComplete)}</span>
+                  <span className="font-mono">
+                    {formatTime(currentReport.metrics.loadComplete)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Time to First Byte</span>
-                  <span className="font-mono">{formatTime(currentReport.metrics.ttfb)}</span>
+                  <span className="font-mono">
+                    {formatTime(currentReport.metrics.ttfb)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>First Contentful Paint</span>
-                  <span className="font-mono">{formatTime(currentReport.metrics.fcp)}</span>
+                  <span className="font-mono">
+                    {formatTime(currentReport.metrics.fcp)}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -404,19 +491,27 @@ const PerformanceMonitor: React.FC = () => {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span>Resource Count</span>
-                  <span className="font-mono">{currentReport.metrics.resourceCount}</span>
+                  <span className="font-mono">
+                    {currentReport.metrics.resourceCount}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Total Size</span>
-                  <span className="font-mono">{formatMemory(currentReport.metrics.totalResourceSize)}</span>
+                  <span className="font-mono">
+                    {formatMemory(currentReport.metrics.totalResourceSize)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>Transfer Size</span>
-                  <span className="font-mono">{formatMemory(currentReport.metrics.totalTransferSize)}</span>
+                  <span className="font-mono">
+                    {formatMemory(currentReport.metrics.totalTransferSize)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>API Response Time</span>
-                  <span className="font-mono">{formatTime(currentReport.metrics.apiResponseTime)}</span>
+                  <span className="font-mono">
+                    {formatTime(currentReport.metrics.apiResponseTime)}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -442,7 +537,10 @@ const PerformanceMonitor: React.FC = () => {
                     .sort((a, b) => b.averageTime - a.averageTime)
                     .slice(0, 10)
                     .map((component) => (
-                      <div key={component.name} className="border rounded-lg p-4">
+                      <div
+                        key={component.name}
+                        className="border rounded-lg p-4"
+                      >
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-semibold">{component.name}</h4>
                           <div
@@ -457,22 +555,38 @@ const PerformanceMonitor: React.FC = () => {
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
-                            <span className="text-muted-foreground">Renders:</span>
-                            <div className="font-semibold">{component.renders}</div>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Slowest:</span>
-                            <div className="font-semibold">{component.slowestRender.toFixed(2)}ms</div>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Fastest:</span>
+                            <span className="text-muted-foreground">
+                              Renders:
+                            </span>
                             <div className="font-semibold">
-                              {component.fastestRender === Infinity ? 'N/A' : `${component.fastestRender.toFixed(2)}ms`}
+                              {component.renders}
                             </div>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Mount Time:</span>
-                            <div className="font-semibold">{component.mountTime.toFixed(2)}ms</div>
+                            <span className="text-muted-foreground">
+                              Slowest:
+                            </span>
+                            <div className="font-semibold">
+                              {component.slowestRender.toFixed(2)}ms
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">
+                              Fastest:
+                            </span>
+                            <div className="font-semibold">
+                              {component.fastestRender === Infinity
+                                ? 'N/A'
+                                : `${component.fastestRender.toFixed(2)}ms`}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">
+                              Mount Time:
+                            </span>
+                            <div className="font-semibold">
+                              {component.mountTime.toFixed(2)}ms
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -483,7 +597,9 @@ const PerformanceMonitor: React.FC = () => {
           ) : (
             <Card>
               <CardContent className="flex items-center justify-center h-32">
-                <p className="text-muted-foreground">No component metrics available yet</p>
+                <p className="text-muted-foreground">
+                  No component metrics available yet
+                </p>
               </CardContent>
             </Card>
           )}
@@ -544,7 +660,10 @@ const PerformanceMonitor: React.FC = () => {
                   <Download className="h-4 w-4 mr-2" />
                   Export Full Report
                 </Button>
-                <Button onClick={() => window.open('/stats.html', '_blank')} variant="outline">
+                <Button
+                  onClick={() => window.open('/stats.html', '_blank')}
+                  variant="outline"
+                >
                   <Activity className="h-4 w-4 mr-2" />
                   View Bundle Analysis
                 </Button>

@@ -1,6 +1,9 @@
 import { websocketServer } from './websocketServer';
-import { prisma } from '../utils/prisma';
+import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger';
+
+const prisma = new PrismaClient();
+import { randomUUID } from 'crypto';
 
 interface EquipmentSessionData {
   equipmentId: string;
@@ -51,8 +54,9 @@ class RealtimeService {
 
         // Broadcast current equipment status
         websocketServer.broadcastToRoom('equipment', {
+          id: randomUUID(),
           type: 'equipment:status-update',
-          payload: equipment,
+          data: equipment,
           timestamp: new Date()
         });
       } catch (error) {
@@ -73,7 +77,7 @@ class RealtimeService {
             status: 'ACTIVE'
           },
           include: {
-            students: {
+            student: {
               select: {
                 id: true,
                 student_id: true,
@@ -250,7 +254,7 @@ class RealtimeService {
     ]);
 
     return {
-      students: {
+      student: {
         total: totalStudents,
         active: activeStudents
       },

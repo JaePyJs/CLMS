@@ -31,10 +31,10 @@ interface FormActions {
 
 /**
  * Hook for managing form states with validation and submission handling
- * 
+ *
  * @param options - Form configuration options
  * @returns [state, actions] - Current state and actions to modify it
- * 
+ *
  * @example
  * const [state, actions] = useForm({
  *   initialValues: { name: '', email: '' },
@@ -46,7 +46,7 @@ interface FormActions {
  *     await submitStudent(values);
  *   },
  * });
- * 
+ *
  * // In JSX
  * <input
  *   value={state.values.name}
@@ -58,13 +58,16 @@ interface FormActions {
 export function useForm(
   options: {
     initialValues?: Record<string, any>;
-    validationSchema?: Record<string, {
-      required?: boolean;
-      minLength?: number;
-      maxLength?: number;
-      pattern?: RegExp;
-      custom?: (value: any, values: Record<string, any>) => string | null;
-    }>;
+    validationSchema?: Record<
+      string,
+      {
+        required?: boolean;
+        minLength?: number;
+        maxLength?: number;
+        pattern?: RegExp;
+        custom?: (value: any, values: Record<string, any>) => string | null;
+      }
+    >;
     onSubmit?: (values: Record<string, any>) => Promise<void> | void;
     validateOnChange?: boolean;
     validateOnBlur?: boolean;
@@ -92,109 +95,145 @@ export function useForm(
   const validationCache = useRef(new Map<string, string | null>());
 
   // Validation functions
-  const validateField = useCallback((name: string, value: any, values: Record<string, any> = state.values): string | null => {
-    const rules = validationSchema[name];
-    if (!rules) return null;
-
-    // Required validation
-    if (rules.required && (!value || (typeof value === 'string' && value.trim() === ''))) {
-      return `${name} is required`;
-    }
-
-    // Skip other validations if value is empty and not required
-    if (!value || (typeof value === 'string' && value.trim() === '')) {
-      return null;
-    }
-
-    // Min length validation
-    if (rules.minLength && typeof value === 'string' && value.length < rules.minLength) {
-      return `${name} must be at least ${rules.minLength} characters`;
-    }
-
-    // Max length validation
-    if (rules.maxLength && typeof value === 'string' && value.length > rules.maxLength) {
-      return `${name} must be no more than ${rules.maxLength} characters`;
-    }
-
-    // Pattern validation
-    if (rules.pattern && typeof value === 'string' && !rules.pattern.test(value)) {
-      return `${name} format is invalid`;
-    }
-
-    // Custom validation
-    if (rules.custom) {
-      return rules.custom(value, values);
-    }
-
-    return null;
-  }, [validationSchema]);
-
-  const validateForm = useCallback((values: Record<string, any> = state.values): boolean => {
-    const errors: FormErrors = {};
-    let isValid = true;
-
-    // Validate all fields
-    Object.keys(validationSchema).forEach(fieldName => {
-      const error = validateField(fieldName, values[fieldName], values);
-      if (error) {
-        errors[fieldName] = error;
-        isValid = false;
+  const validateField = useCallback(
+    (
+      name: string,
+      value: any,
+      values: Record<string, any> = state.values
+    ): string | null => {
+      const rules = validationSchema[name];
+      if (!rules) {
+        return null;
       }
-    });
 
-    setState(prev => ({
-      ...prev,
-      errors,
-      isValidating: false,
-    }));
+      // Required validation
+      if (
+        rules.required &&
+        (!value || (typeof value === 'string' && value.trim() === ''))
+      ) {
+        return `${name} is required`;
+      }
 
-    return isValid;
-  }, [validationSchema, validateField, state.values]);
+      // Skip other validations if value is empty and not required
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
+        return null;
+      }
+
+      // Min length validation
+      if (
+        rules.minLength &&
+        typeof value === 'string' &&
+        value.length < rules.minLength
+      ) {
+        return `${name} must be at least ${rules.minLength} characters`;
+      }
+
+      // Max length validation
+      if (
+        rules.maxLength &&
+        typeof value === 'string' &&
+        value.length > rules.maxLength
+      ) {
+        return `${name} must be no more than ${rules.maxLength} characters`;
+      }
+
+      // Pattern validation
+      if (
+        rules.pattern &&
+        typeof value === 'string' &&
+        !rules.pattern.test(value)
+      ) {
+        return `${name} format is invalid`;
+      }
+
+      // Custom validation
+      if (rules.custom) {
+        return rules.custom(value, values);
+      }
+
+      return null;
+    },
+    [validationSchema]
+  );
+
+  const validateForm = useCallback(
+    (values: Record<string, any> = state.values): boolean => {
+      const errors: FormErrors = {};
+      let isValid = true;
+
+      // Validate all fields
+      Object.keys(validationSchema).forEach((fieldName) => {
+        const error = validateField(fieldName, values[fieldName], values);
+        if (error) {
+          errors[fieldName] = error;
+          isValid = false;
+        }
+      });
+
+      setState((prev) => ({
+        ...prev,
+        errors,
+        isValidating: false,
+      }));
+
+      return isValid;
+    },
+    [validationSchema, validateField, state.values]
+  );
 
   // State update functions
-  const setValue = useCallback((name: string, value: any, shouldValidate: boolean = validateOnChange) => {
-    setState(prev => ({
-      ...prev,
-      values: {
-        ...prev.values,
-        [name]: value,
-      },
-    }));
-
-    if (shouldValidate && state.touched[name]) {
-      // Clear validation cache for this field
-      validationCache.current.delete(name);
-      
-      // Validate the field
-      const error = validateField(name, value);
-      setState(prev => ({
+  const setValue = useCallback(
+    (name: string, value: any, shouldValidate: boolean = validateOnChange) => {
+      setState((prev) => ({
         ...prev,
-        errors: {
-          ...prev.errors,
-          [name]: error,
+        values: {
+          ...prev.values,
+          [name]: value,
         },
       }));
-    }
-  }, [validateOnChange, state.touched, validateField]);
+
+      if (shouldValidate && state.touched[name]) {
+        // Clear validation cache for this field
+        validationCache.current.delete(name);
+
+        // Validate the field
+        const error = validateField(name, value);
+        setState((prev) => ({
+          ...prev,
+          errors: {
+            ...prev.errors,
+            [name]: error,
+          },
+        }));
+      }
+    },
+    [validateOnChange, state.touched, validateField]
+  );
 
   // Alias for setValue (for compatibility)
   const setFieldValue = setValue;
 
-  const setValues = useCallback((values: Record<string, any>, shouldValidate: boolean = validateOnChange) => {
-    const newValues = { ...state.values, ...values };
-    
-    setState(prev => ({
-      ...prev,
-      values: newValues,
-    }));
+  const setValues = useCallback(
+    (
+      values: Record<string, any>,
+      shouldValidate: boolean = validateOnChange
+    ) => {
+      const newValues = { ...state.values, ...values };
 
-    if (shouldValidate) {
-      validateForm(newValues);
-    }
-  }, [validateOnChange, validateForm, state.values]);
+      setState((prev) => ({
+        ...prev,
+        values: newValues,
+      }));
+
+      if (shouldValidate) {
+        validateForm(newValues);
+      }
+    },
+    [validateOnChange, validateForm, state.values]
+  );
 
   const setError = useCallback((name: string, error: string | string[]) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       errors: {
         ...prev.errors,
@@ -204,14 +243,14 @@ export function useForm(
   }, []);
 
   const setErrors = useCallback((errors: FormErrors) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       errors,
     }));
   }, []);
 
   const clearError = useCallback((name: string) => {
-    setState(prev => {
+    setState((prev) => {
       const newErrors = { ...prev.errors };
       delete newErrors[name];
       return {
@@ -222,48 +261,54 @@ export function useForm(
   }, []);
 
   const clearErrors = useCallback(() => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       errors: {},
     }));
   }, []);
 
-  const setTouched = useCallback((name: string, touched: boolean = true) => {
-    setState(prev => ({
-      ...prev,
-      touched: {
-        ...prev.touched,
-        [name]: touched,
-      },
-    }));
-
-    // Validate on blur if enabled
-    if (touched && validateOnBlur) {
-      const error = validateField(name, state.values[name]);
-      setState(prev => ({
+  const setTouched = useCallback(
+    (name: string, touched: boolean = true) => {
+      setState((prev) => ({
         ...prev,
-        errors: {
-          ...prev.errors,
-          [name]: error,
+        touched: {
+          ...prev.touched,
+          [name]: touched,
         },
       }));
-    }
-  }, [validateOnBlur, validateField, state.values]);
 
-  const reset = useCallback((values?: Record<string, any>) => {
-    const resetValues = values || initialValues;
-    
-    setState(prev => ({
-      ...prev,
-      values: resetValues,
-      errors: {},
-      touched: {},
-      isSubmitting: false,
-      isValidating: false,
-    }));
+      // Validate on blur if enabled
+      if (touched && validateOnBlur) {
+        const error = validateField(name, state.values[name]);
+        setState((prev) => ({
+          ...prev,
+          errors: {
+            ...prev.errors,
+            [name]: error,
+          },
+        }));
+      }
+    },
+    [validateOnBlur, validateField, state.values]
+  );
 
-    validationCache.current.clear();
-  }, [initialValues]);
+  const reset = useCallback(
+    (values?: Record<string, any>) => {
+      const resetValues = values || initialValues;
+
+      setState((prev) => ({
+        ...prev,
+        values: resetValues,
+        errors: {},
+        touched: {},
+        isSubmitting: false,
+        isValidating: false,
+      }));
+
+      validationCache.current.clear();
+    },
+    [initialValues]
+  );
 
   const resetForm = useCallback(() => {
     setState({
@@ -279,15 +324,20 @@ export function useForm(
   }, [initialValues]);
 
   const submit = useCallback(async () => {
-    if (state.isSubmitting) return;
+    if (state.isSubmitting) {
+      return;
+    }
 
     // Mark all fields as touched
-    const allTouched = Object.keys(validationSchema).reduce((acc, key) => {
-      acc[key] = true;
-      return acc;
-    }, {} as Record<string, boolean>);
+    const allTouched = Object.keys(validationSchema).reduce(
+      (acc, key) => {
+        acc[key] = true;
+        return acc;
+      },
+      {} as Record<string, boolean>
+    );
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       touched: allTouched,
       isSubmitting: true,
@@ -299,7 +349,7 @@ export function useForm(
     const isValid = validateForm();
 
     if (!isValid) {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         isSubmitting: false,
         isValidating: false,
@@ -318,13 +368,20 @@ export function useForm(
     } catch (error) {
       console.error('Form submission error:', error);
     } finally {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         isSubmitting: false,
         isValidating: false,
       }));
     }
-  }, [state.isSubmitting, state.values, onSubmit, resetOnSubmit, validateForm, resetForm]);
+  }, [
+    state.isSubmitting,
+    state.values,
+    onSubmit,
+    resetOnSubmit,
+    validateForm,
+    resetForm,
+  ]);
 
   const actions: FormActions = {
     setValue,
@@ -339,7 +396,7 @@ export function useForm(
     validate: () => validateForm(),
     validateField: (name: string) => {
       const error = validateField(name, state.values[name]);
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
         errors: {
           ...prev.errors,
@@ -357,10 +414,10 @@ export function useForm(
 
 /**
  * Hook for managing multi-step form states
- * 
+ *
  * @param steps - Array of step configurations
  * @returns [state, actions] - Current state and actions for step navigation
- * 
+ *
  * @example
  * const [state, actions] = useMultiStepForm([
  *   { title: 'Personal Info', validation: personalValidation },
@@ -380,29 +437,35 @@ export function useMultiStepForm(
 
   const nextStep = useCallback(() => {
     if (currentStep < steps.length - 1) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((prev) => prev + 1);
     }
   }, [currentStep, steps.length]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
+      setCurrentStep((prev) => prev - 1);
     }
   }, [currentStep]);
 
-  const goToStep = useCallback((stepIndex: number) => {
-    if (stepIndex >= 0 && stepIndex < steps.length) {
-      setCurrentStep(stepIndex);
-    }
-  }, [steps.length]);
+  const goToStep = useCallback(
+    (stepIndex: number) => {
+      if (stepIndex >= 0 && stepIndex < steps.length) {
+        setCurrentStep(stepIndex);
+      }
+    },
+    [steps.length]
+  );
 
   const markStepComplete = useCallback((stepIndex: number) => {
-    setCompletedSteps(prev => new Set([...prev, stepIndex]));
+    setCompletedSteps((prev) => new Set([...prev, stepIndex]));
   }, []);
 
-  const isStepComplete = useCallback((stepIndex: number) => {
-    return completedSteps.has(stepIndex);
-  }, [completedSteps]);
+  const isStepComplete = useCallback(
+    (stepIndex: number) => {
+      return completedSteps.has(stepIndex);
+    },
+    [completedSteps]
+  );
 
   const canGoToNext = useCallback(() => {
     return currentStep < steps.length - 1;
@@ -412,15 +475,28 @@ export function useMultiStepForm(
     return currentStep > 0;
   }, [currentStep]);
 
-  const getStepStatus = useCallback((stepIndex: number) => {
-    if (stepIndex === currentStep) return 'current';
-    if (completedSteps.has(stepIndex)) return 'completed';
-    if (stepIndex < currentStep) return 'completed';
-    return 'upcoming';
-  }, [currentStep, completedSteps]);
+  const getStepStatus = useCallback(
+    (stepIndex: number) => {
+      if (stepIndex === currentStep) {
+        return 'current';
+      }
+      if (completedSteps.has(stepIndex)) {
+        return 'completed';
+      }
+      if (stepIndex < currentStep) {
+        return 'completed';
+      }
+      return 'upcoming';
+    },
+    [currentStep, completedSteps]
+  );
 
   const progress = useCallback(() => {
-    return ((completedSteps.size + (currentStep < steps.length - 1 ? 0 : 1)) / steps.length) * 100;
+    return (
+      ((completedSteps.size + (currentStep < steps.length - 1 ? 0 : 1)) /
+        steps.length) *
+      100
+    );
   }, [completedSteps.size, currentStep, steps.length]);
 
   const actions = {
@@ -446,28 +522,31 @@ export function useMultiStepForm(
 
 /**
  * Hook for managing form validation in real-time
- * 
+ *
  * @param debounceMs - Debounce delay for validation in milliseconds
  * @returns [validateDebounced] - Debounced validation function
  */
 /**
  * Hook for managing form validation in real-time
- * 
+ *
  * @param debounceMs - Debounce delay for validation in milliseconds
  * @returns [validateDebounced] - Debounced validation function
  */
 export function useFormValidation(debounceMs: number = 300) {
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-  const validateDebounced = useCallback((validateFn: () => void) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+  const validateDebounced = useCallback(
+    (validateFn: () => void) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
 
-    timeoutRef.current = setTimeout(() => {
-      validateFn();
-    }, debounceMs);
-  }, [debounceMs]);
+      timeoutRef.current = setTimeout(() => {
+        validateFn();
+      }, debounceMs);
+    },
+    [debounceMs]
+  );
 
   useEffect(() => {
     return () => {

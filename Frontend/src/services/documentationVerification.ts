@@ -639,7 +639,7 @@ export class DocumentationVerificationService {
 
   public getLatestReport(): VerificationReport | null {
     return this.verificationHistory.length > 0
-      ? this.verificationHistory[this.verificationHistory.length - 1] ?? null
+      ? (this.verificationHistory[this.verificationHistory.length - 1] ?? null)
       : null;
   }
 

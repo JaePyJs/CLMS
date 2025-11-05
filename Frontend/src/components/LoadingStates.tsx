@@ -2,11 +2,17 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 
 // Spinner Loading
-export const LoadingSpinner = ({ size = 'md', className = '' }: { size?: 'sm' | 'md' | 'lg', className?: string }) => {
+export const LoadingSpinner = ({
+  size = 'md',
+  className = '',
+}: {
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}) => {
   const sizeClasses = {
     sm: 'h-4 w-4',
     md: 'h-8 w-8',
-    lg: 'h-12 w-12'
+    lg: 'h-12 w-12',
   };
 
   return (
@@ -17,7 +23,11 @@ export const LoadingSpinner = ({ size = 'md', className = '' }: { size?: 'sm' | 
 };
 
 // Full Page Loading
-export const LoadingPage = ({ message = 'Loading...' }: { message?: string }) => {
+export const LoadingPage = ({
+  message = 'Loading...',
+}: {
+  message?: string;
+}) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="text-center">
@@ -29,9 +39,11 @@ export const LoadingPage = ({ message = 'Loading...' }: { message?: string }) =>
 };
 
 // Card Loading Skeleton
-export const CardSkeleton = () => {
+export const CardSkeleton = ({ className }: { className?: string } = {}) => {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 animate-pulse">
+    <div
+      className={`bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-6 animate-pulse ${className || ''}`}
+    >
       <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4 mb-4"></div>
       <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-1/2 mb-2"></div>
       <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4"></div>
@@ -40,20 +52,39 @@ export const CardSkeleton = () => {
 };
 
 // Table Loading Skeleton
-export const TableSkeleton = ({ rows = 5, columns = 4 }: { rows?: number, columns?: number }) => {
+export const TableSkeleton = ({
+  rows = 5,
+  columns = 4,
+}: {
+  rows?: number;
+  columns?: number;
+}) => {
   return (
     <div className="w-full animate-pulse">
       {/* Header */}
-      <div className="grid gap-4 mb-4" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
+      <div
+        className="grid gap-4 mb-4"
+        style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
+      >
         {Array.from({ length: columns }).map((_, i) => (
-          <div key={`header-${i}`} className="h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
+          <div
+            key={`header-${i}`}
+            className="h-4 bg-slate-200 dark:bg-slate-700 rounded"
+          ></div>
         ))}
       </div>
       {/* Rows */}
       {Array.from({ length: rows }).map((_, rowIndex) => (
-        <div key={`row-${rowIndex}`} className="grid gap-4 mb-3" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
+        <div
+          key={`row-${rowIndex}`}
+          className="grid gap-4 mb-3"
+          style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
+        >
           {Array.from({ length: columns }).map((_, colIndex) => (
-            <div key={`cell-${rowIndex}-${colIndex}`} className="h-8 bg-slate-200 dark:bg-slate-700 rounded"></div>
+            <div
+              key={`cell-${rowIndex}-${colIndex}`}
+              className="h-8 bg-slate-200 dark:bg-slate-700 rounded"
+            ></div>
           ))}
         </div>
       ))}
@@ -103,7 +134,11 @@ export const GridSkeleton = ({ items = 6 }: { items?: number }) => {
 };
 
 // Loading Overlay (for buttons and forms)
-export const LoadingOverlay = ({ message = 'Processing...' }: { message?: string }) => {
+export const LoadingOverlay = ({
+  message = 'Processing...',
+}: {
+  message?: string;
+}) => {
   return (
     <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg">
       <div className="text-center">
@@ -125,23 +160,29 @@ export const ButtonLoading = ({ text = 'Loading...' }: { text?: string }) => {
 };
 
 // Empty State (not loading, but useful)
-export const EmptyState = ({ 
-  title = 'No data found', 
+export const EmptyState = ({
+  title = 'No data found',
   description = 'There is no data to display at the moment.',
   icon: Icon,
-  action
-}: { 
-  title?: string, 
-  description?: string,
-  icon?: React.ComponentType<{ className?: string }>,
-  action?: React.ReactNode 
+  action,
+}: {
+  title?: string;
+  description?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  action?: React.ReactNode;
 }) => {
-  const IconComponent = Icon || (() => <div className="h-12 w-12 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-4"></div>);
-  
+  const IconComponent =
+    Icon ||
+    (() => (
+      <div className="h-12 w-12 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-4"></div>
+    ));
+
   return (
     <div className="text-center py-12">
       <IconComponent className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">{title}</h3>
+      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+        {title}
+      </h3>
       <p className="text-sm text-muted-foreground mb-4">{description}</p>
       {action}
     </div>

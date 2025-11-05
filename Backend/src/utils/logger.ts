@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as winston from 'winston';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -15,7 +16,7 @@ const logFormat = winston.format.combine(
   }),
   winston.format.errors({ stack: true }),
   winston.format.json(),
-  winston.format.prettyPrint()
+  winston.format.prettyPrint(),
 );
 
 // Console format for development
@@ -26,14 +27,14 @@ const consoleFormat = winston.format.combine(
   }),
   winston.format.printf(({ timestamp, level, message, ...meta }) => {
     let log = `${timestamp} [${level}]: ${message}`;
-    
+
     // Add metadata if present
     if (Object.keys(meta).length > 0) {
       log += `\n${JSON.stringify(meta, null, 2)}`;
     }
-    
+
     return log;
-  })
+  }),
 );
 
 // Create logger instance
@@ -53,10 +54,10 @@ export const logger = winston.createLogger({
       maxFiles: 5,
       format: winston.format.combine(
         winston.format.timestamp(),
-        winston.format.json()
+        winston.format.json(),
       ),
     }),
-    
+
     // Combined log file
     new winston.transports.File({
       filename: path.join(logsDir, 'combined.log'),
@@ -64,18 +65,18 @@ export const logger = winston.createLogger({
       maxFiles: 5,
       format: winston.format.combine(
         winston.format.timestamp(),
-        winston.format.json()
+        winston.format.json(),
       ),
     }),
   ],
-  
+
   // Handle exceptions and rejections
   exceptionHandlers: [
     new winston.transports.File({
       filename: path.join(logsDir, 'exceptions.log'),
     }),
   ],
-  
+
   rejectionHandlers: [
     new winston.transports.File({
       filename: path.join(logsDir, 'rejections.log'),
@@ -88,7 +89,7 @@ if (process.env['NODE_ENV'] !== 'production') {
   logger.add(
     new winston.transports.Console({
       format: consoleFormat,
-    })
+    }),
   );
 }
 
@@ -145,7 +146,12 @@ export class Logger {
   }
 
   // Database operation logging
-  public dbOperation(operation: string, table: string, duration: number, meta?: any): void {
+  public dbOperation(
+    operation: string,
+    table: string,
+    duration: number,
+    meta?: any,
+  ): void {
     this.debug('Database Operation', {
       operation,
       table,
@@ -165,9 +171,14 @@ export class Logger {
   }
 
   // Security event logging
-  public securityEvent(event: string, severity: 'low' | 'medium' | 'high', meta?: any): void {
-    const logMethod = severity === 'high' ? 'error' : severity === 'medium' ? 'warn' : 'info';
-    
+  public securityEvent(
+    event: string,
+    severity: 'low' | 'medium' | 'high',
+    meta?: any,
+  ): void {
+    const logMethod =
+      severity === 'high' ? 'error' : severity === 'medium' ? 'warn' : 'info';
+
     this[logMethod]('Security Event', {
       event,
       severity,
@@ -179,7 +190,7 @@ export class Logger {
   // Performance logging
   public performance(operation: string, duration: number, meta?: any): void {
     const level = duration > 1000 ? 'warn' : 'info';
-    
+
     this[level]('Performance Metric', {
       operation,
       duration: `${duration}ms`,

@@ -6,7 +6,21 @@ import { Input } from '@/components/ui/input';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { toast } from 'sonner';
-import { Camera, CameraOff, Zap, History as HistoryIcon, CheckCircle, XCircle, AlertCircle, RotateCcw, Flashlight, FlashlightOff, Keyboard, X, Search } from 'lucide-react';
+import {
+  Camera,
+  CameraOff,
+  Zap,
+  History as HistoryIcon,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  RotateCcw,
+  Flashlight,
+  FlashlightOff,
+  Keyboard,
+  X,
+  Search,
+} from 'lucide-react';
 
 interface ScanResult {
   id: string;
@@ -55,7 +69,9 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
 
   // Initialize camera
   const startCamera = useCallback(async () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current) {
+      return;
+    }
 
     try {
       const constraints: MediaStreamConstraints = {
@@ -85,7 +101,7 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
   // Stop camera
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
     if (videoRef.current) {
@@ -96,12 +112,16 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
 
   // Toggle flashlight
   const toggleFlashlight = useCallback(async () => {
-    if (!streamRef.current) return;
+    if (!streamRef.current) {
+      return;
+    }
 
     try {
       const track = streamRef.current.getVideoTracks()[0];
-      if (!track) return;
-      
+      if (!track) {
+        return;
+      }
+
       const capabilities = track.getCapabilities() as any;
 
       if (capabilities.torch) {
@@ -121,7 +141,9 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
 
   // Scan frame for barcodes/QR codes
   const scanFrame = useCallback(() => {
-    if (!isScanning || !videoRef.current || !canvasRef.current) return;
+    if (!isScanning || !videoRef.current || !canvasRef.current) {
+      return;
+    }
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -141,7 +163,8 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
     // For now, we'll simulate scanning
     const mockScannedCode = `DEMO-${Date.now().toString(36)}`;
 
-    if (Math.random() < 0.01) { // Simulate successful scan
+    if (Math.random() < 0.01) {
+      // Simulate successful scan
       handleScanResult(mockScannedCode, 'barcode');
     }
 
@@ -149,70 +172,78 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
   }, [isScanning]);
 
   // Handle scan result
-  const handleScanResult = useCallback(async (code: string, type: 'barcode' | 'qr' | 'manual', data?: any) => {
-    try {
-      // Create scan result entry
-      const result: ScanResult = {
-        id: `scan-${Date.now()}`,
-        code,
-        type,
-        timestamp: Date.now(),
-        status: 'success',
-        data,
-      };
+  const handleScanResult = useCallback(
+    async (code: string, type: 'barcode' | 'qr' | 'manual', data?: any) => {
+      try {
+        // Create scan result entry
+        const result: ScanResult = {
+          id: `scan-${Date.now()}`,
+          code,
+          type,
+          timestamp: Date.now(),
+          status: 'success',
+          data,
+        };
 
-      // Add to history
-      setScanHistory(prev => [result, ...prev.slice(0, 9)]); // Keep last 10
+        // Add to history
+        setScanHistory((prev) => [result, ...prev.slice(0, 9)]); // Keep last 10
 
-      // Provide haptic feedback
-      if ('vibrate' in navigator) {
-        navigator.vibrate(100);
+        // Provide haptic feedback
+        if ('vibrate' in navigator) {
+          navigator.vibrate(100);
+        }
+
+        // Call success callback
+        onScanSuccess(code, type, data);
+
+        // Queue action if offline
+        if (!navigator.onLine) {
+          await queueAction({
+            type: 'create',
+            endpoint: '/api/activities',
+            data: {
+              action: 'scan',
+              code,
+              type,
+              timestamp: result.timestamp,
+              data,
+            },
+            maxRetries: 5,
+          });
+        }
+
+        // Clear current scan
+        setCurrentScan('');
+        if (scanMode === 'manual') {
+          setManualInput('');
+        }
+
+        toast.success(`Scanned: ${code}`);
+      } catch (error) {
+        console.error('[MobileScanner] Scan handling failed:', error);
+        toast.error('Failed to process scan');
+        onScanError?.('Failed to process scan');
       }
-
-      // Call success callback
-      onScanSuccess(code, type, data);
-
-      // Queue action if offline
-      if (!navigator.onLine) {
-        await queueAction({
-          type: 'create',
-          endpoint: '/api/activities',
-          data: {
-            action: 'scan',
-            code,
-            type,
-            timestamp: result.timestamp,
-            data,
-          },
-          maxRetries: 5,
-        });
-      }
-
-      // Clear current scan
-      setCurrentScan('');
-      if (scanMode === 'manual') {
-        setManualInput('');
-      }
-
-      toast.success(`Scanned: ${code}`);
-    } catch (error) {
-      console.error('[MobileScanner] Scan handling failed:', error);
-      toast.error('Failed to process scan');
-      onScanError?.('Failed to process scan');
-    }
-  }, [onScanSuccess, onScanError, scanMode, queueAction]);
+    },
+    [onScanSuccess, onScanError, scanMode, queueAction]
+  );
 
   // Handle manual input
   const handleManualSubmit = useCallback(() => {
-    if (!manualInput.trim()) return;
+    if (!manualInput.trim()) {
+      return;
+    }
 
     handleScanResult(manualInput.trim(), 'manual');
   }, [manualInput, handleScanResult]);
 
   // Retry failed scan
-  const retryScan = useCallback((result: ScanResult) => {
-    handleScanResult(result.code, result.type, result.data);
-  }, [handleScanResult]);
+  const retryScan = useCallback(
+    (result: ScanResult) => {
+      handleScanResult(result.code, result.type, result.data);
+    },
+    [handleScanResult]
+  );
 
   // Clear history
   const clearHistory = useCallback(() => {
@@ -266,17 +297,18 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
         <CardContent className="space-y-4">
           {/* Mode Selection */}
           <div className="flex gap-2">
-            {allowedTypes.includes('barcode') && allowedTypes.includes('qr') && (
-              <Button
-                variant={scanMode === 'camera' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setScanMode('camera')}
-                className="flex items-center gap-2"
-              >
-                <Camera className="h-4 w-4" />
-                Camera
-              </Button>
-            )}
+            {allowedTypes.includes('barcode') &&
+              allowedTypes.includes('qr') && (
+                <Button
+                  variant={scanMode === 'camera' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setScanMode('camera')}
+                  className="flex items-center gap-2"
+                >
+                  <Camera className="h-4 w-4" />
+                  Camera
+                </Button>
+              )}
             {allowedTypes.includes('manual') && (
               <Button
                 variant={scanMode === 'manual' ? 'default' : 'outline'}
@@ -293,7 +325,10 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
           {/* Camera Scanner */}
           {scanMode === 'camera' && (
             <div className="space-y-4">
-              <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '16/9' }}>
+              <div
+                className="relative bg-black rounded-lg overflow-hidden"
+                style={{ aspectRatio: '16/9' }}
+              >
                 <video
                   ref={videoRef}
                   autoPlay
@@ -310,7 +345,9 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
                     <div className="border-2 border-green-400 rounded-lg aspect-square max-w-xs mx-auto animate-pulse" />
                   </div>
                   <div className="absolute bottom-4 left-4 right-4 text-center">
-                    <p className="text-white text-sm font-medium">Position code within frame</p>
+                    <p className="text-white text-sm font-medium">
+                      Position code within frame
+                    </p>
                   </div>
                 </div>
 
@@ -428,8 +465,8 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
                     result.status === 'success'
                       ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
                       : result.status === 'error'
-                      ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
-                      : 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800'
+                        ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800'
+                        : 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -446,7 +483,8 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
                       <div>
                         <p className="text-sm font-medium">{result.code}</p>
                         <p className="text-xs text-muted-foreground">
-                          {result.type} • {new Date(result.timestamp).toLocaleTimeString()}
+                          {result.type} •{' '}
+                          {new Date(result.timestamp).toLocaleTimeString()}
                         </p>
                       </div>
                     </div>

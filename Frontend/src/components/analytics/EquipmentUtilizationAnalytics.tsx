@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   BarChart,
   Bar,
@@ -17,97 +23,132 @@ import {
   AreaChart,
   RadialBarChart,
   RadialBar,
-  PolarAngleAxis
-} from 'recharts'
-import { Monitor, Clock, TrendingUp, AlertTriangle, CheckCircle, Settings, Users, Activity, Calendar, Zap, Thermometer, Wrench, BarChart3 } from 'lucide-react';
+  PolarAngleAxis,
+} from 'recharts';
+import {
+  Monitor,
+  Clock,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle,
+  Settings,
+  Users,
+  Activity,
+  Calendar,
+  Zap,
+  Thermometer,
+  Wrench,
+  BarChart3,
+} from 'lucide-react';
 
 interface EquipmentUtilizationAnalyticsProps {
-  timeframe: 'day' | 'week' | 'month'
-  data?: any
-  isLoading?: boolean
+  timeframe: 'day' | 'week' | 'month';
+  data?: any;
+  isLoading?: boolean;
 }
 
 interface UtilizationData {
-  type: string
-  total: number
-  inUse: number
-  utilizationRate: number
-  status: 'high' | 'medium' | 'low'
-  avgSessionDuration: number
-  maintenanceAlerts: number
+  type: string;
+  total: number;
+  inUse: number;
+  utilizationRate: number;
+  status: 'high' | 'medium' | 'low';
+  avgSessionDuration: number;
+  maintenanceAlerts: number;
 }
 
 interface PeakUsageTime {
-  hour: number
-  sessions: number
-  timeRange: string
-  utilizationRate: number
+  hour: number;
+  sessions: number;
+  timeRange: string;
+  utilizationRate: number;
 }
 
 interface MaintenanceInsight {
-  equipmentId: string
-  nextMaintenance: string
-  type: 'Preventive' | 'Corrective'
-  urgency: 'high' | 'medium' | 'low'
-  description: string
+  equipmentId: string;
+  nextMaintenance: string;
+  type: 'Preventive' | 'Corrective';
+  urgency: 'high' | 'medium' | 'low';
+  description: string;
 }
 
-
-
-export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = false }: EquipmentUtilizationAnalyticsProps) {
-  const [selectedView, setSelectedView] = useState<'overview' | 'utilization' | 'patterns' | 'maintenance'>('overview')
-  const [utilizationData, setUtilizationData] = useState<UtilizationData[]>([])
-  const [peakUsageTimes, setPeakUsageTimes] = useState<PeakUsageTime[]>([])
-  const [maintenanceInsights, setMaintenanceInsights] = useState<MaintenanceInsight[]>([])
+export function EquipmentUtilizationAnalytics({
+  timeframe,
+  data,
+  isLoading = false,
+}: EquipmentUtilizationAnalyticsProps) {
+  const [selectedView, setSelectedView] = useState<
+    'overview' | 'utilization' | 'patterns' | 'maintenance'
+  >('overview');
+  const [utilizationData, setUtilizationData] = useState<UtilizationData[]>([]);
+  const [peakUsageTimes, setPeakUsageTimes] = useState<PeakUsageTime[]>([]);
+  const [maintenanceInsights, setMaintenanceInsights] = useState<
+    MaintenanceInsight[]
+  >([]);
 
   useEffect(() => {
     if (data) {
-      processEquipmentData(data)
+      processEquipmentData(data);
     }
-  }, [data, timeframe])
+  }, [data, timeframe]);
 
   const processEquipmentData = (analyticsData: any) => {
     // Process utilization data with safe defaults
-    const utilization = (analyticsData?.utilizationByType ?? []).map((item: any) => {
-      const rate = Number(item?.utilizationRate ?? 0)
-      return {
-        type: String(item?.type ?? 'Unknown'),
-        total: Number(item?.total ?? 0),
-        inUse: Number(item?.inUse ?? 0),
-        utilizationRate: rate,
-        status: getUtilizationStatus(rate),
-        avgSessionDuration: Math.random() * 60 + 15, // Mock 15-75 min
-        maintenanceAlerts: Math.floor(Math.random() * 3)
-      } as UtilizationData
-    })
-    setUtilizationData(utilization)
+    const utilization = (analyticsData?.utilizationByType ?? []).map(
+      (item: any) => {
+        const rate = Number(item?.utilizationRate ?? 0);
+        return {
+          type: String(item?.type ?? 'Unknown'),
+          total: Number(item?.total ?? 0),
+          inUse: Number(item?.inUse ?? 0),
+          utilizationRate: rate,
+          status: getUtilizationStatus(rate),
+          avgSessionDuration: Math.random() * 60 + 15, // Mock 15-75 min
+          maintenanceAlerts: Math.floor(Math.random() * 3),
+        } as UtilizationData;
+      }
+    );
+    setUtilizationData(utilization);
 
     // Process peak usage times with safe defaults
-    const peakTimes = (analyticsData?.peakUsageTimes ?? []).map((time: any) => ({
-      hour: Number(time?.hour ?? 0),
-      sessions: Number(time?.sessions ?? 0),
-      timeRange: String(time?.timeRange ?? ''),
-      utilizationRate: Math.random() * 40 + 60 // Mock 60-100% during peak
-    })) as PeakUsageTime[]
-    setPeakUsageTimes(peakTimes)
+    const peakTimes = (analyticsData?.peakUsageTimes ?? []).map(
+      (time: any) => ({
+        hour: Number(time?.hour ?? 0),
+        sessions: Number(time?.sessions ?? 0),
+        timeRange: String(time?.timeRange ?? ''),
+        utilizationRate: Math.random() * 40 + 60, // Mock 60-100% during peak
+      })
+    ) as PeakUsageTime[];
+    setPeakUsageTimes(peakTimes);
 
     // Process maintenance insights with safe defaults
-    const schedule = analyticsData?.maintenanceInsights?.maintenanceSchedule ?? []
+    const schedule =
+      analyticsData?.maintenanceInsights?.maintenanceSchedule ?? [];
     const maintenance = schedule.map((item: any) => ({
       equipmentId: String(item?.equipmentId ?? 'UNKNOWN'),
       nextMaintenance: String(item?.nextMaintenance ?? ''),
-      type: (item?.type === 'Preventive' || item?.type === 'Corrective' ? item.type : 'Preventive'),
-      urgency: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : 'low',
-      description: generateMaintenanceDescription(String(item?.type ?? 'Preventive'))
-    })) as MaintenanceInsight[]
-    setMaintenanceInsights(maintenance)
-  }
+      type:
+        item?.type === 'Preventive' || item?.type === 'Corrective'
+          ? item.type
+          : 'Preventive',
+      urgency:
+        Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : 'low',
+      description: generateMaintenanceDescription(
+        String(item?.type ?? 'Preventive')
+      ),
+    })) as MaintenanceInsight[];
+    setMaintenanceInsights(maintenance);
+  };
 
   const getUtilizationStatus = (rate: number): 'high' | 'medium' | 'low' => {
-    if (rate > 80) return 'high'
-    if (rate > 50) return 'medium'
-    return 'low'
-  }
+    if (rate > 80) {
+      return 'high';
+    }
+    if (rate > 50) {
+      return 'medium';
+    }
+    return 'low';
+  };
 
   const generateMaintenanceDescription = (type: string): string => {
     const descriptions = {
@@ -115,28 +156,35 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
         'Routine performance check and calibration',
         'Software updates and security patches',
         'Hardware inspection and cleaning',
-        'Component wear assessment'
+        'Component wear assessment',
       ],
       Corrective: [
         'Performance issue resolution',
         'Hardware replacement required',
         'Software malfunction fix',
-        'Component repair needed'
-      ]
-    }
+        'Component repair needed',
+      ],
+    };
 
-    const typeDesc = descriptions[type as keyof typeof descriptions] || []
-    return typeDesc[Math.floor(Math.random() * typeDesc.length)] || 'Maintenance required'
-  }
+    const typeDesc = descriptions[type as keyof typeof descriptions] || [];
+    return (
+      typeDesc[Math.floor(Math.random() * typeDesc.length)] ||
+      'Maintenance required'
+    );
+  };
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case 'high': return 'bg-red-500'
-      case 'medium': return 'bg-yellow-500'
-      case 'low': return 'bg-green-500'
-      default: return 'bg-gray-500'
+      case 'high':
+        return 'bg-red-500';
+      case 'medium':
+        return 'bg-yellow-500';
+      case 'low':
+        return 'bg-green-500';
+      default:
+        return 'bg-gray-500';
     }
-  }
+  };
 
   const EquipmentOverview = () => (
     <div className="space-y-6">
@@ -144,34 +192,49 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overall Utilization</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Overall Utilization
+            </CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.overallUtilization?.toFixed(1) || 0}%</div>
+            <div className="text-2xl font-bold">
+              {data?.overallUtilization?.toFixed(1) || 0}%
+            </div>
             <Progress value={data?.overallUtilization || 0} className="mt-2" />
             <p className="text-xs text-muted-foreground mt-1">
-              {data?.overallUtilization > 80 ? 'High demand' : data?.overallUtilization > 50 ? 'Optimal' : 'Underutilized'}
+              {data?.overallUtilization > 80
+                ? 'High demand'
+                : data?.overallUtilization > 50
+                  ? 'Optimal'
+                  : 'Underutilized'}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Sessions
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.equipment?.totalSessions || 0}</div>
+            <div className="text-2xl font-bold">
+              {data?.equipment?.totalSessions || 0}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Avg: {data?.equipment?.averageSessionDuration?.toFixed(0) || 0} min per session
+              Avg: {data?.equipment?.averageSessionDuration?.toFixed(0) || 0}{' '}
+              min per session
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Equipment</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Equipment
+            </CardTitle>
             <Monitor className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -179,7 +242,8 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
               {utilizationData.reduce((sum, item) => sum + item.inUse, 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              of {utilizationData.reduce((sum, item) => sum + item.total, 0)} total
+              of {utilizationData.reduce((sum, item) => sum + item.total, 0)}{' '}
+              total
             </p>
           </CardContent>
         </Card>
@@ -192,7 +256,9 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
           <CardContent>
             <div className="text-2xl font-bold text-green-600">98.5%</div>
             <Progress value={98.5} className="mt-2" />
-            <p className="text-xs text-muted-foreground mt-1">Excellent performance</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Excellent performance
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -208,7 +274,11 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={utilizationData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                opacity={0.3}
+              />
               <XAxis
                 dataKey="type"
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
@@ -222,7 +292,7 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
-                  color: 'hsl(var(--foreground))'
+                  color: 'hsl(var(--foreground))',
                 }}
               />
               <Legend />
@@ -237,7 +307,7 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
         </CardContent>
       </Card>
     </div>
-  )
+  );
 
   const UtilizationAnalysis = () => (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -256,7 +326,9 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <Monitor className="h-4 w-4" />
-                    <span className="text-sm font-medium">{equipment.type}</span>
+                    <span className="text-sm font-medium">
+                      {equipment.type}
+                    </span>
                     <Badge
                       variant="outline"
                       className={`${getUrgencyColor(equipment.status)} text-white border-0`}
@@ -271,7 +343,9 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
                 <Progress value={equipment.utilizationRate} className="h-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>{equipment.utilizationRate.toFixed(1)}% utilized</span>
-                  <span>Avg session: {equipment.avgSessionDuration.toFixed(0)} min</span>
+                  <span>
+                    Avg session: {equipment.avgSessionDuration.toFixed(0)} min
+                  </span>
                 </div>
                 {equipment.maintenanceAlerts > 0 && (
                   <div className="flex items-center gap-1 text-xs text-yellow-600">
@@ -295,12 +369,14 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
-            <RadialBarChart cx="50%" cy="50%" innerRadius="10%" outerRadius="90%" data={utilizationData}>
-              <PolarAngleAxis
-                type="number"
-                domain={[0, 100]}
-                tick={false}
-              />
+            <RadialBarChart
+              cx="50%"
+              cy="50%"
+              innerRadius="10%"
+              outerRadius="90%"
+              data={utilizationData}
+            >
+              <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
               <RadialBar
                 dataKey="utilizationRate"
                 cornerRadius={10}
@@ -310,7 +386,7 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
                 }}
               />
             </RadialBarChart>
@@ -325,7 +401,7 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
         </CardContent>
       </Card>
     </div>
-  )
+  );
 
   const UsagePatterns = () => (
     <div className="space-y-6">
@@ -340,7 +416,11 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={peakUsageTimes}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                opacity={0.3}
+              />
               <XAxis
                 dataKey="timeRange"
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
@@ -351,7 +431,7 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
-                  color: 'hsl(var(--foreground))'
+                  color: 'hsl(var(--foreground))',
                 }}
               />
               <Legend />
@@ -448,7 +528,7 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
         </Card>
       </div>
     </div>
-  )
+  );
 
   const MaintenanceView = () => (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -463,15 +543,28 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
         <CardContent>
           <div className="space-y-4">
             {maintenanceInsights.map((insight) => (
-              <div key={insight.equipmentId} className="flex items-start gap-3 p-3 border rounded-lg">
-                <Wrench className={`h-5 w-5 mt-0.5 ${
-                  insight.urgency === 'high' ? 'text-red-500' :
-                  insight.urgency === 'medium' ? 'text-yellow-500' : 'text-green-500'
-                }`} />
+              <div
+                key={insight.equipmentId}
+                className="flex items-start gap-3 p-3 border rounded-lg"
+              >
+                <Wrench
+                  className={`h-5 w-5 mt-0.5 ${
+                    insight.urgency === 'high'
+                      ? 'text-red-500'
+                      : insight.urgency === 'medium'
+                        ? 'text-yellow-500'
+                        : 'text-green-500'
+                  }`}
+                />
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="text-sm font-medium">{insight.equipmentId}</h4>
-                    <Badge variant="outline" className={getUrgencyColor(insight.urgency)}>
+                    <h4 className="text-sm font-medium">
+                      {insight.equipmentId}
+                    </h4>
+                    <Badge
+                      variant="outline"
+                      className={getUrgencyColor(insight.urgency)}
+                    >
                       {insight.urgency}
                     </Badge>
                   </div>
@@ -508,27 +601,34 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 bg-muted rounded-lg">
                 <div className="text-2xl font-bold text-green-600">
-                  {data?.maintenanceInsights?.averageUptime?.toFixed(1) || 98.5}%
+                  {data?.maintenanceInsights?.averageUptime?.toFixed(1) || 98.5}
+                  %
                 </div>
-                <div className="text-sm text-muted-foreground">Average Uptime</div>
+                <div className="text-sm text-muted-foreground">
+                  Average Uptime
+                </div>
               </div>
               <div className="text-center p-4 bg-muted rounded-lg">
                 <div className="text-2xl font-bold text-yellow-600">
                   {data?.maintenanceInsights?.equipmentNeedingMaintenance || 3}
                 </div>
-                <div className="text-sm text-muted-foreground">Need Maintenance</div>
+                <div className="text-sm text-muted-foreground">
+                  Need Maintenance
+                </div>
               </div>
             </div>
 
             {/* Maintenance Recommendations */}
             <div className="space-y-3">
               <h4 className="font-medium">Recommendations</h4>
-              {data?.recommendations?.slice(0, 3).map((rec: string, index: number) => (
-                <div key={index} className="flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                  <p className="text-sm">{rec}</p>
-                </div>
-              ))}
+              {data?.recommendations
+                ?.slice(0, 3)
+                .map((rec: string, index: number) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5" />
+                    <p className="text-sm">{rec}</p>
+                  </div>
+                ))}
             </div>
 
             {/* Performance Trend */}
@@ -540,14 +640,16 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
               </div>
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-blue-500" />
-                <span className="text-sm">Stable performance over past week</span>
+                <span className="text-sm">
+                  Stable performance over past week
+                </span>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 
   if (isLoading) {
     return (
@@ -561,7 +663,7 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -569,14 +671,28 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Equipment Utilization Analytics</h3>
+          <h3 className="text-lg font-semibold">
+            Equipment Utilization Analytics
+          </h3>
           <p className="text-sm text-muted-foreground">
             Detailed analysis of equipment usage patterns and efficiency
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={data?.overallUtilization > 80 ? "destructive" : data?.overallUtilization > 50 ? "default" : "secondary"}>
-            {data?.overallUtilization > 80 ? 'High Demand' : data?.overallUtilization > 50 ? 'Optimal' : 'Available'}
+          <Badge
+            variant={
+              data?.overallUtilization > 80
+                ? 'destructive'
+                : data?.overallUtilization > 50
+                  ? 'default'
+                  : 'secondary'
+            }
+          >
+            {data?.overallUtilization > 80
+              ? 'High Demand'
+              : data?.overallUtilization > 50
+                ? 'Optimal'
+                : 'Available'}
           </Badge>
           <Button variant="outline" size="sm">
             <BarChart3 className="h-4 w-4 mr-2" />
@@ -586,7 +702,15 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
       </div>
 
       {/* Analytics Tabs */}
-      <Tabs value={selectedView} onValueChange={(value: string) => setSelectedView(value as 'overview' | 'utilization' | 'patterns' | 'maintenance')} className="space-y-4">
+      <Tabs
+        value={selectedView}
+        onValueChange={(value: string) =>
+          setSelectedView(
+            value as 'overview' | 'utilization' | 'patterns' | 'maintenance'
+          )
+        }
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="utilization">Utilization</TabsTrigger>
@@ -611,7 +735,7 @@ export function EquipmentUtilizationAnalytics({ timeframe, data, isLoading = fal
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
 
-export default EquipmentUtilizationAnalytics
+export default EquipmentUtilizationAnalytics;

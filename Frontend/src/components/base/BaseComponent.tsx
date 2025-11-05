@@ -79,7 +79,9 @@ export function withBaseComponent<T extends BaseComponentProps>(
 /**
  * Base component class that provides common functionality
  */
-export abstract class BaseComponent<P extends BaseComponentProps = BaseComponentProps> {
+export abstract class BaseComponent<
+  P extends BaseComponentProps = BaseComponentProps,
+> {
   protected props: P;
   protected element?: HTMLElement | undefined;
 
@@ -255,7 +257,9 @@ export const ComponentPatterns = {
       <div className="loading-spinner" role="status" aria-label="Loading">
         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
       </div>
-    ) : children,
+    ) : (
+      children
+    ),
   }),
 
   /**
@@ -263,14 +267,16 @@ export const ComponentPatterns = {
    */
   errorBoundary: (error: Error | null, errorComponent?: ReactNode) => {
     if (error) {
-      return errorComponent || (
-        <div className="error-boundary" role="alert">
-          <p>Something went wrong.</p>
-          <details>
-            <summary>Error details</summary>
-            <pre>{error.message}</pre>
-          </details>
-        </div>
+      return (
+        errorComponent || (
+          <div className="error-boundary" role="alert">
+            <p>Something went wrong.</p>
+            <details>
+              <summary>Error details</summary>
+              <pre>{error.message}</pre>
+            </details>
+          </div>
+        )
       );
     }
     return null;

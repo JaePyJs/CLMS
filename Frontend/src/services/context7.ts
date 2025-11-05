@@ -4,7 +4,11 @@ import { toast } from 'sonner';
 
 export interface DocumentationUpdate {
   id: string;
-  type: 'content_change' | 'structure_change' | 'metadata_update' | 'version_update';
+  type:
+    | 'content_change'
+    | 'structure_change'
+    | 'metadata_update'
+    | 'version_update';
   timestamp: string;
   source: string;
   changes: {
@@ -164,7 +168,7 @@ class Context7Service {
       if (message.type === 'documentation_update') {
         this.handleDocumentationUpdate(message.data);
       }
-      
+
       // Call original message handler
       if (originalOnMessage) {
         originalOnMessage(message);
@@ -180,7 +184,11 @@ class Context7Service {
       source: updateData.source || 'external',
       changes: updateData.changes || [],
       version: updateData.version || this.incrementVersion(),
-      author: updateData.author || { id: 'system', name: 'System', role: 'system' },
+      author: updateData.author || {
+        id: 'system',
+        name: 'System',
+        role: 'system',
+      },
       metadata: {
         affectedFiles: updateData.affectedFiles || [],
         impactLevel: updateData.impactLevel || 'medium',
@@ -194,7 +202,9 @@ class Context7Service {
 
     // Limit pending updates
     if (this.state.pendingUpdates.length > this.config.maxPendingUpdates) {
-      this.state.pendingUpdates = this.state.pendingUpdates.slice(-this.config.maxPendingUpdates);
+      this.state.pendingUpdates = this.state.pendingUpdates.slice(
+        -this.config.maxPendingUpdates
+      );
     }
 
     // Save to local storage
@@ -209,7 +219,10 @@ class Context7Service {
     }
 
     // Auto-apply if configured
-    if (update.metadata.autoApproved && this.config.conflictResolution === 'auto') {
+    if (
+      update.metadata.autoApproved &&
+      this.config.conflictResolution === 'auto'
+    ) {
       this.applyUpdate(update);
     }
   }
@@ -218,12 +231,17 @@ class Context7Service {
     return `update_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 
-  private incrementVersion(): { major: number; minor: number; patch: number; hash: string } {
+  private incrementVersion(): {
+    major: number;
+    minor: number;
+    patch: number;
+    hash: string;
+  } {
     const versionParts = this.state.version.split('.');
     const major = parseInt(versionParts[0] || '0', 10) || 0;
     const minor = parseInt(versionParts[1] || '0', 10) || 0;
     const patch = parseInt(versionParts[2] || '0', 10) || 0;
-    
+
     return {
       major,
       minor,
@@ -237,11 +255,17 @@ class Context7Service {
   }
 
   private savePendingUpdates(): void {
-    localStorage.setItem('context7_pending_updates', JSON.stringify(this.state.pendingUpdates));
+    localStorage.setItem(
+      'context7_pending_updates',
+      JSON.stringify(this.state.pendingUpdates)
+    );
   }
 
   private saveAppliedUpdates(): void {
-    localStorage.setItem('context7_applied_updates', JSON.stringify(this.state.appliedUpdates));
+    localStorage.setItem(
+      'context7_applied_updates',
+      JSON.stringify(this.state.appliedUpdates)
+    );
   }
 
   private notifySubscribers(update: DocumentationUpdate): void {
@@ -256,13 +280,15 @@ class Context7Service {
 
   private showUpdateNotification(update: DocumentationUpdate): void {
     const message = `Documentation updated: ${update.changes.length} change(s) in ${update.changes[0]?.file || 'multiple files'}`;
-    
+
     switch (update.metadata.impactLevel) {
       case 'critical':
         toast.error('Critical Documentation Update', { description: message });
         break;
       case 'high':
-        toast.warning('Important Documentation Update', { description: message });
+        toast.warning('Important Documentation Update', {
+          description: message,
+        });
         break;
       case 'medium':
         toast.info('Documentation Update', { description: message });
@@ -281,7 +307,9 @@ class Context7Service {
       await this.applyUpdateToServer(update);
 
       // Move from pending to applied
-      this.state.pendingUpdates = this.state.pendingUpdates.filter(u => u.id !== update.id);
+      this.state.pendingUpdates = this.state.pendingUpdates.filter(
+        (u) => u.id !== update.id
+      );
       this.state.appliedUpdates.push(update);
 
       // Update version and timestamp
@@ -302,11 +330,13 @@ class Context7Service {
     }
   }
 
-  private async applyUpdateToServer(_update: DocumentationUpdate): Promise<void> {
+  private async applyUpdateToServer(
+    _update: DocumentationUpdate
+  ): Promise<void> {
     // This would typically make an API call to apply the update
     // For now, we'll simulate the API call
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     // In a real implementation, this would:
     // 1. Send the update to the server
     // 2. Validate the changes
@@ -338,7 +368,10 @@ class Context7Service {
     }
   }
 
-  public subscribe(id: string, callback: (update: DocumentationUpdate) => void): void {
+  public subscribe(
+    id: string,
+    callback: (update: DocumentationUpdate) => void
+  ): void {
     this.subscribers.set(id, callback);
   }
 
@@ -373,14 +406,16 @@ class Context7Service {
   }
 
   public async approveUpdate(updateId: string): Promise<void> {
-    const update = this.state.pendingUpdates.find(u => u.id === updateId);
+    const update = this.state.pendingUpdates.find((u) => u.id === updateId);
     if (update) {
       await this.applyUpdate(update);
     }
   }
 
   public rejectUpdate(updateId: string): void {
-    this.state.pendingUpdates = this.state.pendingUpdates.filter(u => u.id !== updateId);
+    this.state.pendingUpdates = this.state.pendingUpdates.filter(
+      (u) => u.id !== updateId
+    );
     this.savePendingUpdates();
   }
 
@@ -416,7 +451,7 @@ export const context7 = Context7Service.getInstance();
 // Export hook for React components
 export const useContext7 = () => {
   const webSocketContext = useWebSocketContext();
-  
+
   return {
     ...context7,
     initialize: () => context7.initialize(webSocketContext),

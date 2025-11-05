@@ -62,7 +62,9 @@ class ImageOptimizationService {
     canvas.height = 1;
     const ctx = canvas.getContext('2d');
 
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     // Test AVIF support
     try {
@@ -94,8 +96,12 @@ class ImageOptimizationService {
    * Get the best supported format for the current browser
    */
   public getOptimalFormat(): 'avif' | 'webp' | 'png' | 'jpg' {
-    if (this.supportedFormats.has('avif')) return 'avif';
-    if (this.supportedFormats.has('webp')) return 'webp';
+    if (this.supportedFormats.has('avif')) {
+      return 'avif';
+    }
+    if (this.supportedFormats.has('webp')) {
+      return 'webp';
+    }
     return 'jpg';
   }
 
@@ -139,7 +145,7 @@ class ImageOptimizationService {
     sizes: number[] = [320, 640, 768, 1024, 1280, 1536]
   ): string {
     return sizes
-      .map(size => {
+      .map((size) => {
         const url = this.generateOptimizedUrl(baseUrl, {
           ...config,
           width: size,
@@ -152,20 +158,24 @@ class ImageOptimizationService {
   /**
    * Generate sizes attribute for responsive images
    */
-  public generateSizes(breakpoints: {
-    mobile?: string;
-    tablet?: string;
-    desktop?: string;
-  } = {}): string {
-    const {
-      mobile = '100vw',
-      tablet = '50vw',
-      desktop = '33vw',
-    } = breakpoints;
+  public generateSizes(
+    breakpoints: {
+      mobile?: string;
+      tablet?: string;
+      desktop?: string;
+    } = {}
+  ): string {
+    const { mobile = '100vw', tablet = '50vw', desktop = '33vw' } = breakpoints;
 
-    return '(max-width: 640px) ' + mobile + ', ' +
-           '(max-width: 1024px) ' + tablet + ', ' +
-           desktop;
+    return (
+      '(max-width: 640px) ' +
+      mobile +
+      ', ' +
+      '(max-width: 1024px) ' +
+      tablet +
+      ', ' +
+      desktop
+    );
   }
 
   /**
@@ -180,7 +190,7 @@ class ImageOptimizationService {
       link.rel = 'preload';
       link.as = 'image';
       link.href = url;
-      link.fetchPriority = priority as "auto" | "high" | "low";
+      link.fetchPriority = priority as 'auto' | 'high' | 'low';
 
       link.onload = () => {
         document.head.removeChild(link);
@@ -242,7 +252,9 @@ class ImageOptimizationService {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0);
-          optimizedSize = canvas.toDataURL('image/jpeg', config.quality || 0.75).length * 0.75;
+          optimizedSize =
+            canvas.toDataURL('image/jpeg', config.quality || 0.75).length *
+            0.75;
         }
 
         const metrics: ImageMetrics = {
@@ -262,7 +274,10 @@ class ImageOptimizationService {
           metrics,
           savings: {
             size: originalSize - optimizedSize,
-            percentage: originalSize > 0 ? ((originalSize - optimizedSize) / originalSize) * 100 : 0,
+            percentage:
+              originalSize > 0
+                ? ((originalSize - optimizedSize) / originalSize) * 100
+                : 0,
           },
         };
 
@@ -292,7 +307,7 @@ class ImageOptimizationService {
     images: Array<{ url: string; config?: Partial<ImageConfig> }>
   ): Promise<OptimizationResult[]> {
     const promises = images.map(({ url, config }) =>
-      this.loadImageWithMetrics(url, config).catch(error => ({
+      this.loadImageWithMetrics(url, config).catch((error) => ({
         optimizedUrl: url,
         metrics: {
           originalSize: 0,
@@ -340,11 +355,17 @@ class ImageOptimizationService {
     }
 
     const totalLoadTime = allMetrics.reduce((sum, m) => sum + m.loadTime, 0);
-    const totalCompressionRatio = allMetrics.reduce((sum, m) => sum + m.compressionRatio, 0);
-    const totalSavings = allMetrics.reduce((sum, m) => sum + (m.originalSize - m.optimizedSize), 0);
+    const totalCompressionRatio = allMetrics.reduce(
+      (sum, m) => sum + m.compressionRatio,
+      0
+    );
+    const totalSavings = allMetrics.reduce(
+      (sum, m) => sum + (m.originalSize - m.optimizedSize),
+      0
+    );
 
     const formatDistribution: Record<string, number> = {};
-    allMetrics.forEach(m => {
+    allMetrics.forEach((m) => {
       formatDistribution[m.format] = (formatDistribution[m.format] || 0) + 1;
     });
 
@@ -446,7 +467,8 @@ class ImageOptimizationService {
         }
       };
 
-      img.onerror = () => reject(new Error('Failed to load image for blur placeholder'));
+      img.onerror = () =>
+        reject(new Error('Failed to load image for blur placeholder'));
       img.src = imageUrl;
     });
   }

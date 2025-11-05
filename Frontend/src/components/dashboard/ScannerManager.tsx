@@ -1,12 +1,29 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Wifi, Settings, Play, Square, AlertCircle, CheckCircle, XCircle, RefreshCw, Plus, Trash2 } from 'lucide-react';
+import {
+  Wifi,
+  Settings,
+  Play,
+  Square,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 
 interface ScannerDevice {
   path: string;
@@ -54,7 +71,9 @@ interface ScannerStation {
 export default function ScannerManager() {
   const [activeTab, setActiveTab] = useState('devices');
   const [devices, setDevices] = useState<ScannerDevice[]>([]);
-  const [connectedScanners, setConnectedScanners] = useState<ScannerStatus[]>([]);
+  const [connectedScanners, setConnectedScanners] = useState<ScannerStatus[]>(
+    []
+  );
   const [statistics, setStatistics] = useState<ScannerStatistics | null>(null);
   const [stations, setStations] = useState<ScannerStation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +94,7 @@ export default function ScannerManager() {
       // Fetch devices and status
       const devicesResponse = await fetch('/api/scanner/devices', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
@@ -88,7 +107,7 @@ export default function ScannerManager() {
       // Fetch statistics
       const statsResponse = await fetch('/api/scanner/statistics', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
@@ -100,7 +119,7 @@ export default function ScannerManager() {
       // Fetch stations
       const stationsResponse = await fetch('/api/scanner/stations', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
@@ -108,7 +127,6 @@ export default function ScannerManager() {
         const stationsData = await stationsResponse.json();
         setStations(stationsData.data || []);
       }
-
     } catch (error) {
       console.error('Error fetching scanner data:', error);
       toast.error('Failed to fetch scanner data');
@@ -126,10 +144,12 @@ export default function ScannerManager() {
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
 
-      if (message.type === 'scan_event' ||
-          message.type === 'scanner_connected' ||
-          message.type === 'scanner_disconnected' ||
-          message.type === 'scanner_error') {
+      if (
+        message.type === 'scan_event' ||
+        message.type === 'scanner_connected' ||
+        message.type === 'scanner_disconnected' ||
+        message.type === 'scanner_error'
+      ) {
         fetchScannerData(); // Refresh data on scanner events
       }
     };
@@ -148,7 +168,7 @@ export default function ScannerManager() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
           devicePath: device.path,
@@ -190,7 +210,7 @@ export default function ScannerManager() {
       const response = await fetch(`/api/scanner/disconnect/${deviceId}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
@@ -214,13 +234,15 @@ export default function ScannerManager() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({ enabled }),
       });
 
       if (response.ok) {
-        toast.success(`Scanner ${enabled ? 'enabled' : 'disabled'} successfully`);
+        toast.success(
+          `Scanner ${enabled ? 'enabled' : 'disabled'} successfully`
+        );
         fetchScannerData();
       } else {
         const error = await response.json();
@@ -241,7 +263,7 @@ export default function ScannerManager() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
           devicePath: device.path,
@@ -277,7 +299,7 @@ export default function ScannerManager() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify(newStation),
       });
@@ -302,7 +324,7 @@ export default function ScannerManager() {
       const response = await fetch(`/api/scanner/stations/${stationId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
@@ -325,7 +347,7 @@ export default function ScannerManager() {
       const response = await fetch('/api/scanner/statistics/reset', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
@@ -344,7 +366,7 @@ export default function ScannerManager() {
 
   // Format device IDs for display
   const formatDeviceId = (deviceId: string) => {
-    return deviceId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return deviceId.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   if (loading) {
@@ -408,7 +430,8 @@ export default function ScannerManager() {
                           {device.manufacturer}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          VID: {device.vendorId?.toString(16)}, PID: {device.productId?.toString(16)}
+                          VID: {device.vendorId?.toString(16)}, PID:{' '}
+                          {device.productId?.toString(16)}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -465,8 +488,12 @@ export default function ScannerManager() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <p className="font-medium">{scanner.name}</p>
-                          <Badge variant={scanner.connected ? "default" : "secondary"}>
-                            {scanner.connected ? "Connected" : "Disconnected"}
+                          <Badge
+                            variant={
+                              scanner.connected ? 'default' : 'secondary'
+                            }
+                          >
+                            {scanner.connected ? 'Connected' : 'Disconnected'}
                           </Badge>
                         </div>
                         {scanner.deviceInfo && (
@@ -478,7 +505,10 @@ export default function ScannerManager() {
                           <span>Scans: {scanner.scanCount}</span>
                           <span>Errors: {scanner.errorCount}</span>
                           {scanner.lastScan && (
-                            <span>Last: {new Date(scanner.lastScan).toLocaleTimeString()}</span>
+                            <span>
+                              Last:{' '}
+                              {new Date(scanner.lastScan).toLocaleTimeString()}
+                            </span>
                           )}
                         </div>
                         {scanner.lastError && (
@@ -523,7 +553,7 @@ export default function ScannerManager() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-600">
-                  {connectedScanners.filter(s => s.connected).length}
+                  {connectedScanners.filter((s) => s.connected).length}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   of {connectedScanners.length} configured scanners
@@ -539,9 +569,7 @@ export default function ScannerManager() {
                 <div className="text-3xl font-bold text-blue-600">
                   {statistics?.totalScans || 0}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  total scans
-                </p>
+                <p className="text-sm text-muted-foreground">total scans</p>
               </CardContent>
             </Card>
 
@@ -551,7 +579,14 @@ export default function ScannerManager() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-600">
-                  {statistics ? Math.round((statistics.successfulScans / Math.max(statistics.totalScans, 1)) * 100) : 0}%
+                  {statistics
+                    ? Math.round(
+                        (statistics.successfulScans /
+                          Math.max(statistics.totalScans, 1)) *
+                          100
+                      )
+                    : 0}
+                  %
                 </div>
                 <p className="text-sm text-muted-foreground">
                   scan success rate
@@ -571,13 +606,13 @@ export default function ScannerManager() {
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-medium">{scanner.name}</h3>
                       <div className="flex items-center gap-2">
-                        <Badge variant={scanner.connected ? "default" : "secondary"}>
-                          {scanner.connected ? "Connected" : "Disconnected"}
+                        <Badge
+                          variant={scanner.connected ? 'default' : 'secondary'}
+                        >
+                          {scanner.connected ? 'Connected' : 'Disconnected'}
                         </Badge>
                         {scanner.connected && (
-                          <Badge variant="outline">
-                            Active
-                          </Badge>
+                          <Badge variant="outline">Active</Badge>
                         )}
                       </div>
                     </div>
@@ -585,7 +620,9 @@ export default function ScannerManager() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
                         <p className="text-muted-foreground">Device ID</p>
-                        <p className="font-mono">{formatDeviceId(scanner.deviceId)}</p>
+                        <p className="font-mono">
+                          {formatDeviceId(scanner.deviceId)}
+                        </p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Scan Count</p>
@@ -597,13 +634,19 @@ export default function ScannerManager() {
                       </div>
                       <div>
                         <p className="text-muted-foreground">Last Scan</p>
-                        <p>{scanner.lastScan ? new Date(scanner.lastScan).toLocaleString() : 'Never'}</p>
+                        <p>
+                          {scanner.lastScan
+                            ? new Date(scanner.lastScan).toLocaleString()
+                            : 'Never'}
+                        </p>
                       </div>
                     </div>
 
                     {scanner.deviceInfo && (
                       <div className="mt-3 pt-3 border-t text-sm">
-                        <p className="text-muted-foreground">Device Information</p>
+                        <p className="text-muted-foreground">
+                          Device Information
+                        </p>
                         <p>Product: {scanner.deviceInfo.product}</p>
                         <p>Manufacturer: {scanner.deviceInfo.manufacturer}</p>
                         {scanner.deviceInfo.serialNumber && (
@@ -630,7 +673,10 @@ export default function ScannerManager() {
         <TabsContent value="stations" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Scanner Stations</h2>
-            <Button onClick={createStation} disabled={!newStation.name || !newStation.location}>
+            <Button
+              onClick={createStation}
+              disabled={!newStation.name || !newStation.location}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Station
             </Button>
@@ -648,7 +694,9 @@ export default function ScannerManager() {
                   <Input
                     id="station-name"
                     value={newStation.name}
-                    onChange={(e) => setNewStation({ ...newStation, name: e.target.value })}
+                    onChange={(e) =>
+                      setNewStation({ ...newStation, name: e.target.value })
+                    }
                     placeholder="Front Desk Scanner"
                   />
                 </div>
@@ -657,16 +705,25 @@ export default function ScannerManager() {
                   <Input
                     id="station-location"
                     value={newStation.location}
-                    onChange={(e) => setNewStation({ ...newStation, location: e.target.value })}
+                    onChange={(e) =>
+                      setNewStation({ ...newStation, location: e.target.value })
+                    }
                     placeholder="Main Library Entrance"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="station-description">Description (Optional)</Label>
+                  <Label htmlFor="station-description">
+                    Description (Optional)
+                  </Label>
                   <Input
                     id="station-description"
                     value={newStation.description}
-                    onChange={(e) => setNewStation({ ...newStation, description: e.target.value })}
+                    onChange={(e) =>
+                      setNewStation({
+                        ...newStation,
+                        description: e.target.value,
+                      })
+                    }
                     placeholder="Primary check-in/out station"
                   />
                 </div>
@@ -692,13 +749,19 @@ export default function ScannerManager() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <p className="font-medium">{station.name}</p>
-                          <Badge variant={station.isActive ? "default" : "secondary"}>
-                            {station.isActive ? "Active" : "Inactive"}
+                          <Badge
+                            variant={station.isActive ? 'default' : 'secondary'}
+                          >
+                            {station.isActive ? 'Active' : 'Inactive'}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground">{station.location}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {station.location}
+                        </p>
                         {station.description && (
-                          <p className="text-xs text-muted-foreground">{station.description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {station.description}
+                          </p>
                         )}
                         <p className="text-xs text-muted-foreground">
                           {station.scannerConfigs.length} scanner(s)
@@ -735,7 +798,9 @@ export default function ScannerManager() {
                   <CardTitle className="text-lg">Total Scans</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{statistics.totalScans}</div>
+                  <div className="text-3xl font-bold">
+                    {statistics.totalScans}
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     All time scans
                   </p>
@@ -747,9 +812,16 @@ export default function ScannerManager() {
                   <CardTitle className="text-lg">Successful</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-green-600">{statistics.successfulScans}</div>
+                  <div className="text-3xl font-bold text-green-600">
+                    {statistics.successfulScans}
+                  </div>
                   <p className="text-sm text-muted-foreground">
-                    {Math.round((statistics.successfulScans / Math.max(statistics.totalScans, 1)) * 100)}% success rate
+                    {Math.round(
+                      (statistics.successfulScans /
+                        Math.max(statistics.totalScans, 1)) *
+                        100
+                    )}
+                    % success rate
                   </p>
                 </CardContent>
               </Card>
@@ -759,9 +831,16 @@ export default function ScannerManager() {
                   <CardTitle className="text-lg">Failed</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-red-600">{statistics.failedScans}</div>
+                  <div className="text-3xl font-bold text-red-600">
+                    {statistics.failedScans}
+                  </div>
                   <p className="text-sm text-muted-foreground">
-                    {Math.round((statistics.failedScans / Math.max(statistics.totalScans, 1)) * 100)}% failure rate
+                    {Math.round(
+                      (statistics.failedScans /
+                        Math.max(statistics.totalScans, 1)) *
+                        100
+                    )}
+                    % failure rate
                   </p>
                 </CardContent>
               </Card>
@@ -771,7 +850,9 @@ export default function ScannerManager() {
                   <CardTitle className="text-lg">Duplicates</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-yellow-600">{statistics.duplicateScans}</div>
+                  <div className="text-3xl font-bold text-yellow-600">
+                    {statistics.duplicateScans}
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     Prevented duplicates
                   </p>
@@ -783,7 +864,9 @@ export default function ScannerManager() {
                   <CardTitle className="text-lg">Invalid</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-gray-600">{statistics.invalidScans}</div>
+                  <div className="text-3xl font-bold text-gray-600">
+                    {statistics.invalidScans}
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     Unrecognized barcodes
                   </p>
@@ -795,10 +878,10 @@ export default function ScannerManager() {
                   <CardTitle className="text-lg">Avg Processing Time</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold">{statistics.averageProcessingTime.toFixed(0)}ms</div>
-                  <p className="text-sm text-muted-foreground">
-                    Per scan
-                  </p>
+                  <div className="text-3xl font-bold">
+                    {statistics.averageProcessingTime.toFixed(0)}ms
+                  </div>
+                  <p className="text-sm text-muted-foreground">Per scan</p>
                 </CardContent>
               </Card>
 
@@ -808,7 +891,9 @@ export default function ScannerManager() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-lg font-bold">
-                    {statistics.lastScanTime ? new Date(statistics.lastScanTime).toLocaleString() : 'Never'}
+                    {statistics.lastScanTime
+                      ? new Date(statistics.lastScanTime).toLocaleString()
+                      : 'Never'}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Most recent activity

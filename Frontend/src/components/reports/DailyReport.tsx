@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -43,7 +49,9 @@ interface DailyStats {
 export default function DailyReport() {
   const [stats, setStats] = useState<DailyStats | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
   const [message, setMessage] = useState<{
     type: 'success' | 'error' | null;
     text: string;
@@ -71,8 +79,10 @@ export default function DailyReport() {
   };
 
   const exportReport = (format: 'pdf' | 'csv') => {
-    if (!stats) return;
-    
+    if (!stats) {
+      return;
+    }
+
     if (format === 'csv') {
       exportReportToCSV(stats, 'daily');
       showMessage('success', 'Report exported successfully');
@@ -170,7 +180,9 @@ export default function DailyReport() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.summary.checkIns}</div>
+                <div className="text-2xl font-bold">
+                  {stats.summary.checkIns}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {stats.summary.uniqueStudents} unique students
                 </p>
@@ -179,11 +191,15 @@ export default function DailyReport() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Check-Outs</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Check-Outs
+                </CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.summary.checkOuts}</div>
+                <div className="text-2xl font-bold">
+                  {stats.summary.checkOuts}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Student departures
                 </p>
@@ -196,7 +212,9 @@ export default function DailyReport() {
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.details.bookCheckouts}</div>
+                <div className="text-2xl font-bold">
+                  {stats.details.bookCheckouts}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Checked out | {stats.details.bookReturns} returned
                 </p>
@@ -205,7 +223,9 @@ export default function DailyReport() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg Duration</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Avg Duration
+                </CardTitle>
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -231,12 +251,20 @@ export default function DailyReport() {
               <CardContent>
                 <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Peak Hour</p>
-                    <p className="text-2xl font-bold">{stats.summary.peakHour}</p>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Peak Hour
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {stats.summary.peakHour}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Books Circulated</p>
-                    <p className="text-xl font-medium">{stats.summary.booksCirculated} books</p>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      Books Circulated
+                    </p>
+                    <p className="text-xl font-medium">
+                      {stats.summary.booksCirculated} books
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -248,14 +276,21 @@ export default function DailyReport() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {Object.entries(stats.gradeLevelBreakdown).map(([grade, count]) => (
-                    <div key={grade} className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{grade}</span>
-                      <Badge variant="outline">{count} visits</Badge>
-                    </div>
-                  ))}
+                  {Object.entries(stats.gradeLevelBreakdown).map(
+                    ([grade, count]) => (
+                      <div
+                        key={grade}
+                        className="flex items-center justify-between"
+                      >
+                        <span className="text-sm font-medium">{grade}</span>
+                        <Badge variant="outline">{count} visits</Badge>
+                      </div>
+                    )
+                  )}
                   {Object.keys(stats.gradeLevelBreakdown).length === 0 && (
-                    <p className="text-sm text-muted-foreground">No data available</p>
+                    <p className="text-sm text-muted-foreground">
+                      No data available
+                    </p>
                   )}
                 </div>
               </CardContent>
@@ -272,11 +307,15 @@ export default function DailyReport() {
                 <p>
                   On <strong>{selectedDate}</strong>, the library recorded{' '}
                   <strong>{stats.summary.checkIns} check-ins</strong> from{' '}
-                  <strong>{stats.summary.uniqueStudents} unique students</strong>. The busiest hour
-                  was <strong>{stats.summary.peakHour}</strong>. Students checked out{' '}
-                  <strong>{stats.details.bookCheckouts} books</strong> and returned{' '}
-                  <strong>{stats.details.bookReturns} books</strong>. The average visit duration
-                  was <strong>{formatDuration(stats.summary.avgDuration)}</strong>.
+                  <strong>
+                    {stats.summary.uniqueStudents} unique students
+                  </strong>
+                  . The busiest hour was{' '}
+                  <strong>{stats.summary.peakHour}</strong>. Students checked
+                  out <strong>{stats.details.bookCheckouts} books</strong> and
+                  returned <strong>{stats.details.bookReturns} books</strong>.
+                  The average visit duration was{' '}
+                  <strong>{formatDuration(stats.summary.avgDuration)}</strong>.
                 </p>
               </div>
             </CardContent>

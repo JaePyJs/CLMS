@@ -22,13 +22,39 @@ interface BenchmarkResult {
   timestamp: number;
   iterations: number;
   results: {
-    renderTime: { min: number; max: number; average: number; median: number; p95: number; p99: number };
-    memoryUsage: { min: number; max: number; average: number; median: number; p95: number; p99: number };
+    renderTime: {
+      min: number;
+      max: number;
+      average: number;
+      median: number;
+      p95: number;
+      p99: number;
+    };
+    memoryUsage: {
+      min: number;
+      max: number;
+      average: number;
+      median: number;
+      p95: number;
+      p99: number;
+    };
     bundleSize: number;
-    loadTime: { min: number; max: number; average: number; median: number; p95: number; p99: number };
+    loadTime: {
+      min: number;
+      max: number;
+      average: number;
+      median: number;
+      p95: number;
+      p99: number;
+    };
   };
   passed: boolean;
-  violations: Array<{ metric: string; threshold: number; actual: number; severity: 'warning' | 'error' }>;
+  violations: Array<{
+    metric: string;
+    threshold: number;
+    actual: number;
+    severity: 'warning' | 'error';
+  }>;
   score: number;
 }
 
@@ -65,7 +91,7 @@ class PerformanceBenchmark {
         await this.measureRender();
         await this.measureMemory();
         await this.measureLoadTime();
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       // Main benchmark phase
@@ -86,15 +112,19 @@ class PerformanceBenchmark {
         loadTimes.push(loadTime);
 
         const iterationTime = performance.now() - startTime;
-        console.log(`  Iteration ${i + 1}/${config.iterations}: ${iterationTime.toFixed(2)}ms`);
+        console.log(
+          `  Iteration ${i + 1}/${config.iterations}: ${iterationTime.toFixed(2)}ms`
+        );
 
         // Prevent timeout
         if (iterationTime > config.timeout) {
-          console.warn(`⚠️ Iteration ${i + 1} exceeded timeout of ${config.timeout}ms`);
+          console.warn(
+            `⚠️ Iteration ${i + 1} exceeded timeout of ${config.timeout}ms`
+          );
         }
 
         // Small delay between iterations
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
 
       // Calculate statistics
@@ -113,7 +143,8 @@ class PerformanceBenchmark {
         loadTime: loadStats.average,
       });
 
-      const passed = violations.filter(v => v.severity === 'error').length === 0;
+      const passed =
+        violations.filter((v) => v.severity === 'error').length === 0;
       const score = this.calculateScore(violations);
 
       const result: BenchmarkResult = {
@@ -132,7 +163,9 @@ class PerformanceBenchmark {
       };
 
       this.results.push(result);
-      console.log(`✅ Benchmark completed: ${config.name} - Score: ${score.toFixed(1)}/100`);
+      console.log(
+        `✅ Benchmark completed: ${config.name} - Score: ${score.toFixed(1)}/100`
+      );
 
       return result;
     } catch (error) {
@@ -148,7 +181,9 @@ class PerformanceBenchmark {
 
     // Simulate render measurement
     // In a real app, this would measure actual component render times
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 50 + 10));
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.random() * 50 + 10)
+    );
 
     return performance.now() - startTime;
   }
@@ -165,7 +200,9 @@ class PerformanceBenchmark {
     const startTime = performance.now();
 
     // Simulate load time measurement
-    await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 20));
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.random() * 100 + 20)
+    );
 
     return performance.now() - startTime;
   }
@@ -174,7 +211,7 @@ class PerformanceBenchmark {
     try {
       // Get bundle size from performance entries
       const entries = performance.getEntriesByType('resource');
-      const jsEntries = entries.filter(entry => entry.name.endsWith('.js'));
+      const jsEntries = entries.filter((entry) => entry.name.endsWith('.js'));
 
       return jsEntries.reduce((total, entry) => {
         return total + (entry as any).transferSize || 0;
@@ -209,7 +246,12 @@ class PerformanceBenchmark {
       loadTime: number;
     }
   ) {
-    const violations: Array<{ metric: string; threshold: number; actual: number; severity: 'warning' | 'error' }> = [];
+    const violations: Array<{
+      metric: string;
+      threshold: number;
+      actual: number;
+      severity: 'warning' | 'error';
+    }> = [];
 
     // Check render time
     if (metrics.renderTime > config.thresholds.renderTime) {
@@ -217,7 +259,10 @@ class PerformanceBenchmark {
         metric: 'renderTime',
         threshold: config.thresholds.renderTime,
         actual: metrics.renderTime,
-        severity: metrics.renderTime > config.thresholds.renderTime * 1.5 ? 'error' : 'warning',
+        severity:
+          metrics.renderTime > config.thresholds.renderTime * 1.5
+            ? 'error'
+            : 'warning',
       });
     }
 
@@ -227,7 +272,10 @@ class PerformanceBenchmark {
         metric: 'memoryUsage',
         threshold: config.thresholds.memoryUsage,
         actual: metrics.memoryUsage,
-        severity: metrics.memoryUsage > config.thresholds.memoryUsage * 1.5 ? 'error' : 'warning',
+        severity:
+          metrics.memoryUsage > config.thresholds.memoryUsage * 1.5
+            ? 'error'
+            : 'warning',
       });
     }
 
@@ -237,7 +285,10 @@ class PerformanceBenchmark {
         metric: 'bundleSize',
         threshold: config.thresholds.bundleSize,
         actual: metrics.bundleSize,
-        severity: metrics.bundleSize > config.thresholds.bundleSize * 1.2 ? 'error' : 'warning',
+        severity:
+          metrics.bundleSize > config.thresholds.bundleSize * 1.2
+            ? 'error'
+            : 'warning',
       });
     }
 
@@ -247,17 +298,22 @@ class PerformanceBenchmark {
         metric: 'loadTime',
         threshold: config.thresholds.loadTime,
         actual: metrics.loadTime,
-        severity: metrics.loadTime > config.thresholds.loadTime * 2 ? 'error' : 'warning',
+        severity:
+          metrics.loadTime > config.thresholds.loadTime * 2
+            ? 'error'
+            : 'warning',
       });
     }
 
     return violations;
   }
 
-  private calculateScore(violations: Array<{ severity: 'warning' | 'error' }>): number {
+  private calculateScore(
+    violations: Array<{ severity: 'warning' | 'error' }>
+  ): number {
     let score = 100;
 
-    violations.forEach(violation => {
+    violations.forEach((violation) => {
       if (violation.severity === 'error') {
         score -= 20;
       } else {
@@ -273,16 +329,21 @@ class PerformanceBenchmark {
   }
 
   public getLatestResult(): BenchmarkResult | null {
-    return this.results.length > 0 ? (this.results[this.results.length - 1] ?? null) : null;
+    return this.results.length > 0
+      ? (this.results[this.results.length - 1] ?? null)
+      : null;
   }
 
-  public compareResults(benchmarkName: string, limit: number = 10): {
+  public compareResults(
+    benchmarkName: string,
+    limit: number = 10
+  ): {
     trend: 'improving' | 'degrading' | 'stable';
     changePercentage: number;
     results: BenchmarkResult[];
   } {
     const relevantResults = this.results
-      .filter(result => result.name === benchmarkName)
+      .filter((result) => result.name === benchmarkName)
       .slice(-limit);
 
     if (relevantResults.length < 2) {
@@ -300,11 +361,12 @@ class PerformanceBenchmark {
       return {
         trend: 'stable' as const,
         changePercentage: 0,
-        results: relevantResults
+        results: relevantResults,
       };
     }
 
-    const changePercentage = ((latest.score - previous.score) / previous.score) * 100;
+    const changePercentage =
+      ((latest.score - previous.score) / previous.score) * 100;
 
     let trend: 'improving' | 'degrading' | 'stable';
     if (changePercentage > 5) {
@@ -328,9 +390,11 @@ class PerformanceBenchmark {
       results: this.results,
       summary: {
         totalBenchmarks: this.results.length,
-        averageScore: this.results.reduce((sum, r) => sum + r.score, 0) / this.results.length,
-        passedBenchmarks: this.results.filter(r => r.passed).length,
-        failedBenchmarks: this.results.filter(r => !r.passed).length,
+        averageScore:
+          this.results.reduce((sum, r) => sum + r.score, 0) /
+          this.results.length,
+        passedBenchmarks: this.results.filter((r) => r.passed).length,
+        failedBenchmarks: this.results.filter((r) => !r.passed).length,
       },
     };
 

@@ -1,8 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { RefreshCw, Download, TrendingUp, AlertCircle, CheckCircle, Image as ImageIcon } from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
+import {
+  RefreshCw,
+  Download,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle,
+  Image as ImageIcon,
+} from 'lucide-react';
 import { imageOptimizationService } from '@/services/imageOptimizationService';
 
 interface PerformanceStats {
@@ -27,7 +51,9 @@ const ImagePerformanceMonitor: React.FC = () => {
   const [stats, setStats] = useState<PerformanceStats | null>(null);
   const [detailedMetrics, setDetailedMetrics] = useState<ImageMetric[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedTimeRange, setSelectedTimeRange] = useState<'session' | 'hour' | 'day'>('session');
+  const [selectedTimeRange, setSelectedTimeRange] = useState<
+    'session' | 'hour' | 'day'
+  >('session');
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -58,7 +84,9 @@ const ImagePerformanceMonitor: React.FC = () => {
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) {
+      return '0 Bytes';
+    }
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -66,21 +94,39 @@ const ImagePerformanceMonitor: React.FC = () => {
   };
 
   const formatTime = (ms: number): string => {
-    if (ms < 1000) return `${ms}ms`;
+    if (ms < 1000) {
+      return `${ms}ms`;
+    }
     return `${(ms / 1000).toFixed(2)}s`;
   };
 
-  const getPerformanceGrade = (loadTime: number): { grade: string; color: string } => {
-    if (loadTime < 200) return { grade: 'A', color: 'text-green-600' };
-    if (loadTime < 500) return { grade: 'B', color: 'text-yellow-600' };
-    if (loadTime < 1000) return { grade: 'C', color: 'text-orange-600' };
+  const getPerformanceGrade = (
+    loadTime: number
+  ): { grade: string; color: string } => {
+    if (loadTime < 200) {
+      return { grade: 'A', color: 'text-green-600' };
+    }
+    if (loadTime < 500) {
+      return { grade: 'B', color: 'text-yellow-600' };
+    }
+    if (loadTime < 1000) {
+      return { grade: 'C', color: 'text-orange-600' };
+    }
     return { grade: 'D', color: 'text-red-600' };
   };
 
-  const getCompressionEfficiency = (ratio: number): { grade: string; color: string } => {
-    if (ratio > 3) return { grade: 'Excellent', color: 'text-green-600' };
-    if (ratio > 2) return { grade: 'Good', color: 'text-yellow-600' };
-    if (ratio > 1.5) return { grade: 'Fair', color: 'text-orange-600' };
+  const getCompressionEfficiency = (
+    ratio: number
+  ): { grade: string; color: string } => {
+    if (ratio > 3) {
+      return { grade: 'Excellent', color: 'text-green-600' };
+    }
+    if (ratio > 2) {
+      return { grade: 'Good', color: 'text-yellow-600' };
+    }
+    if (ratio > 1.5) {
+      return { grade: 'Fair', color: 'text-orange-600' };
+    }
     return { grade: 'Poor', color: 'text-red-600' };
   };
 
@@ -92,7 +138,9 @@ const ImagePerformanceMonitor: React.FC = () => {
       detailedMetrics,
     };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -110,12 +158,14 @@ const ImagePerformanceMonitor: React.FC = () => {
     );
   }
 
-  const formatData = Object.entries(stats.formatDistribution).map(([format, count]) => ({
-    name: format.toUpperCase(),
-    value: count,
-  }));
+  const formatData = Object.entries(stats.formatDistribution).map(
+    ([format, count]) => ({
+      name: format.toUpperCase(),
+      value: count,
+    })
+  );
 
-  const loadTimeData = detailedMetrics.slice(0, 10).map(metric => ({
+  const loadTimeData = detailedMetrics.slice(0, 10).map((metric) => ({
     name: metric.url.split('/').pop() || 'Unknown',
     loadTime: metric.loadTime,
   }));
@@ -139,7 +189,9 @@ const ImagePerformanceMonitor: React.FC = () => {
             onClick={refreshStats}
             disabled={isRefreshing}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`}
+            />
             Refresh
           </Button>
           <Button variant="outline" onClick={exportData}>
@@ -174,7 +226,9 @@ const ImagePerformanceMonitor: React.FC = () => {
               {formatTime(stats.averageLoadTime)}
             </div>
             <p className="text-xs text-muted-foreground">
-              <span className={getPerformanceGrade(stats.averageLoadTime).color}>
+              <span
+                className={getPerformanceGrade(stats.averageLoadTime).color}
+              >
                 Grade {getPerformanceGrade(stats.averageLoadTime).grade}
               </span>
             </p>
@@ -183,7 +237,9 @@ const ImagePerformanceMonitor: React.FC = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Compression Ratio</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Compression Ratio
+            </CardTitle>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -191,7 +247,11 @@ const ImagePerformanceMonitor: React.FC = () => {
               {stats.averageCompressionRatio.toFixed(2)}x
             </div>
             <p className="text-xs text-muted-foreground">
-              <span className={getCompressionEfficiency(stats.averageCompressionRatio).color}>
+              <span
+                className={
+                  getCompressionEfficiency(stats.averageCompressionRatio).color
+                }
+              >
                 {getCompressionEfficiency(stats.averageCompressionRatio).grade}
               </span>
             </p>
@@ -232,13 +292,18 @@ const ImagePerformanceMonitor: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) =>
+                    `${name} ${(percent * 100).toFixed(0)}%`
+                  }
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
                 >
                   {formatData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -296,7 +361,8 @@ const ImagePerformanceMonitor: React.FC = () => {
                     Slow Average Load Time
                   </p>
                   <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                    Consider increasing compression quality or implementing more aggressive lazy loading.
+                    Consider increasing compression quality or implementing more
+                    aggressive lazy loading.
                   </p>
                 </div>
               </div>
@@ -310,7 +376,8 @@ const ImagePerformanceMonitor: React.FC = () => {
                     Low Compression Efficiency
                   </p>
                   <p className="text-sm text-orange-700 dark:text-orange-300">
-                    Images could be compressed more aggressively to save bandwidth.
+                    Images could be compressed more aggressively to save
+                    bandwidth.
                   </p>
                 </div>
               </div>
@@ -330,19 +397,20 @@ const ImagePerformanceMonitor: React.FC = () => {
               </div>
             )}
 
-            {stats.averageLoadTime < 200 && stats.averageCompressionRatio > 2 && (
-              <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-800 dark:text-green-200">
-                    Optimal Performance
-                  </p>
-                  <p className="text-sm text-green-700 dark:text-green-300">
-                    Image performance is well optimized.
-                  </p>
+            {stats.averageLoadTime < 200 &&
+              stats.averageCompressionRatio > 2 && (
+                <div className="flex items-center gap-3 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-800 dark:text-green-200">
+                      Optimal Performance
+                    </p>
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      Image performance is well optimized.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </CardContent>
       </Card>

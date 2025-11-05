@@ -1,4 +1,4 @@
-import express, { Request, Response, Application } from 'express';
+import type { Request, Response } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -9,38 +9,45 @@ import { connectDatabase } from './config/database';
 import { logger } from './utils/logger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
+import { performanceMonitor } from './middleware/performanceMonitor';
 import { apiRoutes } from './routes/index';
 import { websocketServer } from './websocket/websocketServer';
 
+const express = require('express');
+
 // Create Express application
-const app: Application = express();
+const app = express();
 
 // Initialize database connection
-connectDatabase().catch((error) => {
+connectDatabase().catch(error => {
   logger.error('Failed to connect to database:', error);
   process.exit(1);
 });
 
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+      },
     },
-  },
-  crossOriginEmbedderPolicy: false,
-}));
+    crossOriginEmbedderPolicy: false,
+  }),
+);
 
 // CORS configuration
-  app.use(cors({
+app.use(
+  cors({
     origin: getAllowedOrigins(),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  }));
+  }),
+);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -63,6 +70,9 @@ app.use(compression());
 
 // Request logging middleware
 app.use(requestLogger);
+
+// Performance monitoring middleware
+app.use(performanceMonitor);
 
 // API routes
 app.use('/api', apiRoutes);

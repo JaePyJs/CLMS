@@ -13,7 +13,7 @@ export interface ApiResponse<T = any> {
 
 // Login response interface
 export interface LoginResponse {
-  token: string;
+  accessToken: string;
   user: {
     id: string;
     username: string;
@@ -24,7 +24,8 @@ export interface LoginResponse {
 // API client class
 class ApiClient {
   private client: ReturnType<typeof axios.create>;
-  private DEFAULT_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  private DEFAULT_API_URL =
+    import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
   constructor(baseURL: string = this.DEFAULT_API_URL) {
     this.client = axios.create({
@@ -45,7 +46,11 @@ class ApiClient {
   }
 
   // Generic POST request
-  async post<T>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
+  async post<T>(
+    url: string,
+    data?: any,
+    config?: any
+  ): Promise<ApiResponse<T>> {
     const response = await this.client.post<ApiResponse<T>>(url, data, config);
     return response.data;
   }
@@ -81,7 +86,10 @@ class ApiClient {
 // Create and export the API client instance
 export const apiClient = new ApiClient();
 
-export { setAccessTokenProvider, setUnauthorizedHandler } from './api/interceptors';
+export {
+  setAccessTokenProvider,
+  setUnauthorizedHandler,
+} from './api/interceptors';
 
 // Specific API services
 export const automationApi = {
@@ -132,7 +140,11 @@ export const studentsApi = {
   logActivity: (data: any) => apiClient.post('/api/students/activity', data),
 
   // Import students (enhanced with field mapping)
-  importStudents: (file: File, fieldMappings?: any[], dryRun: boolean = false) => {
+  importStudents: (
+    file: File,
+    fieldMappings?: any[],
+    dryRun: boolean = false
+  ) => {
     const formData = new FormData();
     formData.append('file', file);
     if (fieldMappings) {
@@ -148,7 +160,11 @@ export const studentsApi = {
   },
 
   // Preview import file
-  previewImport: (file: File, importType: string = 'students', maxPreviewRows: number = 10) => {
+  previewImport: (
+    file: File,
+    importType: string = 'students',
+    maxPreviewRows: number = 10
+  ) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('importType', importType);
@@ -232,22 +248,32 @@ export const utilitiesApi = {
   getDocumentation: () => apiClient.get('/api/utilities/documentation'),
 
   // Refresh documentation cache
-  refreshDocumentation: () => apiClient.post('/api/utilities/documentation/refresh'),
+  refreshDocumentation: () =>
+    apiClient.post('/api/utilities/documentation/refresh'),
 
   // Get documentation health status
-  getDocumentationHealth: () => apiClient.get('/api/utilities/documentation/health'),
+  getDocumentationHealth: () =>
+    apiClient.get('/api/utilities/documentation/health'),
 
   // Real-time Documentation Update Methods
   // Get documentation version information
-  getDocumentationVersion: () => apiClient.get('/api/utilities/documentation/version'),
+  getDocumentationVersion: () =>
+    apiClient.get('/api/utilities/documentation/version'),
 
   // Get documentation change history
-  getDocumentationHistory: (params?: { limit?: number; offset?: number; since?: string }) =>
-    apiClient.get('/api/utilities/documentation/history', params),
+  getDocumentationHistory: (params?: {
+    limit?: number;
+    offset?: number;
+    since?: string;
+  }) => apiClient.get('/api/utilities/documentation/history', params),
 
   // Submit documentation update
   submitDocumentationUpdate: (updateData: {
-    type: 'content_change' | 'structure_change' | 'metadata_update' | 'version_update';
+    type:
+      | 'content_change'
+      | 'structure_change'
+      | 'metadata_update'
+      | 'version_update';
     changes: Array<{
       file: string;
       section?: string;
@@ -263,70 +289,120 @@ export const utilitiesApi = {
   }) => apiClient.post('/api/utilities/documentation/updates', updateData),
 
   // Get pending documentation updates
-  getPendingUpdates: () => apiClient.get('/api/utilities/documentation/updates/pending'),
+  getPendingUpdates: () =>
+    apiClient.get('/api/utilities/documentation/updates/pending'),
 
   // Approve documentation update
-  approveDocumentationUpdate: (updateId: string, approvalData?: { notes?: string }) =>
-    apiClient.post(`/api/utilities/documentation/updates/${updateId}/approve`, approvalData),
+  approveDocumentationUpdate: (
+    updateId: string,
+    approvalData?: { notes?: string }
+  ) =>
+    apiClient.post(
+      `/api/utilities/documentation/updates/${updateId}/approve`,
+      approvalData
+    ),
 
   // Reject documentation update
-  rejectDocumentationUpdate: (updateId: string, rejectionData: { reason: string; notes?: string }) =>
-    apiClient.post(`/api/utilities/documentation/updates/${updateId}/reject`, rejectionData),
+  rejectDocumentationUpdate: (
+    updateId: string,
+    rejectionData: { reason: string; notes?: string }
+  ) =>
+    apiClient.post(
+      `/api/utilities/documentation/updates/${updateId}/reject`,
+      rejectionData
+    ),
 
   // Get documentation update status
   getUpdateStatus: (updateId: string) =>
     apiClient.get(`/api/utilities/documentation/updates/${updateId}/status`),
 
   // Rollback documentation to previous version
-  rollbackDocumentation: (versionHash: string, rollbackData?: { reason?: string }) =>
-    apiClient.post('/api/utilities/documentation/rollback', { versionHash, ...rollbackData }),
+  rollbackDocumentation: (
+    versionHash: string,
+    rollbackData?: { reason?: string }
+  ) =>
+    apiClient.post('/api/utilities/documentation/rollback', {
+      versionHash,
+      ...rollbackData,
+    }),
 
   // Get documentation conflicts
-  getDocumentationConflicts: () => apiClient.get('/api/utilities/documentation/conflicts'),
+  getDocumentationConflicts: () =>
+    apiClient.get('/api/utilities/documentation/conflicts'),
 
   // Resolve documentation conflict
-  resolveDocumentationConflict: (conflictId: string, resolution: {
-    strategy: 'accept_incoming' | 'accept_current' | 'merge_manual';
-    mergedContent?: string;
-    notes?: string;
-  }) => apiClient.post(`/api/utilities/documentation/conflicts/${conflictId}/resolve`, resolution),
+  resolveDocumentationConflict: (
+    conflictId: string,
+    resolution: {
+      strategy: 'accept_incoming' | 'accept_current' | 'merge_manual';
+      mergedContent?: string;
+      notes?: string;
+    }
+  ) =>
+    apiClient.post(
+      `/api/utilities/documentation/conflicts/${conflictId}/resolve`,
+      resolution
+    ),
 
   // Subscribe to real-time documentation updates
   subscribeToUpdates: (subscriptionData: {
-    types: Array<'content_change' | 'structure_change' | 'metadata_update' | 'version_update'>;
+    types: Array<
+      | 'content_change'
+      | 'structure_change'
+      | 'metadata_update'
+      | 'version_update'
+    >;
     files?: string[];
     impactLevels?: Array<'low' | 'medium' | 'high' | 'critical'>;
-  }) => apiClient.post('/api/utilities/documentation/subscribe', subscriptionData),
+  }) =>
+    apiClient.post('/api/utilities/documentation/subscribe', subscriptionData),
 
   // Unsubscribe from real-time documentation updates
   unsubscribeFromUpdates: (subscriptionId: string) =>
-    apiClient.delete(`/api/utilities/documentation/subscribe/${subscriptionId}`),
+    apiClient.delete(
+      `/api/utilities/documentation/subscribe/${subscriptionId}`
+    ),
 
   // Validate documentation integrity
-  validateDocumentationIntegrity: () => apiClient.post('/api/utilities/documentation/validate'),
+  validateDocumentationIntegrity: () =>
+    apiClient.post('/api/utilities/documentation/validate'),
 
   // Get documentation metrics
-  getDocumentationMetrics: (params?: { period?: 'day' | 'week' | 'month'; includeDetails?: boolean }) =>
-    apiClient.get('/api/utilities/documentation/metrics', params),
+  getDocumentationMetrics: (params?: {
+    period?: 'day' | 'week' | 'month';
+    includeDetails?: boolean;
+  }) => apiClient.get('/api/utilities/documentation/metrics', params),
 
   // Sync documentation with external sources
-  syncDocumentationSources: (syncData?: { sources?: string[]; forceSync?: boolean }) =>
-    apiClient.post('/api/utilities/documentation/sync', syncData),
+  syncDocumentationSources: (syncData?: {
+    sources?: string[];
+    forceSync?: boolean;
+  }) => apiClient.post('/api/utilities/documentation/sync', syncData),
 
   // Get documentation sync status
-  getDocumentationSyncStatus: () => apiClient.get('/api/utilities/documentation/sync/status'),
+  getDocumentationSyncStatus: () =>
+    apiClient.get('/api/utilities/documentation/sync/status'),
 
   // Create documentation snapshot
-  createDocumentationSnapshot: (snapshotData: { name: string; description?: string; tags?: string[] }) =>
-    apiClient.post('/api/utilities/documentation/snapshots', snapshotData),
+  createDocumentationSnapshot: (snapshotData: {
+    name: string;
+    description?: string;
+    tags?: string[];
+  }) => apiClient.post('/api/utilities/documentation/snapshots', snapshotData),
 
   // Get documentation snapshots
   getDocumentationSnapshots: (params?: { limit?: number; offset?: number }) =>
     apiClient.get('/api/utilities/documentation/snapshots', params),
 
   // Restore from documentation snapshot
-  restoreFromSnapshot: (snapshotId: string, restoreData?: { preserveCurrentAsSnapshot?: boolean }) =>
-    apiClient.post(`/api/utilities/documentation/snapshots/${snapshotId}/restore`, restoreData),
+  restoreFromSnapshot: (
+    snapshotId: string,
+    restoreData?: { preserveCurrentAsSnapshot?: boolean }
+  ) =>
+    apiClient.post(
+      `/api/utilities/documentation/snapshots/${snapshotId}/restore`,
+      restoreData
+    ),
 
   // Delete documentation snapshot
   deleteDocumentationSnapshot: (snapshotId: string) =>
@@ -393,12 +469,10 @@ export const utilitiesApi = {
     apiClient.post('/api/utilities/quick-start-session', sessionData),
 
   // Get quick report
-  getQuickReport: () =>
-    apiClient.get('/api/utilities/quick-report'),
+  getQuickReport: () => apiClient.get('/api/utilities/quick-report'),
 
   // Quick backup
-  quickBackup: () =>
-    apiClient.post('/api/utilities/quick-backup'),
+  quickBackup: () => apiClient.post('/api/utilities/quick-backup'),
 };
 
 // Reports API
@@ -418,14 +492,21 @@ export const reportsApi = {
   // Get monthly report
   getMonthlyReport: (month?: number, year?: number) => {
     const params: any = {};
-    if (month) params.month = month;
-    if (year) params.year = year;
+    if (month) {
+      params.month = month;
+    }
+    if (year) {
+      params.year = year;
+    }
     return apiClient.get('/api/reports/monthly', params);
   },
 
   // Get custom report
   getCustomReport: (startDate: string, endDate: string) => {
-    return apiClient.get('/api/reports/custom', { start: startDate, end: endDate });
+    return apiClient.get('/api/reports/custom', {
+      start: startDate,
+      end: endDate,
+    });
   },
 };
 
@@ -434,8 +515,12 @@ export const finesApi = {
   // Get all fines
   getFines: (status?: 'outstanding' | 'paid', studentId?: string) => {
     const params: any = {};
-    if (status) params.status = status;
-    if (studentId) params.studentId = studentId;
+    if (status) {
+      params.status = status;
+    }
+    if (studentId) {
+      params.studentId = studentId;
+    }
     return apiClient.get('/api/fines', params);
   },
 
@@ -445,7 +530,10 @@ export const finesApi = {
   },
 
   // Record fine payment
-  recordPayment: (checkoutId: string, paymentData: { amountPaid: number; paymentMethod?: string; notes?: string }) => {
+  recordPayment: (
+    checkoutId: string,
+    paymentData: { amountPaid: number; paymentMethod?: string; notes?: string }
+  ) => {
     return apiClient.post(`/api/fines/${checkoutId}/payment`, paymentData);
   },
 
@@ -464,13 +552,16 @@ export const finesApi = {
 export const settingsApi = {
   // System settings
   getSystemSettings: () => apiClient.get('/api/settings/system'),
-  updateSystemSettings: (settings: any) => apiClient.put('/api/settings/system', settings),
+  updateSystemSettings: (settings: any) =>
+    apiClient.put('/api/settings/system', settings),
   resetSystemSettings: () => apiClient.post('/api/settings/system/reset'),
 
   // Google Sheets configuration
   getGoogleSheetsConfig: () => apiClient.get('/api/settings/google-sheets'),
-  updateGoogleSheetsSchedule: (config: any) => apiClient.put('/api/settings/google-sheets/schedule', config),
-  testGoogleSheetsConnection: (spreadsheetId: string) => apiClient.post('/api/settings/google-sheets/test', { spreadsheetId }),
+  updateGoogleSheetsSchedule: (config: any) =>
+    apiClient.put('/api/settings/google-sheets/schedule', config),
+  testGoogleSheetsConnection: (spreadsheetId: string) =>
+    apiClient.post('/api/settings/google-sheets/test', { spreadsheetId }),
   syncGoogleSheets: () => apiClient.post('/api/settings/google-sheets/sync'),
 
   // Backups
@@ -479,16 +570,24 @@ export const settingsApi = {
   deleteBackup: (id: string) => apiClient.delete(`/api/settings/backups/${id}`),
 
   // System logs
-  getLogs: (params?: { page?: number; pageSize?: number; level?: string; search?: string }) =>
-    apiClient.get('/api/settings/logs', params),
+  getLogs: (params?: {
+    page?: number;
+    pageSize?: number;
+    level?: string;
+    search?: string;
+  }) => apiClient.get('/api/settings/logs', params),
 
   // User management
   getUsers: () => apiClient.get('/api/settings/users'),
-  createUser: (userData: any) => apiClient.post('/api/settings/users', userData),
-  updateUser: (id: string, userData: any) => apiClient.put(`/api/settings/users/${id}`, userData),
+  createUser: (userData: any) =>
+    apiClient.post('/api/settings/users', userData),
+  updateUser: (id: string, userData: any) =>
+    apiClient.put(`/api/settings/users/${id}`, userData),
   deleteUser: (id: string) => apiClient.delete(`/api/settings/users/${id}`),
   changePassword: (id: string, password: string) =>
-    apiClient.post(`/api/settings/users/${id}/change-password`, { newPassword: password }),
+    apiClient.post(`/api/settings/users/${id}/change-password`, {
+      newPassword: password,
+    }),
 };
 
 export default apiClient;

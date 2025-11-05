@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  Suspense,
+} from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { Button } from '@/components/ui/button';
@@ -12,12 +18,21 @@ import { toast } from 'sonner';
 import NotificationCenter from '@/components/NotificationCenter';
 import WebSocketProvider from '@/contexts/WebSocketContext';
 import { ResponsiveDrawer } from '@/components/layout/ResponsiveDrawer';
-import { useMobileOptimization, usePerformanceOptimization, useTouchOptimization } from '@/hooks/useMobileOptimization';
+import {
+  useMobileOptimization,
+  usePerformanceOptimization,
+  useTouchOptimization,
+} from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import PerformanceImage from '@/components/performance/Image';
 import MobileBottomNavigation from '@/components/mobile/MobileBottomNavigation';
 import PWAInstallPrompt from '@/components/mobile/PWAInstallPrompt';
-import { LoadingSpinner, DashboardCardSkeleton, CardSkeleton, TableSkeleton } from '@/components/LoadingStates';
+import {
+  LoadingSpinner,
+  DashboardCardSkeleton,
+  CardSkeleton,
+  TableSkeleton,
+} from '@/components/LoadingStates';
 import {
   LogOut,
   User,
@@ -158,7 +173,11 @@ export default function App() {
   }
 
   // Dev-only ErrorBoundary test route
-  if (import.meta.env.DEV && typeof window !== 'undefined' && window.location.pathname === '/dev/error') {
+  if (
+    import.meta.env.DEV &&
+    typeof window !== 'undefined' &&
+    window.location.pathname === '/dev/error'
+  ) {
     throw new Error('Dev Error: Forced exception for ErrorBoundary validation');
   }
 
@@ -262,43 +281,59 @@ export default function App() {
   };
 
   // Touch gesture support for mobile navigation
-  const handleTouchNavigation = useCallback((gesture: string) => {
-    if (!isMobile && !isTablet) return;
+  const handleTouchNavigation = useCallback(
+    (gesture: string) => {
+      if (!isMobile && !isTablet) {
+        return;
+      }
 
-    const allTabs = [
-      'dashboard', 'scan', 'students', 'books', 'checkout', 'equipment',
-      'automation', 'analytics', 'reports', 'import', 'qrcodes', 'barcodes', 'settings'
-    ];
+      const allTabs = [
+        'dashboard',
+        'scan',
+        'students',
+        'books',
+        'checkout',
+        'equipment',
+        'automation',
+        'analytics',
+        'reports',
+        'import',
+        'qrcodes',
+        'barcodes',
+        'settings',
+      ];
 
-    const currentIndex = allTabs.indexOf(activeTab);
+      const currentIndex = allTabs.indexOf(activeTab);
 
-    switch (gesture) {
-      case 'swipe-left':
-        if (currentIndex < allTabs.length - 1) {
-          const nextTab = allTabs[currentIndex + 1];
-          if (nextTab) {
-            setActiveTab(nextTab);
-            toast.info(`Switched to ${nextTab}`);
+      switch (gesture) {
+        case 'swipe-left':
+          if (currentIndex < allTabs.length - 1) {
+            const nextTab = allTabs[currentIndex + 1];
+            if (nextTab) {
+              setActiveTab(nextTab);
+              toast.info(`Switched to ${nextTab}`);
+            }
           }
-        }
-        break;
-      case 'swipe-right':
-        if (currentIndex > 0) {
-          const prevTab = allTabs[currentIndex - 1];
-          if (prevTab) {
-            setActiveTab(prevTab);
-            toast.info(`Switched to ${prevTab}`);
+          break;
+        case 'swipe-right':
+          if (currentIndex > 0) {
+            const prevTab = allTabs[currentIndex - 1];
+            if (prevTab) {
+              setActiveTab(prevTab);
+              toast.info(`Switched to ${prevTab}`);
+            }
           }
-        }
-        break;
-      case 'double-tap':
-        // Toggle mobile menu on double tap
-        if (isMobile) {
-          setShowMobileMenu(!showMobileMenu);
-        }
-        break;
-    }
-  }, [isMobile, isTablet, activeTab, showMobileMenu]);
+          break;
+        case 'double-tap':
+          // Toggle mobile menu on double tap
+          if (isMobile) {
+            setShowMobileMenu(!showMobileMenu);
+          }
+          break;
+      }
+    },
+    [isMobile, isTablet, activeTab, showMobileMenu]
+  );
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -413,7 +448,10 @@ export default function App() {
         </div>
 
         {/* Enhanced Header */}
-        <header role="banner" className="bg-white/95 dark:bg-card/95 border-b border-slate-200 dark:border-border sticky top-0 z-50 backdrop-blur-md shadow-sm transition-all duration-200">
+        <header
+          role="banner"
+          className="bg-white/95 dark:bg-card/95 border-b border-slate-200 dark:border-border sticky top-0 z-50 backdrop-blur-md shadow-sm transition-all duration-200"
+        >
           <div className="px-3 sm:px-4 lg:px-8 py-2 sm:py-3 lg:py-4">
             {/* Top Row - Main Navigation */}
             <div className="flex items-center justify-between gap-2 sm:gap-4 flex-wrap lg:flex-nowrap">
@@ -724,14 +762,30 @@ export default function App() {
 
                   <div className="grid gap-2">
                     {[
-                      { value: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
+                      {
+                        value: 'dashboard',
+                        label: 'Dashboard Overview',
+                        icon: LayoutDashboard,
+                      },
                       { value: 'scan', label: 'Activity Hub', icon: Camera },
-                      { value: 'students', label: 'Student Management', icon: Users },
+                      {
+                        value: 'students',
+                        label: 'Student Management',
+                        icon: Users,
+                      },
                       { value: 'books', label: 'Book Catalog', icon: BookOpen },
-                      { value: 'checkout', label: 'Checkout Desk', icon: Library },
+                      {
+                        value: 'checkout',
+                        label: 'Checkout Desk',
+                        icon: Library,
+                      },
                       { value: 'equipment', label: 'Equipment', icon: Laptop },
                       { value: 'automation', label: 'Automation', icon: Bot },
-                      { value: 'analytics', label: 'Analytics', icon: BarChart },
+                      {
+                        value: 'analytics',
+                        label: 'Analytics',
+                        icon: BarChart,
+                      },
                       { value: 'reports', label: 'Reports', icon: FileText },
                       { value: 'import', label: 'Data Import', icon: Upload },
                       { value: 'qrcodes', label: 'QR Codes', icon: QrCode },
@@ -767,7 +821,9 @@ export default function App() {
                       disabled={isRefreshing}
                       className="relative"
                     >
-                      <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      <RefreshCw
+                        className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+                      />
                       {isRefreshing && (
                         <span className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full" />
                       )}
@@ -779,11 +835,7 @@ export default function App() {
                     >
                       <Shield className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleBackup}
-                    >
+                    <Button variant="outline" size="sm" onClick={handleBackup}>
                       <Database className="h-4 w-4" />
                     </Button>
                   </div>
@@ -859,239 +911,242 @@ export default function App() {
         </div>
 
         {/* Main Content */}
-        <main role="main" className="px-3 sm:px-4 lg:px-8 py-4 sm:py-6 max-w-[1920px] mx-auto relative z-10">
+        <main
+          role="main"
+          className="px-3 sm:px-4 lg:px-8 py-4 sm:py-6 max-w-[1920px] mx-auto relative z-10"
+        >
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
             className="space-y-6"
           >
-              {/* Desktop Tabs - Hidden on Mobile */}
-              <div className="hidden lg:block">
-                <TabsList className="w-full lg:w-auto flex-wrap lg:flex-nowrap">
-                  <TabsTrigger value="dashboard" id="tab-dashboard">
-                    <LayoutDashboard className="w-4 h-4 mr-2" /> Dashboard
-                  </TabsTrigger>
-                  <TabsTrigger value="scan" id="tab-scan">
-                    <Camera className="w-4 h-4 mr-2" /> Activity
-                  </TabsTrigger>
-                  <TabsTrigger value="students" id="tab-students">
-                    <Users className="w-4 h-4 mr-2" /> Students
-                  </TabsTrigger>
-                  <TabsTrigger value="books" id="tab-books">
-                    <BookOpen className="w-4 h-4 mr-2" /> Books
-                  </TabsTrigger>
-                  <TabsTrigger value="checkout" id="tab-checkout">
-                    <Library className="w-4 h-4 mr-2" /> Checkout
-                  </TabsTrigger>
-                  <TabsTrigger value="equipment" id="tab-equipment">
-                    <Laptop className="w-4 h-4 mr-2" /> Equipment
-                  </TabsTrigger>
-                  <TabsTrigger value="automation" id="tab-automation">
-                    <Bot className="w-4 h-4 mr-2" /> Automation
-                  </TabsTrigger>
-                  <TabsTrigger value="analytics" id="tab-analytics">
-                    <BarChart className="w-4 h-4 mr-2" /> Analytics
-                  </TabsTrigger>
-                  <TabsTrigger value="reports" id="tab-reports">
-                    <FileText className="w-4 h-4 mr-2" /> Reports
-                  </TabsTrigger>
-                  <TabsTrigger value="import" id="tab-import">
-                    <Upload className="w-4 h-4 mr-2" /> Import
-                  </TabsTrigger>
-                  <TabsTrigger value="qrcodes" id="tab-qrcodes">
-                    <QrCode className="w-4 h-4 mr-2" /> QR Codes
-                  </TabsTrigger>
-                  <TabsTrigger value="barcodes" id="tab-barcodes">
-                    <List className="w-4 h-4 mr-2" /> Barcodes
-                  </TabsTrigger>
-                  <TabsTrigger value="settings" id="tab-settings">
-                    <Settings className="w-4 h-4 mr-2" /> Settings
-                  </TabsTrigger>
-                </TabsList>
-              </div>
+            {/* Desktop Tabs - Hidden on Mobile */}
+            <div className="hidden lg:block">
+              <TabsList className="w-full lg:w-auto flex-wrap lg:flex-nowrap">
+                <TabsTrigger value="dashboard" id="tab-dashboard">
+                  <LayoutDashboard className="w-4 h-4 mr-2" /> Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="scan" id="tab-scan">
+                  <Camera className="w-4 h-4 mr-2" /> Activity
+                </TabsTrigger>
+                <TabsTrigger value="students" id="tab-students">
+                  <Users className="w-4 h-4 mr-2" /> Students
+                </TabsTrigger>
+                <TabsTrigger value="books" id="tab-books">
+                  <BookOpen className="w-4 h-4 mr-2" /> Books
+                </TabsTrigger>
+                <TabsTrigger value="checkout" id="tab-checkout">
+                  <Library className="w-4 h-4 mr-2" /> Checkout
+                </TabsTrigger>
+                <TabsTrigger value="equipment" id="tab-equipment">
+                  <Laptop className="w-4 h-4 mr-2" /> Equipment
+                </TabsTrigger>
+                <TabsTrigger value="automation" id="tab-automation">
+                  <Bot className="w-4 h-4 mr-2" /> Automation
+                </TabsTrigger>
+                <TabsTrigger value="analytics" id="tab-analytics">
+                  <BarChart className="w-4 h-4 mr-2" /> Analytics
+                </TabsTrigger>
+                <TabsTrigger value="reports" id="tab-reports">
+                  <FileText className="w-4 h-4 mr-2" /> Reports
+                </TabsTrigger>
+                <TabsTrigger value="import" id="tab-import">
+                  <Upload className="w-4 h-4 mr-2" /> Import
+                </TabsTrigger>
+                <TabsTrigger value="qrcodes" id="tab-qrcodes">
+                  <QrCode className="w-4 h-4 mr-2" /> QR Codes
+                </TabsTrigger>
+                <TabsTrigger value="barcodes" id="tab-barcodes">
+                  <List className="w-4 h-4 mr-2" /> Barcodes
+                </TabsTrigger>
+                <TabsTrigger value="settings" id="tab-settings">
+                  <Settings className="w-4 h-4 mr-2" /> Settings
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-              {/* Dashboard Tab */}
-              <TabsContent
-                value="dashboard"
-                className="space-y-6"
-                id="tabpanel-dashboard"
-                role="tabpanel"
-                aria-labelledby="tab-dashboard"
-                tabIndex={0}
-              >
-                <Suspense fallback={<DashboardSkeleton />}>
-                  <DashboardOverview onTabChange={setActiveTab} />
-                </Suspense>
-              </TabsContent>
+            {/* Dashboard Tab */}
+            <TabsContent
+              value="dashboard"
+              className="space-y-6"
+              id="tabpanel-dashboard"
+              role="tabpanel"
+              aria-labelledby="tab-dashboard"
+              tabIndex={0}
+            >
+              <Suspense fallback={<DashboardSkeleton />}>
+                <DashboardOverview onTabChange={setActiveTab} />
+              </Suspense>
+            </TabsContent>
 
-              {/* Activity Tab */}
-              <TabsContent
-                value="scan"
-                className="space-y-6"
-                id="tabpanel-scan"
-                role="tabpanel"
-                aria-labelledby="tab-scan"
-                tabIndex={0}
-              >
-                <Suspense fallback={<LoadingSpinnerFallback />}>
-                  <ScanWorkspace />
-                </Suspense>
-              </TabsContent>
+            {/* Activity Tab */}
+            <TabsContent
+              value="scan"
+              className="space-y-6"
+              id="tabpanel-scan"
+              role="tabpanel"
+              aria-labelledby="tab-scan"
+              tabIndex={0}
+            >
+              <Suspense fallback={<LoadingSpinnerFallback />}>
+                <ScanWorkspace />
+              </Suspense>
+            </TabsContent>
 
-              {/* Students Tab */}
-              <TabsContent
-                value="students"
-                className="space-y-6"
-                id="tabpanel-students"
-                role="tabpanel"
-                aria-labelledby="tab-students"
-                tabIndex={0}
-              >
-                <Suspense fallback={<TableSkeletonFallback />}>
-                  <StudentManagement />
-                </Suspense>
-              </TabsContent>
+            {/* Students Tab */}
+            <TabsContent
+              value="students"
+              className="space-y-6"
+              id="tabpanel-students"
+              role="tabpanel"
+              aria-labelledby="tab-students"
+              tabIndex={0}
+            >
+              <Suspense fallback={<TableSkeletonFallback />}>
+                <StudentManagement />
+              </Suspense>
+            </TabsContent>
 
-              {/* Books Tab */}
-              <TabsContent
-                value="books"
-                className="space-y-6"
-                id="tabpanel-books"
-                role="tabpanel"
-                aria-labelledby="tab-books"
-                tabIndex={0}
-              >
-                <Suspense fallback={<TableSkeletonFallback />}>
-                  <BookCatalog />
-                </Suspense>
-              </TabsContent>
+            {/* Books Tab */}
+            <TabsContent
+              value="books"
+              className="space-y-6"
+              id="tabpanel-books"
+              role="tabpanel"
+              aria-labelledby="tab-books"
+              tabIndex={0}
+            >
+              <Suspense fallback={<TableSkeletonFallback />}>
+                <BookCatalog />
+              </Suspense>
+            </TabsContent>
 
-              {/* Checkout Tab */}
-              <TabsContent
-                value="checkout"
-                className="space-y-6"
-                id="tabpanel-checkout"
-                role="tabpanel"
-                aria-labelledby="tab-checkout"
-                tabIndex={0}
-              >
-                <Suspense fallback={<CardSkeleton className="h-96" />}>
-                  <BookCheckout />
-                </Suspense>
-              </TabsContent>
+            {/* Checkout Tab */}
+            <TabsContent
+              value="checkout"
+              className="space-y-6"
+              id="tabpanel-checkout"
+              role="tabpanel"
+              aria-labelledby="tab-checkout"
+              tabIndex={0}
+            >
+              <Suspense fallback={<CardSkeleton className="h-96" />}>
+                <BookCheckout />
+              </Suspense>
+            </TabsContent>
 
-              {/* Equipment Tab */}
-              <TabsContent
-                value="equipment"
-                className="space-y-6"
-                id="tabpanel-equipment"
-                role="tabpanel"
-                aria-labelledby="tab-equipment"
-                tabIndex={0}
-              >
-                <Suspense fallback={<TableSkeletonFallback />}>
-                  <EquipmentDashboard />
-                </Suspense>
-              </TabsContent>
+            {/* Equipment Tab */}
+            <TabsContent
+              value="equipment"
+              className="space-y-6"
+              id="tabpanel-equipment"
+              role="tabpanel"
+              aria-labelledby="tab-equipment"
+              tabIndex={0}
+            >
+              <Suspense fallback={<TableSkeletonFallback />}>
+                <EquipmentDashboard />
+              </Suspense>
+            </TabsContent>
 
-              {/* Automation Tab */}
-              <TabsContent
-                value="automation"
-                className="space-y-6"
-                id="tabpanel-automation"
-                role="tabpanel"
-                aria-labelledby="tab-automation"
-                tabIndex={0}
-              >
-                <Suspense fallback={<DashboardSkeleton />}>
-                  <AutomationDashboard />
-                </Suspense>
-              </TabsContent>
+            {/* Automation Tab */}
+            <TabsContent
+              value="automation"
+              className="space-y-6"
+              id="tabpanel-automation"
+              role="tabpanel"
+              aria-labelledby="tab-automation"
+              tabIndex={0}
+            >
+              <Suspense fallback={<DashboardSkeleton />}>
+                <AutomationDashboard />
+              </Suspense>
+            </TabsContent>
 
-              {/* Analytics Tab */}
-              <TabsContent
-                value="analytics"
-                className="space-y-6"
-                id="tabpanel-analytics"
-                role="tabpanel"
-                aria-labelledby="tab-analytics"
-                tabIndex={0}
-              >
-                <Suspense fallback={<DashboardSkeleton />}>
-                  <AnalyticsDashboard />
-                </Suspense>
-              </TabsContent>
+            {/* Analytics Tab */}
+            <TabsContent
+              value="analytics"
+              className="space-y-6"
+              id="tabpanel-analytics"
+              role="tabpanel"
+              aria-labelledby="tab-analytics"
+              tabIndex={0}
+            >
+              <Suspense fallback={<DashboardSkeleton />}>
+                <AnalyticsDashboard />
+              </Suspense>
+            </TabsContent>
 
-              {/* Reports Tab */}
-              <TabsContent
-                value="reports"
-                className="space-y-6"
-                id="tabpanel-reports"
-                role="tabpanel"
-                aria-labelledby="tab-reports"
-                tabIndex={0}
-              >
-                <Suspense fallback={<CardSkeleton className="h-96" />}>
-                  <ReportsBuilder />
-                </Suspense>
-              </TabsContent>
+            {/* Reports Tab */}
+            <TabsContent
+              value="reports"
+              className="space-y-6"
+              id="tabpanel-reports"
+              role="tabpanel"
+              aria-labelledby="tab-reports"
+              tabIndex={0}
+            >
+              <Suspense fallback={<CardSkeleton className="h-96" />}>
+                <ReportsBuilder />
+              </Suspense>
+            </TabsContent>
 
-              {/* QR Codes Tab */}
-              <TabsContent
-                value="qrcodes"
-                className="space-y-6"
-                id="tabpanel-qrcodes"
-                role="tabpanel"
-                aria-labelledby="tab-qrcodes"
-                tabIndex={0}
-              >
-                <Suspense fallback={<CardSkeleton className="h-96" />}>
-                  <QRCodeManager />
-                </Suspense>
-              </TabsContent>
+            {/* QR Codes Tab */}
+            <TabsContent
+              value="qrcodes"
+              className="space-y-6"
+              id="tabpanel-qrcodes"
+              role="tabpanel"
+              aria-labelledby="tab-qrcodes"
+              tabIndex={0}
+            >
+              <Suspense fallback={<CardSkeleton className="h-96" />}>
+                <QRCodeManager />
+              </Suspense>
+            </TabsContent>
 
-              {/* Import Tab */}
-              <TabsContent
-                value="import"
-                className="space-y-6"
-                id="tabpanel-import"
-                role="tabpanel"
-                aria-labelledby="tab-import"
-                tabIndex={0}
-              >
-                <Suspense fallback={<CardSkeleton className="h-96" />}>
-                  <ImportData />
-                </Suspense>
-              </TabsContent>
+            {/* Import Tab */}
+            <TabsContent
+              value="import"
+              className="space-y-6"
+              id="tabpanel-import"
+              role="tabpanel"
+              aria-labelledby="tab-import"
+              tabIndex={0}
+            >
+              <Suspense fallback={<CardSkeleton className="h-96" />}>
+                <ImportData />
+              </Suspense>
+            </TabsContent>
 
-              {/* Barcodes Tab */}
-              <TabsContent
-                value="barcodes"
-                className="space-y-6"
-                id="tabpanel-barcodes"
-                role="tabpanel"
-                aria-labelledby="tab-barcodes"
-                tabIndex={0}
-              >
-                <Suspense fallback={<CardSkeleton className="h-96" />}>
-                  <BarcodeManager />
-                </Suspense>
-              </TabsContent>
+            {/* Barcodes Tab */}
+            <TabsContent
+              value="barcodes"
+              className="space-y-6"
+              id="tabpanel-barcodes"
+              role="tabpanel"
+              aria-labelledby="tab-barcodes"
+              tabIndex={0}
+            >
+              <Suspense fallback={<CardSkeleton className="h-96" />}>
+                <BarcodeManager />
+              </Suspense>
+            </TabsContent>
 
-              {/* Settings Tab */}
-              <TabsContent
-                value="settings"
-                className="space-y-6"
-                id="tabpanel-settings"
-                role="tabpanel"
-                aria-labelledby="tab-settings"
-                tabIndex={0}
-              >
-                <Suspense fallback={<SettingsSkeleton />}>
-                  <SettingsPage />
-                </Suspense>
-              </TabsContent>
-            </Tabs>
+            {/* Settings Tab */}
+            <TabsContent
+              value="settings"
+              className="space-y-6"
+              id="tabpanel-settings"
+              role="tabpanel"
+              aria-labelledby="tab-settings"
+              tabIndex={0}
+            >
+              <Suspense fallback={<SettingsSkeleton />}>
+                <SettingsPage />
+              </Suspense>
+            </TabsContent>
+          </Tabs>
         </main>
 
         {/* PWA Install Prompt */}

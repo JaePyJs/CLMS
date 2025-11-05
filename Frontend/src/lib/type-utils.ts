@@ -44,7 +44,9 @@ export type ArrayElement<T> = T extends (infer U)[] ? U : never;
 /**
  * Create a function type with the same parameters but different return type
  */
-export type OverwriteReturnType<T, NewReturn> = T extends (...args: infer P) => any
+export type OverwriteReturnType<T, NewReturn> = T extends (
+  ...args: infer P
+) => any
   ? (...args: P) => NewReturn
   : never;
 
@@ -56,11 +58,12 @@ export type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
 /**
  * Create a type that flattens nested promises
  */
-export type DeepUnwrapPromise<T> = T extends Promise<infer U>
-  ? U extends Promise<any>
-    ? DeepUnwrapPromise<U>
-    : U
-  : T;
+export type DeepUnwrapPromise<T> =
+  T extends Promise<infer U>
+    ? U extends Promise<any>
+      ? DeepUnwrapPromise<U>
+      : U
+    : T;
 
 /**
  * Create a type that makes a specific property non-nullable
@@ -118,9 +121,7 @@ export type OmitByType<T, V> = Omit<T, KeysOfType<T, V>>;
 /**
  * Create a type that represents a function with typed arguments
  */
-export type TypedFunction<T extends Record<string, any>, R> = (
-  args: T
-) => R;
+export type TypedFunction<T extends Record<string, any>, R> = (args: T) => R;
 
 /**
  * Create a type that represents a constructor
@@ -132,9 +133,10 @@ export type Constructor<T = unknown, Args extends any[] = any[]> = new (
 /**
  * Create a type that represents an abstract constructor
  */
-export type AbstractConstructor<T = unknown, Args extends any[] = any[]> = abstract new (
-  ...args: Args
-) => T;
+export type AbstractConstructor<
+  T = unknown,
+  Args extends any[] = any[],
+> = abstract new (...args: Args) => T;
 
 /**
  * Create a type that merges two objects
@@ -172,21 +174,23 @@ export type Url<T extends string> = T extends `http${'s' | ''}://${string}`
 /**
  * Create a type that represents ISO date string
  */
-export type IsoDate<T extends string> = T extends `${string}-${string}-${string}T${string}:${string}:${string}`
-  ? T
-  : never;
+export type IsoDate<T extends string> =
+  T extends `${string}-${string}-${string}T${string}:${string}:${string}`
+    ? T
+    : never;
 
 /**
  * Create a type that represents UUID format
  */
-export type UUID<T extends string> = T extends `${string}-${string}-${string}-${string}-${string}`
-  ? T
-  : never;
+export type UUID<T extends string> =
+  T extends `${string}-${string}-${string}-${string}-${string}` ? T : never;
 
 /**
  * Create a type that enforces minimum string length
  */
-export type MinLength<T extends string, L extends number> = T extends { length: infer U }
+export type MinLength<T extends string, L extends number> = T extends {
+  length: infer U;
+}
   ? U extends L
     ? T
     : never
@@ -195,7 +199,9 @@ export type MinLength<T extends string, L extends number> = T extends { length: 
 /**
  * Create a type that enforces maximum string length
  */
-export type MaxLength<T extends string, L extends number> = T extends { length: infer U }
+export type MaxLength<T extends string, L extends number> = T extends {
+  length: infer U;
+}
   ? U extends L
     ? T
     : never
@@ -204,9 +210,7 @@ export type MaxLength<T extends string, L extends number> = T extends { length: 
 /**
  * Create a type that represents a numeric string
  */
-export type NumericString<T extends string> = T extends `${number}`
-  ? T
-  : never;
+export type NumericString<T extends string> = T extends `${number}` ? T : never;
 
 /**
  * Create a type that represents a boolean string
@@ -218,7 +222,9 @@ export type BooleanString<T extends string> = T extends 'true' | 'false'
 /**
  * Create a type for tagged strings (compile-time validation)
  */
-export type TaggedString<T extends string, Tag extends string> = T & { __tag: Tag };
+export type TaggedString<T extends string, Tag extends string> = T & {
+  __tag: Tag;
+};
 
 /**
  * Create a type that represents a valid ID string
@@ -243,13 +249,15 @@ export type Validator<T> = (value: unknown) => ValidationResult<T>;
 /**
  * Create a type for validation results
  */
-export type ValidationResult<T> = {
-  success: true;
-  data: T;
-} | {
-  success: false;
-  errors: string[];
-};
+export type ValidationResult<T> =
+  | {
+      success: true;
+      data: T;
+    }
+  | {
+      success: false;
+      errors: string[];
+    };
 
 /**
  * Create a type for async validators
@@ -390,7 +398,9 @@ export const TypeGuards = {
    * Check if a value is a valid email
    */
   isEmail: (value: unknown): value is string => {
-    return typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    return (
+      typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+    );
   },
 
   /**
@@ -404,7 +414,12 @@ export const TypeGuards = {
    * Check if a value is a UUID
    */
   isUUID: (value: unknown): value is string => {
-    return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+    return (
+      typeof value === 'string' &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        value
+      )
+    );
   },
 
   /**
@@ -429,7 +444,11 @@ export const Validators = {
   /**
    * Validate a string with optional constraints
    */
-  string: (options?: { minLength?: number; maxLength?: number; pattern?: RegExp }) => {
+  string: (options?: {
+    minLength?: number;
+    maxLength?: number;
+    pattern?: RegExp;
+  }) => {
     return (value: unknown): ValidationResult<string> => {
       if (typeof value !== 'string') {
         return {
@@ -441,11 +460,15 @@ export const Validators = {
       const errors: string[] = [];
 
       if (options?.minLength && value.length < options.minLength) {
-        errors.push(`String must be at least ${options.minLength} characters long`);
+        errors.push(
+          `String must be at least ${options.minLength} characters long`
+        );
       }
 
       if (options?.maxLength && value.length > options.maxLength) {
-        errors.push(`String must be no more than ${options.maxLength} characters long`);
+        errors.push(
+          `String must be no more than ${options.maxLength} characters long`
+        );
       }
 
       if (options?.pattern && !options.pattern.test(value)) {
@@ -525,7 +548,10 @@ export const Validators = {
   /**
    * Validate an array with optional constraints
    */
-  array: <T>(itemValidator: Validator<T>, options?: { minLength?: number; maxLength?: number }) => {
+  array: <T>(
+    itemValidator: Validator<T>,
+    options?: { minLength?: number; maxLength?: number }
+  ) => {
     return (value: unknown): ValidationResult<T[]> => {
       if (!Array.isArray(value)) {
         return {
@@ -542,7 +568,8 @@ export const Validators = {
         if (result.success) {
           validItems.push(result.data);
         } else {
-          errors.push(`Item at index ${i}: ${result.errors.join(', ')}`);
+          const resultAny = result as any;
+          errors.push(`Item at index ${i}: ${resultAny.errors.join(', ')}`);
         }
       }
 

@@ -20,11 +20,11 @@ interface ActionActions {
 
 /**
  * Hook for managing action states (export, download, bulk operations, etc.)
- * 
+ *
  * @param actionFn - Function that performs the action
  * @param options - Configuration options for the action
  * @returns [state, actions] - Current state and action methods
- * 
+ *
  * @example
  * const [state, actions] = useActionState(
  *   async ({ format, data }) => {
@@ -39,7 +39,7 @@ interface ActionActions {
  *     },
  *   }
  * );
- * 
+ *
  * // Execute action
  * const handleExport = () => {
  *   actions.start({ format: 'csv', data: studentData });
@@ -73,109 +73,119 @@ export function useActionState<T = any>(
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const start = useCallback((params?: any) => {
-    // Cancel any ongoing action
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    // Create new abort controller
-    abortControllerRef.current = new AbortController();
-
-    setState({
-      isLoading: true,
-      error: null,
-      data: null,
-      progress: 0,
-      isCancelled: false,
-    });
-
-    // Execute action
-    const executeAction = async () => {
-      try {
-        const result = await actionFn({
-          ...params,
-          signal: abortControllerRef.current?.signal,
-          onProgress: (progress: number) => {
-            setState(prev => ({ ...prev, progress }));
-            onProgress?.(progress);
-          },
-        });
-
-        if (!abortControllerRef.current?.signal.aborted) {
-          setState(prev => ({
-            ...prev,
-            isLoading: false,
-            data: result,
-            progress: 100,
-          }));
-
-          onSuccess?.(result);
-        }
-      } catch (error) {
-        if (!abortControllerRef.current?.signal.aborted) {
-          const errorMessage = error instanceof Error ? error.message : 'Action failed';
-          
-          setState(prev => ({
-            ...prev,
-            isLoading: false,
-            error: errorMessage,
-            progress: 0,
-          }));
-
-          onError?.(error instanceof Error ? error : new Error(errorMessage));
-        }
+  const start = useCallback(
+    (params?: any) => {
+      // Cancel any ongoing action
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
-    };
 
-    executeAction();
+      // Create new abort controller
+      abortControllerRef.current = new AbortController();
 
-    // Auto reset if enabled
-    if (autoReset && resetDelay > 0) {
-      setTimeout(() => {
-        reset();
-      }, resetDelay);
-    }
-  }, [actionFn, onSuccess, onError, onProgress, autoReset, resetDelay]);
+      setState({
+        isLoading: true,
+        error: null,
+        data: null,
+        progress: 0,
+        isCancelled: false,
+      });
+
+      // Execute action
+      const executeAction = async () => {
+        try {
+          const result = await actionFn({
+            ...params,
+            signal: abortControllerRef.current?.signal,
+            onProgress: (progress: number) => {
+              setState((prev) => ({ ...prev, progress }));
+              onProgress?.(progress);
+            },
+          });
+
+          if (!abortControllerRef.current?.signal.aborted) {
+            setState((prev) => ({
+              ...prev,
+              isLoading: false,
+              data: result,
+              progress: 100,
+            }));
+
+            onSuccess?.(result);
+          }
+        } catch (error) {
+          if (!abortControllerRef.current?.signal.aborted) {
+            const errorMessage =
+              error instanceof Error ? error.message : 'Action failed';
+
+            setState((prev) => ({
+              ...prev,
+              isLoading: false,
+              error: errorMessage,
+              progress: 0,
+            }));
+
+            onError?.(error instanceof Error ? error : new Error(errorMessage));
+          }
+        }
+      };
+
+      executeAction();
+
+      // Auto reset if enabled
+      if (autoReset && resetDelay > 0) {
+        setTimeout(() => {
+          reset();
+        }, resetDelay);
+      }
+    },
+    [actionFn, onSuccess, onError, onProgress, autoReset, resetDelay]
+  );
 
   const updateProgress = useCallback((progress: number) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       progress: Math.max(0, Math.min(100, progress)),
     }));
   }, []);
 
-  const complete = useCallback((data?: T) => {
-    setState(prev => ({
-      ...prev,
-      isLoading: false,
-      data: data ?? prev.data,
-      progress: 100,
-      error: null,
-    }));
+  const complete = useCallback(
+    (data?: T) => {
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        data: data ?? prev.data,
+        progress: 100,
+        error: null,
+      }));
 
-    if (data !== undefined) {
-      onSuccess?.(data);
-    }
-  }, [onSuccess]);
+      if (data !== undefined) {
+        onSuccess?.(data);
+      }
+    },
+    [onSuccess]
+  );
 
-  const error = useCallback((errorMessage: string) => {
-    setState(prev => ({
-      ...prev,
-      isLoading: false,
-      error: errorMessage,
-      progress: 0,
-    }));
+  const error = useCallback(
+    (errorMessage: string) => {
+      setState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: errorMessage,
+        progress: 0,
+      }));
 
-    onError?.(errorMessage);
-  }, [onError]);
+      onError?.(errorMessage);
+    },
+    [onError]
+  );
 
   const cancel = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       isLoading: false,
       isCancelled: true,
@@ -214,10 +224,10 @@ export function useActionState<T = any>(
 
 /**
  * Hook for managing multiple action states
- * 
+ *
  * @param actions - Object mapping action names to their configurations
  * @returns [states, actions] - States and actions for all operations
- * 
+ *
  * @example
  * const [states, actions] = useMultipleActions({
  *   exportCSV: {
@@ -235,18 +245,21 @@ export function useActionState<T = any>(
  * });
  */
 export function useMultipleActions<T extends Record<string, any>>(
-  actions: Record<string, {
-    actionFn: (params: any) => Promise<any>;
-    onSuccess?: (data: any) => void;
-    onError?: (error: Error | string) => void;
-    onProgress?: (progress: number) => void;
-    autoReset?: boolean;
-    resetDelay?: number;
-  }>
+  actions: Record<
+    string,
+    {
+      actionFn: (params: any) => Promise<any>;
+      onSuccess?: (data: any) => void;
+      onError?: (error: Error | string) => void;
+      onProgress?: (progress: number) => void;
+      autoReset?: boolean;
+      resetDelay?: number;
+    }
+  >
 ) {
   const [states, setStates] = useState<Record<keyof T, ActionState>>(() => {
     const initialStates = {} as Record<keyof T, ActionState>;
-    Object.keys(actions).forEach(key => {
+    Object.keys(actions).forEach((key) => {
       initialStates[key as keyof T] = {
         isLoading: false,
         error: null,
@@ -269,7 +282,7 @@ export function useMultipleActions<T extends Record<string, any>>(
       autoReset?: boolean;
       resetDelay?: number;
     } = {};
-    
+
     // Use type guards to ensure we only assign defined values
     if (config.onSuccess !== undefined) {
       options.onSuccess = config.onSuccess;
@@ -286,7 +299,7 @@ export function useMultipleActions<T extends Record<string, any>>(
     if (config.resetDelay !== undefined) {
       options.resetDelay = config.resetDelay;
     }
-    
+
     const [, actionActions] = useActionState(config.actionFn, options);
 
     // Store the start function
@@ -317,7 +330,7 @@ export function useMultipleActions<T extends Record<string, any>>(
 
   const resetAction = useCallback((actionKey: string) => {
     // This would reset the specific action state
-    setStates(prev => ({
+    setStates((prev) => ({
       ...prev,
       [actionKey]: {
         isLoading: false,
@@ -330,21 +343,21 @@ export function useMultipleActions<T extends Record<string, any>>(
   }, []);
 
   const resetAll = useCallback(() => {
-    Object.keys(actions).forEach(key => {
+    Object.keys(actions).forEach((key) => {
       resetAction(key);
     });
   }, [resetAction, actions]);
 
   const actionsRegistry: Record<string, ActionActions> = {};
-  
+
   // Create action objects for each key
-  Object.keys(actions).forEach(key => {
+  Object.keys(actions).forEach((key) => {
     actionsRegistry[key] = {
       start: (params?: any) => startAction(key, params),
       cancel: () => cancelAction(key),
       reset: () => resetAction(key),
       updateProgress: (progress: number) => {
-        setStates(prev => ({
+        setStates((prev) => ({
           ...prev,
           [key]: {
             ...prev[key],
@@ -353,7 +366,7 @@ export function useMultipleActions<T extends Record<string, any>>(
         }));
       },
       complete: (data?: any) => {
-        setStates(prev => ({
+        setStates((prev) => ({
           ...prev,
           [key]: {
             ...prev[key],
@@ -365,7 +378,7 @@ export function useMultipleActions<T extends Record<string, any>>(
         }));
       },
       error: (errorMessage: string) => {
-        setStates(prev => ({
+        setStates((prev) => ({
           ...prev,
           [key]: {
             ...prev[key],
@@ -391,11 +404,11 @@ export function useMultipleActions<T extends Record<string, any>>(
 
 /**
  * Hook for managing batch operations with progress tracking
- * 
+ *
  * @param batchFn - Function that performs batch operations
  * @param options - Configuration for batch operations
  * @returns [state, actions] - State with batch progress and control actions
- * 
+ *
  * @example
  * const [state, actions] = useBatchOperation(
  *   async ({ items, onProgress }) => {
@@ -455,83 +468,98 @@ export function useBatchOperation<T = any>(
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Helper function to process individual items
-  const processItem = useCallback(async (item: any, signal?: AbortSignal): Promise<T> => {
-    if (signal?.aborted) {
-      throw new Error('Operation cancelled');
-    }
-    
-    // This would call the actual batch function logic
-    // For now, return a placeholder
-    return item as T;
-  }, []);
+  const processItem = useCallback(
+    async (item: any, signal?: AbortSignal): Promise<T> => {
+      if (signal?.aborted) {
+        throw new Error('Operation cancelled');
+      }
 
-  const start = useCallback(async (items: any[]) => {
-    // Cancel any ongoing operation
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+      // This would call the actual batch function logic
+      // For now, return a placeholder
+      return item as T;
+    },
+    []
+  );
 
-    abortControllerRef.current = new AbortController();
+  const start = useCallback(
+    async (items: any[]) => {
+      // Cancel any ongoing operation
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
 
-    setState({
-      isRunning: true,
-      progress: 0,
-      currentItem: 0,
-      totalItems: items.length,
-      results: [],
-      errors: [],
-      isCancelled: false,
-    });
+      abortControllerRef.current = new AbortController();
 
-    try {
-      // Use the batchFn parameter properly
-      const results: T[] = await batchFn({
-        items,
-        onProgress: (progress: number) => {
-          setState(prev => ({
-            ...prev,
-            progress,
-            currentItem: Math.floor((progress / 100) * items.length),
-          }));
-          onProgress?.(progress);
-        },
-        signal: abortControllerRef.current?.signal,
+      setState({
+        isRunning: true,
+        progress: 0,
+        currentItem: 0,
+        totalItems: items.length,
+        results: [],
+        errors: [],
+        isCancelled: false,
       });
-      
-      const errors: Array<{ item: any; error: string; index: number }> = [];
 
-      setState(prev => ({
-        ...prev,
-        isRunning: false,
-        progress: 100,
-        currentItem: items.length,
-        results,
-        errors,
-      }));
+      try {
+        // Use the batchFn parameter properly
+        const results: T[] = await batchFn({
+          items,
+          onProgress: (progress: number) => {
+            setState((prev) => ({
+              ...prev,
+              progress,
+              currentItem: Math.floor((progress / 100) * items.length),
+            }));
+            onProgress?.(progress);
+          },
+          signal: abortControllerRef.current?.signal,
+        });
 
-      onSuccess?.(results);
-    } catch (error) {
-      if (!abortControllerRef.current?.signal.aborted) {
-        const errorMessage = error instanceof Error ? error.message : 'Batch operation failed';
-        
-        setState(prev => ({
+        const errors: Array<{ item: any; error: string; index: number }> = [];
+
+        setState((prev) => ({
           ...prev,
           isRunning: false,
-          isCancelled: abortControllerRef.current?.signal.aborted || false,
-          error: errorMessage,
+          progress: 100,
+          currentItem: items.length,
+          results,
+          errors,
         }));
 
-        onError?.(new Error(errorMessage));
+        onSuccess?.(results);
+      } catch (error) {
+        if (!abortControllerRef.current?.signal.aborted) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Batch operation failed';
+
+          setState((prev) => ({
+            ...prev,
+            isRunning: false,
+            isCancelled: abortControllerRef.current?.signal.aborted || false,
+            error: errorMessage,
+          }));
+
+          onError?.(new Error(errorMessage));
+        }
       }
-    }
-  }, [onSuccess, onError, onProgress, onItemComplete, itemDelay, processItem, batchFn]);
+    },
+    [
+      onSuccess,
+      onError,
+      onProgress,
+      onItemComplete,
+      itemDelay,
+      processItem,
+      batchFn,
+    ]
+  );
 
   const cancel = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       isCancelled: true,
       isRunning: false,
@@ -560,7 +588,6 @@ export function useBatchOperation<T = any>(
       isCancelled: false,
     });
   }, []);
-
 
   const actionHandlers = {
     start,

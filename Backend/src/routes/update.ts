@@ -11,7 +11,8 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, requireRole } from '../middleware/authenticate';
 import { asyncHandler } from '../utils/asyncHandler';
-import { updateService, VersionInfo, UpdateStatus } from '../services/updateService';
+import { updateService } from '../services/updateService';
+// Types reserved for future use: VersionInfo, UpdateStatus
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -20,43 +21,48 @@ const router = Router();
  * GET /api/update/check
  * Check for available updates
  */
-router.get('/check',
+router.get(
+  '/check',
   authenticate,
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Update check request', {
-      userId: (req as any).user?.id,
-      ip: req.ip
+      userId: req.user?.userId,
+      ip: req.ip,
     });
 
     try {
       const versionInfo = await updateService.checkForUpdates();
       res.json({
         success: true,
-        data: versionInfo
+        data: versionInfo,
       });
     } catch (error) {
       logger.error('Update check error:', error);
       res.status(500).json({
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to check for updates'
-        }
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Failed to check for updates',
+        },
       });
     }
-  })
+  }),
 );
 
 /**
  * POST /api/update/apply
  * Apply updates (one-click update)
  */
-router.post('/apply',
+router.post(
+  '/apply',
   authenticate,
   requireRole(['admin']), // Only admins can apply updates
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Update apply request', {
-      userId: (req as any).user?.id,
-      force: req.body.force
+      userId: req.user?.userId,
+      force: req.body.force,
     });
 
     try {
@@ -65,8 +71,8 @@ router.post('/apply',
         return res.status(409).json({
           success: false,
           error: {
-            message: 'Update is already in progress'
-          }
+            message: 'Update is already in progress',
+          },
         });
       }
 
@@ -78,8 +84,8 @@ router.post('/apply',
         success: true,
         message: 'Update started',
         data: {
-          status: 'Update process initiated'
-        }
+          status: 'Update process initiated',
+        },
       });
 
       // Log the update process
@@ -94,23 +100,25 @@ router.post('/apply',
       res.status(500).json({
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to apply updates'
-        }
+          message:
+            error instanceof Error ? error.message : 'Failed to apply updates',
+        },
       });
     }
-  })
+  }),
 );
 
 /**
  * POST /api/update/force
  * Force update without checking
  */
-router.post('/force',
+router.post(
+  '/force',
   authenticate,
   requireRole(['admin']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Force update request', {
-      userId: (req as any).user?.id
+      userId: req.user?.userId,
     });
 
     try {
@@ -118,8 +126,8 @@ router.post('/force',
         return res.status(409).json({
           success: false,
           error: {
-            message: 'Update is already in progress'
-          }
+            message: 'Update is already in progress',
+          },
         });
       }
 
@@ -129,8 +137,8 @@ router.post('/force',
         success: true,
         message: 'Force update started',
         data: {
-          status: 'Force update process initiated'
-        }
+          status: 'Force update process initiated',
+        },
       });
 
       try {
@@ -144,23 +152,25 @@ router.post('/force',
       res.status(500).json({
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to force update'
-        }
+          message:
+            error instanceof Error ? error.message : 'Failed to force update',
+        },
       });
     }
-  })
+  }),
 );
 
 /**
  * POST /api/update/quick
  * Quick update (build only, skip backup)
  */
-router.post('/quick',
+router.post(
+  '/quick',
   authenticate,
   requireRole(['admin']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Quick update request', {
-      userId: (req as any).user?.id
+      userId: req.user?.userId,
     });
 
     try {
@@ -168,8 +178,8 @@ router.post('/quick',
         return res.status(409).json({
           success: false,
           error: {
-            message: 'Update is already in progress'
-          }
+            message: 'Update is already in progress',
+          },
         });
       }
 
@@ -179,8 +189,8 @@ router.post('/quick',
         success: true,
         message: 'Quick update started',
         data: {
-          status: 'Quick update process initiated'
-        }
+          status: 'Quick update process initiated',
+        },
       });
 
       try {
@@ -194,48 +204,56 @@ router.post('/quick',
       res.status(500).json({
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to perform quick update'
-        }
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Failed to perform quick update',
+        },
       });
     }
-  })
+  }),
 );
 
 /**
  * GET /api/update/status
  * Get current update status
  */
-router.get('/status',
+router.get(
+  '/status',
   authenticate,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (_req: Request, res: Response) => {
     try {
       const status = updateService.getUpdateStatus();
       res.json({
         success: true,
-        data: status
+        data: status,
       });
     } catch (error) {
       logger.error('Update status error:', error);
       res.status(500).json({
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to get update status'
-        }
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Failed to get update status',
+        },
       });
     }
-  })
+  }),
 );
 
 /**
  * POST /api/update/rollback
  * Rollback to previous version
  */
-router.post('/rollback',
+router.post(
+  '/rollback',
   authenticate,
   requireRole(['admin']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Rollback request', {
-      userId: (req as any).user?.id
+      userId: req.user?.userId,
     });
 
     try {
@@ -243,8 +261,8 @@ router.post('/rollback',
         return res.status(409).json({
           success: false,
           error: {
-            message: 'Cannot rollback while update is in progress'
-          }
+            message: 'Cannot rollback while update is in progress',
+          },
         });
       }
 
@@ -253,56 +271,62 @@ router.post('/rollback',
       logger.info('Rollback completed successfully');
       res.json({
         success: true,
-        message: 'Rollback completed successfully'
+        message: 'Rollback completed successfully',
       });
     } catch (error) {
       logger.error('Rollback error:', error);
       res.status(500).json({
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to rollback'
-        }
+          message:
+            error instanceof Error ? error.message : 'Failed to rollback',
+        },
       });
     }
-  })
+  }),
 );
 
 /**
  * GET /api/update/versions
  * Get list of available updates
  */
-router.get('/versions',
+router.get(
+  '/versions',
   authenticate,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (_req: Request, res: Response) => {
     try {
       const versions = await updateService.getAvailableUpdates();
       res.json({
         success: true,
-        data: versions
+        data: versions,
       });
     } catch (error) {
       logger.error('Get versions error:', error);
       res.status(500).json({
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to get available versions'
-        }
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Failed to get available versions',
+        },
       });
     }
-  })
+  }),
 );
 
 /**
  * POST /api/update/cleanup
  * Clean up old backups
  */
-router.post('/cleanup',
+router.post(
+  '/cleanup',
   authenticate,
   requireRole(['admin']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Backup cleanup request', {
-      userId: (req as any).user?.id,
-      keepCount: req.body.keepCount
+      userId: req.user?.userId,
+      keepCount: req.body.keepCount,
     });
 
     try {
@@ -310,26 +334,30 @@ router.post('/cleanup',
 
       res.json({
         success: true,
-        message: 'Backup cleanup completed'
+        message: 'Backup cleanup completed',
       });
     } catch (error) {
       logger.error('Backup cleanup error:', error);
       res.status(500).json({
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to cleanup backups'
-        }
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Failed to cleanup backups',
+        },
       });
     }
-  })
+  }),
 );
 
 /**
  * GET /api/update/build-info
  * Get build and version information
  */
-router.get('/build-info',
-  asyncHandler(async (req: Request, res: Response) => {
+router.get(
+  '/build-info',
+  asyncHandler(async (_req: Request, res: Response) => {
     try {
       const version = await updateService.getCurrentVersion();
 
@@ -339,23 +367,24 @@ router.get('/build-info',
         nodeVersion: process.version,
         platform: process.platform,
         arch: process.arch,
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'development',
       };
 
       res.json({
         success: true,
-        data: buildInfo
+        data: buildInfo,
       });
     } catch (error) {
       logger.error('Build info error:', error);
       res.status(500).json({
         success: false,
         error: {
-          message: error instanceof Error ? error.message : 'Failed to get build info'
-        }
+          message:
+            error instanceof Error ? error.message : 'Failed to get build info',
+        },
       });
     }
-  })
+  }),
 );
 
 export default router;

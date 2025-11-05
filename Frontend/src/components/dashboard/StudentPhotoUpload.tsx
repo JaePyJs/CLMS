@@ -1,12 +1,37 @@
 import { useState, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useMobileOptimization, getOptimalImageSize } from '@/hooks/useMobileOptimization';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  useMobileOptimization,
+  getOptimalImageSize,
+} from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
-import { Upload, Camera, X, CheckCircle, AlertCircle, RefreshCw, Trash2, ZoomIn, Image as ImageIcon } from 'lucide-react';
+import {
+  Upload,
+  Camera,
+  X,
+  CheckCircle,
+  AlertCircle,
+  RefreshCw,
+  Trash2,
+  ZoomIn,
+  Image as ImageIcon,
+} from 'lucide-react';
 
 interface StudentPhotoUploadProps {
   studentId: string;
@@ -19,12 +44,14 @@ export function StudentPhotoUpload({
   studentId,
   studentName,
   currentPhotoUrl,
-  onUploadComplete
+  onUploadComplete,
 }: StudentPhotoUploadProps) {
   const mobileState = useMobileOptimization();
   const { isMobile, isTablet: _isTablet, width: _width } = mobileState;
   const [isUploading, setIsUploading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(currentPhotoUrl || null);
+  const [preview, setPreview] = useState<string | null>(
+    currentPhotoUrl || null
+  );
   const [showCamera, setShowCamera] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,7 +65,9 @@ export function StudentPhotoUpload({
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -79,7 +108,9 @@ export function StudentPhotoUpload({
       // Create canvas and resize image
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas context not available');
+      if (!ctx) {
+        throw new Error('Canvas context not available');
+      }
 
       // Calculate dimensions maintaining aspect ratio
       const aspectRatio = img.width / img.height;
@@ -145,8 +176,8 @@ export function StudentPhotoUpload({
         video: {
           facingMode: isMobile ? 'user' : 'environment',
           width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
+          height: { ideal: 720 },
+        },
       });
 
       setStream(mediaStream);
@@ -170,12 +201,16 @@ export function StudentPhotoUpload({
   };
 
   const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current) {
+      return;
+    }
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -245,14 +280,18 @@ export function StudentPhotoUpload({
               <div className="w-full h-48 bg-muted rounded-lg border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
                 <div className="text-center">
                   <ImageIcon className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">No photo uploaded</p>
+                  <p className="text-sm text-muted-foreground">
+                    No photo uploaded
+                  </p>
                 </div>
               </div>
             )}
           </div>
 
           {/* Upload Actions */}
-          <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
+          <div
+            className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}
+          >
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
@@ -296,8 +335,8 @@ export function StudentPhotoUpload({
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-xs">
-              Accepted formats: JPEG, PNG, WebP. Max size: 5MB. Photos are automatically
-              optimized for your device.
+              Accepted formats: JPEG, PNG, WebP. Max size: 5MB. Photos are
+              automatically optimized for your device.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -341,7 +380,11 @@ export function StudentPhotoUpload({
             <DialogTitle>{studentName}</DialogTitle>
           </DialogHeader>
           {preview && (
-            <img src={preview} alt={studentName} className="w-full rounded-lg" />
+            <img
+              src={preview}
+              alt={studentName}
+              className="w-full rounded-lg"
+            />
           )}
         </DialogContent>
       </Dialog>

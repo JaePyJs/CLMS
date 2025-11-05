@@ -1,6 +1,17 @@
 import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home, Bug, Wifi, WifiOff, Clock, Send, CheckCircle, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  RefreshCw,
+  Home,
+  Bug,
+  Wifi,
+  WifiOff,
+  Clock,
+  Send,
+  CheckCircle,
+  XCircle,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -97,7 +108,10 @@ class ErrorBoundary extends Component<Props, State> {
 
   public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const errorType = ErrorBoundary.categorizeError(error);
-    const recoverySuggestions = this.generateRecoverySuggestions(error, errorType);
+    const recoverySuggestions = this.generateRecoverySuggestions(
+      error,
+      errorType
+    );
 
     this.setState({
       error,
@@ -135,30 +149,48 @@ class ErrorBoundary extends Component<Props, State> {
     const message = error.message.toLowerCase();
     const stack = error.stack?.toLowerCase() || '';
 
-    if (message.includes('network') || message.includes('fetch') ||
-        message.includes('connection') || stack.includes('fetch')) {
+    if (
+      message.includes('network') ||
+      message.includes('fetch') ||
+      message.includes('connection') ||
+      stack.includes('fetch')
+    ) {
       return 'NETWORK_ERROR';
     }
 
-    if (message.includes('unauthorized') || message.includes('authentication') ||
-        message.includes('login') || message.includes('token')) {
+    if (
+      message.includes('unauthorized') ||
+      message.includes('authentication') ||
+      message.includes('login') ||
+      message.includes('token')
+    ) {
       return 'AUTHENTICATION_ERROR';
     }
 
-    if (message.includes('validation') || message.includes('invalid') ||
-        message.includes('required') || message.includes('format')) {
+    if (
+      message.includes('validation') ||
+      message.includes('invalid') ||
+      message.includes('required') ||
+      message.includes('format')
+    ) {
       return 'VALIDATION_ERROR';
     }
 
-    if (message.includes('timeout') || message.includes('timeout') ||
-        stack.includes('timeout')) {
+    if (
+      message.includes('timeout') ||
+      message.includes('timeout') ||
+      stack.includes('timeout')
+    ) {
       return 'TIMEOUT_ERROR';
     }
 
     return 'UNKNOWN_ERROR';
   }
 
-  private generateRecoverySuggestions(_error: Error, errorType: ErrorType): RecoverySuggestion[] {
+  private generateRecoverySuggestions(
+    _error: Error,
+    errorType: ErrorType
+  ): RecoverySuggestion[] {
     const suggestions: RecoverySuggestion[] = [];
 
     switch (errorType) {
@@ -237,15 +269,24 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   private attemptAutoRecovery = (_error: Error, _errorType: ErrorType) => {
-    const autoRecoverySuggestions = this.state.recoverySuggestions.filter(s => s.auto);
+    const autoRecoverySuggestions = this.state.recoverySuggestions.filter(
+      (s) => s.auto
+    );
 
-    if (autoRecoverySuggestions.length > 0 && this.state.retryCount < this.maxRetries) {
+    if (
+      autoRecoverySuggestions.length > 0 &&
+      this.state.retryCount < this.maxRetries
+    ) {
       const suggestion = autoRecoverySuggestions[0];
 
-      if (!suggestion) return;
+      if (!suggestion) {
+        return;
+      }
 
       this.autoRetryTimer = setTimeout(() => {
-        console.log(`Auto-recovery attempt ${this.state.retryCount + 1}/${this.maxRetries}: ${suggestion.title}`);
+        console.log(
+          `Auto-recovery attempt ${this.state.retryCount + 1}/${this.maxRetries}: ${suggestion.title}`
+        );
         this.setState({ isRecovering: true });
 
         // Execute the recovery action
@@ -266,7 +307,9 @@ class ErrorBoundary extends Component<Props, State> {
         timestamp: Date.now(),
         error: error.message,
         ...(error.stack && { stack: error.stack }),
-        ...(errorInfo.componentStack && { componentStack: errorInfo.componentStack }),
+        ...(errorInfo.componentStack && {
+          componentStack: errorInfo.componentStack,
+        }),
         userAgent: navigator.userAgent,
         url: window.location.href,
         errorType: this.state.errorType,
@@ -275,16 +318,24 @@ class ErrorBoundary extends Component<Props, State> {
       };
 
       // Store error in localStorage for debugging
-      const existingErrors = JSON.parse(localStorage.getItem('clms_error_reports') || '[]');
+      const existingErrors = JSON.parse(
+        localStorage.getItem('clms_error_reports') || '[]'
+      );
       existingErrors.push(report);
-      localStorage.setItem('clms_error_reports', JSON.stringify(existingErrors.slice(-10))); // Keep last 10 errors
+      localStorage.setItem(
+        'clms_error_reports',
+        JSON.stringify(existingErrors.slice(-10))
+      ); // Keep last 10 errors
 
       // Keep only last 50 errors
       if (existingErrors.length > 50) {
         existingErrors.splice(0, existingErrors.length - 50);
       }
 
-      localStorage.setItem('clms_error_reports', JSON.stringify(existingErrors));
+      localStorage.setItem(
+        'clms_error_reports',
+        JSON.stringify(existingErrors)
+      );
 
       // Send to backend if online (disabled - endpoint doesn't exist)
       // TODO: Enable when /api/errors/report endpoint is implemented
@@ -307,7 +358,11 @@ class ErrorBoundary extends Component<Props, State> {
     this.setState({ isOnline });
 
     // If we came back online and have a network error, try auto-recovery
-    if (isOnline && this.state.hasError && this.state.errorType === 'NETWORK_ERROR') {
+    if (
+      isOnline &&
+      this.state.hasError &&
+      this.state.errorType === 'NETWORK_ERROR'
+    ) {
       this.handleRetry();
     }
   };
@@ -426,7 +481,11 @@ User Agent: ${report.userAgent}
   private getErrorIcon = () => {
     switch (this.state.errorType) {
       case 'NETWORK_ERROR':
-        return this.state.isOnline ? <Wifi className="h-8 w-8" /> : <WifiOff className="h-8 w-8" />;
+        return this.state.isOnline ? (
+          <Wifi className="h-8 w-8" />
+        ) : (
+          <WifiOff className="h-8 w-8" />
+        );
       case 'AUTHENTICATION_ERROR':
         return <XCircle className="h-8 w-8" />;
       case 'VALIDATION_ERROR':
@@ -439,7 +498,9 @@ User Agent: ${report.userAgent}
   };
 
   private getErrorMessage = (): string => {
-    if (!this.state.error) return 'Unknown error';
+    if (!this.state.error) {
+      return 'Unknown error';
+    }
 
     // If error has a message property (API error object)
     if (typeof this.state.error === 'object' && this.state.error.message) {
@@ -469,31 +530,47 @@ User Agent: ${report.userAgent}
             {/* Main Error Card */}
             <Card className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
               {/* Header */}
-              <div className={`bg-gradient-to-r p-6 ${
-                this.state.errorType === 'NETWORK_ERROR' ? 'from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-700' :
-                this.state.errorType === 'AUTHENTICATION_ERROR' ? 'from-yellow-500 to-yellow-600 dark:from-yellow-600 dark:to-yellow-700' :
-                this.state.errorType === 'VALIDATION_ERROR' ? 'from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700' :
-                this.state.errorType === 'TIMEOUT_ERROR' ? 'from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700' :
-                'from-red-500 to-red-600 dark:from-red-600 dark:to-red-700'
-              }`}>
+              <div
+                className={`bg-gradient-to-r p-6 ${
+                  this.state.errorType === 'NETWORK_ERROR'
+                    ? 'from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-700'
+                    : this.state.errorType === 'AUTHENTICATION_ERROR'
+                      ? 'from-yellow-500 to-yellow-600 dark:from-yellow-600 dark:to-yellow-700'
+                      : this.state.errorType === 'VALIDATION_ERROR'
+                        ? 'from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700'
+                        : this.state.errorType === 'TIMEOUT_ERROR'
+                          ? 'from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700'
+                          : 'from-red-500 to-red-600 dark:from-red-600 dark:to-red-700'
+                }`}
+              >
                 <div className="flex items-center gap-4">
                   <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 text-white">
                     {this.getErrorIcon()}
                   </div>
                   <div className="flex-1">
                     <h1 className="text-2xl font-bold text-white">
-                      {this.state.errorType === 'NETWORK_ERROR' && 'Connection Error'}
-                      {this.state.errorType === 'AUTHENTICATION_ERROR' && 'Authentication Required'}
-                      {this.state.errorType === 'VALIDATION_ERROR' && 'Validation Error'}
-                      {this.state.errorType === 'TIMEOUT_ERROR' && 'Request Timeout'}
-                      {this.state.errorType === 'UNKNOWN_ERROR' && 'Something Went Wrong'}
+                      {this.state.errorType === 'NETWORK_ERROR' &&
+                        'Connection Error'}
+                      {this.state.errorType === 'AUTHENTICATION_ERROR' &&
+                        'Authentication Required'}
+                      {this.state.errorType === 'VALIDATION_ERROR' &&
+                        'Validation Error'}
+                      {this.state.errorType === 'TIMEOUT_ERROR' &&
+                        'Request Timeout'}
+                      {this.state.errorType === 'UNKNOWN_ERROR' &&
+                        'Something Went Wrong'}
                     </h1>
                     <p className="text-white/80 mt-1">
-                      {this.state.errorType === 'NETWORK_ERROR' && 'Unable to connect to the server'}
-                      {this.state.errorType === 'AUTHENTICATION_ERROR' && 'Please sign in to continue'}
-                      {this.state.errorType === 'VALIDATION_ERROR' && 'Please check your input and try again'}
-                      {this.state.errorType === 'TIMEOUT_ERROR' && 'The request took too long to complete'}
-                      {this.state.errorType === 'UNKNOWN_ERROR' && 'The application encountered an unexpected error'}
+                      {this.state.errorType === 'NETWORK_ERROR' &&
+                        'Unable to connect to the server'}
+                      {this.state.errorType === 'AUTHENTICATION_ERROR' &&
+                        'Please sign in to continue'}
+                      {this.state.errorType === 'VALIDATION_ERROR' &&
+                        'Please check your input and try again'}
+                      {this.state.errorType === 'TIMEOUT_ERROR' &&
+                        'The request took too long to complete'}
+                      {this.state.errorType === 'UNKNOWN_ERROR' &&
+                        'The application encountered an unexpected error'}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -518,7 +595,8 @@ User Agent: ${report.userAgent}
                           Attempting Automatic Recovery
                         </h3>
                         <p className="text-sm text-blue-700 dark:text-blue-300">
-                          Trying to resolve the issue automatically... (Attempt {this.state.retryCount + 1}/{this.maxRetries})
+                          Trying to resolve the issue automatically... (Attempt{' '}
+                          {this.state.retryCount + 1}/{this.maxRetries})
                         </p>
                       </div>
                     </div>
@@ -562,7 +640,9 @@ User Agent: ${report.userAgent}
                         >
                           {suggestion.icon}
                           <div className="text-left">
-                            <div className="font-medium">{suggestion.title}</div>
+                            <div className="font-medium">
+                              {suggestion.title}
+                            </div>
                             <div className="text-xs text-slate-500 dark:text-slate-400">
                               {suggestion.description}
                             </div>
@@ -591,11 +671,17 @@ User Agent: ${report.userAgent}
                     onClick={this.handleRetry}
                     className="flex-1 gap-2"
                     variant="default"
-                    disabled={this.state.isRecovering || this.state.retryCount >= this.maxRetries}
+                    disabled={
+                      this.state.isRecovering ||
+                      this.state.retryCount >= this.maxRetries
+                    }
                   >
                     <RefreshCw className="h-4 w-4" />
-                    {this.state.isRecovering ? 'Recovering...' :
-                     this.state.retryCount >= this.maxRetries ? 'Max Retries Reached' : 'Try Again'}
+                    {this.state.isRecovering
+                      ? 'Recovering...'
+                      : this.state.retryCount >= this.maxRetries
+                        ? 'Max Retries Reached'
+                        : 'Try Again'}
                   </Button>
                   <Button
                     onClick={this.handleGoHome}
@@ -613,30 +699,33 @@ User Agent: ${report.userAgent}
                     Error ID: {this.state.errorId}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    If this problem persists, please contact the system administrator
+                    If this problem persists, please contact the system
+                    administrator
                   </p>
                 </div>
               </div>
             </Card>
 
             {/* Auto-retry disabled notice */}
-            {!this.state.autoRetry && this.state.retryCount >= this.maxRetries && (
-              <Card className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                <div className="p-4">
-                  <div className="flex items-center gap-3">
-                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                    <div>
-                      <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-100">
-                        Automatic Retry Disabled
-                      </h3>
-                      <p className="text-sm text-amber-700 dark:text-amber-300">
-                        Maximum retry attempts reached. Please try one of the suggested actions above.
-                      </p>
+            {!this.state.autoRetry &&
+              this.state.retryCount >= this.maxRetries && (
+                <Card className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <div className="p-4">
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                      <div>
+                        <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                          Automatic Retry Disabled
+                        </h3>
+                        <p className="text-sm text-amber-700 dark:text-amber-300">
+                          Maximum retry attempts reached. Please try one of the
+                          suggested actions above.
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            )}
+                </Card>
+              )}
           </div>
         </div>
       );

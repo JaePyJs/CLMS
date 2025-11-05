@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -72,7 +78,7 @@ export default function AdvancedSearch() {
     if (history) {
       setSearchHistory(JSON.parse(history));
     }
-    
+
     // Load saved searches
     const saved = localStorage.getItem('clms_saved_searches');
     if (saved) {
@@ -81,7 +87,9 @@ export default function AdvancedSearch() {
   }, []);
 
   const performSearch = async () => {
-    if (!query.trim()) return;
+    if (!query.trim()) {
+      return;
+    }
 
     setLoading(true);
     try {
@@ -93,13 +101,15 @@ export default function AdvancedSearch() {
           search: query,
           category: filters.category,
         });
-        
+
         if (booksResponse.success && booksResponse.data) {
           const data = booksResponse.data as any;
           const books = Array.isArray(data) ? data : data.books || [];
           books.forEach((book: any) => {
-            if (book.title?.toLowerCase().includes(query.toLowerCase()) ||
-                book.author?.toLowerCase().includes(query.toLowerCase())) {
+            if (
+              book.title?.toLowerCase().includes(query.toLowerCase()) ||
+              book.author?.toLowerCase().includes(query.toLowerCase())
+            ) {
               searchResults.push({
                 type: 'book',
                 id: book.id,
@@ -115,14 +125,17 @@ export default function AdvancedSearch() {
       // Search Students
       if (filters.type === 'all' || filters.type === 'student') {
         const studentsResponse = await apiClient.get('/api/students');
-        
+
         if (studentsResponse.success && studentsResponse.data) {
           const data = studentsResponse.data as any;
           const students = Array.isArray(data) ? data : data.students || [];
           students.forEach((student: any) => {
-            const fullName = `${student.firstName} ${student.lastName}`.toLowerCase();
-            if (fullName.includes(query.toLowerCase()) ||
-                student.studentId?.toLowerCase().includes(query.toLowerCase())) {
+            const fullName =
+              `${student.firstName} ${student.lastName}`.toLowerCase();
+            if (
+              fullName.includes(query.toLowerCase()) ||
+              student.studentId?.toLowerCase().includes(query.toLowerCase())
+            ) {
               searchResults.push({
                 type: 'student',
                 id: student.id,
@@ -140,12 +153,14 @@ export default function AdvancedSearch() {
         const activitiesResponse = await apiClient.get('/api/activities', {
           limit: 50,
         });
-        
+
         if (activitiesResponse.success && activitiesResponse.data) {
           const data = activitiesResponse.data as any;
           const activities = Array.isArray(data) ? data : data.activities || [];
           activities.forEach((activity: any) => {
-            if (activity.studentName?.toLowerCase().includes(query.toLowerCase())) {
+            if (
+              activity.studentName?.toLowerCase().includes(query.toLowerCase())
+            ) {
               searchResults.push({
                 type: 'activity',
                 id: activity.id,
@@ -159,9 +174,12 @@ export default function AdvancedSearch() {
       }
 
       setResults(searchResults);
-      
+
       // Add to search history
-      const newHistory = [query, ...searchHistory.filter(h => h !== query)].slice(0, 10);
+      const newHistory = [
+        query,
+        ...searchHistory.filter((h) => h !== query),
+      ].slice(0, 10);
       setSearchHistory(newHistory);
       localStorage.setItem('clms_search_history', JSON.stringify(newHistory));
     } catch (error) {
@@ -173,7 +191,9 @@ export default function AdvancedSearch() {
 
   const saveSearch = () => {
     const name = prompt('Enter a name for this search:');
-    if (!name) return;
+    if (!name) {
+      return;
+    }
 
     const newSearch: SavedSearch = {
       id: Date.now().toString(),
@@ -195,7 +215,7 @@ export default function AdvancedSearch() {
   };
 
   const deleteSavedSearch = (id: string) => {
-    const updated = savedSearches.filter(s => s.id !== id);
+    const updated = savedSearches.filter((s) => s.id !== id);
     setSavedSearches(updated);
     localStorage.setItem('clms_saved_searches', JSON.stringify(updated));
   };
@@ -206,12 +226,15 @@ export default function AdvancedSearch() {
   };
 
   const exportResults = () => {
-    const data = results.map(r => ({
+    const data = results.map((r) => ({
       Type: r.type,
       Title: r.title,
       Details: r.subtitle,
     }));
-    downloadCSV(data, `search-results-${new Date().toISOString().split('T')[0]}`);
+    downloadCSV(
+      data,
+      `search-results-${new Date().toISOString().split('T')[0]}`
+    );
   };
 
   const getResultIcon = (type: string) => {
@@ -322,17 +345,11 @@ export default function AdvancedSearch() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        setFilters({ type: 'all' })
-                      }
+                      onClick={() => setFilters({ type: 'all' })}
                     >
                       Clear
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={saveSearch}
-                    >
+                    <Button variant="outline" size="sm" onClick={saveSearch}>
                       <Star className="w-4 h-4 mr-1" />
                       Save
                     </Button>
@@ -347,9 +364,7 @@ export default function AdvancedSearch() {
       {/* Results and History Tabs */}
       <Tabs defaultValue="results" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="results">
-            Results ({results.length})
-          </TabsTrigger>
+          <TabsTrigger value="results">Results ({results.length})</TabsTrigger>
           <TabsTrigger value="history">
             <HistoryIcon className="w-4 h-4 mr-2" />
             History
@@ -377,7 +392,9 @@ export default function AdvancedSearch() {
                     {results.map((result) => (
                       <TableRow key={`${result.type}-${result.id}`}>
                         <TableCell>{getResultIcon(result.type)}</TableCell>
-                        <TableCell className="font-medium">{result.title}</TableCell>
+                        <TableCell className="font-medium">
+                          {result.title}
+                        </TableCell>
                         <TableCell className="text-muted-foreground">
                           {result.subtitle}
                         </TableCell>

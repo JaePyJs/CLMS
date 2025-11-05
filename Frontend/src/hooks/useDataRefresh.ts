@@ -22,11 +22,11 @@ interface RefreshState {
 
 /**
  * Hook for managing data refresh and polling patterns
- * 
+ *
  * @param queryFn - Function that fetches the data
  * @param options - Configuration options for refresh behavior
  * @returns [state, actions] - Current state and refresh actions
- * 
+ *
  * @example
  * const [state, actions] = useDataRefresh(
  *   () => studentsApi.getStudents(),
@@ -35,7 +35,7 @@ interface RefreshState {
  *     onSuccess: (data) => console.log('Data refreshed:', data),
  *   }
  * );
- * 
+ *
  * // Manual refresh
  * const handleRefresh = () => actions.refresh();
  */
@@ -72,43 +72,53 @@ export function useDataRefresh<T>(
     queryFnRef.current = queryFn;
   }, [queryFn]);
 
-  const fetchData = useCallback(async (isManualRefresh = false) => {
-    if (state.isRefreshing) return;
+  const fetchData = useCallback(
+    async (isManualRefresh = false) => {
+      if (state.isRefreshing) {
+        return;
+      }
 
-    try {
-      setState(prev => ({
-        ...prev,
-        isRefreshing: true,
-        error: null,
-      }));
+      try {
+        setState((prev) => ({
+          ...prev,
+          isRefreshing: true,
+          error: null,
+        }));
 
-      const data = await queryFnRef.current();
+        const data = await queryFnRef.current();
 
-      if (!mountedRef.current) return;
+        if (!mountedRef.current) {
+          return;
+        }
 
-      setState(prev => ({
-        ...prev,
-        isRefreshing: false,
-        lastRefreshTime: new Date(),
-        data,
-        refreshCount: prev.refreshCount + 1,
-      }));
+        setState((prev) => ({
+          ...prev,
+          isRefreshing: false,
+          lastRefreshTime: new Date(),
+          data,
+          refreshCount: prev.refreshCount + 1,
+        }));
 
-      onSuccess?.(data);
-    } catch (error) {
-      if (!mountedRef.current) return;
+        onSuccess?.(data);
+      } catch (error) {
+        if (!mountedRef.current) {
+          return;
+        }
 
-      const err = error instanceof Error ? error : new Error('Refresh failed');
-      
-      setState(prev => ({
-        ...prev,
-        isRefreshing: false,
-        error: err,
-      }));
+        const err =
+          error instanceof Error ? error : new Error('Refresh failed');
 
-      onError?.(err);
-    }
-  }, [state.isRefreshing, onSuccess, onError]);
+        setState((prev) => ({
+          ...prev,
+          isRefreshing: false,
+          error: err,
+        }));
+
+        onError?.(err);
+      }
+    },
+    [state.isRefreshing, onSuccess, onError]
+  );
 
   const refresh = useCallback(() => {
     fetchData(true);
@@ -123,7 +133,7 @@ export function useDataRefresh<T>(
   }, [state.isRefreshing, refresh]);
 
   const clearError = useCallback(() => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       error: null,
     }));
@@ -131,7 +141,9 @@ export function useDataRefresh<T>(
 
   // Set up interval polling
   useEffect(() => {
-    if (!enabled || !interval) return;
+    if (!enabled || !interval) {
+      return;
+    }
 
     // Clear existing interval
     if (intervalRef.current) {
@@ -161,7 +173,9 @@ export function useDataRefresh<T>(
 
   // Window focus refetch
   useEffect(() => {
-    if (!refetchOnWindowFocus) return;
+    if (!refetchOnWindowFocus) {
+      return;
+    }
 
     const handleFocus = () => {
       if (enabled && !state.isRefreshing) {
@@ -175,7 +189,9 @@ export function useDataRefresh<T>(
 
   // Reconnect refetch
   useEffect(() => {
-    if (!refetchOnReconnect) return;
+    if (!refetchOnReconnect) {
+      return;
+    }
 
     const handleOnline = () => {
       if (enabled && !state.isRefreshing) {
@@ -208,10 +224,10 @@ export function useDataRefresh<T>(
 
 /**
  * Hook for managing batch refresh operations
- * 
+ *
  * @param refreshConfigs - Array of refresh configurations
  * @returns [states, actions] - States and actions for all refresh operations
- * 
+ *
  * @example
  * const [states, actions] = useBatchRefresh([
  *   {
@@ -225,7 +241,7 @@ export function useDataRefresh<T>(
  *     interval: 10000,
  *   },
  * ]);
- * 
+ *
  * // Refresh all
  * const refreshAll = () => actions.refreshAll();
  */
@@ -238,7 +254,7 @@ export function useBatchRefresh(
 ) {
   const [states, setStates] = useState<Record<string, RefreshState>>(() => {
     const initialStates = {} as Record<string, RefreshState>;
-    refreshConfigs.forEach(config => {
+    refreshConfigs.forEach((config) => {
       initialStates[config.key] = {
         isRefreshing: false,
         lastRefreshTime: null,
@@ -254,14 +270,16 @@ export function useBatchRefresh(
   const mountedRef = useRef(true);
 
   // Create individual refresh functions
-  refreshConfigs.forEach(config => {
+  refreshConfigs.forEach((config) => {
     const refreshFn = useDataRefresh(config.queryFn, {
       enabled: true,
       ...config.options,
       onSuccess: (data) => {
-        if (!mountedRef.current) return;
-        
-        setStates(prev => ({
+        if (!mountedRef.current) {
+          return;
+        }
+
+        setStates((prev) => ({
           ...prev,
           [config.key]: {
             ...prev[config.key],
@@ -276,9 +294,11 @@ export function useBatchRefresh(
         config.options?.onSuccess?.(data);
       },
       onError: (error) => {
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) {
+          return;
+        }
 
-        setStates(prev => ({
+        setStates((prev) => ({
           ...prev,
           [config.key]: {
             ...prev[config.key],
@@ -298,7 +318,9 @@ export function useBatchRefresh(
   });
 
   const refreshAll = useCallback(async () => {
-    const promises = Array.from(refreshFunctions.current.values()).map(fn => fn());
+    const promises = Array.from(refreshFunctions.current.values()).map((fn) =>
+      fn()
+    );
     await Promise.allSettled(promises);
   }, []);
 
@@ -310,7 +332,7 @@ export function useBatchRefresh(
   }, []);
 
   const clearErrorByKey = useCallback((key: string) => {
-    setStates(prev => ({
+    setStates((prev) => ({
       ...prev,
       [key]: {
         ...prev[key],
@@ -324,9 +346,9 @@ export function useBatchRefresh(
   }, []);
 
   const clearAllErrors = useCallback(() => {
-    setStates(prev => {
+    setStates((prev) => {
       const newStates = { ...prev };
-      Object.keys(newStates).forEach(key => {
+      Object.keys(newStates).forEach((key) => {
         newStates[key] = {
           ...newStates[key],
           error: null,
@@ -358,11 +380,11 @@ export function useBatchRefresh(
 
 /**
  * Hook for managing smart refresh based on data staleness
- * 
+ *
  * @param queryFn - Function that fetches the data
  * @param options - Configuration for smart refresh
  * @returns [state, actions] - State with staleness info and refresh actions
- * 
+ *
  * @example
  * const [state, actions] = useSmartRefresh(
  *   () => analyticsApi.getMetrics(),
@@ -382,7 +404,7 @@ export function useSmartRefresh<T>(
 ) {
   const {
     staleTime = 5 * 60 * 1000, // 5 minutes
-    maxAge = 30 * 60 * 1000,   // 30 minutes
+    maxAge = 30 * 60 * 1000, // 30 minutes
     ...refreshOptions
   } = options;
 
@@ -392,16 +414,22 @@ export function useSmartRefresh<T>(
   });
 
   const isStale = useCallback(() => {
-    if (!refreshState.lastRefreshTime) return true;
-    
-    const timeSinceRefresh = Date.now() - refreshState.lastRefreshTime.getTime();
+    if (!refreshState.lastRefreshTime) {
+      return true;
+    }
+
+    const timeSinceRefresh =
+      Date.now() - refreshState.lastRefreshTime.getTime();
     return timeSinceRefresh > staleTime;
   }, [refreshState.lastRefreshTime, staleTime]);
 
   const isExpired = useCallback(() => {
-    if (!refreshState.lastRefreshTime) return true;
-    
-    const timeSinceRefresh = Date.now() - refreshState.lastRefreshTime.getTime();
+    if (!refreshState.lastRefreshTime) {
+      return true;
+    }
+
+    const timeSinceRefresh =
+      Date.now() - refreshState.lastRefreshTime.getTime();
     return timeSinceRefresh > maxAge;
   }, [refreshState.lastRefreshTime, maxAge]);
 
@@ -442,7 +470,7 @@ export function useSmartRefresh<T>(
 
 /**
  * Hook for managing optimistic updates with refresh coordination
- * 
+ *
  * @param queryKey - React Query key for the data
  * @param queryFn - Function that fetches the data
  * @returns [optimisticState, actions] - State with optimistic update support
@@ -458,7 +486,7 @@ export function useOptimisticRefresh(
     (updater: (oldData: any) => any) => {
       // Get current data
       const currentData = queryClient.getQueryData(queryKey);
-      
+
       // Update optimistically
       queryClient.setQueryData(queryKey, (old: any) => {
         return updater(old);
@@ -473,12 +501,16 @@ export function useOptimisticRefresh(
   const addOptimisticItem = useCallback(
     (item: any, getId: (item: any) => string = (item) => item.id) => {
       updateOptimistically((oldData) => {
-        if (!Array.isArray(oldData)) return [item];
-        const existingIndex = oldData.findIndex(existing => getId(existing) === getId(item));
-        
+        if (!Array.isArray(oldData)) {
+          return [item];
+        }
+        const existingIndex = oldData.findIndex(
+          (existing) => getId(existing) === getId(item)
+        );
+
         if (existingIndex >= 0) {
           // Update existing item
-          return oldData.map(existing => 
+          return oldData.map((existing) =>
             getId(existing) === getId(item) ? item : existing
           );
         } else {
@@ -493,8 +525,10 @@ export function useOptimisticRefresh(
   const removeOptimisticItem = useCallback(
     (itemId: string, getId: (item: any) => string = (item) => item.id) => {
       updateOptimistically((oldData) => {
-        if (!Array.isArray(oldData)) return oldData;
-        return oldData.filter(item => getId(item) !== itemId);
+        if (!Array.isArray(oldData)) {
+          return oldData;
+        }
+        return oldData.filter((item) => getId(item) !== itemId);
       });
     },
     [updateOptimistically]
@@ -507,7 +541,7 @@ export function useOptimisticRefresh(
       updateOptimistically,
       addOptimisticItem,
       removeOptimisticItem,
-    }
+    },
   ] as const;
 }
 

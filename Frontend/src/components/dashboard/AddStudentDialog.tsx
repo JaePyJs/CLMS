@@ -20,7 +20,11 @@ interface AddStudentDialogProps {
   trigger?: React.ReactNode;
 }
 
-export function AddStudentDialog({ open: externalOpen, onOpenChange, trigger }: AddStudentDialogProps = {}) {
+export function AddStudentDialog({
+  open: externalOpen,
+  onOpenChange,
+  trigger,
+}: AddStudentDialogProps = {}) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -45,7 +49,9 @@ export function AddStudentDialog({ open: externalOpen, onOpenChange, trigger }: 
     try {
       const response = await utilitiesApi.quickAddStudent(formData);
       if (response.success && (response.data as any)?.student) {
-        toast.success(`Student ${(response.data as any).student.firstName} ${(response.data as any).student.lastName} added successfully!`);
+        toast.success(
+          `Student ${(response.data as any).student.firstName} ${(response.data as any).student.lastName} added successfully!`
+        );
         setOpen(false);
         window.location.reload();
       } else {
@@ -61,11 +67,7 @@ export function AddStudentDialog({ open: externalOpen, onOpenChange, trigger }: 
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {trigger && (
-        <DialogTrigger asChild>
-          {trigger}
-        </DialogTrigger>
-      )}
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       {!trigger && (
         <DialogTrigger asChild>
           <Button>Add Student</Button>
@@ -84,25 +86,45 @@ export function AddStudentDialog({ open: externalOpen, onOpenChange, trigger }: 
               <Label htmlFor="firstName" className="text-right">
                 First Name
               </Label>
-              <Input id="firstName" value={formData.firstName} onChange={handleInputChange} className="col-span-3" />
+              <Input
+                id="firstName"
+                value={formData.firstName}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="lastName" className="text-right">
                 Last Name
               </Label>
-              <Input id="lastName" value={formData.lastName} onChange={handleInputChange} className="col-span-3" />
+              <Input
+                id="lastName"
+                value={formData.lastName}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="grade" className="text-right">
                 Grade
               </Label>
-              <Input id="grade" value={formData.grade} onChange={handleInputChange} className="col-span-3" />
+              <Input
+                id="grade"
+                value={formData.grade}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="section" className="text-right">
                 Section
               </Label>
-              <Input id="section" value={formData.section} onChange={handleInputChange} className="col-span-3" />
+              <Input
+                id="section"
+                value={formData.section}
+                onChange={handleInputChange}
+                className="col-span-3"
+              />
             </div>
           </div>
           <DialogFooter>

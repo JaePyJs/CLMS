@@ -1,33 +1,52 @@
-import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useTriggerJob, useGoogleSheetsTest } from '@/hooks/api-hooks'
-import { useAppStore } from '@/store/useAppStore'
-import { Bot, Play, Square, RotateCcw, CheckCircle, AlertCircle, Clock, Database, FileSpreadsheet, Calendar, Activity, Settings, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useTriggerJob, useGoogleSheetsTest } from '@/hooks/api-hooks';
+import { useAppStore } from '@/store/useAppStore';
+import {
+  Bot,
+  Play,
+  Square,
+  RotateCcw,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  Database,
+  FileSpreadsheet,
+  Calendar,
+  Activity,
+  Settings,
+  RefreshCw,
+} from 'lucide-react';
 
 interface AutomationJob {
-  id: string
-  name: string
-  type: 'backup' | 'notification' | 'sync' | 'cleanup'
-  status: 'running' | 'completed' | 'failed' | 'queued'
-  lastRun?: Date
-  nextRun?: Date
-  duration?: number
-  errorMessage?: string
-  progress?: number
+  id: string;
+  name: string;
+  type: 'backup' | 'notification' | 'sync' | 'cleanup';
+  status: 'running' | 'completed' | 'failed' | 'queued';
+  lastRun?: Date;
+  nextRun?: Date;
+  duration?: number;
+  errorMessage?: string;
+  progress?: number;
 }
 
 export function AutomationDashboard() {
-  const [selectedTab, setSelectedTab] = useState('jobs')
+  const [selectedTab, setSelectedTab] = useState('jobs');
 
-
-  const { automationJobs } = useAppStore()
-  const { mutate: triggerJob } = useTriggerJob()
-  const { data: googleSheetsStatus } = useGoogleSheetsTest()
+  const { automationJobs } = useAppStore();
+  const { mutate: triggerJob } = useTriggerJob();
+  const { data: googleSheetsStatus } = useGoogleSheetsTest();
 
   // Mock automation jobs for now
   const mockJobs: AutomationJob[] = [
@@ -38,7 +57,7 @@ export function AutomationDashboard() {
       status: 'completed',
       lastRun: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
       nextRun: new Date(Date.now() + 22 * 60 * 60 * 1000), // 22 hours from now
-      duration: 45
+      duration: 45,
     },
     {
       id: 'teacher-notifications',
@@ -47,7 +66,7 @@ export function AutomationDashboard() {
       status: 'completed',
       lastRun: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 hours ago
       nextRun: new Date(Date.now() + 16 * 60 * 60 * 1000), // 16 hours from now
-      duration: 12
+      duration: 12,
     },
     {
       id: 'google-sync',
@@ -63,62 +82,93 @@ export function AutomationDashboard() {
       type: 'cleanup',
       status: 'queued',
       nextRun: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes from now
-    }
-  ]
+    },
+  ];
 
-  const jobs = automationJobs.length > 0 ? automationJobs : mockJobs
+  const jobs = automationJobs.length > 0 ? automationJobs : mockJobs;
 
   const handleTriggerJob = (jobId: string) => {
-    triggerJob(jobId)
-  }
+    triggerJob(jobId);
+  };
 
   const getJobIcon = (type: string) => {
     switch (type) {
-      case 'backup': return <Database className="h-4 w-4" />
-      case 'notification': return <Calendar className="h-4 w-4" />
-      case 'sync': return <FileSpreadsheet className="h-4 w-4" />
-      case 'cleanup': return <Settings className="h-4 w-4" />
-      default: return <Bot className="h-4 w-4" />
+      case 'backup':
+        return <Database className="h-4 w-4" />;
+      case 'notification':
+        return <Calendar className="h-4 w-4" />;
+      case 'sync':
+        return <FileSpreadsheet className="h-4 w-4" />;
+      case 'cleanup':
+        return <Settings className="h-4 w-4" />;
+      default:
+        return <Bot className="h-4 w-4" />;
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'running': return 'bg-blue-500'
-      case 'completed': return 'bg-green-500'
-      case 'failed': return 'bg-red-500'
-      case 'queued': return 'bg-yellow-500'
-      default: return 'bg-gray-500'
+      case 'running':
+        return 'bg-blue-500';
+      case 'completed':
+        return 'bg-green-500';
+      case 'failed':
+        return 'bg-red-500';
+      case 'queued':
+        return 'bg-yellow-500';
+      default:
+        return 'bg-gray-500';
     }
-  }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'running': return <Badge variant="default" className="bg-blue-500">Running</Badge>
-      case 'completed': return <Badge variant="default" className="bg-green-500">Completed</Badge>
-      case 'failed': return <Badge variant="destructive">Failed</Badge>
-      case 'queued': return <Badge variant="secondary">Queued</Badge>
-      default: return <Badge variant="outline">Unknown</Badge>
+      case 'running':
+        return (
+          <Badge variant="default" className="bg-blue-500">
+            Running
+          </Badge>
+        );
+      case 'completed':
+        return (
+          <Badge variant="default" className="bg-green-500">
+            Completed
+          </Badge>
+        );
+      case 'failed':
+        return <Badge variant="destructive">Failed</Badge>;
+      case 'queued':
+        return <Badge variant="secondary">Queued</Badge>;
+      default:
+        return <Badge variant="outline">Unknown</Badge>;
     }
-  }
+  };
 
   const formatDuration = (seconds: number) => {
-    if (seconds < 60) return `${seconds}s`
-    return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
-  }
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+    return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  };
 
   const formatRelativeTime = (date: Date) => {
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const minutes = Math.floor(diff / 60000)
-    const hours = Math.floor(minutes / 60)
-    const days = Math.floor(hours / 24)
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`
-    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`
-    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
-    return 'Just now'
-  }
+    if (days > 0) {
+      return `${days} day${days > 1 ? 's' : ''} ago`;
+    }
+    if (hours > 0) {
+      return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    }
+    if (minutes > 0) {
+      return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    }
+    return 'Just now';
+  };
 
   return (
     <div className="space-y-6">
@@ -147,9 +197,7 @@ export function AutomationDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{jobs.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Automated tasks
-            </p>
+            <p className="text-xs text-muted-foreground">Automated tasks</p>
           </CardContent>
         </Card>
 
@@ -160,22 +208,22 @@ export function AutomationDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {jobs.filter(job => job.status === 'running').length}
+              {jobs.filter((job) => job.status === 'running').length}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Currently executing
-            </p>
+            <p className="text-xs text-muted-foreground">Currently executing</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed Today</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Completed Today
+            </CardTitle>
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {jobs.filter(job => job.status === 'completed').length}
+              {jobs.filter((job) => job.status === 'completed').length}
             </div>
             <p className="text-xs text-muted-foreground">
               Successful executions
@@ -190,18 +238,24 @@ export function AutomationDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {googleSheetsStatus && typeof googleSheetsStatus === 'object' && 'data' in googleSheetsStatus && (googleSheetsStatus as any).data?.connected ? 'Connected' : 'Offline'}
+              {googleSheetsStatus &&
+              typeof googleSheetsStatus === 'object' &&
+              'data' in googleSheetsStatus &&
+              (googleSheetsStatus as any).data?.connected
+                ? 'Connected'
+                : 'Offline'}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Sync status
-            </p>
+            <p className="text-xs text-muted-foreground">Sync status</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Google Sheets Status */}
       <Alert>
-        {googleSheetsStatus && typeof googleSheetsStatus === 'object' && 'data' in googleSheetsStatus && (googleSheetsStatus as any).data?.connected ? (
+        {googleSheetsStatus &&
+        typeof googleSheetsStatus === 'object' &&
+        'data' in googleSheetsStatus &&
+        (googleSheetsStatus as any).data?.connected ? (
           <>
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
@@ -212,14 +266,19 @@ export function AutomationDashboard() {
           <>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Google Sheets integration is not connected. Please check your configuration.
+              Google Sheets integration is not connected. Please check your
+              configuration.
             </AlertDescription>
           </>
         )}
       </Alert>
 
       {/* Main Content */}
-      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-4">
+      <Tabs
+        value={selectedTab}
+        onValueChange={setSelectedTab}
+        className="space-y-4"
+      >
         <TabsList>
           <TabsTrigger value="jobs">Automation Jobs</TabsTrigger>
           <TabsTrigger value="history">Execution History</TabsTrigger>
@@ -239,12 +298,15 @@ export function AutomationDashboard() {
                       <div>
                         <CardTitle className="text-lg">{job.name}</CardTitle>
                         <CardDescription>
-                          {job.type.charAt(0).toUpperCase() + job.type.slice(1)} Job
+                          {job.type.charAt(0).toUpperCase() + job.type.slice(1)}{' '}
+                          Job
                         </CardDescription>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <div className={`h-2 w-2 rounded-full ${getStatusColor(job.status)}`}></div>
+                      <div
+                        className={`h-2 w-2 rounded-full ${getStatusColor(job.status)}`}
+                      ></div>
                       {getStatusBadge(job.status)}
                     </div>
                   </div>
@@ -252,15 +314,19 @@ export function AutomationDashboard() {
 
                 <CardContent className="space-y-4">
                   {/* Progress Bar for Running Jobs */}
-                  {job.status === 'running' && (job as any).progress !== undefined && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Progress</span>
-                        <span>{(job as any).progress}%</span>
+                  {job.status === 'running' &&
+                    (job as any).progress !== undefined && (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Progress</span>
+                          <span>{(job as any).progress}%</span>
+                        </div>
+                        <Progress
+                          value={(job as any).progress}
+                          className="h-2"
+                        />
                       </div>
-                      <Progress value={(job as any).progress} className="h-2" />
-                    </div>
-                  )}
+                    )}
 
                   {/* Job Details */}
                   <div className="grid gap-2 text-sm">
@@ -360,14 +426,18 @@ export function AutomationDashboard() {
                     <p className="text-sm text-muted-foreground mb-2">
                       Runs every day at 11:00 PM
                     </p>
-                    <Button variant="outline" size="sm">Edit Schedule</Button>
+                    <Button variant="outline" size="sm">
+                      Edit Schedule
+                    </Button>
                   </div>
                   <div className="p-4 border rounded-lg">
                     <h4 className="font-medium mb-2">Teacher Notifications</h4>
                     <p className="text-sm text-muted-foreground mb-2">
                       Runs every day at 7:00 AM
                     </p>
-                    <Button variant="outline" size="sm">Edit Schedule</Button>
+                    <Button variant="outline" size="sm">
+                      Edit Schedule
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -398,9 +468,7 @@ export function AutomationDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
-            Common automation tasks
-          </CardDescription>
+          <CardDescription>Common automation tasks</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
@@ -420,7 +488,7 @@ export function AutomationDashboard() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
-export default AutomationDashboard
+export default AutomationDashboard;

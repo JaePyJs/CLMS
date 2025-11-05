@@ -1,4 +1,5 @@
-import { randomUUID } from 'crypto';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// import { randomUUID } from 'crypto'; // Unused
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
@@ -29,9 +30,9 @@ class WebSocketServer {
       cors: {
         origin: '*',
         methods: ['GET', 'POST'],
-        credentials: true
+        credentials: true,
       },
-      path: '/ws'
+      path: '/ws',
     });
 
     this.io.on('connection', (socket: AuthenticatedSocket) => {
@@ -57,7 +58,7 @@ class WebSocketServer {
       socket.emit('welcome', {
         message: 'Connected to CLMS WebSocket',
         socketId: socket.id,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     });
 
@@ -68,19 +69,29 @@ class WebSocketServer {
     const token = socket.handshake.auth.token || socket.handshake.query.token;
 
     if (!token) {
-      logger.warn(`WebSocket authentication failed: No token for socket ${socket.id}`);
+      logger.warn(
+        `WebSocket authentication failed: No token for socket ${socket.id}`,
+      );
       socket.emit('error', { message: 'Authentication token required' });
       socket.disconnect();
       return;
     }
 
     try {
-      const decoded = jwt.verify(token as string, process.env.JWT_SECRET || 'your-secret-key') as any;
+      const decoded = jwt.verify(
+        token as string,
+        process.env.JWT_SECRET || 'your-secret-key',
+      ) as any;
       socket.userId = decoded.id;
       socket.userRole = decoded.role;
-      logger.info(`WebSocket authenticated: ${socket.id}, User: ${socket.userId}, Role: ${socket.userRole}`);
+      logger.info(
+        `WebSocket authenticated: ${socket.id}, User: ${socket.userId}, Role: ${socket.userRole}`,
+      );
     } catch (error) {
-      logger.error(`WebSocket authentication failed for socket ${socket.id}:`, error);
+      logger.error(
+        `WebSocket authentication failed for socket ${socket.id}:`,
+        error,
+      );
       socket.emit('error', { message: 'Invalid authentication token' });
       socket.disconnect();
     }
@@ -91,13 +102,14 @@ class WebSocketServer {
     socket.on('subscribe', (data: { subscription: string }) => {
       if (data.subscription) {
         socket.join(data.subscription);
-        const subscribers = this.roomSubscriptions.get(data.subscription) || new Set();
+        const subscribers =
+          this.roomSubscriptions.get(data.subscription) || new Set();
         subscribers.add(socket.id);
         this.roomSubscriptions.set(data.subscription, subscribers);
 
         socket.emit('subscription_confirmed', {
           subscription: data.subscription,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
 
         logger.info(`Socket ${socket.id} subscribed to ${data.subscription}`);
@@ -115,10 +127,12 @@ class WebSocketServer {
 
         socket.emit('unsubscribed', {
           subscription: data.subscription,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
 
-        logger.info(`Socket ${socket.id} unsubscribed from ${data.subscription}`);
+        logger.info(
+          `Socket ${socket.id} unsubscribed from ${data.subscription}`,
+        );
       }
     });
 
@@ -128,33 +142,38 @@ class WebSocketServer {
     });
 
     // Handle dashboard data requests
-    socket.on('dashboard_request', async (data: { dataType: string; filters?: any }) => {
-      try {
-        // Simple dashboard data example
-        const dashboardData = {
-          overview: {
-            total_students: await prisma.students.count(),
-            total_books: await prisma.books.count(),
-            active_borrows: await prisma.book_checkouts.count({ where: { status: 'ACTIVE' } }),
-            overdue_borrows: await prisma.book_checkouts.count({
-              where: {
-                status: 'ACTIVE',
-                due_date: { lt: new Date() }
-              }
-            })
-          }
-        };
+    socket.on(
+      'dashboard_request',
+      async (data: { dataType: string; filters?: any }) => {
+        try {
+          // Simple dashboard data example
+          const dashboardData = {
+            overview: {
+              total_students: await prisma.students.count(),
+              total_books: await prisma.books.count(),
+              active_borrows: await prisma.book_checkouts.count({
+                where: { status: 'ACTIVE' },
+              }),
+              overdue_borrows: await prisma.book_checkouts.count({
+                where: {
+                  status: 'ACTIVE',
+                  due_date: { lt: new Date() },
+                },
+              }),
+            },
+          };
 
-        socket.emit('dashboard_data', {
-          dataType: data.dataType,
-          data: dashboardData,
-          timestamp: new Date()
-        });
-      } catch (error) {
-        logger.error('Error handling dashboard request:', error);
-        socket.emit('error', { message: 'Failed to fetch dashboard data' });
-      }
-    });
+          socket.emit('dashboard_data', {
+            dataType: data.dataType,
+            data: dashboardData,
+            timestamp: new Date(),
+          });
+        } catch (error) {
+          logger.error('Error handling dashboard request:', error);
+          socket.emit('error', { message: 'Failed to fetch dashboard data' });
+        }
+      },
+    );
   }
 
   private handleDisconnection(socket: AuthenticatedSocket) {
@@ -169,12 +188,16 @@ class WebSocketServer {
 
   // Public methods for broadcasting
   public broadcastToRoom(room: string, message: WebSocketMessage) {
-    if (!this.io) return;
+    if (!this.io) {
+      return;
+    }
     this.io.to(room).emit('message', message);
   }
 
   public broadcastToAll(message: WebSocketMessage) {
-    if (!this.io) return;
+    if (!this.io) {
+      return;
+    }
     this.io.emit('message', message);
   }
 

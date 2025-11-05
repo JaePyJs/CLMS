@@ -14,7 +14,9 @@ interface CompoundComponentContextValue {
   size?: 'sm' | 'md' | 'lg';
 }
 
-const CompoundComponentContext = createContext<CompoundComponentContextValue>({});
+const CompoundComponentContext = createContext<CompoundComponentContextValue>(
+  {}
+);
 
 /**
  * Hook to access compound component context
@@ -22,7 +24,9 @@ const CompoundComponentContext = createContext<CompoundComponentContextValue>({}
 export function useCompoundComponent() {
   const context = useContext(CompoundComponentContext);
   if (!context) {
-    throw new Error('Compound components must be used within a CompoundComponent.Provider');
+    throw new Error(
+      'Compound components must be used within a CompoundComponent.Provider'
+    );
   }
   return context;
 }
@@ -115,10 +119,9 @@ export interface InteractiveSubComponentProps extends SubComponentProps {
   active?: boolean;
 }
 
-export function createInteractiveSubComponent<T extends InteractiveSubComponentProps>(
-  displayName: string,
-  defaultClasses: string = ''
-): ComponentType<T> {
+export function createInteractiveSubComponent<
+  T extends InteractiveSubComponentProps,
+>(displayName: string, defaultClasses: string = ''): ComponentType<T> {
   const InteractiveSubComponent = ({
     value,
     active = false,
@@ -192,11 +195,11 @@ export function createContentSubComponent<T extends ContentSubComponentProps>(
   }: T) => {
     const { value } = useCompoundComponent();
 
-    const shouldShow = show && (
-      when === undefined ||
-      (typeof when === 'boolean' && when) ||
-      (typeof when === 'string' && when === value)
-    );
+    const shouldShow =
+      show &&
+      (when === undefined ||
+        (typeof when === 'boolean' && when) ||
+        (typeof when === 'string' && when === value));
 
     if (!shouldShow) {
       return null;
@@ -222,7 +225,9 @@ export function createContentSubComponent<T extends ContentSubComponentProps>(
 /**
  * Utility to build compound components
  */
-export function createCompoundComponent<T extends Record<string, ComponentType<any>>>(
+export function createCompoundComponent<
+  T extends Record<string, ComponentType<any>>,
+>(
   name: string,
   subComponents: T,
   Provider: ComponentType<CompoundComponentProps> = CompoundComponentProvider
@@ -246,10 +251,7 @@ export const Tab = createCompoundComponent('Tab', {
     'px-4 py-2 border-b-2 border-transparent hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500'
   ),
 
-  Content: createContentSubComponent(
-    'TabContent',
-    'p-4 focus:outline-none'
-  ),
+  Content: createContentSubComponent('TabContent', 'p-4 focus:outline-none'),
 });
 
 /**
@@ -258,7 +260,10 @@ export const Tab = createCompoundComponent('Tab', {
 export const Accordion = createCompoundComponent('Accordion', {
   Root: CompoundComponentProvider,
 
-  Item: createSubComponent('AccordionItem', 'border border-gray-200 rounded-lg mb-2'),
+  Item: createSubComponent(
+    'AccordionItem',
+    'border border-gray-200 rounded-lg mb-2'
+  ),
 
   Trigger: createInteractiveSubComponent(
     'AccordionTrigger',
@@ -275,17 +280,29 @@ export const Accordion = createCompoundComponent('Accordion', {
  * Example: Creating a Card component using the compound pattern
  */
 export const Card = createCompoundComponent('Card', {
-  Root: createSubComponent('CardRoot', 'bg-white border border-gray-200 rounded-lg shadow-sm'),
+  Root: createSubComponent(
+    'CardRoot',
+    'bg-white border border-gray-200 rounded-lg shadow-sm'
+  ),
 
-  Header: createSubComponent('CardHeader', 'px-6 py-4 border-b border-gray-200'),
+  Header: createSubComponent(
+    'CardHeader',
+    'px-6 py-4 border-b border-gray-200'
+  ),
 
   Title: createSubComponent('CardTitle', 'text-lg font-semibold text-gray-900'),
 
-  Description: createSubComponent('CardDescription', 'text-sm text-gray-600 mt-1'),
+  Description: createSubComponent(
+    'CardDescription',
+    'text-sm text-gray-600 mt-1'
+  ),
 
   Content: createSubComponent('CardContent', 'px-6 py-4'),
 
-  Footer: createSubComponent('CardFooter', 'px-6 py-4 border-t border-gray-200 bg-gray-50'),
+  Footer: createSubComponent(
+    'CardFooter',
+    'px-6 py-4 border-t border-gray-200 bg-gray-50'
+  ),
 });
 
 export default CompoundComponentProvider;

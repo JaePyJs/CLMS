@@ -28,54 +28,68 @@ export function usePerformanceMonitor(componentName?: string) {
     };
   }, [componentName]);
 
-  const startTiming = useCallback((name: string, metadata?: Record<string, unknown>) => {
-    const id = performanceMonitor.start(name, {
-      ...metadata,
-      componentName: componentName || 'unknown',
-    });
-    metricsRef.current.push(id);
-    return id;
-  }, [componentName]);
+  const startTiming = useCallback(
+    (name: string, metadata?: Record<string, unknown>) => {
+      const id = performanceMonitor.start(name, {
+        ...metadata,
+        componentName: componentName || 'unknown',
+      });
+      metricsRef.current.push(id);
+      return id;
+    },
+    [componentName]
+  );
 
   const endTiming = useCallback((id: string, error?: Error) => {
     performanceMonitor.end(id, error);
-    metricsRef.current = metricsRef.current.filter(existingId => existingId !== id);
+    metricsRef.current = metricsRef.current.filter(
+      (existingId) => existingId !== id
+    );
   }, []);
 
-  const recordMetric = useCallback((
-    name: string,
-    value: number,
-    options?: {
-      type?: 'duration' | 'counter' | 'gauge' | 'histogram';
-      unit?: string;
-      tags?: Record<string, string>;
-    }
-  ) => {
-    performanceMonitor.recordMetric(name, value, {
-      ...options,
-      tags: {
-        ...options?.tags,
-        componentName: componentName || 'unknown',
-      },
-    });
-  }, [componentName]);
+  const recordMetric = useCallback(
+    (
+      name: string,
+      value: number,
+      options?: {
+        type?: 'duration' | 'counter' | 'gauge' | 'histogram';
+        unit?: string;
+        tags?: Record<string, string>;
+      }
+    ) => {
+      performanceMonitor.recordMetric(name, value, {
+        ...options,
+        tags: {
+          ...options?.tags,
+          componentName: componentName || 'unknown',
+        },
+      });
+    },
+    [componentName]
+  );
 
-  const log = useCallback((
-    level: 'debug' | 'info' | 'warn' | 'error',
-    message: string,
-    context?: Record<string, unknown>
-  ) => {
-    performanceMonitor[level](message, {
-      ...context,
-      componentName: componentName || 'unknown',
-    });
-  }, [componentName]);
+  const log = useCallback(
+    (
+      level: 'debug' | 'info' | 'warn' | 'error',
+      message: string,
+      context?: Record<string, unknown>
+    ) => {
+      performanceMonitor[level](message, {
+        ...context,
+        componentName: componentName || 'unknown',
+      });
+    },
+    [componentName]
+  );
 
   // Cleanup any remaining metrics on unmount
   useEffect(() => {
     return () => {
-      metricsRef.current.forEach(id => {
-        performanceMonitor.end(id, new Error('Component unmounted with active timing'));
+      metricsRef.current.forEach((id) => {
+        performanceMonitor.end(
+          id,
+          new Error('Component unmounted with active timing')
+        );
       });
       metricsRef.current = [];
     };
@@ -95,28 +109,32 @@ export function usePerformanceMonitor(componentName?: string) {
 export function useApiPerformance(apiName: string) {
   const { startTiming, endTiming } = usePerformanceMonitor('api_calls');
 
-  const trackApiCall = useCallback(async <T>(
-    apiCall: () => Promise<T>,
-    options?: {
-      metadata?: Record<string, unknown>;
-      onError?: (error: Error) => void;
-    }
-  ): Promise<T> => {
-    const id = startTiming(`api_${apiName}`, {
-      ...options?.metadata,
-    });
+  const trackApiCall = useCallback(
+    async <T>(
+      apiCall: () => Promise<T>,
+      options?: {
+        metadata?: Record<string, unknown>;
+        onError?: (error: Error) => void;
+      }
+    ): Promise<T> => {
+      const id = startTiming(`api_${apiName}`, {
+        ...options?.metadata,
+      });
 
-    try {
-      const result = await apiCall();
-      endTiming(id);
-      return result;
-    } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error('API call failed');
-      endTiming(id, errorObj);
-      options?.onError?.(errorObj);
-      throw errorObj;
-    }
-  }, [apiName, startTiming, endTiming]);
+      try {
+        const result = await apiCall();
+        endTiming(id);
+        return result;
+      } catch (error) {
+        const errorObj =
+          error instanceof Error ? error : new Error('API call failed');
+        endTiming(id, errorObj);
+        options?.onError?.(errorObj);
+        throw errorObj;
+      }
+    },
+    [apiName, startTiming, endTiming]
+  );
 
   return { trackApiCall };
 }
@@ -142,13 +160,17 @@ export function useRenderPerformance(componentName?: string) {
       },
     });
 
-    performanceMonitor.recordMetric('time_between_renders', timeSinceLastRender, {
-      type: 'duration',
-      unit: 'ms',
-      tags: {
-        componentName: componentName || 'unknown',
-      },
-    });
+    performanceMonitor.recordMetric(
+      'time_between_renders',
+      timeSinceLastRender,
+      {
+        type: 'duration',
+        unit: 'ms',
+        tags: {
+          componentName: componentName || 'unknown',
+        },
+      }
+    );
   });
 
   return {
@@ -162,36 +184,52 @@ export function useRenderPerformance(componentName?: string) {
 export function useInteractionTracking(componentName?: string) {
   const { recordMetric, log } = usePerformanceMonitor(componentName);
 
-  const trackInteraction = useCallback((
-    interactionType: string,
-    metadata?: Record<string, unknown>
-  ) => {
-    recordMetric('user_interaction', 1, {
-      type: 'counter',
-      tags: {
-        interactionType,
-        componentName: componentName || 'unknown',
-      },
-    });
+  const trackInteraction = useCallback(
+    (interactionType: string, metadata?: Record<string, unknown>) => {
+      recordMetric('user_interaction', 1, {
+        type: 'counter',
+        tags: {
+          interactionType,
+          componentName: componentName || 'unknown',
+        },
+      });
 
-    log('info', `User interaction: ${interactionType}`, metadata);
-  }, [recordMetric, log, componentName]);
+      log('info', `User interaction: ${interactionType}`, metadata);
+    },
+    [recordMetric, log, componentName]
+  );
 
-  const trackClick = useCallback((element: string, metadata?: Record<string, unknown>) => {
-    trackInteraction('click', { element, ...metadata });
-  }, [trackInteraction]);
+  const trackClick = useCallback(
+    (element: string, metadata?: Record<string, unknown>) => {
+      trackInteraction('click', { element, ...metadata });
+    },
+    [trackInteraction]
+  );
 
-  const trackFormSubmit = useCallback((formName: string, metadata?: Record<string, unknown>) => {
-    trackInteraction('form_submit', { formName, ...metadata });
-  }, [trackInteraction]);
+  const trackFormSubmit = useCallback(
+    (formName: string, metadata?: Record<string, unknown>) => {
+      trackInteraction('form_submit', { formName, ...metadata });
+    },
+    [trackInteraction]
+  );
 
-  const trackPageView = useCallback((page: string, metadata?: Record<string, unknown>) => {
-    trackInteraction('page_view', { page, ...metadata });
-  }, [trackInteraction]);
+  const trackPageView = useCallback(
+    (page: string, metadata?: Record<string, unknown>) => {
+      trackInteraction('page_view', { page, ...metadata });
+    },
+    [trackInteraction]
+  );
 
-  const trackSearch = useCallback((query: string, resultsCount?: number, metadata?: Record<string, unknown>) => {
-    trackInteraction('search', { query, resultsCount, ...metadata });
-  }, [trackInteraction]);
+  const trackSearch = useCallback(
+    (
+      query: string,
+      resultsCount?: number,
+      metadata?: Record<string, unknown>
+    ) => {
+      trackInteraction('search', { query, resultsCount, ...metadata });
+    },
+    [trackInteraction]
+  );
 
   return {
     trackInteraction,
@@ -218,13 +256,19 @@ export function useResourceMonitoring() {
 
   useEffect(() => {
     const updateResourceMetrics = () => {
-      const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+      const resources = performance.getEntriesByType(
+        'resource'
+      ) as PerformanceResourceTiming[];
       const slowThreshold = 1000; // 1 second
 
       let totalSize = 0;
-      const slowResources: Array<{ name: string; duration: number; size: number }> = [];
+      const slowResources: Array<{
+        name: string;
+        duration: number;
+        size: number;
+      }> = [];
 
-      resources.forEach(resource => {
+      resources.forEach((resource) => {
         const duration = resource.responseEnd - resource.startTime;
         const size = resource.transferSize || 0;
 
@@ -278,7 +322,7 @@ export function useCoreWebVitals() {
           const entries = list.getEntries();
           const lastEntry = entries[entries.length - 1];
           if (lastEntry) {
-            setVitals(prev => ({ ...prev, lcp: lastEntry.startTime }));
+            setVitals((prev) => ({ ...prev, lcp: lastEntry.startTime }));
           }
         });
         lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
@@ -292,8 +336,9 @@ export function useCoreWebVitals() {
           const entries = list.getEntries();
           const firstInput = entries[0];
           if (firstInput) {
-            const fid = (firstInput as any).processingStart - firstInput.startTime;
-            setVitals(prev => ({ ...prev, fid }));
+            const fid =
+              (firstInput as any).processingStart - firstInput.startTime;
+            setVitals((prev) => ({ ...prev, fid }));
           }
         });
         fidObserver.observe({ entryTypes: ['first-input'] });
@@ -310,7 +355,7 @@ export function useCoreWebVitals() {
               clsValue += (entry as any).value;
             }
           }
-          setVitals(prev => ({ ...prev, cls: clsValue }));
+          setVitals((prev) => ({ ...prev, cls: clsValue }));
         });
         clsObserver.observe({ entryTypes: ['layout-shift'] });
       } catch (e) {
@@ -320,16 +365,20 @@ export function useCoreWebVitals() {
 
     // First Contentful Paint (FCP)
     const paintEntries = performance.getEntriesByType('paint');
-    const fcpEntry = paintEntries.find(entry => entry.name === 'first-contentful-paint');
+    const fcpEntry = paintEntries.find(
+      (entry) => entry.name === 'first-contentful-paint'
+    );
     if (fcpEntry) {
-      setVitals(prev => ({ ...prev, fcp: fcpEntry.startTime }));
+      setVitals((prev) => ({ ...prev, fcp: fcpEntry.startTime }));
     }
 
     // Time to First Byte (TTFB)
-    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+    const navigation = performance.getEntriesByType(
+      'navigation'
+    )[0] as PerformanceNavigationTiming;
     if (navigation) {
       const ttfb = navigation.responseStart - navigation.requestStart;
-      setVitals(prev => ({ ...prev, ttfb }));
+      setVitals((prev) => ({ ...prev, ttfb }));
     }
   }, []);
 
@@ -403,10 +452,11 @@ export function useAsyncPerformance<T>(
     progress: 0,
   });
 
-  const { startTiming, endTiming, recordMetric } = usePerformanceMonitor('async_operations');
+  const { startTiming, endTiming, recordMetric } =
+    usePerformanceMonitor('async_operations');
 
   const execute = useCallback(async () => {
-    setState(prev => ({ ...prev, loading: true, error: null, progress: 0 }));
+    setState((prev) => ({ ...prev, loading: true, error: null, progress: 0 }));
     const id = startTiming(operationName);
 
     try {
@@ -421,7 +471,8 @@ export function useAsyncPerformance<T>(
       recordMetric(`${operationName}_success`, 1, { type: 'counter' });
       return result;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error('Async operation failed');
+      const errorObj =
+        error instanceof Error ? error : new Error('Async operation failed');
       endTiming(id, errorObj);
       setState({
         data: null,

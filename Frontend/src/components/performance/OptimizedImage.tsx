@@ -1,4 +1,11 @@
-import React, { useState, useRef, useEffect, memo, forwardRef, useImperativeHandle } from 'react';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  memo,
+  forwardRef,
+  useImperativeHandle,
+} from 'react';
 import type { ComponentType } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 
@@ -42,7 +49,7 @@ const generateSrcSet = (
   sizes: number[] = [320, 640, 768, 1024, 1280, 1536]
 ): string => {
   return sizes
-    .map(size => `${src}?w=${size}&f=${format}&q=${quality} ${size}w`)
+    .map((size) => `${src}?w=${size}&f=${format}&q=${quality} ${size}w`)
     .join(', ');
 };
 
@@ -59,212 +66,231 @@ const generatePlaceholder = (width: number, height: number): string => {
   return canvas.toDataURL('image/jpeg', 0.1);
 };
 
-const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>((props, ref) => {
-  const {
-    src,
-    alt,
-    width,
-    height,
-    className = '',
-    placeholder,
-    blurDataURL,
-    priority = false,
-    quality = 75,
-    format = 'webp',
-    sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
-    srcSet,
-    onLoad,
-    onError,
-    lazy = true,
-    fadeDuration = 300,
-    style,
-    aspectRatio,
-    objectFit = 'cover',
-    decoding = 'async',
-    loading = 'lazy',
-    fetchPriority = 'auto'
-  } = props;
-  const [imageState, setImageState] = useState<ImageState>({
-    isLoading: true,
-    isLoaded: false,
-    hasError: false,
-    currentSrc: src,
-  });
+const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>(
+  (props, ref) => {
+    const {
+      src,
+      alt,
+      width,
+      height,
+      className = '',
+      placeholder,
+      blurDataURL,
+      priority = false,
+      quality = 75,
+      format = 'webp',
+      sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
+      srcSet,
+      onLoad,
+      onError,
+      lazy = true,
+      fadeDuration = 300,
+      style,
+      aspectRatio,
+      objectFit = 'cover',
+      decoding = 'async',
+      loading = 'lazy',
+      fetchPriority = 'auto',
+    } = props;
+    const [imageState, setImageState] = useState<ImageState>({
+      isLoading: true,
+      isLoaded: false,
+      hasError: false,
+      currentSrc: src,
+    });
 
-  const imgRef = useRef<HTMLImageElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+    const imgRef = useRef<HTMLImageElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Expose ref to parent component
-  useImperativeHandle(ref, () => imgRef.current!);
+    // Expose ref to parent component
+    useImperativeHandle(ref, () => imgRef.current!);
 
-  // Generate placeholder if not provided
-  const placeholderSrc = placeholder || (width && height ? generatePlaceholder(width, height) : '');
+    // Generate placeholder if not provided
+    const placeholderSrc =
+      placeholder ||
+      (width && height ? generatePlaceholder(width, height) : '');
 
-  // Generate responsive srcSet if not provided
-  const generatedSrcSet = srcSet || generateSrcSet(src, format, quality);
+    // Generate responsive srcSet if not provided
+    const generatedSrcSet = srcSet || generateSrcSet(src, format, quality);
 
-  // Handle image load
-  const handleLoad = () => {
-    setImageState(prev => ({
-      ...prev,
-      isLoading: false,
-      isLoaded: true,
-    }));
-    onLoad?.();
-  };
-
-  // Handle image error
-  const handleError = () => {
-    setImageState(prev => ({
-      ...prev,
-      isLoading: false,
-      hasError: true,
-    }));
-    onError?.();
-  };
-
-  // Setup intersection observer for lazy loading
-  useEffect(() => {
-    if (!lazy || priority) return;
-
-    const img = imgRef.current;
-    if (!img) return;
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        if (entry && entry.isIntersecting) {
-          const img = entry.target as HTMLImageElement;
-          img.loading = 'lazy';
-          img.decoding = decoding;
-          observerRef.current?.disconnect();
-        }
-      },
-      {
-        rootMargin: '50px', // Start loading 50px before image comes into view
-        threshold: 0.01,
-      }
-    );
-
-    observerRef.current.observe(img);
-
-    return () => {
-      observerRef.current?.disconnect();
+    // Handle image load
+    const handleLoad = () => {
+      setImageState((prev) => ({
+        ...prev,
+        isLoading: false,
+        isLoaded: true,
+      }));
+      onLoad?.();
     };
-  }, [lazy, priority, decoding]);
 
-  // Preload priority images
-  useEffect(() => {
-    if (priority && src) {
-      const link = document.createElement('link');
-      link.rel = 'preload';
-      link.as = 'image';
-      link.href = src;
-      // link.fetchPriority = 'high'; // fetchPriority not supported on link elements
-      document.head.appendChild(link);
+    // Handle image error
+    const handleError = () => {
+      setImageState((prev) => ({
+        ...prev,
+        isLoading: false,
+        hasError: true,
+      }));
+      onError?.();
+    };
+
+    // Setup intersection observer for lazy loading
+    useEffect(() => {
+      if (!lazy || priority) {
+        return;
+      }
+
+      const img = imgRef.current;
+      if (!img) {
+        return;
+      }
+
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          const [entry] = entries;
+          if (entry && entry.isIntersecting) {
+            const img = entry.target as HTMLImageElement;
+            img.loading = 'lazy';
+            img.decoding = decoding;
+            observerRef.current?.disconnect();
+          }
+        },
+        {
+          rootMargin: '50px', // Start loading 50px before image comes into view
+          threshold: 0.01,
+        }
+      );
+
+      observerRef.current.observe(img);
 
       return () => {
-        document.head.removeChild(link);
+        observerRef.current?.disconnect();
       };
-    }
-    // Return undefined for cases where preloading is not needed
-    return undefined;
-  }, [priority, src]);
+    }, [lazy, priority, decoding]);
 
-  // Calculate aspect ratio style
-  const aspectRatioStyle = aspectRatio ? {
-    aspectRatio: `${aspectRatio}`,
-    ...style,
-  } : style;
+    // Preload priority images
+    useEffect(() => {
+      if (priority && src) {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'image';
+        link.href = src;
+        // link.fetchPriority = 'high'; // fetchPriority not supported on link elements
+        document.head.appendChild(link);
 
-  // Ensure width/height attributes exist to prevent layout shift
-  useEffect(() => {
-    const img = imgRef.current;
-    const container = containerRef.current;
-    if (!img || !container) return;
-
-    const hasWidthAttr = img.getAttribute('width');
-    const hasHeightAttr = img.getAttribute('height');
-
-    if (!hasWidthAttr || !hasHeightAttr) {
-      const w = width ?? container.clientWidth ?? img.clientWidth;
-      const h = height ?? container.clientHeight ?? (aspectRatio ? Math.round((w || 0) / aspectRatio) : img.clientHeight);
-      if (w && h) {
-        img.setAttribute('width', String(w));
-        img.setAttribute('height', String(h));
+        return () => {
+          document.head.removeChild(link);
+        };
       }
-    }
-  }, [width, height, aspectRatio]);
+      // Return undefined for cases where preloading is not needed
+      return undefined;
+    }, [priority, src]);
 
-  return (
-    <div
-      ref={containerRef}
-      className={`relative overflow-hidden ${className}`}
-      style={aspectRatioStyle}
-    >
-      {/* Loading/Placeholder State */}
-      {(imageState.isLoading || imageState.hasError) && placeholderSrc && (
-        <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800">
-          <img
-            src={placeholderSrc}
-            alt=""
-            className="w-full h-full object-cover"
-            style={{
-              filter: blurDataURL ? 'blur(20px)' : 'none',
-              transform: 'scale(1.1)',
-              transition: 'opacity 0.3s ease-in-out',
-            }}
-          />
-        </div>
-      )}
+    // Calculate aspect ratio style
+    const aspectRatioStyle = aspectRatio
+      ? {
+          aspectRatio: `${aspectRatio}`,
+          ...style,
+        }
+      : style;
 
-      {/* Loading Indicator */}
-      {imageState.isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80 dark:bg-gray-900/80">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
-        </div>
-      )}
+    // Ensure width/height attributes exist to prevent layout shift
+    useEffect(() => {
+      const img = imgRef.current;
+      const container = containerRef.current;
+      if (!img || !container) {
+        return;
+      }
 
-      {/* Error State */}
-      {imageState.hasError && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
-          <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
-          <span className="text-sm text-gray-600 dark:text-gray-400">Failed to load image</span>
-        </div>
-      )}
+      const hasWidthAttr = img.getAttribute('width');
+      const hasHeightAttr = img.getAttribute('height');
 
-      {/* Main Image */}
-      <img
-        ref={imgRef}
-        src={src}
-        srcSet={generatedSrcSet}
-        sizes={sizes}
-        alt={alt}
-        {...(width !== undefined ? { width } : {})}
-        {...(height !== undefined ? { height } : {})}
-        loading={priority ? 'eager' : loading}
-        decoding={decoding}
-        {...(fetchPriority && fetchPriority !== 'auto' ? { fetchPriority } : {})}
-        className={`w-full h-full object-${objectFit} transition-opacity duration-${fadeDuration} ${
-          imageState.isLoaded ? 'opacity-100' : 'opacity-0'
-        }`}
-        onLoad={handleLoad}
-        onError={handleError}
-        style={{
-          objectFit,
-        }}
-      />
+      if (!hasWidthAttr || !hasHeightAttr) {
+        const w = width ?? container.clientWidth ?? img.clientWidth;
+        const h =
+          height ??
+          container.clientHeight ??
+          (aspectRatio ? Math.round((w || 0) / aspectRatio) : img.clientHeight);
+        if (w && h) {
+          img.setAttribute('width', String(w));
+          img.setAttribute('height', String(h));
+        }
+      }
+    }, [width, height, aspectRatio]);
 
-      {/* Priority Indicator for Development */}
-      {process.env.NODE_ENV === 'development' && priority && (
-        <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-          Priority
-        </div>
-      )}
-    </div>
-  );
-});
+    return (
+      <div
+        ref={containerRef}
+        className={`relative overflow-hidden ${className}`}
+        style={aspectRatioStyle}
+      >
+        {/* Loading/Placeholder State */}
+        {(imageState.isLoading || imageState.hasError) && placeholderSrc && (
+          <div className="absolute inset-0 bg-gray-100 dark:bg-gray-800">
+            <img
+              src={placeholderSrc}
+              alt=""
+              className="w-full h-full object-cover"
+              style={{
+                filter: blurDataURL ? 'blur(20px)' : 'none',
+                transform: 'scale(1.1)',
+                transition: 'opacity 0.3s ease-in-out',
+              }}
+            />
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {imageState.isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80 dark:bg-gray-900/80">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        )}
+
+        {/* Error State */}
+        {imageState.hasError && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
+            <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Failed to load image
+            </span>
+          </div>
+        )}
+
+        {/* Main Image */}
+        <img
+          ref={imgRef}
+          src={src}
+          srcSet={generatedSrcSet}
+          sizes={sizes}
+          alt={alt}
+          {...(width !== undefined ? { width } : {})}
+          {...(height !== undefined ? { height } : {})}
+          loading={priority ? 'eager' : loading}
+          decoding={decoding}
+          {...(fetchPriority && fetchPriority !== 'auto'
+            ? { fetchPriority }
+            : {})}
+          className={`w-full h-full object-${objectFit} transition-opacity duration-${fadeDuration} ${
+            imageState.isLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          onLoad={handleLoad}
+          onError={handleError}
+          style={{
+            objectFit,
+          }}
+        />
+
+        {/* Priority Indicator for Development */}
+        {process.env.NODE_ENV === 'development' && priority && (
+          <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
+            Priority
+          </div>
+        )}
+      </div>
+    );
+  }
+);
 
 OptimizedImage.displayName = 'OptimizedImage';
 
@@ -283,7 +309,10 @@ export const withImageOptimization = <P extends object>(
 };
 
 // Utility function to preload images
-export const preloadImage = (src: string, _priority: 'high' | 'low' = 'low'): Promise<void> => {
+export const preloadImage = (
+  src: string,
+  _priority: 'high' | 'low' = 'low'
+): Promise<void> => {
   return new Promise((resolve, reject) => {
     const link = document.createElement('link');
     link.rel = 'preload';
@@ -302,7 +331,9 @@ export const getOptimalFormat = (): 'avif' | 'webp' | 'png' | 'jpg' => {
   canvas.width = 1;
   canvas.height = 1;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return 'png';
+  if (!ctx) {
+    return 'png';
+  }
 
   // Check for AVIF support
   if (canvas.toDataURL('image/avif').indexOf('data:image/avif') === 0) {

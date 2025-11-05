@@ -3,7 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
-import { Monitor, Activity, Wifi, WifiOff, AlertTriangle, CheckCircle, Clock, Zap, MessageSquare, Bell, RefreshCw, Settings, TrendingUp } from 'lucide-react';
+import {
+  Monitor,
+  Activity,
+  Wifi,
+  WifiOff,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  Zap,
+  MessageSquare,
+  Bell,
+  RefreshCw,
+  Settings,
+  TrendingUp,
+} from 'lucide-react';
 
 interface RealTimeDashboardProps {
   className?: string;
@@ -20,14 +34,16 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
     dashboardData,
     triggerEmergencyAlert,
     sendChatMessage,
-    refreshDashboard
+    refreshDashboard,
   } = useWebSocketContext();
 
   const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Auto-refresh dashboard data
   useEffect(() => {
-    if (!isConnected || !autoRefresh) return;
+    if (!isConnected || !autoRefresh) {
+      return;
+    }
 
     const interval = setInterval(() => {
       refreshDashboard('overview');
@@ -41,12 +57,16 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
   // Calculate statistics from real-time data
   const stats = {
     totalStudents: dashboardData?.overview?.totalStudents || 0,
-    todayActivities: dashboardData?.overview?.todayActivities || recentActivities.length,
-    activeEquipment: dashboardData?.overview?.activeEquipment || Object.keys(equipmentStatus).length,
+    todayActivities:
+      dashboardData?.overview?.todayActivities || recentActivities.length,
+    activeEquipment:
+      dashboardData?.overview?.activeEquipment ||
+      Object.keys(equipmentStatus).length,
     activeConnections: dashboardData?.overview?.activeConnections || 0,
     systemLoad: dashboardData?.overview?.systemLoad || 0,
     recentNotifications: notifications.length,
-    criticalAlerts: notifications.filter(n => n.priority === 'critical').length
+    criticalAlerts: notifications.filter((n) => n.priority === 'critical')
+      .length,
   };
 
   const handleEmergencyAlert = () => {
@@ -144,7 +164,9 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                 onClick={() => setAutoRefresh(!autoRefresh)}
                 className={autoRefresh ? 'bg-green-50 border-green-200' : ''}
               >
-                <RefreshCw className={`h-4 w-4 mr-1 ${autoRefresh ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 mr-1 ${autoRefresh ? 'animate-spin' : ''}`}
+                />
                 Auto-refresh
               </Button>
 
@@ -273,7 +295,8 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                       </p>
                       <p className="text-xs text-gray-600 dark:text-gray-400">
                         {activity.activityType}
-                        {activity.equipmentName && ` • ${activity.equipmentName}`}
+                        {activity.equipmentName &&
+                          ` • ${activity.equipmentName}`}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                         {new Date(activity.timestamp).toLocaleTimeString()}
@@ -309,37 +332,43 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
           <CardContent>
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {Object.keys(equipmentStatus).length > 0 ? (
-                Object.entries(equipmentStatus).map(([equipmentId, status]: [string, any]) => (
-                  <div
-                    key={equipmentId}
-                    className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Monitor className={`h-4 w-4 ${getEquipmentStatusColor(status.status)}`} />
-                      <div>
-                        <p className="font-medium text-sm">
-                          {status.equipmentName || equipmentId}
-                        </p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">
-                          {status.equipmentType}
-                        </p>
+                Object.entries(equipmentStatus).map(
+                  ([equipmentId, status]: [string, any]) => (
+                    <div
+                      key={equipmentId}
+                      className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Monitor
+                          className={`h-4 w-4 ${getEquipmentStatusColor(status.status)}`}
+                        />
+                        <div>
+                          <p className="font-medium text-sm">
+                            {status.equipmentName || equipmentId}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {status.equipmentType}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge
+                          variant={
+                            status.status === 'AVAILABLE'
+                              ? 'default'
+                              : 'secondary'
+                          }
+                          className="text-xs"
+                        >
+                          {status.status.replace('_', ' ')}
+                        </Badge>
+                        {status.userId && (
+                          <p className="text-xs text-gray-500 mt-1">In use</p>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Badge
-                        variant={status.status === 'AVAILABLE' ? 'default' : 'secondary'}
-                        className="text-xs"
-                      >
-                        {status.status.replace('_', ' ')}
-                      </Badge>
-                      {status.userId && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          In use
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))
+                  )
+                )
               ) : (
                 <div className="text-center py-8">
                   <Monitor className="h-12 w-12 mx-auto text-gray-400 mb-3" />
@@ -374,16 +403,19 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                   key={`${notification.id}-${index}`}
                   className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
                 >
-                  <Bell className={`h-4 w-4 mt-0.5 ${
-                    notification.priority === 'critical' ? 'text-red-500' :
-                    notification.priority === 'high' ? 'text-orange-500' :
-                    notification.priority === 'medium' ? 'text-yellow-500' :
-                    'text-blue-500'
-                  }`} />
+                  <Bell
+                    className={`h-4 w-4 mt-0.5 ${
+                      notification.priority === 'critical'
+                        ? 'text-red-500'
+                        : notification.priority === 'high'
+                          ? 'text-orange-500'
+                          : notification.priority === 'medium'
+                            ? 'text-yellow-500'
+                            : 'text-blue-500'
+                    }`}
+                  />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">
-                      {notification.title}
-                    </p>
+                    <p className="font-medium text-sm">{notification.title}</p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
                       {notification.message}
                     </p>
@@ -427,7 +459,9 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
             >
               <AlertTriangle className="h-5 w-5 mb-2" />
               <span className="text-sm">Emergency Alert</span>
-              <span className="text-xs text-red-500">Critical notification</span>
+              <span className="text-xs text-red-500">
+                Critical notification
+              </span>
             </Button>
 
             <Button

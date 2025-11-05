@@ -20,10 +20,13 @@ const createMockIntersectionObserver = () => ({
   disconnect: vi.fn(),
   root: null,
   rootMargin: '',
-  thresholds: []
+  thresholds: [],
 });
 
-vi.stubGlobal('IntersectionObserver', vi.fn().mockImplementation(createMockIntersectionObserver));
+vi.stubGlobal(
+  'IntersectionObserver',
+  vi.fn().mockImplementation(createMockIntersectionObserver)
+);
 
 // Mock ResizeObserver
 const createMockResizeObserver = () => ({
@@ -33,24 +36,27 @@ const createMockResizeObserver = () => ({
   boxSize: 'content-box' as const,
   borderBoxSize: {
     blockSize: 0,
-    inlineSize: 0
+    inlineSize: 0,
   },
   contentBoxSize: {
     blockSize: 0,
-    inlineSize: 0
+    inlineSize: 0,
   },
   devicePixelContentBoxSize: {
     blockSize: 0,
-    inlineSize: 0
-  }
+    inlineSize: 0,
+  },
 });
 
-vi.stubGlobal('ResizeObserver', vi.fn().mockImplementation(createMockResizeObserver));
+vi.stubGlobal(
+  'ResizeObserver',
+  vi.fn().mockImplementation(createMockResizeObserver)
+);
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -77,42 +83,62 @@ Object.defineProperty(navigator, 'clipboard', {
 });
 
 // Mock URL and URLSearchParams
-vi.stubGlobal('URL', vi.fn().mockImplementation((url: string, base?: string) => ({
-  href: base ? new URL(url, base).href : url,
-  origin: 'http://localhost:3000',
-  protocol: 'http:',
-  host: 'localhost:3000',
-  hostname: 'localhost',
-  port: '3000',
-  pathname: '/',
-  search: '',
-  hash: '',
-  searchParams: new URLSearchParams(),
-  toString: () => url,
-})));
+vi.stubGlobal(
+  'URL',
+  vi.fn().mockImplementation((url: string, base?: string) => ({
+    href: base ? new URL(url, base).href : url,
+    origin: 'http://localhost:3000',
+    protocol: 'http:',
+    host: 'localhost:3000',
+    hostname: 'localhost',
+    port: '3000',
+    pathname: '/',
+    search: '',
+    hash: '',
+    searchParams: new URLSearchParams(),
+    toString: () => url,
+  }))
+);
 
-vi.stubGlobal('URLSearchParams', vi.fn().mockImplementation((init?: string | URLSearchParams | Record<string, string>) => {
-  const params = new Map<string, string>();
-  if (typeof init === 'string') {
-    // Parse query string
-    init.split('&').forEach(pair => {
-      const [key, value] = pair.split('=');
-      if (key) params.set(decodeURIComponent(key), decodeURIComponent(value || ''));
-    });
-  } else if (init) {
-    Object.entries(init).forEach(([key, value]) => params.set(key, value));
-  }
+vi.stubGlobal(
+  'URLSearchParams',
+  vi
+    .fn()
+    .mockImplementation(
+      (init?: string | URLSearchParams | Record<string, string>) => {
+        const params = new Map<string, string>();
+        if (typeof init === 'string') {
+          // Parse query string
+          init.split('&').forEach((pair) => {
+            const [key, value] = pair.split('=');
+            if (key)
+              params.set(
+                decodeURIComponent(key),
+                decodeURIComponent(value || '')
+              );
+          });
+        } else if (init) {
+          Object.entries(init).forEach(([key, value]) =>
+            params.set(key, value)
+          );
+        }
 
-  return {
-    get: (key: string) => params.get(key),
-    set: (key: string, value: string) => params.set(key, value),
-    has: (key: string) => params.has(key),
-    delete: (key: string) => params.delete(key),
-    append: (key: string, value: string) => params.set(key, value),
-    toString: () => Array.from(params).map(([k, v]) => `${k}=${v}`).join('&'),
-    forEach: (callback: (value: string, key: string) => void) => params.forEach(callback),
-  };
-}));
+        return {
+          get: (key: string) => params.get(key),
+          set: (key: string, value: string) => params.set(key, value),
+          has: (key: string) => params.has(key),
+          delete: (key: string) => params.delete(key),
+          append: (key: string, value: string) => params.set(key, value),
+          toString: () =>
+            Array.from(params)
+              .map(([k, v]) => `${k}=${v}`)
+              .join('&'),
+          forEach: (callback: (value: string, key: string) => void) =>
+            params.forEach(callback),
+        };
+      }
+    )
+);
 
 // Mock localStorage
 const createLocalStorageMock = () => {
@@ -159,61 +185,82 @@ Object.defineProperty(console, 'error', {
 });
 
 // Mock Web APIs
-vi.stubGlobal('requestAnimationFrame', vi.fn().mockImplementation(cb => setTimeout(cb, 16)));
-vi.stubGlobal('cancelAnimationFrame', vi.fn().mockImplementation(id => clearTimeout(id)));
+vi.stubGlobal(
+  'requestAnimationFrame',
+  vi.fn().mockImplementation((cb) => setTimeout(cb, 16))
+);
+vi.stubGlobal(
+  'cancelAnimationFrame',
+  vi.fn().mockImplementation((id) => clearTimeout(id))
+);
 
 // Mock file APIs
-const MockFile = vi.fn().mockImplementation((bits: any[], name: string, options: FilePropertyBag = {}) => ({
-  name,
-  size: bits.reduce((acc, bit) => acc + bit.length, 0),
-  type: options.type || '',
-  lastModified: Date.now(),
-  slice: vi.fn(),
-  stream: vi.fn(),
-  text: vi.fn().mockResolvedValue(''),
-  arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
-  bytes: vi.fn().mockResolvedValue(new Uint8Array()),
-}));
+const MockFile = vi
+  .fn()
+  .mockImplementation(
+    (bits: any[], name: string, options: FilePropertyBag = {}) => ({
+      name,
+      size: bits.reduce((acc, bit) => acc + bit.length, 0),
+      type: options.type || '',
+      lastModified: Date.now(),
+      slice: vi.fn(),
+      stream: vi.fn(),
+      text: vi.fn().mockResolvedValue(''),
+      arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+      bytes: vi.fn().mockResolvedValue(new Uint8Array()),
+    })
+  );
 
 vi.stubGlobal('File', MockFile);
 
-vi.stubGlobal('Blob', vi.fn().mockImplementation((bits: any[], options: BlobPropertyBag = {}) => ({
-  size: bits.reduce((acc, bit) => acc + bit.length, 0),
-  type: options.type || '',
-  slice: vi.fn(),
-  stream: vi.fn(),
-  text: vi.fn().mockResolvedValue(''),
-  arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
-  bytes: vi.fn().mockResolvedValue(new Uint8Array()),
-})));
+vi.stubGlobal(
+  'Blob',
+  vi.fn().mockImplementation((bits: any[], options: BlobPropertyBag = {}) => ({
+    size: bits.reduce((acc, bit) => acc + bit.length, 0),
+    type: options.type || '',
+    slice: vi.fn(),
+    stream: vi.fn(),
+    text: vi.fn().mockResolvedValue(''),
+    arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+    bytes: vi.fn().mockResolvedValue(new Uint8Array()),
+  }))
+);
 
-vi.stubGlobal('FormData', vi.fn().mockImplementation(() => {
-  const data = new Map<string, string>();
-  return {
-    append: vi.fn((key: string, value: string) => data.set(key, value)),
-    delete: vi.fn((key: string) => data.delete(key)),
-    get: vi.fn((key: string) => data.get(key)),
-    has: vi.fn((key: string) => data.has(key)),
-    set: vi.fn((key: string, value: string) => data.set(key, value)),
-    forEach: vi.fn((callback: (value: string, key: string) => void) => data.forEach(callback)),
-    entries: vi.fn(() => data.entries()),
-    keys: vi.fn(() => data.keys()),
-    values: vi.fn(() => data.values()),
-  };
-}));
+vi.stubGlobal(
+  'FormData',
+  vi.fn().mockImplementation(() => {
+    const data = new Map<string, string>();
+    return {
+      append: vi.fn((key: string, value: string) => data.set(key, value)),
+      delete: vi.fn((key: string) => data.delete(key)),
+      get: vi.fn((key: string) => data.get(key)),
+      has: vi.fn((key: string) => data.has(key)),
+      set: vi.fn((key: string, value: string) => data.set(key, value)),
+      forEach: vi.fn((callback: (value: string, key: string) => void) =>
+        data.forEach(callback)
+      ),
+      entries: vi.fn(() => data.entries()),
+      keys: vi.fn(() => data.keys()),
+      values: vi.fn(() => data.values()),
+    };
+  })
+);
 
 // Mock WebSocket
-vi.stubGlobal('WebSocket', vi.fn().mockImplementation(() => ({
-  readyState: 1, // WebSocket.OPEN
-  send: vi.fn(),
-  close: vi.fn(),
-  onopen: null,
-  onmessage: null,
-  onerror: null,
-  onclose: null,
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-})));
+vi.stubGlobal(
+  'WebSocket',
+  vi.fn().mockImplementation(() => ({
+    readyState: 1, // WebSocket.OPEN
+    send: vi.fn(),
+    close: vi.fn(),
+    onopen: null,
+    onmessage: null,
+    onerror: null,
+    onclose: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }))
+);
 
 // Mock IndexedDB for OfflineSyncService
 const createMockIDBRequest = (result?: any, error?: any) => ({
@@ -269,16 +316,21 @@ const createMockIDBDatabase = () => ({
 });
 
 vi.stubGlobal('indexedDB', {
-  open: vi.fn().mockReturnValue(createMockIDBOpenDBRequest(createMockIDBDatabase())),
+  open: vi
+    .fn()
+    .mockReturnValue(createMockIDBOpenDBRequest(createMockIDBDatabase())),
   deleteDatabase: vi.fn().mockReturnValue(createMockIDBOpenDBRequest()),
   cmp: vi.fn().mockReturnValue(0),
 });
 
 // Mock barcode scanner APIs
-vi.stubGlobal('BarcodeDetector', vi.fn().mockImplementation(() => ({
-  detect: vi.fn().mockResolvedValue([]),
-  getSupportedFormats: vi.fn().mockResolvedValue(['qr_code', 'code_128']),
-})));
+vi.stubGlobal(
+  'BarcodeDetector',
+  vi.fn().mockImplementation(() => ({
+    detect: vi.fn().mockResolvedValue([]),
+    getSupportedFormats: vi.fn().mockResolvedValue(['qr_code', 'code_128']),
+  }))
+);
 
 // Mock camera APIs
 vi.stubGlobal('navigator', {
@@ -289,9 +341,11 @@ vi.stubGlobal('navigator', {
       getVideoTracks: () => [{ stop: vi.fn() }],
       getAudioTracks: () => [{ stop: vi.fn() }],
     }),
-    enumerateDevices: vi.fn().mockResolvedValue([
-      { deviceId: 'camera1', kind: 'videoinput', label: 'Test Camera' },
-    ]),
+    enumerateDevices: vi
+      .fn()
+      .mockResolvedValue([
+        { deviceId: 'camera1', kind: 'videoinput', label: 'Test Camera' },
+      ]),
   },
 });
 
@@ -340,7 +394,9 @@ const mockCanvasElement = vi.fn().mockImplementation(() => ({
 }));
 
 // Set up the prototype with getContext method
-mockCanvasElement.prototype.getContext = vi.fn().mockReturnValue(createCanvasContext2D());
+mockCanvasElement.prototype.getContext = vi
+  .fn()
+  .mockReturnValue(createCanvasContext2D());
 
 // Override JSDOM's HTMLCanvasElement before it gets initialized
 Object.defineProperty(global, 'HTMLCanvasElement', {
@@ -355,45 +411,53 @@ Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
 });
 
 // Mock Image constructor
-vi.stubGlobal('Image', vi.fn().mockImplementation(() => ({
-  src: '',
-  width: 0,
-  height: 0,
-  naturalWidth: 0,
-  naturalHeight: 0,
-  complete: true,
-  onload: null,
-  onerror: null,
-  onabort: null,
-  load: vi.fn(),
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-  dispatchEvent: vi.fn(),
-})));
+vi.stubGlobal(
+  'Image',
+  vi.fn().mockImplementation(() => ({
+    src: '',
+    width: 0,
+    height: 0,
+    naturalWidth: 0,
+    naturalHeight: 0,
+    complete: true,
+    onload: null,
+    onerror: null,
+    onabort: null,
+    load: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }))
+);
 
 // Test utilities
-export const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-      gcTime: 0,
+export const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        gcTime: 0,
+      },
+      mutations: {
+        retry: false,
+      },
     },
-    mutations: {
-      retry: false,
-    },
-  },
-});
+  });
 
-export const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
+export const AllTheProviders = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => {
   const queryClient = createTestQueryClient();
 
-  return (
-    React.createElement(QueryClientProvider, { client: queryClient },
-      React.createElement(AuthProvider, null,
-        React.createElement(ThemeProvider, null,
-          children
-        )
-      )
+  return React.createElement(
+    QueryClientProvider,
+    { client: queryClient },
+    React.createElement(
+      AuthProvider,
+      null,
+      React.createElement(ThemeProvider, null, children)
     )
   );
 };
@@ -442,14 +506,16 @@ export const measureRenderPerformance = async (
 ) => {
   const start = performance.now();
   renderFn();
-  await new Promise(resolve => setTimeout(resolve, 0)); // Wait for async rendering
+  await new Promise((resolve) => setTimeout(resolve, 0)); // Wait for async rendering
   const end = performance.now();
   const duration = end - start;
 
   console.log(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
 
   if (duration > 100) {
-    console.warn(`⚠️  ${label} exceeded performance threshold (${duration.toFixed(2)}ms > 100ms)`);
+    console.warn(
+      `⚠️  ${label} exceeded performance threshold (${duration.toFixed(2)}ms > 100ms)`
+    );
   }
 
   return { duration };
@@ -481,7 +547,10 @@ export const createMockErrorResponse = (message: string, status = 400) => ({
 });
 
 // Async test utilities
-export const waitFor = (condition: () => boolean, timeout = 5000): Promise<void> => {
+export const waitFor = (
+  condition: () => boolean,
+  timeout = 5000
+): Promise<void> => {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
 
@@ -499,10 +568,14 @@ export const waitFor = (condition: () => boolean, timeout = 5000): Promise<void>
   });
 };
 
-export const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
+export const flushPromises = () =>
+  new Promise((resolve) => setTimeout(resolve, 0));
 
 // Component testing utilities
-export const fireEventAsync = async (element: HTMLElement, eventType: string) => {
+export const fireEventAsync = async (
+  element: HTMLElement,
+  eventType: string
+) => {
   element.dispatchEvent(new Event(eventType, { bubbles: true }));
   await flushPromises();
 };
@@ -571,7 +644,9 @@ export const createMockStudentActivity = (overrides = {}) => ({
 vi.mock('@/services/imageOptimizationService', () => ({
   ImageOptimizationService: {
     getInstance: vi.fn().mockReturnValue({
-      detectSupportedFormats: vi.fn().mockReturnValue(['webp', 'avif', 'jpeg', 'png']),
+      detectSupportedFormats: vi
+        .fn()
+        .mockReturnValue(['webp', 'avif', 'jpeg', 'png']),
       optimizeImage: vi.fn().mockResolvedValue('optimized-image-url'),
       getCompressionSettings: vi.fn().mockReturnValue({ quality: 80 }),
     }),
