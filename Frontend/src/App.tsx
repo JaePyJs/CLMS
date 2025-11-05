@@ -14,6 +14,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import LoginForm from '@/components/auth/LoginForm';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
 import { toast } from 'sonner';
 import NotificationCenter from '@/components/NotificationCenter';
@@ -425,17 +426,18 @@ export default function App() {
   }
 
   return (
-    <WebSocketProvider>
-      <div
-        className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-300 relative"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={(e) => {
-          const gesture = handleTouchEnd(e);
-          if (gesture) {
-            handleTouchNavigation(gesture);
-          }
-        }}
-      >
+    <ProtectedRoute>
+      <WebSocketProvider>
+        <div
+          className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-300 relative"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={(e) => {
+            const gesture = handleTouchEnd(e);
+            if (gesture) {
+              handleTouchNavigation(gesture);
+            }
+          }}
+        >
         {/* Background Image with Optimized Loading */}
         <div className="fixed inset-0 pointer-events-none z-0">
           <PerformanceImage
@@ -1255,6 +1257,7 @@ export default function App() {
           </div>
         </footer>
       </div>
-    </WebSocketProvider>
+      </WebSocketProvider>
+    </ProtectedRoute>
   );
 }
