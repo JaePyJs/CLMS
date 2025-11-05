@@ -80,7 +80,7 @@ export function PerformanceDashboard() {
   const performanceMonitor = {
     clear: () => {
       // Clear performance data
-      console.log('Performance monitor cleared');
+      console.debug('Performance monitor cleared');
     },
   };
 

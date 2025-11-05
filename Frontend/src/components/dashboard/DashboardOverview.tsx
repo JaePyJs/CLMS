@@ -99,7 +99,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       if (response.success) {
         toast.success('Report generated successfully!');
         // Display report data in a more user-friendly way
-        console.log('Quick Report:', response.data);
+        console.debug('Quick Report:', response.data);
 
         // Show key metrics in toast
         const report = response.data as {
@@ -118,11 +118,14 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
           );
         }
       } else {
-        toast.error(
-          typeof (response as any).error === 'string'
-            ? (response as any).error
-            : (response as any).error?.message || 'Failed to generate report'
-        );
+        const responseError = response as {
+          error?: string | { message?: string };
+        };
+        const errorMessage =
+          typeof responseError.error === 'string'
+            ? responseError.error
+            : responseError.error?.message || 'Failed to generate report';
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error('Error generating report:', error);
@@ -143,11 +146,14 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
           `Backup initiated! ${data?.estimatedDuration ?? 'Unknown'} estimated duration.`
         );
       } else {
-        toast.error(
-          typeof (response as any).error === 'string'
-            ? (response as any).error
-            : (response as any).error?.message || 'Failed to initiate backup'
-        );
+        const responseError = response as {
+          error?: string | { message?: string };
+        };
+        const errorMessage =
+          typeof responseError.error === 'string'
+            ? responseError.error
+            : responseError.error?.message || 'Failed to initiate backup';
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error('Error initiating backup:', error);
@@ -618,7 +624,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                     Array.isArray(timeline) &&
                     timeline.length > 0 ? (
                     <div className="space-y-4">
-                      {(timeline as any[]).map((activity: any, _) => (
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {timeline.map((activity: any, _) => (
                         <div
                           key={activity.id}
                           className="flex items-start space-x-4 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50/30 dark:from-gray-800/50 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 shadow-sm"

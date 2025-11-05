@@ -78,7 +78,7 @@ export const useReactPerformance = (
           `⚠️ Slow render in ${componentName}: ${renderTime.toFixed(2)}ms (threshold: ${warningThreshold}ms)`
         );
       } else if (logRenders) {
-        console.log(
+        console.debug(
           `✅ ${componentName} rendered in ${renderTime.toFixed(2)}ms`
         );
       }
@@ -106,7 +106,7 @@ export const useReactPerformance = (
       metricsRef.current.isMounted = true;
 
       if (logRenders || process.env.NODE_ENV === 'development') {
-        console.log(`🚀 ${componentName} mounted in ${mountTime}ms`);
+        console.debug(`🚀 ${componentName} mounted in ${mountTime}ms`);
       }
     }
 
@@ -180,7 +180,7 @@ export const useOptimizedCalculation = <T>(
 
       const endTime = performance.now();
       if (process.env.NODE_ENV === 'development') {
-        console.log(
+        console.debug(
           `Calculation completed in ${(endTime - startTime).toFixed(2)}ms`
         );
       }
@@ -254,7 +254,7 @@ export const useAsyncPerformance = () => {
     operationsRef.current.set(operationName, startTime);
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`⏱️ Started ${operationName}`);
+      console.debug(`⏱️ Started ${operationName}`);
     }
 
     return startTime;
@@ -271,7 +271,7 @@ export const useAsyncPerformance = () => {
     operationsRef.current.delete(operationName);
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`✅ Completed ${operationName} in ${duration.toFixed(2)}ms`);
+      console.debug(`✅ Completed ${operationName} in ${duration.toFixed(2)}ms`);
     }
 
     // Emit performance event

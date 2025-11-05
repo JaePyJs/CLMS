@@ -1,9 +1,9 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
-import { context7 } from '@/services/context7';
-import type { DocumentationUpdate } from '@/services/context7';
+import { context7, type DocumentationUpdate } from '@/services/context7';
 import { utilitiesApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { hasProperty } from '@/utils/errorHandling';
 
 export interface DocumentationWebSocketConfig {
   autoSubscribe: boolean;
@@ -84,21 +84,37 @@ export const useDocumentationWebSocket = (
         handleSnapshotCreated(data);
         break;
       default:
-        console.log('Unknown documentation WebSocket message type:', type);
+        console.debug('Unknown documentation WebSocket message type:', type);
     }
   }, []);
 
   const handleDocumentationUpdate = useCallback(
-    (data: any) => {
+    (data: unknown) => {
+      // Type guard the data object
+      if (typeof data !== 'object' || data === null) {
+        console.error('Invalid documentation update data:', data);
+        return;
+      }
+
       const update: DocumentationUpdate = {
-        id: data.id,
-        type: data.type,
-        timestamp: data.timestamp,
-        source: data.source || 'websocket',
-        changes: data.changes || [],
-        version: data.version,
-        author: data.author,
-        metadata: data.metadata,
+        id: hasProperty(data, 'id') ? (data.id as string) : '',
+        type: hasProperty(data, 'type') ? (data.type as any) : 'content_change',
+        timestamp: hasProperty(data, 'timestamp')
+          ? (data.timestamp as string)
+          : new Date().toISOString(),
+        source: hasProperty(data, 'source')
+          ? (data.source as string)
+          : 'websocket',
+        changes: hasProperty(data, 'changes') ? (data.changes as any[]) : [],
+        version: hasProperty(data, 'version')
+          ? (data.version as any)
+          : ({} as any),
+        author: hasProperty(data, 'author')
+          ? (data.author as any)
+          : ({} as any),
+        metadata: hasProperty(data, 'metadata')
+          ? (data.metadata as any)
+          : ({} as any),
       };
 
       // Filter by configuration
@@ -118,7 +134,8 @@ export const useDocumentationWebSocket = (
 
       if (finalConfig.targetFiles && finalConfig.targetFiles.length > 0) {
         const hasTargetFile = update.changes.some((change) =>
-          finalConfig.targetFiles!.includes(change.file)
+          // targetFiles is validated as non-null by the if condition above
+          finalConfig.targetFiles.includes(change.file)
         );
         if (!hasTargetFile) {
           return;
@@ -146,8 +163,18 @@ export const useDocumentationWebSocket = (
   );
 
   const handleVersionChange = useCallback(
-    (data: any) => {
-      const { version, previousVersion, changes: _changes } = data;
+    (data: unknown) => {
+      if (typeof data !== 'object' || data === null) {
+        console.error('Invalid version change data:', data);
+        return;
+      }
+
+      const version = hasProperty(data, 'version')
+        ? String(data.version)
+        : 'unknown';
+      const previousVersion = hasProperty(data, 'previousVersion')
+        ? String(data.previousVersion)
+        : 'unknown';
 
       if (finalConfig.enableNotifications) {
         toast.info('Documentation Version Updated', {
@@ -161,17 +188,29 @@ export const useDocumentationWebSocket = (
   );
 
   const handleConflict = useCallback(
-    (data: any) => {
-      const { conflictId, details } = data;
+    (data: unknown) => {
+      if (typeof data !== 'object' || data === null) {
+        console.error('Invalid conflict data:', data);
+        return;
+      }
+
+      const conflictId = hasProperty(data, 'conflictId')
+        ? String(data.conflictId)
+        : 'unknown';
+      const details = hasProperty(data, 'details') ? data.details : {};
 
       if (finalConfig.enableNotifications) {
         toast.warning('Documentation Conflict Detected', {
-          description: `Conflict in ${details.file || 'multiple files'}`,
+          description: `Conflict in ${
+            hasProperty(details, 'file')
+              ? String(details.file)
+              : 'multiple files'
+          }`,
           action: {
             label: 'Resolve',
             onClick: () => {
               // Navigate to conflict resolution UI
-              console.log('Navigate to conflict resolution for:', conflictId);
+              console.debug('Navigate to conflict resolution for:', conflictId);
             },
           },
         });
@@ -183,8 +222,16 @@ export const useDocumentationWebSocket = (
   );
 
   const handleSyncStatusChange = useCallback(
-    (data: any) => {
-      const { status, message, details: _details } = data;
+    (data: unknown) => {
+      if (typeof data !== 'object' || data === null) {
+        console.error('Invalid sync status data:', data);
+        return;
+      }
+
+      const status = hasProperty(data, 'status')
+        ? (String(data.status) as 'synced' | 'syncing' | 'error' | 'offline')
+        : 'error';
+      const message = hasProperty(data, 'message') ? String(data.message) : '';
 
       if (finalConfig.enableNotifications && status === 'error') {
         toast.error('Documentation Sync Error', {
@@ -198,8 +245,16 @@ export const useDocumentationWebSocket = (
   );
 
   const handleValidationError = useCallback(
-    (data: any) => {
-      const { errors } = data;
+    (data: unknown) => {
+      if (typeof data !== 'object' || data === null) {
+        console.error('Invalid validation error data:', data);
+        return;
+      }
+
+      const errors =
+        hasProperty(data, 'errors') && Array.isArray(data.errors)
+          ? data.errors
+          : [];
 
       if (finalConfig.enableNotifications) {
         toast.error('Documentation Validation Failed', {
@@ -213,12 +268,19 @@ export const useDocumentationWebSocket = (
   );
 
   const handleSnapshotCreated = useCallback(
-    (data: any) => {
-      const { snapshot } = data;
+    (data: unknown) => {
+      if (typeof data !== 'object' || data === null) {
+        console.error('Invalid snapshot data:', data);
+        return;
+      }
 
-      if (finalConfig.enableNotifications) {
+      const snapshot = hasProperty(data, 'snapshot')
+        ? (data.snapshot as any)
+        : null;
+
+      if (finalConfig.enableNotifications && snapshot) {
         toast.success('Documentation Snapshot Created', {
-          description: `Snapshot "${snapshot.name}" created successfully`,
+          description: `Snapshot "${snapshot.name || 'unnamed'}" created successfully`,
         });
       }
 
@@ -241,7 +303,7 @@ export const useDocumentationWebSocket = (
             label: 'Review',
             onClick: () => {
               // Navigate to update review
-              console.log('Review update:', update.id);
+              console.debug('Review update:', update.id);
             },
           },
         });
@@ -308,7 +370,7 @@ export const useDocumentationWebSocket = (
       }
 
       isSubscribedRef.current = true;
-      console.log('Subscribed to documentation updates');
+      console.debug('Subscribed to documentation updates');
     } catch (error) {
       console.error('Failed to subscribe to documentation updates:', error);
       toast.error('Failed to subscribe to documentation updates');
@@ -337,7 +399,7 @@ export const useDocumentationWebSocket = (
       }
 
       isSubscribedRef.current = false;
-      console.log('Unsubscribed from documentation updates');
+      console.debug('Unsubscribed from documentation updates');
     } catch (error) {
       console.error('Failed to unsubscribe from documentation updates:', error);
     }

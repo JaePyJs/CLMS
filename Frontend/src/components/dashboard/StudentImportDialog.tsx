@@ -48,6 +48,7 @@ import {
 } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 // Types for import functionality
 interface ImportedStudent {
@@ -207,7 +208,7 @@ export function StudentImportDialog({
             return;
           }
 
-          const data = result.data as any[];
+          const data = result.data as Record<string, unknown>[];
           if (data.length === 0) {
             reject(new Error('File is empty'));
             return;
@@ -267,8 +268,8 @@ export function StudentImportDialog({
             String(h).trim()
           );
           const processedData = jsonData.slice(1).map((row: unknown) => {
-            const rowArray = row as any[];
-            const obj: any = {};
+            const rowArray = row as unknown[];
+            const obj: Record<string, unknown> = {};
             headers.forEach((header, index) => {
               if (header) {
                 obj[header] = rowArray[index];
@@ -346,7 +347,7 @@ export function StudentImportDialog({
 
   // Preview import mutation
   const previewImportMutation = useMutation({
-    mutationFn: async (data: { file: File; fieldMappings: any[] }) => {
+    mutationFn: async (data: { file: File; fieldMappings: FieldMapping[] }) => {
       try {
         const result = await studentsApi.importStudents(
           data.file,
@@ -354,19 +355,18 @@ export function StudentImportDialog({
           true
         );
         return result.data;
-      } catch (error: any) {
-        const message = error?.error || error?.message || 'Preview failed';
-        throw new Error(
-          typeof message === 'string'
-            ? message
-            : message?.message || 'Preview failed'
-        );
+      } catch (error: unknown) {
+        const message = getErrorMessage(error, 'Preview failed');
+        throw new Error(message);
       }
     },
-    onSuccess: (result: any) => {
+    onSuccess: (result: {
+      records: Array<Partial<ImportedStudent>>;
+      duplicateRecords?: number;
+    }) => {
       if (result.records && Array.isArray(result.records)) {
         const processed: ImportedStudent[] = result.records.map(
-          (record: any, index: number) => ({
+          (record, index: number) => ({
             rowNumber: index + 1,
             firstName: record.firstName || '',
             lastName: record.lastName || '',
@@ -400,14 +400,14 @@ export function StudentImportDialog({
         setCurrentStep('preview');
       }
     },
-    onError: (error: any) => {
-      toast.error(`Preview failed: ${error?.message || 'Unknown error'}`);
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Preview failed'));
     },
   });
 
   // Import students mutation
   const importStudentsMutation = useMutation({
-    mutationFn: async (data: { file: File; fieldMappings: any[] }) => {
+    mutationFn: async (data: { file: File; fieldMappings: FieldMapping[] }) => {
       try {
         const result = await studentsApi.importStudents(
           data.file,
@@ -415,16 +415,16 @@ export function StudentImportDialog({
           false
         );
         return result.data;
-      } catch (error: any) {
-        const message = error?.error || error?.message || 'Import failed';
-        throw new Error(
-          typeof message === 'string'
-            ? message
-            : message?.message || 'Import failed'
-        );
+      } catch (error: unknown) {
+        const message = getErrorMessage(error, 'Import failed');
+        throw new Error(message);
       }
     },
-    onSuccess: (result: any) => {
+    onSuccess: (result: {
+      importedRecords?: number;
+      errorRecords?: number;
+      errors?: string[];
+    }) => {
       setImportResults({
         success: result.importedRecords || 0,
         failed: result.errorRecords || 0,
@@ -443,8 +443,8 @@ export function StudentImportDialog({
         toast.error(`Failed to import ${result.errorRecords} students`);
       }
     },
-    onError: (error: any) => {
-      toast.error(`Import failed: ${error?.message || 'Unknown error'}`);
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Import failed'));
       setCurrentStep('preview');
     },
   });

@@ -68,17 +68,19 @@ export class EquipmentWebSocketService {
       this.connections.set(connectionId, ws);
 
       // Handle messages
-      ws.on('message', async data => {
-        try {
-          const message = JSON.parse(data.toString());
-          await this.handleMessage(ws, message);
-        } catch (error) {
-          logger.error('Error handling WebSocket message', {
-            error: (error as Error).message,
-            connectionId,
-          });
-          this.sendError(ws, 'Invalid message format');
-        }
+      ws.on('message', data => {
+        void (async () => {
+          try {
+            const message = JSON.parse(data.toString());
+            await this.handleMessage(ws, message);
+          } catch (error) {
+            logger.error('Error handling WebSocket message', {
+              error: (error as Error).message,
+              connectionId,
+            });
+            this.sendError(ws, 'Invalid message format');
+          }
+        })();
       });
 
       // Handle pong responses
@@ -407,11 +409,7 @@ export class EquipmentWebSocketService {
     if (ws.subscribedAll) {
       return true;
     }
-    if (
-      equipmentId &&
-      ws.subscribedEquipment &&
-      ws.subscribedEquipment.has(equipmentId)
-    ) {
+    if (equipmentId && ws.subscribedEquipment?.has(equipmentId)) {
       return true;
     }
 

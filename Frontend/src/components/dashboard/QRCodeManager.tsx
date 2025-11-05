@@ -63,10 +63,17 @@ export function QRCodeManager() {
           { duration: 5000 }
         );
       } else {
+        const errorData = response as unknown as Record<string, unknown>;
+        const error = errorData.error;
         throw new Error(
-          typeof (response as any).error === 'string'
-            ? (response as any).error
-            : (response as any).error?.message || 'Generation failed'
+          typeof error === 'string'
+            ? error
+            : error &&
+                typeof error === 'object' &&
+                'message' in error &&
+                typeof error.message === 'string'
+              ? error.message
+              : 'Generation failed'
         );
       }
     } catch (error) {

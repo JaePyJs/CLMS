@@ -336,7 +336,7 @@ export function ErrorBoundaryFallback({
       const delay = Math.min(2000 * Math.pow(1.5, retryCount), 10000); // Progressive delay
 
       const timer = setTimeout(() => {
-        console.log(
+        console.debug(
           `Auto-recovery attempt ${retryCount + 1}/${maxRetries}: ${suggestion.title}`
         );
         setIsRecovering(true);

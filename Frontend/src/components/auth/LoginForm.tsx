@@ -74,7 +74,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
       } else {
         setError('Login failed');
       }
-    } catch (err: any) {
+    } catch (err) {
       const errorMessage = 'An error occurred during login';
       setError(errorMessage);
     } finally {

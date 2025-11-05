@@ -84,7 +84,7 @@ export const generateDensitySrcSet = (
     .map((density) => {
       const w = width ? width * density : undefined;
       const h = height ? height * density : undefined;
-      const config: any = {
+      const config: { quality: number; width?: number; height?: number } = {
         quality: Math.max(quality - (density - 1) * 10, 50), // Reduce quality for higher densities
       };
       if (w !== undefined) {

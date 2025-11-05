@@ -23,8 +23,9 @@ CREATE INDEX idx_book_checkouts_checkout_date ON book_checkouts(checkout_date DE
 CREATE INDEX idx_book_checkouts_student_id ON book_checkouts(student_id);
 CREATE INDEX idx_book_checkouts_book_id ON book_checkouts(book_id);
 CREATE INDEX idx_book_checkouts_status_due_date ON book_checkouts(status, due_date);
-CREATE INDEX idx_book_checkouts_active_overdue ON book_checkouts(status, due_date)
-    WHERE status = 'ACTIVE' AND due_date < NOW();
+-- Partial index for active checkouts only (commonly queried)
+CREATE INDEX idx_book_checkouts_active_overdue ON book_checkouts(due_date)
+    WHERE status = 'ACTIVE';
 
 -- Equipment table indexes
 CREATE INDEX idx_equipment_status ON equipment(status);
@@ -43,9 +44,9 @@ CREATE INDEX idx_students_grade_active ON students(grade_level, is_active);
 -- Book availability: Active books by category
 CREATE INDEX idx_books_category_active ON books(category, is_active);
 
--- Overdue checkouts: Active with past due date
-CREATE INDEX idx_checkouts_overdue ON book_checkouts(status, due_date)
-    WHERE status = 'ACTIVE' AND due_date < NOW();
+-- Partial index for active checkouts (commonly queried)
+CREATE INDEX idx_checkouts_overdue ON book_checkouts(due_date)
+    WHERE status = 'ACTIVE';
 
 -- Recent checkouts for analytics
 CREATE INDEX idx_checkouts_recent ON book_checkouts(checkout_date DESC, status);

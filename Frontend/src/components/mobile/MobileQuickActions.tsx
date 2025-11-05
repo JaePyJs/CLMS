@@ -2,9 +2,11 @@ import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useMobileOptimization } from '@/hooks/useMobileOptimization';
+import {
+  useMobileOptimization,
+  useTouchOptimization,
+} from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
-import { useTouchOptimization } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
 import {
   Zap,
@@ -81,8 +83,8 @@ export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
       color: 'text-blue-600 dark:text-blue-400',
       bgColor: 'bg-blue-100 dark:bg-blue-900/20',
       onClick: () => {
-        // Navigate to student search
-        window.location.hash = '#students?search=true';
+        // Navigate to student _search
+        window.location.hash = '#students?_search=true';
       },
       shortcut: '3',
     },

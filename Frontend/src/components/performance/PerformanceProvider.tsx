@@ -7,8 +7,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { performanceMonitor } from '@/lib/performance-monitor';
-import type { PerformanceMetric, LogEntry } from '@/lib/performance-monitor';
+import {
+  performanceMonitor,
+  type PerformanceMetric,
+  type LogEntry,
+} from '@/lib/performance-monitor';
 
 interface PerformanceContextType {
   metrics: PerformanceMetric[];

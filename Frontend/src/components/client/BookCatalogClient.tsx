@@ -72,7 +72,7 @@ export function BookCatalogClient({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Search and filter state
+  // _Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'title' | 'author' | 'created_at'>(
@@ -88,14 +88,14 @@ export function BookCatalogClient({
   );
   const [booksPerPage] = useLocalStorage('books-per-page', 20);
 
-  // Debounced search query
+  // Debounced _search query
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   // Memoized filter and sort logic
   const filteredAndSortedBooks = useMemo(() => {
     let filtered = books;
 
-    // Apply search filter
+    // Apply _search filter
     if (debouncedSearchQuery) {
       const query = debouncedSearchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -231,7 +231,7 @@ export function BookCatalogClient({
   const handleViewDetails = useCallback((book: Book) => {
     // This would typically open a dialog or navigate to a detail page
     toast.info(`Viewing details for "${book.title}"`);
-    console.log('Book details:', book);
+    console.debug('Book details:', book);
   }, []);
 
   // Reset filters
@@ -352,14 +352,14 @@ export function BookCatalogClient({
         </div>
       </div>
 
-      {/* Search and Filters */}
+      {/* _Search and Filters */}
       <div className="bg-background border rounded-lg p-4 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
-          {/* Search */}
+          {/* _Search */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search books..."
+              placeholder="_Search books..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -387,7 +387,9 @@ export function BookCatalogClient({
 
             <Select
               value={sortBy}
-              onValueChange={(value: any) => setSortBy(value)}
+              onValueChange={(value: string) =>
+                setSortBy(value as 'title' | 'author' | 'created_at')
+              }
             >
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -468,7 +470,7 @@ export function BookCatalogClient({
           <h3 className="text-lg font-semibold mb-2">No books found</h3>
           <p className="text-muted-foreground">
             {debouncedSearchQuery || selectedCategory !== 'all'
-              ? 'Try adjusting your search or filters'
+              ? 'Try adjusting your _search or filters'
               : 'No books available in the catalog'}
           </p>
         </div>

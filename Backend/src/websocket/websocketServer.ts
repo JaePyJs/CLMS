@@ -101,7 +101,7 @@ class WebSocketServer {
     // Subscribe to channels
     socket.on('subscribe', (data: { subscription: string }) => {
       if (data.subscription) {
-        socket.join(data.subscription);
+        void socket.join(data.subscription);
         const subscribers =
           this.roomSubscriptions.get(data.subscription) || new Set();
         subscribers.add(socket.id);
@@ -119,7 +119,7 @@ class WebSocketServer {
     // Unsubscribe from channels
     socket.on('unsubscribe', (data: { subscription: string }) => {
       if (data.subscription) {
-        socket.leave(data.subscription);
+        void socket.leave(data.subscription);
         const subscribers = this.roomSubscriptions.get(data.subscription);
         if (subscribers) {
           subscribers.delete(socket.id);

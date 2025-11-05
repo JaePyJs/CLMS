@@ -20,7 +20,7 @@ router.get(
 
     try {
       logger.info('Get all settings request', {
-        userId: req.user!.userId,
+        userId: req.user.userId,
       });
 
       const settings = await SettingsService.getAllSettings();
@@ -56,7 +56,7 @@ router.get(
 
       logger.info('Get settings by category', {
         category,
-        userId: req.user!.userId,
+        userId: req.user.userId,
       });
 
       const settings = await SettingsService.getSettingsByCategory(category);
@@ -93,7 +93,7 @@ router.get(
 
       logger.info('Get setting by key', {
         key,
-        userId: req.user!.userId,
+        userId: req.user.userId,
       });
 
       const value = await SettingsService.getSetting(key);
@@ -148,13 +148,13 @@ router.put(
       logger.info('Update setting', {
         key,
         value,
-        userId: req.user!.userId,
+        userId: req.user.userId,
       });
 
       const success = await SettingsService.updateSetting(
         key,
         value,
-        req.user!.userId,
+        req.user.userId,
       );
 
       if (!success) {
@@ -205,12 +205,12 @@ router.post(
 
       logger.info('Update multiple settings', {
         count: settings.length,
-        userId: req.user!.userId,
+        userId: req.user.userId,
       });
 
       const success = await SettingsService.updateSettings(
         settings,
-        req.user!.userId,
+        req.user.userId,
       );
 
       if (!success) {
@@ -249,7 +249,7 @@ router.post(
 
     try {
       logger.info('Initialize default settings', {
-        userId: req.user!.userId,
+        userId: req.user.userId,
       });
 
       await SettingsService.initializeDefaultSettings();

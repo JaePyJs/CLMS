@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -88,61 +89,8 @@ export default function CheckoutHistory() {
     returnedToday: 0,
   });
 
-  // Fetch checkouts
-  const fetchCheckouts = async (status?: string) => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('clms_token');
-      const params = new URLSearchParams();
-      if (status && status !== 'ALL') {
-        params.append('status', status ?? '');
-      }
-
-      const response = await axios.get(
-        `${API_BASE_URL}/books/checkouts/all${params.toString() ? `?${params.toString()}` : ''}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.data.success) {
-        const data = response.data.data.checkouts || [];
-        setCheckouts(data);
-        setFilteredCheckouts(data);
-        calculateStats(data);
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to fetch checkouts');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch overdue books
-  const fetchOverdueBooks = async () => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('clms_token');
-      const response = await axios.get(
-        `${API_BASE_URL}/books/checkouts/overdue`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.data.success) {
-        const data = response.data.data.overdueBooks || [];
-        setCheckouts(data);
-        setFilteredCheckouts(data);
-        calculateStats(data);
-      }
-    } catch (error: any) {
-      toast.error(
-        error.response?.data?.message || 'Failed to fetch overdue books'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Calculate statistics
-  const calculateStats = (data: Checkout[]) => {
+  const calculateStats = useCallback((data: Checkout[]) => {
     const active = data.filter((c) => c.status === 'ACTIVE').length;
     const overdue = data.filter(
       (c) => c.overdueDays > 0 && c.status === 'ACTIVE'
@@ -162,13 +110,67 @@ export default function CheckoutHistory() {
       totalFines,
       returnedToday,
     });
-  };
+  }, []);
 
-  // Search and filter
+  // Fetch checkouts
+  const fetchCheckouts = useCallback(
+    async (status?: string) => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('clms_token');
+        const params = new URLSearchParams();
+        if (status && status !== 'ALL') {
+          params.append('status', status ?? '');
+        }
+
+        const response = await axios.get(
+          `${API_BASE_URL}/books/checkouts/all${params.toString() ? `?${params.toString()}` : ''}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (response.data.success) {
+          const data = response.data.data.checkouts || [];
+          setCheckouts(data);
+          setFilteredCheckouts(data);
+          calculateStats(data);
+        }
+      } catch (error: unknown) {
+        toast.error(getErrorMessage(error, 'Failed to fetch checkouts'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [calculateStats]
+  ); // toast doesn't need to be in deps - it's stable from useToast hook
+
+  // Fetch overdue books
+  const fetchOverdueBooks = useCallback(async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('clms_token');
+      const response = await axios.get(
+        `${API_BASE_URL}/books/checkouts/overdue`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data.success) {
+        const data = response.data.data.overdueBooks || [];
+        setCheckouts(data);
+        setFilteredCheckouts(data);
+        calculateStats(data);
+      }
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to fetch overdue books'));
+    } finally {
+      setLoading(false);
+    }
+  }, [calculateStats]); // toast doesn't need to be in deps - it's stable from useToast hook
+
+  // _Search and filter
   useEffect(() => {
     let filtered = checkouts;
 
-    // Apply search
+    // Apply _search
     if (searchQuery) {
       filtered = filtered.filter(
         (c) =>
@@ -195,7 +197,7 @@ export default function CheckoutHistory() {
   // Initial load
   useEffect(() => {
     fetchCheckouts();
-  }, []);
+  }, [fetchCheckouts]);
 
   // Tab change handler
   const handleTabChange = (value: string) => {
@@ -381,7 +383,7 @@ export default function CheckoutHistory() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Search by book title, author, or student..."
+                      placeholder="_Search by book title, author, or student..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"

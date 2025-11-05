@@ -123,7 +123,7 @@ class Context7Service {
       this.state.isRealTimeEnabled = true;
       this.state.syncStatus = 'synced';
 
-      console.log('Context7 service initialized successfully');
+      console.debug('Context7 service initialized successfully');
     } catch (error) {
       console.error('Failed to initialize Context7 service:', error);
       this.state.syncStatus = 'error';
@@ -322,7 +322,7 @@ class Context7Service {
 
       this.state.syncStatus = 'synced';
 
-      console.log(`Applied documentation update: ${update.id}`);
+      console.debug(`Applied documentation update: ${update.id}`);
     } catch (error) {
       console.error('Failed to apply documentation update:', error);
       this.state.syncStatus = 'error';
@@ -360,7 +360,7 @@ class Context7Service {
       }
 
       this.state.syncStatus = 'synced';
-      console.log('Documentation synchronized successfully');
+      console.debug('Documentation synchronized successfully');
     } catch (error) {
       console.error('Failed to sync documentation:', error);
       this.state.syncStatus = 'error';

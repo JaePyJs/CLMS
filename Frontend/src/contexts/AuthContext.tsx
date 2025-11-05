@@ -14,14 +14,14 @@ import {
   apiClient,
   setAccessTokenProvider,
   setUnauthorizedHandler,
+  type LoginResponse,
 } from '@/lib/api';
-import type { LoginResponse } from '@/lib/api';
-import type { AuthUser } from '@/lib/auth-queries';
 import {
   authKeys,
   clearAuthState,
   fetchCurrentUser,
   primeAuthState,
+  type AuthUser,
 } from '@/lib/auth-queries';
 
 interface AuthContextType {
@@ -161,10 +161,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return true;
         }
 
+        const errorData = response as unknown as Record<string, unknown>;
+        const error = errorData.error;
         toast.error(
-          typeof (response as any).error === 'string'
-            ? (response as any).error
-            : (response as any).error?.message || 'Login failed'
+          typeof error === 'string'
+            ? error
+            : error &&
+                typeof error === 'object' &&
+                'message' in error &&
+                typeof error.message === 'string'
+              ? error.message
+              : 'Login failed'
         );
         return false;
       } catch (error) {

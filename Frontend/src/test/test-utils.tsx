@@ -1,5 +1,4 @@
-import { render } from '@testing-library/react';
-import type { RenderOptions } from '@testing-library/react';
+import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';

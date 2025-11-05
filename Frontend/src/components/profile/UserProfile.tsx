@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -61,12 +61,14 @@ export default function UserProfile() {
     text: string;
   }>({ type: null, text: '' });
 
-  useEffect(() => {
-    fetchProfile();
-    fetchActivityLogs();
+  const showMessage = useCallback((type: 'success' | 'error', text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => {
+      setMessage({ type: null, text: '' });
+    }, 5000);
   }, []);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/profile', {
@@ -85,9 +87,9 @@ export default function UserProfile() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showMessage]);
 
-  const fetchActivityLogs = async () => {
+  const fetchActivityLogs = useCallback(async () => {
     try {
       const response = await fetch('/api/profile/activity', {
         credentials: 'include',
@@ -100,7 +102,12 @@ export default function UserProfile() {
     } catch (error) {
       console.error('Failed to fetch activity logs:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchProfile();
+    fetchActivityLogs();
+  }, [fetchProfile, fetchActivityLogs]);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,13 +161,6 @@ export default function UserProfile() {
     }
   };
 
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => {
-      setMessage({ type: null, text: '' });
-    }, 5000);
-  };
-
   const formatDate = (date: Date | null) => {
     if (!date) {
       return 'Never';
@@ -169,13 +169,16 @@ export default function UserProfile() {
   };
 
   const getRoleBadge = (role: string) => {
-    const variants: Record<string, string> = {
+    const variants: Record<
+      string,
+      'default' | 'secondary' | 'destructive' | 'outline'
+    > = {
       ADMIN: 'destructive',
       LIBRARIAN: 'default',
       STAFF: 'secondary',
     };
     return (
-      <Badge variant={variants[role] as any}>
+      <Badge variant={variants[role] || 'default'}>
         <Shield className="w-3 h-3 mr-1" />
         {role}
       </Badge>

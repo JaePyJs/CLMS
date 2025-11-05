@@ -151,37 +151,7 @@ const SettingsSkeleton = () => (
 export default function App() {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
 
-  // Show loading spinner while checking authentication
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If not authenticated, show only the login form
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-        <LoginForm onLoginSuccess={() => {}} />
-      </div>
-    );
-  }
-
-  // Dev-only ErrorBoundary test route
-  if (
-    import.meta.env.DEV &&
-    typeof window !== 'undefined' &&
-    window.location.pathname === '/dev/error'
-  ) {
-    throw new Error('Dev Error: Forced exception for ErrorBoundary validation');
-  }
-
-  // Mobile optimization
+  // Mobile optimization - hooks MUST be called before any conditional returns
   const { isMobile, isTablet } = useMobileOptimization();
   usePerformanceOptimization();
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
@@ -420,6 +390,36 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showHelpMenu]);
+
+  // Show loading spinner while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, show only the login form
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <LoginForm onLoginSuccess={() => {}} />
+      </div>
+    );
+  }
+
+  // Dev-only ErrorBoundary test route
+  if (
+    import.meta.env.DEV &&
+    typeof window !== 'undefined' &&
+    window.location.pathname === '/dev/error'
+  ) {
+    throw new Error('Dev Error: Forced exception for ErrorBoundary validation');
+  }
 
   return (
     <WebSocketProvider>
@@ -1152,10 +1152,10 @@ export default function App() {
         {/* PWA Install Prompt */}
         <PWAInstallPrompt
           onInstall={() => {
-            console.log('[App] PWA installed successfully');
+            console.debug('[App] PWA installed successfully');
           }}
           onDismiss={() => {
-            console.log('[App] PWA install prompt dismissed');
+            console.debug('[App] PWA install prompt dismissed');
           }}
         />
 

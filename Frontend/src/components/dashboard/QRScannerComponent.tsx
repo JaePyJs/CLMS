@@ -30,6 +30,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { BrowserMultiFormatReader, Result } from '@zxing/library';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 interface QRScanResult {
   text: string;
@@ -305,7 +306,7 @@ export default function QRScannerComponent({
     }
   };
 
-  const handleQRScanError = (error: any) => {
+  const handleQRScanError = (error: unknown) => {
     console.error('QR scan error:', error);
 
     setStatistics((prev) => ({
@@ -314,7 +315,7 @@ export default function QRScannerComponent({
       failedScans: prev.failedScans + 1,
     }));
 
-    const errorMessage = error?.message || 'Failed to scan QR code';
+    const errorMessage = getErrorMessage(error, 'Failed to scan QR code');
     onScanError?.(errorMessage);
 
     // Don't show error toast for continuous scanning errors
@@ -326,8 +327,11 @@ export default function QRScannerComponent({
   const playBeep = () => {
     try {
       // Create audio context for beep
-      const audioContext = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      const audioContext = new AudioContextClass();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
@@ -355,10 +359,15 @@ export default function QRScannerComponent({
       if (streamRef.current) {
         const track = streamRef.current.getVideoTracks()[0];
         if (track) {
-          const capabilities = track.getCapabilities() as any;
+          const capabilities =
+            track.getCapabilities() as MediaTrackCapabilities & {
+              torch?: boolean;
+            };
           if (capabilities.torch) {
             await track.applyConstraints({
-              advanced: [{ torch: !settings.torchEnabled } as any],
+              advanced: [
+                { torch: !settings.torchEnabled },
+              ] as unknown as MediaTrackConstraintSet[],
             } as MediaTrackConstraints);
             setSettings((prev) => ({
               ...prev,

@@ -4,6 +4,12 @@ import App from '../App';
 import { render, testScreen as testingScreen } from './react19-render';
 import { TestProviders } from './TestProviders';
 
+// Type for mock component props
+type MockComponentProps = {
+  children?: React.ReactNode;
+  [key: string]: unknown;
+};
+
 // Mock the problematic Image component that uses canvas and Image constructor
 vi.mock('@/components/performance/Image', () => ({
   default: ({
@@ -15,7 +21,7 @@ vi.mock('@/components/performance/Image', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-image" {...props}>
       {children || 'Mock Image Component'}
     </div>
@@ -29,7 +35,7 @@ vi.mock('@/components/performance/Image', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-performance-image" {...props}>
       {children || 'Mock Performance Image'}
     </div>
@@ -43,7 +49,7 @@ vi.mock('@/components/performance/Image', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-avatar-image" {...props}>
       {children || 'Mock Avatar Image'}
     </div>
@@ -57,7 +63,7 @@ vi.mock('@/components/performance/Image', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-student-photo-image" {...props}>
       {children || 'Mock Student Photo Image'}
     </div>
@@ -71,7 +77,7 @@ vi.mock('@/components/performance/Image', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-book-cover-image" {...props}>
       {children || 'Mock Book Cover Image'}
     </div>
@@ -85,7 +91,7 @@ vi.mock('@/components/performance/Image', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-equipment-image" {...props}>
       {children || 'Mock Equipment Image'}
     </div>
@@ -99,7 +105,7 @@ vi.mock('@/components/performance/Image', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-barcode-image" {...props}>
       {children || 'Mock Barcode Image'}
     </div>
@@ -113,7 +119,7 @@ vi.mock('@/components/performance/Image', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-background-image" {...props}>
       {children || 'Mock Background Image'}
     </div>
@@ -122,10 +128,10 @@ vi.mock('@/components/performance/Image', () => ({
 
 // Mock UI components that cause React 19 prop warnings
 vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: any) => (
+  DropdownMenu: ({ children }: MockComponentProps) => (
     <div data-testid="mock-dropdown-menu">{children}</div>
   ),
-  DropdownMenuTrigger: ({ children, asChild }: any) => {
+  DropdownMenuTrigger: ({ children, asChild }: MockComponentProps) => {
     // When asChild is true, render children directly without wrapping in button
     if (asChild) {
       return children;
@@ -138,7 +144,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-dropdown-content" {...props}>
       {children}
     </div>
@@ -148,7 +154,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-dropdown-item" {...props}>
       {children}
     </div>
@@ -158,7 +164,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-dropdown-checkbox-item" {...props}>
       {children}
     </div>
@@ -168,33 +174,33 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-dropdown-radio-item" {...props}>
       {children}
     </div>
   ),
-  DropdownMenuLabel: ({ children, ...props }: any) => (
+  DropdownMenuLabel: ({ children, ...props }: MockComponentProps) => (
     <div data-testid="mock-dropdown-label" {...props}>
       {children}
     </div>
   ),
-  DropdownMenuSeparator: ({ ...props }: any) => (
+  DropdownMenuSeparator: ({ ...props }: MockComponentProps) => (
     <hr data-testid="mock-dropdown-separator" {...props} />
   ),
-  DropdownMenuShortcut: ({ children, ...props }: any) => (
+  DropdownMenuShortcut: ({ children, ...props }: MockComponentProps) => (
     <span data-testid="mock-dropdown-shortcut" {...props}>
       {children}
     </span>
   ),
-  DropdownMenuGroup: ({ children, ...props }: any) => (
+  DropdownMenuGroup: ({ children, ...props }: MockComponentProps) => (
     <div data-testid="mock-dropdown-group" {...props}>
       {children}
     </div>
   ),
-  DropdownMenuPortal: ({ children }: any) => (
+  DropdownMenuPortal: ({ children }: MockComponentProps) => (
     <div data-testid="mock-dropdown-portal">{children}</div>
   ),
-  DropdownMenuSub: ({ children }: any) => (
+  DropdownMenuSub: ({ children }: MockComponentProps) => (
     <div data-testid="mock-dropdown-sub">{children}</div>
   ),
   DropdownMenuSubContent: ({
@@ -203,12 +209,16 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
     onOpenChange,
     onValueChange,
     ...props
-  }: any) => (
+  }: MockComponentProps) => (
     <div data-testid="mock-dropdown-sub-content" {...props}>
       {children}
     </div>
   ),
-  DropdownMenuSubTrigger: ({ children, asChild, ...props }: any) => {
+  DropdownMenuSubTrigger: ({
+    children,
+    asChild,
+    ...props
+  }: MockComponentProps) => {
     // When asChild is true, render children directly
     if (asChild) {
       return children;
@@ -219,7 +229,11 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
       </div>
     );
   },
-  DropdownMenuRadioGroup: ({ children, onValueChange, ...props }: any) => (
+  DropdownMenuRadioGroup: ({
+    children,
+    onValueChange,
+    ...props
+  }: MockComponentProps) => (
     <div data-testid="mock-dropdown-radio-group" {...props}>
       {children}
     </div>
@@ -228,37 +242,42 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
 
 // Mock shadcn/ui Dialog components
 vi.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ children, open, onOpenChange, ...props }: any) => (
+  Dialog: ({ children, open, onOpenChange, ...props }: MockComponentProps) => (
     <div data-testid="mock-dialog" {...props}>
       {children}
     </div>
   ),
-  DialogContent: ({ children, onOpenChange, onValueChange, ...props }: any) => (
+  DialogContent: ({
+    children,
+    onOpenChange,
+    onValueChange,
+    ...props
+  }: MockComponentProps) => (
     <div data-testid="mock-dialog-content" {...props}>
       {children}
     </div>
   ),
-  DialogHeader: ({ children, ...props }: any) => (
+  DialogHeader: ({ children, ...props }: MockComponentProps) => (
     <div data-testid="mock-dialog-header" {...props}>
       {children}
     </div>
   ),
-  DialogTitle: ({ children, ...props }: any) => (
+  DialogTitle: ({ children, ...props }: MockComponentProps) => (
     <h2 data-testid="mock-dialog-title" {...props}>
       {children}
     </h2>
   ),
-  DialogDescription: ({ children, ...props }: any) => (
+  DialogDescription: ({ children, ...props }: MockComponentProps) => (
     <p data-testid="mock-dialog-description" {...props}>
       {children}
     </p>
   ),
-  DialogFooter: ({ children, ...props }: any) => (
+  DialogFooter: ({ children, ...props }: MockComponentProps) => (
     <div data-testid="mock-dialog-footer" {...props}>
       {children}
     </div>
   ),
-  DialogTrigger: ({ children, asChild, ...props }: any) => {
+  DialogTrigger: ({ children, asChild, ...props }: MockComponentProps) => {
     if (asChild) {
       return children;
     }
@@ -272,27 +291,51 @@ vi.mock('@/components/ui/dialog', () => ({
 
 // Mock shadcn/ui Select components
 vi.mock('@/components/ui/select', () => ({
-  Select: ({ children, value, onValueChange, ...props }: any) => (
+  Select: ({
+    children,
+    value,
+    onValueChange,
+    ...props
+  }: MockComponentProps) => (
     <div data-testid="mock-select" {...props}>
       {children}
     </div>
   ),
-  SelectContent: ({ children, onOpenChange, onValueChange, ...props }: any) => (
+  SelectContent: ({
+    children,
+    onOpenChange,
+    onValueChange,
+    ...props
+  }: MockComponentProps) => (
     <div data-testid="mock-select-content" {...props}>
       {children}
     </div>
   ),
-  SelectItem: ({ children, value, onValueChange, ...props }: any) => (
+  SelectItem: ({
+    children,
+    value,
+    onValueChange,
+    ...props
+  }: MockComponentProps) => (
     <div data-testid="mock-select-item" data-value={value} {...props}>
       {children}
     </div>
   ),
-  SelectTrigger: ({ children, onOpenChange, onValueChange, ...props }: any) => (
+  SelectTrigger: ({
+    children,
+    onOpenChange,
+    onValueChange,
+    ...props
+  }: MockComponentProps) => (
     <button data-testid="mock-select-trigger" {...props}>
       {children}
     </button>
   ),
-  SelectValue: ({ placeholder, onValueChange, ...props }: any) => (
+  SelectValue: ({
+    placeholder,
+    onValueChange,
+    ...props
+  }: MockComponentProps) => (
     <span data-testid="mock-select-value" {...props}>
       {placeholder}
     </span>
@@ -301,22 +344,32 @@ vi.mock('@/components/ui/select', () => ({
 
 // Mock shadcn/ui Tabs components
 vi.mock('@/components/ui/tabs', () => ({
-  Tabs: ({ children, value, onValueChange, ...props }: any) => (
+  Tabs: ({ children, value, onValueChange, ...props }: MockComponentProps) => (
     <div data-testid="mock-tabs" {...props}>
       {children}
     </div>
   ),
-  TabsList: ({ children, onValueChange, ...props }: any) => (
+  TabsList: ({ children, onValueChange, ...props }: MockComponentProps) => (
     <div data-testid="mock-tabs-list" {...props}>
       {children}
     </div>
   ),
-  TabsTrigger: ({ children, value, onValueChange, ...props }: any) => (
+  TabsTrigger: ({
+    children,
+    value,
+    onValueChange,
+    ...props
+  }: MockComponentProps) => (
     <button data-testid="mock-tabs-trigger" data-value={value} {...props}>
       {children}
     </button>
   ),
-  TabsContent: ({ children, value, onValueChange, ...props }: any) => (
+  TabsContent: ({
+    children,
+    value,
+    onValueChange,
+    ...props
+  }: MockComponentProps) => (
     <div data-testid="mock-tabs-content" data-value={value} {...props}>
       {children}
     </div>
@@ -341,7 +394,10 @@ vi.mock('@/services/imageOptimizationService', () => {
     initialize: async () => {},
     cleanup: () => {},
     getOptimalFormat: () => 'webp',
-    generateOptimizedUrl: (baseUrl: string, config: any = {}) => {
+    generateOptimizedUrl: (
+      baseUrl: string,
+      config: Record<string, unknown> = {}
+    ) => {
       const url = new URL(baseUrl, 'http://localhost:3000');
       Object.entries(config).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -350,18 +406,29 @@ vi.mock('@/services/imageOptimizationService', () => {
       });
       return url.toString();
     },
-    generateSrcSet: (baseUrl: string, config: any = {}) => {
+    generateSrcSet: (baseUrl: string, config: Record<string, unknown> = {}) => {
       const sizes = [1, 2, 3];
       return sizes
         .map((size) => {
-          const width = config.width ? config.width * size : config.width;
-          const height = config.height ? config.height * size : config.height;
+          const width = config.width
+            ? (config.width as number) * size
+            : config.width;
+          const height = config.height
+            ? (config.height as number) * size
+            : config.height;
           const url = new URL(baseUrl, 'http://localhost:3000');
-          if (width) url.searchParams.set('width', width.toString());
-          if (height) url.searchParams.set('height', height.toString());
-          if (config.quality)
+          if (width) {
+            url.searchParams.set('width', width.toString());
+          }
+          if (height) {
+            url.searchParams.set('height', height.toString());
+          }
+          if (config.quality) {
             url.searchParams.set('quality', config.quality.toString());
-          if (config.format) url.searchParams.set('format', config.format);
+          }
+          if (config.format) {
+            url.searchParams.set('format', config.format);
+          }
           return `${url.toString()} ${size}x`;
         })
         .join(', ');

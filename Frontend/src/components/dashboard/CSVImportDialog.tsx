@@ -32,7 +32,7 @@ interface CSVImportDialogProps {
   title?: string;
   description?: string;
   templateColumns: string[];
-  onImport: (data: any[]) => Promise<void>;
+  onImport: (data: Record<string, unknown>[]) => Promise<void>;
   entityName?: string;
 }
 
@@ -222,7 +222,7 @@ export function CSVImportDialog({
         const values = line
           .split(',')
           .map((v) => v.trim().replace(/^"|"$/g, ''));
-        const obj: any = {};
+        const obj = {};
         headers.forEach((header, index) => {
           obj[header] = values[index] || '';
         });

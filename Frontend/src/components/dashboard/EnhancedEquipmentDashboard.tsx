@@ -353,7 +353,7 @@ export function EnhancedEquipmentDashboard() {
     loadData();
   }, []);
 
-  // Filter equipment based on search and filters
+  // Filter equipment based on _search and filters
   const filteredEquipment = equipment.filter((item) => {
     const matchesSearch =
       searchQuery === '' ||
@@ -465,12 +465,12 @@ export function EnhancedEquipmentDashboard() {
   // Action handlers
   const handleStartSession = (equipment: EquipmentItem) => {
     // Implementation for starting equipment session
-    console.log('Starting session for equipment:', equipment.id);
+    console.debug('Starting session for equipment:', equipment.id);
   };
 
   const handleEndSession = (sessionId: string) => {
     // Implementation for ending equipment session
-    console.log('Ending session:', sessionId);
+    console.debug('Ending session:', sessionId);
   };
 
   const handleScheduleMaintenance = (equipment: EquipmentItem) => {
@@ -619,13 +619,13 @@ export function EnhancedEquipmentDashboard() {
         </Alert>
       )}
 
-      {/* Filters and Search */}
+      {/* Filters and _Search */}
       <div className="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4">
         <div className="flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search equipment..."
+              placeholder="_Search equipment..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"

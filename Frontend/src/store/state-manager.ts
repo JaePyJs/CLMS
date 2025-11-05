@@ -5,8 +5,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import {
+  subscribeWithSelector,
+  persist,
+  createJSONStorage,
+} from 'zustand/middleware';
 
 // Types for our state management system
 export type StateUpdater<T> = (updater: T | ((prev: T) => T)) => void;

@@ -32,8 +32,8 @@ router.get(
 
     try {
       logger.info('List all students request', {
-        userId: req.user!.userId,
-        username: req.user!.username,
+        userId: req.user.userId,
+        username: req.user.username,
         ip: req.ip,
       });
 
@@ -41,7 +41,7 @@ router.get(
 
       logger.info('Students list retrieved successfully', {
         count: students.length,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -81,7 +81,7 @@ router.get(
     // Validate ID parameter
     if (!id) {
       logger.warn('Get student failed: missing student ID', {
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -96,8 +96,8 @@ router.get(
     try {
       logger.info('Get student by ID request', {
         studentId: id,
-        userId: req.user!.userId,
-        username: req.user!.username,
+        userId: req.user.userId,
+        username: req.user.username,
         ip: req.ip,
       });
 
@@ -106,7 +106,7 @@ router.get(
       logger.info('Student retrieved successfully', {
         studentId: id,
         student_number: student.student_id,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -118,7 +118,7 @@ router.get(
       if (error instanceof Error && error.message === 'Student not found') {
         logger.warn('Student not found', {
           studentId: id,
-          userId: req.user!.userId,
+          userId: req.user.userId,
           ip: req.ip,
         });
 
@@ -173,7 +173,7 @@ router.post(
     if (missingFields.length > 0) {
       logger.warn('Student creation failed: missing required fields', {
         missingFields,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -189,8 +189,8 @@ router.post(
       logger.info('Create student request', {
         student_id: studentData.student_id,
         name: `${studentData.first_name} ${studentData.last_name}`,
-        userId: req.user!.userId,
-        username: req.user!.username,
+        userId: req.user.userId,
+        username: req.user.username,
         ip: req.ip,
       });
 
@@ -199,7 +199,7 @@ router.post(
       logger.info('Student created successfully', {
         studentId: student.id,
         student_id: student.student_id,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -212,7 +212,7 @@ router.post(
       if (error instanceof Error && error.message.includes('already exists')) {
         logger.warn('Student creation failed: duplicate student ID', {
           student_id: studentData.student_id,
-          userId: req.user!.userId,
+          userId: req.user.userId,
           ip: req.ip,
         });
 
@@ -256,7 +256,7 @@ router.put(
     // Validate ID parameter
     if (!id) {
       logger.warn('Update student failed: missing student ID', {
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -289,7 +289,7 @@ router.put(
     if (updateFields.length === 0) {
       logger.warn('Update student failed: no valid fields to update', {
         studentId: id,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -305,8 +305,8 @@ router.put(
       logger.info('Update student request', {
         studentId: id,
         updateFields,
-        userId: req.user!.userId,
-        username: req.user!.username,
+        userId: req.user.userId,
+        username: req.user.username,
         ip: req.ip,
       });
 
@@ -315,7 +315,7 @@ router.put(
       logger.info('Student updated successfully', {
         studentId: id,
         student_id: student.student_id,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -328,7 +328,7 @@ router.put(
       if (error instanceof Error && error.message === 'Student not found') {
         logger.warn('Update student failed: student not found', {
           studentId: id,
-          userId: req.user!.userId,
+          userId: req.user.userId,
           ip: req.ip,
         });
 
@@ -371,7 +371,7 @@ router.delete(
     // Validate ID parameter
     if (!id) {
       logger.warn('Delete student failed: missing student ID', {
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -386,8 +386,8 @@ router.delete(
     try {
       logger.info('Delete student request', {
         studentId: id,
-        userId: req.user!.userId,
-        username: req.user!.username,
+        userId: req.user.userId,
+        username: req.user.username,
         ip: req.ip,
       });
 
@@ -395,7 +395,7 @@ router.delete(
 
       logger.info('Student deleted successfully', {
         studentId: id,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -407,7 +407,7 @@ router.delete(
       if (error instanceof Error && error.message === 'Student not found') {
         logger.warn('Delete student failed: student not found', {
           studentId: id,
-          userId: req.user!.userId,
+          userId: req.user.userId,
           ip: req.ip,
         });
 
@@ -523,7 +523,7 @@ router.get(
         query,
         limit,
         offset,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -555,7 +555,7 @@ router.get(
       logger.info('Students search completed', {
         query,
         count: students.length,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -573,7 +573,7 @@ router.get(
       if (error instanceof Error && error.name === 'ZodError') {
         logger.warn('Search students failed: validation error', {
           query,
-          userId: req.user!.userId,
+          userId: req.user.userId,
           ip: req.ip,
         });
 
@@ -617,7 +617,7 @@ router.get(
     try {
       logger.info('Get student by barcode request', {
         barcode,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -632,7 +632,7 @@ router.get(
       if (!student) {
         logger.warn('Student not found by barcode', {
           barcode,
-          userId: req.user!.userId,
+          userId: req.user.userId,
           ip: req.ip,
         });
 
@@ -647,7 +647,7 @@ router.get(
       logger.info('Student retrieved by barcode successfully', {
         barcode,
         studentId: student.id,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -659,7 +659,7 @@ router.get(
       if (error instanceof Error && error.name === 'ZodError') {
         logger.warn('Get student by barcode failed: validation error', {
           barcode,
-          userId: req.user!.userId,
+          userId: req.user.userId,
           ip: req.ip,
         });
 
@@ -703,7 +703,7 @@ router.post(
     try {
       logger.info('Generate barcode request', {
         studentId,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -719,7 +719,7 @@ router.post(
       logger.info('Barcode generated successfully', {
         studentId,
         barcode,
-        userId: req.user!.userId,
+        userId: req.user.userId,
         ip: req.ip,
       });
 
@@ -732,7 +732,7 @@ router.post(
       if (error instanceof Error && error.message === 'Student not found') {
         logger.warn('Generate barcode failed: student not found', {
           studentId,
-          userId: req.user!.userId,
+          userId: req.user.userId,
           ip: req.ip,
         });
 

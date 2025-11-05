@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -73,11 +73,14 @@ export default function AttendanceReports() {
     text: string;
   }>({ type: null, text: '' });
 
-  useEffect(() => {
-    fetchAttendance();
-  }, [selectedDate, gradeFilter]);
+  const showMessage = useCallback((type: 'success' | 'error', text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => {
+      setMessage({ type: null, text: '' });
+    }, 5000);
+  }, []);
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -103,7 +106,11 @@ export default function AttendanceReports() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate, gradeFilter, showMessage]);
+
+  useEffect(() => {
+    fetchAttendance();
+  }, [fetchAttendance]);
 
   const exportAttendance = async () => {
     try {
@@ -135,13 +142,6 @@ export default function AttendanceReports() {
       console.error('Failed to export attendance:', error);
       showMessage('error', 'Failed to export attendance');
     }
-  };
-
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => {
-      setMessage({ type: null, text: '' });
-    }, 5000);
   };
 
   const formatTime = (date: Date | null) => {

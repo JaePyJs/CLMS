@@ -1,11 +1,9 @@
 import '@testing-library/jest-dom';
 import { beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, render, type RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import { render } from '@testing-library/react';
-import type { RenderOptions } from '@testing-library/react';
 import React from 'react';
 
 // Global cleanup after each test
@@ -111,11 +109,12 @@ vi.stubGlobal(
           // Parse query string
           init.split('&').forEach((pair) => {
             const [key, value] = pair.split('=');
-            if (key)
+            if (key) {
               params.set(
                 decodeURIComponent(key),
                 decodeURIComponent(value || '')
               );
+            }
           });
         } else if (init) {
           Object.entries(init).forEach(([key, value]) =>
@@ -198,9 +197,13 @@ vi.stubGlobal(
 const MockFile = vi
   .fn()
   .mockImplementation(
-    (bits: any[], name: string, options: FilePropertyBag = {}) => ({
+    (bits: BlobPart[], name: string, options: FilePropertyBag = {}) => ({
       name,
-      size: bits.reduce((acc, bit) => acc + bit.length, 0),
+      size: bits.reduce(
+        (acc, bit) =>
+          acc + (bit as string | ArrayBuffer | Blob).toString().length,
+        0
+      ),
       type: options.type || '',
       lastModified: Date.now(),
       slice: vi.fn(),
@@ -215,15 +218,21 @@ vi.stubGlobal('File', MockFile);
 
 vi.stubGlobal(
   'Blob',
-  vi.fn().mockImplementation((bits: any[], options: BlobPropertyBag = {}) => ({
-    size: bits.reduce((acc, bit) => acc + bit.length, 0),
-    type: options.type || '',
-    slice: vi.fn(),
-    stream: vi.fn(),
-    text: vi.fn().mockResolvedValue(''),
-    arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
-    bytes: vi.fn().mockResolvedValue(new Uint8Array()),
-  }))
+  vi
+    .fn()
+    .mockImplementation((bits: BlobPart[], options: BlobPropertyBag = {}) => ({
+      size: bits.reduce(
+        (acc, bit) =>
+          acc + (bit as string | ArrayBuffer | Blob).toString().length,
+        0
+      ),
+      type: options.type || '',
+      slice: vi.fn(),
+      stream: vi.fn(),
+      text: vi.fn().mockResolvedValue(''),
+      arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+      bytes: vi.fn().mockResolvedValue(new Uint8Array()),
+    }))
 );
 
 vi.stubGlobal(
@@ -263,7 +272,7 @@ vi.stubGlobal(
 );
 
 // Mock IndexedDB for OfflineSyncService
-const createMockIDBRequest = (result?: any, error?: any) => ({
+const createMockIDBRequest = (result?: unknown, error?: unknown) => ({
   result,
   error,
   onsuccess: null,
@@ -271,7 +280,7 @@ const createMockIDBRequest = (result?: any, error?: any) => ({
   readyState: 'done',
 });
 
-const createMockIDBOpenDBRequest = (result?: any, error?: any) => ({
+const createMockIDBOpenDBRequest = (result?: unknown, error?: unknown) => ({
   ...createMockIDBRequest(result, error),
   onblocked: null,
   onupgradeneeded: null,
@@ -510,7 +519,7 @@ export const measureRenderPerformance = async (
   const end = performance.now();
   const duration = end - start;
 
-  console.log(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
+  console.debug(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
 
   if (duration > 100) {
     console.warn(
@@ -675,11 +684,11 @@ beforeEach(() => {
 
 // Global setup
 beforeAll(() => {
-  console.log('🧪 Setting up comprehensive frontend test environment');
+  console.debug('🧪 Setting up comprehensive frontend test environment');
 });
 
 afterAll(() => {
-  console.log('🧹 Cleaning up frontend test environment');
+  console.debug('🧹 Cleaning up frontend test environment');
 });
 
 // Re-export testing-library utilities

@@ -193,7 +193,7 @@ export const notificationService = {
 
     const delay = data.scheduled_for.getTime() - Date.now();
 
-    notificationQueue.add('send-scheduled-notification', data, {
+    void notificationQueue.add('send-scheduled-notification', data, {
       delay: delay,
       attempts: 3,
       backoff: 2000,

@@ -49,7 +49,7 @@ interface Book {
   isAvailable?: boolean;
   created_at?: string;
   updated_at?: string;
-  book_checkouts?: any[];
+  book_checkouts?: Array<Record<string, unknown>>;
 }
 
 interface EnhancedBookSearchProps {
@@ -142,7 +142,7 @@ export default function EnhancedBookSearch({
   const fetchPopularBooks = useCallback(async () => {
     try {
       const response = await apiClient.get<PopularBooks>(
-        '/api/search/popular',
+        '/api/_search/popular',
         { limit: 8 }
       );
 
@@ -157,7 +157,7 @@ export default function EnhancedBookSearch({
   // Fetch new books
   const fetchNewBooks = useCallback(async () => {
     try {
-      const response = await apiClient.get<PopularBooks>('/api/search/new', {
+      const response = await apiClient.get<PopularBooks>('/api/_search/new', {
         limit: 8,
       });
 
@@ -173,7 +173,7 @@ export default function EnhancedBookSearch({
   const fetchAvailableBooks = useCallback(async () => {
     try {
       const response = await apiClient.get<PopularBooks>(
-        '/api/search/available',
+        '/api/_search/available',
         { limit: 8 }
       );
 
@@ -202,7 +202,7 @@ export default function EnhancedBookSearch({
     setLoading(true);
     try {
       const response = await apiClient.get<SearchSuggestion>(
-        '/api/search/suggestions',
+        '/api/_search/suggestions',
         {
           query: searchQuery,
           limit: 5,
@@ -221,7 +221,7 @@ export default function EnhancedBookSearch({
     }
   }, []);
 
-  // Debounced search input handler
+  // Debounced _search input handler
   const handleSearchInput = (value: string) => {
     setQuery(value);
     setCurrentPage(1);
@@ -243,7 +243,7 @@ export default function EnhancedBookSearch({
     }
   };
 
-  // Enhanced search function
+  // Enhanced _search function
   const performSearch = async (page = 1, resetPagination = true) => {
     if (
       !query.trim() &&
@@ -254,13 +254,14 @@ export default function EnhancedBookSearch({
 
     setLoading(true);
     try {
-      const searchParams: any = {
+      // Build query params
+      const searchParams: Record<string, unknown> = {
         page,
         limit: 20,
         includeCovers: filters.includeCovers,
       };
 
-      // Add filters to search params
+      // Add filters to _search params
       if (query) {
         searchParams.query = query;
       }
@@ -293,7 +294,7 @@ export default function EnhancedBookSearch({
       }
 
       const response = await apiClient.get<SearchResponse>(
-        '/api/search/books',
+        '/api/_search/books',
         searchParams
       );
 
@@ -320,8 +321,8 @@ export default function EnhancedBookSearch({
         }
       }
     } catch (error) {
-      console.error('Search error:', error);
-      toast.error('Failed to perform search');
+      console.error('_Search error:', error);
+      toast.error('Failed to perform _search');
     } finally {
       setLoading(false);
     }
@@ -334,7 +335,7 @@ export default function EnhancedBookSearch({
     }
 
     try {
-      const params: any = { limit: 8 };
+      const params: Record<string, unknown> = { limit: 8 };
       if (book.category) {
         params.category = book.category;
       }
@@ -343,7 +344,7 @@ export default function EnhancedBookSearch({
       }
 
       const response = await apiClient.get<Recommendation[]>(
-        '/api/search/recommendations',
+        '/api/_search/recommendations',
         params
       );
 
@@ -376,7 +377,7 @@ export default function EnhancedBookSearch({
     setShowSuggestions(false);
   };
 
-  // Apply saved search
+  // Apply saved _search
   const applySuggestion = (
     type: 'title' | 'author' | 'category',
     value: string
@@ -449,12 +450,12 @@ export default function EnhancedBookSearch({
 
   return (
     <div className="space-y-6">
-      {/* Search Section */}
+      {/* _Search Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="w-5 h-5" />
-            Enhanced Book Search
+            Enhanced Book _Search
           </CardTitle>
           <CardDescription>
             Discover books with advanced filtering, recommendations, and cover
@@ -462,14 +463,14 @@ export default function EnhancedBookSearch({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search Bar with Suggestions */}
+          {/* _Search Bar with Suggestions */}
           <div className="relative">
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
-                  placeholder="Search by title, author, ISBN, or keyword..."
+                  placeholder="_Search by title, author, ISBN, or keyword..."
                   value={query}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => query.length >= 2 && setShowSuggestions(true)}
@@ -555,7 +556,7 @@ export default function EnhancedBookSearch({
               </div>
 
               <Button onClick={() => performSearch()} disabled={loading}>
-                {loading ? 'Searching...' : 'Search'}
+                {loading ? 'Searching...' : '_Search'}
               </Button>
 
               <Button
@@ -592,8 +593,11 @@ export default function EnhancedBookSearch({
 
               <Select
                 value={filters.sortBy ?? 'title'}
-                onValueChange={(value: any) => {
-                  setFilters({ ...filters, sortBy: value });
+                onValueChange={(value: string) => {
+                  setFilters({
+                    ...filters,
+                    sortBy: value as SearchFilters['sortBy'],
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -613,8 +617,11 @@ export default function EnhancedBookSearch({
 
               <Select
                 value={filters.sortOrder ?? 'asc'}
-                onValueChange={(value: any) => {
-                  setFilters({ ...filters, sortOrder: value });
+                onValueChange={(value: string) => {
+                  setFilters({
+                    ...filters,
+                    sortOrder: value as SearchFilters['sortOrder'],
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -638,7 +645,7 @@ export default function EnhancedBookSearch({
                   <label className="text-sm font-medium">Category</label>
                   <Select
                     value={filters.category || ''}
-                    onValueChange={(value: any) => {
+                    onValueChange={(value: string) => {
                       setFilters({ ...filters, category: value });
                       setCurrentPage(1);
                       performSearch();
@@ -697,7 +704,7 @@ export default function EnhancedBookSearch({
                   <label className="text-sm font-medium">Reading Level</label>
                   <Select
                     value={filters.readingLevel || ''}
-                    onValueChange={(value: any) => {
+                    onValueChange={(value: string) => {
                       setFilters({ ...filters, readingLevel: value });
                       setCurrentPage(1);
                       performSearch();
@@ -927,13 +934,13 @@ export default function EnhancedBookSearch({
         </Card>
       </div>
 
-      {/* Search Results */}
+      {/* _Search Results */}
       {searchResults && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Search Results</CardTitle>
+                <CardTitle>_Search Results</CardTitle>
                 <CardDescription>
                   Found {searchResults.pagination.total} books
                   {query && ` for "${query}"`}
@@ -968,7 +975,7 @@ export default function EnhancedBookSearch({
                       // Fallback to hash navigation for simple routing
                       window.location.hash = `book/${book.id}`;
                     }
-                    console.log('Navigate to book details:', book.id);
+                    console.debug('Navigate to book details:', book.id);
                   }}
                 >
                   <CardContent className="p-4">
@@ -1055,7 +1062,7 @@ export default function EnhancedBookSearch({
               Recommended for You
             </CardTitle>
             <CardDescription>
-              Based on your search and library popularity
+              Based on your _search and library popularity
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -1072,7 +1079,7 @@ export default function EnhancedBookSearch({
                       // Fallback to hash navigation for simple routing
                       window.location.hash = `book/${book.id}`;
                     }
-                    console.log('Navigate to recommended book:', book.id);
+                    console.debug('Navigate to recommended book:', book.id);
                   }}
                 >
                   <CardContent className="p-4">

@@ -6,8 +6,11 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import type { UseQueryOptions } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  type UseQueryOptions,
+} from '@tanstack/react-query';
 
 // Performance monitoring types
 interface PerformanceMetrics {
@@ -169,8 +172,9 @@ class PerformanceStore {
         timestamp: Date.now(),
       };
 
+      // reportingEndpoint is validated as non-null by the if statement above
       navigator.sendBeacon(
-        PERFORMANCE_CONFIG.reportingEndpoint!,
+        PERFORMANCE_CONFIG.reportingEndpoint,
         JSON.stringify(data)
       );
     } catch (error) {

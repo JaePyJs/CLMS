@@ -41,9 +41,44 @@ import {
   BarChart3,
 } from 'lucide-react';
 
+interface RawUtilizationItem {
+  type?: string;
+  total?: number;
+  inUse?: number;
+  utilizationRate?: number;
+}
+
+interface RawPeakUsageTime {
+  hour?: number;
+  sessions?: number;
+  timeRange?: string;
+}
+
+interface RawMaintenanceItem {
+  equipmentId?: string;
+  nextMaintenance?: string;
+  type?: 'Preventive' | 'Corrective';
+}
+
+interface EquipmentAnalyticsData {
+  utilizationByType?: RawUtilizationItem[];
+  peakUsageTimes?: RawPeakUsageTime[];
+  maintenanceInsights?: {
+    maintenanceSchedule?: RawMaintenanceItem[];
+    averageUptime?: number;
+    equipmentNeedingMaintenance?: number;
+  };
+  overallUtilization?: number;
+  recommendations?: string[];
+  equipment?: {
+    totalSessions?: number;
+    averageSessionDuration?: number;
+  };
+}
+
 interface EquipmentUtilizationAnalyticsProps {
   timeframe: 'day' | 'week' | 'month';
-  data?: any;
+  data?: EquipmentAnalyticsData;
   isLoading?: boolean;
 }
 
@@ -92,10 +127,10 @@ export function EquipmentUtilizationAnalytics({
     }
   }, [data, timeframe]);
 
-  const processEquipmentData = (analyticsData: any) => {
+  const processEquipmentData = (analyticsData: EquipmentAnalyticsData) => {
     // Process utilization data with safe defaults
     const utilization = (analyticsData?.utilizationByType ?? []).map(
-      (item: any) => {
+      (item: RawUtilizationItem) => {
         const rate = Number(item?.utilizationRate ?? 0);
         return {
           type: String(item?.type ?? 'Unknown'),
@@ -112,7 +147,7 @@ export function EquipmentUtilizationAnalytics({
 
     // Process peak usage times with safe defaults
     const peakTimes = (analyticsData?.peakUsageTimes ?? []).map(
-      (time: any) => ({
+      (time: RawPeakUsageTime) => ({
         hour: Number(time?.hour ?? 0),
         sessions: Number(time?.sessions ?? 0),
         timeRange: String(time?.timeRange ?? ''),
@@ -124,7 +159,7 @@ export function EquipmentUtilizationAnalytics({
     // Process maintenance insights with safe defaults
     const schedule =
       analyticsData?.maintenanceInsights?.maintenanceSchedule ?? [];
-    const maintenance = schedule.map((item: any) => ({
+    const maintenance = schedule.map((item: RawMaintenanceItem) => ({
       equipmentId: String(item?.equipmentId ?? 'UNKNOWN'),
       nextMaintenance: String(item?.nextMaintenance ?? ''),
       type:

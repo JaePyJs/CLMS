@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { AlertCircle, RefreshCw, Trash2, Download, Search } from 'lucide-react';
+import { AlertCircle, RefreshCw, Trash2, Download } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -26,7 +26,7 @@ interface ErrorLog {
 }
 
 export default function ErrorDashboard() {
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const [errors, setErrors] = useState<ErrorLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState<'ALL' | 'ERROR' | 'WARN'>('ALL');
@@ -179,7 +179,7 @@ export default function ErrorDashboard() {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="Search errors..."
+                placeholder="_Search errors..."
                 className="w-full px-3 py-2 border rounded-md text-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -257,7 +257,7 @@ export default function ErrorDashboard() {
             only warnings
           </p>
           <p>
-            <strong>Search:</strong> Find specific error messages or endpoints
+            <strong>_Search:</strong> Find specific error messages or endpoints
           </p>
           <p>
             <strong>Export:</strong> Download error logs as JSON for analysis

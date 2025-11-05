@@ -1,9 +1,8 @@
-import React, { Suspense, lazy } from 'react';
-import type { ComponentType } from 'react';
+import React, { Suspense, lazy, type ComponentType } from 'react';
 import { Loader2 } from 'lucide-react';
 
 interface LazyLoadProps {
-  loader: () => Promise<{ default: ComponentType<any> }>;
+  loader: () => Promise<{ default: ComponentType<Record<string, unknown>> }>;
   fallback?: React.ReactNode;
   error?: React.ReactNode;
   delay?: number;
@@ -151,7 +150,7 @@ export function OptimizedLazyLoad({
 
 // Preload utilities
 export function preloadComponent(
-  loader: () => Promise<{ default: ComponentType<any> }>
+  loader: () => Promise<{ default: ComponentType<Record<string, unknown>> }>
 ) {
   // Start loading the component in the background
   loader().catch(() => {
@@ -197,12 +196,12 @@ export function useIntersectionObserver(
 
 // Hook for lazy loading components when they come into view
 export function useLazyLoad(
-  loader: () => Promise<{ default: ComponentType<any> }>,
+  loader: () => Promise<{ default: ComponentType<Record<string, unknown>> }>,
   options: IntersectionObserverInit = {}
 ) {
-  const [Component, setComponent] = React.useState<ComponentType<any> | null>(
-    null
-  );
+  const [Component, setComponent] = React.useState<ComponentType<
+    Record<string, unknown>
+  > | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<Error | null>(null);
   const ref = React.useRef<HTMLDivElement>(null);
@@ -345,7 +344,7 @@ export function useBundleSizeMonitor() {
     try {
       observer.observe({ entryTypes: ['resource'] });
     } catch (error) {
-      console.log('Performance observer not supported');
+      console.debug('Performance observer not supported');
     }
 
     return () => observer.disconnect();

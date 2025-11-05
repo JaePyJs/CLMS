@@ -1,5 +1,4 @@
-import { openDB } from 'idb';
-import type { IDBPDatabase } from 'idb';
+import { openDB, type IDBPDatabase } from 'idb';
 import { apiClient } from './api';
 
 // Types for offline queue

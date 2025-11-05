@@ -112,7 +112,7 @@ function StudentModalExample() {
 }
 
 // ============================================================================
-// Example 3: Search and Filter State Management
+// Example 3: _Search and Filter State Management
 // ============================================================================
 
 function StudentSearchExample() {
@@ -123,7 +123,7 @@ function StudentSearchExample() {
   // const [sortBy, setSortBy] = useState('name');
   // const [sortOrder, setSortOrder] = useState('asc');
 
-  // Use the new search filters hook:
+  // Use the new _search filters hook:
   const [state, actions, computed] = useSearchFilters({
     defaultFilters: { gradeLevel: '', isActive: '' },
     defaultSortBy: 'name',
@@ -155,10 +155,10 @@ function StudentSearchExample() {
 
   return (
     <div>
-      {/* Search Input */}
+      {/* _Search Input */}
       <input
         type="text"
-        placeholder="Search students..."
+        placeholder="_Search students..."
         value={state.searchTerm}
         onChange={(e) => actions.setSearchTerm(e.target.value)}
       />
@@ -327,7 +327,7 @@ function DashboardExample() {
     {
       interval: 30000, // Refresh every 30 seconds
       onSuccess: (data) => {
-        console.log('Dashboard data refreshed:', data);
+        console.debug('Dashboard data refreshed:', data);
       },
       onError: (error) => {
         console.error('Dashboard refresh failed:', error);

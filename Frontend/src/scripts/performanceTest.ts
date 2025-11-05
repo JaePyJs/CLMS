@@ -47,8 +47,8 @@ class PerformanceTest {
     metrics: any;
     errors: string[];
   }> {
-    console.log(`🧪 Running test: ${scenario.name}`);
-    console.log(`📝 ${scenario.description}`);
+    console.debug(`🧪 Running test: ${scenario.name}`);
+    console.debug(`📝 ${scenario.description}`);
 
     const startTime = Date.now();
     const errors: string[] = [];
@@ -63,7 +63,7 @@ class PerformanceTest {
       // Execute test steps
       for (const step of scenario.steps) {
         try {
-          console.log(`  ➡️ ${step.action}`);
+          console.debug(`  ➡️ ${step.action}`);
 
           if (step.measure) {
             const stepStartTime = performance.now();
@@ -131,13 +131,13 @@ class PerformanceTest {
 
       this.testResults.push(result);
 
-      console.log(
+      console.debug(
         `${passed ? '✅' : '❌'} Test ${scenario.name}: ${passed ? 'PASSED' : 'FAILED'} (${duration.toFixed(2)}ms)`
       );
 
       if (errors.length > 0) {
-        console.log('  Errors:');
-        errors.forEach((error) => console.log(`    - ${error}`));
+        console.debug('  Errors:');
+        errors.forEach((error) => console.debug(`    - ${error}`));
       }
 
       return result;
@@ -255,7 +255,7 @@ class PerformanceTest {
     await new Promise((resolve) => setTimeout(resolve, delay));
 
     const endTime = performance.now();
-    console.log(
+    console.debug(
       `    🌐 API call to ${endpoint} took ${(endTime - startTime).toFixed(2)}ms`
     );
   }
@@ -279,7 +279,7 @@ class PerformanceTest {
     const steps = 10;
     for (let i = 0; i < steps; i++) {
       await new Promise((resolve) => setTimeout(resolve, 100));
-      console.log(
+      console.debug(
         `    📤 Upload progress: ${(((i + 1) / steps) * 100).toFixed(0)}%`
       );
     }
@@ -294,7 +294,7 @@ class PerformanceTest {
       errors: string[];
     }>
   > {
-    console.log('🚀 Starting comprehensive performance test suite...');
+    console.debug('🚀 Starting comprehensive performance test suite...');
 
     const testScenarios: TestScenario[] = [
       {
@@ -399,12 +399,12 @@ class PerformanceTest {
     const totalTests = results.length;
     const totalDuration = results.reduce((sum, r) => sum + r.duration, 0);
 
-    console.log('📊 Test Results Summary:');
-    console.log(
+    console.debug('📊 Test Results Summary:');
+    console.debug(
       `  Passed: ${passedTests}/${totalTests} (${((passedTests / totalTests) * 100).toFixed(1)}%)`
     );
-    console.log(`  Total Duration: ${totalDuration.toFixed(2)}ms`);
-    console.log(
+    console.debug(`  Total Duration: ${totalDuration.toFixed(2)}ms`);
+    console.debug(
       `  Average Duration: ${(totalDuration / totalTests).toFixed(2)}ms`
     );
 

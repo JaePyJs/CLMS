@@ -208,12 +208,14 @@ export function EquipmentDashboard() {
     return `${minutes}m remaining`;
   };
 
-  const getSessionProgress = (session: any) => {
+  const getSessionProgress = (session: Record<string, unknown> | null) => {
     if (!session) {
       return 0;
     }
-    const elapsed = session.timeLimitMinutes - session.remainingMinutes;
-    return (elapsed / session.timeLimitMinutes) * 100;
+    const timeLimitMinutes = Number(session.timeLimitMinutes);
+    const remainingMinutes = Number(session.remainingMinutes);
+    const elapsed = timeLimitMinutes - remainingMinutes;
+    return (elapsed / timeLimitMinutes) * 100;
   };
 
   // Handle double-tap to refresh on mobile - removed gesture functionality
@@ -356,7 +358,7 @@ export function EquipmentDashboard() {
           <div
             className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-3'}`}
           >
-            {filteredEquipment.map((item: any) => (
+            {filteredEquipment.map((item: EquipmentItem) => (
               <Card key={item.id} className="relative">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">

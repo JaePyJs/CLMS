@@ -105,11 +105,12 @@ vi.stubGlobal(
           // Parse query string
           init.split('&').forEach((pair) => {
             const [key, value] = pair.split('=');
-            if (key)
+            if (key) {
               params.set(
                 decodeURIComponent(key),
                 decodeURIComponent(value || '')
               );
+            }
           });
         } else if (init) {
           Object.entries(init).forEach(([key, value]) =>
@@ -192,9 +193,13 @@ vi.stubGlobal(
 const MockFile = vi
   .fn()
   .mockImplementation(
-    (bits: any[], name: string, options: FilePropertyBag = {}) => ({
+    (bits: BlobPart[], name: string, options: FilePropertyBag = {}) => ({
       name,
-      size: bits.reduce((acc, bit) => acc + bit.length, 0),
+      size: bits.reduce(
+        (acc, bit) =>
+          acc + (bit as string | ArrayBuffer | Blob).toString().length,
+        0
+      ),
       type: options.type || '',
       lastModified: Date.now(),
       slice: vi.fn(),
@@ -209,15 +214,21 @@ vi.stubGlobal('File', MockFile);
 
 vi.stubGlobal(
   'Blob',
-  vi.fn().mockImplementation((bits: any[], options: BlobPropertyBag = {}) => ({
-    size: bits.reduce((acc, bit) => acc + bit.length, 0),
-    type: options.type || '',
-    slice: vi.fn(),
-    stream: vi.fn(),
-    text: vi.fn().mockResolvedValue(''),
-    arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
-    bytes: vi.fn().mockResolvedValue(new Uint8Array()),
-  }))
+  vi
+    .fn()
+    .mockImplementation((bits: BlobPart[], options: BlobPropertyBag = {}) => ({
+      size: bits.reduce(
+        (acc, bit) =>
+          acc + (bit as string | ArrayBuffer | Blob).toString().length,
+        0
+      ),
+      type: options.type || '',
+      slice: vi.fn(),
+      stream: vi.fn(),
+      text: vi.fn().mockResolvedValue(''),
+      arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+      bytes: vi.fn().mockResolvedValue(new Uint8Array()),
+    }))
 );
 
 vi.stubGlobal(
@@ -292,7 +303,11 @@ vi.stubGlobal('HTMLCanvasElement', {
       clip: vi.fn(),
     }),
     toDataURL: vi.fn().mockReturnValue('data:image/png;base64,mock'),
-    toBlob: vi.fn().mockImplementation((callback: any) => callback(new Blob())),
+    toBlob: vi
+      .fn()
+      .mockImplementation((callback: (blob: Blob | null) => void) =>
+        callback(new Blob())
+      ),
   },
 });
 
@@ -451,9 +466,9 @@ beforeEach(() => {
 
 // Global setup
 beforeAll(() => {
-  console.log('🧪 Setting up simplified frontend test environment');
+  console.debug('🧪 Setting up simplified frontend test environment');
 });
 
 afterAll(() => {
-  console.log('🧹 Cleaning up frontend test environment');
+  console.debug('🧹 Cleaning up frontend test environment');
 });

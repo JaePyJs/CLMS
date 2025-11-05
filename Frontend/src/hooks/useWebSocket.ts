@@ -146,7 +146,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log('WebSocket connected');
+      console.debug('WebSocket connected');
       setState((prev) => ({
         ...prev,
         isConnected: true,
@@ -188,7 +188,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
         // Handle welcome message
         if (message.type === 'welcome') {
-          console.log('WebSocket welcome message:', message.data);
+          console.debug('WebSocket welcome message:', message.data);
           return;
         }
 
@@ -201,7 +201,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
         // Handle subscription confirmations
         if (message.type === 'subscription_confirmed') {
-          console.log('Subscribed to:', message.data.subscription);
+          console.debug('Subscribed to:', message.data.subscription);
           return;
         }
 
@@ -241,7 +241,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
             toast.error(`🚨 EMERGENCY: ${message.data.message}`);
             break;
           default:
-            console.log('WebSocket message:', message);
+            console.debug('WebSocket message:', message);
         }
       } catch (error) {
         console.error('Error parsing WebSocket message:', error);
@@ -249,7 +249,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     };
 
     ws.onclose = (event) => {
-      console.log('WebSocket disconnected:', event.code, event.reason);
+      console.debug('WebSocket disconnected:', event.code, event.reason);
       clearHeartbeat();
 
       setState((prev) => ({
@@ -272,7 +272,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
         }));
 
         reconnectTimeoutRef.current = setTimeout(() => {
-          console.log(
+          console.debug(
             `Attempting WebSocket reconnection (${nextAttempt}/${maxReconnectAttempts})`
           );
           connect();

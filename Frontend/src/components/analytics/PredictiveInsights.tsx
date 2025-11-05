@@ -21,7 +21,7 @@ import {
   CheckCircle,
 } from 'lucide-react';
 
-interface PredictiveInsight {
+export interface PredictiveInsight {
   type:
     | 'demand_forecast'
     | 'peak_prediction'
@@ -32,7 +32,7 @@ interface PredictiveInsight {
   confidence: number;
   impact: 'low' | 'medium' | 'high';
   recommendations: string[];
-  data: any;
+  data: Record<string, unknown>;
   validUntil: Date;
 }
 
@@ -114,7 +114,9 @@ export function PredictiveInsights({
         <div className="flex items-center space-x-2">
           <Tabs
             value={timeframe}
-            onValueChange={(value: any) => onTimeframeChange(value)}
+            onValueChange={(value: string) =>
+              onTimeframeChange(value as 'day' | 'week' | 'month')
+            }
           >
             <TabsList>
               <TabsTrigger value="day">Day</TabsTrigger>

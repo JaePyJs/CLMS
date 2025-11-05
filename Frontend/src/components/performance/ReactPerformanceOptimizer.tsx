@@ -6,8 +6,10 @@ import React, {
   useRef,
   memo,
   Profiler,
+  type ComponentType,
+  type ReactNode,
+  type ProfilerOnRenderCallback,
 } from 'react';
-import type { ComponentType, ReactNode, ProfilerOnRenderCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -231,7 +233,7 @@ export const useExpensiveCalculation = <T,>(
 };
 
 // Stable callback hook
-export const useStableCallback = <T extends (...args: any[]) => any>(
+export const useStableCallback = <T extends (...args: never[]) => unknown>(
   callback: T,
   dependencies: React.DependencyList
 ): T => {
@@ -241,7 +243,7 @@ export const useStableCallback = <T extends (...args: any[]) => any>(
 // Performance optimization utilities
 export const performanceUtils = {
   // Debounce function for expensive operations
-  debounce: <T extends (...args: any[]) => any>(
+  debounce: <T extends (...args: never[]) => unknown>(
     func: T,
     wait: number
   ): ((...args: Parameters<T>) => void) => {
@@ -253,7 +255,7 @@ export const performanceUtils = {
   },
 
   // Throttle function for frequent operations
-  throttle: <T extends (...args: any[]) => any>(
+  throttle: <T extends (...args: never[]) => unknown>(
     func: T,
     limit: number
   ): ((...args: Parameters<T>) => void) => {
@@ -268,7 +270,7 @@ export const performanceUtils = {
   },
 
   // Memoize expensive computations
-  memoize: <T extends (...args: any[]) => any>(func: T): T => {
+  memoize: <T extends (...args: never[]) => unknown>(func: T): T => {
     const cache = new Map();
     return ((...args: Parameters<T>) => {
       const key = JSON.stringify(args);

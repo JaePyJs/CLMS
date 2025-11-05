@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -141,7 +142,7 @@ export default function BookCheckout() {
     try {
       const token = localStorage.getItem('clms_token');
       const response = await axios.get(
-        `${API_BASE_URL}/students?search=${studentBarcode.trim()}`,
+        `${API_BASE_URL}/students?_search=${studentBarcode.trim()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -155,8 +156,8 @@ export default function BookCheckout() {
       } else {
         toast.error('Student not found');
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to find student');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to find student'));
     } finally {
       loadingActions.scanStudent.finish();
     }
@@ -174,7 +175,7 @@ export default function BookCheckout() {
     try {
       const token = localStorage.getItem('clms_token');
       const response = await axios.get(
-        `${API_BASE_URL}/books?search=${bookBarcode.trim()}`,
+        `${API_BASE_URL}/books?_search=${bookBarcode.trim()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -192,8 +193,8 @@ export default function BookCheckout() {
       } else {
         toast.error('Book not found');
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to find book');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to find book'));
     } finally {
       loadingActions.scanBook.finish();
     }
@@ -224,8 +225,8 @@ export default function BookCheckout() {
         toast.success('Book checked out successfully!');
         resetCheckout();
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to checkout book');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to checkout book'));
     } finally {
       loadingActions.confirmCheckout.finish();
     }
@@ -274,8 +275,8 @@ export default function BookCheckout() {
           toast.error('No active checkout found for this book');
         }
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to find checkout');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to find checkout'));
     } finally {
       loadingActions.scanReturn.finish();
     }
@@ -311,8 +312,8 @@ export default function BookCheckout() {
         });
         modalActions.returnConfirm.close();
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to return book');
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, 'Failed to return book'));
     } finally {
       loadingActions.confirmReturn.finish();
     }

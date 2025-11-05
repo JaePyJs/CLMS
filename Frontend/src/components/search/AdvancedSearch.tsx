@@ -43,7 +43,7 @@ interface SearchResult {
   id: string;
   title: string;
   subtitle: string;
-  metadata: any;
+  metadata: Record<string, unknown>;
 }
 
 interface SavedSearch {
@@ -73,7 +73,7 @@ export default function AdvancedSearch() {
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    // Load search history from localStorage
+    // Load _search history from localStorage
     const history = localStorage.getItem('clms_search_history');
     if (history) {
       setSearchHistory(JSON.parse(history));
@@ -95,78 +95,95 @@ export default function AdvancedSearch() {
     try {
       const searchResults: SearchResult[] = [];
 
-      // Search Books
+      // _Search Books
       if (filters.type === 'all' || filters.type === 'book') {
         const booksResponse = await apiClient.get('/api/books', {
-          search: query,
+          _search: query,
           category: filters.category,
         });
 
         if (booksResponse.success && booksResponse.data) {
-          const data = booksResponse.data as any;
-          const books = Array.isArray(data) ? data : data.books || [];
-          books.forEach((book: any) => {
+          const data = booksResponse.data as unknown;
+          const books = Array.isArray(data)
+            ? data
+            : (data as { books?: unknown[] }).books || [];
+          books.forEach((book: unknown) => {
+            const b = book as Record<string, unknown>;
             if (
-              book.title?.toLowerCase().includes(query.toLowerCase()) ||
-              book.author?.toLowerCase().includes(query.toLowerCase())
+              String(b.title || '')
+                .toLowerCase()
+                .includes(query.toLowerCase()) ||
+              String(b.author || '')
+                .toLowerCase()
+                .includes(query.toLowerCase())
             ) {
               searchResults.push({
                 type: 'book',
-                id: book.id,
-                title: book.title,
-                subtitle: `by ${book.author} • ${book.category}`,
-                metadata: book,
+                id: String(b.id),
+                title: String(b.title),
+                subtitle: `by ${String(b.author)} • ${String(b.category)}`,
+                metadata: b,
               });
             }
           });
         }
       }
 
-      // Search Students
+      // _Search Students
       if (filters.type === 'all' || filters.type === 'student') {
         const studentsResponse = await apiClient.get('/api/students');
 
         if (studentsResponse.success && studentsResponse.data) {
-          const data = studentsResponse.data as any;
-          const students = Array.isArray(data) ? data : data.students || [];
-          students.forEach((student: any) => {
+          const data = studentsResponse.data as unknown;
+          const students = Array.isArray(data)
+            ? data
+            : (data as { students?: unknown[] }).students || [];
+          students.forEach((student: unknown) => {
+            const s = student as Record<string, unknown>;
             const fullName =
-              `${student.firstName} ${student.lastName}`.toLowerCase();
+              `${String(s.firstName)} ${String(s.lastName)}`.toLowerCase();
             if (
               fullName.includes(query.toLowerCase()) ||
-              student.studentId?.toLowerCase().includes(query.toLowerCase())
+              String(s.studentId || '')
+                .toLowerCase()
+                .includes(query.toLowerCase())
             ) {
               searchResults.push({
                 type: 'student',
-                id: student.id,
-                title: `${student.firstName} ${student.lastName}`,
-                subtitle: `${student.studentId} • ${student.gradeLevel}`,
-                metadata: student,
+                id: String(s.id),
+                title: `${String(s.firstName)} ${String(s.lastName)}`,
+                subtitle: `${String(s.studentId)} • ${String(s.gradeLevel)}`,
+                metadata: s,
               });
             }
           });
         }
       }
 
-      // Search Activities
+      // _Search Activities
       if (filters.type === 'all' || filters.type === 'activity') {
         const activitiesResponse = await apiClient.get('/api/activities', {
           limit: 50,
         });
 
         if (activitiesResponse.success && activitiesResponse.data) {
-          const data = activitiesResponse.data as any;
-          const activities = Array.isArray(data) ? data : data.activities || [];
-          activities.forEach((activity: any) => {
+          const data = activitiesResponse.data as unknown;
+          const activities = Array.isArray(data)
+            ? data
+            : (data as { activities?: unknown[] }).activities || [];
+          activities.forEach((activity: unknown) => {
+            const a = activity as Record<string, unknown>;
             if (
-              activity.studentName?.toLowerCase().includes(query.toLowerCase())
+              String(a.studentName || '')
+                .toLowerCase()
+                .includes(query.toLowerCase())
             ) {
               searchResults.push({
                 type: 'activity',
-                id: activity.id,
-                title: activity.studentName || 'Unknown Student',
-                subtitle: `${activity.activityType} • ${new Date(activity.startTime).toLocaleDateString()}`,
-                metadata: activity,
+                id: String(a.id),
+                title: String(a.studentName) || 'Unknown Student',
+                subtitle: `${String(a.activityType)} • ${new Date(a.startTime as string).toLocaleDateString()}`,
+                metadata: a,
               });
             }
           });
@@ -175,7 +192,7 @@ export default function AdvancedSearch() {
 
       setResults(searchResults);
 
-      // Add to search history
+      // Add to _search history
       const newHistory = [
         query,
         ...searchHistory.filter((h) => h !== query),
@@ -183,14 +200,14 @@ export default function AdvancedSearch() {
       setSearchHistory(newHistory);
       localStorage.setItem('clms_search_history', JSON.stringify(newHistory));
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('_Search error:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const saveSearch = () => {
-    const name = prompt('Enter a name for this search:');
+    const name = prompt('Enter a name for this _search:');
     if (!name) {
       return;
     }
@@ -208,9 +225,9 @@ export default function AdvancedSearch() {
     localStorage.setItem('clms_saved_searches', JSON.stringify(updated));
   };
 
-  const loadSavedSearch = (search: SavedSearch) => {
-    setQuery(search.query);
-    setFilters(search.filters);
+  const loadSavedSearch = (_search: SavedSearch) => {
+    setQuery(_search.query);
+    setFilters(_search.filters);
     performSearch();
   };
 
@@ -233,7 +250,7 @@ export default function AdvancedSearch() {
     }));
     downloadCSV(
       data,
-      `search-results-${new Date().toISOString().split('T')[0]}`
+      `_search-results-${new Date().toISOString().split('T')[0]}`
     );
   };
 
@@ -256,19 +273,19 @@ export default function AdvancedSearch() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="w-5 h-5" />
-            Advanced Search
+            Advanced _Search
           </CardTitle>
           <CardDescription>
-            Search across books, students, and activities
+            _Search across books, students, and activities
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search Bar */}
+          {/* _Search Bar */}
           <div className="flex gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search for books, students, or activities..."
+                placeholder="_Search for books, students, or activities..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && performSearch()}
@@ -276,7 +293,7 @@ export default function AdvancedSearch() {
               />
             </div>
             <Button onClick={performSearch} disabled={loading}>
-              {loading ? 'Searching...' : 'Search'}
+              {loading ? 'Searching...' : '_Search'}
             </Button>
             <Button
               variant="outline"
@@ -301,8 +318,11 @@ export default function AdvancedSearch() {
                   <label className="text-sm font-medium">Type</label>
                   <Select
                     value={filters.type}
-                    onValueChange={(value: any) =>
-                      setFilters({ ...filters, type: value })
+                    onValueChange={(value: string) =>
+                      setFilters({
+                        ...filters,
+                        type: value as 'all' | 'book' | 'student' | 'activity',
+                      })
                     }
                   >
                     <SelectTrigger>
@@ -413,7 +433,9 @@ export default function AdvancedSearch() {
             <Card>
               <CardContent className="flex items-center justify-center h-32">
                 <p className="text-muted-foreground">
-                  {query ? 'No results found' : 'Enter a search query to begin'}
+                  {query
+                    ? 'No results found'
+                    : 'Enter a _search query to begin'}
                 </p>
               </CardContent>
             </Card>
@@ -451,7 +473,7 @@ export default function AdvancedSearch() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No search history
+                  No _search history
                 </p>
               )}
             </CardContent>
@@ -466,29 +488,29 @@ export default function AdvancedSearch() {
             <CardContent>
               {savedSearches.length > 0 ? (
                 <div className="space-y-2">
-                  {savedSearches.map((search) => (
+                  {savedSearches.map((_search) => (
                     <div
-                      key={search.id}
+                      key={_search.id}
                       className="flex items-center justify-between p-3 border rounded"
                     >
                       <div className="flex-1">
-                        <div className="font-medium">{search.name}</div>
+                        <div className="font-medium">{_search.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {search.query} • {search.filters.type}
+                          {_search.query} • {_search.filters.type}
                         </div>
                       </div>
                       <div className="flex gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => loadSavedSearch(search)}
+                          onClick={() => loadSavedSearch(_search)}
                         >
                           Load
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => deleteSavedSearch(search.id)}
+                          onClick={() => deleteSavedSearch(_search.id)}
                         >
                           <X className="w-4 h-4" />
                         </Button>

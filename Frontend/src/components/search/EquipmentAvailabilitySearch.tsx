@@ -57,9 +57,9 @@ interface Equipment {
   total_usage_hours: number;
   daily_usage_hours: number;
   max_time_minutes: number;
-  currentSession?: any;
-  upcomingReservation?: any;
-  pendingMaintenance?: any;
+  currentSession?: Record<string, unknown>;
+  upcomingReservation?: Record<string, unknown>;
+  pendingMaintenance?: Record<string, unknown>;
   utilizationRate: number;
   recentUsageStats: {
     totalSessions: number;
@@ -141,7 +141,7 @@ export default function EquipmentAvailabilitySearch() {
     setLoading(true);
     try {
       const response = await apiClient.get(
-        '/api/search/equipment/suggestions',
+        '/api/_search/equipment/suggestions',
         {
           params: {
             query: searchQuery,
@@ -160,7 +160,7 @@ export default function EquipmentAvailabilitySearch() {
     }
   }, []);
 
-  // Debounced search input handler
+  // Debounced _search input handler
   const handleSearchInput = (value: string) => {
     setQuery(value);
     setCurrentPage(1);
@@ -182,7 +182,7 @@ export default function EquipmentAvailabilitySearch() {
     }
   };
 
-  // Enhanced equipment search function
+  // Enhanced equipment _search function
   const performSearch = async (page = 1, resetPagination = true) => {
     if (
       !query.trim() &&
@@ -197,12 +197,13 @@ export default function EquipmentAvailabilitySearch() {
 
     setLoading(true);
     try {
-      const searchParams: any = {
+      // Build query params
+      const searchParams: Record<string, unknown> = {
         page,
         limit: 20,
       };
 
-      // Add filters to search params
+      // Add filters to _search params
       if (query) {
         searchParams.query = query;
       }
@@ -243,7 +244,7 @@ export default function EquipmentAvailabilitySearch() {
         searchParams.sortOrder = filters.sortOrder;
       }
 
-      const response = await apiClient.get('/api/search/equipment', {
+      const response = await apiClient.get('/api/_search/equipment', {
         params: searchParams,
       });
 
@@ -263,8 +264,8 @@ export default function EquipmentAvailabilitySearch() {
         setCurrentPage(page);
       }
     } catch (error) {
-      console.error('Equipment search error:', error);
-      toast.error('Failed to perform equipment search');
+      console.error('Equipment _search error:', error);
+      toast.error('Failed to perform equipment _search');
     } finally {
       setLoading(false);
     }
@@ -353,7 +354,7 @@ export default function EquipmentAvailabilitySearch() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `equipment-search-results-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `equipment-_search-results-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -457,27 +458,27 @@ export default function EquipmentAvailabilitySearch() {
 
   return (
     <div className="space-y-6">
-      {/* Search Section */}
+      {/* _Search Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Monitor className="w-5 h-5" />
-            Equipment Availability Search
+            Equipment Availability _Search
           </CardTitle>
           <CardDescription>
-            Search and filter equipment by type, location, availability, and
+            _Search and filter equipment by type, location, availability, and
             usage statistics
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search Bar with Suggestions */}
+          {/* _Search Bar with Suggestions */}
           <div className="relative">
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
-                  placeholder="Search by name, equipment ID, type, or location..."
+                  placeholder="_Search by name, equipment ID, type, or location..."
                   value={query}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => query.length >= 2 && setShowSuggestions(true)}
@@ -561,7 +562,7 @@ export default function EquipmentAvailabilitySearch() {
               </div>
 
               <Button onClick={() => performSearch()} disabled={loading}>
-                {loading ? 'Searching...' : 'Search'}
+                {loading ? 'Searching...' : '_Search'}
               </Button>
 
               <Button
@@ -850,13 +851,13 @@ export default function EquipmentAvailabilitySearch() {
         </CardContent>
       </Card>
 
-      {/* Search Results */}
+      {/* _Search Results */}
       {searchResults && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Equipment Search Results</CardTitle>
+                <CardTitle>Equipment _Search Results</CardTitle>
                 <CardDescription>
                   Found {searchResults.pagination.total} equipment items
                   {query && ` for "${query}"`}
@@ -1030,7 +1031,7 @@ export default function EquipmentAvailabilitySearch() {
         <Card>
           <CardContent className="flex items-center justify-center h-32">
             <p className="text-muted-foreground">
-              {query ? 'No results found' : 'Enter a search query to begin'}
+              {query ? 'No results found' : 'Enter a _search query to begin'}
             </p>
           </CardContent>
         </Card>

@@ -1,0 +1,90 @@
+src/components/backup/BackupManagement.tsx(92,28): error TS2304: Cannot find name 'getErrorMessage'.
+src/components/backup/BackupManagement.tsx(111,15): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/backup/BackupManagement.tsx(144,15): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/backup/BackupManagement.tsx(165,15): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/BookCheckout.tsx(159,25): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/BookCheckout.tsx(196,25): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/BookCheckout.tsx(228,25): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/BookCheckout.tsx(278,25): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/BookCheckout.tsx(315,25): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/CheckoutHistory.tsx(113,25): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/CheckoutHistory.tsx(137,15): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/QRScannerComponent.tsx(317,33): error TS2339: Property 'message' does not exist on type 'unknown'.
+src/components/dashboard/QRScannerComponent.tsx(330,48): error TS2551: Property 'webkitAudioContext' does not exist on type 'Window & typeof globalThis'. Did you mean 'AudioContext'?
+src/components/dashboard/SelfServiceMode.tsx(161,34): error TS2339: Property 'message' does not exist on type 'unknown'.
+src/components/dashboard/StudentImportDialog.tsx(358,32): error TS2339: Property 'error' does not exist on type 'unknown'.
+src/components/dashboard/StudentImportDialog.tsx(358,48): error TS2339: Property 'message' does not exist on type 'unknown'.
+src/components/dashboard/StudentImportDialog.tsx(404,45): error TS2339: Property 'message' does not exist on type 'unknown'.
+src/components/dashboard/StudentImportDialog.tsx(419,32): error TS2339: Property 'error' does not exist on type 'unknown'.
+src/components/dashboard/StudentImportDialog.tsx(419,48): error TS2339: Property 'message' does not exist on type 'unknown'.
+src/components/dashboard/StudentImportDialog.tsx(447,44): error TS2339: Property 'message' does not exist on type 'unknown'.
+src/components/dashboard/StudentManagement.tsx(319,26): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/StudentManagement.tsx(332,26): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/StudentManagement.tsx(343,26): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/StudentManagement.tsx(355,16): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/dashboard/StudentManagement.tsx(368,16): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/Import/EnhancedImportManager.tsx(299,18): error TS2339: Property 'name' does not exist on type '{}'.
+src/components/Import/EnhancedImportManager.tsx(299,34): error TS2339: Property 'firstName' does not exist on type '{}'.
+src/components/Import/EnhancedImportManager.tsx(299,55): error TS2339: Property 'lastName' does not exist on type '{}'.
+src/components/Import/EnhancedImportManager.tsx(300,34): error TS2339: Property 'name' does not exist on type '{}'.
+src/components/Import/EnhancedImportManager.tsx(302,18): error TS2339: Property 'lastName' does not exist on type '{}'.
+src/components/Import/EnhancedImportManager.tsx(303,18): error TS2339: Property 'firstName' does not exist on type '{}'.
+src/components/Import/EnhancedImportManager.tsx(307,20): error TS2339: Property 'firstName' does not exist on type '{}'.
+src/components/Import/EnhancedImportManager.tsx(308,20): error TS2339: Property 'lastName' does not exist on type '{}'.
+src/components/Import/EnhancedImportManager.tsx(310,20): error TS2339: Property 'firstName' does not exist on type '{}'.
+src/components/Import/EnhancedImportManager.tsx(378,23): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/NotificationCenter.tsx(79,61): error TS2339: Property 'socket' does not exist on type 'Window & typeof globalThis'.
+src/components/NotificationCenter.tsx(155,61): error TS2339: Property 'socket' does not exist on type 'Window & typeof globalThis'.
+src/components/settings/BackupRestore.tsx(67,26): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/settings/BackupRestore.tsx(79,26): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/settings/GoogleSheetsConfig.tsx(86,18): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/settings/GoogleSheetsConfig.tsx(138,16): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/settings/GoogleSheetsConfig.tsx(154,26): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/settings/GoogleSheetsConfig.tsx(170,26): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/settings/SystemSettings.tsx(98,26): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/settings/UserManagement.tsx(104,26): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/settings/UserManagement.tsx(119,26): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/settings/UserManagement.tsx(131,26): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/settings/UserManagement.tsx(185,16): error TS2339: Property 'password' does not exist on type '{ username: string; role: "ADMIN" | "LIBRARIAN" | "STAFF"; isActive: boolean; }'.
+src/components/settings/UserManagement.tsx(191,29): error TS2345: Argument of type '{ username: string; role: "ADMIN" | "LIBRARIAN" | "STAFF"; isActive: boolean; }' is not assignable to parameter of type 'UserFormData'.
+  Property 'password' is missing in type '{ username: string; role: "ADMIN" | "LIBRARIAN" | "STAFF"; isActive: boolean; }' but required in type 'UserFormData'.
+src/components/users/UserManagement.tsx(118,15): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/users/UserManagement.tsx(133,15): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/users/UserManagement.tsx(152,15): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/users/UserManagement.tsx(174,15): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/components/users/UserManagement.tsx(193,15): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/hooks/api-hooks.ts(82,25): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/hooks/api-hooks.ts(124,25): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/hooks/api-hooks.ts(160,25): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/hooks/api-hooks.ts(176,25): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/hooks/api-hooks.ts(299,25): error TS2339: Property 'response' does not exist on type 'unknown'.
+src/hooks/perf_hooks.ts(84,7): error TS2739: Type 'PerformanceObserver' is missing the following properties from type 'PerformanceObserver': callback, observer
+src/hooks/perf_hooks.ts(84,86): error TS2345: Argument of type '(entries: PerformanceObserverEntryList, observer: PerformanceObserver) => void' is not assignable to parameter of type 'PerformanceObserverCallback'.
+  Types of parameters 'observer' and 'observer' are incompatible.
+    Type 'PerformanceObserver' is missing the following properties from type 'PerformanceObserver': callback, observer
+src/hooks/perf_hooks.ts(193,90): error TS2339: Property 'memory' does not exist on type 'Performance'.
+src/hooks/perf_hooks.ts(194,73): error TS2339: Property 'memory' does not exist on type 'Performance'.
+src/hooks/useDocumentationWebSocket.ts(93,18): error TS2339: Property 'id' does not exist on type 'unknown'.
+src/hooks/useDocumentationWebSocket.ts(94,20): error TS2339: Property 'type' does not exist on type 'unknown'.
+src/hooks/useDocumentationWebSocket.ts(95,25): error TS2339: Property 'timestamp' does not exist on type 'unknown'.
+src/hooks/useDocumentationWebSocket.ts(96,22): error TS2339: Property 'source' does not exist on type 'unknown'.
+src/hooks/useDocumentationWebSocket.ts(97,23): error TS2339: Property 'changes' does not exist on type 'unknown'.
+src/hooks/useDocumentationWebSocket.ts(98,23): error TS2339: Property 'version' does not exist on type 'unknown'.
+src/hooks/useDocumentationWebSocket.ts(99,22): error TS2339: Property 'author' does not exist on type 'unknown'.
+src/hooks/useDocumentationWebSocket.ts(100,24): error TS2339: Property 'metadata' does not exist on type 'unknown'.
+src/hooks/useDocumentationWebSocket.ts(149,15): error TS2339: Property 'version' does not exist on type '{}'.
+src/hooks/useDocumentationWebSocket.ts(149,24): error TS2339: Property 'previousVersion' does not exist on type '{}'.
+src/hooks/useDocumentationWebSocket.ts(149,41): error TS2339: Property 'changes' does not exist on type '{}'.
+src/hooks/useDocumentationWebSocket.ts(164,15): error TS2339: Property 'conflictId' does not exist on type '{}'.
+src/hooks/useDocumentationWebSocket.ts(164,27): error TS2339: Property 'details' does not exist on type '{}'.
+src/hooks/useDocumentationWebSocket.ts(186,15): error TS2339: Property 'status' does not exist on type '{}'.
+src/hooks/useDocumentationWebSocket.ts(186,23): error TS2339: Property 'message' does not exist on type '{}'.
+src/hooks/useDocumentationWebSocket.ts(186,32): error TS2339: Property 'details' does not exist on type '{}'.
+src/hooks/useDocumentationWebSocket.ts(201,15): error TS2339: Property 'errors' does not exist on type '{}'.
+src/hooks/useDocumentationWebSocket.ts(216,15): error TS2339: Property 'snapshot' does not exist on type '{}'.
+src/lib/scanner.ts(305,46): error TS2551: Property 'webkitAudioContext' does not exist on type 'Window & typeof globalThis'. Did you mean 'AudioContext'?
+src/services/performanceMonitoringService.ts(578,49): error TS2339: Property 'lighthouse' does not exist on type 'Window & typeof globalThis'.
+src/services/performanceMonitoringService.ts(583,67): error TS2339: Property 'lighthouse' does not exist on type 'Window & typeof globalThis'.
+src/store/state-manager.ts(155,22): error TS2339: Property 'onRehydrateStorage' does not exist on type '{ name: string; storage: PersistStorage<unknown>; partialize: (state: T) => Partial<T>; }'.
+src/utils/imageUtils.ts(91,16): error TS2339: Property 'width' does not exist on type '{ quality: number; }'.
+src/utils/imageUtils.ts(94,16): error TS2339: Property 'height' does not exist on type '{ quality: number; }'.

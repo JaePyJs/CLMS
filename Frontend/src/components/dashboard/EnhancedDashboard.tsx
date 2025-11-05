@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -89,14 +89,27 @@ export default function EnhancedDashboard() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  useEffect(() => {
-    fetchDashboardData();
-    // Auto-refresh every 5 minutes
-    const interval = setInterval(fetchDashboardData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const calculateTrend = useCallback(
+    (dailyBreakdown: Array<Record<string, unknown>>) => {
+      if (!dailyBreakdown || dailyBreakdown.length < 2) {
+        return 0;
+      }
+      const recent =
+        dailyBreakdown
+          .slice(-3)
+          .reduce((sum, day) => sum + (Number(day.visits) || 0), 0) / 3;
+      const previous =
+        dailyBreakdown
+          .slice(0, 3)
+          .reduce((sum, day) => sum + (Number(day.visits) || 0), 0) / 3;
+      return previous > 0
+        ? Math.round(((recent - previous) / previous) * 100)
+        : 0;
+    },
+    []
+  );
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch today's report
@@ -135,20 +148,14 @@ export default function EnhancedDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [calculateTrend]);
 
-  const calculateTrend = (dailyBreakdown: any[]) => {
-    if (!dailyBreakdown || dailyBreakdown.length < 2) {
-      return 0;
-    }
-    const recent =
-      dailyBreakdown.slice(-3).reduce((sum, day) => sum + day.visits, 0) / 3;
-    const previous =
-      dailyBreakdown.slice(0, 3).reduce((sum, day) => sum + day.visits, 0) / 3;
-    return previous > 0
-      ? Math.round(((recent - previous) / previous) * 100)
-      : 0;
-  };
+  useEffect(() => {
+    fetchDashboardData();
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(fetchDashboardData, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchDashboardData]);
 
   const getTrendColor = (trend: number) => {
     if (trend > 0) {

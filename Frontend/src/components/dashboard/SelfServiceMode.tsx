@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import selfServiceApi from '@/services/selfServiceApi';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 interface Student {
   id: string;
@@ -70,7 +71,7 @@ export default function SelfServiceMode() {
     audio.volume = 0.5;
     audio.play().catch(() => {
       // Fallback to system beep if sound file not found
-      console.log(success ? '✓ Success' : '✗ Error');
+      console.debug(success ? '✓ Success' : '✗ Error');
     });
     return undefined;
   };
@@ -157,8 +158,8 @@ export default function SelfServiceMode() {
           toast.error(message || 'Failed to process scan');
         }
       }
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to process scan';
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error, 'Failed to process scan');
       setLastScan({
         success: false,
         action: 'error',

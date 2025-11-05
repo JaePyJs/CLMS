@@ -241,7 +241,10 @@ export function AutomationDashboard() {
               {googleSheetsStatus &&
               typeof googleSheetsStatus === 'object' &&
               'data' in googleSheetsStatus &&
-              (googleSheetsStatus as any).data?.connected
+              googleSheetsStatus.data &&
+              typeof googleSheetsStatus.data === 'object' &&
+              'connected' in googleSheetsStatus.data &&
+              (googleSheetsStatus.data as Record<string, unknown>).connected
                 ? 'Connected'
                 : 'Offline'}
             </div>
@@ -255,7 +258,10 @@ export function AutomationDashboard() {
         {googleSheetsStatus &&
         typeof googleSheetsStatus === 'object' &&
         'data' in googleSheetsStatus &&
-        (googleSheetsStatus as any).data?.connected ? (
+        googleSheetsStatus.data &&
+        typeof googleSheetsStatus.data === 'object' &&
+        'connected' in googleSheetsStatus.data &&
+        (googleSheetsStatus.data as Record<string, unknown>).connected ? (
           <>
             <CheckCircle className="h-4 w-4" />
             <AlertDescription>
@@ -314,19 +320,15 @@ export function AutomationDashboard() {
 
                 <CardContent className="space-y-4">
                   {/* Progress Bar for Running Jobs */}
-                  {job.status === 'running' &&
-                    (job as any).progress !== undefined && (
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Progress</span>
-                          <span>{(job as any).progress}%</span>
-                        </div>
-                        <Progress
-                          value={(job as any).progress}
-                          className="h-2"
-                        />
+                  {job.status === 'running' && job.progress !== undefined && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Progress</span>
+                        <span>{job.progress}%</span>
                       </div>
-                    )}
+                      <Progress value={job.progress} className="h-2" />
+                    </div>
+                  )}
 
                   {/* Job Details */}
                   <div className="grid gap-2 text-sm">

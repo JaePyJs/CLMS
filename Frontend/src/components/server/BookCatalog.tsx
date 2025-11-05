@@ -20,7 +20,7 @@ export default async function BookCatalogServer({
   availableOnly = false,
 }: BookCatalogProps) {
   // Server-side data fetching with caching
-  const params: any = {
+  const params: Record<string, unknown> = {
     limit,
     sortBy,
     sortOrder,
@@ -61,7 +61,7 @@ export default async function BookCatalogServer({
             book={book}
             onCheckout={() => {
               // This will be handled by the client component
-              console.log('Checkout clicked for book:', book.id);
+              console.debug('Checkout clicked for book:', book.id);
             }}
           />
         ))

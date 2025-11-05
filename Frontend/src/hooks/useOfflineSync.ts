@@ -39,7 +39,7 @@ class OfflineSyncService {
 
       request.onsuccess = () => {
         this.db = request.result;
-        console.log('[OfflineSync] Database initialized');
+        console.debug('[OfflineSync] Database initialized');
         resolve();
       };
 
@@ -60,13 +60,13 @@ class OfflineSyncService {
     // Listen for online/offline events
     window.addEventListener('online', () => {
       this.isOnline = true;
-      console.log('[OfflineSync] Online - attempting to sync');
+      console.debug('[OfflineSync] Online - attempting to sync');
       this.syncWhenOnline();
     });
 
     window.addEventListener('offline', () => {
       this.isOnline = false;
-      console.log('[OfflineSync] Offline - queuing actions');
+      console.debug('[OfflineSync] Offline - queuing actions');
     });
 
     // Listen for service worker messages
@@ -94,12 +94,16 @@ class OfflineSyncService {
       retryCount: 0,
     };
 
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
     try {
-      const transaction = this.db!.transaction([STORE_NAME], 'readwrite');
+      const transaction = this.db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       await store.add(offlineAction);
 
-      console.log(
+      console.debug(
         '[OfflineSync] Action queued:',
         offlineAction.type,
         offlineAction.endpoint
@@ -124,8 +128,12 @@ class OfflineSyncService {
       await this.initializeDB();
     }
 
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
     try {
-      const transaction = this.db!.transaction([STORE_NAME], 'readonly');
+      const transaction = this.db.transaction([STORE_NAME], 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const actions: OfflineAction[] = [];
 
@@ -159,13 +167,13 @@ class OfflineSyncService {
     }
 
     this.syncInProgress = true;
-    console.log('[OfflineSync] Starting sync process');
+    console.debug('[OfflineSync] Starting sync process');
 
     try {
       const actions = await this.getQueuedActions();
 
       if (actions.length === 0) {
-        console.log('[OfflineSync] No actions to sync');
+        console.debug('[OfflineSync] No actions to sync');
         return;
       }
 
@@ -202,7 +210,7 @@ class OfflineSyncService {
         toast.error(`${failed} action${failed > 1 ? 's' : ''} failed to sync`);
       }
 
-      console.log(
+      console.debug(
         `[OfflineSync] Sync completed: ${successful} successful, ${failed} failed`
       );
     } catch (error) {
@@ -237,14 +245,14 @@ class OfflineSyncService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      console.log('[OfflineSync] Action synced successfully:', action.id);
+      console.debug('[OfflineSync] Action synced successfully:', action.id);
     } catch (error) {
       console.error('[OfflineSync] Action sync failed:', action.id, error);
 
       // Update retry count
       if (retryCount < maxRetries) {
         await this.updateActionRetry(action.id, retryCount + 1);
-        console.log(
+        console.debug(
           `[OfflineSync] Action ${action.id} will be retried (${retryCount + 1}/${maxRetries})`
         );
         throw error; // Will be retried
@@ -315,7 +323,7 @@ class OfflineSyncService {
       await store.clear();
 
       await this.updateQueueCount();
-      console.log('[OfflineSync] Queue cleared');
+      console.debug('[OfflineSync] Queue cleared');
       toast.success('Offline queue cleared');
     } catch (error) {
       console.error('[OfflineSync] Failed to clear queue:', error);

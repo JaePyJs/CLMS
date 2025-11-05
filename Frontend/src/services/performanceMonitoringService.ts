@@ -222,7 +222,7 @@ class PerformanceMonitoringService {
     // Monitor user interactions
     this.startInteractionMonitoring();
 
-    console.log('📊 Performance monitoring started');
+    console.debug('📊 Performance monitoring started');
   }
 
   public stopMonitoring(): void {
@@ -234,7 +234,7 @@ class PerformanceMonitoringService {
     this.observers = [];
     this.isMonitoring = false;
 
-    console.log('📊 Performance monitoring stopped');
+    console.debug('📊 Performance monitoring stopped');
   }
 
   private startMemoryMonitoring(): void {
@@ -354,16 +354,18 @@ class PerformanceMonitoringService {
       });
     }
 
-    const metrics = this.componentMetrics.get(componentName)!;
-    metrics.renders++;
-    metrics.totalTime += renderTime;
-    metrics.averageTime = metrics.totalTime / metrics.renders;
-    metrics.slowestRender = Math.max(metrics.slowestRender, renderTime);
-    metrics.fastestRender = Math.min(metrics.fastestRender, renderTime);
-    metrics.lastRender = renderTime;
+    const metrics = this.componentMetrics.get(componentName);
+    if (metrics) {
+      metrics.renders++;
+      metrics.totalTime += renderTime;
+      metrics.averageTime = metrics.totalTime / metrics.renders;
+      metrics.slowestRender = Math.max(metrics.slowestRender, renderTime);
+      metrics.fastestRender = Math.min(metrics.fastestRender, renderTime);
+      metrics.lastRender = renderTime;
 
-    this.metrics.componentRenders++;
-    this.metrics.renderTime = (this.metrics.renderTime + renderTime) / 2;
+      this.metrics.componentRenders++;
+      this.metrics.renderTime = (this.metrics.renderTime + renderTime) / 2;
+    }
   }
 
   public recordComponentMount(componentName: string, mountTime: number): void {
@@ -380,8 +382,10 @@ class PerformanceMonitoringService {
       });
     }
 
-    const metrics = this.componentMetrics.get(componentName)!;
-    metrics.mountTime = mountTime;
+    const metrics = this.componentMetrics.get(componentName);
+    if (metrics) {
+      metrics.mountTime = mountTime;
+    }
   }
 
   public resetMetrics(): void {

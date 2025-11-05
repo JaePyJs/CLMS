@@ -1,14 +1,45 @@
-import React, {
+import {
   createContext,
   useContext,
   useEffect,
   useState,
   useCallback,
+  type ReactNode,
 } from 'react';
-import type { ReactNode } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import type { WebSocketState } from '@/hooks/useWebSocket';
+import { useWebSocket, type WebSocketState } from '@/hooks/useWebSocket';
 import { useAuth } from '@/contexts/AuthContext';
+
+// Define types for WebSocket data structures
+interface WebSocketMessage {
+  type: string;
+  [key: string]: unknown;
+}
+
+interface DashboardFilters {
+  [key: string]: unknown;
+}
+
+interface RecentActivity {
+  id: string;
+  type: string;
+  timestamp: number;
+  [key: string]: unknown;
+}
+
+interface EquipmentStatus {
+  [equipmentId: string]: unknown;
+}
+
+interface Notification {
+  id: string;
+  message: string;
+  timestamp: number;
+  [key: string]: unknown;
+}
+
+interface DashboardData {
+  [dataType: string]: unknown;
+}
 
 export interface WebSocketContextType extends WebSocketState {
   // Connection methods
@@ -16,14 +47,17 @@ export interface WebSocketContextType extends WebSocketState {
   disconnect: () => void;
 
   // Message methods
-  sendMessage: (message: any) => boolean;
+  sendMessage: (message: WebSocketMessage) => boolean;
 
   // Subscription methods
   subscribe: (subscription: string) => boolean;
   unsubscribe: (subscription: string) => boolean;
 
   // Dashboard methods
-  requestDashboardData: (dataType: string, filters?: any) => boolean;
+  requestDashboardData: (
+    dataType: string,
+    filters?: DashboardFilters
+  ) => boolean;
 
   // Communication methods
   sendChatMessage: (
@@ -40,14 +74,14 @@ export interface WebSocketContextType extends WebSocketState {
   ) => boolean;
 
   // Real-time data
-  recentActivities: any[];
-  equipmentStatus: any;
-  notifications: any[];
-  dashboardData: any;
+  recentActivities: RecentActivity[];
+  equipmentStatus: EquipmentStatus;
+  notifications: Notification[];
+  dashboardData: DashboardData;
 
   // Utility methods
   clearNotifications: () => void;
-  refreshDashboard: (dataType: string, filters?: any) => void;
+  refreshDashboard: (dataType: string, filters?: DashboardFilters) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
@@ -58,14 +92,14 @@ interface WebSocketProviderProps {
   children: ReactNode;
 }
 
-export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
-  children,
-}) => {
+export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const { user } = useAuth();
-  const [recentActivities, setRecentActivities] = useState<any[]>([]);
-  const [equipmentStatus, setEquipmentStatus] = useState<any>({});
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [dashboardData, setDashboardData] = useState<any>({});
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
+    []
+  );
+  const [equipmentStatus, setEquipmentStatus] = useState<EquipmentStatus>({});
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData>({});
 
   // WebSocket connection
   const ws = useWebSocket({
@@ -74,27 +108,30 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     onMessage: (message) => {
       switch (message.type) {
         case 'student_activity_update':
-          setRecentActivities((prev: any[]) => [
-            message.data,
+          setRecentActivities((prev: RecentActivity[]) => [
+            message.data as RecentActivity,
             ...prev.slice(0, 49),
           ]);
           break;
         case 'equipment_status_update':
-          setEquipmentStatus((prev: any) => ({
+          setEquipmentStatus((prev: EquipmentStatus) => ({
             ...prev,
-            [message.data.equipmentId]: message.data,
+            [(message.data as { equipmentId: string }).equipmentId]:
+              message.data,
           }));
           break;
         case 'system_notification':
-          setNotifications((prev: any[]) => [
-            message.data,
+          setNotifications((prev: Notification[]) => [
+            message.data as Notification,
             ...prev.slice(0, 49),
           ]);
           break;
         case 'dashboard_data':
-          setDashboardData((prev: any) => ({
+          setDashboardData((prev: DashboardData) => ({
             ...prev,
-            [message.data.dataType]: message.data.data,
+            [(message.data as { dataType: string }).dataType]: (
+              message.data as { data: unknown }
+            ).data,
           }));
           break;
       }
@@ -103,10 +140,10 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
       console.error('WebSocket connection error:', error);
     },
     onDisconnect: () => {
-      console.log('WebSocket disconnected');
+      console.debug('WebSocket disconnected');
     },
     onConnect: () => {
-      console.log('WebSocket connected');
+      console.debug('WebSocket connected');
     },
   });
 
@@ -117,7 +154,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 
   // Refresh dashboard data
   const refreshDashboard = useCallback(
-    (dataType: string, filters?: any) => {
+    (dataType: string, filters?: DashboardFilters) => {
       ws.requestDashboardData(dataType, filters);
     },
     [ws.requestDashboardData]
@@ -153,7 +190,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
       {children}
     </WebSocketContext.Provider>
   );
-};
+}
 
 export const useWebSocketContext = (): WebSocketContextType => {
   const context = useContext(WebSocketContext);

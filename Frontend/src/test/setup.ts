@@ -3,6 +3,9 @@ import { vi, beforeAll, afterAll } from 'vitest';
 import { configure } from '@testing-library/react';
 import * as React from 'react';
 
+// Type for mock component props
+type MockComponentProps = React.PropsWithChildren<Record<string, unknown>>;
+
 // Configure testing library for React 19 compatibility
 configure({
   testIdAttribute: 'data-testid',
@@ -87,7 +90,7 @@ Object.defineProperty(document, 'querySelector', {
 // Suppress React 19 warnings in tests
 const originalError = console.error;
 beforeAll(() => {
-  console.error = (...args: any[]) => {
+  console.error = (...args: unknown[]) => {
     if (
       typeof args[0] === 'string' &&
       args[0].includes('Warning: ReactDOM.render is no longer supported')
@@ -104,13 +107,17 @@ afterAll(() => {
 
 // Mock Radix UI components for React 19 compatibility
 vi.mock('@radix-ui/react-dropdown-menu', () => ({
-  Root: ({ children, ...props }: any) =>
+  Root: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dropdown-menu-root', ...props },
       children
     ),
-  Trigger: ({ children, asChild, ...props }: any) => {
+  Trigger: ({
+    children,
+    asChild,
+    ...props
+  }: MockComponentProps & { asChild?: boolean }) => {
     if (asChild && children) {
       return children;
     }
@@ -120,73 +127,73 @@ vi.mock('@radix-ui/react-dropdown-menu', () => ({
       children
     );
   },
-  Content: ({ children, ...props }: any) =>
+  Content: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dropdown-menu-content', ...props },
       children
     ),
-  Item: ({ children, ...props }: any) =>
+  Item: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dropdown-menu-item', ...props },
       children
     ),
-  CheckboxItem: ({ children, ...props }: any) =>
+  CheckboxItem: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dropdown-menu-checkbox-item', ...props },
       children
     ),
-  RadioItem: ({ children, ...props }: any) =>
+  RadioItem: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dropdown-menu-radio-item', ...props },
       children
     ),
-  Label: ({ children, ...props }: any) =>
+  Label: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dropdown-menu-label', ...props },
       children
     ),
-  Separator: ({ ...props }: any) =>
+  Separator: ({ ...props }: MockComponentProps) =>
     React.createElement('div', {
       'data-testid': 'dropdown-menu-separator',
       ...props,
     }),
-  ItemIndicator: ({ children, ...props }: any) =>
+  ItemIndicator: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'span',
       { 'data-testid': 'dropdown-menu-item-indicator', ...props },
       children
     ),
-  Group: ({ children, ...props }: any) =>
+  Group: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dropdown-menu-group', ...props },
       children
     ),
-  Portal: ({ children }: any) => children,
-  Sub: ({ children, ...props }: any) =>
+  Portal: ({ children }: MockComponentProps) => children,
+  Sub: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dropdown-menu-sub', ...props },
       children
     ),
-  SubTrigger: ({ children, ...props }: any) =>
+  SubTrigger: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dropdown-menu-sub-trigger', ...props },
       children
     ),
-  SubContent: ({ children, ...props }: any) =>
+  SubContent: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dropdown-menu-sub-content', ...props },
       children
     ),
-  RadioGroup: ({ children, ...props }: any) =>
+  RadioGroup: ({ children, ...props }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dropdown-menu-radio-group', ...props },
@@ -195,10 +202,17 @@ vi.mock('@radix-ui/react-dropdown-menu', () => ({
 }));
 
 vi.mock('@radix-ui/react-context', () => ({
-  createContext: (defaultValue: any) => {
+  createContext: (defaultValue: unknown) => {
     const context = {
-      Provider: ({ children, value: _value }: any) => children,
-      Consumer: ({ children }: any) => children(defaultValue),
+      Provider: ({
+        children,
+        value: _value,
+      }: MockComponentProps & { value?: unknown }) => children,
+      Consumer: ({
+        children,
+      }: {
+        children: (value: unknown) => React.ReactNode;
+      }) => children(defaultValue),
     };
     return context;
   },
@@ -207,7 +221,12 @@ vi.mock('@radix-ui/react-context', () => ({
 
 // Mock other Radix UI components that might be used
 vi.mock('@radix-ui/react-dialog', () => ({
-  Root: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Root: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dialog-root', ...props },
@@ -216,10 +235,10 @@ vi.mock('@radix-ui/react-dialog', () => ({
   Trigger: ({
     children,
     asChild,
-    onOpenChange,
-    onValueChange,
+    _onOpenChange,
+    _onValueChange,
     ...props
-  }: any) => {
+  }: MockComponentProps & { asChild?: boolean }) => {
     if (asChild && children) {
       return children;
     }
@@ -229,26 +248,46 @@ vi.mock('@radix-ui/react-dialog', () => ({
       children
     );
   },
-  Content: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Content: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dialog-content', ...props },
       children
     ),
-  Overlay: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Overlay: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'dialog-overlay', ...props },
       children
     ),
-  Portal: ({ children }: any) => children,
-  Title: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Portal: ({ children }: MockComponentProps) => children,
+  Title: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'h2',
       { 'data-testid': 'dialog-title', ...props },
       children
     ),
-  Description: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Description: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'p',
       { 'data-testid': 'dialog-description', ...props },
@@ -257,10 +296,10 @@ vi.mock('@radix-ui/react-dialog', () => ({
   Close: ({
     children,
     asChild,
-    onOpenChange,
-    onValueChange,
+    _onOpenChange,
+    _onValueChange,
     ...props
-  }: any) => {
+  }: MockComponentProps & { asChild?: boolean }) => {
     if (asChild && children) {
       return children;
     }
@@ -273,7 +312,12 @@ vi.mock('@radix-ui/react-dialog', () => ({
 }));
 
 vi.mock('@radix-ui/react-popover', () => ({
-  Root: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Root: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'popover-root', ...props },
@@ -282,10 +326,10 @@ vi.mock('@radix-ui/react-popover', () => ({
   Trigger: ({
     children,
     asChild,
-    onOpenChange,
-    onValueChange,
+    _onOpenChange,
+    _onValueChange,
     ...props
-  }: any) => {
+  }: MockComponentProps & { asChild?: boolean }) => {
     if (asChild && children) {
       return children;
     }
@@ -295,18 +339,28 @@ vi.mock('@radix-ui/react-popover', () => ({
       children
     );
   },
-  Content: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Content: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'popover-content', ...props },
       children
     ),
-  Portal: ({ children }: any) => children,
+  Portal: ({ children }: MockComponentProps) => children,
 }));
 
 vi.mock('@radix-ui/react-tooltip', () => ({
-  Provider: ({ children }: any) => children,
-  Root: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Provider: ({ children }: MockComponentProps) => children,
+  Root: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'tooltip-root', ...props },
@@ -315,10 +369,10 @@ vi.mock('@radix-ui/react-tooltip', () => ({
   Trigger: ({
     children,
     asChild,
-    onOpenChange,
-    onValueChange,
+    _onOpenChange,
+    _onValueChange,
     ...props
-  }: any) => {
+  }: MockComponentProps & { asChild?: boolean }) => {
     if (asChild && children) {
       return children;
     }
@@ -328,36 +382,61 @@ vi.mock('@radix-ui/react-tooltip', () => ({
       children
     );
   },
-  Content: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Content: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'div',
       { 'data-testid': 'tooltip-content', ...props },
       children
     ),
-  Portal: ({ children }: any) => children,
+  Portal: ({ children }: MockComponentProps) => children,
 }));
 
 // Mock @radix-ui/react-tabs
 vi.mock('@radix-ui/react-tabs', () => ({
-  Root: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Root: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'div',
       { ...props, 'data-testid': 'tabs-root' },
       children
     ),
-  List: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  List: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'div',
       { ...props, 'data-testid': 'tabs-list' },
       children
     ),
-  Trigger: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Trigger: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'button',
       { ...props, 'data-testid': 'tabs-trigger' },
       children
     ),
-  Content: ({ children, onOpenChange, onValueChange, ...props }: any) =>
+  Content: ({
+    children,
+    _onOpenChange,
+    _onValueChange,
+    ...props
+  }: MockComponentProps) =>
     React.createElement(
       'div',
       { ...props, 'data-testid': 'tabs-content' },
@@ -382,9 +461,11 @@ Object.defineProperty(window, 'scheduler', {
 
 // Mock window.requestIdleCallback for React 19
 Object.defineProperty(window, 'requestIdleCallback', {
-  value: vi.fn((callback: (idleDeadline: any) => void) => {
-    return setTimeout(() => callback({ timeRemaining: () => 50 }), 0);
-  }),
+  value: vi.fn(
+    (callback: (idleDeadline: { timeRemaining: () => number }) => void) => {
+      return setTimeout(() => callback({ timeRemaining: () => 50 }), 0);
+    }
+  ),
   writable: true,
 });
 

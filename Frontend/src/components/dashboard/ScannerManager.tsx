@@ -62,7 +62,7 @@ interface ScannerStation {
   name: string;
   location: string;
   description?: string;
-  scannerConfigs: any[];
+  scannerConfigs: Record<string, unknown>[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -160,7 +160,10 @@ export default function ScannerManager() {
   }, []);
 
   // Connect to a scanner device
-  const connectScanner = async (device: ScannerDevice, config: any = {}) => {
+  const connectScanner = async (
+    device: ScannerDevice,
+    config: Record<string, unknown> = {}
+  ) => {
     try {
       setConnectingDevice(device.path);
 

@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -12,8 +13,6 @@ import { requestLogger } from './middleware/requestLogger';
 import { performanceMonitor } from './middleware/performanceMonitor';
 import { apiRoutes } from './routes/index';
 import { websocketServer } from './websocket/websocketServer';
-
-const express = require('express');
 
 // Create Express application
 const app = express();
