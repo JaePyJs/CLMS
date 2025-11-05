@@ -3,10 +3,8 @@
  * Replaces the class-based ErrorBoundary with react-error-boundary integration
  */
 
-import React, { useCallback } from 'react';
-import type { ReactNode, ErrorInfo } from 'react';
-import { ErrorBoundary } from 'react-error-boundary';
-import type { FallbackProps } from 'react-error-boundary';
+import React, { useCallback, type ReactNode, type ErrorInfo } from 'react';
+import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { ErrorBoundaryFallback } from './ErrorBoundaryFallback';
 import {
   reportApplicationError,
@@ -33,10 +31,14 @@ interface ErrorBoundaryWrapperProps {
   onReset?: (
     details:
       | { reason: 'imperative-api' }
-      | { reason: 'keys'; prev: any[] | undefined; next: any[] | undefined }
+      | {
+          reason: 'keys';
+          prev: unknown[] | undefined;
+          next: unknown[] | undefined;
+        }
   ) => void;
   /** Reset keys - when these change, the error boundary resets */
-  resetKeys?: any[];
+  resetKeys?: unknown[];
   /** Reset on props change */
   resetOnPropsChange?: boolean;
   /** Isolate error boundary (double-wrap for extra protection) */
@@ -99,10 +101,14 @@ export function ErrorBoundaryWrapper({
   const handleReset = useCallback(
     (
       details:
-        | { reason: 'imperative-api'; args: any[] }
-        | { reason: 'keys'; prev: any[] | undefined; next: any[] | undefined }
+        | { reason: 'imperative-api'; args: unknown[] }
+        | {
+            reason: 'keys';
+            prev: unknown[] | undefined;
+            next: unknown[] | undefined;
+          }
     ) => {
-      console.log(`🔄 ErrorBoundary Reset: ${details.reason}`, details);
+      console.debug(`🔄 ErrorBoundary Reset: ${details.reason}`, details);
 
       // Call custom reset handler if provided
       if (onReset) {
@@ -196,8 +202,8 @@ export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
   errorBoundaryProps?: Omit<ErrorBoundaryWrapperProps, 'children'>
 ) {
-  const WrappedComponent = React.forwardRef<any, P>((props, ref) => {
-    const componentProps = { ...props } as any;
+  const WrappedComponent = React.forwardRef<unknown, P>((props, ref) => {
+    const componentProps = { ...props } as P & { ref?: unknown };
     if (ref) {
       componentProps.ref = ref;
     }

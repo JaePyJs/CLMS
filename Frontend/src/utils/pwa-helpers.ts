@@ -446,18 +446,18 @@ export const performanceUtils = {
 
   // Log performance metrics
   logMetrics(): void {
-    console.log('[Performance] Load time:', this.getLoadTime() + 'ms');
+    console.debug('[Performance] Load time:', this.getLoadTime() + 'ms');
 
     const memory = this.getMemoryUsage();
     if (memory) {
-      console.log(
+      console.debug(
         '[Performance] Memory:',
         memory.used + '/' + memory.total + 'MB'
       );
     }
 
     const network = networkUtils.getInfo();
-    console.log('[Performance] Network:', network.effectiveType);
+    console.debug('[Performance] Network:', network.effectiveType);
   },
 
   // Create performance observer

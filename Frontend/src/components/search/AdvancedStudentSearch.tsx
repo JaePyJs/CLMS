@@ -60,7 +60,7 @@ interface Student {
   totalActivities: number;
   lastActivityDate?: string;
   lastCheckoutDate?: string;
-  currentEquipmentSession?: any;
+  currentEquipmentSession?: Record<string, unknown>;
   hasOverdueItems: boolean;
   equipmentBanStatus: {
     isBanned: boolean;
@@ -140,12 +140,15 @@ export default function AdvancedStudentSearch() {
 
     setLoading(true);
     try {
-      const response = await apiClient.get('/api/search/students/suggestions', {
-        params: {
-          query: searchQuery,
-          limit: 5,
-        },
-      });
+      const response = await apiClient.get(
+        '/api/_search/students/suggestions',
+        {
+          params: {
+            query: searchQuery,
+            limit: 5,
+          },
+        }
+      );
 
       if (response.success && response.data) {
         setSuggestions(response.data as StudentSuggestion);
@@ -157,7 +160,7 @@ export default function AdvancedStudentSearch() {
     }
   }, []);
 
-  // Debounced search input handler
+  // Debounced _search input handler
   const handleSearchInput = (value: string) => {
     setQuery(value);
     setCurrentPage(1);
@@ -179,7 +182,7 @@ export default function AdvancedStudentSearch() {
     }
   };
 
-  // Enhanced student search function
+  // Enhanced student _search function
   const performSearch = async (page = 1, resetPagination = true) => {
     if (
       !query.trim() &&
@@ -194,12 +197,13 @@ export default function AdvancedStudentSearch() {
 
     setLoading(true);
     try {
-      const searchParams: any = {
+      // Build query params
+      const searchParams: Record<string, unknown> = {
         page,
         limit: 20,
       };
 
-      // Add filters to search params
+      // Add filters to _search params
       if (query) {
         searchParams.query = query;
       }
@@ -234,7 +238,7 @@ export default function AdvancedStudentSearch() {
         searchParams.sortOrder = filters.sortOrder;
       }
 
-      const response = await apiClient.get('/api/search/students', {
+      const response = await apiClient.get('/api/_search/students', {
         params: searchParams,
       });
 
@@ -252,8 +256,8 @@ export default function AdvancedStudentSearch() {
         setCurrentPage(page);
       }
     } catch (error) {
-      console.error('Student search error:', error);
-      toast.error('Failed to perform student search');
+      console.error('Student _search error:', error);
+      toast.error('Failed to perform student _search');
     } finally {
       setLoading(false);
     }
@@ -289,7 +293,7 @@ export default function AdvancedStudentSearch() {
 
     // Update filters based on suggestion type
     if (type === 'studentId') {
-      // Student ID search is more specific
+      // Student ID _search is more specific
       setFilters({ ...filters, query: value });
     } else if (type === 'grade') {
       setFilters({ ...filters, gradeLevel: value });
@@ -327,8 +331,12 @@ export default function AdvancedStudentSearch() {
       'Last Activity': student.lastActivityDate || 'Never',
     }));
 
+    if (data.length === 0) {
+      throw new Error('No data to export');
+    }
+
     const csv = [
-      Object.keys(data[0]!).join(','),
+      Object.keys(data[0]).join(','),
       ...data.map((row) =>
         Object.values(row)
           .map((v) => `"${v}"`)
@@ -340,7 +348,7 @@ export default function AdvancedStudentSearch() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `student-search-results-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `student-_search-results-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -406,27 +414,27 @@ export default function AdvancedStudentSearch() {
 
   return (
     <div className="space-y-6">
-      {/* Search Section */}
+      {/* _Search Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Advanced Student Search
+            Advanced Student _Search
           </CardTitle>
           <CardDescription>
-            Search and filter students by various criteria including grade,
+            _Search and filter students by various criteria including grade,
             activity, and status
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search Bar with Suggestions */}
+          {/* _Search Bar with Suggestions */}
           <div className="relative">
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
-                  placeholder="Search by name, student ID, or grade..."
+                  placeholder="_Search by name, student ID, or grade..."
                   value={query}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => query.length >= 2 && setShowSuggestions(true)}
@@ -510,7 +518,7 @@ export default function AdvancedStudentSearch() {
               </div>
 
               <Button onClick={() => performSearch()} disabled={loading}>
-                {loading ? 'Searching...' : 'Search'}
+                {loading ? 'Searching...' : '_Search'}
               </Button>
 
               <Button
@@ -582,8 +590,11 @@ export default function AdvancedStudentSearch() {
 
               <Select
                 value={filters.sortBy ?? 'name'}
-                onValueChange={(value: any) => {
-                  setFilters({ ...filters, sortBy: value });
+                onValueChange={(value: string) => {
+                  setFilters({
+                    ...filters,
+                    sortBy: value as StudentSearchOptions['sortBy'],
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -602,8 +613,11 @@ export default function AdvancedStudentSearch() {
 
               <Select
                 value={filters.sortOrder ?? 'asc'}
-                onValueChange={(value: any) => {
-                  setFilters({ ...filters, sortOrder: value });
+                onValueChange={(value: string) => {
+                  setFilters({
+                    ...filters,
+                    sortOrder: value as StudentSearchOptions['sortOrder'],
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -627,7 +641,7 @@ export default function AdvancedStudentSearch() {
                   <label className="text-sm font-medium">Grade Category</label>
                   <Select
                     value={filters.gradeCategory || ''}
-                    onValueChange={(value: any) => {
+                    onValueChange={(value: string) => {
                       setFilters({ ...filters, gradeCategory: value });
                       setCurrentPage(1);
                       performSearch();
@@ -663,7 +677,7 @@ export default function AdvancedStudentSearch() {
                   <label className="text-sm font-medium">Activity Type</label>
                   <Select
                     value={filters.activityType || ''}
-                    onValueChange={(value: any) => {
+                    onValueChange={(value: string) => {
                       setFilters({ ...filters, activityType: value });
                       setCurrentPage(1);
                       performSearch();
@@ -734,13 +748,13 @@ export default function AdvancedStudentSearch() {
         </CardContent>
       </Card>
 
-      {/* Search Results */}
+      {/* _Search Results */}
       {searchResults && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Student Search Results</CardTitle>
+                <CardTitle>Student _Search Results</CardTitle>
                 <CardDescription>
                   Found {searchResults.pagination.total} students
                   {query && ` for "${query}"`}
@@ -898,7 +912,7 @@ export default function AdvancedStudentSearch() {
         <Card>
           <CardContent className="flex items-center justify-center h-32">
             <p className="text-muted-foreground">
-              {query ? 'No results found' : 'Enter a search query to begin'}
+              {query ? 'No results found' : 'Enter a _search query to begin'}
             </p>
           </CardContent>
         </Card>

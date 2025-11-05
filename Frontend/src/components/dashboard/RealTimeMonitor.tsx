@@ -77,11 +77,12 @@ export function RealTimeMonitor({
   // Update stats from dashboard data
   useEffect(() => {
     if (dashboardData.overview) {
+      const overview = dashboardData.overview as Record<string, unknown>;
       setStats({
-        activeStudents: dashboardData.overview.activeStudents || 0,
-        availableEquipment: dashboardData.overview.availableEquipment || 0,
-        activeSessions: dashboardData.overview.activeSessions || 0,
-        todayVisits: dashboardData.overview.todayVisits || 0,
+        activeStudents: Number(overview.activeStudents) || 0,
+        availableEquipment: Number(overview.availableEquipment) || 0,
+        activeSessions: Number(overview.activeSessions) || 0,
+        todayVisits: Number(overview.todayVisits) || 0,
       });
     }
   }, [dashboardData]);
@@ -296,19 +297,24 @@ export function RealTimeMonitor({
                     className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      {getActivityIcon(activity.activityType)}
+                      {getActivityIcon(String(activity.activityType))}
                       <div>
                         <p className="font-medium text-sm">
-                          {activity.studentName || 'Unknown Student'}
+                          {String(activity.studentName || 'Unknown Student')}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {activity.activityType}
+                          {String(activity.activityType)}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <Badge variant="outline" className="text-xs">
-                        {formatTime(activity.checkInTime || activity.timestamp)}
+                        {formatTime(
+                          new Date(
+                            (activity.checkInTime as string | number) ||
+                              (activity.timestamp as number)
+                          )
+                        )}
                       </Badge>
                     </div>
                   </div>
@@ -340,45 +346,50 @@ export function RealTimeMonitor({
             >
               {Object.values(equipmentStatus)
                 .slice(0, 6)
-                .map((equipment: any, index) => (
-                  <div key={index} className="p-3 rounded-lg border">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm">
-                        {equipment.name}
-                      </span>
-                      <Badge
-                        variant={
-                          equipment.status === 'AVAILABLE'
-                            ? 'default'
-                            : 'secondary'
-                        }
-                        className="text-xs"
-                      >
-                        {equipment.status}
-                      </Badge>
-                    </div>
-                    {equipment.currentSession && (
-                      <div className="text-xs text-muted-foreground">
-                        <div className="flex justify-between mb-1">
-                          <span>
-                            In use by: {equipment.currentSession.studentName}
-                          </span>
-                          <span>
-                            {equipment.currentSession.remainingMinutes}m left
-                          </span>
-                        </div>
-                        <Progress
-                          value={
-                            (equipment.currentSession.elapsedMinutes /
-                              equipment.currentSession.timeLimitMinutes) *
-                            100
+                .map((equipment: Record<string, unknown>, index) => {
+                  const session = equipment.currentSession as
+                    | Record<string, unknown>
+                    | undefined;
+                  return (
+                    <div key={index} className="p-3 rounded-lg border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-sm">
+                          {String(equipment.name)}
+                        </span>
+                        <Badge
+                          variant={
+                            equipment.status === 'AVAILABLE'
+                              ? 'default'
+                              : 'secondary'
                           }
-                          className="h-1"
-                        />
+                          className="text-xs"
+                        >
+                          {String(equipment.status)}
+                        </Badge>
                       </div>
-                    )}
-                  </div>
-                ))}
+                      {session && (
+                        <div className="text-xs text-muted-foreground">
+                          <div className="flex justify-between mb-1">
+                            <span>
+                              In use by: {String(session.studentName)}
+                            </span>
+                            <span>
+                              {String(session.remainingMinutes)}m left
+                            </span>
+                          </div>
+                          <Progress
+                            value={
+                              ((Number(session.elapsedMinutes) || 0) /
+                                (Number(session.timeLimitMinutes) || 1)) *
+                              100
+                            }
+                            className="h-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
           </CardContent>
         </Card>
@@ -407,7 +418,7 @@ export function RealTimeMonitor({
                     <div className="flex justify-between">
                       <span>{notification.message}</span>
                       <span className="text-xs text-muted-foreground">
-                        {formatTime(notification.timestamp)}
+                        {formatTime(new Date(notification.timestamp))}
                       </span>
                     </div>
                   </AlertDescription>

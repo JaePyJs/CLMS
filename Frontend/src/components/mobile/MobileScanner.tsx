@@ -28,12 +28,12 @@ interface ScanResult {
   type: 'barcode' | 'qr' | 'manual';
   timestamp: number;
   status: 'success' | 'error' | 'pending';
-  data?: any;
+  data?: unknown;
   error?: string;
 }
 
 interface MobileScannerProps {
-  onScanSuccess: (code: string, type: string, data?: any) => void;
+  onScanSuccess: (code: string, type: string, data?: unknown) => void;
   onScanError: (error: string) => void;
   placeholder?: string;
   allowedTypes?: ('barcode' | 'qr' | 'manual')[];
@@ -122,7 +122,9 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
         return;
       }
 
-      const capabilities = track.getCapabilities() as any;
+      const capabilities = track.getCapabilities() as MediaTrackCapabilities & {
+        torch?: boolean;
+      };
 
       if (capabilities.torch) {
         await track.applyConstraints({
@@ -173,7 +175,7 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
 
   // Handle scan result
   const handleScanResult = useCallback(
-    async (code: string, type: 'barcode' | 'qr' | 'manual', data?: any) => {
+    async (code: string, type: 'barcode' | 'qr' | 'manual', data?: unknown) => {
       try {
         // Create scan result entry
         const result: ScanResult = {

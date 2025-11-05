@@ -39,6 +39,7 @@ import {
 import { StudentBarcodeDialog } from './StudentBarcodeDialog';
 import { StudentImportDialog } from './StudentImportDialog';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorHandling';
 import {
   Users,
   UserPlus,
@@ -103,6 +104,29 @@ interface StudentsApiResponse {
   };
 }
 
+// Backend student data structure (snake_case from API)
+interface BackendStudent {
+  id: string;
+  student_id: string;
+  first_name: string;
+  last_name: string;
+  grade_level: number;
+  grade_category: string;
+  section?: string;
+  is_active: boolean;
+  email?: string;
+  phone?: string;
+  address?: string;
+  parent_name?: string;
+  parent_phone?: string;
+  parent_email?: string;
+  emergency_contact?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  barcode?: string;
+}
+
 interface MockStudentData {
   students: Student[];
   stats: {
@@ -124,12 +148,12 @@ export function StudentManagement() {
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
 
   // Data refresh with query
-  const [studentsRefreshState, studentsRefreshActions] = useDataRefresh(
+  const [studentsRefreshState, _studentsRefreshActions] = useDataRefresh(
     async (): Promise<StudentsApiResponse> => {
       const response = await studentsApi.getStudents();
       // Backend returns: { success: true, data: [...], count: N }
       // Frontend expects: { students: [...], total: N, pagination: {...} }
-      const studentsData = response.data as any[];
+      const studentsData = response.data as BackendStudent[];
       const transformedData: StudentsApiResponse = {
         students: studentsData.map((student) => ({
           id: student.id,
@@ -157,7 +181,9 @@ export function StudentManagement() {
           barcodeGenerated: !!student.barcode,
           libraryCardPrinted: false,
         })),
-        total: (response.data as any)?.count || studentsData.length,
+        total:
+          (response.data as unknown as { count?: number })?.count ||
+          studentsData.length,
         pagination: {},
       };
       return transformedData;
@@ -198,7 +224,7 @@ export function StudentManagement() {
   }, [students]);
 
   // Search and filter state
-  const [searchFilters, filterActions] = useSearchFilters({
+  const [searchFilters, _filterActions] = useSearchFilters({
     defaultSearchTerm: '',
     defaultFilters: { status: 'all', grade: 'all' },
   });
@@ -250,7 +276,7 @@ export function StudentManagement() {
     studentBarcode: false,
   });
 
-  const studentDetailsData = modalStates.studentDetails.data;
+  const _studentDetailsData = modalStates.studentDetails.data;
 
   // Form state for new student
   const [formState, formActions] = useForm({
@@ -276,10 +302,10 @@ export function StudentManagement() {
   });
 
   const newStudent = formState.values;
-  const formErrors = formState.errors;
+  const _formErrors = formState.errors;
 
   // Loading states for different operations
-  const [loadingStates, loadingActions] = useMultipleLoadingStates({
+  const [_loadingStates, loadingActions] = useMultipleLoadingStates({
     generatingQRCodes: {},
     printingIDs: {},
     exporting: {},
@@ -298,9 +324,9 @@ export function StudentManagement() {
   const [showStudentBarcode, setShowStudentBarcode] = useState(false);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
-  const [isGeneratingQRCodes, setIsGeneratingQRCodes] = useState(false);
-  const [isPrintingIDs, setIsPrintingIDs] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [isGeneratingQRCodes, _setIsGeneratingQRCodes] = useState(false);
+  const [isPrintingIDs, _setIsPrintingIDs] = useState(false);
+  const [isExporting, _setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterGrade, setFilterGrade] = useState('');
@@ -308,28 +334,29 @@ export function StudentManagement() {
 
   // Mutations
   const createStudentMutation = useMutation({
-    mutationFn: (studentData: any) => studentsApi.createStudent(studentData),
+    mutationFn: (studentData: Partial<Student>) =>
+      studentsApi.createStudent(studentData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast.success('Student added successfully!');
       modalActions.addStudent.close();
       formActions.resetForm();
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to add student');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to add student'));
     },
   });
 
   const updateStudentMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<Student> }) =>
       studentsApi.updateStudent(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast.success('Student updated successfully!');
       modalActions.editStudent.close();
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to update student');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to update student'));
     },
   });
 
@@ -339,8 +366,8 @@ export function StudentManagement() {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast.success('Student deleted successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to delete student');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to delete student'));
     },
   });
 
@@ -350,10 +377,8 @@ export function StudentManagement() {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast.success('QR codes generated successfully!');
     },
-    onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.error || 'Failed to generate QR codes'
-      );
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to generate QR codes'));
     },
   });
 
@@ -363,15 +388,13 @@ export function StudentManagement() {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       toast.success('Barcodes generated successfully!');
     },
-    onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.error || 'Failed to generate barcodes'
-      );
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to generate barcodes'));
     },
   });
 
   // Mock data
-  const mockData: MockStudentData = {
+  const _mockData: MockStudentData = {
     students: [
       {
         id: '1',
@@ -595,8 +618,8 @@ export function StudentManagement() {
           updateStudentMutation.mutateAsync({
             id,
             data: {
-              grade_level: grade,
-              grade_category: getGradeCategory(grade),
+              gradeLevel: grade,
+              gradeCategory: getGradeCategory(grade),
             },
           })
         )
@@ -619,7 +642,7 @@ export function StudentManagement() {
         selectedStudents.map((id) =>
           updateStudentMutation.mutateAsync({
             id,
-            data: { is_active: status === 'active' },
+            data: { isActive: status === 'active' },
           })
         )
       );

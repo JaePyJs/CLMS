@@ -23,7 +23,9 @@ import {
 } from '@/components/LoadingStates';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useMultipleLoadingStates, useAsyncData, useForm } from '@/hooks';
-import PredictiveInsights from '@/components/analytics/PredictiveInsights';
+import PredictiveInsights, {
+  type PredictiveInsight,
+} from '@/components/analytics/PredictiveInsights';
 import UsageHeatMap from '@/components/analytics/UsageHeatMap';
 import TimeSeriesForecast from '@/components/analytics/TimeSeriesForecast';
 import AdvancedReporting from '@/components/dashboard/AdvancedReporting';
@@ -75,7 +77,7 @@ export function AnalyticsDashboard() {
   });
 
   // Export form management
-  const [exportForm, exportFormActions] = useForm({
+  const [_exportForm, _exportFormActions] = useForm({
     initialValues: {
       format: 'csv',
       timeframe: selectedPeriod,
@@ -299,8 +301,11 @@ export function AnalyticsDashboard() {
     }
   };
 
-  const handleInsightAction = async (insight: any, action: string) => {
-    console.log('Insight action:', insight, action);
+  const handleInsightAction = async (
+    insight: PredictiveInsight,
+    action: string
+  ) => {
+    console.debug('Insight action:', insight, action);
     // Implement insight action handling
   };
 
@@ -327,7 +332,9 @@ export function AnalyticsDashboard() {
         <div className="flex flex-wrap items-center gap-2">
           <Select
             value={selectedPeriod}
-            onValueChange={(value: any) => setSelectedPeriod(value)}
+            onValueChange={(value: string) =>
+              setSelectedPeriod(value as 'day' | 'week' | 'month')
+            }
           >
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -454,7 +461,14 @@ export function AnalyticsDashboard() {
             </div>
             <Select
               value={selectedMetric}
-              onValueChange={(value: any) => setSelectedMetric(value)}
+              onValueChange={(value: string) =>
+                setSelectedMetric(
+                  value as
+                    | 'student_visits'
+                    | 'equipment_usage'
+                    | 'book_circulation'
+                )
+              }
             >
               <SelectTrigger className="w-full sm:w-48">
                 <SelectValue />
@@ -499,7 +513,7 @@ export function AnalyticsDashboard() {
               data={analyticsStates.heatmap.data}
               filterType="all"
               onCellClick={(data) =>
-                console.log('Heat map cell clicked:', data)
+                console.debug('Heat map cell clicked:', data)
               }
             />
           )}

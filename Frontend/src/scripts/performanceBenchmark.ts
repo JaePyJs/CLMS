@@ -78,7 +78,7 @@ class PerformanceBenchmark {
     }
 
     this.isRunning = true;
-    console.log(`🚀 Starting benchmark: ${config.name}`);
+    console.debug(`🚀 Starting benchmark: ${config.name}`);
 
     const renderTimes: number[] = [];
     const memoryUsages: number[] = [];
@@ -86,7 +86,7 @@ class PerformanceBenchmark {
 
     try {
       // Warmup phase
-      console.log(`🔥 Warming up (${config.warmupIterations} iterations)`);
+      console.debug(`🔥 Warming up (${config.warmupIterations} iterations)`);
       for (let i = 0; i < config.warmupIterations; i++) {
         await this.measureRender();
         await this.measureMemory();
@@ -95,7 +95,7 @@ class PerformanceBenchmark {
       }
 
       // Main benchmark phase
-      console.log(`📊 Running benchmark (${config.iterations} iterations)`);
+      console.debug(`📊 Running benchmark (${config.iterations} iterations)`);
       for (let i = 0; i < config.iterations; i++) {
         const startTime = performance.now();
 
@@ -112,7 +112,7 @@ class PerformanceBenchmark {
         loadTimes.push(loadTime);
 
         const iterationTime = performance.now() - startTime;
-        console.log(
+        console.debug(
           `  Iteration ${i + 1}/${config.iterations}: ${iterationTime.toFixed(2)}ms`
         );
 
@@ -163,7 +163,7 @@ class PerformanceBenchmark {
       };
 
       this.results.push(result);
-      console.log(
+      console.debug(
         `✅ Benchmark completed: ${config.name} - Score: ${score.toFixed(1)}/100`
       );
 
@@ -470,7 +470,7 @@ export async function runAllBenchmarks(): Promise<BenchmarkResult[]> {
   const benchmark = PerformanceBenchmark.getInstance();
   const results: BenchmarkResult[] = [];
 
-  console.log('🚀 Starting comprehensive performance benchmark suite...');
+  console.debug('🚀 Starting comprehensive performance benchmark suite...');
 
   for (const config of Object.values(BENCHMARK_CONFIGS)) {
     try {
@@ -481,7 +481,7 @@ export async function runAllBenchmarks(): Promise<BenchmarkResult[]> {
     }
   }
 
-  console.log('✅ All benchmarks completed');
+  console.debug('✅ All benchmarks completed');
   return results;
 }
 

@@ -11,12 +11,20 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:react-hooks/recommended',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs', 'node_modules/**', 'vite.config.ts', 'vitest.config.ts', '*.config.ts'],
+  ignorePatterns: [
+    'dist',
+    '.eslintrc.cjs',
+    'node_modules/**',
+    'vite.config.ts',
+    'vitest.config.ts',
+    '*.config.ts',
+  ],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
-    project: './tsconfig.json',
+    project: './tsconfig.eslint.json',
+    tsconfigRootDir: __dirname,
     ecmaFeatures: {
       jsx: true,
     },
@@ -56,8 +64,11 @@ module.exports = {
     '@typescript-eslint/no-unsafe-return': 'off',
     '@typescript-eslint/no-unsafe-argument': 'off',
 
-    // Console and debugging
-    'no-console': 'warn', // Use logger in production
+    // Console and debugging - RELAXED for development
+    'no-console': [
+      'warn',
+      { allow: ['warn', 'error', 'info', 'debug', 'group', 'groupEnd'] },
+    ], // Allow most console methods
     'no-debugger': 'error',
     '@typescript-eslint/no-var-requires': 'off',
     '@typescript-eslint/restrict-template-expressions': 'off',

@@ -226,7 +226,7 @@ export function useTableFilters<T extends Record<string, any>>(options: {
   const {
     data,
     searchableFields = [],
-    filterableFields = {},
+    filterableFields: _filterableFields = {},
     ...filterOptions
   } = options;
 
@@ -343,9 +343,9 @@ export function useAdvancedFilters(
     }
   >
 ) {
-  const [state, setState] = useState<Record<string, any>>({});
+  const [state, setState] = useState<Record<string, unknown>>({});
 
-  const setFilterValue = useCallback((key: string, value: any) => {
+  const setFilterValue = useCallback((key: string, value: unknown) => {
     setState((prev) => ({ ...prev, [key]: value }));
   }, []);
 
@@ -363,7 +363,10 @@ export function useAdvancedFilters(
 
   // Build filter functions for applying to data
   const filterFunctions = useMemo(() => {
-    const functions: Record<string, (item: any) => boolean> = {};
+    const functions: Record<
+      string,
+      (item: Record<string, unknown>) => boolean
+    > = {};
 
     Object.entries(state).forEach(([key, value]) => {
       const schema = filterSchema[key];
@@ -374,7 +377,10 @@ export function useAdvancedFilters(
       switch (schema.type) {
         case 'text':
           functions[key] = (item) =>
-            item[key]?.toString().toLowerCase().includes(value.toLowerCase());
+            item[key]
+              ?.toString()
+              .toLowerCase()
+              .includes(String(value).toLowerCase());
           break;
 
         case 'select':
@@ -388,17 +394,21 @@ export function useAdvancedFilters(
 
         case 'date':
           functions[key] = (item) => {
-            const itemDate = new Date(item[key]);
-            const filterDate = new Date(value);
+            const itemDate = new Date(item[key] as string | number | Date);
+            const filterDate = new Date(value as string | number | Date);
             return itemDate.toDateString() === filterDate.toDateString();
           };
           break;
 
         case 'daterange':
           functions[key] = (item) => {
-            const itemDate = new Date(item[key]);
-            const startDate = new Date(value.start);
-            const endDate = new Date(value.end);
+            const itemDate = new Date(item[key] as string | number | Date);
+            const valueObj = value as {
+              start: string | number | Date;
+              end: string | number | Date;
+            };
+            const startDate = new Date(valueObj.start);
+            const endDate = new Date(valueObj.end);
             return itemDate >= startDate && itemDate <= endDate;
           };
           break;
@@ -421,7 +431,7 @@ export function useAdvancedFilters(
   }, [state, filterSchema]);
 
   const applyFilters = useCallback(
-    (data: any[]) => {
+    (data: Array<Record<string, unknown>>) => {
       if (Object.keys(filterFunctions).length === 0) {
         return data;
       }

@@ -21,7 +21,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
     navigator.serviceWorker
       .register('/sw.js')
       .then((registration) => {
-        console.log(
+        console.debug(
           '✅ Service Worker registered successfully:',
           registration.scope
         );
@@ -44,7 +44,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
                 navigator.serviceWorker.controller
               ) {
                 // New version available
-                console.log('🔄 New version available! Refresh to update.');
+                console.debug('🔄 New version available! Refresh to update.');
                 if (confirm('A new version is available! Reload to update?')) {
                   window.location.reload();
                 }
@@ -58,18 +58,18 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
       });
   });
 } else if ('serviceWorker' in navigator && import.meta.env.DEV) {
-  console.log('🔧 Service Worker disabled in development mode');
+  console.debug('🔧 Service Worker disabled in development mode');
   // Proactively unregister any previously installed service workers to avoid dev asset interception
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     if (registrations.length > 0) {
-      console.log(
+      console.debug(
         `🧹 Unregistering ${registrations.length} stale Service Worker(s) for dev`
       );
       registrations.forEach((reg) => {
         reg
           .unregister()
           .then((success) => {
-            console.log('🗑️ Service Worker unregistered:', success);
+            console.debug('🗑️ Service Worker unregistered:', success);
           })
           .catch((err) => console.warn('⚠️ Failed to unregister SW:', err));
       });
@@ -81,7 +81,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
       .keys()
       .then((keys) => {
         if (keys.length > 0) {
-          console.log(`🧽 Clearing ${keys.length} cache(s) in dev`);
+          console.debug(`🧽 Clearing ${keys.length} cache(s) in dev`);
           keys.forEach((key) =>
             caches
               .delete(key)
@@ -93,7 +93,12 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
   }
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('Failed to find the root element');
+}
+
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ErrorBoundary>
       <ThemeProvider>

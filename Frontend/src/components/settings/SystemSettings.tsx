@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { settingsApi } from '@/lib/api';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorHandling';
 import {
   Save,
   RotateCcw,
@@ -94,8 +95,8 @@ export default function SystemSettings() {
       }
       setHasChanges(false);
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to save settings');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to save settings'));
     },
   });
 
@@ -138,7 +139,10 @@ export default function SystemSettings() {
     }
   };
 
-  const handleInputChange = (field: keyof SystemConfig, value: any) => {
+  const handleInputChange = (
+    field: keyof SystemConfig,
+    value: string | number | boolean | Record<string, number>
+  ) => {
     setSettings((prev) => ({
       ...prev,
       [field]: value,

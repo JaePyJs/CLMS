@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users,
   Plus,
@@ -14,10 +14,14 @@ import {
   XCircle,
   Eye,
 } from 'lucide-react';
-import userApi from '../../services/userApi';
-import type { User, UserRole, CreateUserInput } from '../../services/userApi';
+import userApi, {
+  type User,
+  type UserRole,
+  type CreateUserInput,
+} from '../../services/userApi';
 import { useToast } from '../ToastContainer';
 import { useForm } from '../../hooks';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -30,7 +34,12 @@ const UserManagement: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [statistics, setStatistics] = useState<any>(null);
+  const [statistics, setStatistics] = useState<{
+    total: number;
+    active: number;
+    inactive: number;
+    byRole: Array<{ role: UserRole; _count: number }>;
+  } | null>(null);
 
   const toast = useToast();
 
@@ -61,15 +70,10 @@ const UserManagement: React.FC = () => {
     VIEWER: 'Viewer',
   };
 
-  useEffect(() => {
-    fetchUsers();
-    fetchStatistics();
-  }, [roleFilter, statusFilter, searchQuery]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = {};
+      const params: Record<string, unknown> = {};
 
       if (roleFilter !== 'ALL') {
         params.role = roleFilter;
@@ -80,7 +84,7 @@ const UserManagement: React.FC = () => {
       }
 
       if (searchQuery) {
-        params.search = searchQuery;
+        params._search = searchQuery;
       }
 
       const response = await userApi.getUsers(params);
@@ -91,16 +95,21 @@ const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [roleFilter, statusFilter, searchQuery]); // toast is stable from useToast hook
 
-  const fetchStatistics = async () => {
+  const fetchStatistics = useCallback(async () => {
     try {
       const response = await userApi.getStatistics();
       setStatistics(response.data);
     } catch (error) {
       console.error('Error fetching statistics:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchStatistics();
+  }, [fetchUsers, fetchStatistics]);
 
   const handleCreateUser = async (data: CreateUserInput) => {
     try {
@@ -109,26 +118,23 @@ const UserManagement: React.FC = () => {
       setShowCreateModal(false);
       fetchUsers();
       fetchStatistics();
-    } catch (error: any) {
-      toast.error(
-        'Error',
-        error.response?.data?.message || 'Failed to create user'
-      );
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to create user'));
     }
   };
 
-  const handleUpdateUser = async (userId: string, data: any) => {
+  const handleUpdateUser = async (
+    userId: string,
+    data: Partial<CreateUserInput>
+  ) => {
     try {
       await userApi.updateUser(userId, data);
       toast.success('Success', 'User updated successfully');
       setShowEditModal(false);
       setSelectedUser(null);
       fetchUsers();
-    } catch (error: any) {
-      toast.error(
-        'Error',
-        error.response?.data?.message || 'Failed to update user'
-      );
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to update user'));
     }
   };
 
@@ -143,10 +149,10 @@ const UserManagement: React.FC = () => {
       }
       fetchUsers();
       fetchStatistics();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(
         'Error',
-        error.response?.data?.message || 'Failed to update user status'
+        getErrorMessage(error, 'Failed to update user status')
       );
     }
   };
@@ -165,11 +171,8 @@ const UserManagement: React.FC = () => {
       toast.success('Success', 'User deleted successfully');
       fetchUsers();
       fetchStatistics();
-    } catch (error: any) {
-      toast.error(
-        'Error',
-        error.response?.data?.message || 'Failed to delete user'
-      );
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to delete user'));
     }
   };
 
@@ -184,11 +187,8 @@ const UserManagement: React.FC = () => {
     try {
       await userApi.resetPassword(user.id, newPassword);
       toast.success('Success', 'Password reset successfully');
-    } catch (error: any) {
-      toast.error(
-        'Error',
-        error.response?.data?.message || 'Failed to reset password'
-      );
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to reset password'));
     }
   };
 
@@ -263,8 +263,8 @@ const UserManagement: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600">Admins</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {statistics.byRole.find((r: any) => r.role === 'ADMIN')
-                    ?._count || 0}
+                  {statistics.byRole.find((r) => r.role === 'ADMIN')?._count ||
+                    0}
                 </p>
               </div>
               <ShieldCheck className="w-8 h-8 text-red-600" />
@@ -276,13 +276,13 @@ const UserManagement: React.FC = () => {
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
         <div className="flex items-center gap-4 flex-wrap">
-          {/* Search */}
+          {/* _Search */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search users..."
+                placeholder="_Search users..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -293,7 +293,7 @@ const UserManagement: React.FC = () => {
           {/* Role Filter */}
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as any)}
+            onChange={(e) => setRoleFilter(e.target.value as UserRole | 'ALL')}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="ALL">All Roles</option>
@@ -308,7 +308,9 @@ const UserManagement: React.FC = () => {
           {/* Status Filter */}
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
+            onChange={(e) =>
+              setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')
+            }
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="ALL">All Status</option>
@@ -625,7 +627,7 @@ const CreateUserModal: React.FC<{
 const EditUserModal: React.FC<{
   user: User;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: unknown) => void;
 }> = ({ user, onClose, onSubmit }) => {
   const [editForm, editFormActions] = useForm({
     initialValues: {

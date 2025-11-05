@@ -40,9 +40,34 @@ import {
   Activity,
 } from 'lucide-react';
 
+interface RawPaymentTrend {
+  period: string;
+  amount: number;
+  transactions: number;
+}
+
+interface RawFineCategory {
+  category: string;
+  amount: number;
+  count: number;
+}
+
+interface FineAnalyticsData {
+  paymentTrends?: RawPaymentTrend[];
+  fineCategories?: RawFineCategory[];
+  totalFines?: number;
+  collectedFines?: number;
+  outstandingFines?: number;
+  collectionRate?: number;
+  overdueAnalysis?: {
+    patterns?: unknown[];
+    recommendations?: string[];
+  };
+}
+
 interface FineCollectionAnalyticsProps {
   timeframe: 'day' | 'week' | 'month';
-  data?: any;
+  data?: FineAnalyticsData;
   isLoading?: boolean;
 }
 
@@ -91,10 +116,10 @@ export function FineCollectionAnalytics({
     }
   }, [data, timeframe]);
 
-  const processFineData = (analyticsData: any) => {
+  const processFineData = (analyticsData: FineAnalyticsData) => {
     // Process payment trends
     const trends =
-      analyticsData.paymentTrends?.map((trend: any) => ({
+      analyticsData.paymentTrends?.map((trend: RawPaymentTrend) => ({
         ...trend,
         averagePayment:
           trend.transactions > 0 ? trend.amount / trend.transactions : 0,
@@ -104,13 +129,18 @@ export function FineCollectionAnalytics({
 
     // Process fine categories
     const categories =
-      analyticsData.fineCategories?.map((cat: any, index: number) => ({
-        ...cat,
-        percentage: calculatePercentage(cat.amount, analyticsData.totalFines),
-        color: FINE_COLORS[index % FINE_COLORS.length],
-        trend:
-          Math.random() > 0.5 ? 'up' : Math.random() > 0.5 ? 'down' : 'stable',
-      })) || [];
+      analyticsData.fineCategories?.map(
+        (cat: RawFineCategory, index: number) => ({
+          ...cat,
+          percentage: calculatePercentage(cat.amount, analyticsData.totalFines),
+          color: FINE_COLORS[index % FINE_COLORS.length],
+          trend: (Math.random() > 0.5
+            ? 'up'
+            : Math.random() > 0.5
+              ? 'down'
+              : 'stable') as 'up' | 'down' | 'stable',
+        })
+      ) || [];
     setFineCategories(categories);
 
     // Process overdue patterns
@@ -503,25 +533,30 @@ export function FineCollectionAnalytics({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {patterns.map((pattern: any, index: number) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{pattern.type}</span>
-                    <Badge
-                      variant={
-                        pattern.overdueRate > 15 ? 'destructive' : 'outline'
-                      }
-                    >
-                      {pattern.overdueRate}% overdue
-                    </Badge>
+              {patterns.map((pattern: unknown, index: number) => {
+                const p = pattern as Record<string, unknown>;
+                return (
+                  <div key={index} className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">
+                        {String(p.type)}
+                      </span>
+                      <Badge
+                        variant={
+                          Number(p.overdueRate) > 15 ? 'destructive' : 'outline'
+                        }
+                      >
+                        {String(p.overdueRate)}% overdue
+                      </Badge>
+                    </div>
+                    <Progress value={Number(p.overdueRate)} className="h-2" />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Avg delay: {String(p.averageDelay)} days</span>
+                      <span>Volume: High</span>
+                    </div>
                   </div>
-                  <Progress value={pattern.overdueRate} className="h-2" />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Avg delay: {pattern.averageDelay} days</span>
-                    <span>Volume: High</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -629,7 +664,11 @@ export function FineCollectionAnalytics({
       {/* Analytics Tabs */}
       <Tabs
         value={selectedView}
-        onValueChange={(value: any) => setSelectedView(value)}
+        onValueChange={(value: string) =>
+          setSelectedView(
+            value as 'overview' | 'trends' | 'categories' | 'patterns'
+          )
+        }
         className="space-y-4"
       >
         <TabsList className="grid w-full grid-cols-4">

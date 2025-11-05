@@ -71,7 +71,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
 
   // Handle app installed event
   const handleAppInstalled = useCallback(() => {
-    console.log('[PWAInstall] App was installed');
+    console.debug('[PWAInstall] App was installed');
     setIsInstalled(true);
     localStorage.setItem('pwa-installed', 'true');
     setShowPrompt(false);
@@ -102,7 +102,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
       // Wait for the user to respond to the prompt
       const { outcome } = await deferredPrompt.userChoice;
 
-      console.log(`[PWAInstall] User ${outcome} the install prompt`);
+      console.debug(`[PWAInstall] User ${outcome} the install prompt`);
 
       if (outcome === 'accepted') {
         setInstallStatus('success');

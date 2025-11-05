@@ -36,10 +36,10 @@ import {
   TrendingUp,
   TrendingDown,
 } from 'lucide-react';
-import { performanceMonitoringService } from '@/services/performanceMonitoringService';
-import type {
-  PerformanceReport,
-  ComponentPerformance,
+import {
+  performanceMonitoringService,
+  type PerformanceReport,
+  type ComponentPerformance,
 } from '@/services/performanceMonitoringService';
 
 interface MetricCardProps {
@@ -218,7 +218,7 @@ const PerformanceMonitor: React.FC = () => {
     try {
       // This would require Lighthouse to be available
       // For now, we'll simulate it
-      console.log('Running Lighthouse audit...');
+      console.debug('Running Lighthouse audit...');
       // const result = await performanceMonitoringService.runLighthouseAudit();
     } catch (error) {
       console.error('Lighthouse audit failed:', error);

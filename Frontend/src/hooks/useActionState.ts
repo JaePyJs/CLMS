@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 
 interface ActionState {
@@ -16,6 +16,23 @@ interface ActionActions {
   error: (error: string) => void;
   cancel: () => void;
   reset: () => void;
+}
+
+const createDefaultActionState = (): ActionState => ({
+  isLoading: false,
+  error: null,
+  data: null,
+  progress: 0,
+  isCancelled: false,
+});
+
+interface MultipleActionConfig<TResult = any> {
+  actionFn: (params: any) => Promise<TResult>;
+  onSuccess?: (data: TResult) => void;
+  onError?: (error: Error | string) => void;
+  onProgress?: (progress: number) => void;
+  autoReset?: boolean;
+  resetDelay?: number;
 }
 
 /**
@@ -244,162 +261,318 @@ export function useActionState<T = any>(
  *   },
  * });
  */
-export function useMultipleActions<T extends Record<string, any>>(
-  actions: Record<
-    string,
-    {
-      actionFn: (params: any) => Promise<any>;
-      onSuccess?: (data: any) => void;
-      onError?: (error: Error | string) => void;
-      onProgress?: (progress: number) => void;
-      autoReset?: boolean;
-      resetDelay?: number;
-    }
-  >
-) {
-  const [states, setStates] = useState<Record<keyof T, ActionState>>(() => {
-    const initialStates = {} as Record<keyof T, ActionState>;
-    Object.keys(actions).forEach((key) => {
-      initialStates[key as keyof T] = {
-        isLoading: false,
-        error: null,
-        data: null,
-        progress: 0,
-        isCancelled: false,
-      };
+export function useMultipleActions<
+  TConfig extends Record<string, MultipleActionConfig<any>>,
+>(actions: TConfig) {
+  const actionEntries = useMemo(
+    () => Object.entries(actions) as Array<[string, MultipleActionConfig<any>]>,
+    [actions]
+  );
+
+  const actionKeys = useMemo(
+    () => actionEntries.map(([key]) => key),
+    [actionEntries]
+  );
+
+  const [states, setStates] = useState<Record<string, ActionState>>(() => {
+    const initialStates: Record<string, ActionState> = {};
+    actionKeys.forEach((key) => {
+      initialStates[key] = createDefaultActionState();
     });
     return initialStates;
   });
 
-  const actionFunctions = useRef(new Map<string, (params?: any) => void>());
+  useEffect(() => {
+    setStates((prev) => {
+      const next: Record<string, ActionState> = {};
+      actionKeys.forEach((key) => {
+        next[key] = prev[key] ?? createDefaultActionState();
+      });
+      return next;
+    });
+  }, [actionKeys]);
 
-  // Create individual action functions
-  Object.entries(actions).forEach(([key, config]) => {
-    const options: {
-      onSuccess?: (data: any) => void;
-      onError?: (error: Error | string) => void;
-      onProgress?: (progress: number) => void;
-      autoReset?: boolean;
-      resetDelay?: number;
-    } = {};
+  const actionsRef = useRef(actions);
+  useEffect(() => {
+    actionsRef.current = actions;
+  }, [actions]);
 
-    // Use type guards to ensure we only assign defined values
-    if (config.onSuccess !== undefined) {
-      options.onSuccess = config.onSuccess;
-    }
-    if (config.onError !== undefined) {
-      options.onError = config.onError;
-    }
-    if (config.onProgress !== undefined) {
-      options.onProgress = config.onProgress;
-    }
-    if (config.autoReset !== undefined) {
-      options.autoReset = config.autoReset;
-    }
-    if (config.resetDelay !== undefined) {
-      options.resetDelay = config.resetDelay;
-    }
+  const controllersRef = useRef(new Map<string, AbortController>());
+  const autoResetTimersRef = useRef(
+    new Map<string, ReturnType<typeof setTimeout>>()
+  );
 
-    const [, actionActions] = useActionState(config.actionFn, options);
+  useEffect(() => {
+    return () => {
+      controllersRef.current.forEach((controller) => controller.abort());
+      autoResetTimersRef.current.forEach((timeoutId) =>
+        clearTimeout(timeoutId)
+      );
+      controllersRef.current.clear();
+      autoResetTimersRef.current.clear();
+    };
+  }, []);
 
-    // Store the start function
-    actionFunctions.current.set(key, actionActions.start);
+  useEffect(() => {
+    const validKeys = new Set(actionKeys);
+    controllersRef.current.forEach((controller, key) => {
+      if (!validKeys.has(key)) {
+        controller.abort();
+        controllersRef.current.delete(key);
+      }
+    });
+    autoResetTimersRef.current.forEach((timeoutId, key) => {
+      if (!validKeys.has(key)) {
+        clearTimeout(timeoutId);
+        autoResetTimersRef.current.delete(key);
+      }
+    });
+  }, [actionKeys]);
 
-    // Update global state when individual state changes
-    // Note: This is a simplified approach. In a real implementation,
-    // you might want to use a more sophisticated state management approach
-  });
+  const updateActionState = useCallback(
+    (actionKey: string, updater: (current: ActionState) => ActionState) => {
+      setStates((prev) => {
+        const current = prev[actionKey] ?? createDefaultActionState();
+        return {
+          ...prev,
+          [actionKey]: updater(current),
+        };
+      });
+    },
+    []
+  );
 
-  const startAction = useCallback((actionKey: string, params?: any) => {
-    const actionFn = actionFunctions.current.get(actionKey);
-    if (actionFn) {
-      actionFn(params);
+  const clearAutoResetTimeout = useCallback((actionKey: string) => {
+    const timeout = autoResetTimersRef.current.get(actionKey);
+    if (timeout) {
+      clearTimeout(timeout);
+      autoResetTimersRef.current.delete(actionKey);
     }
   }, []);
 
-  const cancelAction = useCallback((actionKey: string) => {
-    // This would need to be implemented in the individual useActionState calls
-    console.warn('Cancel action not implemented for individual actions');
-    void actionKey;
-  }, []);
+  const resetAction = useCallback(
+    (actionKey: string) => {
+      clearAutoResetTimeout(actionKey);
+      const controller = controllersRef.current.get(actionKey);
+      if (controller) {
+        controller.abort();
+        controllersRef.current.delete(actionKey);
+      }
+      setStates((prev) => ({
+        ...prev,
+        [actionKey]: createDefaultActionState(),
+      }));
+    },
+    [clearAutoResetTimeout]
+  );
 
-  const cancelAll = useCallback(() => {
-    // This would cancel all ongoing actions
-    console.warn('Cancel all actions not implemented');
-  }, []);
+  const resetAll = useCallback(() => {
+    actionKeys.forEach((key) => resetAction(key));
+  }, [actionKeys, resetAction]);
 
-  const resetAction = useCallback((actionKey: string) => {
-    // This would reset the specific action state
-    setStates((prev) => ({
-      ...prev,
-      [actionKey]: {
+  const updateProgress = useCallback(
+    (actionKey: string, progress: number) => {
+      const clamped = Math.max(0, Math.min(100, progress));
+      updateActionState(actionKey, (current) => ({
+        ...current,
+        progress: clamped,
+      }));
+      const config = actionsRef.current[actionKey];
+      config?.onProgress?.(clamped);
+    },
+    [updateActionState]
+  );
+
+  const completeAction = useCallback(
+    (actionKey: string, data?: any) => {
+      updateActionState(actionKey, (current) => ({
+        ...current,
         isLoading: false,
+        data: data ?? current.data,
+        error: null,
+        progress: 100,
+        isCancelled: false,
+      }));
+      if (data !== undefined) {
+        const config = actionsRef.current[actionKey];
+        config?.onSuccess?.(data);
+      }
+    },
+    [updateActionState]
+  );
+
+  const failAction = useCallback(
+    (actionKey: string, errorValue: Error | string) => {
+      const message =
+        errorValue instanceof Error ? errorValue.message : errorValue;
+      updateActionState(actionKey, (current) => ({
+        ...current,
+        isLoading: false,
+        error: message,
+        progress: 0,
+      }));
+      const config = actionsRef.current[actionKey];
+      config?.onError?.(errorValue);
+    },
+    [updateActionState]
+  );
+
+  const scheduleAutoReset = useCallback(
+    (actionKey: string, delay: number) => {
+      if (delay <= 0) {
+        resetAction(actionKey);
+        return;
+      }
+
+      clearAutoResetTimeout(actionKey);
+      const timeoutId = setTimeout(() => {
+        autoResetTimersRef.current.delete(actionKey);
+        resetAction(actionKey);
+      }, delay);
+      autoResetTimersRef.current.set(actionKey, timeoutId);
+    },
+    [clearAutoResetTimeout, resetAction]
+  );
+
+  const startAction = useCallback(
+    (actionKey: string, params?: any) => {
+      const config = actionsRef.current[actionKey];
+      if (!config) {
+        console.warn(`Action "${actionKey}" not found in useMultipleActions`);
+        return;
+      }
+
+      clearAutoResetTimeout(actionKey);
+      const existingController = controllersRef.current.get(actionKey);
+      if (existingController) {
+        existingController.abort();
+      }
+
+      const controller = new AbortController();
+      controllersRef.current.set(actionKey, controller);
+
+      updateActionState(actionKey, () => ({
+        isLoading: true,
         error: null,
         data: null,
         progress: 0,
         isCancelled: false,
-      },
-    }));
-  }, []);
+      }));
 
-  const resetAll = useCallback(() => {
-    Object.keys(actions).forEach((key) => {
-      resetAction(key);
+      const shouldAutoReset = config.autoReset ?? true;
+      const autoResetDelay = config.resetDelay ?? 2000;
+
+      const execute = async () => {
+        try {
+          const result = await config.actionFn({
+            ...(params ?? {}),
+            signal: controller.signal,
+            onProgress: (progress: number) => {
+              updateProgress(actionKey, progress);
+            },
+          });
+
+          if (!controller.signal.aborted) {
+            completeAction(actionKey, result);
+            if (shouldAutoReset) {
+              scheduleAutoReset(actionKey, autoResetDelay);
+            }
+          }
+        } catch (error) {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          const normalisedError =
+            error instanceof Error ? error : new Error('Action failed');
+
+          failAction(actionKey, normalisedError);
+          if (shouldAutoReset) {
+            scheduleAutoReset(actionKey, autoResetDelay);
+          }
+        }
+      };
+
+      void execute();
+    },
+    [
+      clearAutoResetTimeout,
+      updateActionState,
+      updateProgress,
+      completeAction,
+      failAction,
+      scheduleAutoReset,
+    ]
+  );
+
+  const cancelAction = useCallback(
+    (actionKey: string) => {
+      const controller = controllersRef.current.get(actionKey);
+      if (controller) {
+        controller.abort();
+        controllersRef.current.delete(actionKey);
+      }
+
+      clearAutoResetTimeout(actionKey);
+
+      updateActionState(actionKey, (current) => ({
+        ...current,
+        isLoading: false,
+        isCancelled: true,
+        progress: 0,
+      }));
+
+      toast.info(`Action ${actionKey} cancelled`);
+    },
+    [clearAutoResetTimeout, updateActionState]
+  );
+
+  const cancelAll = useCallback(() => {
+    actionKeys.forEach((key) => cancelAction(key));
+  }, [actionKeys, cancelAction]);
+
+  const actionsRegistry = useMemo(() => {
+    const registry: Record<string, ActionActions> = {};
+    actionKeys.forEach((key) => {
+      registry[key] = {
+        start: (params?: any) => startAction(key, params),
+        cancel: () => cancelAction(key),
+        reset: () => resetAction(key),
+        updateProgress: (progress: number) => updateProgress(key, progress),
+        complete: (data?: any) => completeAction(key, data),
+        error: (message: string) => failAction(key, message),
+      };
     });
-  }, [resetAction, actions]);
-
-  const actionsRegistry: Record<string, ActionActions> = {};
-
-  // Create action objects for each key
-  Object.keys(actions).forEach((key) => {
-    actionsRegistry[key] = {
-      start: (params?: any) => startAction(key, params),
-      cancel: () => cancelAction(key),
-      reset: () => resetAction(key),
-      updateProgress: (progress: number) => {
-        setStates((prev) => ({
-          ...prev,
-          [key]: {
-            ...prev[key],
-            progress,
-          },
-        }));
-      },
-      complete: (data?: any) => {
-        setStates((prev) => ({
-          ...prev,
-          [key]: {
-            ...prev[key],
-            isLoading: false,
-            data,
-            progress: 100,
-            error: null,
-          },
-        }));
-      },
-      error: (errorMessage: string) => {
-        setStates((prev) => ({
-          ...prev,
-          [key]: {
-            ...prev[key],
-            isLoading: false,
-            error: errorMessage,
-            progress: 0,
-          },
-        }));
-      },
-    };
-  });
-
-  const globalActions = {
+    return registry;
+  }, [
+    actionKeys,
     startAction,
     cancelAction,
-    cancelAll,
     resetAction,
-    resetAll,
-  };
+    updateProgress,
+    completeAction,
+    failAction,
+  ]);
 
-  return [states, { ...actions, ...globalActions }] as const;
+  const globalActions = useMemo(
+    () => ({
+      startAction: (key: keyof TConfig, params?: any) =>
+        startAction(String(key), params),
+      cancelAction: (key: keyof TConfig) => cancelAction(String(key)),
+      cancelAll,
+      resetAction: (key: keyof TConfig) => resetAction(String(key)),
+      resetAll,
+    }),
+    [startAction, cancelAction, cancelAll, resetAction, resetAll]
+  );
+
+  return [
+    states as Record<keyof TConfig, ActionState>,
+    {
+      ...(actionsRegistry as Record<keyof TConfig, ActionActions>),
+      ...globalActions,
+    },
+  ] as const;
 }
 
 /**
@@ -421,7 +594,7 @@ export function useMultipleActions<T extends Record<string, any>>(
  *     return results;
  *   },
  *   {
- *     onSuccess: (results) => console.log('Batch completed:', results.length),
+ *     onSuccess: (results) => console.debug('Batch completed:', results.length),
  *   }
  * );
  */

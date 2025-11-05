@@ -58,7 +58,8 @@ export default function PerformanceMonitor() {
     const bundleSize = estimateBundleSize();
 
     // Memory usage (if available)
-    const memory = (performance as any).memory;
+    const memory = (performance as { memory?: { usedJSHeapSize: number } })
+      .memory;
     const memoryUsage = memory ? memory.usedJSHeapSize / 1024 / 1024 : 0;
 
     // Calculate render time

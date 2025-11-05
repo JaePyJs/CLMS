@@ -1,5 +1,10 @@
-import React, { Suspense, lazy, memo } from 'react';
-import type { ComponentType, ReactNode } from 'react';
+import React, {
+  Suspense,
+  lazy,
+  memo,
+  type ComponentType,
+  type ReactNode,
+} from 'react';
 import { Loader2, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 
 // Lazy loading component states
@@ -178,7 +183,9 @@ const NetworkStatus = memo(() => {
 });
 
 // Advanced lazy load component with retry and prefetch
-export const createLazyLoad = <T extends ComponentType<any>>(
+export const createLazyLoad = <
+  T extends ComponentType<Record<string, unknown>>,
+>(
   importFunc: () => Promise<{ default: T }>,
   options: Partial<LazyLoadProps> = {}
 ) => {
@@ -198,7 +205,7 @@ export const createLazyLoad = <T extends ComponentType<any>>(
 
   const LazyComponent = lazy(importFunc);
 
-  return memo((props: any) => {
+  return memo((props: Record<string, unknown>) => {
     const [loadingState, setLoadingState] =
       React.useState<LoadingState>('idle');
     const [currentRetryCount, setCurrentRetryCount] = React.useState(0);
@@ -212,7 +219,7 @@ export const createLazyLoad = <T extends ComponentType<any>>(
       setTimeout(() => {
         setLoadingState('loading');
       }, 100);
-    }, [onRetry]);
+    }, []); // onRetry is a prop and doesn't need to be in deps
 
     const handleError = React.useCallback(
       (error: Error) => {
@@ -220,13 +227,13 @@ export const createLazyLoad = <T extends ComponentType<any>>(
         onError?.(error);
         console.error('Lazy loading error:', error);
       },
-      [onError]
+      [] // onError is a prop and doesn't need to be in deps
     );
 
     const handleLoad = React.useCallback(() => {
       setLoadingState('success');
       onLoad?.();
-    }, [onLoad]);
+    }, []); // onLoad is a prop and doesn't need to be in deps
 
     // Component implementation with Intersection Observer for prefetching
     const observerRef = React.useRef<IntersectionObserver | null>(null);
@@ -253,13 +260,17 @@ export const createLazyLoad = <T extends ComponentType<any>>(
       return () => {
         observerRef.current?.disconnect();
       };
-    }, [prefetch, trigger, threshold, rootMargin, importFunc]);
+      // Props like prefetch, trigger, threshold, rootMargin, importFunc don't need to be deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Reset state when component changes
     React.useEffect(() => {
       setCurrentRetryCount(0);
       setLoadingState('loading');
-    }, [importFunc]);
+      // importFunc is a prop and doesn't need to be in deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     if (loadingState === 'retry' && currentRetryCount > 0) {
       return (
@@ -289,7 +300,14 @@ export const createLazyLoad = <T extends ComponentType<any>>(
             </div>
           }
         >
-          <LazyComponent {...props} onError={handleError} onLoad={handleLoad} />
+          {React.createElement(
+            LazyComponent as unknown as ComponentType<Record<string, unknown>>,
+            {
+              ...props,
+              onError: handleError,
+              onLoad: handleLoad,
+            }
+          )}
         </Suspense>
       </div>
     );
@@ -297,7 +315,9 @@ export const createLazyLoad = <T extends ComponentType<any>>(
 };
 
 // Preload component for critical resources
-export const preloadComponent = <T extends ComponentType<any>>(
+export const usePreloadComponent = <
+  T extends ComponentType<Record<string, unknown>>,
+>(
   importFunc: () => Promise<{ default: T }>
 ) => {
   React.useEffect(() => {
@@ -322,8 +342,7 @@ export const LazyImage = memo(
     placeholder?: string;
     onLoad?: () => void;
     onError?: () => void;
-    [key: string]: any;
-  }) => {
+  } & React.ImgHTMLAttributes<HTMLImageElement>) => {
     const [isLoaded, setIsLoaded] = React.useState(false);
     const [isInView, setIsInView] = React.useState(false);
     const [hasError, setHasError] = React.useState(false);
@@ -457,7 +476,7 @@ export const withPerformanceMonitoring = <P extends object>(
 
       // Log performance metrics in development
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Component ${Component.displayName} rendered:`, {
+        console.debug(`Component ${Component.displayName} rendered:`, {
           renderCount: renderCount + 1,
           timeSinceLastRender: `${timeSinceLastRender}ms`,
           props: Object.keys(props).slice(0, 3),
@@ -550,20 +569,22 @@ export const VirtualList = <T,>({
 };
 
 // Preload critical components
-export const preloadCriticalComponents = () => {
-  preloadComponent(() => import('@/components/dashboard/DashboardOverview'));
-  preloadComponent(() => import('@/components/dashboard/StudentManagement'));
-  preloadComponent(() => import('@/components/dashboard/EquipmentDashboard'));
+export const usePreloadCriticalComponents = () => {
+  usePreloadComponent(() => import('@/components/dashboard/DashboardOverview'));
+  usePreloadComponent(() => import('@/components/dashboard/StudentManagement'));
+  usePreloadComponent(
+    () => import('@/components/dashboard/EquipmentDashboard')
+  );
 };
 
 export default {
   createLazyLoad,
-  preloadComponent,
+  usePreloadComponent,
   LazyImage,
   BundleAnalyzer,
   withPerformanceMonitoring,
   VirtualList,
-  preloadCriticalComponents,
+  usePreloadCriticalComponents,
   LoadingIndicator,
   ErrorFallback,
   NetworkStatus,

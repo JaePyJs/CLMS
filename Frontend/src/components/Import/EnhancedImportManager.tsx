@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
@@ -62,7 +63,7 @@ interface FieldMapping {
 
 interface PreviewData {
   headers: string[];
-  rows: any[][];
+  rows: Record<string, unknown>[];
   totalRows: number;
 }
 
@@ -80,7 +81,11 @@ export default function EnhancedImportManager() {
   const parseFile = useCallback(
     (
       file: File
-    ): Promise<{ headers: string[]; rows: any[]; totalRows: number }> => {
+    ): Promise<{
+      headers: string[];
+      rows: Record<string, unknown>[];
+      totalRows: number;
+    }> => {
       return new Promise((resolve, reject) => {
         const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
@@ -98,7 +103,7 @@ export default function EnhancedImportManager() {
                 );
               } else {
                 const headers = results.meta.fields || [];
-                const rows = results.data as any[];
+                const rows = results.data as Array<Record<string, unknown>>;
                 resolve({
                   headers,
                   rows: rows.slice(0, 10),
@@ -125,10 +130,10 @@ export default function EnhancedImportManager() {
                 return;
               }
               const worksheet = workbook.Sheets[sheetName];
-              const jsonData: any[][] = (XLSX.utils.sheet_to_json as any)(
+              const jsonData: unknown[][] = XLSX.utils.sheet_to_json(
                 worksheet,
                 { header: 1 }
-              );
+              ) as unknown[][];
 
               if (jsonData.length === 0) {
                 reject(new Error('Excel file is empty'));
@@ -136,9 +141,9 @@ export default function EnhancedImportManager() {
               }
 
               const headers = (jsonData[0] as string[]) || [];
-              const dataRows = jsonData.slice(1) as any[][];
-              const objectRows = dataRows.map((row: any[]) => {
-                const obj: Record<string, any> = {};
+              const dataRows = jsonData.slice(1) as unknown[][];
+              const objectRows = dataRows.map((row: unknown[]) => {
+                const obj: Record<string, unknown> = {};
                 headers.forEach((header, index) => {
                   obj[header] = row[index] || '';
                 });
@@ -284,9 +289,11 @@ export default function EnhancedImportManager() {
     return [];
   };
 
-  const applyFieldMapping = (rows: any[]): any[] => {
+  const applyFieldMapping = (
+    rows: Record<string, unknown>[]
+  ): Record<string, unknown>[] => {
     return rows.map((row) => {
-      const mapped: any = {};
+      const mapped: Record<string, unknown> = {};
 
       fieldMapping.forEach((mapping) => {
         const sourceValue = row[mapping.source];
@@ -296,7 +303,12 @@ export default function EnhancedImportManager() {
       });
 
       // Special handling for name field
-      if (mapped.name && !mapped.firstName && !mapped.lastName) {
+      if (
+        mapped.name &&
+        !mapped.firstName &&
+        !mapped.lastName &&
+        typeof mapped.name === 'string'
+      ) {
         const nameParts = mapped.name.split(',').map((p: string) => p.trim());
         if (nameParts.length >= 2) {
           mapped.lastName = nameParts[0];
@@ -374,8 +386,8 @@ export default function EnhancedImportManager() {
       toast.success(
         `Import completed: ${response.data.data.importedRecords} ${activeTab} imported`
       );
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to import data');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Failed to import data'));
     } finally {
       setLoading(false);
       setImportProgress(0);
@@ -590,7 +602,9 @@ export default function EnhancedImportManager() {
                               key={colIndex}
                               className="font-mono text-xs"
                             >
-                              {(row as Record<string, any>)[header] || '-'}
+                              {String(
+                                (row as Record<string, unknown>)[header] ?? '-'
+                              )}
                             </TableCell>
                           ))}
                         </TableRow>

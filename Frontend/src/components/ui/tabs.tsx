@@ -66,8 +66,8 @@ const Tabs = React.forwardRef(function TabsInternal<
   ref: React.Ref<React.ElementRef<typeof TabsPrimitive.Root>>
 ) {
   const cls = className ?? undefined;
-  return <TabsPrimitive.Root ref={ref} className={cls} {...(props as any)} />;
-}) as any as <TValue extends TabsValue = TabsValue>(
+  return <TabsPrimitive.Root ref={ref} className={cls} {...props} />;
+}) as <TValue extends TabsValue = TabsValue>(
   props: TabsProps<TValue> & {
     ref?: React.Ref<React.ElementRef<typeof TabsPrimitive.Root>>;
   }
@@ -124,10 +124,10 @@ const TabsTrigger = React.forwardRef(function TabsTriggerInternal<
         'inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-100 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-md data-[state=active]:border data-[state=active]:border-slate-300 dark:data-[state=active]:border-slate-700',
         cls
       )}
-      {...(props as any)}
+      {...props}
     />
   );
-}) as any as <TValue extends TabsValue = TabsValue>(
+}) as <TValue extends TabsValue = TabsValue>(
   props: TabsTriggerProps<TValue> & {
     ref?: React.Ref<React.ElementRef<typeof TabsPrimitive.Trigger>>;
   }
@@ -166,10 +166,10 @@ const TabsContent = React.forwardRef(function TabsContentInternal<
         'mt-4 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 animate-fade-in',
         cls
       )}
-      {...(props as any)}
+      {...props}
     />
   );
-}) as any as <TValue extends TabsValue = TabsValue>(
+}) as <TValue extends TabsValue = TabsValue>(
   props: TabsContentProps<TValue> & {
     ref?: React.Ref<React.ElementRef<typeof TabsPrimitive.Content>>;
   }

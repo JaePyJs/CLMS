@@ -5,8 +5,8 @@ import React, {
   memo,
   forwardRef,
   useImperativeHandle,
+  type ComponentType,
 } from 'react';
-import type { ComponentType } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 interface OptimizedImageProps {
@@ -104,7 +104,7 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>(
     const observerRef = useRef<IntersectionObserver | null>(null);
 
     // Expose ref to parent component
-    useImperativeHandle(ref, () => imgRef.current!);
+    useImperativeHandle(ref, () => imgRef.current as HTMLImageElement);
 
     // Generate placeholder if not provided
     const placeholderSrc =

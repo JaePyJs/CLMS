@@ -156,21 +156,40 @@ export function TimeSeriesForecast({
   }, [data]);
 
   // Custom tooltip
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean;
+    payload?: Array<{
+      payload: Record<string, unknown>;
+      name: string;
+      value: number;
+      color: string;
+    }>;
+    label?: string;
+  }) => {
     if (active && payload?.length) {
       const data = payload[0].payload;
       return (
         <div className="bg-background border rounded-lg shadow-lg p-3">
           <p className="text-sm font-medium mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {entry.value} {config.unit}
-            </p>
-          ))}
+          {payload.map(
+            (
+              entry: { name: string; value: number; color: string },
+              index: number
+            ) => (
+              <p key={index} className="text-sm" style={{ color: entry.color }}>
+                {entry.name}: {entry.value} {config.unit}
+              </p>
+            )
+          )}
           {data.hasPrediction && (
             <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
               <p>
-                Confidence Range: {data.lowerBound} - {data.upperBound}
+                Confidence Range: {String(data.lowerBound)} -{' '}
+                {String(data.upperBound)}
               </p>
             </div>
           )}

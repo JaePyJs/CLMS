@@ -29,6 +29,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { settingsApi } from '@/lib/api';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 interface Backup {
   id: string;
@@ -63,8 +64,8 @@ export default function BackupRestore() {
       queryClient.invalidateQueries({ queryKey: ['backups'] });
       toast.success('Backup created successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to create backup');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to create backup'));
     },
   });
 
@@ -75,8 +76,8 @@ export default function BackupRestore() {
       queryClient.invalidateQueries({ queryKey: ['backups'] });
       toast.success('Backup deleted successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to delete backup');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to delete backup'));
     },
   });
 

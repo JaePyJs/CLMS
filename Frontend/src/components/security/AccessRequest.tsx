@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -82,7 +82,7 @@ interface AccessRequest {
   };
 }
 
-interface NewAccessRequest {
+interface _NewAccessRequest {
   targetType: 'student' | 'students' | 'activity' | 'activities';
   targetId?: string;
   accessType: 'VIEW' | 'EDIT' | 'EXPORT' | 'PRINT' | 'SHARE' | 'ANALYTICS';
@@ -139,8 +139,9 @@ const AccessRequestManager: React.FC = () => {
       duration: {
         required: true,
         minLength: 1,
-        custom: (value: any) => {
-          if (!value || value < 1 || value > 168) {
+        custom: (value: unknown) => {
+          const numValue = Number(value);
+          if (!value || numValue < 1 || numValue > 168) {
             return 'Duration must be between 1 and 168 hours';
           }
           return null;
@@ -159,7 +160,7 @@ const AccessRequestManager: React.FC = () => {
   const isApprover = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
 
   // Fetch access requests
-  const fetchAccessRequests = async () => {
+  const fetchAccessRequests = useCallback(async () => {
     try {
       loadingActions.fetchRequests.start();
 
@@ -232,11 +233,16 @@ const AccessRequestManager: React.FC = () => {
     } finally {
       loadingActions.fetchRequests.finish();
     }
-  };
+  }, [
+    loadingActions.fetchRequests,
+    uiState.values.activeTab,
+    currentUser.id,
+    isApprover,
+  ]);
 
   useEffect(() => {
     fetchAccessRequests();
-  }, [uiState.values.activeTab]);
+  }, [fetchAccessRequests]);
 
   const handleSubmitRequest = async () => {
     try {
@@ -538,7 +544,7 @@ const AccessRequestManager: React.FC = () => {
                 <Label htmlFor="targetType">Target Type</Label>
                 <Select
                   value={newRequestForm.values.targetType}
-                  onValueChange={(value: any) =>
+                  onValueChange={(value: string) =>
                     formActions.setFieldValue('targetType', value)
                   }
                 >
@@ -560,7 +566,7 @@ const AccessRequestManager: React.FC = () => {
                 <Label htmlFor="accessType">Access Type</Label>
                 <Select
                   value={newRequestForm.values.accessType}
-                  onValueChange={(value: any) =>
+                  onValueChange={(value: string) =>
                     formActions.setFieldValue('accessType', value)
                   }
                 >
@@ -583,7 +589,7 @@ const AccessRequestManager: React.FC = () => {
               <Label htmlFor="justification">Justification Category</Label>
               <Select
                 value={newRequestForm.values.justification}
-                onValueChange={(value: any) =>
+                onValueChange={(value: string) =>
                   formActions.setFieldValue('justification', value)
                 }
               >
@@ -849,7 +855,7 @@ const AccessRequestManager: React.FC = () => {
 // Access Request Table Component
 interface AccessRequestTableProps {
   requests: AccessRequest[];
-  currentUser: any;
+  currentUser: { id: string; role: string; username?: string };
   isApprover: boolean;
   onApprove: (id: string) => void;
   onDeny: (id: string) => void;

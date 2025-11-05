@@ -127,7 +127,7 @@ export const studentsApi = {
   getStudent: (id: string) => apiClient.get(`/api/students/${id}`),
 
   // Create new student
-  createStudent: (data: any) => apiClient.post('/api/students', data),
+  createStudent: (data: unknown) => apiClient.post('/api/students', data),
 
   // Update student
   updateStudent: (id: string, data: any) =>
@@ -137,7 +137,7 @@ export const studentsApi = {
   deleteStudent: (id: string) => apiClient.delete(`/api/students/${id}`),
 
   // Log student activity
-  logActivity: (data: any) => apiClient.post('/api/students/activity', data),
+  logActivity: (data: unknown) => apiClient.post('/api/students/activity', data),
 
   // Import students (enhanced with field mapping)
   importStudents: (
@@ -233,7 +233,7 @@ export const analyticsApi = {
     format: 'csv' | 'json' = 'csv',
     dateRange?: { start: Date; end: Date }
   ) => {
-    const params: any = { format };
+    const params: Record<string, unknown> = { format };
     if (dateRange) {
       params.startDate = dateRange.start.toISOString();
       params.endDate = dateRange.end.toISOString();
@@ -491,7 +491,7 @@ export const reportsApi = {
 
   // Get monthly report
   getMonthlyReport: (month?: number, year?: number) => {
-    const params: any = {};
+    const params: Record<string, unknown> = {};
     if (month) {
       params.month = month;
     }
@@ -514,7 +514,7 @@ export const reportsApi = {
 export const finesApi = {
   // Get all fines
   getFines: (status?: 'outstanding' | 'paid', studentId?: string) => {
-    const params: any = {};
+    const params: Record<string, unknown> = {};
     if (status) {
       params.status = status;
     }

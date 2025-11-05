@@ -59,6 +59,7 @@ export interface AutomationJob {
   nextRun?: Date;
   duration?: number;
   errorMessage?: string;
+  progress?: number;
 }
 
 export interface AppNotification {

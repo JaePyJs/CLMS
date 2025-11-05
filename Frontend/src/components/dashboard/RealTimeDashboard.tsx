@@ -55,18 +55,21 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
   }, [isConnected, autoRefresh, refreshDashboard]);
 
   // Calculate statistics from real-time data
+  const overview = dashboardData?.overview as
+    | Record<string, unknown>
+    | undefined;
   const stats = {
-    totalStudents: dashboardData?.overview?.totalStudents || 0,
+    totalStudents: Number(overview?.totalStudents) || 0,
     todayActivities:
-      dashboardData?.overview?.todayActivities || recentActivities.length,
+      Number(overview?.todayActivities) || recentActivities.length,
     activeEquipment:
-      dashboardData?.overview?.activeEquipment ||
-      Object.keys(equipmentStatus).length,
-    activeConnections: dashboardData?.overview?.activeConnections || 0,
-    systemLoad: dashboardData?.overview?.systemLoad || 0,
+      Number(overview?.activeEquipment) || Object.keys(equipmentStatus).length,
+    activeConnections: Number(overview?.activeConnections) || 0,
+    systemLoad: Number(overview?.systemLoad) || 0,
     recentNotifications: notifications.length,
-    criticalAlerts: notifications.filter((n) => n.priority === 'critical')
-      .length,
+    criticalAlerts: notifications.filter(
+      (n) => (n as { priority?: string }).priority === 'critical'
+    ).length,
   };
 
   const handleEmergencyAlert = () => {
@@ -83,7 +86,7 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
     }
   };
 
-  const getActivityIcon = (activity: any) => {
+  const getActivityIcon = (activity: Record<string, unknown>) => {
     switch (activity.activityType) {
       case 'CHECK_IN':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
@@ -291,12 +294,12 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                     {getActivityIcon(activity)}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm">
-                        {activity.studentName}
+                        {String(activity.studentName)}
                       </p>
                       <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {activity.activityType}
+                        {String(activity.activityType)}
                         {activity.equipmentName &&
-                          ` • ${activity.equipmentName}`}
+                          ` • ${String(activity.equipmentName)}`}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                         {new Date(activity.timestamp).toLocaleTimeString()}
@@ -415,9 +418,11 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                     }`}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{notification.title}</p>
+                    <p className="font-medium text-sm">
+                      {String(notification.title ?? '')}
+                    </p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {notification.message}
+                      {String(notification.message)}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                       {new Date(notification.timestamp).toLocaleTimeString()}

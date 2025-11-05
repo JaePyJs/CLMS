@@ -5,8 +5,10 @@ import React, {
   useState,
   useRef,
   useEffect,
+  type ComponentType,
+  type ReactNode,
+  type Key,
 } from 'react';
-import type { ComponentType, ReactNode, Key } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,7 +45,7 @@ interface OptimizedListProps<T> {
   filterOptions?: Array<{
     key: keyof T;
     label: string;
-    options: Array<{ value: any; label: string }>;
+    options: Array<{ value: unknown; label: string }>;
   }>;
   infiniteScroll?: boolean;
   hasNextPage?: boolean;
@@ -79,11 +81,11 @@ const ListRow = memo(<T,>({ index, style, data }: ListRowProps<T>) => {
   }
 
   return <>{renderItem(item, index, style)}</>;
-}) as ComponentType<ListRowProps<any>>;
+}) as ComponentType<ListRowProps<unknown>>;
 
 ListRow.displayName = 'ListRow';
 
-// Search and Filter Component
+// _Search and Filter Component
 interface SearchFilterProps<T> {
   searchable?: boolean;
   sortable?: boolean;
@@ -96,12 +98,12 @@ interface SearchFilterProps<T> {
     | Array<{
         key: keyof T;
         label: string;
-        options: Array<{ value: any; label: string }>;
+        options: Array<{ value: unknown; label: string }>;
       }>
     | undefined;
   onSearch: (query: string) => void;
   onSort: (key: keyof T, direction: 'asc' | 'desc') => void;
-  onFilter: (key: keyof T, value: any) => void;
+  onFilter: (key: keyof T, value: unknown) => void;
   totalCount: number;
   filteredCount: number;
 }
@@ -110,7 +112,7 @@ const SearchFilter = <T,>({
   searchable = true,
   sortable = true,
   filterable = true,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder = '_Search...',
   sortOptions = [],
   filterOptions = [],
   onSearch,
@@ -144,7 +146,7 @@ const SearchFilter = <T,>({
   );
 
   const handleFilter = useCallback(
-    (key: keyof T, value: any) => {
+    (key: keyof T, value: unknown) => {
       onFilter(key, value);
     },
     [onFilter]
@@ -163,7 +165,7 @@ const SearchFilter = <T,>({
 
   return (
     <div className="space-y-4 p-4 border-b">
-      {/* Search */}
+      {/* _Search */}
       {searchable && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -244,7 +246,10 @@ const SearchFilter = <T,>({
               >
                 <option value="">All</option>
                 {filter.options.map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <option
+                    key={String(option.value)}
+                    value={String(option.value)}
+                  >
                     {option.label}
                   </option>
                 ))}
@@ -290,14 +295,23 @@ export const OptimizedList = <T,>({
     key: keyof T;
     direction: 'asc' | 'desc';
   } | null>(null);
-  const [currentFilters, setCurrentFilters] = useState<Record<string, any>>({});
-  const listRef = useRef<any>(null);
+  const [currentFilters, setCurrentFilters] = useState<Record<string, unknown>>(
+    {}
+  );
+  const listRef = useRef<{
+    scrollToItem?: (index: number) => void;
+    _outerRef?: {
+      scrollHeight: number;
+      clientHeight: number;
+      scrollTop: number;
+    };
+  } | null>(null);
 
-  // Apply search, sort, and filters
+  // Apply _search, sort, and filters
   const processedItems = useMemo(() => {
     let result = [...items];
 
-    // Apply search
+    // Apply _search
     if (searchQuery) {
       result = result.filter((item) => {
         return Object.values(item as Record<string, unknown>).some((value) =>
@@ -310,7 +324,7 @@ export const OptimizedList = <T,>({
     Object.entries(currentFilters).forEach(([key, value]) => {
       if (value !== '' && value !== null && value !== undefined) {
         result = result.filter((item) => {
-          const itemValue = (item as any)[key];
+          const itemValue = (item as Record<string, unknown>)[key];
           return (
             String(itemValue).toLowerCase() === String(value).toLowerCase()
           );
@@ -342,7 +356,7 @@ export const OptimizedList = <T,>({
     setFilteredItems(processedItems);
   }, [processedItems]);
 
-  // Handle search
+  // Handle _search
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
   }, []);
@@ -353,7 +367,7 @@ export const OptimizedList = <T,>({
   }, []);
 
   // Handle filter
-  const handleFilter = useCallback((key: keyof T, value: any) => {
+  const handleFilter = useCallback((key: keyof T, value: unknown) => {
     setCurrentFilters((prev) => ({
       ...prev,
       [String(key)]: value,
@@ -396,7 +410,13 @@ export const OptimizedList = <T,>({
 
   // Handle scroll
   const handleScroll = useCallback(
-    ({ scrollOffset, scrollDirection }: any) => {
+    ({
+      scrollOffset,
+      scrollDirection,
+    }: {
+      scrollOffset: number;
+      scrollDirection: 'forward' | 'backward';
+    }) => {
       if (onScroll) {
         onScroll({ scrollOffset, scrollDirection });
       }
@@ -431,8 +451,8 @@ export const OptimizedList = <T,>({
     width: number | string;
     itemCount: number;
     itemSize: number | ((index: number) => number);
-    itemData: any;
-    itemKey?: (index: number, data: any) => Key;
+    itemData: unknown;
+    itemKey?: (index: number, data: unknown) => Key;
     overscanCount?: number;
     onScroll?: (info: {
       scrollOffset: number;
@@ -441,11 +461,14 @@ export const OptimizedList = <T,>({
     children: ComponentType<{
       index: number;
       style: React.CSSProperties;
-      data: any;
+      data: unknown;
     }>;
   }
 
-  const CustomList = React.forwardRef<any, CustomListProps>(
+  const CustomList = React.forwardRef<
+    { scrollToItem?: (index: number) => void },
+    CustomListProps
+  >(
     (
       {
         height,
@@ -620,7 +643,7 @@ export const OptimizedList = <T,>({
               <div className="text-muted-foreground mb-2">No items found</div>
               <div className="text-sm text-muted-foreground">
                 {searchQuery || Object.keys(currentFilters).length > 0
-                  ? 'Try adjusting your search or filters'
+                  ? 'Try adjusting your _search or filters'
                   : 'No items available'}
               </div>
             </div>
@@ -659,7 +682,10 @@ OptimizedList.displayName = 'OptimizedList';
 
 // Specialized list components for common use cases
 export const StudentList = (
-  props: Omit<OptimizedListProps<any>, 'sortOptions' | 'filterOptions'>
+  props: Omit<
+    OptimizedListProps<Record<string, unknown>>,
+    'sortOptions' | 'filterOptions'
+  >
 ) => (
   <OptimizedList
     {...props}
@@ -693,12 +719,15 @@ export const StudentList = (
         ],
       },
     ]}
-    searchPlaceholder="Search students by name, LRN, or grade..."
+    searchPlaceholder="_Search students by name, LRN, or grade..."
   />
 );
 
 export const BookList = (
-  props: Omit<OptimizedListProps<any>, 'sortOptions' | 'filterOptions'>
+  props: Omit<
+    OptimizedListProps<Record<string, unknown>>,
+    'sortOptions' | 'filterOptions'
+  >
 ) => (
   <OptimizedList
     {...props}
@@ -730,12 +759,15 @@ export const BookList = (
         ],
       },
     ]}
-    searchPlaceholder="Search books by title, author, or accession number..."
+    searchPlaceholder="_Search books by title, author, or accession number..."
   />
 );
 
 export const EquipmentList = (
-  props: Omit<OptimizedListProps<any>, 'sortOptions' | 'filterOptions'>
+  props: Omit<
+    OptimizedListProps<Record<string, unknown>>,
+    'sortOptions' | 'filterOptions'
+  >
 ) => (
   <OptimizedList
     {...props}
@@ -767,7 +799,7 @@ export const EquipmentList = (
         ],
       },
     ]}
-    searchPlaceholder="Search equipment by name, category, or serial number..."
+    searchPlaceholder="_Search equipment by name, category, or serial number..."
   />
 );
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, type ComponentType } from 'react';
+import { useState, useEffect, useCallback, type ComponentType } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ import {
 
 interface MetricsCardsProps {
   timeframe: 'day' | 'week' | 'month';
-  data?: any;
+  data?: Record<string, unknown>;
   isLoading?: boolean;
   onRefresh?: () => void;
 }
@@ -48,128 +48,135 @@ export function MetricsCards({
   const [metrics, setMetrics] = useState<MetricCard[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
+  const generateMetrics = useCallback(
+    (
+      analyticsData: Record<string, unknown>,
+      selectedTimeframe: string
+    ): MetricCard[] => {
+      // Complex analytics data structure with deeply nested dynamic properties
+      const { overview, circulation, equipment, fines, trends } =
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        analyticsData as any;
+
+      return [
+        {
+          title: 'Total Students',
+          value: overview?.totalStudents || 0,
+          change: trends?.dailyGrowth || 0,
+          changeType: trends?.dailyGrowth > 0 ? 'increase' : 'decrease',
+          icon: Users,
+          description: `${overview?.activeStudents || 0} active students`,
+          status: 'success',
+          footer: `${overview?.studentActivationRate?.toFixed(1) || 0}% activation rate`,
+        },
+        {
+          title: 'Book Circulation',
+          value: circulation?.totalCirculation || 0,
+          change: circulation?.trends?.growthRate || 0,
+          changeType:
+            circulation?.trends?.trendDirection === 'increasing'
+              ? 'increase'
+              : 'decrease',
+          icon: BookOpen,
+          description: `${circulation?.mostBorrowedBooks?.[0]?.title || 'N/A'} most popular`,
+          status: circulation?.overdueRate > 15 ? 'warning' : 'success',
+          progress: circulation?.circulationRate || 0,
+          footer: `${circulation?.overdueRate?.toFixed(1) || 0}% overdue rate`,
+        },
+        {
+          title: 'Equipment Utilization',
+          value: `${equipment?.overallUtilization?.toFixed(1) || 0}%`,
+          change: equipment?.overallUtilization > 80 ? 5 : -2,
+          changeType:
+            equipment?.overallUtilization > 80 ? 'increase' : 'decrease',
+          icon: Monitor,
+          description: `${equipment?.totalSessions || 0} total sessions`,
+          status:
+            equipment?.overallUtilization > 85
+              ? 'warning'
+              : equipment?.overallUtilization > 60
+                ? 'success'
+                : 'info',
+          progress: equipment?.overallUtilization || 0,
+          footer: `${equipment?.recommendations?.[0] || 'Optimal utilization'}`,
+        },
+        {
+          title: 'Fine Collection',
+          value: `$${fines?.collectedFines?.toFixed(2) || 0}`,
+          change: fines?.collectionRate || 0,
+          changeType: fines?.collectionRate > 70 ? 'increase' : 'decrease',
+          icon: DollarSign,
+          description: `${fines?.collectionRate?.toFixed(1) || 0}% collection rate`,
+          status:
+            fines?.collectionRate > 80
+              ? 'success'
+              : fines?.collectionRate > 60
+                ? 'warning'
+                : 'error',
+          progress: fines?.collectionRate || 0,
+          footer: `$${fines?.outstandingFines?.toFixed(2) || 0} outstanding`,
+        },
+        {
+          title: 'Peak Usage Time',
+          value: trends?.peakUsageHours?.[0]?.timeRange || 'N/A',
+          icon: Clock,
+          description: `${trends?.peakUsageHours?.[0]?.count || 0} students during peak`,
+          status: 'info',
+          footer: `Avg session: ${equipment?.averageSessionDuration?.toFixed(0) || 0} min`,
+        },
+        {
+          title: 'System Health',
+          value: 'Good',
+          icon: Activity,
+          description: 'All systems operational',
+          status: 'success',
+          progress: 95,
+          footer: `Last check: ${lastUpdated.toLocaleTimeString()}`,
+        },
+        {
+          title: 'Book Availability',
+          value: `${overview?.bookAvailabilityRate?.toFixed(1) || 0}%`,
+          change: overview?.bookAvailabilityRate > 90 ? 2 : -1,
+          changeType:
+            overview?.bookAvailabilityRate > 90 ? 'increase' : 'decrease',
+          icon: Target,
+          description: `${overview?.availableBooks || 0} of ${overview?.totalBooks || 0} books available`,
+          status:
+            overview?.bookAvailabilityRate > 85
+              ? 'success'
+              : overview?.bookAvailabilityRate > 70
+                ? 'warning'
+                : 'error',
+          progress: overview?.bookAvailabilityRate || 0,
+        },
+        {
+          title: 'Growth Rate',
+          value: `${trends?.dailyGrowth?.toFixed(1) || 0}%`,
+          change: trends?.dailyGrowth || 0,
+          changeType: trends?.dailyGrowth > 0 ? 'increase' : 'decrease',
+          icon: TrendingUp,
+          description: `${selectedTimeframe === 'day' ? 'Daily' : selectedTimeframe === 'week' ? 'Weekly' : 'Monthly'} growth`,
+          status:
+            trends?.dailyGrowth > 5
+              ? 'success'
+              : trends?.dailyGrowth > 0
+                ? 'info'
+                : 'warning',
+          footer: `Next period forecast: ${circulation?.trends?.forecastNextPeriod || 'N/A'}`,
+        },
+      ];
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   useEffect(() => {
     if (data) {
       const calculatedMetrics = generateMetrics(data, timeframe);
       setMetrics(calculatedMetrics);
       setLastUpdated(new Date());
     }
-  }, [data, timeframe]);
-
-  const generateMetrics = (
-    analyticsData: any,
-    selectedTimeframe: string
-  ): MetricCard[] => {
-    const { overview, circulation, equipment, fines, trends } = analyticsData;
-
-    return [
-      {
-        title: 'Total Students',
-        value: overview?.totalStudents || 0,
-        change: trends?.dailyGrowth || 0,
-        changeType: trends?.dailyGrowth > 0 ? 'increase' : 'decrease',
-        icon: Users,
-        description: `${overview?.activeStudents || 0} active students`,
-        status: 'success',
-        footer: `${overview?.studentActivationRate?.toFixed(1) || 0}% activation rate`,
-      },
-      {
-        title: 'Book Circulation',
-        value: circulation?.totalCirculation || 0,
-        change: circulation?.trends?.growthRate || 0,
-        changeType:
-          circulation?.trends?.trendDirection === 'increasing'
-            ? 'increase'
-            : 'decrease',
-        icon: BookOpen,
-        description: `${circulation?.mostBorrowedBooks?.[0]?.title || 'N/A'} most popular`,
-        status: circulation?.overdueRate > 15 ? 'warning' : 'success',
-        progress: circulation?.circulationRate || 0,
-        footer: `${circulation?.overdueRate?.toFixed(1) || 0}% overdue rate`,
-      },
-      {
-        title: 'Equipment Utilization',
-        value: `${equipment?.overallUtilization?.toFixed(1) || 0}%`,
-        change: equipment?.overallUtilization > 80 ? 5 : -2,
-        changeType:
-          equipment?.overallUtilization > 80 ? 'increase' : 'decrease',
-        icon: Monitor,
-        description: `${equipment?.totalSessions || 0} total sessions`,
-        status:
-          equipment?.overallUtilization > 85
-            ? 'warning'
-            : equipment?.overallUtilization > 60
-              ? 'success'
-              : 'info',
-        progress: equipment?.overallUtilization || 0,
-        footer: `${equipment?.recommendations?.[0] || 'Optimal utilization'}`,
-      },
-      {
-        title: 'Fine Collection',
-        value: `$${fines?.collectedFines?.toFixed(2) || 0}`,
-        change: fines?.collectionRate || 0,
-        changeType: fines?.collectionRate > 70 ? 'increase' : 'decrease',
-        icon: DollarSign,
-        description: `${fines?.collectionRate?.toFixed(1) || 0}% collection rate`,
-        status:
-          fines?.collectionRate > 80
-            ? 'success'
-            : fines?.collectionRate > 60
-              ? 'warning'
-              : 'error',
-        progress: fines?.collectionRate || 0,
-        footer: `$${fines?.outstandingFines?.toFixed(2) || 0} outstanding`,
-      },
-      {
-        title: 'Peak Usage Time',
-        value: trends?.peakUsageHours?.[0]?.timeRange || 'N/A',
-        icon: Clock,
-        description: `${trends?.peakUsageHours?.[0]?.count || 0} students during peak`,
-        status: 'info',
-        footer: `Avg session: ${equipment?.averageSessionDuration?.toFixed(0) || 0} min`,
-      },
-      {
-        title: 'System Health',
-        value: 'Good',
-        icon: Activity,
-        description: 'All systems operational',
-        status: 'success',
-        progress: 95,
-        footer: `Last check: ${lastUpdated.toLocaleTimeString()}`,
-      },
-      {
-        title: 'Book Availability',
-        value: `${overview?.bookAvailabilityRate?.toFixed(1) || 0}%`,
-        change: overview?.bookAvailabilityRate > 90 ? 2 : -1,
-        changeType:
-          overview?.bookAvailabilityRate > 90 ? 'increase' : 'decrease',
-        icon: Target,
-        description: `${overview?.availableBooks || 0} of ${overview?.totalBooks || 0} books available`,
-        status:
-          overview?.bookAvailabilityRate > 85
-            ? 'success'
-            : overview?.bookAvailabilityRate > 70
-              ? 'warning'
-              : 'error',
-        progress: overview?.bookAvailabilityRate || 0,
-      },
-      {
-        title: 'Growth Rate',
-        value: `${trends?.dailyGrowth?.toFixed(1) || 0}%`,
-        change: trends?.dailyGrowth || 0,
-        changeType: trends?.dailyGrowth > 0 ? 'increase' : 'decrease',
-        icon: TrendingUp,
-        description: `${selectedTimeframe === 'day' ? 'Daily' : selectedTimeframe === 'week' ? 'Weekly' : 'Monthly'} growth`,
-        status:
-          trends?.dailyGrowth > 5
-            ? 'success'
-            : trends?.dailyGrowth > 0
-              ? 'info'
-              : 'warning',
-        footer: `Next period forecast: ${circulation?.trends?.forecastNextPeriod || 'N/A'}`,
-      },
-    ];
-  };
+  }, [data, timeframe, generateMetrics]);
 
   const getChangeIcon = (changeType?: 'increase' | 'decrease' | 'neutral') => {
     switch (changeType) {

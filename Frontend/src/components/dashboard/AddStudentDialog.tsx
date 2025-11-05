@@ -48,9 +48,12 @@ export function AddStudentDialog({
     setIsSubmitting(true);
     try {
       const response = await utilitiesApi.quickAddStudent(formData);
-      if (response.success && (response.data as any)?.student) {
+      const responseData = response.data as
+        | { student?: { firstName: string; lastName: string } }
+        | undefined;
+      if (response.success && responseData?.student) {
         toast.success(
-          `Student ${(response.data as any).student.firstName} ${(response.data as any).student.lastName} added successfully!`
+          `Student ${responseData.student.firstName} ${responseData.student.lastName} added successfully!`
         );
         setOpen(false);
         window.location.reload();

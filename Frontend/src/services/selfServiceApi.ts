@@ -82,7 +82,7 @@ export const selfServiceApi = {
     startDate?: Date,
     endDate?: Date
   ): Promise<SelfServiceStatistics> {
-    const params: any = {};
+    const params: Record<string, unknown> = {};
     if (startDate) {
       params.startDate = startDate.toISOString();
     }

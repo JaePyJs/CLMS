@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import QRCode from 'qrcode';
 
 interface QRCodeDisplayProps {
@@ -22,16 +22,7 @@ export function QRCodeDisplay({
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [error, setError] = useState<string>('');
 
-  useEffect(() => {
-    if (value) {
-      generateQRCode();
-    } else {
-      setQrCodeUrl('');
-      setError('');
-    }
-  }, [value, size, margin, color]);
-
-  const generateQRCode = async () => {
+  const generateQRCode = useCallback(async () => {
     try {
       const url = await QRCode.toDataURL(value, {
         width: size,
@@ -49,7 +40,16 @@ export function QRCodeDisplay({
       setError('Failed to generate QR code');
       setQrCodeUrl('');
     }
-  };
+  }, [value, size, margin, color]);
+
+  useEffect(() => {
+    if (value) {
+      generateQRCode();
+    } else {
+      setQrCodeUrl('');
+      setError('');
+    }
+  }, [value, generateQRCode]);
 
   if (!value) {
     return (

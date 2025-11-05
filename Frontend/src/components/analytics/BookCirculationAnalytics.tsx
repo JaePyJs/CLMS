@@ -33,9 +33,47 @@ import {
   Download,
 } from 'lucide-react';
 
+interface RawCategoryData {
+  category: string;
+  count: number;
+}
+
+interface RawBookData {
+  id: string;
+  title: string;
+  author: string;
+  category: string;
+  circulationCount: number;
+  popularity: number;
+  availableCopies: number;
+  totalCopies: number;
+}
+
+interface CirculationAnalyticsData {
+  circulationByCategory?: RawCategoryData[];
+  mostBorrowedBooks?: RawBookData[];
+  totalCirculation?: number;
+  overdueData?: {
+    overdueByCategory?: Array<{ category: string; count: number }>;
+  };
+  trends?: {
+    growthRate?: number;
+  };
+  circulation?: {
+    circulationRate?: number;
+    returnRate?: number;
+    overdueRate?: number;
+  };
+  overdueAnalysis?: {
+    overdueByCategory?: Array<{ category: string; count: number }>;
+    totalOverdue?: number;
+    averageOverdueDays?: number;
+  };
+}
+
 interface BookCirculationAnalyticsProps {
   timeframe: 'day' | 'week' | 'month';
-  data?: any;
+  data?: CirculationAnalyticsData;
   isLoading?: boolean;
 }
 
@@ -96,27 +134,29 @@ export function BookCirculationAnalytics({
     }
   }, [data, timeframe]);
 
-  const processCirculationData = (analyticsData: any) => {
+  const processCirculationData = (analyticsData: CirculationAnalyticsData) => {
     // Process circulation trends
     const trends: CirculationTrend[] = generateMockTrends(timeframe);
     setCirculationTrends(trends);
 
     // Process category data
     const categories =
-      analyticsData.circulationByCategory?.map((cat: any, index: number) => ({
-        category: cat.category,
-        count: cat.count,
-        percentage: calculatePercentage(
-          cat.count,
-          analyticsData.totalCirculation
-        ),
-        color: COLORS[index % COLORS.length],
-      })) || [];
+      analyticsData.circulationByCategory?.map(
+        (cat: RawCategoryData, index: number) => ({
+          category: cat.category,
+          count: cat.count,
+          percentage: calculatePercentage(
+            cat.count,
+            analyticsData.totalCirculation
+          ),
+          color: COLORS[index % COLORS.length],
+        })
+      ) || [];
     setCategoryData(categories);
 
     // Process popular books
     const books =
-      analyticsData.mostBorrowedBooks?.map((book: any) => ({
+      analyticsData.mostBorrowedBooks?.map((book: RawBookData) => ({
         ...book,
         overdueCount: Math.floor(Math.random() * 5), // Mock overdue count
       })) || [];
@@ -461,17 +501,23 @@ export function BookCirculationAnalytics({
               {/* Overdue by Category */}
               <div className="space-y-2">
                 <h4 className="font-medium">Overdue by Category</h4>
-                {overdueData?.overdueByCategory?.map((cat: any) => (
-                  <div
-                    key={cat.category}
-                    className="flex justify-between items-center p-2 bg-muted rounded"
-                  >
-                    <span className="text-sm">{cat.category}</span>
-                    <span className="text-sm font-medium">
-                      {cat.count} books ({cat.averageDays} days)
-                    </span>
-                  </div>
-                ))}
+                {overdueData?.overdueByCategory?.map(
+                  (cat: {
+                    category: string;
+                    count: number;
+                    averageDays?: number;
+                  }) => (
+                    <div
+                      key={cat.category}
+                      className="flex justify-between items-center p-2 bg-muted rounded"
+                    >
+                      <span className="text-sm">{cat.category}</span>
+                      <span className="text-sm font-medium">
+                        {cat.count} books ({cat.averageDays} days)
+                      </span>
+                    </div>
+                  )
+                )}
               </div>
             </div>
           </CardContent>
@@ -561,7 +607,7 @@ export function BookCirculationAnalytics({
       {/* Analytics Tabs */}
       <Tabs
         value={selectedView}
-        onValueChange={(value: any) => setSelectedView(value)}
+        onValueChange={(value) => setSelectedView(value as typeof selectedView)}
         className="space-y-4"
       >
         <TabsList className="grid w-full grid-cols-4">

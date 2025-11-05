@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { useMobileOptimization } from '@/hooks/useMobileOptimization';
+import {
+  useMobileOptimization,
+  useTouchOptimization,
+} from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useAppStore } from '@/store/useAppStore';
-import { useTouchOptimization } from '@/hooks/useMobileOptimization';
 import {
   Wifi,
   WifiOff,

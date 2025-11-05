@@ -89,7 +89,10 @@ export function UsageHeatMap({
         };
       }
 
-      processed[key]!.intensity += item.intensity;
+      // Key exists because we just set it above or it already existed
+      if (processed[key]) {
+        processed[key].intensity += item.intensity;
+      }
     });
 
     return Object.values(processed);

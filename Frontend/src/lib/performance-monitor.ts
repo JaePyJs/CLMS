@@ -376,8 +376,8 @@ class PerformanceMonitor {
     // Console logging for debugging
     if (this.config.enableConsoleLogging) {
       console.group('Performance Monitor Flush');
-      console.log('Metrics:', data.metrics);
-      console.log('Logs:', data.logs);
+      console.debug('Metrics:', data.metrics);
+      console.debug('Logs:', data.logs);
       console.groupEnd();
     }
   }

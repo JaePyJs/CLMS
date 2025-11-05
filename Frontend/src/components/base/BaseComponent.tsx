@@ -1,5 +1,4 @@
-import React from 'react';
-import type { ComponentType, ReactNode } from 'react';
+import React, { type ComponentType, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -180,7 +179,7 @@ export function createComponentVariants<T extends Record<string, string>>(
   const result = {} as T;
 
   Object.entries(variants).forEach(([key, value]) => {
-    (result as any)[key] = `${base} ${value}`;
+    (result as Record<string, string>)[key] = `${base} ${value}`;
   });
 
   return result;

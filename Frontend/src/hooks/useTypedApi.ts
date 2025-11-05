@@ -362,9 +362,12 @@ export function useTypedMutation<TRequest, TResponse>(
           throw new Error(response.error || 'Mutation failed');
         }
 
-        setData(response.data ?? null);
-        onSuccess?.(response.data!);
-        return response.data!;
+        const responseData = response.data ?? null;
+        setData(responseData);
+        if (responseData) {
+          onSuccess?.(responseData);
+        }
+        return responseData as TResponse;
       } catch (err) {
         const apiError: ApiError = {
           message: err instanceof Error ? err.message : 'Mutation failed',

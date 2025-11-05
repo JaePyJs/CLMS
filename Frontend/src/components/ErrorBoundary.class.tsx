@@ -1,5 +1,4 @@
-import { Component } from 'react';
-import type { ErrorInfo, ReactNode } from 'react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 import {
   AlertTriangle,
   RefreshCw,
@@ -284,7 +283,7 @@ class ErrorBoundary extends Component<Props, State> {
       }
 
       this.autoRetryTimer = setTimeout(() => {
-        console.log(
+        console.debug(
           `Auto-recovery attempt ${this.state.retryCount + 1}/${this.maxRetries}: ${suggestion.title}`
         );
         this.setState({ isRecovering: true });

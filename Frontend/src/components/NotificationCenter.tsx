@@ -15,8 +15,9 @@ import {
   RefreshCw,
   Filter,
 } from 'lucide-react';
-import notificationApi from '../services/notificationApi';
-import type { AppNotification } from '../services/notificationApi';
+import notificationApi, {
+  type AppNotification,
+} from '../services/notificationApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationWebSocket } from '@/hooks/useWebSocket';
 import { toast } from 'sonner';
@@ -35,47 +36,58 @@ const NotificationCenter: React.FC = () => {
   const { isConnected } = useNotificationWebSocket();
 
   // Handle real-time notifications
-  const handleRealTimeNotification = useCallback((message: any) => {
-    if (message.type === 'notification') {
-      const newNotification = message.payload;
+  const handleRealTimeNotification = useCallback(
+    (message: { type: string; payload: AppNotification }) => {
+      if (message.type === 'notification') {
+        const newNotification = message.payload;
 
-      // Add to notifications list
-      setNotifications((prev) => [newNotification, ...prev.slice(0, 49)]);
+        // Add to notifications list
+        setNotifications((prev) => [newNotification, ...prev.slice(0, 49)]);
 
-      // Update unread count
-      setUnreadCount((prev) => prev + 1);
+        // Update unread count
+        setUnreadCount((prev) => prev + 1);
 
-      // Show toast notification
-      const priority = newNotification.priority;
-      const toastConfig = {
-        duration:
-          priority === 'URGENT' ? 10000 : priority === 'HIGH' ? 5000 : 3000,
-      };
+        // Show toast notification
+        const priority = newNotification.priority;
+        const toastConfig = {
+          duration:
+            priority === 'URGENT' ? 10000 : priority === 'HIGH' ? 5000 : 3000,
+        };
 
-      if (priority === 'URGENT') {
-        toast.error(newNotification.title, {
-          description: newNotification.message,
-          ...toastConfig,
-        });
-      } else if (priority === 'HIGH') {
-        toast.warning(newNotification.title, {
-          description: newNotification.message,
-          ...toastConfig,
-        });
-      } else {
-        toast.info(newNotification.title, {
-          description: newNotification.message,
-          ...toastConfig,
-        });
+        if (priority === 'URGENT') {
+          toast.error(newNotification.title, {
+            description: newNotification.message,
+            ...toastConfig,
+          });
+        } else if (priority === 'HIGH') {
+          toast.warning(newNotification.title, {
+            description: newNotification.message,
+            ...toastConfig,
+          });
+        } else {
+          toast.info(newNotification.title, {
+            description: newNotification.message,
+            ...toastConfig,
+          });
+        }
       }
-    }
-  }, []);
+    },
+    []
+  );
 
   // Initialize WebSocket listener
   useEffect(() => {
     if (isConnected && user) {
       // Subscribe to real-time notifications
-      const socket = (window as any).socket;
+      const socket = (
+        window as {
+          socket?: {
+            emit: (event: string, ...args: unknown[]) => void;
+            on: (event: string, callback: (data: unknown) => void) => void;
+            off: (event: string, callback: (data: unknown) => void) => void;
+          };
+        }
+      ).socket;
       if (socket) {
         socket.emit('notification:subscribe');
 
@@ -100,7 +112,7 @@ const NotificationCenter: React.FC = () => {
 
     try {
       setLoading(true);
-      const params: any = {
+      const params: Record<string, unknown> = {
         unreadOnly: filter === 'unread',
         limit: 50,
       };
@@ -151,7 +163,11 @@ const NotificationCenter: React.FC = () => {
       setUnreadCount((prev) => Math.max(0, prev - 1));
 
       // Mark via WebSocket if available
-      const socket = (window as any).socket;
+      const socket = (
+        window as {
+          socket?: { emit: (event: string, ...args: unknown[]) => void };
+        }
+      ).socket;
       if (socket && isConnected) {
         socket.emit('notification:mark-read', { notificationId });
       }

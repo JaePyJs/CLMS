@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -144,10 +144,58 @@ export function BookCatalog() {
     'Young Adult',
   ];
 
+  // Calculate book statistics
+  const calculateStats = useCallback((booksList: Book[]) => {
+    const total = booksList.length;
+    const available = booksList.filter((b) => b.availableCopies > 0).length;
+    const checkedOut = booksList.reduce(
+      (sum, b) => sum + (b.totalCopies - b.availableCopies),
+      0
+    );
+    const uniqueCategories = new Set(booksList.map((b) => b.category)).size;
+
+    setStats({
+      total,
+      available,
+      checkedOut,
+      overdue: 0, // Would come from backend
+      categories: uniqueCategories,
+    });
+  }, []);
+
   // Fetch books from API
+  const fetchBooks = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('http://localhost:3001/api/books', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch books');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setBooks(data.data.books || []);
+        calculateStats(data.data.books || []);
+      } else {
+        toast.error('Failed to load books');
+      }
+    } catch (error) {
+      console.error('Error fetching books:', error);
+      toast.error('Failed to load books. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [calculateStats]);
+
+  // Fetch books on mount
   useEffect(() => {
     fetchBooks();
-  }, []);
+  }, [fetchBooks]);
 
   // Filter books
   useEffect(() => {
@@ -181,52 +229,6 @@ export function BookCatalog() {
 
     setFilteredBooks(filtered);
   }, [books, searchTerm, filterCategory, filterStatus]);
-
-  const fetchBooks = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('http://localhost:3001/api/books', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch books');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setBooks(data.data.books || []);
-        calculateStats(data.data.books || []);
-      } else {
-        toast.error('Failed to load books');
-      }
-    } catch (error) {
-      console.error('Error fetching books:', error);
-      toast.error('Failed to load books. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const calculateStats = (booksList: Book[]) => {
-    const total = booksList.length;
-    const available = booksList.filter((b) => b.availableCopies > 0).length;
-    const checkedOut = booksList.reduce(
-      (sum, b) => sum + (b.totalCopies - b.availableCopies),
-      0
-    );
-    const uniqueCategories = new Set(booksList.map((b) => b.category)).size;
-
-    setStats({
-      total,
-      available,
-      checkedOut,
-      overdue: 0, // Would come from backend
-      categories: uniqueCategories,
-    });
-  };
 
   const handleAddBook = async () => {
     if (
@@ -527,10 +529,10 @@ export function BookCatalog() {
         </Card>
       </div>
 
-      {/* Search and Filters */}
+      {/* _Search and Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Search & Filter</CardTitle>
+          <CardTitle>_Search & Filter</CardTitle>
         </CardHeader>
         <CardContent>
           <div
@@ -542,8 +544,8 @@ export function BookCatalog() {
                 <Input
                   placeholder={
                     isMobile
-                      ? 'Search books...'
-                      : 'Search by title, author, ISBN, or accession number...'
+                      ? '_Search books...'
+                      : '_Search by title, author, ISBN, or accession number...'
                   }
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -606,7 +608,7 @@ export function BookCatalog() {
               title="No books found"
               description={
                 searchTerm || filterCategory !== 'all'
-                  ? 'Try adjusting your search or filters'
+                  ? 'Try adjusting your _search or filters'
                   : 'Start by adding your first book to the catalog'
               }
               action={

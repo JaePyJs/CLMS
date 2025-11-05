@@ -1,5 +1,4 @@
-import React from 'react';
-import type { ReactNode, ComponentType } from 'react';
+import React, { type ReactNode, type ComponentType } from 'react';
 
 /**
  * Render prop patterns for flexible component composition

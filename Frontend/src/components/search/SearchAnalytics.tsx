@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -128,17 +128,15 @@ export default function SearchAnalytics() {
   const [timeRange, setTimeRange] = useState('30');
   const [activeTab, setActiveTab] = useState('overview');
 
-  useEffect(() => {
-    loadAnalyticsData();
-  }, [timeRange]);
-
-  const loadAnalyticsData = async () => {
+  const loadAnalyticsData = useCallback(async () => {
     setLoading(true);
     try {
       const [analyticsRes, performanceRes, behaviorRes] = await Promise.all([
-        apiClient.get('/api/analytics/search', { params: { days: timeRange } }),
-        apiClient.get('/api/analytics/search/performance'),
-        apiClient.get('/api/analytics/search/behavior', {
+        apiClient.get('/api/analytics/_search', {
+          params: { days: timeRange },
+        }),
+        apiClient.get('/api/analytics/_search/performance'),
+        apiClient.get('/api/analytics/_search/behavior', {
           params: { days: timeRange },
         }),
       ]);
@@ -156,11 +154,15 @@ export default function SearchAnalytics() {
       }
     } catch (error) {
       console.error('Failed to load analytics data:', error);
-      toast.error('Failed to load search analytics');
+      toast.error('Failed to load _search analytics');
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeRange]);
+
+  useEffect(() => {
+    loadAnalyticsData();
+  }, [loadAnalyticsData]);
 
   const getEntityIcon = (entityType: string) => {
     switch (entityType) {
@@ -200,10 +202,11 @@ export default function SearchAnalytics() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <BarChart3 className="w-6 h-6" />
-            Search Analytics
+            _Search Analytics
           </h1>
           <p className="text-muted-foreground">
-            Monitor search performance, user behavior, and system usage patterns
+            Monitor _search performance, user behavior, and system usage
+            patterns
           </p>
         </div>
 
@@ -261,7 +264,7 @@ export default function SearchAnalytics() {
                 {analytics.averageResponseTime.toFixed(0)}ms
               </div>
               <p className="text-sm text-muted-foreground">
-                Across all search types
+                Across all _search types
               </p>
             </CardContent>
           </Card>
@@ -280,7 +283,7 @@ export default function SearchAnalytics() {
                 {analytics.cacheHitRate.toFixed(1)}%
               </div>
               <p className="text-sm text-muted-foreground">
-                Search results from cache
+                _Search results from cache
               </p>
             </CardContent>
           </Card>
@@ -331,12 +334,12 @@ export default function SearchAnalytics() {
         <TabsContent value="overview" className="space-y-6">
           {analytics && (
             <>
-              {/* Search Trends */}
+              {/* _Search Trends */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Search Trends Over Time</CardTitle>
+                  <CardTitle>_Search Trends Over Time</CardTitle>
                   <CardDescription>
-                    Daily search volume by entity type
+                    Daily _search volume by entity type
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -364,7 +367,7 @@ export default function SearchAnalytics() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <PieChart className="w-5 h-5" />
-                      Search Distribution
+                      _Search Distribution
                     </CardTitle>
                     <CardDescription>Searches by entity type</CardDescription>
                   </CardHeader>
@@ -400,7 +403,7 @@ export default function SearchAnalytics() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="w-5 h-5" />
-                      Popular Search Terms
+                      Popular _Search Terms
                     </CardTitle>
                     <CardDescription>
                       Most frequently searched terms
@@ -582,9 +585,9 @@ export default function SearchAnalytics() {
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Search Activity</CardTitle>
+                    <CardTitle>_Search Activity</CardTitle>
                     <CardDescription>
-                      User search patterns by hour of day
+                      User _search patterns by hour of day
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -603,7 +606,9 @@ export default function SearchAnalytics() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Most Searched Entities</CardTitle>
-                    <CardDescription>Popular search categories</CardDescription>
+                    <CardDescription>
+                      Popular _search categories
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -633,7 +638,7 @@ export default function SearchAnalytics() {
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Favorite Search Terms</CardTitle>
+                    <CardTitle>Favorite _Search Terms</CardTitle>
                     <CardDescription>
                       Most frequently searched terms
                     </CardDescription>
@@ -662,14 +667,14 @@ export default function SearchAnalytics() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {userBehavior.topSavedSearches.map((search, index) => (
+                      {userBehavior.topSavedSearches.map((_search, index) => (
                         <div
                           key={index}
                           className="flex items-center justify-between"
                         >
-                          <span className="font-medium">{search.name}</span>
+                          <span className="font-medium">{_search.name}</span>
                           <Badge variant="outline">
-                            {search.useCount} uses
+                            {_search.useCount} uses
                           </Badge>
                         </div>
                       ))}

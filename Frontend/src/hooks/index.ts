@@ -66,7 +66,6 @@ export * from './api-hooks';
 export {
   useEnhancedState,
   useSelector,
-  useSelectors,
   useComputed,
   useActions,
   useAsyncActions,

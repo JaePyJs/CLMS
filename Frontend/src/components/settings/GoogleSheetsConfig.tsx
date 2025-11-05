@@ -31,6 +31,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { settingsApi } from '@/lib/api';
+import { getErrorMessage, hasProperty } from '@/utils/errorHandling';
 
 interface GoogleSheetsConfigData {
   spreadsheetId: string;
@@ -81,9 +82,15 @@ export default function GoogleSheetsConfig() {
           (response.data as GoogleSheetsConfigData) || DEFAULT_CONFIG;
         setLocalConfig(data);
         return data;
-      } catch (err: any) {
+      } catch (err: unknown) {
         // If no config exists yet, use defaults
-        if (err?.response?.status === 404) {
+        if (
+          hasProperty(err, 'response') &&
+          typeof err.response === 'object' &&
+          err.response !== null &&
+          hasProperty(err.response, 'status') &&
+          err.response.status === 404
+        ) {
           toast.info('Google Sheets integration not configured yet');
           return DEFAULT_CONFIG;
         }
@@ -133,10 +140,8 @@ export default function GoogleSheetsConfig() {
       );
       setLocalConfig((prev) => ({ ...prev, connectionStatus: 'connected' }));
     },
-    onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.error || 'Failed to connect to Google Sheets'
-      );
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to connect to Google Sheets'));
       setLocalConfig((prev) => ({ ...prev, connectionStatus: 'error' }));
     },
   });
@@ -150,8 +155,8 @@ export default function GoogleSheetsConfig() {
       const recordCount = data?.recordCount || 0;
       toast.success(`Successfully synced ${recordCount} records!`);
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to sync data');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to sync data'));
     },
   });
 
@@ -166,8 +171,8 @@ export default function GoogleSheetsConfig() {
       queryClient.invalidateQueries({ queryKey: ['google-sheets-config'] });
       toast.success('Sync schedule updated successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to save schedule');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to save schedule'));
     },
   });
 

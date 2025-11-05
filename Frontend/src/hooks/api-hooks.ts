@@ -7,6 +7,7 @@ import {
 } from '@/lib/api';
 import { useAppStore } from '@/store/useAppStore';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 // Health check hook
 export const useHealthCheck = () => {
@@ -36,7 +37,7 @@ export const useHealthCheck = () => {
           connected: false,
         };
       } catch (error) {
-        console.log('Health check error:', error);
+        console.debug('Health check error:', error);
         setBackendConnection(false);
         // Return a safe fallback instead of throwing
         return {
@@ -78,8 +79,8 @@ export const useTriggerJob = () => {
       toast.success('Job triggered successfully');
       queryClient.invalidateQueries({ queryKey: ['automation-jobs'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to trigger job');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to trigger job'));
     },
   });
 };
@@ -114,14 +115,19 @@ export const useStudentActivity = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (activityData: any) => studentsApi.logActivity(activityData),
+    mutationFn: (activityData: {
+      studentId: string;
+      activityType: string;
+      deviceType?: string;
+      duration?: number;
+    }) => studentsApi.logActivity(activityData),
     onSuccess: () => {
       toast.success('Activity logged successfully');
       queryClient.invalidateQueries({ queryKey: ['activities'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to log activity');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to log activity'));
     },
   });
 };
@@ -149,15 +155,22 @@ export const useStartSession = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ equipmentId, studentId, timeLimitMinutes }: any) =>
-      equipmentApi.startSession(equipmentId, studentId, timeLimitMinutes),
+    mutationFn: ({
+      equipmentId,
+      studentId,
+      timeLimitMinutes,
+    }: {
+      equipmentId: string;
+      studentId: string;
+      timeLimitMinutes?: number;
+    }) => equipmentApi.startSession(equipmentId, studentId, timeLimitMinutes),
     onSuccess: () => {
       toast.success('Session started successfully');
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['activities'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to start session');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to start session'));
     },
   });
 };
@@ -172,8 +185,8 @@ export const useEndSession = () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['activities'] });
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to end session');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to end session'));
     },
   });
 };
@@ -295,8 +308,8 @@ export const useExportData = () => {
         window.URL.revokeObjectURL(url);
       }
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Failed to export data');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to export data'));
     },
   });
 };

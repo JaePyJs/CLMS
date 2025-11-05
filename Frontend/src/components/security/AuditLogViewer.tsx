@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,7 +64,7 @@ interface AuditLogEntry {
   userAgent?: string;
   entityType: string;
   entityId?: string;
-  action: 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'EXPORT' | 'SEARCH';
+  action: 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'EXPORT' | '_SEARCH';
   fieldsAccessed: string[];
   sensitiveFieldsAccessed: string[];
   encryptedFieldsAccessed: string[];
@@ -139,182 +139,193 @@ const AuditLogViewer: React.FC = () => {
   const logsPerPage = 50;
 
   // Fetch audit logs
-  const fetchAuditLogs = async (page: number = 1) => {
-    try {
-      setLoading(true);
+  const fetchAuditLogs = useCallback(
+    async (page: number = 1) => {
+      try {
+        setLoading(true);
 
-      // Mock API call - in real app, this would be an actual API call
-      const mockLogs = Array.from({ length: 150 }, (_, index) => ({
-        id: `audit_${Date.now()}_${index}`,
-        timestamp: new Date(
-          Date.now() - Math.random() * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        userId: `user_${Math.floor(Math.random() * 100)}`,
-        userRole: ['TEACHER', 'LIBRARIAN', 'ADMIN', 'STAFF'][
-          Math.floor(Math.random() * 4)
-        ] as AuditLogEntry['userRole'],
-        sessionId: `session_${Math.random().toString(36).substr(2, 9)}`,
-        requestId: `req_${Math.random().toString(36).substr(2, 9)}`,
-        endpoint: [
-          '/api/students',
-          '/api/activities',
-          '/api/books',
-          '/api/equipment',
-        ][Math.floor(Math.random() * 4)] as AuditLogEntry['endpoint'],
-        method: ['GET', 'POST', 'PUT', 'DELETE'][
-          Math.floor(Math.random() * 4)
-        ] as AuditLogEntry['method'],
-        ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
-        userAgent:
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        entityType: ['student', 'activity', 'book', 'equipment'][
-          Math.floor(Math.random() * 4)
-        ],
-        entityId: `entity_${Math.floor(Math.random() * 1000)}`,
-        action: ['READ', 'CREATE', 'UPDATE', 'DELETE', 'EXPORT', 'SEARCH'][
-          Math.floor(Math.random() * 6)
-        ] as AuditLogEntry['action'],
-        fieldsAccessed: ['name', 'email', 'grade', 'section'].slice(
-          0,
-          Math.floor(Math.random() * 4) + 1
-        ),
-        sensitiveFieldsAccessed: Math.random() > 0.7 ? ['email', 'phone'] : [],
-        encryptedFieldsAccessed:
-          Math.random() > 0.8 ? ['ssn', 'medical_info'] : [],
-        dataAccessLevel: [
-          'PUBLIC',
-          'LIMITED',
-          'SENSITIVE',
-          'RESTRICTED',
-          'CONFIDENTIAL',
-        ][Math.floor(Math.random() * 5)] as AuditLogEntry['dataAccessLevel'],
-        recordsAffected: Math.floor(Math.random() * 100),
-        dataSize: Math.floor(Math.random() * 10000),
-        responseStatus:
-          Math.random() > 0.1
-            ? 200
-            : [400, 401, 403, 404, 500][Math.floor(Math.random() * 5)],
-        success: Math.random() > 0.1,
-        duration: Math.floor(Math.random() * 1000) + 10,
-        ferpaCompliance: {
-          required: Math.random() > 0.5,
-          verified: Math.random() > 0.3,
-          accessRequestId:
-            Math.random() > 0.7
-              ? `req_${Math.random().toString(36).substr(2, 9)}`
-              : undefined,
-          justificationProvided: Math.random() > 0.4,
-        },
-        securityFlags: {
-          suspiciousActivity: Math.random() > 0.9,
-          unusualAccessPattern: Math.random() > 0.85,
-          dataExfiltrationRisk: Math.random() > 0.95,
-          privilegeEscalationAttempt: Math.random() > 0.98,
-          bruteForceIndicator: Math.random() > 0.95,
-        },
-        metadata: {
-          requestSize: Math.floor(Math.random() * 1000),
-          responseSize: Math.floor(Math.random() * 5000),
-          cacheHit: Math.random() > 0.5,
-          databaseQueryCount: Math.floor(Math.random() * 10) + 1,
-          apiRate: Math.floor(Math.random() * 100),
-        },
-      })) as AuditLogEntry[];
+        // Mock API call - in real app, this would be an actual API call
+        const mockLogs = Array.from({ length: 150 }, (_, index) => ({
+          id: `audit_${Date.now()}_${index}`,
+          timestamp: new Date(
+            Date.now() - Math.random() * 24 * 60 * 60 * 1000
+          ).toISOString(),
+          userId: `user_${Math.floor(Math.random() * 100)}`,
+          userRole: ['TEACHER', 'LIBRARIAN', 'ADMIN', 'STAFF'][
+            Math.floor(Math.random() * 4)
+          ] as AuditLogEntry['userRole'],
+          sessionId: `session_${Math.random().toString(36).substr(2, 9)}`,
+          requestId: `req_${Math.random().toString(36).substr(2, 9)}`,
+          endpoint: [
+            '/api/students',
+            '/api/activities',
+            '/api/books',
+            '/api/equipment',
+          ][Math.floor(Math.random() * 4)] as AuditLogEntry['endpoint'],
+          method: ['GET', 'POST', 'PUT', 'DELETE'][
+            Math.floor(Math.random() * 4)
+          ] as AuditLogEntry['method'],
+          ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
+          userAgent:
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          entityType: ['student', 'activity', 'book', 'equipment'][
+            Math.floor(Math.random() * 4)
+          ],
+          entityId: `entity_${Math.floor(Math.random() * 1000)}`,
+          action: ['READ', 'CREATE', 'UPDATE', 'DELETE', 'EXPORT', '_SEARCH'][
+            Math.floor(Math.random() * 6)
+          ] as AuditLogEntry['action'],
+          fieldsAccessed: ['name', 'email', 'grade', 'section'].slice(
+            0,
+            Math.floor(Math.random() * 4) + 1
+          ),
+          sensitiveFieldsAccessed:
+            Math.random() > 0.7 ? ['email', 'phone'] : [],
+          encryptedFieldsAccessed:
+            Math.random() > 0.8 ? ['ssn', 'medical_info'] : [],
+          dataAccessLevel: [
+            'PUBLIC',
+            'LIMITED',
+            'SENSITIVE',
+            'RESTRICTED',
+            'CONFIDENTIAL',
+          ][Math.floor(Math.random() * 5)] as AuditLogEntry['dataAccessLevel'],
+          recordsAffected: Math.floor(Math.random() * 100),
+          dataSize: Math.floor(Math.random() * 10000),
+          responseStatus:
+            Math.random() > 0.1
+              ? 200
+              : [400, 401, 403, 404, 500][Math.floor(Math.random() * 5)],
+          success: Math.random() > 0.1,
+          duration: Math.floor(Math.random() * 1000) + 10,
+          ferpaCompliance: {
+            required: Math.random() > 0.5,
+            verified: Math.random() > 0.3,
+            accessRequestId:
+              Math.random() > 0.7
+                ? `req_${Math.random().toString(36).substr(2, 9)}`
+                : undefined,
+            justificationProvided: Math.random() > 0.4,
+          },
+          securityFlags: {
+            suspiciousActivity: Math.random() > 0.9,
+            unusualAccessPattern: Math.random() > 0.85,
+            dataExfiltrationRisk: Math.random() > 0.95,
+            privilegeEscalationAttempt: Math.random() > 0.98,
+            bruteForceIndicator: Math.random() > 0.95,
+          },
+          metadata: {
+            requestSize: Math.floor(Math.random() * 1000),
+            responseSize: Math.floor(Math.random() * 5000),
+            cacheHit: Math.random() > 0.5,
+            databaseQueryCount: Math.floor(Math.random() * 10) + 1,
+            apiRate: Math.floor(Math.random() * 100),
+          },
+        })) as AuditLogEntry[];
 
-      // Apply filters
-      const filteredLogs = mockLogs.filter((log) => {
-        // Date range filter
-        const logDate = new Date(log.timestamp);
-        const now = new Date();
+        // Apply filters
+        const filteredLogs = mockLogs.filter((log) => {
+          // Date range filter
+          const logDate = new Date(log.timestamp);
+          const now = new Date();
 
-        if (filters.dateRange === '1h') {
-          const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-          if (logDate < oneHourAgo) {
+          if (filters.dateRange === '1h') {
+            const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+            if (logDate < oneHourAgo) {
+              return false;
+            }
+          } else if (filters.dateRange === '24h') {
+            const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            if (logDate < oneDayAgo) {
+              return false;
+            }
+          } else if (filters.dateRange === '7d') {
+            const oneWeekAgo = new Date(
+              now.getTime() - 7 * 24 * 60 * 60 * 1000
+            );
+            if (logDate < oneWeekAgo) {
+              return false;
+            }
+          } else if (filters.dateRange === '30d') {
+            const oneMonthAgo = new Date(
+              now.getTime() - 30 * 24 * 60 * 60 * 1000
+            );
+            if (logDate < oneMonthAgo) {
+              return false;
+            }
+          }
+
+          // _Search filter
+          if (
+            searchTerm &&
+            !JSON.stringify(log)
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())
+          ) {
             return false;
           }
-        } else if (filters.dateRange === '24h') {
-          const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          if (logDate < oneDayAgo) {
+
+          // Other filters
+          if (filters.userId && log.userId !== filters.userId) {
             return false;
           }
-        } else if (filters.dateRange === '7d') {
-          const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          if (logDate < oneWeekAgo) {
+          if (filters.userRole && log.userRole !== filters.userRole) {
             return false;
           }
-        } else if (filters.dateRange === '30d') {
-          const oneMonthAgo = new Date(
-            now.getTime() - 30 * 24 * 60 * 60 * 1000
-          );
-          if (logDate < oneMonthAgo) {
+          if (filters.entityType && log.entityType !== filters.entityType) {
             return false;
           }
-        }
+          if (filters.action && log.action !== filters.action) {
+            return false;
+          }
+          if (
+            filters.success !== undefined &&
+            log.success !== filters.success
+          ) {
+            return false;
+          }
+          if (
+            filters.dataAccessLevel &&
+            log.dataAccessLevel !== filters.dataAccessLevel
+          ) {
+            return false;
+          }
+          if (
+            filters.hasSecurityFlags &&
+            !Object.values(log.securityFlags).some(Boolean)
+          ) {
+            return false;
+          }
+          if (
+            filters.ferpaRequired !== undefined &&
+            log.ferpaCompliance.required !== filters.ferpaRequired
+          ) {
+            return false;
+          }
 
-        // Search filter
-        if (
-          searchTerm &&
-          !JSON.stringify(log).toLowerCase().includes(searchTerm.toLowerCase())
-        ) {
-          return false;
-        }
+          return true;
+        });
 
-        // Other filters
-        if (filters.userId && log.userId !== filters.userId) {
-          return false;
-        }
-        if (filters.userRole && log.userRole !== filters.userRole) {
-          return false;
-        }
-        if (filters.entityType && log.entityType !== filters.entityType) {
-          return false;
-        }
-        if (filters.action && log.action !== filters.action) {
-          return false;
-        }
-        if (filters.success !== undefined && log.success !== filters.success) {
-          return false;
-        }
-        if (
-          filters.dataAccessLevel &&
-          log.dataAccessLevel !== filters.dataAccessLevel
-        ) {
-          return false;
-        }
-        if (
-          filters.hasSecurityFlags &&
-          !Object.values(log.securityFlags).some(Boolean)
-        ) {
-          return false;
-        }
-        if (
-          filters.ferpaRequired !== undefined &&
-          log.ferpaCompliance.required !== filters.ferpaRequired
-        ) {
-          return false;
-        }
+        // Pagination
+        const startIndex = (page - 1) * logsPerPage;
+        const endIndex = startIndex + logsPerPage;
+        const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 
-        return true;
-      });
-
-      // Pagination
-      const startIndex = (page - 1) * logsPerPage;
-      const endIndex = startIndex + logsPerPage;
-      const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
-
-      setLogs(paginatedLogs);
-      setTotalPages(Math.ceil(filteredLogs.length / logsPerPage));
-      setCurrentPage(page);
-    } catch (error) {
-      console.error('Failed to fetch audit logs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+        setLogs(paginatedLogs);
+        setTotalPages(Math.ceil(filteredLogs.length / logsPerPage));
+        setCurrentPage(page);
+      } catch (error) {
+        console.error('Failed to fetch audit logs:', error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters, searchTerm, logsPerPage]
+  );
 
   useEffect(() => {
     fetchAuditLogs(currentPage);
-  }, [currentPage, filters, searchTerm]);
+  }, [currentPage, fetchAuditLogs]);
 
   const handleExport = async (format: 'csv' | 'json' | 'pdf') => {
     try {
@@ -371,7 +382,7 @@ const AuditLogViewer: React.FC = () => {
         return <XCircle className="h-4 w-4 text-red-500" />;
       case 'EXPORT':
         return <Download className="h-4 w-4 text-purple-500" />;
-      case 'SEARCH':
+      case '_SEARCH':
         return <Search className="h-4 w-4 text-gray-500" />;
       default:
         return <Activity className="h-4 w-4 text-gray-500" />;
@@ -464,14 +475,14 @@ const AuditLogViewer: React.FC = () => {
         </div>
       </div>
 
-      {/* Search and Filters */}
+      {/* _Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-4">
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search audit logs..."
+                placeholder="_Search audit logs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -481,8 +492,11 @@ const AuditLogViewer: React.FC = () => {
 
           <Select
             value={filters.dateRange}
-            onValueChange={(value: any) =>
-              setFilters((prev) => ({ ...prev, dateRange: value }))
+            onValueChange={(value: string) =>
+              setFilters((prev) => ({
+                ...prev,
+                dateRange: value as FilterOptions['dateRange'],
+              }))
             }
           >
             <SelectTrigger className="w-32">
@@ -588,7 +602,7 @@ const AuditLogViewer: React.FC = () => {
                       <SelectItem value="UPDATE">Update</SelectItem>
                       <SelectItem value="DELETE">Delete</SelectItem>
                       <SelectItem value="EXPORT">Export</SelectItem>
-                      <SelectItem value="SEARCH">Search</SelectItem>
+                      <SelectItem value="_SEARCH">_Search</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

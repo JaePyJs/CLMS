@@ -9,53 +9,33 @@ import { useState, useEffect } from 'react';
 // Performance API with fallbacks
 export const performance = {
   now: (): number => {
-    if (
-      typeof window !== 'undefined' &&
-      window.performance &&
-      window.performance.now
-    ) {
+    if (typeof window !== 'undefined' && window.performance?.now) {
       return window.performance.now();
     }
     return Date.now();
   },
 
   mark: (name: string): void => {
-    if (
-      typeof window !== 'undefined' &&
-      window.performance &&
-      window.performance.mark
-    ) {
+    if (typeof window !== 'undefined' && window.performance?.mark) {
       window.performance.mark(name);
     }
   },
 
   measure: (name: string, startMark: string, endMark?: string): void => {
-    if (
-      typeof window !== 'undefined' &&
-      window.performance &&
-      window.performance.measure
-    ) {
+    if (typeof window !== 'undefined' && window.performance?.measure) {
       window.performance.measure(name, startMark, endMark);
     }
   },
 
   getEntriesByName: (name: string, type?: string): PerformanceEntry[] => {
-    if (
-      typeof window !== 'undefined' &&
-      window.performance &&
-      window.performance.getEntriesByName
-    ) {
+    if (typeof window !== 'undefined' && window.performance?.getEntriesByName) {
       return window.performance.getEntriesByName(name, type);
     }
     return [];
   },
 
   getEntriesByType: (type: string): PerformanceEntry[] => {
-    if (
-      typeof window !== 'undefined' &&
-      window.performance &&
-      window.performance.getEntriesByType
-    ) {
+    if (typeof window !== 'undefined' && window.performance?.getEntriesByType) {
       return window.performance.getEntriesByType(type);
     }
     return [];
@@ -81,7 +61,9 @@ export class PerformanceObserver {
 
   observe(options: PerformanceObserverInit): void {
     if (typeof window !== 'undefined' && window.PerformanceObserver) {
-      this.observer = new (window as any).PerformanceObserver(this.callback);
+      this.observer = new (window as any).PerformanceObserver(
+        this.callback
+      ) as PerformanceObserver;
       this.observer?.observe(options);
     }
   }
@@ -139,7 +121,7 @@ export function useRenderCount(componentName: string) {
   return count;
 }
 
-export function useRenderTime(componentName: string) {
+export function useRenderTime(_componentName: string) {
   const [renderTime, setRenderTime] = useState(0);
 
   useEffect(() => {
@@ -207,21 +189,13 @@ export const timing = {
 };
 
 // Update timing stats if available
-if (
-  typeof window !== 'undefined' &&
-  window.performance &&
-  window.performance.timing
-) {
+if (typeof window !== 'undefined' && window.performance?.timing) {
   Object.assign(timing, window.performance.timing);
 }
 
 // Resource timing utilities
 export const getResourceTiming = (): PerformanceResourceTiming[] => {
-  if (
-    typeof window !== 'undefined' &&
-    window.performance &&
-    window.performance.getEntriesByType
-  ) {
+  if (typeof window !== 'undefined' && window.performance?.getEntriesByType) {
     return window.performance.getEntriesByType(
       'resource'
     ) as PerformanceResourceTiming[];
@@ -231,11 +205,7 @@ export const getResourceTiming = (): PerformanceResourceTiming[] => {
 
 // Navigation timing utilities
 export const getNavigationTiming = (): PerformanceNavigationTiming | null => {
-  if (
-    typeof window !== 'undefined' &&
-    window.performance &&
-    window.performance.getEntriesByType
-  ) {
+  if (typeof window !== 'undefined' && window.performance?.getEntriesByType) {
     const entries = window.performance.getEntriesByType('navigation');
     return entries.length > 0
       ? (entries[0] as PerformanceNavigationTiming)
@@ -274,11 +244,9 @@ export const calculateMetrics = {
   // Calculate first paint time
   firstPaintTime: (): number => {
     const paintEntries =
-      typeof window !== 'undefined' &&
-      window.performance &&
-      window.performance.getEntriesByType
-        ? window.performance.getEntriesByType('paint')
-        : [];
+      (typeof window !== 'undefined'
+        ? window.performance?.getEntriesByType('paint')
+        : undefined) || [];
     const firstPaint = paintEntries.find(
       (entry) => entry.name === 'first-paint'
     );
@@ -288,11 +256,9 @@ export const calculateMetrics = {
   // Calculate first contentful paint time
   firstContentfulPaintTime: (): number => {
     const paintEntries =
-      typeof window !== 'undefined' &&
-      window.performance &&
-      window.performance.getEntriesByType
-        ? window.performance.getEntriesByType('paint')
-        : [];
+      (typeof window !== 'undefined'
+        ? window.performance?.getEntriesByType('paint')
+        : undefined) || [];
     const firstContentfulPaint = paintEntries.find(
       (entry) => entry.name === 'first-contentful-paint'
     );

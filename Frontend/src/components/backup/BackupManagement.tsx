@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Database,
   Download,
@@ -15,12 +15,12 @@ import {
   History as HistoryIcon,
   Play,
 } from 'lucide-react';
-import backupApi from '../../services/backupApi';
-import type {
-  BackupMetadata,
-  BackupStatistics,
+import backupApi, {
+  type BackupMetadata,
+  type BackupStatistics,
 } from '../../services/backupApi';
 import { useToast } from '../ToastContainer';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 const BackupManagement: React.FC = () => {
   const [backups, setBackups] = useState<BackupMetadata[]>([]);
@@ -38,15 +38,10 @@ const BackupManagement: React.FC = () => {
 
   const toast = useToast();
 
-  useEffect(() => {
-    fetchBackups();
-    fetchStatistics();
-  }, [typeFilter]);
-
-  const fetchBackups = async () => {
+  const fetchBackups = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = {};
+      const params: Record<string, unknown> = {};
 
       if (typeFilter !== 'ALL') {
         params.type = typeFilter;
@@ -60,16 +55,21 @@ const BackupManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [typeFilter, toast]);
 
-  const fetchStatistics = async () => {
+  const fetchStatistics = useCallback(async () => {
     try {
       const response = await backupApi.getStatistics();
       setStatistics(response.data);
     } catch (error) {
       console.error('Error fetching statistics:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchBackups();
+    fetchStatistics();
+  }, [fetchBackups, fetchStatistics]);
 
   const handleCreateBackup = async (
     type: 'FULL' | 'INCREMENTAL',
@@ -89,10 +89,8 @@ const BackupManagement: React.FC = () => {
       setShowCreateModal(false);
       fetchBackups();
       fetchStatistics();
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || 'Failed to create backup';
-      toast.error('Error', message);
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to create backup'));
     } finally {
       setCreating(false);
     }
@@ -109,10 +107,8 @@ const BackupManagement: React.FC = () => {
       }
 
       fetchBackups();
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || 'Failed to verify backup';
-      toast.error('Error', message);
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to verify backup'));
     }
   };
 
@@ -142,10 +138,8 @@ const BackupManagement: React.FC = () => {
 
       setShowRestoreModal(false);
       setSelectedBackup(null);
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || 'Failed to restore backup';
-      toast.error('Error', message);
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to restore backup'));
     }
   };
 
@@ -163,10 +157,8 @@ const BackupManagement: React.FC = () => {
       toast.success('Success', 'Backup deleted successfully');
       fetchBackups();
       fetchStatistics();
-    } catch (error: any) {
-      const message =
-        error.response?.data?.message || 'Failed to delete backup';
-      toast.error('Error', message);
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to delete backup'));
     }
   };
 
@@ -322,7 +314,9 @@ const BackupManagement: React.FC = () => {
         <div className="flex items-center gap-4">
           <select
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as any)}
+            onChange={(e) =>
+              setTypeFilter(e.target.value as 'ALL' | 'FULL' | 'INCREMENTAL')
+            }
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="ALL">All Types</option>
@@ -522,7 +516,9 @@ const CreateBackupModal: React.FC<{
                   type="radio"
                   value="FULL"
                   checked={type === 'FULL'}
-                  onChange={(e) => setType(e.target.value as any)}
+                  onChange={(e) =>
+                    setType(e.target.value as 'FULL' | 'INCREMENTAL')
+                  }
                   className="text-blue-600"
                 />
                 <div>
@@ -537,7 +533,9 @@ const CreateBackupModal: React.FC<{
                   type="radio"
                   value="INCREMENTAL"
                   checked={type === 'INCREMENTAL'}
-                  onChange={(e) => setType(e.target.value as any)}
+                  onChange={(e) =>
+                    setType(e.target.value as 'FULL' | 'INCREMENTAL')
+                  }
                   className="text-blue-600"
                 />
                 <div>

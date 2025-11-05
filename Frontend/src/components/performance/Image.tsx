@@ -1,5 +1,10 @@
-import React, { useState, useRef, useEffect, forwardRef } from 'react';
-import type { ComponentType } from 'react';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  forwardRef,
+  type ComponentType,
+} from 'react';
 import OptimizedImage from './OptimizedImage';
 import { imageOptimizationService } from '@/services/imageOptimizationService';
 import {
@@ -97,7 +102,8 @@ const PerformanceImage: ComponentType<ImageProps> = forwardRef<
     });
 
     const [blurPlaceholder, setBlurPlaceholder] = useState<string>('');
-    const [performanceMetrics, setPerformanceMetrics] = useState<any>(null);
+    const [_performanceMetrics, setPerformanceMetrics] =
+      useState<unknown>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
@@ -181,7 +187,7 @@ const PerformanceImage: ComponentType<ImageProps> = forwardRef<
 
           // Log performance in development
           if (process.env.NODE_ENV === 'development') {
-            console.log(`Image loaded: ${alt} in ${loadTime.toFixed(2)}ms`);
+            console.debug(`Image loaded: ${alt} in ${loadTime.toFixed(2)}ms`);
           }
         };
 
@@ -215,10 +221,10 @@ const PerformanceImage: ComponentType<ImageProps> = forwardRef<
       const shouldRetry = imageState.retryCount < maxRetries;
 
       if (shouldRetry && fallbackSrc && imageState.retryCount === 0) {
-        // Try fallback source
+        // Try fallback source (already validated as non-null by the if condition)
         setImageState((prev) => ({
           ...prev,
-          currentSrc: fallbackSrc!,
+          currentSrc: fallbackSrc,
           retryCount: prev.retryCount + 1,
         }));
       } else if (shouldRetry) {

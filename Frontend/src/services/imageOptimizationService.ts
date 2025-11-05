@@ -217,8 +217,9 @@ class ImageOptimizationService {
     const optimizedUrl = this.generateOptimizedUrl(url, config);
 
     // Check cache first
-    if (this.imageCache.has(optimizedUrl)) {
-      return this.imageCache.get(optimizedUrl)!;
+    const cachedResult = this.imageCache.get(optimizedUrl);
+    if (cachedResult) {
+      return cachedResult;
     }
 
     return new Promise((resolve, reject) => {

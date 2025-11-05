@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -78,11 +78,14 @@ export default function FinesManagement() {
     text: string;
   }>({ type: null, text: '' });
 
-  useEffect(() => {
-    fetchFines();
-  }, [statusFilter]);
+  const showMessage = useCallback((type: 'success' | 'error', text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => {
+      setMessage({ type: null, text: '' });
+    }, 5000);
+  }, []);
 
-  const fetchFines = async () => {
+  const fetchFines = useCallback(async () => {
     setLoading(true);
     try {
       const status =
@@ -92,7 +95,8 @@ export default function FinesManagement() {
       const response = await finesApi.getFines(status);
 
       if (response.success && response.data) {
-        setFines((response.data as any).fines || []);
+        const data = response.data as Record<string, unknown>;
+        setFines((data.fines as Fine[]) || []);
       } else {
         showMessage('error', 'Failed to load fines');
       }
@@ -102,7 +106,11 @@ export default function FinesManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, showMessage]);
+
+  useEffect(() => {
+    fetchFines();
+  }, [fetchFines]);
 
   const handleMarkAsPaid = (fine: Fine) => {
     setSelectedFine(fine);
@@ -172,13 +180,6 @@ export default function FinesManagement() {
       console.error('Failed to export fines:', error);
       showMessage('error', 'Failed to export fines');
     }
-  };
-
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => {
-      setMessage({ type: null, text: '' });
-    }, 5000);
   };
 
   const formatDate = (date: Date | null) => {
@@ -321,11 +322,11 @@ export default function FinesManagement() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
-            {/* Search */}
+            {/* _Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by student or book..."
+                placeholder="_Search by student or book..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"

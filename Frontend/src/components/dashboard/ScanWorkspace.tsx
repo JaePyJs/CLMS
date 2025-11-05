@@ -162,9 +162,9 @@ export function ScanWorkspace() {
         try {
           successSound
             .play()
-            .catch((e) => console.log('Audio play failed:', e));
+            .catch((e) => console.debug('Audio play failed:', e));
         } catch (e) {
-          console.log('Audio not available:', e);
+          console.debug('Audio not available:', e);
         }
 
         toast.success(result.message, {
@@ -202,9 +202,9 @@ export function ScanWorkspace() {
           try {
             cooldownSound
               .play()
-              .catch((e) => console.log('Audio play failed:', e));
+              .catch((e) => console.debug('Audio play failed:', e));
           } catch (e) {
-            console.log('Audio not available:', e);
+            console.debug('Audio not available:', e);
           }
 
           const minutes = Math.ceil(result.cooldownRemaining / 60);
@@ -223,9 +223,9 @@ export function ScanWorkspace() {
           try {
             errorSound
               .play()
-              .catch((e) => console.log('Audio play failed:', e));
+              .catch((e) => console.debug('Audio play failed:', e));
           } catch (e) {
-            console.log('Audio not available:', e);
+            console.debug('Audio not available:', e);
           }
 
           toast.error(result.message);

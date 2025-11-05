@@ -25,11 +25,12 @@ import {
 } from 'lucide-react';
 import { utilitiesApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { context7 } from '@/services/context7';
-import type { DocumentationUpdate } from '@/services/context7';
+import { context7, type DocumentationUpdate } from '@/services/context7';
 import { useDocumentationWebSocket } from '@/hooks/useDocumentationWebSocket';
-import { documentationVersionControl } from '@/services/documentationVersionControl';
-import type { ConflictInfo } from '@/services/documentationVersionControl';
+import {
+  documentationVersionControl,
+  type ConflictInfo,
+} from '@/services/documentationVersionControl';
 
 interface DocumentationInfo {
   version: string;
@@ -136,7 +137,7 @@ export function DocumentationDashboard() {
 
   // Handle real-time documentation updates
   const handleDocumentationUpdate = useCallback(
-    async (update: any) => {
+    async (update: DocumentationUpdate) => {
       try {
         // Apply the update through Context7 service
         await context7Service.applyUpdate(update);
@@ -151,9 +152,9 @@ export function DocumentationDashboard() {
         // Refresh documentation info to reflect changes
         await fetchDocumentationInfo();
 
-        toast.success(
-          `Documentation updated: ${update.description || update.path}`
-        );
+        const changeDescription =
+          update.changes[0]?.file || update.source || 'Unknown';
+        toast.success(`Documentation updated: ${changeDescription}`);
       } catch (error) {
         console.error('Failed to handle documentation update:', error);
         toast.error('Failed to apply documentation update');

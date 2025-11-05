@@ -29,11 +29,11 @@ interface AttendanceSetting {
 }
 
 export default function AttendanceSettings() {
-  const { user } = useAuth();
+  const { user: _user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [settings, setSettings] = useState<AttendanceSetting[]>([]);
+  const [_settings, setSettings] = useState<AttendanceSetting[]>([]);
   const [minCheckInInterval, setMinCheckInInterval] = useState(10);
   const [defaultSessionTime, setDefaultSessionTime] = useState(30);
 
@@ -232,7 +232,7 @@ export default function AttendanceSettings() {
         const { headers, rows } = data.data;
         const csvContent = [
           headers.join('\t'),
-          ...rows.map((r: any[]) => r.join('\t')),
+          ...rows.map((r: Array<string | number>) => r.join('\t')),
         ].join('\n');
 
         // Copy to clipboard

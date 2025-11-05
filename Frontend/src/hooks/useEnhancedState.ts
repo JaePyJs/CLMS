@@ -108,28 +108,6 @@ export function useSelector<T, R>(
 }
 
 /**
- * Hook to use multiple selectors from the enhanced state store
- */
-export function useSelectors<T>(
-  store: EnhancedStateStore<T>
-): <R>(
-  selector: StateSelector<T, R>,
-  equalityFn?: (a: R, b: R) => boolean
-) => R {
-  const useSelectedState = useCallback(
-    <R>(
-      selector: StateSelector<T, R>,
-      equalityFn?: (a: R, b: R) => boolean
-    ) => {
-      return useSelector(store, selector, equalityFn);
-    },
-    [store]
-  );
-
-  return useSelectedState;
-}
-
-/**
  * Hook to use computed values from the enhanced state store
  */
 export function useComputed<T, R>(

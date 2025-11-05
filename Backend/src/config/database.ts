@@ -181,23 +181,20 @@ export const connectDatabase = async (): Promise<void> => {
 };
 
 // Graceful shutdown handling
-process.on('SIGINT', async () => {
+process.on('SIGINT', () => {
   logger.info('Received SIGINT, closing database connection...');
-  await config.disconnect();
-  process.exit(0);
+  void config.disconnect().then(() => process.exit(0));
 });
 
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', () => {
   logger.info('Received SIGTERM, closing database connection...');
-  await config.disconnect();
-  process.exit(0);
+  void config.disconnect().then(() => process.exit(0));
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', async (reason, promise) => {
+process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  await config.disconnect();
-  process.exit(1);
+  void config.disconnect().then(() => process.exit(1));
 });
 
 export default config;
