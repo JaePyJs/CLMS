@@ -1,0 +1,618 @@
+openapi: 3.0.3
+info:
+  title: CLMS Authentication API
+  description: |
+    Authentication endpoints for the Comprehensive Library Management System.
+    Supports JWT-based stateless authentication with access and refresh tokens.
+  version: 1.0.0
+  contact:
+    name: CLMS Development Team
+
+servers:
+  - url: http://localhost:3001/api
+    description: Local development server
+  - url: http://localhost:3001/api
+    description: Docker development environment
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: Authorization
+    description: Token management and user verification
+
+paths:
+  /auth/login:
+    post:
+      summary: User login
+      description: |
+        Authenticate user with username and password.
+        Returns JWT access token (7-day expiry) and refresh token (30-day expiry).
+      tags:
+        - Authentication
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+                  example: admin
+                  description: User's unique username
+                password:
+                  type: string
+                  minLength: 6
+                  maxLength: 100
+                  format: password
+                  example: admin123
+                  description: User's password (plaintext, will be bcrypt-verified)
+                rememberMe:
+                  type: boolean
+                  default: false
+                  example: true
+                  description: If true, token persists in localStorage; if false, sessionStorage
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - user
+                  - accessToken
+                  - refreshToken
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  accessToken:
+                    type: string
+                    format: jwt
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    description: JWT access token (expires in 7 days)
+                  refreshToken:
+                    type: string
+                    format: jwt
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    description: JWT refresh token (expires in 30 days)
+                  expiresIn:
+                    type: integer
+                    example: 604800
+                    description: Access token lifetime in seconds (7 days = 604800s)
+              examples:
+                adminLogin:
+                  summary: Admin user login
+                  value:
+                    user:
+                      id: clg123abc
+                      username: admin
+                      email: admin@clms.test
+                      full_name: System Administrator
+                      role: ADMIN
+                      is_active: true
+                      last_login_at: '2025-01-06T10:30:00Z'
+                      created_at: '2025-01-01T00:00:00Z'
+                    accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbGcxMjNhYmMiLCJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzM2MTYwNjAwLCJleHAiOjE3MzY3NjU0MDB9.abcdef123456
+                    refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJjbGcxMjNhYmMiLCJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzM2MTYwNjAwLCJleHAiOjE3Mzg3NTI2MDB9.xyz789
+                    expiresIn: 604800
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidCredentials:
+                  summary: Wrong username or password
+                  value:
+                    error: Invalid credentials
+                    statusCode: 401
+                    timestamp: '2025-01-06T10:30:00Z'
+                inactiveUser:
+                  summary: User account deactivated
+                  value:
+                    error: User account is inactive
+                    statusCode: 401
+                    timestamp: '2025-01-06T10:30:00Z'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                missingPassword:
+                  summary: Password field missing
+                  value:
+                    error: Validation failed
+                    statusCode: 422
+                    details:
+                      - field: password
+                        message: Password is required
+                shortPassword:
+                  summary: Password too short
+                  value:
+                    error: Validation failed
+                    statusCode: 422
+                    details:
+                      - field: password
+                        message: Password must be at least 6 characters
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Internal server error
+                statusCode: 500
+                timestamp: '2025-01-06T10:30:00Z'
+
+  /auth/register:
+    post:
+      summary: Register new user
+      description: |
+        Create a new user account.
+        Requires username and password. Email and full_name are optional.
+        Password is bcrypt-hashed before storage (10 rounds).
+      tags:
+        - Authentication
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  pattern: '^[a-zA-Z0-9_]+$'
+                  example: newuser
+                  description: Unique username (alphanumeric + underscore only)
+                password:
+                  type: string
+                  minLength: 6
+                  maxLength: 100
+                  format: password
+                  example: securepass123
+                  description: User's password (will be bcrypt-hashed)
+                email:
+                  type: string
+                  format: email
+                  maxLength: 100
+                  example: newuser@example.com
+                  description: User's email address (optional)
+                full_name:
+                  type: string
+                  maxLength: 100
+                  example: John Doe
+                  description: User's full name (optional)
+                role:
+                  type: string
+                  enum: [ADMIN, LIBRARIAN, ASSISTANT]
+                  default: ASSISTANT
+                  example: LIBRARIAN
+                  description: User's role (defaults to ASSISTANT)
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - user
+                  - accessToken
+                  - refreshToken
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  accessToken:
+                    type: string
+                    format: jwt
+                    description: JWT access token (auto-login after registration)
+                  refreshToken:
+                    type: string
+                    format: jwt
+                    description: JWT refresh token
+                  expiresIn:
+                    type: integer
+                    example: 604800
+                    description: Access token lifetime in seconds
+              example:
+                user:
+                  id: clg456def
+                  username: newuser
+                  email: newuser@example.com
+                  full_name: John Doe
+                  role: LIBRARIAN
+                  is_active: true
+                  last_login_at: null
+                  created_at: '2025-01-06T10:30:00Z'
+                accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                expiresIn: 604800
+        '400':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Username already exists
+                statusCode: 400
+                timestamp: '2025-01-06T10:30:00Z'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                invalidUsername:
+                  summary: Username contains invalid characters
+                  value:
+                    error: Validation failed
+                    statusCode: 422
+                    details:
+                      - field: username
+                        message: Username can only contain letters, numbers, and underscores
+                shortUsername:
+                  summary: Username too short
+                  value:
+                    error: Validation failed
+                    statusCode: 422
+                    details:
+                      - field: username
+                        message: Username must be at least 3 characters
+                invalidEmail:
+                  summary: Invalid email format
+                  value:
+                    error: Validation failed
+                    statusCode: 422
+                    details:
+                      - field: email
+                        message: Invalid email format
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      summary: User logout
+      description: |
+        Log out the current user.
+        Client should clear tokens from storage.
+        Server does not track sessions (stateless JWT), so this is primarily client-side cleanup.
+      tags:
+        - Authentication
+      operationId: logout
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged out successfully
+        '401':
+          description: Unauthorized (invalid or missing token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Unauthorized
+                statusCode: 401
+                timestamp: '2025-01-06T10:30:00Z'
+
+  /auth/me:
+    get:
+      summary: Get current user
+      description: |
+        Retrieve the authenticated user's information.
+        Requires valid JWT access token in Authorization header.
+      tags:
+        - Authorization
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User information retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              example:
+                id: clg123abc
+                username: admin
+                email: admin@clms.test
+                full_name: System Administrator
+                role: ADMIN
+                is_active: true
+                last_login_at: '2025-01-06T10:30:00Z'
+                created_at: '2025-01-01T00:00:00Z'
+        '401':
+          description: Unauthorized (invalid or missing token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missingToken:
+                  summary: No token provided
+                  value:
+                    error: No authentication token provided
+                    statusCode: 401
+                    timestamp: '2025-01-06T10:30:00Z'
+                invalidToken:
+                  summary: Invalid JWT signature
+                  value:
+                    error: Invalid token
+                    statusCode: 401
+                    timestamp: '2025-01-06T10:30:00Z'
+                expiredToken:
+                  summary: Token expired
+                  value:
+                    error: Token expired
+                    statusCode: 401
+                    timestamp: '2025-01-06T10:30:00Z'
+        '404':
+          description: User not found (token valid but user deleted)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: User not found
+                statusCode: 404
+                timestamp: '2025-01-06T10:30:00Z'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      description: |
+        Exchange a valid refresh token for a new access token.
+        Refresh token must not be expired (30-day lifetime).
+      tags:
+        - Authorization
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+                  format: jwt
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  description: Valid refresh token (from /auth/login or /auth/register)
+      responses:
+        '200':
+          description: New access token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - accessToken
+                  - expiresIn
+                properties:
+                  accessToken:
+                    type: string
+                    format: jwt
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    description: New JWT access token (7-day expiry)
+                  expiresIn:
+                    type: integer
+                    example: 604800
+                    description: Access token lifetime in seconds
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                expiredRefreshToken:
+                  summary: Refresh token expired
+                  value:
+                    error: Refresh token expired
+                    statusCode: 401
+                    timestamp: '2025-01-06T10:30:00Z'
+                invalidRefreshToken:
+                  summary: Invalid refresh token signature
+                  value:
+                    error: Invalid refresh token
+                    statusCode: 401
+                    timestamp: '2025-01-06T10:30:00Z'
+        '422':
+          description: Missing refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              example:
+                error: Validation failed
+                statusCode: 422
+                details:
+                  - field: refreshToken
+                    message: Refresh token is required
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token obtained from /auth/login or /auth/register
+
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - username
+        - role
+        - is_active
+        - created_at
+      properties:
+        id:
+          type: string
+          format: cuid
+          example: clg123abc
+          description: Unique user ID (Prisma CUID)
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: admin
+          description: Unique username
+        email:
+          type: string
+          format: email
+          nullable: true
+          example: admin@clms.test
+          description: User's email address (optional)
+        full_name:
+          type: string
+          nullable: true
+          example: System Administrator
+          description: User's full name (optional)
+        role:
+          type: string
+          enum: [ADMIN, LIBRARIAN, ASSISTANT]
+          example: ADMIN
+          description: User's role for authorization
+        is_active:
+          type: boolean
+          example: true
+          description: Whether the user account is active
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2025-01-06T10:30:00Z'
+          description: Timestamp of last successful login
+        created_at:
+          type: string
+          format: date-time
+          example: '2025-01-01T00:00:00Z'
+          description: Timestamp of user creation
+
+    Error:
+      type: object
+      required:
+        - error
+        - statusCode
+        - timestamp
+      properties:
+        error:
+          type: string
+          example: Invalid credentials
+          description: Human-readable error message
+        statusCode:
+          type: integer
+          example: 401
+          description: HTTP status code
+        timestamp:
+          type: string
+          format: date-time
+          example: '2025-01-06T10:30:00Z'
+          description: Error occurrence timestamp
+
+    ValidationError:
+      type: object
+      required:
+        - error
+        - statusCode
+        - details
+      properties:
+        error:
+          type: string
+          example: Validation failed
+          description: Generic validation error message
+        statusCode:
+          type: integer
+          example: 422
+          description: HTTP status code (422 for validation)
+        details:
+          type: array
+          items:
+            type: object
+            required:
+              - field
+              - message
+            properties:
+              field:
+                type: string
+                example: username
+                description: Field name that failed validation
+              message:
+                type: string
+                example: Username must be at least 3 characters
+                description: Specific validation error message
+          description: Array of field-level validation errors
+
+  examples:
+    AdminUser:
+      summary: Admin user
+      value:
+        id: clg123abc
+        username: admin
+        email: admin@clms.test
+        full_name: System Administrator
+        role: ADMIN
+        is_active: true
+        last_login_at: '2025-01-06T10:30:00Z'
+        created_at: '2025-01-01T00:00:00Z'
+
+    LibrarianUser:
+      summary: Librarian user
+      value:
+        id: clg456def
+        username: librarian1
+        email: librarian@clms.test
+        full_name: Jane Smith
+        role: LIBRARIAN
+        is_active: true
+        last_login_at: '2025-01-06T09:15:00Z'
+        created_at: '2025-01-02T08:00:00Z'
+
+    AssistantUser:
+      summary: Assistant user
+      value:
+        id: clg789ghi
+        username: assistant1
+        email: null
+        full_name: null
+        role: ASSISTANT
+        is_active: true
+        last_login_at: null
+        created_at: '2025-01-05T14:30:00Z'
