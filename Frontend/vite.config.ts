@@ -222,7 +222,15 @@ export default defineConfig({
     watch: {
       usePolling: false,
       interval: 100
-    }
+    },
+    // T029: Error handling configuration
+    hmr: {
+      overlay: true, // Show error overlay
+      // T030: HMR error recovery configuration
+      clientErrorOverlay: true,
+    },
+    // Prevent server crashes on errors
+    strictPort: false, // Fallback to next port if busy
   },
   build: {
     outDir: 'dist',

@@ -14,6 +14,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import LoginForm from '@/components/auth/LoginForm';
+import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
 import { toast } from 'sonner';
 import NotificationCenter from '@/components/NotificationCenter';
 import WebSocketProvider from '@/contexts/WebSocketContext';
@@ -407,7 +408,9 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-        <LoginForm onLoginSuccess={() => {}} />
+        <RouteErrorBoundary>
+          <LoginForm onLoginSuccess={() => {}} />
+        </RouteErrorBoundary>
       </div>
     );
   }
@@ -974,9 +977,11 @@ export default function App() {
               aria-labelledby="tab-dashboard"
               tabIndex={0}
             >
-              <Suspense fallback={<DashboardSkeleton />}>
-                <DashboardOverview onTabChange={setActiveTab} />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<DashboardSkeleton />}>
+                  <DashboardOverview onTabChange={setActiveTab} />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* Activity Tab */}
@@ -988,9 +993,11 @@ export default function App() {
               aria-labelledby="tab-scan"
               tabIndex={0}
             >
-              <Suspense fallback={<LoadingSpinnerFallback />}>
-                <ScanWorkspace />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<LoadingSpinnerFallback />}>
+                  <ScanWorkspace />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* Students Tab */}
@@ -1002,9 +1009,11 @@ export default function App() {
               aria-labelledby="tab-students"
               tabIndex={0}
             >
-              <Suspense fallback={<TableSkeletonFallback />}>
-                <StudentManagement />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<TableSkeletonFallback />}>
+                  <StudentManagement />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* Books Tab */}
@@ -1016,9 +1025,11 @@ export default function App() {
               aria-labelledby="tab-books"
               tabIndex={0}
             >
-              <Suspense fallback={<TableSkeletonFallback />}>
-                <BookCatalog />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<TableSkeletonFallback />}>
+                  <BookCatalog />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* Checkout Tab */}
@@ -1030,9 +1041,11 @@ export default function App() {
               aria-labelledby="tab-checkout"
               tabIndex={0}
             >
-              <Suspense fallback={<CardSkeleton className="h-96" />}>
-                <BookCheckout />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<CardSkeleton className="h-96" />}>
+                  <BookCheckout />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* Equipment Tab */}
@@ -1044,9 +1057,11 @@ export default function App() {
               aria-labelledby="tab-equipment"
               tabIndex={0}
             >
-              <Suspense fallback={<TableSkeletonFallback />}>
-                <EquipmentDashboard />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<TableSkeletonFallback />}>
+                  <EquipmentDashboard />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* Automation Tab */}
@@ -1058,9 +1073,11 @@ export default function App() {
               aria-labelledby="tab-automation"
               tabIndex={0}
             >
-              <Suspense fallback={<DashboardSkeleton />}>
-                <AutomationDashboard />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<DashboardSkeleton />}>
+                  <AutomationDashboard />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* Analytics Tab */}
@@ -1072,9 +1089,11 @@ export default function App() {
               aria-labelledby="tab-analytics"
               tabIndex={0}
             >
-              <Suspense fallback={<DashboardSkeleton />}>
-                <AnalyticsDashboard />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<DashboardSkeleton />}>
+                  <AnalyticsDashboard />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* Reports Tab */}
@@ -1086,9 +1105,11 @@ export default function App() {
               aria-labelledby="tab-reports"
               tabIndex={0}
             >
-              <Suspense fallback={<CardSkeleton className="h-96" />}>
-                <ReportsBuilder />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<CardSkeleton className="h-96" />}>
+                  <ReportsBuilder />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* QR Codes Tab */}
@@ -1100,9 +1121,11 @@ export default function App() {
               aria-labelledby="tab-qrcodes"
               tabIndex={0}
             >
-              <Suspense fallback={<CardSkeleton className="h-96" />}>
-                <QRCodeManager />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<CardSkeleton className="h-96" />}>
+                  <QRCodeManager />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* Import Tab */}
@@ -1114,9 +1137,11 @@ export default function App() {
               aria-labelledby="tab-import"
               tabIndex={0}
             >
-              <Suspense fallback={<CardSkeleton className="h-96" />}>
-                <ImportData />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<CardSkeleton className="h-96" />}>
+                  <ImportData />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* Barcodes Tab */}
@@ -1128,9 +1153,11 @@ export default function App() {
               aria-labelledby="tab-barcodes"
               tabIndex={0}
             >
-              <Suspense fallback={<CardSkeleton className="h-96" />}>
-                <BarcodeManager />
-              </Suspense>
+              <RouteErrorBoundary>
+                <Suspense fallback={<CardSkeleton className="h-96" />}>
+                  <BarcodeManager />
+                </Suspense>
+              </RouteErrorBoundary>
             </TabsContent>
 
             {/* Settings Tab */}
