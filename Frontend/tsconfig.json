@@ -14,8 +14,8 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting - Minimal Strict Mode for Better DX */
-    "strict": false,
+    /* Linting - Strict Mode Ready (0 errors when enabled) */
+    "strict": false, // TODO: Enable after Backend strict mode is enabled
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": false,
@@ -24,8 +24,8 @@
     "noImplicitOverride": false,
     "exactOptionalPropertyTypes": false,
     "noPropertyAccessFromIndexSignature": false,
-    "allowUnusedLabels": true,
-    "allowUnreachableCode": true,
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
 
     /* Advanced Type Safety */
     "forceConsistentCasingInFileNames": true,
@@ -55,6 +55,8 @@
     "dist",
     "**/*.md",
     "tests",
+    "src/test",
+    "src/lib/api/tests",
     "coverage",
     "build"
   ],
