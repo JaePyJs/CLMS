@@ -13,9 +13,14 @@ router.use(authenticate);
 router.get(
   '/',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     try {
       logger.info('Get all settings request', {
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       const settings = await SettingsService.getAllSettings();
@@ -41,12 +46,17 @@ router.get(
 router.get(
   '/category/:category',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     try {
       const { category } = req.params;
 
       logger.info('Get settings by category', {
         category,
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       const settings = await SettingsService.getSettingsByCategory(category);
@@ -73,12 +83,17 @@ router.get(
 router.get(
   '/:key',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     try {
       const { key } = req.params;
 
       logger.info('Get setting by key', {
         key,
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       const value = await SettingsService.getSetting(key);
@@ -113,6 +128,11 @@ router.get(
 router.put(
   '/:key',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     try {
       const { key } = req.params;
       const { value } = req.body;
@@ -128,13 +148,13 @@ router.put(
       logger.info('Update setting', {
         key,
         value,
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       const success = await SettingsService.updateSetting(
         key,
         value,
-        req.user.userId,
+        req.user!.userId,
       );
 
       if (!success) {
@@ -167,6 +187,11 @@ router.put(
 router.post(
   '/batch',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     try {
       const { settings } = req.body;
 
@@ -180,12 +205,12 @@ router.post(
 
       logger.info('Update multiple settings', {
         count: settings.length,
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       const success = await SettingsService.updateSettings(
         settings,
-        req.user.userId,
+        req.user!.userId,
       );
 
       if (!success) {
@@ -217,9 +242,14 @@ router.post(
 router.post(
   '/initialize',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     try {
       logger.info('Initialize default settings', {
-        userId: req.user.userId,
+        userId: req.user!.userId,
       });
 
       await SettingsService.initializeDefaultSettings();

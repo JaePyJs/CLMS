@@ -501,7 +501,7 @@ export class BookService {
 
       const categoryList = categories
         .map(c => c.category)
-        .filter(Boolean)
+        .filter((cat): cat is string => cat !== null)
         .sort();
 
       logger.info('Categories retrieved', { count: categoryList.length });

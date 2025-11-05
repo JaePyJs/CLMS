@@ -15,7 +15,7 @@ export class BarcodeService {
    */
   static async generateBarcode(): Promise<string> {
     try {
-      let barcode: string;
+      let barcode = '';
       let isUnique = false;
       let attempts = 0;
       const maxAttempts = 10;
