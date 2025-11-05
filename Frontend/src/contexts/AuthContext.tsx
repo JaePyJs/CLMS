@@ -217,6 +217,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const isAuthenticated = Boolean(token && user);
   const isLoading = token ? authQuery.isPending : false;
 
+  // T053: Auto-refresh token before expiration
+  useEffect(() => {
+    if (!token || !user) {
+      return;
+    }
+
+    // Refresh token 5 minutes before expiration (assuming 1 hour token lifetime)
+    const REFRESH_INTERVAL = 55 * 60 * 1000; // 55 minutes in milliseconds
+
+    const refreshTimer = setInterval(async () => {
+      try {
+        const response = await apiClient.post<LoginResponse>(
+          '/api/auth/refresh',
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.data?.accessToken) {
+          const newToken = response.data.accessToken;
+          const storage = localStorage.getItem('clms_token')
+            ? localStorage
+            : sessionStorage;
+          storage.setItem('clms_token', newToken);
+          setToken(newToken);
+
+          // Silent refresh - no console log in production
+        }
+      } catch (error) {
+        // If refresh fails, the unauthorized handler will logout the user
+        console.error('Auto-refresh failed:', error);
+      }
+    }, REFRESH_INTERVAL);
+
+    return () => clearInterval(refreshTimer);
+  }, [token, user]);
+
   const value = useMemo<AuthContextType>(
     () => ({
       user,

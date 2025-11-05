@@ -194,7 +194,7 @@
 **Session Management**:
 
 - [x] T052 [P] [US2] Implement token expiry detection in apiClient.ts (401 → refresh or logout) - ✅ setUnauthorizedHandler in interceptors
-- [ ] T053 [P] [US2] Implement auto-refresh before token expires (background refresh)
+- [x] T053 [P] [US2] Implement auto-refresh before token expires (background refresh) - ✅ COMPLETED (55-min interval timer in AuthContext)
 - [ ] T054 [P] [US2] Add session timeout warning modal (optional, nice-to-have)
 
 **Verification**:
