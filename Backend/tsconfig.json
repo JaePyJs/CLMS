@@ -16,35 +16,37 @@
       "@/utils/*": ["utils/*"],
       "@/types/*": ["types/*"]
     },
-    
-    // Strict Type Checking Options (Relaxed for build compatibility)
+
+    // Strict Type Checking Options
+    // ⚠️ BLOCKED: 74 strict mode errors (need <50 to enable)
+    // All errors are req.user possibly undefined (strictNullChecks)
     "strict": false,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
-    "strictFunctionTypes": false,
-    "strictBindCallApply": false,
+    "noImplicitAny": true,
+    "strictNullChecks": false, // TODO: Fix 74 req.user undefined checks
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
     "strictPropertyInitialization": false,
     "noImplicitReturns": false,
-    "noImplicitThis": false,
-    "alwaysStrict": false,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
     "exactOptionalPropertyTypes": false,
-    "noImplicitOverride": false,
+    "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": false,
     "noUncheckedIndexedAccess": false,
-    
+
     // Additional Checks
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    
+
     // Module Resolution
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    
+
     // Emit Options
     "declaration": true,
     "declarationMap": true,
@@ -52,7 +54,7 @@
     "removeComments": false,
     "importHelpers": true,
     "downlevelIteration": true,
-    
+
     // Advanced Options
     "skipLibCheck": true,
     "allowJs": false,
@@ -60,10 +62,7 @@
     "incremental": true,
     "tsBuildInfoFile": "./.tsbuildinfo"
   },
-  "include": [
-    "src/**/*",
-    "src/**/*.json"
-  ],
+  "include": ["src/**/*", "src/**/*.json"],
   "exclude": [
     "node_modules",
     "dist",

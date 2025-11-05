@@ -7,7 +7,7 @@ const tsParser = tsParserModule.default ?? tsParserModule;
 
 const tsFiles = ['**/*.ts', '**/*.tsx', '**/*.mts', '**/*.cts'];
 
-const tsRecommended = tseslint.configs['flat/recommended'].map((config) => {
+const tsRecommended = tseslint.configs['flat/recommended'].map(config => {
   if (!config.languageOptions) {
     return config;
   }
@@ -26,41 +26,70 @@ const tsRecommended = tseslint.configs['flat/recommended'].map((config) => {
   };
 });
 
-const baseIgnores = ['dist/**/*', 'src/tests/**/*', 'eslint.config.js'];
+const baseIgnores = [
+  'dist/**/*',
+  'src/tests/**/*',
+  'eslint.config.js',
+  // Disabled services (missing dependencies)
+  'src/services/*.disabled',
+  'src/websocket/*.disabled',
+  // Test and config files not in tsconfig
+  'test-*.js',
+  'register-paths.prod.js',
+  'vitest.*.config.ts',
+  'sandbox/**/*',
+];
 
 const sharedRules = {
-  '@typescript-eslint/explicit-function-return-type': 'off',
+  // Production-readiness rules (CLMS Constitution compliance)
+  '@typescript-eslint/explicit-function-return-type': 'off', // Too verbose for Express routes
   '@typescript-eslint/explicit-module-boundary-types': 'off',
-  '@typescript-eslint/no-explicit-any': 'warn',
+  '@typescript-eslint/no-explicit-any': 'error', // Stricter: no 'any' types (Constitution III)
   '@typescript-eslint/no-unused-vars': [
-    'warn',
+    'error', // Stricter: error instead of warn
     {
       argsIgnorePattern: '^_',
       caughtErrorsIgnorePattern: '^_',
+      varsIgnorePattern: '^_',
     },
   ],
+  '@typescript-eslint/no-floating-promises': 'warn', // Warn: catch unhandled promises
+  '@typescript-eslint/no-misused-promises': 'warn', // Warn: prevent Promise misuse
+  '@typescript-eslint/await-thenable': 'warn', // Warn: prevent await on non-promises
+  '@typescript-eslint/no-unnecessary-type-assertion': 'warn', // Warn: type safety
+  '@typescript-eslint/prefer-nullish-coalescing': 'off', // Off: requires strictNullChecks
+  '@typescript-eslint/prefer-optional-chain': 'warn', // Warn: safer property access
   '@typescript-eslint/no-var-requires': 'off',
   '@typescript-eslint/no-namespace': 'off',
   '@typescript-eslint/ban-types': 'off',
   '@typescript-eslint/no-require-imports': 'off',
   '@typescript-eslint/no-unsafe-function-type': 'off',
-  'prefer-const': 'off',
-  'no-var': 'error',
-  'no-console': 'warn',
-  'no-debugger': 'error',
+
+  // General code quality
+  'prefer-const': 'error', // Immutability
+  'no-var': 'error', // Modern JS only
+  'no-console': 'warn', // Use logger instead
+  'no-debugger': 'error', // No debug statements in production
   'no-duplicate-imports': 'error',
   'no-unused-expressions': 'error',
-  'prefer-template': 'error',
+  'prefer-template': 'error', // Template literals over concatenation
   'template-curly-spacing': ['error', 'never'],
   'object-curly-spacing': ['error', 'always'],
   'array-bracket-spacing': ['error', 'never'],
   'computed-property-spacing': ['error', 'never'],
   'no-multiple-empty-lines': ['error', { max: 1 }],
+  eqeqeq: ['error', 'always'], // Strict equality
+  curly: ['error', 'all'], // Always use braces
+  'no-throw-literal': 'error', // Throw Error objects only
+
+  // Formatting (handled by Prettier)
   'eol-last': 'off',
   'comma-dangle': 'off',
   semi: 'off',
   quotes: 'off',
   indent: 'off',
+
+  // Pragmatic exceptions
   'no-case-declarations': 'off',
   'no-fallthrough': 'off',
   'no-useless-catch': 'off',
@@ -77,7 +106,11 @@ export default [
     rules: sharedRules,
   },
   {
-    files: ['src/cli/**/*.{ts,js}', 'src/scripts/**/*.{ts,js}', 'scripts/**/*.{ts,js}'],
+    files: [
+      'src/cli/**/*.{ts,js}',
+      'src/scripts/**/*.{ts,js}',
+      'scripts/**/*.{ts,js}',
+    ],
     rules: {
       'no-console': 'off',
     },

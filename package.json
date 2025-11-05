@@ -32,7 +32,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "prepare": "husky"
   },
   "keywords": [
     "library-management",
@@ -47,6 +48,7 @@
     "@playwright/test": "^1.56.0",
     "@types/socket.io": "^3.0.1",
     "axe-playwright": "^2.0.1",
+    "husky": "^9.1.7",
     "socket.io": "^4.8.1"
   },
   "engines": {
