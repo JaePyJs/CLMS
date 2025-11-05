@@ -7,6 +7,7 @@
 ## Connection
 
 ### Endpoint
+
 ```
 ws://localhost:3001/ws?token=<JWT_ACCESS_TOKEN>
 ```
@@ -39,13 +40,15 @@ Client                                    Server
 ### Authentication
 
 **Query Parameter**:
+
 - `token`: JWT access token (same as used in HTTP Authorization header)
 
 **Validation**:
+
 ```typescript
-const token = url.searchParams.get('token');
+const token = url.searchParams.get("token");
 if (!token) {
-  socket.close(1008, 'Token required'); // 1008 = Policy Violation
+  socket.close(1008, "Token required"); // 1008 = Policy Violation
   return;
 }
 
@@ -55,12 +58,13 @@ try {
   socket.username = payload.username;
   socket.role = payload.role;
 } catch (error) {
-  socket.close(1008, 'Invalid token');
+  socket.close(1008, "Invalid token");
   return;
 }
 ```
 
 **Close Codes**:
+
 - `1008`: Policy Violation (missing or invalid token)
 - `1000`: Normal Closure (client disconnect)
 - `1001`: Going Away (server shutdown)
@@ -76,7 +80,7 @@ All messages are JSON-encoded strings.
 
 ```typescript
 interface ClientMessage {
-  type: 'ping' | 'subscribe' | 'unsubscribe';
+  type: "ping" | "subscribe" | "unsubscribe";
   data?: any;
   timestamp?: string; // ISO 8601
 }
@@ -86,7 +90,13 @@ interface ClientMessage {
 
 ```typescript
 interface ServerMessage {
-  type: 'pong' | 'notification' | 'dashboard_update' | 'equipment_event' | 'checkout_update' | 'error';
+  type:
+    | "pong"
+    | "notification"
+    | "dashboard_update"
+    | "equipment_event"
+    | "checkout_update"
+    | "error";
   data: any;
   timestamp: string; // ISO 8601
 }
@@ -101,6 +111,7 @@ interface ServerMessage {
 **Purpose**: Keep connection alive, detect disconnections
 
 **Client → Server**:
+
 ```json
 {
   "type": "ping",
@@ -109,6 +120,7 @@ interface ServerMessage {
 ```
 
 **Server → Client**:
+
 ```json
 {
   "type": "pong",
@@ -121,6 +133,7 @@ interface ServerMessage {
 ```
 
 **Heartbeat Behavior**:
+
 - Client sends ping every 30 seconds
 - Server responds with pong within 5 seconds
 - If no pong received, client attempts reconnect
@@ -133,6 +146,7 @@ interface ServerMessage {
 **Purpose**: Subscribe to specific event streams
 
 **Client → Server (Subscribe)**:
+
 ```json
 {
   "type": "subscribe",
@@ -144,6 +158,7 @@ interface ServerMessage {
 ```
 
 **Client → Server (Unsubscribe)**:
+
 ```json
 {
   "type": "unsubscribe",
@@ -155,12 +170,14 @@ interface ServerMessage {
 ```
 
 **Available Topics**:
+
 - `notifications`: System notifications (checkouts, overdues, alerts)
 - `dashboard`: Dashboard statistics updates
 - `equipment`: Equipment session events (start, end, update)
 - `checkout`: Checkout/checkin events
 
 **Server → Client (Confirmation)**:
+
 ```json
 {
   "type": "subscribe_ack",
@@ -173,6 +190,7 @@ interface ServerMessage {
 ```
 
 **Default Subscriptions**:
+
 - On connection: User automatically subscribed to `notifications` topic
 
 ---
@@ -182,6 +200,7 @@ interface ServerMessage {
 **Purpose**: Real-time alerts and system notifications
 
 **Server → Client**:
+
 ```json
 {
   "type": "notification",
@@ -203,6 +222,7 @@ interface ServerMessage {
 ```
 
 **Notification Categories**:
+
 - `checkout`: Checkout/checkin events
 - `overdue`: Overdue book alerts
 - `equipment`: Equipment session events
@@ -210,6 +230,7 @@ interface ServerMessage {
 - `alert`: Critical alerts (errors, failures)
 
 **Notification Priorities**:
+
 - `info`: Informational (default)
 - `warning`: Warnings (overdue books, low stock)
 - `error`: Errors (checkout failures, system issues)
@@ -222,6 +243,7 @@ interface ServerMessage {
 **Purpose**: Real-time dashboard statistics
 
 **Server → Client**:
+
 ```json
 {
   "type": "dashboard_update",
@@ -246,6 +268,7 @@ interface ServerMessage {
 ```
 
 **Update Frequency**:
+
 - On data change (checkout, checkin, equipment session)
 - Throttled to max 1 update per 5 seconds (prevent spam)
 
@@ -256,6 +279,7 @@ interface ServerMessage {
 **Purpose**: Real-time equipment usage tracking
 
 **Server → Client**:
+
 ```json
 {
   "type": "equipment_event",
@@ -276,6 +300,7 @@ interface ServerMessage {
 ```
 
 **Equipment Events**:
+
 - `session_start`: New equipment session started
 - `session_end`: Equipment session ended
 - `session_update`: Session extended or modified
@@ -289,6 +314,7 @@ interface ServerMessage {
 **Purpose**: Real-time checkout/checkin events
 
 **Server → Client**:
+
 ```json
 {
   "type": "checkout_update",
@@ -310,6 +336,7 @@ interface ServerMessage {
 ```
 
 **Checkout Events**:
+
 - `checkout_created`: New checkout
 - `checkout_returned`: Book returned
 - `checkout_renewed`: Checkout renewed
@@ -322,6 +349,7 @@ interface ServerMessage {
 **Purpose**: Client-side error handling
 
 **Server → Client**:
+
 ```json
 {
   "type": "error",
@@ -338,6 +366,7 @@ interface ServerMessage {
 ```
 
 **Error Codes**:
+
 - `SUBSCRIBE_FAILED`: Topic subscription failed
 - `UNSUBSCRIBE_FAILED`: Topic unsubscribe failed
 - `INVALID_MESSAGE`: Malformed message from client
@@ -352,11 +381,11 @@ interface ServerMessage {
 
 ```typescript
 // Client side
-const token = localStorage.getItem('accessToken');
+const token = localStorage.getItem("accessToken");
 const ws = new WebSocket(`ws://localhost:3001/ws?token=${token}`);
 
 ws.onopen = () => {
-  console.log('WebSocket connected');
+  console.log("WebSocket connected");
   // Auto-subscribed to 'notifications' topic
 };
 ```
@@ -369,17 +398,19 @@ let heartbeatInterval;
 
 ws.onopen = () => {
   heartbeatInterval = setInterval(() => {
-    ws.send(JSON.stringify({
-      type: 'ping',
-      timestamp: new Date().toISOString()
-    }));
+    ws.send(
+      JSON.stringify({
+        type: "ping",
+        timestamp: new Date().toISOString(),
+      })
+    );
   }, 30000); // Every 30 seconds
 };
 
 ws.onmessage = (event) => {
   const message = JSON.parse(event.data);
-  if (message.type === 'pong') {
-    console.log('Heartbeat received');
+  if (message.type === "pong") {
+    console.log("Heartbeat received");
   }
 };
 
@@ -399,32 +430,34 @@ const MAX_DELAY = 30000;
 
 function connect() {
   const ws = new WebSocket(`ws://localhost:3001/ws?token=${token}`);
-  
+
   ws.onopen = () => {
     reconnectAttempts = 0; // Reset on successful connection
   };
-  
+
   ws.onclose = (event) => {
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.error('Max reconnect attempts reached, falling back to polling');
+      console.error("Max reconnect attempts reached, falling back to polling");
       startPolling(); // Fallback to HTTP polling
       return;
     }
-    
+
     // Exponential backoff with jitter
     const delay = Math.min(
       BASE_DELAY * Math.pow(2, reconnectAttempts) + Math.random() * 1000,
       MAX_DELAY
     );
-    
-    console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts + 1})`);
+
+    console.log(
+      `Reconnecting in ${delay}ms (attempt ${reconnectAttempts + 1})`
+    );
     reconnectAttempts++;
-    
+
     setTimeout(() => connect(), delay);
   };
-  
+
   ws.onerror = (error) => {
-    console.error('WebSocket error:', error);
+    console.error("WebSocket error:", error);
     ws.close();
   };
 }
@@ -435,14 +468,14 @@ function connect() {
 ```typescript
 // Client side
 function disconnect() {
-  ws.close(1000, 'Client disconnecting'); // Normal closure
+  ws.close(1000, "Client disconnecting"); // Normal closure
   clearInterval(heartbeatInterval);
 }
 
 // Server side
-process.on('SIGTERM', () => {
+process.on("SIGTERM", () => {
   wss.clients.forEach((client) => {
-    client.close(1001, 'Server shutting down'); // Going Away
+    client.close(1001, "Server shutting down"); // Going Away
   });
 });
 ```
@@ -452,20 +485,24 @@ process.on('SIGTERM', () => {
 ## Performance Considerations
 
 ### Message Size Limits
+
 - **Max message size**: 1 MB (1048576 bytes)
 - **Recommended**: Keep messages < 10 KB for optimal performance
 - Large data should be fetched via HTTP API with WebSocket notification
 
 ### Rate Limiting
+
 - **Client → Server**: Max 10 messages per second
 - **Server → Client**: No hard limit, but throttled per topic
 - Exceeding limit triggers `RATE_LIMITED` error
 
 ### Connection Limits
+
 - **Per user**: 1 active connection (latest connection closes older ones)
 - **Global**: Depends on server capacity (memory, file descriptors)
 
 ### Batching
+
 - Dashboard updates batched (max 1 per 5 seconds)
 - Notifications delivered immediately (no batching)
 
@@ -474,23 +511,27 @@ process.on('SIGTERM', () => {
 ## Security Considerations
 
 ### Authentication
+
 - ✅ JWT verified before connection upgrade
 - ✅ Token must not be expired
 - ✅ User must exist in database and be active
 - ❌ Token NOT verified on every message (performance trade-off)
 
 ### Authorization
+
 - Topic subscriptions filtered by user role:
   - `ADMIN`: All topics
   - `LIBRARIAN`: All except `system`
   - `ASSISTANT`: `notifications`, `checkout`
 
 ### Input Validation
+
 - All client messages validated against schema
 - Malformed JSON → socket closed with error
 - Invalid message type → `INVALID_MESSAGE` error
 
 ### Rate Limiting
+
 - Prevent abuse by limiting message rate
 - Exceeding limit → temporary throttle, then close connection
 
@@ -502,17 +543,17 @@ process.on('SIGTERM', () => {
 
 ```typescript
 ws.onerror = (error) => {
-  console.error('WebSocket error:', error);
+  console.error("WebSocket error:", error);
   // Log to error tracking service
   logErrorToSentry(error);
 };
 
 ws.onclose = (event) => {
   if (event.code === 1008) {
-    console.error('Authentication failed, redirecting to login');
-    window.location.href = '/login';
+    console.error("Authentication failed, redirecting to login");
+    window.location.href = "/login";
   } else if (event.code === 1006) {
-    console.warn('Connection lost, attempting reconnect');
+    console.warn("Connection lost, attempting reconnect");
     reconnect();
   }
 };
@@ -521,13 +562,13 @@ ws.onclose = (event) => {
 ### Server-Side
 
 ```typescript
-ws.on('error', (error) => {
+ws.on("error", (error) => {
   console.error(`WebSocket error for user ${userId}:`, error);
   // Log to server monitoring
-  logger.error('websocket_error', { userId, error });
+  logger.error("websocket_error", { userId, error });
 });
 
-ws.on('close', (code, reason) => {
+ws.on("close", (code, reason) => {
   console.log(`WebSocket closed for user ${userId}: ${code} ${reason}`);
   // Clean up subscriptions
   unsubscribeAll(userId);
@@ -542,51 +583,58 @@ ws.on('close', (code, reason) => {
 
 ```javascript
 // Connect
-const token = localStorage.getItem('accessToken');
+const token = localStorage.getItem("accessToken");
 const ws = new WebSocket(`ws://localhost:3001/ws?token=${token}`);
 
-ws.onopen = () => console.log('Connected');
-ws.onmessage = (e) => console.log('Message:', JSON.parse(e.data));
-ws.onerror = (e) => console.error('Error:', e);
-ws.onclose = (e) => console.log('Closed:', e.code, e.reason);
+ws.onopen = () => console.log("Connected");
+ws.onmessage = (e) => console.log("Message:", JSON.parse(e.data));
+ws.onerror = (e) => console.error("Error:", e);
+ws.onclose = (e) => console.log("Closed:", e.code, e.reason);
 
 // Send ping
-ws.send(JSON.stringify({ type: 'ping', timestamp: new Date().toISOString() }));
+ws.send(JSON.stringify({ type: "ping", timestamp: new Date().toISOString() }));
 
 // Subscribe to topics
-ws.send(JSON.stringify({ type: 'subscribe', data: { topics: ['dashboard', 'equipment'] } }));
+ws.send(
+  JSON.stringify({
+    type: "subscribe",
+    data: { topics: ["dashboard", "equipment"] },
+  })
+);
 
 // Disconnect
-ws.close(1000, 'Done testing');
+ws.close(1000, "Done testing");
 ```
 
 ### Automated Testing (Vitest)
 
 ```typescript
 // Backend/tests/integration/websocket.test.ts
-import WebSocket from 'ws';
+import WebSocket from "ws";
 
-describe('WebSocket API', () => {
-  it('should authenticate and connect', async () => {
+describe("WebSocket API", () => {
+  it("should authenticate and connect", async () => {
     const token = await getTestToken();
     const ws = new WebSocket(`ws://localhost:3001/ws?token=${token}`);
-    
-    await new Promise((resolve) => ws.on('open', resolve));
+
+    await new Promise((resolve) => ws.on("open", resolve));
     expect(ws.readyState).toBe(WebSocket.OPEN);
-    
+
     ws.close();
   });
-  
-  it('should respond to ping with pong', async () => {
+
+  it("should respond to ping with pong", async () => {
     const ws = await connectWebSocket();
-    
-    ws.send(JSON.stringify({ type: 'ping', timestamp: new Date().toISOString() }));
-    
+
+    ws.send(
+      JSON.stringify({ type: "ping", timestamp: new Date().toISOString() })
+    );
+
     const response = await new Promise((resolve) => {
-      ws.on('message', (data) => resolve(JSON.parse(data)));
+      ws.on("message", (data) => resolve(JSON.parse(data)));
     });
-    
-    expect(response.type).toBe('pong');
+
+    expect(response.type).toBe("pong");
     ws.close();
   });
 });
@@ -604,6 +652,6 @@ describe('WebSocket API', () => {
 **Topics**: 4 (notifications, dashboard, equipment, checkout)  
 **Reconnection**: Exponential backoff with jitter  
 **Fallback**: HTTP polling after 5 failed reconnects  
-**Close Codes**: 1000 (normal), 1001 (going away), 1006 (abnormal), 1008 (policy violation)  
+**Close Codes**: 1000 (normal), 1001 (going away), 1006 (abnormal), 1008 (policy violation)
 
 **Next Step**: Create UI/UX specifications (ui-ux.md) ✅
