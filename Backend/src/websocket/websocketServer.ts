@@ -201,6 +201,74 @@ class WebSocketServer {
     this.io.emit('message', message);
   }
 
+  /**
+   * Emit student check-in event to attendance channel
+   */
+  public emitStudentCheckIn(data: {
+    activityId: string;
+    studentId: string;
+    studentName: string;
+    checkinTime: string;
+    autoLogoutAt: string;
+    reminders?: any[];
+    customMessage?: string;
+  }) {
+    if (!this.io) {
+      logger.warn('WebSocket server not initialized, cannot emit check-in event');
+      return;
+    }
+
+    const message: WebSocketMessage = {
+      id: data.activityId,
+      type: 'student_checkin',
+      data,
+      timestamp: new Date(),
+    };
+
+    // Emit to attendance channel
+    this.io.to('attendance').emit('message', message);
+    
+    logger.info('Student check-in event emitted', {
+      activityId: data.activityId,
+      studentId: data.studentId,
+      subscriberCount: this.roomSubscriptions.get('attendance')?.size || 0,
+    });
+  }
+
+  /**
+   * Emit student check-out event to attendance channel
+   */
+  public emitStudentCheckOut(data: {
+    activityId: string;
+    studentId: string;
+    studentName: string;
+    checkoutTime: string;
+    reason: 'manual' | 'auto';
+    customMessage?: string;
+  }) {
+    if (!this.io) {
+      logger.warn('WebSocket server not initialized, cannot emit check-out event');
+      return;
+    }
+
+    const message: WebSocketMessage = {
+      id: data.activityId,
+      type: 'student_checkout',
+      data,
+      timestamp: new Date(),
+    };
+
+    // Emit to attendance channel
+    this.io.to('attendance').emit('message', message);
+    
+    logger.info('Student check-out event emitted', {
+      activityId: data.activityId,
+      studentId: data.studentId,
+      reason: data.reason,
+      subscriberCount: this.roomSubscriptions.get('attendance')?.size || 0,
+    });
+  }
+
   public getStats() {
     return {
       totalConnections: this.connectedClients.size,
