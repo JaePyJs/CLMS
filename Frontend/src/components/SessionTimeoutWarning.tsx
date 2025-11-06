@@ -20,7 +20,7 @@ interface SessionTimeoutWarningProps {
 
 /**
  * SessionTimeoutWarning - Displays a warning modal before session expires
- * 
+ *
  * Shows a countdown warning before the session times out, allowing users to
  * extend their session or log out gracefully.
  */
@@ -75,7 +75,7 @@ export const SessionTimeoutWarning: React.FC<SessionTimeoutWarningProps> = ({
     // This will reset the session timer
     setShowWarning(false);
     setCountdown(0);
-    
+
     // The auto-refresh mechanism in AuthContext will handle the actual refresh
     // We just need to close the modal and reset the warning timer
     window.location.reload();
@@ -105,14 +105,13 @@ export const SessionTimeoutWarning: React.FC<SessionTimeoutWarningProps> = ({
             Session Timeout Warning
           </AlertDialogTitle>
           <AlertDialogDescription className="space-y-2">
-            <p>
-              Your session is about to expire due to inactivity.
-            </p>
+            <p>Your session is about to expire due to inactivity.</p>
             <p className="text-lg font-semibold text-foreground">
               Time remaining: {formatTime(countdown)}
             </p>
             <p className="text-sm text-muted-foreground">
-              Click "Stay Logged In" to continue your session, or "Log Out" to end your session now.
+              Click "Stay Logged In" to continue your session, or "Log Out" to
+              end your session now.
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>

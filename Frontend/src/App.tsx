@@ -430,11 +430,11 @@ export default function App() {
     <ProtectedRoute>
       <WebSocketProvider>
         {/* Session Timeout Warning Modal */}
-        <SessionTimeoutWarning 
+        <SessionTimeoutWarning
           warningTime={5 * 60 * 1000} // 5 minutes warning
           sessionTimeout={60 * 60 * 1000} // 60 minutes total session
         />
-        
+
         <div
           className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-300 relative"
           onTouchStart={handleTouchStart}
