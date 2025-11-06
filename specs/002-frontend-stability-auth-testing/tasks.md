@@ -543,11 +543,9 @@
 
 - [x] T191 [US10] Verify student_activities table supports check-in/check-out tracking in Backend/prisma/schema.prisma - ✅ COMPLETED
 - [x] T192 [US10] Create POST /api/students/:id/check-in endpoint in Backend/src/routes/students.ts - ✅ COMPLETED
-- [x] T193 [US10] Create POST /api/students/:id/check-out endpoint in Backend/src/routes/students.ts - ✅ COMPLETED
+- [x] T193 [US10] Create POST /api/students/:id/check-out endpoint in Backend/src/routes/students.ts - ✅ COMPLETED  
 - [x] T194 [US10] Add 15-minute auto-logout timer logic in Backend/src/services/studentActivityService.ts - ✅ COMPLETED
-- [ ] T195 [US10] Create GET /api/students/active-sessions endpoint for current check-ins
-
-### WebSocket Real-Time Updates
+- [x] T195 [US10] Create GET /api/students/active-sessions endpoint for current check-ins - ✅ COMPLETED### WebSocket Real-Time Updates
 
 - [x] T196 [US10] Add 'student_checkin' event type to WebSocket server in Backend/src/websocket/websocketServer.ts - ✅ COMPLETED
 - [x] T197 [US10] Add 'student_checkout' event type to WebSocket server in Backend/src/websocket/websocketServer.ts - ✅ COMPLETED

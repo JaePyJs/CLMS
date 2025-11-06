@@ -762,6 +762,43 @@ router.post(
   }),
 );
 
+// GET /api/v1/students/active-sessions - Get all currently checked-in students
+router.get(
+  '/active-sessions',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    try {
+      logger.info('Active sessions request', {
+        ip: req.ip,
+      });
+
+      const sessions = await StudentActivityService.getActiveSessions();
+
+      logger.info('Active sessions retrieved successfully', {
+        count: sessions.length,
+        ip: req.ip,
+      });
+
+      res.json({
+        success: true,
+        data: sessions,
+        count: sessions.length,
+        message: 'Active sessions retrieved successfully',
+      });
+    } catch (error) {
+      logger.error('Failed to get active sessions', {
+        ip: req.ip,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve active sessions',
+        code: 'GET_ACTIVE_SESSIONS_FAILED',
+      });
+    }
+  }),
+);
+
 // POST /api/v1/students/:id/check-in - Check in a student
 router.post(
   '/:id/check-in',
