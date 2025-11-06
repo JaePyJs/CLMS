@@ -6,7 +6,10 @@ interface RouteErrorFallbackProps {
   resetErrorBoundary: () => void;
 }
 
-function RouteErrorFallback({ error, resetErrorBoundary }: RouteErrorFallbackProps) {
+function RouteErrorFallback({
+  error,
+  resetErrorBoundary,
+}: RouteErrorFallbackProps) {
   const handleReload = () => {
     resetErrorBoundary();
     window.location.reload();
@@ -77,7 +80,7 @@ interface RouteErrorBoundaryProps {
 /**
  * Error boundary specifically for route-level errors.
  * Provides user-friendly error UI with recovery options.
- * 
+ *
  * Usage:
  * <RouteErrorBoundary>
  *   <YourRouteComponent />

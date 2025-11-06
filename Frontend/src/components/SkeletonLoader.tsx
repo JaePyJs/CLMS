@@ -10,13 +10,13 @@ interface SkeletonLoaderProps {
 
 /**
  * SkeletonLoader - Animated skeleton placeholder for loading states
- * 
+ *
  * @param variant - Shape of the skeleton (text, circular, rectangular)
  * @param width - Width of the skeleton
  * @param height - Height of the skeleton
  * @param count - Number of skeleton elements to render
  * @param className - Additional CSS classes
- * 
+ *
  * @example
  * <SkeletonLoader variant="text" count={3} />
  * <SkeletonLoader variant="circular" width={40} height={40} />

@@ -14,13 +14,13 @@ interface EmptyStateProps {
 
 /**
  * EmptyState - Component for displaying empty states with optional action
- * 
+ *
  * @param icon - Lucide icon component to display
  * @param title - Main title text
  * @param description - Optional description text
  * @param action - Optional action button config
  * @param className - Additional CSS classes
- * 
+ *
  * @example
  * <EmptyState
  *   icon={FileText}
@@ -81,7 +81,7 @@ export function SearchEmptyState({ searchTerm }: { searchTerm?: string }) {
       description={
         searchTerm
           ? `No results found for "${searchTerm}". Try a different search term.`
-          : 'Try adjusting your search filters to find what you\'re looking for.'
+          : "Try adjusting your search filters to find what you're looking for."
       }
     />
   );
