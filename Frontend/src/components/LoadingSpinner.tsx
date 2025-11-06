@@ -15,13 +15,15 @@ const sizeClasses = {
 
 /**
  * LoadingSpinner - Reusable spinner component for loading states
- * 
+ *
  * @param size - Size of the spinner (sm, md, lg, xl)
  * @param className - Additional CSS classes
  * @param message - Optional loading message to display below spinner
- * 
+ *
  * @example
  * <LoadingSpinner size="md" message="Loading data..." />
+ *
+ * HMR Test #1 - Stability Testing
  */
 export function LoadingSpinner({
   size = 'md',
@@ -29,7 +31,9 @@ export function LoadingSpinner({
   message,
 }: LoadingSpinnerProps) {
   return (
-    <div className={`flex flex-col items-center justify-center gap-3 ${className}`}>
+    <div
+      className={`flex flex-col items-center justify-center gap-3 ${className}`}
+    >
       <div
         className={`animate-spin rounded-full border-blue-600 border-t-transparent ${sizeClasses[size]}`}
         role="status"

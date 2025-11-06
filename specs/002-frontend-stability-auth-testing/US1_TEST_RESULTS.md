@@ -9,10 +9,10 @@
 
 ## Test Summary
 
-| Test                         | Status     | Result        | Notes                                           |
-| ---------------------------- | ---------- | ------------- | ----------------------------------------------- |
-| T033: 30min uptime           | ✅ PASSED  | 34+ minutes   | No crashes, handled errors gracefully           |
-| T034: 20+ HMR triggers       | ✅ PASSED  | 22 triggers   | No crashes, server stable                       |
+| Test                         | Status     | Result        | Notes                                            |
+| ---------------------------- | ---------- | ------------- | ------------------------------------------------ |
+| T033: 30min uptime           | ✅ PASSED  | 34+ minutes   | No crashes, handled errors gracefully            |
+| T034: 20+ HMR triggers       | ✅ PASSED  | 22 triggers   | No crashes, server stable                        |
 | T035: 10 login/logout cycles | ⚠️ Blocked | Error handled | Backend auth 401, but error handling verified ✅ |
 
 ---
@@ -74,6 +74,7 @@
 - Server process remained alive throughout
 
 **Critical Success**: The original crash issue from `research.md` is **COMPLETELY RESOLVED**:
+
 - **Before**: Login error → Server crash (exit code 0/1)
 - **After**: Login error → Toast notification → Server continues running ✅
 
