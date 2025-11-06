@@ -106,6 +106,11 @@ const SettingsPage = React.lazy(
   () => import('@/components/settings/SettingsPage')
 );
 
+// Attendance Display for self-monitoring
+const AttendanceDisplay = React.lazy(
+  () => import('@/components/attendance/AttendanceDisplay')
+);
+
 // Enhanced loading fallbacks with skeleton screens
 const LoadingSpinnerFallback = () => (
   <div className="flex items-center justify-center h-64">
@@ -414,6 +419,18 @@ export default function App() {
           <LoginForm onLoginSuccess={() => {}} />
         </RouteErrorBoundary>
       </div>
+    );
+  }
+
+  // Public attendance display kiosk (no authentication required)
+  if (
+    typeof window !== 'undefined' &&
+    window.location.pathname === '/attendance-display'
+  ) {
+    return (
+      <Suspense fallback={<LoadingSpinnerFallback />}>
+        <AttendanceDisplay />
+      </Suspense>
     );
   }
 

@@ -531,6 +531,82 @@
 - After each US: Verify that US meets all applicable NFRs
 - Before final delivery: Full constitution compliance audit
 
+---
+
+## Phase 10: Self-Monitoring Attendance Display (New Feature)
+
+**Purpose**: Real-time attendance display for student check-in/check-out monitoring
+
+**User Story**: As a librarian, I want a dedicated display screen that shows student check-in/check-out status in real-time, so students can self-monitor their attendance without staff intervention.
+
+### Backend - Student Activity Tracking
+
+- [ ] T191 [US10] Verify student_activities table supports check-in/check-out tracking in Backend/prisma/schema.prisma
+- [ ] T192 [US10] Create/verify POST /api/students/check-in endpoint in Backend/src/routes/students.ts
+- [ ] T193 [US10] Create/verify POST /api/students/check-out endpoint in Backend/src/routes/students.ts
+- [ ] T194 [US10] Add 15-minute auto-logout timer logic in Backend/src/services/studentService.ts
+- [ ] T195 [US10] Create GET /api/students/active-sessions endpoint for current check-ins
+
+### WebSocket Real-Time Updates
+
+- [ ] T196 [US10] Add 'student_checkin' event type to WebSocket server in Backend/src/websocket/server.ts
+- [ ] T197 [US10] Add 'student_checkout' event type to WebSocket server in Backend/src/websocket/server.ts
+- [ ] T198 [US10] Emit student_checkin event when student checks in
+- [ ] T199 [US10] Emit student_checkout event when student checks out or auto-logout occurs
+
+### Frontend - Attendance Display Screen
+
+- [x] T200 [US10] Create AttendanceDisplay component in Frontend/src/components/attendance/AttendanceDisplay.tsx - ✅ COMPLETED
+  - Full-screen kiosk-style layout
+  - Large "Welcome [Student Name]" message on check-in
+  - Large "Goodbye [Student Name]" message on check-out
+  - Current time display
+  - List of currently checked-in students
+  - Auto-clear welcome/goodbye messages after 5 seconds
+
+- [ ] T201 [P] [US10] Create AttendanceEvent component for welcome/goodbye animations in Frontend/src/components/attendance/AttendanceEvent.tsx
+  - Smooth fade-in/fade-out transitions
+  - Configurable display duration (default 5s)
+  - Support for custom messages
+
+- [ ] T202 [P] [US10] Create ActiveStudentsList component in Frontend/src/components/attendance/ActiveStudentsList.tsx
+  - Real-time list of checked-in students
+  - Time since check-in display
+  - Auto-logout countdown (15-min default)
+  - Grid/list view toggle
+
+- [x] T203 [US10] Create useAttendanceWebSocket hook in Frontend/src/hooks/useAttendanceWebSocket.ts - ✅ COMPLETED
+  - Subscribe to student_checkin and student_checkout events
+  - Manage active students state
+  - Handle auto-logout notifications
+
+- [x] T204 [US10] Add /attendance-display route to App.tsx - ✅ COMPLETED
+  - Lazy-load AttendanceDisplay component
+  - Public route (no authentication required for kiosk mode)
+  - Fullscreen mode support
+
+### Configuration & Settings
+
+- [ ] T205 [P] [US10] Create attendance display settings in Frontend/src/types/settings.ts
+  - Auto-logout duration (default 15 minutes)
+  - Welcome/goodbye message duration (default 5 seconds)
+  - Display theme (light/dark/auto)
+  - Font size adjustments for visibility
+
+- [ ] T206 [US10] Add attendance display config to SettingsPage component
+  - Toggle attendance display feature
+  - Configure auto-logout duration
+  - Configure message display duration
+  - Test mode for preview
+
+### Testing
+
+- [ ] T207 [US10] Manual test: Check-in student and verify "Welcome" message appears on display
+- [ ] T208 [US10] Manual test: Check-out student and verify "Goodbye" message appears on display
+- [ ] T209 [US10] Manual test: Verify 15-minute auto-logout timer works correctly
+- [ ] T210 [US10] Manual test: Open display on second monitor while using main dashboard
+- [ ] T211 [US10] Manual test: Verify real-time updates when multiple students check in/out
+
 **Next Steps After Task Completion**:
 
 1. Run `/speckit.implement` to execute tasks systematically
