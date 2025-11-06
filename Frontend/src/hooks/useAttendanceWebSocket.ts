@@ -1,5 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
+interface StudentReminder {
+  type: 'overdue_book' | 'book_due_soon' | 'custom' | 'general';
+  message: string;
+  priority: 'low' | 'normal' | 'high';
+  bookTitle?: string;
+  dueDate?: string;
+}
+
 interface StudentCheckInEvent {
   type: 'student_checkin';
   data: {
@@ -8,6 +16,8 @@ interface StudentCheckInEvent {
     studentName: string;
     checkinTime: string;
     autoLogoutAt: string;
+    reminders?: StudentReminder[];
+    customMessage?: string;
   };
 }
 
@@ -19,6 +29,7 @@ interface StudentCheckOutEvent {
     studentName: string;
     checkoutTime: string;
     reason: 'manual' | 'auto';
+    customMessage?: string;
   };
 }
 
@@ -32,7 +43,7 @@ interface UseAttendanceWebSocketReturn {
 
 /**
  * useAttendanceWebSocket - Hook for real-time attendance updates
- * 
+ *
  * Subscribes to student check-in and check-out WebSocket events.
  */
 export const useAttendanceWebSocket = (): UseAttendanceWebSocketReturn => {
@@ -56,10 +67,12 @@ export const useAttendanceWebSocket = (): UseAttendanceWebSocketReturn => {
         setIsConnected(true);
 
         // Subscribe to attendance events
-        ws.send(JSON.stringify({
-          type: 'subscribe',
-          channels: ['attendance'],
-        }));
+        ws.send(
+          JSON.stringify({
+            type: 'subscribe',
+            channels: ['attendance'],
+          })
+        );
       };
 
       ws.onmessage = (event) => {
