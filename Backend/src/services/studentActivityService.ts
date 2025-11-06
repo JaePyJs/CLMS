@@ -319,4 +319,66 @@ export class StudentActivityService {
       });
     }
   }
+
+  /**
+   * Get all active student sessions
+   */
+  static async getActiveSessions(): Promise<
+    Array<{
+      activityId: string;
+      studentId: string;
+      studentName: string;
+      checkinTime: string;
+      autoLogoutAt: string;
+      reminders: StudentReminder[];
+    }>
+  > {
+    try {
+      const activeSessions = await prisma.student_activities.findMany({
+        where: {
+          status: 'ACTIVE',
+          end_time: null,
+        },
+        include: {
+          student: {
+            select: {
+              id: true,
+              first_name: true,
+              last_name: true,
+            },
+          },
+        },
+        orderBy: {
+          start_time: 'desc',
+        },
+      });
+
+      const sessions = await Promise.all(
+        activeSessions.map(async (activity) => {
+          const reminders = await this.getStudentReminders(activity.student_id);
+          const autoLogoutAt = addMinutes(activity.start_time, 15);
+
+          return {
+            activityId: activity.id,
+            studentId: activity.student.id,
+            studentName: `${activity.student.first_name} ${activity.student.last_name}`,
+            checkinTime: activity.start_time.toISOString(),
+            autoLogoutAt: autoLogoutAt.toISOString(),
+            reminders,
+          };
+        }),
+      );
+
+      logger.info('Active sessions retrieved', {
+        count: sessions.length,
+      });
+
+      return sessions;
+    } catch (error) {
+      logger.error('Failed to get active sessions', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
 }
