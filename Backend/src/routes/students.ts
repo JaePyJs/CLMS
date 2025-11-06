@@ -6,6 +6,7 @@ import {
   CreateStudentData,
   UpdateStudentData,
 } from '../services/studentService';
+import { StudentActivityService } from '../services/studentActivityService';
 import { BarcodeService } from '../services/barcodeService';
 import { PrismaClient } from '@prisma/client';
 import {
@@ -755,6 +756,146 @@ router.post(
         success: false,
         message: 'Failed to generate barcode',
         code: 'GENERATE_BARCODE_FAILED',
+      });
+    }
+  }),
+);
+
+// POST /api/v1/students/:id/check-in - Check in a student
+router.post(
+  '/:id/check-in',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id: studentId } = req.params;
+
+    try {
+      logger.info('Student check-in request', {
+        studentId,
+        ip: req.ip,
+      });
+
+      const result = await StudentActivityService.checkInStudent(studentId);
+
+      // TODO: Emit WebSocket event to 'attendance' channel
+      // This will be implemented when WebSocket server is set up
+      // websocketServer.emit('student_checkin', result);
+
+      logger.info('Student checked in successfully', {
+        studentId,
+        activityId: result.activityId,
+        ip: req.ip,
+      });
+
+      res.json({
+        success: true,
+        data: result,
+        message: 'Student checked in successfully',
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === 'Student not found') {
+          logger.warn('Check-in failed: student not found', {
+            studentId,
+            ip: req.ip,
+          });
+
+          res.status(404).json({
+            success: false,
+            message: 'Student not found',
+            code: 'STUDENT_NOT_FOUND',
+          });
+          return;
+        }
+
+        if (error.message === 'Student already checked in') {
+          logger.warn('Check-in failed: already checked in', {
+            studentId,
+            ip: req.ip,
+          });
+
+          res.status(400).json({
+            success: false,
+            message: 'Student already checked in',
+            code: 'ALREADY_CHECKED_IN',
+          });
+          return;
+        }
+      }
+
+      logger.error('Check-in failed', {
+        studentId,
+        ip: req.ip,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to check in student',
+        code: 'CHECKIN_FAILED',
+      });
+    }
+  }),
+);
+
+// POST /api/v1/students/:id/check-out - Check out a student
+router.post(
+  '/:id/check-out',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id: studentId } = req.params;
+    const { reason = 'manual' } = req.body;
+
+    try {
+      logger.info('Student check-out request', {
+        studentId,
+        reason,
+        ip: req.ip,
+      });
+
+      const result = await StudentActivityService.checkOutStudent(
+        studentId,
+        reason,
+      );
+
+      // TODO: Emit WebSocket event to 'attendance' channel
+      // websocketServer.emit('student_checkout', result);
+
+      logger.info('Student checked out successfully', {
+        studentId,
+        activityId: result.activityId,
+        reason,
+        ip: req.ip,
+      });
+
+      res.json({
+        success: true,
+        data: result,
+        message: 'Student checked out successfully',
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'No active session found') {
+        logger.warn('Check-out failed: no active session', {
+          studentId,
+          ip: req.ip,
+        });
+
+        res.status(404).json({
+          success: false,
+          message: 'No active session found for this student',
+          code: 'NO_ACTIVE_SESSION',
+        });
+        return;
+      }
+
+      logger.error('Check-out failed', {
+        studentId,
+        reason,
+        ip: req.ip,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to check out student',
+        code: 'CHECKOUT_FAILED',
       });
     }
   }),
