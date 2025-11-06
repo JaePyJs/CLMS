@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Users, LogIn, LogOut, BookOpen, AlertCircle, Info } from 'lucide-react';
+import {
+  Clock,
+  Users,
+  LogIn,
+  LogOut,
+  BookOpen,
+  AlertCircle,
+  Info,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -222,7 +230,9 @@ export const AttendanceDisplay: React.FC = () => {
                       <Alert
                         key={idx}
                         variant={
-                          reminder.priority === 'high' ? 'destructive' : 'default'
+                          reminder.priority === 'high'
+                            ? 'destructive'
+                            : 'default'
                         }
                         className={cn(
                           'text-left',
@@ -250,7 +260,8 @@ export const AttendanceDisplay: React.FC = () => {
                           )}
                           {reminder.dueDate && (
                             <span className="block text-base text-blue-200 mt-1">
-                              Due: {new Date(reminder.dueDate).toLocaleDateString()}
+                              Due:{' '}
+                              {new Date(reminder.dueDate).toLocaleDateString()}
                             </span>
                           )}
                         </AlertDescription>

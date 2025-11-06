@@ -8,6 +8,7 @@ import {
 } from '../services/studentService';
 import { StudentActivityService } from '../services/studentActivityService';
 import { BarcodeService } from '../services/barcodeService';
+import { websocketServer } from '../websocket/websocketServer';
 import { PrismaClient } from '@prisma/client';
 import {
   // createStudentSchema,  // Reserved for future validation
@@ -775,9 +776,16 @@ router.post(
 
       const result = await StudentActivityService.checkInStudent(studentId);
 
-      // TODO: Emit WebSocket event to 'attendance' channel
-      // This will be implemented when WebSocket server is set up
-      // websocketServer.emit('student_checkin', result);
+      // Emit WebSocket event to 'attendance' channel
+      websocketServer.emitStudentCheckIn({
+        activityId: result.activityId,
+        studentId: result.studentId,
+        studentName: result.studentName,
+        checkinTime: result.checkinTime,
+        autoLogoutAt: result.autoLogoutAt,
+        reminders: result.reminders,
+        customMessage: result.customMessage,
+      });
 
       logger.info('Student checked in successfully', {
         studentId,
@@ -855,8 +863,15 @@ router.post(
         reason,
       );
 
-      // TODO: Emit WebSocket event to 'attendance' channel
-      // websocketServer.emit('student_checkout', result);
+      // Emit WebSocket event to 'attendance' channel
+      websocketServer.emitStudentCheckOut({
+        activityId: result.activityId,
+        studentId: result.studentId,
+        studentName: result.studentName,
+        checkoutTime: result.checkoutTime,
+        reason: result.reason,
+        customMessage: result.customMessage,
+      });
 
       logger.info('Student checked out successfully', {
         studentId,
@@ -871,7 +886,10 @@ router.post(
         message: 'Student checked out successfully',
       });
     } catch (error) {
-      if (error instanceof Error && error.message === 'No active session found') {
+      if (
+        error instanceof Error &&
+        error.message === 'No active session found'
+      ) {
         logger.warn('Check-out failed: no active session', {
           studentId,
           ip: req.ip,
