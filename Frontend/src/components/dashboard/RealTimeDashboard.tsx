@@ -165,7 +165,6 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => setAutoRefresh(!autoRefresh)}
-                className={autoRefresh ? 'bg-green-50 border-green-200' : ''}
               >
                 <RefreshCw
                   className={`h-4 w-4 mr-1 ${autoRefresh ? 'animate-spin' : ''}`}
@@ -296,12 +295,12 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                       <p className="font-medium text-sm">
                         {String(activity.studentName)}
                       </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                      <p className="text-xs text-muted-foreground">
                         {String(activity.activityType)}
                         {activity.equipmentName &&
                           ` • ${String(activity.equipmentName)}`}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {new Date(activity.timestamp).toLocaleTimeString()}
                       </p>
                     </div>
@@ -309,8 +308,8 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                 ))
               ) : (
                 <div className="text-center py-8">
-                  <Activity className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-500 dark:text-gray-400">
+                  <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">
                     No recent activity
                   </p>
                 </div>
@@ -349,7 +348,7 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                           <p className="font-medium text-sm">
                             {status.equipmentName || equipmentId}
                           </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                          <p className="text-xs text-muted-foreground">
                             {status.equipmentType}
                           </p>
                         </div>
@@ -366,7 +365,7 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                           {status.status.replace('_', ' ')}
                         </Badge>
                         {status.userId && (
-                          <p className="text-xs text-gray-500 mt-1">In use</p>
+                          <p className="text-xs text-muted-foreground mt-1">In use</p>
                         )}
                       </div>
                     </div>
@@ -374,8 +373,8 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                 )
               ) : (
                 <div className="text-center py-8">
-                  <Monitor className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-500 dark:text-gray-400">
+                  <Monitor className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                  <p className="text-muted-foreground">
                     No equipment data available
                   </p>
                 </div>
@@ -421,10 +420,10 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                     <p className="font-medium text-sm">
                       {String(notification.title ?? '')}
                     </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       {String(notification.message)}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {new Date(notification.timestamp).toLocaleTimeString()}
                     </p>
                   </div>

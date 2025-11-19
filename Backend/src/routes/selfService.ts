@@ -3,6 +3,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { authenticate } from '../middleware/authenticate';
 import { SelfService } from '../services/selfService';
 import { logger } from '../utils/logger';
+import { EnhancedSelfService } from '../services/enhancedSelfService';
 
 const router = Router();
 
@@ -18,7 +19,7 @@ router.post(
       return;
     }
 
-    const { scanData } = req.body;
+    const { scanData, sectionCodes } = req.body;
 
     if (!scanData) {
       res.status(400).json({
@@ -36,7 +37,9 @@ router.post(
         ip: req.ip,
       });
 
-      const result = await SelfService.processScan(scanData);
+      const result = sectionCodes && Array.isArray(sectionCodes) && sectionCodes.length > 0
+        ? await EnhancedSelfService.processScanWithSelection(scanData, sectionCodes)
+        : await SelfService.processScan(scanData);
 
       if (!result.success) {
         logger.warn('Self-service scan failed', {
@@ -66,6 +69,47 @@ router.post(
         message: 'Failed to process scan',
         code: 'SCAN_PROCESSING_FAILED',
       });
+    }
+  }),
+);
+
+// POST /api/v1/self-service/check-in-with-sections - Check in with selected sections
+router.post(
+  '/check-in-with-sections',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { scanData, sectionCodes } = req.body;
+
+    if (!scanData || !Array.isArray(sectionCodes) || sectionCodes.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: 'scanData and sectionCodes[] are required',
+        code: 'MISSING_INPUT',
+      });
+      return;
+    }
+
+    try {
+      logger.info('Self-service check-in with sections', {
+        scanData: `${scanData.substring(0, 10)}...`,
+        sectionCount: sectionCodes.length,
+        userId: req.user.userId,
+      });
+
+      const result = await EnhancedSelfService.processScanWithSelection(scanData, sectionCodes);
+      res.json(result);
+    } catch (error) {
+      logger.error('Self-service check-in-with-sections error', {
+        scanData: `${scanData.substring(0, 10)}...`,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId: req.user?.userId,
+        ip: req.ip,
+      });
+      res.status(500).json({ success: false, message: 'Failed to check in with sections' });
     }
   }),
 );

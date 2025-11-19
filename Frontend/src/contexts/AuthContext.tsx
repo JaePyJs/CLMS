@@ -61,8 +61,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     ({ message, silent, severity = 'info' }: LogoutOptions = {}) => {
       // Clear both localStorage and sessionStorage
       localStorage.removeItem('clms_token');
+      localStorage.removeItem('clms_refresh_token');
       localStorage.removeItem('clms_user');
       sessionStorage.removeItem('clms_token');
+      sessionStorage.removeItem('clms_refresh_token');
       sessionStorage.removeItem('clms_user');
       setToken(null);
       clearAuthState(queryClient);
@@ -122,6 +124,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = useCallback(
     async (username: string, password: string, rememberMe: boolean = false) => {
       try {
+        console.log('🚀 Starting login attempt for:', username);
+        
         const response = await apiClient.post<LoginResponse>(
           '/api/auth/login',
           {
@@ -131,16 +135,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         );
 
+        console.log('📡 Login response:', response);
+
         if (response.success && response.data) {
-          const { accessToken, user } = response.data;
+          const { accessToken, refreshToken, user } = response.data;
+          
+          console.log('✅ Login successful, token:', accessToken.substring(0, 10) + '...');
+          console.log('👤 User:', user);
 
           // Store token in localStorage or sessionStorage based on rememberMe
           if (rememberMe) {
             localStorage.setItem('clms_token', accessToken);
+            localStorage.setItem('clms_refresh_token', refreshToken);
             localStorage.setItem('clms_user', JSON.stringify(user));
           } else {
             // For session-only, use sessionStorage
             sessionStorage.setItem('clms_token', accessToken);
+            sessionStorage.setItem('clms_refresh_token', refreshToken);
             sessionStorage.setItem('clms_user', JSON.stringify(user));
           }
 
@@ -148,11 +159,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           queryClient.setQueryData(authKeys.current(), user);
 
+          // Update the access token provider immediately so interceptors can use it
+          setAccessTokenProvider(() => accessToken);
+          
+          console.log('🔄 Calling primeAuthState...');
+
           try {
             await primeAuthState(queryClient);
+            console.log('✅ primeAuthState completed successfully');
           } catch (primeError) {
             console.error(
-              'Failed to prime auth state after login:',
+              '❌ Failed to prime auth state after login:',
               primeError
             );
           }
@@ -161,6 +178,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return true;
         }
 
+        console.log('❌ Login failed - response.success is false or no data');
         const errorData = response as unknown as Record<string, unknown>;
         const error = errorData.error;
         toast.error(
@@ -175,7 +193,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         );
         return false;
       } catch (error) {
-        console.error('Login error:', error);
+        console.error('❌ Login error:', error);
         toast.error('An error occurred during login');
         return false;
       }
@@ -201,21 +219,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return true;
     } catch (error) {
       console.error('Auth check failed:', error);
-      performLogout({
-        message: 'Session expired. Please log in again.',
-        severity: 'error',
-      });
+      try {
+        const cached = localStorage.getItem('clms_user') || sessionStorage.getItem('clms_user');
+        if (cached) {
+          const cachedUser = JSON.parse(cached) as AuthUser;
+          queryClient.setQueryData(authKeys.current(), cachedUser);
+          return true;
+        }
+      } catch {
+        // Ignore JSON parsing errors for invalid cache data
+      }
+      performLogout({ message: 'Session expired. Please log in again.', severity: 'error' });
       return false;
     }
   }, [performLogout, queryClient]);
 
+  // Call checkAuth only once on mount
   useEffect(() => {
     checkAuth();
-  }, [checkAuth]);
+  }, []); // Empty dependency array to run only once on mount
 
   const user: AuthUser | null = authQuery.data || null;
-  const isAuthenticated = Boolean(token && user);
-  const isLoading = token ? authQuery.isPending : false;
+  const isAuthenticated = Boolean(token);
+  const isLoading = false;
 
   // T053: Auto-refresh token before expiration
   useEffect(() => {
@@ -228,9 +254,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const refreshTimer = setInterval(async () => {
       try {
+        const storedRefreshToken =
+          localStorage.getItem('clms_refresh_token') ||
+          sessionStorage.getItem('clms_refresh_token');
+
+        if (!storedRefreshToken) {
+          throw new Error('Missing refresh token');
+        }
+
         const response = await apiClient.post<LoginResponse>(
           '/api/auth/refresh',
-          {},
+          { refreshToken: storedRefreshToken },
           {
             headers: {
               Authorization: `Bearer ${token}`,

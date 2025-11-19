@@ -36,11 +36,48 @@ export function setupInterceptors(client: AxiosInstance) {
       }
     }
 
+    // Always send credentials for cookie-based flows
+    (config as any).withCredentials = true;
+
+    const existingCid = (config.headers as any)?.['x-correlation-id'] || (config.headers as any)?.['x-request-id'];
+    if (!existingCid) {
+      const cid = (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function')
+        ? (crypto as any).randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      (config.headers as any)['x-correlation-id'] = cid;
+    }
+
     return config;
   });
 
   client.interceptors.response.use(
-    (response) => response,
+    (response) => {
+      // Treat 304 for auth/me as a success using cached user
+      try {
+        const url = response?.config?.url || '';
+        if (response.status === 304 && url.includes('/api/auth/me')) {
+          const cached =
+            localStorage.getItem('clms_user') ||
+            sessionStorage.getItem('clms_user');
+          if (cached) {
+            const user = JSON.parse(cached);
+            // Normalize to ApiResponse shape expected by callers
+            (response as any).data = {
+              success: true,
+              data: user,
+            };
+          } else {
+            (response as any).data = {
+              success: false,
+              message: 'Not modified and no cached user',
+            };
+          }
+        }
+      } catch (e) {
+        // Non-fatal; fall through
+      }
+      return response;
+    },
     async (error: AxiosError) => {
       if (!error.response) {
         toast.error('Network error. Please check your connection.');
@@ -48,6 +85,7 @@ export function setupInterceptors(client: AxiosInstance) {
       }
 
       const { status, data } = error.response;
+      const url = error.response?.config?.url || '';
       const apiPayload = data as ApiErrorPayload | undefined;
       const normalizedError = normalizeApiError(
         status,
@@ -74,14 +112,19 @@ export function setupInterceptors(client: AxiosInstance) {
             normalizedError.message || 'Session expired. Please log in again.'
           );
         }
+      } else if (status === 429) {
+        toast.error(normalizedError.message || 'Too many requests. Please wait.');
       } else if (status === 403) {
         toast.error(normalizedError.message || 'Access denied');
       } else if (status === 404) {
         toast.error(normalizedError.message || 'Resource not found');
       } else if (status >= 500) {
-        toast.error(
-          normalizedError.message || 'Server error. Please try again later.'
-        );
+        // Suppress noisy toasts for auth/me failures; UI will handle via cache
+        if (!url.includes('/api/auth/me')) {
+          toast.error(
+            normalizedError.message || 'Server error. Please try again later.'
+          );
+        }
       } else if (showValidationToast) {
         const firstError = normalizedError.validationErrors[0];
         const validationMessage = firstError

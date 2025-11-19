@@ -66,7 +66,9 @@ export function QRCodeDisplay({
       <div
         className={`flex items-center justify-center h-36 w-36 bg-red-50 border border-red-200 rounded ${className}`}
       >
-        <span className="text-red-500 text-xs text-center">{error}</span>
+        <span className="text-red-500 text-xs text-center">
+          {typeof error === 'string' ? error : String(error)}
+        </span>
       </div>
     );
   }

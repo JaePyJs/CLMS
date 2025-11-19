@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/authenticate.js';
-import { EquipmentAutomationService } from '../services/equipmentAutomationService.js';
-import asyncHandler from '../utils/asyncHandler.js';
+import { authenticate } from '../middleware/authenticate';
+import { EquipmentAutomationService } from '../services/equipmentAutomationService';
+import asyncHandler from '../utils/asyncHandler';
 
 const router = Router();
 

@@ -367,20 +367,21 @@ export class SelfService {
    * Find student by barcode
    */
   private static async findStudentByBarcode(barcode: string) {
-    // Validate barcode format
-    if (!BarcodeService.validateBarcode(barcode)) {
+    // Accept numeric-only or PN-prefixed codes
+    const code = String(barcode).trim();
+    if (!BarcodeService.validateBarcode(code)) {
       return null;
     }
-
-    // Find student by barcode
-    const student = await prisma.students.findFirst({
-      where: {
-        barcode: barcode,
-        is_active: true,
-      },
-    });
-
-    return student;
+    // Exact match first
+    let student = await prisma.students.findFirst({ where: { barcode: code, is_active: true } });
+    if (student) return student;
+    // If input is numeric-only, also try PN-prefixed variant
+    if (/^\d{5,12}$/.test(code)) {
+      const pnCode = `PN${code}`;
+      student = await prisma.students.findFirst({ where: { barcode: pnCode, is_active: true } });
+      if (student) return student;
+    }
+    return null;
   }
 
   /**
@@ -392,11 +393,11 @@ export class SelfService {
         where: { key: 'attendance.min_check_in_interval_minutes' },
       });
 
-      // Default to 10 minutes if not configured
-      return setting ? parseInt(setting.value) * 60 : 10 * 60;
+      // Default to 15 minutes if not configured
+      return setting ? parseInt(setting.value) * 60 : 15 * 60;
     } catch (error) {
       logger.error('Error getting minimum check-in interval:', error);
-      return 10 * 60; // Default 10 minutes
+      return 15 * 60; // Default 15 minutes
     }
   }
 

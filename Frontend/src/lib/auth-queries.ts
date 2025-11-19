@@ -20,8 +20,17 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
     '/api/auth/me'
   )) as any;
 
-  if (response.success && response.data?.user) {
-    return response.data.user;
+  // Backend returns user data directly in response.data, not response.data.user
+  if (response.success && response.data) {
+    // Map backend fields to AuthUser type
+    const userData = response.data;
+    return {
+      id: userData.id,
+      username: userData.username,
+      role: userData.role,
+      isActive: userData.is_active,
+      lastLoginAt: userData.last_login_at,
+    };
   }
 
   const message =

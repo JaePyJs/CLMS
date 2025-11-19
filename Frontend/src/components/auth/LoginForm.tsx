@@ -19,11 +19,7 @@ interface LoginFormData {
 }
 
 interface LoginFormProps {
-  onLoginSuccess: (user: {
-    id: string;
-    username: string;
-    role: string;
-  }) => void;
+  onLoginSuccess: () => void;
 }
 
 export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
@@ -69,8 +65,9 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
       );
 
       if (success) {
-        // Login was successful, the AuthContext will handle the rest
-        onLoginSuccess({} as any); // We don't need the user data here since AuthContext handles it
+        onLoginSuccess();
+        // Let the App component handle the transition naturally
+        // No need for manual navigation since isAuthenticated will trigger the UI change
       } else {
         setError('Login failed');
       }
@@ -99,7 +96,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
               className="w-16 h-16 object-contain"
             />
           </div>
-          <CardTitle className="text-2xl">Administrator Login</CardTitle>
+          <CardTitle className="text-2xl">Librarian Login</CardTitle>
           <CardDescription>
             Sacred Heart of Jesus Catholic School Library
           </CardDescription>
@@ -112,7 +109,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           >
             {error && (
               <Alert variant="destructive" data-testid="error-message">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{typeof error === 'string' ? error : String(error)}</AlertDescription>
               </Alert>
             )}
 

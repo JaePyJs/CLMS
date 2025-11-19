@@ -162,6 +162,44 @@ export function FineCollectionAnalytics({
     }
   };
 
+  const exportAnalyticsCsv = () => {
+    const lines: string[] = [];
+    lines.push('Payment Trends');
+    lines.push('Period,Amount,Transactions,AveragePayment,CollectionRate');
+    paymentTrends.forEach((t) => {
+      const row = [
+        t.period,
+        String(t.amount ?? 0),
+        String(t.transactions ?? 0),
+        String(t.averagePayment ?? 0),
+        String(t.collectionRate ?? 0),
+      ].map((v) => String(v).replace(/,/g, ';')).join(',');
+      lines.push(row);
+    });
+    lines.push('');
+    lines.push('Fine Categories');
+    lines.push('Category,Amount,Count,Percentage');
+    fineCategories.forEach((c) => {
+      const row = [
+        c.category,
+        String(c.amount ?? 0),
+        String(c.count ?? 0),
+        String(c.percentage ?? 0),
+      ].map((v) => String(v).replace(/,/g, ';')).join(',');
+      lines.push(row);
+    });
+    const csv = lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fine-analytics-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const FineOverview = () => (
     <div className="space-y-6">
       {/* Key Metrics */}
@@ -356,6 +394,9 @@ export function FineCollectionAnalytics({
                       {category.category}
                     </span>
                     {getTrendIcon(category.trend)}
+                    <Badge variant={category.trend === 'up' ? 'default' : category.trend === 'down' ? 'destructive' : 'secondary'}>
+                      {category.trend}
+                    </Badge>
                   </div>
                   <span className="text-sm text-muted-foreground">
                     ${category.amount.toFixed(2)} ({category.count} cases)
@@ -638,8 +679,8 @@ export function FineCollectionAnalytics({
             Comprehensive analysis of fine collection patterns and effectiveness
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge
+      <div className="flex items-center gap-2">
+        <Badge
             variant={
               data?.collectionRate > 80
                 ? 'default'
@@ -647,18 +688,15 @@ export function FineCollectionAnalytics({
                   ? 'secondary'
                   : 'destructive'
             }
-          >
-            {data?.collectionRate > 80
-              ? 'Excellent'
-              : data?.collectionRate > 60
-                ? 'Good'
-                : 'Needs Attention'}
-          </Badge>
-          <Button variant="outline" size="sm">
-            <Receipt className="h-4 w-4 mr-2" />
-            Export Report
-          </Button>
-        </div>
+        >
+          {data?.collectionRate > 80
+            ? 'Excellent'
+            : data?.collectionRate > 60
+              ? 'Good'
+              : 'Needs Attention'}
+        </Badge>
+        <Button size="sm" variant="outline" onClick={exportAnalyticsCsv}>Export CSV</Button>
+      </div>
       </div>
 
       {/* Analytics Tabs */}

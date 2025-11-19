@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 
@@ -65,7 +65,7 @@ export class BarcodeService {
    * Validate barcode format
    */
   static validateBarcode(barcode: string): boolean {
-    return /^\d{9,12}$/.test(barcode);
+    return /^\d{9,12}$/.test(barcode) || /^PN\d{5,12}$/.test(barcode);
   }
 
   /**
@@ -97,5 +97,39 @@ export class BarcodeService {
     } else {
       return await this.generateBarcode();
     }
+  }
+
+  /**
+   * Generate PN-prefixed barcode using a persisted sequence
+   * Uses prisma.system_settings key 'barcode.sequence'
+   */
+  static async getNextPNBarcode(): Promise<string> {
+    const key = 'barcode.sequence';
+    let seq = 0;
+    try {
+      const setting = await prisma.system_settings.findUnique({ where: { key } });
+      if (!setting) {
+        await prisma.system_settings.create({ data: { key, value: '18' } });
+        seq = 18;
+      } else {
+        seq = parseInt(setting.value || '0');
+        seq = isNaN(seq) ? 0 : seq + 1;
+        await prisma.system_settings.update({ where: { key }, data: { value: String(seq) } });
+      }
+    } catch (_e) {
+      seq = Math.floor(Date.now() % 100000);
+    }
+    let code = `PN${String(seq).padStart(5, '0')}`;
+    let attempts = 0;
+    while (attempts < 5) {
+      const exists = await prisma.students.findFirst({ where: { barcode: code } });
+      if (!exists) {
+        return code;
+      }
+      attempts++;
+      seq++;
+      code = `PN${String(seq).padStart(5, '0')}`;
+    }
+    return code;
   }
 }

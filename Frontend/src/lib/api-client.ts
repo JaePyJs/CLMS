@@ -114,7 +114,10 @@ class ApiClient {
 
   private getAuthToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('token') || sessionStorage.getItem('token');
+      // Align with app's storage key for access token
+      return (
+        localStorage.getItem('clms_token') || sessionStorage.getItem('clms_token')
+      );
     }
     return null;
   }

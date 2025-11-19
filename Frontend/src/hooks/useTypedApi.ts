@@ -383,7 +383,7 @@ export function useTypedMutation<TRequest, TResponse>(
           rollbackOnError();
         }
 
-        throw apiError;
+        throw new Error(apiError.message);
       } finally {
         setLoading(false);
       }

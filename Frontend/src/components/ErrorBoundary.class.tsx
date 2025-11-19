@@ -268,35 +268,10 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   private attemptAutoRecovery = (_error: Error, _errorType: ErrorType) => {
-    const autoRecoverySuggestions = this.state.recoverySuggestions.filter(
-      (s) => s.auto
-    );
-
-    if (
-      autoRecoverySuggestions.length > 0 &&
-      this.state.retryCount < this.maxRetries
-    ) {
-      const suggestion = autoRecoverySuggestions[0];
-
-      if (!suggestion) {
-        return;
-      }
-
-      this.autoRetryTimer = setTimeout(() => {
-        console.debug(
-          `Auto-recovery attempt ${this.state.retryCount + 1}/${this.maxRetries}: ${suggestion.title}`
-        );
-        this.setState({ isRecovering: true });
-
-        // Execute the recovery action
-        try {
-          suggestion.action();
-        } catch (recoveryError) {
-          console.error('Auto-recovery failed:', recoveryError);
-          this.setState({ isRecovering: false });
-        }
-      }, this.retryDelay);
-    }
+    // DISABLED: Auto-recovery causing infinite reloads
+    // The automatic page refresh creates a cycle of failures
+    // Users should manually click retry instead
+    return;
   };
 
   private reportError = async (error: Error, errorInfo: ErrorInfo) => {
@@ -427,7 +402,7 @@ class ErrorBoundary extends Component<Props, State> {
     }
 
     // Try to fetch a small resource to test connection
-    fetch('/health', { method: 'HEAD' })
+    fetch(`${import.meta.env.VITE_API_URL}/health`, { method: 'HEAD' })
       .then(() => {
         alert('Connection is working. Refreshing the page...');
         this.refreshPage();

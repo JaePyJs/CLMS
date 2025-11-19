@@ -309,13 +309,6 @@ const PerformanceImage: ComponentType<ImageProps> = forwardRef<
               className="w-full h-full"
             />
           </picture>
-
-          {/* Priority indicator in development */}
-          {process.env.NODE_ENV === 'development' && priority && (
-            <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded z-10">
-              Priority
-            </div>
-          )}
         </div>
       );
     }
@@ -346,13 +339,6 @@ const PerformanceImage: ComponentType<ImageProps> = forwardRef<
           fetchPriority={fetchPriority ?? undefined}
           className="w-full h-full"
         />
-
-        {/* Priority indicator in development */}
-        {process.env.NODE_ENV === 'development' && priority && (
-          <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded z-10">
-            Priority
-          </div>
-        )}
       </div>
     );
   }

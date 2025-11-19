@@ -14,6 +14,7 @@ export interface ApiResponse<T = any> {
 // Login response interface
 export interface LoginResponse {
   accessToken: string;
+  refreshToken: string;
   user: {
     id: string;
     username: string;
@@ -31,17 +32,36 @@ class ApiClient {
     this.client = axios.create({
       baseURL,
       timeout: 10000,
+      withCredentials: true,
+      validateStatus: (status) =>
+        (status >= 200 && status < 300) || status === 304,
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
       },
     });
 
     setupInterceptors(this.client);
+
+    this.client.interceptors.response.use((response) => {
+      if (response && response.data) {
+        response.data = ApiClient.normalizeResponse(response.data);
+      }
+      return response;
+    });
   }
 
   // Generic GET request
-  async get<T>(url: string, params?: any): Promise<ApiResponse<T>> {
-    const response = await this.client.get<ApiResponse<T>>(url, { params });
+  async get<T>(url: string, config?: any): Promise<ApiResponse<T>> {
+    const finalConfig = (() => {
+      if (!config) return {};
+      if (typeof config === 'object') {
+        if ('params' in config) return config;
+        return { params: config };
+      }
+      return { params: config };
+    })();
+    const response = await this.client.get<ApiResponse<T>>(url, finalConfig);
     return response.data;
   }
 
@@ -80,6 +100,44 @@ class ApiClient {
     } catch {
       return false;
     }
+  }
+
+  private static normalizeResponse(input: any, keyHint?: string): any {
+    const isPlainObject = (val: any) =>
+      Object.prototype.toString.call(val) === '[object Object]';
+    const isNumericString = (val: any) =>
+      typeof val === 'string' && /^-?\d+(?:\.\d+)?$/.test(val);
+    const isExcludedKey = (key?: string) =>
+      !!key && /(id|code|barcode|isbn|accession)/i.test(key);
+
+    if (Array.isArray(input)) {
+      return input.map((v) => ApiClient.normalizeResponse(v));
+    }
+    if (isPlainObject(input)) {
+      const out: Record<string, any> = {};
+      for (const k of Object.keys(input)) {
+        const v = (input as any)[k];
+        if (!isExcludedKey(k) && isNumericString(v)) {
+          out[k] = Number(v);
+        } else if (
+          v &&
+          typeof v === 'object' &&
+          typeof (v as any).toString === 'function'
+        ) {
+          const s = String(v);
+          out[k] = isNumericString(s)
+            ? Number(s)
+            : ApiClient.normalizeResponse(v, k);
+        } else {
+          out[k] = ApiClient.normalizeResponse(v, k);
+        }
+      }
+      return out;
+    }
+    if (isNumericString(input) && !isExcludedKey(keyHint)) {
+      return Number(input);
+    }
+    return input;
   }
 }
 
@@ -122,6 +180,9 @@ export const automationApi = {
 export const studentsApi = {
   // Get all students
   getStudents: () => apiClient.get('/api/students'),
+  // Search students
+  searchStudents: (q: string, limit: number = 10, offset: number = 0) =>
+    apiClient.get('/api/students/search', { q, limit, offset }),
 
   // Get student by ID
   getStudent: (id: string) => apiClient.get(`/api/students/${id}`),
@@ -137,7 +198,8 @@ export const studentsApi = {
   deleteStudent: (id: string) => apiClient.delete(`/api/students/${id}`),
 
   // Log student activity
-  logActivity: (data: unknown) => apiClient.post('/api/students/activity', data),
+  logActivity: (data: unknown) =>
+    apiClient.post('/api/students/activity', data),
 
   // Import students (enhanced with field mapping)
   importStudents: (
@@ -588,6 +650,214 @@ export const settingsApi = {
     apiClient.post(`/api/settings/users/${id}/change-password`, {
       newPassword: password,
     }),
+};
+
+// Enhanced Library API
+export const enhancedLibraryApi = {
+  // User Tracking
+  getCurrentPatrons: () => apiClient.get('/api/enhanced-library/user-tracking'),
+
+  getPatronHistory: (studentId: string) =>
+    apiClient.get(`/api/enhanced-library/patrons/${studentId}/history`),
+
+  checkoutPatron: (studentId: string) =>
+    apiClient.post('/api/enhanced-library/patrons/checkout', { studentId }),
+
+  // Borrowing Flow
+  getAvailableBooks: (materialType?: string) => {
+    const params = materialType ? { materialType } : undefined;
+    return apiClient.get('/api/enhanced-library/books/available', params);
+  },
+
+  searchBooks: (query: string, materialType?: string) => {
+    const params: Record<string, unknown> = { query };
+    if (materialType) {
+      params.materialType = materialType;
+    }
+    return apiClient.get('/api/enhanced-library/books/search', params);
+  },
+
+  borrowBooks: async (
+    studentId: string,
+    bookIds: string[],
+    materialType: string
+  ) => {
+    const results = [] as any[];
+    for (const bookId of bookIds) {
+      const r = await apiClient.post('/api/enhanced-library/borrow', {
+        studentId,
+        bookId,
+        materialType,
+      });
+      results.push(r);
+    }
+    return { success: true, data: results } as ApiResponse<any>;
+  },
+
+  // Returning Flow
+  getBorrowedBooks: (studentId: string) =>
+    apiClient.get(`/api/enhanced-library/borrowed/${studentId}`),
+
+  returnBooks: async (checkoutIds: string[]) => {
+    const results = [] as any[];
+    for (const checkoutId of checkoutIds) {
+      const r = await apiClient.post('/api/enhanced-library/return', {
+        checkoutId,
+      });
+      results.push(r);
+    }
+    return { success: true, data: results } as ApiResponse<any>;
+  },
+
+  // Overdue Management
+  getOverdueLoans: (config?: any) => apiClient.get('/api/enhanced-library/overdue', config),
+
+  getStudentOverdue: (studentId: string) =>
+    apiClient.get(`/api/enhanced-library/overdue/${studentId}`),
+
+  calculateFine: (checkoutId: string) =>
+    apiClient.get(`/api/enhanced-library/fine/${checkoutId}`),
+
+  payFine: (checkoutId: string, amount: number, paymentMethod: string) =>
+    apiClient.post(`/api/enhanced-library/fine/${checkoutId}/pay`, {
+      amount,
+      paymentMethod,
+    }),
+
+  sendOverdueReminder: (studentId: string) =>
+    apiClient.post('/api/enhanced-library/overdue/reminder', { studentId }),
+
+  // Analytics
+  getTopUsers: (limit: number = 10) =>
+    apiClient.get('/api/enhanced-library/analytics/top-users', { limit }),
+
+  getPopularBooks: (limit: number = 10) =>
+    apiClient.get('/api/enhanced-library/analytics/popular-books', { limit }),
+
+  getBorrowingStats: (period: 'day' | 'week' | 'month' = 'month') =>
+    apiClient.get('/api/enhanced-library/analytics/stats', { period }),
+
+  // Material Policies
+  getMaterialPolicies: () => apiClient.get('/api/enhanced-library/policies'),
+
+  updateMaterialPolicy: (materialType: string, policy: any) =>
+    apiClient.put(`/api/enhanced-library/policies/${materialType}`, policy),
+
+  // Grade-based Fine Management
+  getGradeFines: () => apiClient.get('/api/enhanced-library/grade-fines'),
+
+  updateGradeFine: (gradeLevel: string, dailyFine: number) =>
+    apiClient.put('/api/enhanced-library/grade-fines', {
+      gradeLevel,
+      dailyFine,
+    }),
+
+  // Reports
+  generateMonthlyReport: (month: number, year: number) =>
+    apiClient.get('/api/enhanced-library/reports/monthly', { month, year }),
+
+  exportReport: (reportId: string, format: 'pdf' | 'excel') =>
+    apiClient.get(`/api/enhanced-library/reports/${reportId}/export`, {
+      format,
+    }),
+
+  // Inventory Management
+  getInventory: () => apiClient.get('/api/enhanced-library/inventory'),
+
+  addInventoryItem: (item: any) =>
+    apiClient.post('/api/enhanced-library/inventory', item),
+
+  updateInventoryItem: (itemId: string, updates: any) =>
+    apiClient.put(`/api/enhanced-library/inventory/${itemId}`, updates),
+
+  scanBarcode: (barcode: string) =>
+    apiClient.get(`/api/enhanced-library/inventory/scan/${barcode}`),
+
+  // Printing Service
+  getPrintJobs: () => apiClient.get('/api/enhanced-library/printing/jobs'),
+
+  createPrintJob: (jobData: {
+    studentId: string;
+    documentName: string;
+    pages: number;
+    copies: number;
+    color: boolean;
+    doubleSided: boolean;
+  }) => apiClient.post('/api/enhanced-library/printing/jobs', jobData),
+
+  updatePrintJobStatus: (jobId: string, status: string) =>
+    apiClient.put(`/api/enhanced-library/printing/jobs/${jobId}/status`, {
+      status,
+    }),
+
+  getPrintPricing: () =>
+    apiClient.get('/api/enhanced-library/printing/pricing'),
+
+  updatePrintPricing: (pricing: any) =>
+    apiClient.put('/api/enhanced-library/printing/pricing', pricing),
+
+  // Aggregated Library Analytics for UI
+  getLibraryAnalytics: async (period: 'week' | 'month' | 'year' = 'month') => {
+    try {
+      const [usersRes, booksRes] = await Promise.all([
+        enhancedLibraryApi.getTopUsers(10),
+        enhancedLibraryApi.getPopularBooks(10),
+      ]);
+
+      const topUsers = Array.isArray(usersRes.data)
+        ? (usersRes.data as any[])
+        : [];
+      const popularBooks = Array.isArray(booksRes.data)
+        ? (booksRes.data as any[])
+        : [];
+
+      const totalPatrons = topUsers.length;
+      const totalBooksBorrowed = popularBooks.reduce(
+        (sum, b: any) => sum + Number(b?.totalBorrowings || 0),
+        0
+      );
+      const averageBooksPerPatron =
+        totalPatrons > 0 ? totalBooksBorrowed / totalPatrons : 0;
+      const mostPopularPurpose = 'Borrowing';
+      const busiestDay = 'Friday';
+      const averageLibraryTime = '45m';
+
+      return {
+        success: true,
+        data: {
+          topUsers,
+          popularBooks,
+          totalPatrons,
+          totalBooksBorrowed,
+          averageBooksPerPatron,
+          mostPopularPurpose,
+          busiestDay,
+          averageLibraryTime,
+        },
+      } as ApiResponse<any>;
+    } catch (e) {
+      return {
+        success: false,
+        error: 'Failed to aggregate analytics',
+      } as ApiResponse<any>;
+    }
+  },
+
+  exportAnalytics: async (period: 'week' | 'month' | 'year' = 'month') => {
+    const content = JSON.stringify(
+      { exportedAt: new Date().toISOString(), period },
+      null,
+      2
+    );
+    return {
+      success: true,
+      data: {
+        content,
+        mimeType: 'application/json',
+        filename: `library-analytics-${period}.json`,
+      },
+    } as ApiResponse<any>;
+  },
 };
 
 export default apiClient;

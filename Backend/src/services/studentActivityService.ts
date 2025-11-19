@@ -1,8 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
 import { addMinutes } from 'date-fns';
 
-const prisma = new PrismaClient();
 
 interface StudentReminder {
   type: 'overdue_book' | 'book_due_soon' | 'custom' | 'general';
@@ -354,7 +353,7 @@ export class StudentActivityService {
       });
 
       const sessions = await Promise.all(
-        activeSessions.map(async (activity) => {
+        activeSessions.map(async activity => {
           const reminders = await this.getStudentReminders(activity.student_id);
           const autoLogoutAt = addMinutes(activity.start_time, 15);
 

@@ -4,7 +4,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'sonner';
 import App from './App.tsx';
-import './index.css';
+import VersionBanner from './components/VersionBanner';
+import './index.pcss';
 import { queryClient } from './lib/query-client';
 import { initializeOfflineQueue } from './lib/offline-queue';
 import { AuthProvider } from './contexts/AuthContext';
@@ -123,6 +124,7 @@ ReactDOM.createRoot(rootElement).render(
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <ToastProvider>
+              <VersionBanner />
               <App />
               <Toaster
                 position="top-right"
@@ -130,7 +132,7 @@ ReactDOM.createRoot(rootElement).render(
                 closeButton
                 expand={false}
                 duration={4000}
-                theme="system"
+                theme="dark"
                 toastOptions={{
                   style: {
                     background: 'hsl(var(--card))',
@@ -145,7 +147,9 @@ ReactDOM.createRoot(rootElement).render(
                   },
                 }}
               />
-              <ReactQueryDevtools initialIsOpen={false} />
+              {import.meta.env.DEV && (
+                <ReactQueryDevtools initialIsOpen={false} />
+              )}
             </ToastProvider>
           </AuthProvider>
         </QueryClientProvider>

@@ -166,7 +166,7 @@ export function ErrorBoundaryFallback({
           description: 'Reload the page to restore connection',
           action: refreshPage,
           icon: <RefreshCw className="h-4 w-4" />,
-          auto: true,
+          auto: false,
         });
         break;
 

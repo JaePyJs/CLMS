@@ -95,8 +95,11 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
 
     try {
       setInstallStatus('installing');
-
-      // Show the install prompt
+      if (typeof deferredPrompt.prompt !== 'function') {
+        setInstallStatus('idle');
+        setShowPrompt(false);
+        return;
+      }
       await deferredPrompt.prompt();
 
       // Wait for the user to respond to the prompt

@@ -7,6 +7,17 @@ datasource db {
   url          = env("DATABASE_URL")
 }
 
+enum PaperSize {
+  SHORT
+  LONG
+}
+
+enum ColorLevel {
+  BW
+  HALF_COLOR
+  FULL_COLOR
+}
+
 model users {
   id            String   @id @default(cuid())
   username      String   @unique
@@ -39,6 +50,7 @@ model students {
   updated_at    DateTime @updatedAt
   checkouts     book_checkouts[]
   activities    student_activities[]
+  printing_jobs printing_jobs[]
 }
 
 model books {
@@ -64,6 +76,8 @@ model books {
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
   checkouts         book_checkouts[]
+  default_policy_id String?
+  default_policy    borrowing_policies? @relation("BookDefaultPolicy", fields: [default_policy_id], references: [id])
 }
 
 model book_checkouts {
@@ -81,6 +95,12 @@ model book_checkouts {
 
   book          books    @relation(fields: [book_id], references: [id])
   student       students @relation(fields: [student_id], references: [id])
+  policy_id     String?
+  policy        borrowing_policies? @relation(fields: [policy_id], references: [id])
+  fine_policy_id String?
+  fine_policy   fine_policies? @relation(fields: [fine_policy_id], references: [id])
+  fine_paid     Boolean  @default(false)
+  fine_paid_at  DateTime?
 }
 
 model equipment {
@@ -104,10 +124,117 @@ model student_activities {
   start_time    DateTime @default(now())
   end_time      DateTime?
   status        String   @default("ACTIVE")
+  metadata      Json?
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
   student       students @relation(fields: [student_id], references: [id])
+  session_id    String?
+  sections      student_activities_sections[]
+
+  @@unique([session_id])
+}
+
+model library_sections {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  activities  student_activities_sections[]
+
+  @@index([code])
+}
+
+model student_activities_sections {
+  id           String   @id @default(cuid())
+  activity_id  String
+  section_id   String
+  created_at   DateTime @default(now())
+
+  activity     student_activities @relation(fields: [activity_id], references: [id])
+  section      library_sections   @relation(fields: [section_id], references: [id])
+
+  @@unique([activity_id, section_id])
+}
+
+model borrowing_policies {
+  id          String   @id @default(cuid())
+  name        String?
+  category    String   @unique
+  loan_days   Int
+  overnight   Boolean  @default(false)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  checkouts   book_checkouts[]
+  default_for_books books[] @relation("BookDefaultPolicy")
+}
+
+model fine_policies {
+  id          String   @id @default(cuid())
+  grade_min   Int
+  grade_max   Int
+  rate_per_day Float
+  currency    String   @default("PHP")
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  checkouts   book_checkouts[]
+
+  @@index([grade_min, grade_max])
+}
+
+model printing_pricing {
+  id           String     @id @default(cuid())
+  paper_size   PaperSize
+  color_level  ColorLevel
+  price        Float
+  currency     String     @default("PHP")
+  effective_from DateTime @default(now())
+  is_active    Boolean    @default(true)
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  @@index([paper_size, color_level])
+}
+
+model printing_jobs {
+  id             String     @id @default(cuid())
+  student_id     String
+  paper_size     PaperSize
+  color_level    ColorLevel
+  pages          Int
+  price_per_page Float
+  total_cost     Float
+  paid           Boolean    @default(false)
+  receipt_no     String?
+  created_at     DateTime   @default(now())
+  paid_at        DateTime?
+  metadata       Json?
+
+  student        students   @relation(fields: [student_id], references: [id])
+
+  @@index([student_id])
+  @@index([created_at])
+}
+
+model announcements {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  start_time  DateTime
+  end_time    DateTime?
+  is_active   Boolean  @default(true)
+  priority    String   @default("NORMAL")
+  created_by_user_id String?
+  created_by_username String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([is_active, start_time, end_time])
 }
 
 model system_settings {

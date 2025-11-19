@@ -1,9 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
-import { authenticate } from '../middleware/authenticate';
+import { authenticate, requireRole } from '../middleware/authenticate';
 import { logger } from '../utils/logger';
 import { PrismaClient } from '@prisma/client';
+import { BorrowingPolicyService } from '../services/borrowingPolicyService';
+import { FineCalculationService } from '../services/fineCalculationService';
+import websocketServer from '../websocket/websocketServer';
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -12,6 +15,7 @@ const router = Router();
 router.get(
   '/',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get borrows request', {
       query: req.query,
@@ -101,10 +105,179 @@ router.get(
   }),
 );
 
+// GET /api/borrows/overdue - List overdue books (placed before /:id to avoid param capture)
+router.get(
+  '/list/overdue',
+  authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Get overdue borrows request', {
+      userId: (req as any).user?.id,
+    });
+
+    try {
+      const today = new Date();
+
+      const overdueBorrows = await prisma.book_checkouts.findMany({
+        where: {
+          status: 'ACTIVE',
+          due_date: { lt: today },
+        },
+        include: {
+          student: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+              grade_level: true,
+              email: true,
+            },
+          },
+          book: {
+            select: {
+              id: true,
+              title: true,
+              author: true,
+              accession_no: true,
+              category: true,
+            },
+          },
+        },
+        orderBy: { due_date: 'asc' },
+      });
+
+      const overdueWithDays = await Promise.all(
+        overdueBorrows.map(async (borrow) => {
+          const daysOverdue = Math.ceil((today.getTime() - borrow.due_date.getTime()) / (1000 * 60 * 60 * 24));
+          let rate = 0;
+          try {
+            rate = await FineCalculationService.getRateForGrade(borrow.student.grade_level);
+          } catch {}
+          const fineAmount = daysOverdue * rate;
+          return { ...borrow, days_overdue: daysOverdue, fine_amount: fineAmount };
+        }),
+      );
+
+      res.json({ success: true, data: overdueWithDays, count: overdueWithDays.length });
+    } catch (error) {
+      logger.error('Error retrieving overdue borrows', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// POST /api/borrows/dev/seed/overdue - Seed a controlled overdue borrow (development only)
+router.post(
+  '/dev/seed/overdue',
+  authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
+  asyncHandler(async (req: Request, res: Response) => {
+    if (process.env.NODE_ENV !== 'development') {
+      return res.status(403).json({ success: false, message: 'Not allowed outside development' });
+    }
+
+    try {
+      const { student_id, book_id, days_overdue = 3 } = req.body as any;
+
+      let student = null as any;
+      let book = null as any;
+
+      if (student_id) {
+        student = await prisma.students.findUnique({ where: { id: String(student_id) } });
+      }
+      if (!student) {
+        student = await prisma.students.findFirst();
+      }
+      if (!student) {
+        student = await prisma.students.create({
+          data: {
+            student_id: `DEV-${Date.now()}`,
+            first_name: 'Dev',
+            last_name: 'Student',
+            grade_level: 10,
+          },
+        });
+      }
+
+      if (book_id) {
+        book = await prisma.books.findUnique({ where: { id: String(book_id) } });
+      }
+      if (!book) {
+        book = await prisma.books.findFirst({ where: { available_copies: { gt: 0 } } });
+      }
+      if (!book) {
+        book = await prisma.books.create({
+          data: {
+            title: 'Dev Overdue Sample',
+            author: 'System',
+            category: 'General',
+            accession_no: `ACC-${Date.now()}`,
+            total_copies: 1,
+            available_copies: 1,
+          },
+        });
+      }
+
+      const checkoutDate = new Date();
+      const dueDate = new Date(checkoutDate.getTime() - Math.max(1, Number(days_overdue)) * 24 * 60 * 60 * 1000);
+
+      const existingActive = await prisma.book_checkouts.findFirst({
+        where: { student_id: student.id, book_id: book.id, status: 'ACTIVE' },
+      });
+      if (existingActive) {
+        return res.status(200).json({ success: true, data: existingActive });
+      }
+
+      const borrow = await prisma.book_checkouts.create({
+        data: {
+          student_id: student.id,
+          book_id: book.id,
+          checkout_date: checkoutDate,
+          due_date: dueDate,
+          status: 'ACTIVE',
+        },
+        include: {
+          student: {
+            select: { id: true, student_id: true, first_name: true, last_name: true, grade_level: true },
+          },
+          book: {
+            select: { id: true, title: true, author: true, accession_no: true, category: true },
+          },
+        },
+      });
+
+      await prisma.books.update({
+        where: { id: book.id },
+        data: { available_copies: Math.max(0, (book.available_copies ?? 0) - 1) },
+      });
+
+      websocketServer.emitBorrowReturnUpdate({
+        type: 'checkout',
+        studentId: borrow.student_id,
+        bookId: borrow.book_id,
+        dueDate: borrow.due_date.toISOString(),
+        fineAmount: 0,
+        status: 'ACTIVE',
+      });
+
+      res.status(201).json({ success: true, data: borrow });
+    } catch (error) {
+      logger.error('Error seeding overdue borrow', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
 // GET /api/borrows/:id
 router.get(
   '/:id',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get borrow by ID request', {
       borrowId: req.params['id'],
@@ -164,6 +337,7 @@ router.get(
 router.post(
   '/',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Create borrow request', {
       studentId: req.body.student_id,
@@ -172,7 +346,7 @@ router.post(
     });
 
     try {
-      const { student_id, book_id, due_date } = req.body;
+      const { student_id, book_id, due_date, material_name, material_type, accession_no } = req.body;
 
       // Check if student exists
       const student = await prisma.students.findUnique({
@@ -186,10 +360,31 @@ router.post(
         });
       }
 
-      // Check if book exists and is available
-      const book = await prisma.books.findUnique({
-        where: { id: book_id },
-      });
+      // Resolve book: either by provided book_id or manual material fields
+      let book = book_id
+        ? await prisma.books.findUnique({ where: { id: book_id } })
+        : null;
+
+      if (!book && !book_id && (material_name || accession_no)) {
+        const categoryFromType = (material_type || 'General').trim();
+        const existingByAccession = accession_no
+          ? await prisma.books.findFirst({ where: { accession_no } })
+          : null;
+        if (existingByAccession) {
+          book = existingByAccession;
+        } else {
+          book = await prisma.books.create({
+            data: {
+              title: material_name || 'Untitled Material',
+              author: 'Unknown',
+              category: categoryFromType,
+              accession_no: accession_no || `ACC-${Date.now()}`,
+              total_copies: 1,
+              available_copies: 1,
+            },
+          });
+        }
+      }
 
       if (!book) {
         return res.status(404).json({
@@ -221,17 +416,29 @@ router.post(
         });
       }
 
-      // Calculate due date if not provided (default: 14 days)
+      // Calculate due date if not provided using borrowing policy
       const checkoutDate = new Date();
-      const defaultDueDate = new Date(checkoutDate);
-      defaultDueDate.setDate(defaultDueDate.getDate() + 14);
+      let computedDueDate = new Date(checkoutDate);
+      if (!due_date) {
+        let policy: any = null;
+        if (book.default_policy_id) {
+          const policies = await BorrowingPolicyService.listPolicies(false);
+          policy = policies.find(p => p.id === book!.default_policy_id);
+        }
+        if (!policy) {
+          policy = await BorrowingPolicyService.getPolicyByCategory(book.category || 'General');
+        }
+        if (policy) {
+          computedDueDate = BorrowingPolicyService.computeDueDate(checkoutDate, { loan_days: policy.loan_days, overnight: policy.overnight });
+        }
+      }
 
       const borrow = await prisma.book_checkouts.create({
         data: {
           student_id,
-          book_id,
+          book_id: book.id,
           checkout_date: checkoutDate,
-          due_date: due_date ? new Date(due_date) : defaultDueDate,
+          due_date: due_date ? new Date(due_date) : computedDueDate,
           status: 'ACTIVE',
         },
         include: {
@@ -258,9 +465,9 @@ router.post(
 
       // Update book availability
       await prisma.books.update({
-        where: { id: book_id },
+        where: { id: book.id },
         data: {
-          available_copies: book.available_copies - 1,
+          available_copies: Math.max(0, (book.available_copies ?? 0) - 1),
         },
       });
 
@@ -271,6 +478,16 @@ router.post(
           activity_type: 'BOOK_CHECKOUT',
           description: `Checked out book: ${book.title}`,
         },
+      });
+
+      // Emit real-time update
+      websocketServer.emitBorrowReturnUpdate({
+        type: 'checkout',
+        studentId: borrow.student_id,
+        bookId: borrow.book_id,
+        dueDate: borrow.due_date.toISOString(),
+        fineAmount: 0,
+        status: 'ACTIVE',
       });
 
       res.status(201).json({
@@ -290,6 +507,7 @@ router.post(
 router.put(
   '/:id/return',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Return book request', {
       borrowId: req.params['id'],
@@ -318,14 +536,13 @@ router.put(
 
       const returnDate = new Date();
 
-      // Calculate fine if overdue
+      // Calculate fine via service (grade-based tiers)
       let fineAmount = 0;
-      if (returnDate > borrow.due_date) {
-        const daysOverdue = Math.ceil(
-          (returnDate.getTime() - borrow.due_date.getTime()) /
-            (1000 * 60 * 60 * 24),
-        );
-        fineAmount = daysOverdue * 1.0; // $1 per day
+      try {
+        const calc = await FineCalculationService.calculateFineForCheckout(req.params['id'], returnDate);
+        fineAmount = calc.fine_amount ?? 0;
+      } catch {
+        fineAmount = 0;
       }
 
       const updatedBorrow = await prisma.book_checkouts.update({
@@ -370,8 +587,18 @@ router.put(
         data: {
           student_id: borrow.student_id,
           activity_type: 'BOOK_RETURN',
-          description: `Returned book: ${borrow.book.title}${fineAmount > 0 ? ` (Fine: $${fineAmount.toFixed(2)})` : ''}`,
+          description: `Returned book: ${borrow.book.title}${fineAmount > 0 ? ` (Fine: ₱${fineAmount.toFixed(2)})` : ''}`,
         },
+      });
+
+      // Emit real-time update
+      websocketServer.emitBorrowReturnUpdate({
+        type: 'return',
+        studentId: updatedBorrow.student.id,
+        bookId: updatedBorrow.book.id,
+        dueDate: updatedBorrow.due_date.toISOString(),
+        fineAmount,
+        status: updatedBorrow.status as 'ACTIVE' | 'RETURNED',
       });
 
       res.json({
@@ -392,6 +619,7 @@ router.put(
 router.get(
   '/overdue',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get overdue borrows request', {
       userId: (req as any).user?.id,
@@ -433,18 +661,24 @@ router.get(
         },
       });
 
-      // Calculate days overdue for each borrow
-      const overdueWithDays = overdueBorrows.map(borrow => {
-        const daysOverdue = Math.ceil(
-          (today.getTime() - borrow.due_date.getTime()) / (1000 * 60 * 60 * 24),
-        );
-        const fineAmount = daysOverdue * 1.0;
-        return {
-          ...borrow,
-          days_overdue: daysOverdue,
-          fine_amount: fineAmount,
-        };
-      });
+      // Calculate days overdue and fine per grade policy
+      const overdueWithDays = await Promise.all(
+        overdueBorrows.map(async borrow => {
+          const daysOverdue = Math.ceil(
+            (today.getTime() - borrow.due_date.getTime()) / (1000 * 60 * 60 * 24),
+          );
+          let rate = 0;
+          try {
+            rate = await FineCalculationService.getRateForGrade(borrow.student.grade_level);
+          } catch {}
+          const fineAmount = daysOverdue * rate;
+          return {
+            ...borrow,
+            days_overdue: daysOverdue,
+            fine_amount: fineAmount,
+          };
+        }),
+      );
 
       res.json({
         success: true,
@@ -464,6 +698,7 @@ router.get(
 router.put(
   '/:id/fine',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Update fine request', {
       borrowId: req.params['id'],
@@ -530,6 +765,7 @@ router.put(
 router.get(
   '/student/:studentId',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get student borrows request', {
       studentId: req.params['studentId'],

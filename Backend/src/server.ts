@@ -4,7 +4,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import compression from 'compression';
-import { env, getAllowedOrigins } from './config/env';
+import { env, getAllowedOrigins, isDevelopment } from './config/env';
+import { config as dbConfig } from './config/database';
+import { cache } from './services/cacheService';
 import { connectDatabase } from './config/database';
 import { logger } from './utils/logger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
@@ -14,12 +16,17 @@ import { apiRoutes } from './routes/index';
 import { websocketServer } from './websocket/websocketServer';
 
 // Create Express application
+// @ts-ignore - Express types issue with Application inference
 const app = express();
 
 // Initialize database connection
 connectDatabase().catch(error => {
   logger.error('Failed to connect to database:', error);
-  process.exit(1);
+  if (isDevelopment()) {
+    logger.warn('Continuing without database connection in development');
+  } else {
+    process.exit(1);
+  }
 });
 
 // Security middleware
@@ -43,7 +50,16 @@ app.use(
     origin: getAllowedOrigins(),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Cache-Control',
+      'X-Correlation-Id',
+      'x-correlation-id',
+      'X-Request-Id',
+      'x-request-id',
+    ],
   }),
 );
 
@@ -60,13 +76,40 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // Body parsing middleware
+// @ts-ignore - Express middleware methods exist at runtime
 app.use(express.json({ limit: '10mb' }));
+// @ts-ignore - Express middleware methods exist at runtime
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Handle invalid JSON body parse errors
+app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {
+  if (err && err instanceof SyntaxError && (req as any).body === undefined) {
+    return res.status(400).json({
+      error: {
+        message: 'Invalid JSON body',
+        statusCode: 400,
+        timestamp: new Date().toISOString(),
+        path: req.originalUrl,
+        method: req.method,
+      },
+    });
+  }
+  next(err);
+});
 
 // Compression middleware
 app.use(compression());
 
 // Request logging middleware
+app.use((req: Request, res: Response, next: express.NextFunction) => {
+  try {
+    const existing = req.get('x-correlation-id') || req.get('x-request-id');
+    const id = existing || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    (req as any).id = id;
+    res.setHeader('x-correlation-id', id);
+  } catch {}
+  next();
+});
 app.use(requestLogger);
 
 // Performance monitoring middleware
@@ -76,12 +119,25 @@ app.use(performanceMonitor);
 app.use('/api', apiRoutes);
 
 // Health check endpoint
-app.get('/health', (_req: Request, res: Response) => {
+app.get('/health', async (_req: Request, res: Response) => {
+  let db = { status: 'unknown' as 'healthy' | 'unhealthy' | 'unknown' };
+  try {
+    const hc = await dbConfig.healthCheck();
+    db.status = hc.status === 'healthy' ? 'healthy' : 'unhealthy';
+  } catch {
+    db.status = 'unhealthy';
+  }
+  let redis = { available: false };
+  try {
+    redis.available = cache.isAvailable();
+  } catch {}
   res.status(200).json({
-    status: 'OK',
+    status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: env['NODE_ENV'],
+    db,
+    redis,
   });
 });
 
@@ -114,13 +170,6 @@ logger.info(`🔒 Security: Helmet, CORS, Rate Limiting enabled`);
 logger.info(`📝 Logging: Request logging and error handling configured`);
 logger.info(`🔌 WebSocket: Real-time communication enabled`);
 
-// Start server
-const PORT = env.PORT || 3001;
-const HOST = '0.0.0.0'; // Bind to IPv4 only to avoid port conflicts
-httpServer.listen(PORT, HOST, () => {
-  logger.info(`✅ CLMS Backend API running on port ${PORT}`);
-  logger.info(`🌐 HTTP: http://localhost:${PORT}`);
-  logger.info(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
-});
+// Server listen is handled in src/index.ts
 
 export { app as server, httpServer };

@@ -441,7 +441,7 @@ export default function AdvancedStudentSearch() {
                   onBlur={() =>
                     setTimeout(() => setShowSuggestions(false), 200)
                   }
-                  onKeyPress={(e) => {
+                  onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       setShowSuggestions(false);
                       performSearch();

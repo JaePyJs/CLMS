@@ -122,6 +122,41 @@ export function EquipmentUtilizationAnalytics({
   >([]);
 
   useEffect(() => {
+    if (!data && ((import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development'))) {
+      setUtilizationData([
+        { type: 'Computers', total: 10, inUse: 6, utilizationRate: 60 },
+        { type: 'AVR', total: 4, inUse: 2, utilizationRate: 50 },
+        { type: 'VR', total: 2, inUse: 1, utilizationRate: 50 },
+      ] as any);
+      setPeakUsageTimes([
+        { hour: 9, sessions: 12, timeRange: '9:00–10:00', utilizationRate: 70 },
+        { hour: 13, sessions: 9, timeRange: '1:00–2:00', utilizationRate: 55 },
+      ]);
+      setMaintenanceInsights([
+        { equipmentId: 'PC-01', nextMaintenance: new Date(Date.now() + 7*86400000).toISOString(), type: 'Preventive', urgency: 'low', description: 'Routine cleaning' },
+        { equipmentId: 'AVR-02', nextMaintenance: new Date(Date.now() + 3*86400000).toISOString(), type: 'Corrective', urgency: 'medium', description: 'Audio calibration' },
+      ]);
+    }
+  }, [data]);
+
+  const handleExportEquipment = () => {
+    const rows = [
+      ['Type', 'Total', 'In Use', 'Utilization %'],
+      ...utilizationData.map(u => [u.type, String(u.total), String(u.inUse), String(u.utilizationRate)])
+    ];
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `equipment-${timeframe}-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
+  useEffect(() => {
     if (data) {
       processEquipmentData(data);
     }
@@ -729,7 +764,7 @@ export function EquipmentUtilizationAnalytics({
                 ? 'Optimal'
                 : 'Available'}
           </Badge>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExportEquipment}>
             <BarChart3 className="h-4 w-4 mr-2" />
             Export Report
           </Button>

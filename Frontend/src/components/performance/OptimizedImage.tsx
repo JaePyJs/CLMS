@@ -280,13 +280,6 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>(
             objectFit,
           }}
         />
-
-        {/* Priority Indicator for Development */}
-        {process.env.NODE_ENV === 'development' && priority && (
-          <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
-            Priority
-          </div>
-        )}
       </div>
     );
   }

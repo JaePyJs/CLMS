@@ -122,7 +122,13 @@ const NotificationCenter: React.FC = () => {
       }
 
       const response = await notificationApi.getNotifications(params);
-      setNotifications(response.data.notifications);
+      
+      // Filter out return confirmations to avoid showing them on checkout screen
+      const filteredNotifications = response.data.notifications.filter(
+        (notification) => !notification.title.toLowerCase().includes('return confirmation')
+      );
+      
+      setNotifications(filteredNotifications);
       setUnreadCount(response.data.unreadCount);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -134,21 +140,21 @@ const NotificationCenter: React.FC = () => {
   }, [filter, typeFilter, token]);
 
   useEffect(() => {
-    // Only fetch if authenticated
-    if (!token) {
+    // Only fetch if authenticated and notification panel is open
+    if (!token || !isOpen) {
       return;
     }
 
-    // Initial fetch
+    // Initial fetch when panel opens
     fetchNotifications();
 
-    // Poll for new notifications every 30 seconds
+    // Poll for new notifications every 30 seconds only when panel is open
     const interval = setInterval(() => {
       fetchNotifications();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [filter, typeFilter, token, fetchNotifications]); // fetchNotifications will be captured by closure when effect re-runs
+  }, [filter, typeFilter, token, fetchNotifications, isOpen]); // fetchNotifications will be captured by closure when effect re-runs
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
