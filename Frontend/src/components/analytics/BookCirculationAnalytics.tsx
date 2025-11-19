@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   PieChart,
   Pie,
@@ -15,8 +21,8 @@ import {
   Legend,
   ResponsiveContainer,
   Area,
-  AreaChart
-} from 'recharts'
+  AreaChart,
+} from 'recharts';
 import {
   BookOpen,
   TrendingUp,
@@ -24,105 +30,177 @@ import {
   CheckCircle,
   Users,
   Filter,
-  Download
-} from 'lucide-react'
+  Download,
+} from 'lucide-react';
+
+interface RawCategoryData {
+  category: string;
+  count: number;
+}
+
+interface RawBookData {
+  id: string;
+  title: string;
+  author: string;
+  category: string;
+  circulationCount: number;
+  popularity: number;
+  availableCopies: number;
+  totalCopies: number;
+}
+
+interface CirculationAnalyticsData {
+  circulationByCategory?: RawCategoryData[];
+  mostBorrowedBooks?: RawBookData[];
+  totalCirculation?: number;
+  overdueData?: {
+    overdueByCategory?: Array<{ category: string; count: number }>;
+  };
+  trends?: {
+    growthRate?: number;
+  };
+  circulation?: {
+    circulationRate?: number;
+    returnRate?: number;
+    overdueRate?: number;
+  };
+  overdueAnalysis?: {
+    overdueByCategory?: Array<{ category: string; count: number }>;
+    totalOverdue?: number;
+    averageOverdueDays?: number;
+  };
+}
 
 interface BookCirculationAnalyticsProps {
-  timeframe: 'day' | 'week' | 'month'
-  data?: any
-  isLoading?: boolean
+  timeframe: 'day' | 'week' | 'month';
+  data?: CirculationAnalyticsData;
+  isLoading?: boolean;
 }
 
 interface CirculationTrend {
-  date: string
-  borrowed: number
-  returned: number
-  overdue: number
+  date: string;
+  borrowed: number;
+  returned: number;
+  overdue: number;
 }
 
 interface CategoryData {
-  category: string
-  count: number
-  percentage: number
-  color: string
+  category: string;
+  count: number;
+  percentage: number;
+  color: string;
 }
 
 interface PopularBook {
-  id: string
-  title: string
-  author: string
-  category: string
-  circulationCount: number
-  popularity: number
-  availableCopies: number
-  totalCopies: number
-  overdueCount?: number
+  id: string;
+  title: string;
+  author: string;
+  category: string;
+  circulationCount: number;
+  popularity: number;
+  availableCopies: number;
+  totalCopies: number;
+  overdueCount?: number;
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF7C7C']
+const COLORS = [
+  '#0088FE',
+  '#00C49F',
+  '#FFBB28',
+  '#FF8042',
+  '#8884D8',
+  '#82CA9D',
+  '#FFC658',
+  '#FF7C7C',
+];
 
-export function BookCirculationAnalytics({ timeframe, data, isLoading = false }: BookCirculationAnalyticsProps) {
-  const [selectedView, setSelectedView] = useState<'overview' | 'trends' | 'categories' | 'popular'>('overview')
-  const [circulationTrends, setCirculationTrends] = useState<CirculationTrend[]>([])
-  const [categoryData, setCategoryData] = useState<CategoryData[]>([])
-  const [popularBooks, setPopularBooks] = useState<PopularBook[]>([])
+export function BookCirculationAnalytics({
+  timeframe,
+  data,
+  isLoading = false,
+}: BookCirculationAnalyticsProps) {
+  const [selectedView, setSelectedView] = useState<
+    'overview' | 'trends' | 'categories' | 'popular'
+  >('overview');
+  const [circulationTrends, setCirculationTrends] = useState<
+    CirculationTrend[]
+  >([]);
+  const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
+  const [popularBooks, setPopularBooks] = useState<PopularBook[]>([]);
 
   useEffect(() => {
     if (data) {
-      processCirculationData(data)
+      processCirculationData(data);
     }
-  }, [data, timeframe])
+  }, [data, timeframe]);
 
-  const processCirculationData = (analyticsData: any) => {
+  const processCirculationData = (analyticsData: CirculationAnalyticsData) => {
     // Process circulation trends
-    const trends: CirculationTrend[] = generateMockTrends(timeframe)
-    setCirculationTrends(trends)
+    const trends: CirculationTrend[] = generateMockTrends(timeframe);
+    setCirculationTrends(trends);
 
     // Process category data
-    const categories = analyticsData.circulationByCategory?.map((cat: any, index: number) => ({
-      category: cat.category,
-      count: cat.count,
-      percentage: calculatePercentage(cat.count, analyticsData.totalCirculation),
-      color: COLORS[index % COLORS.length]
-    })) || []
-    setCategoryData(categories)
+    const categories =
+      analyticsData.circulationByCategory?.map(
+        (cat: RawCategoryData, index: number) => ({
+          category: cat.category,
+          count: cat.count,
+          percentage: calculatePercentage(
+            cat.count,
+            analyticsData.totalCirculation
+          ),
+          color: COLORS[index % COLORS.length],
+        })
+      ) || [];
+    setCategoryData(categories);
 
     // Process popular books
-    const books = analyticsData.mostBorrowedBooks?.map((book: any) => ({
-      ...book,
-      overdueCount: Math.floor(Math.random() * 5) // Mock overdue count
-    })) || []
-    setPopularBooks(books)
-  }
+    const books =
+      analyticsData.mostBorrowedBooks?.map((book: RawBookData) => ({
+        ...book,
+        overdueCount: Math.floor(Math.random() * 5), // Mock overdue count
+      })) || [];
+    setPopularBooks(books);
+  };
 
   const generateMockTrends = (tf: string): CirculationTrend[] => {
-    const dataPoints = tf === 'day' ? 24 : tf === 'week' ? 7 : 30
-    const trends: CirculationTrend[] = []
+    const dataPoints = tf === 'day' ? 24 : tf === 'week' ? 7 : 30;
+    const trends: CirculationTrend[] = [];
 
     for (let i = 0; i < dataPoints; i++) {
-      const baseValue = tf === 'day' ? 15 : tf === 'week' ? 100 : 400
-      const variation = Math.random() * 0.4 - 0.2 // ±20% variation
+      const baseValue = tf === 'day' ? 15 : tf === 'week' ? 100 : 400;
+      const variation = Math.random() * 0.4 - 0.2; // ±20% variation
 
       trends.push({
-        date: tf === 'day' ? `${i}:00` : tf === 'week' ? (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i] ?? `Day ${i}`) : `Day ${i + 1}`,
+        date:
+          tf === 'day'
+            ? `${i}:00`
+            : tf === 'week'
+              ? (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i] ??
+                `Day ${i}`)
+              : `Day ${i + 1}`,
         borrowed: Math.round(baseValue * (1 + variation)),
         returned: Math.round(baseValue * 0.8 * (1 + variation * 0.5)),
-        overdue: Math.round(baseValue * 0.1 * (1 + variation * 0.3))
-      })
+        overdue: Math.round(baseValue * 0.1 * (1 + variation * 0.3)),
+      });
     }
 
-    return trends
-  }
+    return trends;
+  };
 
   const calculatePercentage = (value: number, total: number): number => {
-    return total > 0 ? Math.round((value / total) * 100) : 0
-  }
+    return total > 0 ? Math.round((value / total) * 100) : 0;
+  };
 
   const getPopularityBadge = (popularity: number) => {
-    if (popularity >= 80) return <Badge className="bg-green-500">High</Badge>
-    if (popularity >= 50) return <Badge className="bg-yellow-500">Medium</Badge>
-    return <Badge variant="outline">Low</Badge>
-  }
+    if (popularity >= 80) {
+      return <Badge className="bg-green-500">High</Badge>;
+    }
+    if (popularity >= 50) {
+      return <Badge className="bg-yellow-500">Medium</Badge>;
+    }
+    return <Badge variant="outline">Low</Badge>;
+  };
 
   const CirculationOverview = () => (
     <div className="space-y-6">
@@ -130,25 +208,37 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Circulation</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Circulation
+            </CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.totalCirculation || 0}</div>
+            <div className="text-2xl font-bold">
+              {data?.totalCirculation || 0}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {data?.trends?.growthRate > 0 ? '+' : ''}{data?.trends?.growthRate?.toFixed(1) || 0}% from last period
+              {data?.trends?.growthRate > 0 ? '+' : ''}
+              {data?.trends?.growthRate?.toFixed(1) || 0}% from last period
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Circulation Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Circulation Rate
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.circulation?.circulationRate?.toFixed(1) || 0}%</div>
-            <Progress value={data?.circulation?.circulationRate || 0} className="mt-2" />
+            <div className="text-2xl font-bold">
+              {data?.circulation?.circulationRate?.toFixed(1) || 0}%
+            </div>
+            <Progress
+              value={data?.circulation?.circulationRate || 0}
+              className="mt-2"
+            />
           </CardContent>
         </Card>
 
@@ -158,8 +248,13 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.circulation?.returnRate?.toFixed(1) || 0}%</div>
-            <Progress value={data?.circulation?.returnRate || 0} className="mt-2" />
+            <div className="text-2xl font-bold">
+              {data?.circulation?.returnRate?.toFixed(1) || 0}%
+            </div>
+            <Progress
+              value={data?.circulation?.returnRate || 0}
+              className="mt-2"
+            />
           </CardContent>
         </Card>
 
@@ -169,8 +264,13 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.circulation?.overdueRate?.toFixed(1) || 0}%</div>
-            <Progress value={data?.circulation?.overdueRate || 0} className="mt-2" />
+            <div className="text-2xl font-bold">
+              {data?.circulation?.overdueRate?.toFixed(1) || 0}%
+            </div>
+            <Progress
+              value={data?.circulation?.overdueRate || 0}
+              className="mt-2"
+            />
           </CardContent>
         </Card>
       </div>
@@ -186,11 +286,17 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={circulationTrends}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(var(--border))"
+                opacity={0.3}
+              />
               <XAxis
                 dataKey="date"
                 tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                tickFormatter={(value) => timeframe === 'month' ? `Day ${value}` : value}
+                tickFormatter={(value) =>
+                  timeframe === 'month' ? `Day ${value}` : value
+                }
               />
               <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip
@@ -198,7 +304,7 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px',
-                  color: 'hsl(var(--foreground))'
+                  color: 'hsl(var(--foreground))',
                 }}
               />
               <Legend />
@@ -234,7 +340,7 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
         </CardContent>
       </Card>
     </div>
-  )
+  );
 
   const CategoryAnalysis = () => (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -254,7 +360,9 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ category, percentage }) => `${category} ${percentage}%`}
+                label={({ category, percentage }) =>
+                  `${category} ${percentage}%`
+                }
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="count"
@@ -267,7 +375,7 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
                 contentStyle={{
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
                 }}
               />
             </PieChart>
@@ -288,7 +396,9 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
             {categoryData.map((category) => (
               <div key={category.category} className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">{category.category}</span>
+                  <span className="text-sm font-medium">
+                    {category.category}
+                  </span>
                   <span className="text-sm text-muted-foreground">
                     {category.count} books ({category.percentage}%)
                   </span>
@@ -300,7 +410,7 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
         </CardContent>
       </Card>
     </div>
-  )
+  );
 
   const PopularBooks = () => (
     <Card>
@@ -313,7 +423,10 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
       <CardContent>
         <div className="space-y-4">
           {popularBooks.map((book, index) => (
-            <div key={book.id} className="flex items-center justify-between p-4 border rounded-lg">
+            <div
+              key={book.id}
+              className="flex items-center justify-between p-4 border rounded-lg"
+            >
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-lg font-semibold">#{index + 1}</span>
@@ -349,10 +462,10 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
         </div>
       </CardContent>
     </Card>
-  )
+  );
 
   const OverdueAnalysis = () => {
-    const overdueData = data?.overdueAnalysis
+    const overdueData = data?.overdueAnalysis;
 
     return (
       <div className="grid gap-6 lg:grid-cols-2">
@@ -371,25 +484,40 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
                   <div className="text-2xl font-bold text-red-600">
                     {overdueData?.totalOverdue || 0}
                   </div>
-                  <div className="text-sm text-muted-foreground">Total Overdue</div>
+                  <div className="text-sm text-muted-foreground">
+                    Total Overdue
+                  </div>
                 </div>
                 <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-yellow-600">
                     {overdueData?.averageOverdueDays?.toFixed(1) || 0}
                   </div>
-                  <div className="text-sm text-muted-foreground">Avg Days Overdue</div>
+                  <div className="text-sm text-muted-foreground">
+                    Avg Days Overdue
+                  </div>
                 </div>
               </div>
 
               {/* Overdue by Category */}
               <div className="space-y-2">
                 <h4 className="font-medium">Overdue by Category</h4>
-                {overdueData?.overdueByCategory?.map((cat: any) => (
-                  <div key={cat.category} className="flex justify-between items-center p-2 bg-muted rounded">
-                    <span className="text-sm">{cat.category}</span>
-                    <span className="text-sm font-medium">{cat.count} books ({cat.averageDays} days)</span>
-                  </div>
-                ))}
+                {overdueData?.overdueByCategory?.map(
+                  (cat: {
+                    category: string;
+                    count: number;
+                    averageDays?: number;
+                  }) => (
+                    <div
+                      key={cat.category}
+                      className="flex justify-between items-center p-2 bg-muted rounded"
+                    >
+                      <span className="text-sm">{cat.category}</span>
+                      <span className="text-sm font-medium">
+                        {cat.count} books ({cat.averageDays} days)
+                      </span>
+                    </div>
+                  )
+                )}
               </div>
             </div>
           </CardContent>
@@ -436,8 +564,8 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
           </CardContent>
         </Card>
       </div>
-    )
-  }
+    );
+  };
 
   if (isLoading) {
     return (
@@ -451,7 +579,7 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -464,20 +592,14 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
             Comprehensive analysis of book borrowing patterns and trends
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        </div>
       </div>
 
       {/* Analytics Tabs */}
-      <Tabs value={selectedView} onValueChange={(value: any) => setSelectedView(value)} className="space-y-4">
+      <Tabs
+        value={selectedView}
+        onValueChange={(value) => setSelectedView(value as typeof selectedView)}
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="trends">Trends</TabsTrigger>
@@ -503,7 +625,7 @@ export function BookCirculationAnalytics({ timeframe, data, isLoading = false }:
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
 
-export default BookCirculationAnalytics
+export default BookCirculationAnalytics;

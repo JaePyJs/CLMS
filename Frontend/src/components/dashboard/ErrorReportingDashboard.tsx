@@ -1,10 +1,5 @@
 import { useState } from 'react';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -22,7 +17,20 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, Activity, Bug, CheckCircle, XCircle, AlertCircle, RefreshCw, Download, User } from 'lucide-react';
+import {
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Activity,
+  Bug,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  RefreshCw,
+  Download,
+  User,
+} from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/services/api';
 
@@ -123,15 +131,24 @@ const CATEGORY_COLORS = {
 };
 
 export const ErrorReportingDashboard: React.FC = () => {
-  const [timeframe, setTimeframe] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
+  const [timeframe, setTimeframe] = useState<'1h' | '24h' | '7d' | '30d'>(
+    '24h'
+  );
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterSeverity, setFilterSeverity] = useState<string>('all');
   const [showResolved, setShowResolved] = useState(false);
 
-  const { data: dashboard, isLoading, error, refetch } = useQuery<ErrorDashboard>({
+  const {
+    data: dashboard,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<ErrorDashboard>({
     queryKey: ['error-dashboard', timeframe],
     queryFn: async () => {
-      const response = await api.get(`/api/errors/dashboard?timeframe=${timeframe}`);
+      const response = await api.get(
+        `/api/errors/dashboard?timeframe=${timeframe}`
+      );
       return response.data as ErrorDashboard;
     },
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -141,9 +158,15 @@ export const ErrorReportingDashboard: React.FC = () => {
     queryKey: ['error-reports', filterCategory, filterSeverity, showResolved],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filterCategory !== 'all') params.append('category', filterCategory ?? '');
-      if (filterSeverity !== 'all') params.append('severity', filterSeverity ?? '');
-      if (!showResolved) params.append('resolved', 'false');
+      if (filterCategory !== 'all') {
+        params.append('category', filterCategory ?? '');
+      }
+      if (filterSeverity !== 'all') {
+        params.append('severity', filterSeverity ?? '');
+      }
+      if (!showResolved) {
+        params.append('resolved', 'false');
+      }
 
       const response = await api.get(`/api/errors/reports?${params}`);
       return response.data as ErrorReport[];
@@ -174,8 +197,12 @@ export const ErrorReportingDashboard: React.FC = () => {
     try {
       const params = new URLSearchParams();
       params.append('format', format ?? '');
-      if (filterCategory !== 'all') params.append('category', filterCategory ?? '');
-      if (filterSeverity !== 'all') params.append('severity', filterSeverity ?? '');
+      if (filterCategory !== 'all') {
+        params.append('category', filterCategory ?? '');
+      }
+      if (filterSeverity !== 'all') {
+        params.append('severity', filterSeverity ?? '');
+      }
 
       const response = await api.get(`/api/errors/reports/export?${params}`);
       const blob = new Blob([response.data as string], {
@@ -231,7 +258,9 @@ export const ErrorReportingDashboard: React.FC = () => {
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-lg font-semibold">Failed to load error dashboard</p>
+          <p className="text-lg font-semibold">
+            Failed to load error dashboard
+          </p>
           <Button onClick={() => refetch()} className="mt-4">
             Try Again
           </Button>
@@ -250,7 +279,9 @@ export const ErrorReportingDashboard: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Error Reporting Dashboard</h1>
-          <p className="text-muted-foreground">Monitor and analyze system errors</p>
+          <p className="text-muted-foreground">
+            Monitor and analyze system errors
+          </p>
         </div>
         <div className="flex gap-2">
           <select
@@ -281,7 +312,9 @@ export const ErrorReportingDashboard: React.FC = () => {
             <Bug className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboard.overview.totalErrors}</div>
+            <div className="text-2xl font-bold">
+              {dashboard.overview.totalErrors}
+            </div>
             <p className="text-xs text-muted-foreground">
               {dashboard.overview.errorsLast24h} in last 24h
             </p>
@@ -294,7 +327,9 @@ export const ErrorReportingDashboard: React.FC = () => {
             <XCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboard.overview.unresolvedErrors}</div>
+            <div className="text-2xl font-bold">
+              {dashboard.overview.unresolvedErrors}
+            </div>
             <p className="text-xs text-muted-foreground">
               {dashboard.overview.criticalErrors} critical
             </p>
@@ -311,7 +346,9 @@ export const ErrorReportingDashboard: React.FC = () => {
               {(dashboard.overview.errorRate * 100).toFixed(2)}%
             </div>
             <p className="text-xs text-muted-foreground">
-              {dashboard.overview.errorRate > 0.05 ? 'Above threshold' : 'Normal'}
+              {dashboard.overview.errorRate > 0.05
+                ? 'Above threshold'
+                : 'Normal'}
             </p>
           </CardContent>
         </Card>
@@ -322,9 +359,16 @@ export const ErrorReportingDashboard: React.FC = () => {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboard.overview.uptime}%</div>
+            <div className="text-2xl font-bold">
+              {dashboard.overview.uptime}%
+            </div>
             <p className="text-xs text-muted-foreground">
-              Last {timeframe === '1h' ? 'hour' : timeframe === '24h' ? '24 hours' : timeframe}
+              Last{' '}
+              {timeframe === '1h'
+                ? 'hour'
+                : timeframe === '24h'
+                  ? '24 hours'
+                  : timeframe}
             </p>
           </CardContent>
         </Card>
@@ -388,12 +432,18 @@ export const ErrorReportingDashboard: React.FC = () => {
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="count"
-                      label={({ category, percentage }) => `${category} ${percentage}%`}
+                      label={({ category, percentage }) =>
+                        `${category} ${percentage}%`
+                      }
                     >
                       {dashboard.categoryBreakdown.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={CATEGORY_COLORS[entry.category as keyof typeof CATEGORY_COLORS] || '#8884d8'}
+                          fill={
+                            CATEGORY_COLORS[
+                              entry.category as keyof typeof CATEGORY_COLORS
+                            ] || '#8884d8'
+                          }
                         />
                       ))}
                     </Pie>
@@ -420,7 +470,8 @@ export const ErrorReportingDashboard: React.FC = () => {
                         <div>
                           <p className="font-medium">{error.message}</p>
                           <p className="text-sm text-muted-foreground">
-                            {error.count} occurrences • Last: {new Date(error.lastOccurred).toLocaleString()}
+                            {error.count} occurrences • Last:{' '}
+                            {new Date(error.lastOccurred).toLocaleString()}
                           </p>
                         </div>
                       </div>
@@ -453,7 +504,11 @@ export const ErrorReportingDashboard: React.FC = () => {
                       {dashboard.severityBreakdown.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={SEVERITY_COLORS[entry.severity as keyof typeof SEVERITY_COLORS]}
+                          fill={
+                            SEVERITY_COLORS[
+                              entry.severity as keyof typeof SEVERITY_COLORS
+                            ]
+                          }
                         />
                       ))}
                     </Bar>
@@ -470,7 +525,10 @@ export const ErrorReportingDashboard: React.FC = () => {
               <CardContent>
                 <div className="space-y-3">
                   {dashboard.categoryBreakdown.map((category) => (
-                    <div key={category.category} className="flex items-center justify-between">
+                    <div
+                      key={category.category}
+                      className="flex items-center justify-between"
+                    >
                       <div className="flex items-center gap-2">
                         {getTrendIcon(category.trend)}
                         <span className="font-medium">{category.category}</span>
@@ -559,20 +617,30 @@ export const ErrorReportingDashboard: React.FC = () => {
                         <div className="flex-1">
                           <p className="font-medium">{report.message}</p>
                           <p className="text-sm text-muted-foreground">
-                            {report.category} • {new Date(report.timestamp).toLocaleString()}
+                            {report.category} •{' '}
+                            {new Date(report.timestamp).toLocaleString()}
                           </p>
                           <div className="flex items-center gap-4 mt-2 text-sm">
-                            <span>Users affected: {report.impact.usersAffected}</span>
-                            <span>Requests affected: {report.impact.requestsAffected}</span>
+                            <span>
+                              Users affected: {report.impact.usersAffected}
+                            </span>
+                            <span>
+                              Requests affected:{' '}
+                              {report.impact.requestsAffected}
+                            </span>
                             {report.similarErrors > 0 && (
-                              <span>Similar errors: {report.similarErrors}</span>
+                              <span>
+                                Similar errors: {report.similarErrors}
+                              </span>
                             )}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {report.resolved ? (
-                          <span className="text-green-600 text-sm">Resolved</span>
+                          <span className="text-green-600 text-sm">
+                            Resolved
+                          </span>
                         ) : (
                           <>
                             <Button
@@ -585,7 +653,9 @@ export const ErrorReportingDashboard: React.FC = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleAssignError(report.id, 'current_user')}
+                              onClick={() =>
+                                handleAssignError(report.id, 'current_user')
+                              }
                             >
                               Assign
                             </Button>
@@ -609,14 +679,24 @@ export const ErrorReportingDashboard: React.FC = () => {
               <div className="space-y-4">
                 {dashboard.recentActivity.map((activity) => (
                   <div key={activity.id} className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${
-                      activity.type === 'new_error' ? 'bg-red-100' :
-                      activity.type === 'resolved' ? 'bg-green-100' :
-                      'bg-blue-100'
-                    }`}>
-                      {activity.type === 'new_error' && <Bug className="h-4 w-4 text-red-600" />}
-                      {activity.type === 'resolved' && <CheckCircle className="h-4 w-4 text-green-600" />}
-                      {activity.type === 'assigned' && <User className="h-4 w-4 text-blue-600" />}
+                    <div
+                      className={`p-2 rounded-full ${
+                        activity.type === 'new_error'
+                          ? 'bg-red-100'
+                          : activity.type === 'resolved'
+                            ? 'bg-green-100'
+                            : 'bg-blue-100'
+                      }`}
+                    >
+                      {activity.type === 'new_error' && (
+                        <Bug className="h-4 w-4 text-red-600" />
+                      )}
+                      {activity.type === 'resolved' && (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      )}
+                      {activity.type === 'assigned' && (
+                        <User className="h-4 w-4 text-blue-600" />
+                      )}
                     </div>
                     <div className="flex-1">
                       <p className="text-sm">{activity.message}</p>

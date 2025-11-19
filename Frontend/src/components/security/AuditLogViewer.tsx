@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,7 +34,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Download, Filter, Search, Eye, Shield, AlertTriangle, CheckCircle, XCircle, Database, FileText, RefreshCw, ChevronDown, Activity } from 'lucide-react';
+import {
+  Download,
+  Filter,
+  Search,
+  Eye,
+  Shield,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Database,
+  FileText,
+  RefreshCw,
+  ChevronDown,
+  Activity,
+} from 'lucide-react';
 
 // Types
 interface AuditLogEntry {
@@ -44,11 +64,16 @@ interface AuditLogEntry {
   userAgent?: string;
   entityType: string;
   entityId?: string;
-  action: 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'EXPORT' | 'SEARCH';
+  action: 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'EXPORT' | '_SEARCH';
   fieldsAccessed: string[];
   sensitiveFieldsAccessed: string[];
   encryptedFieldsAccessed: string[];
-  dataAccessLevel: 'PUBLIC' | 'LIMITED' | 'SENSITIVE' | 'RESTRICTED' | 'CONFIDENTIAL';
+  dataAccessLevel:
+    | 'PUBLIC'
+    | 'LIMITED'
+    | 'SENSITIVE'
+    | 'RESTRICTED'
+    | 'CONFIDENTIAL';
   recordsAffected: number;
   dataSize: number;
   responseStatus: number;
@@ -103,7 +128,7 @@ const AuditLogViewer: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const [filters, setFilters] = useState<FilterOptions>({
-    dateRange: '24h'
+    dateRange: '24h',
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -114,120 +139,200 @@ const AuditLogViewer: React.FC = () => {
   const logsPerPage = 50;
 
   // Fetch audit logs
-  const fetchAuditLogs = async (page: number = 1) => {
-    try {
-      setLoading(true);
+  const fetchAuditLogs = useCallback(
+    async (page: number = 1) => {
+      try {
+        setLoading(true);
 
-      // Mock API call - in real app, this would be an actual API call
-      const mockLogs = Array.from({ length: 150 }, (_, index) => ({
-        id: `audit_${Date.now()}_${index}`,
-        timestamp: new Date(Date.now() - Math.random() * 24 * 60 * 60 * 1000).toISOString(),
-        userId: `user_${Math.floor(Math.random() * 100)}`,
-        userRole: ['TEACHER', 'LIBRARIAN', 'ADMIN', 'STAFF'][Math.floor(Math.random() * 4)] as AuditLogEntry['userRole'],
-        sessionId: `session_${Math.random().toString(36).substr(2, 9)}`,
-        requestId: `req_${Math.random().toString(36).substr(2, 9)}`,
-        endpoint: ['/api/students', '/api/activities', '/api/books', '/api/equipment'][Math.floor(Math.random() * 4)] as AuditLogEntry['endpoint'],
-        method: ['GET', 'POST', 'PUT', 'DELETE'][Math.floor(Math.random() * 4)] as AuditLogEntry['method'],
-        ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        entityType: ['student', 'activity', 'book', 'equipment'][Math.floor(Math.random() * 4)],
-        entityId: `entity_${Math.floor(Math.random() * 1000)}`,
-        action: ['READ', 'CREATE', 'UPDATE', 'DELETE', 'EXPORT', 'SEARCH'][Math.floor(Math.random() * 6)] as AuditLogEntry['action'],
-        fieldsAccessed: ['name', 'email', 'grade', 'section'].slice(0, Math.floor(Math.random() * 4) + 1),
-        sensitiveFieldsAccessed: Math.random() > 0.7 ? ['email', 'phone'] : [],
-        encryptedFieldsAccessed: Math.random() > 0.8 ? ['ssn', 'medical_info'] : [],
-        dataAccessLevel: ['PUBLIC', 'LIMITED', 'SENSITIVE', 'RESTRICTED', 'CONFIDENTIAL'][Math.floor(Math.random() * 5)] as AuditLogEntry['dataAccessLevel'],
-        recordsAffected: Math.floor(Math.random() * 100),
-        dataSize: Math.floor(Math.random() * 10000),
-        responseStatus: Math.random() > 0.1 ? 200 : [400, 401, 403, 404, 500][Math.floor(Math.random() * 5)],
-        success: Math.random() > 0.1,
-        duration: Math.floor(Math.random() * 1000) + 10,
-        ferpaCompliance: {
-          required: Math.random() > 0.5,
-          verified: Math.random() > 0.3,
-          accessRequestId: Math.random() > 0.7 ? `req_${Math.random().toString(36).substr(2, 9)}` : undefined,
-          justificationProvided: Math.random() > 0.4
-        },
-        securityFlags: {
-          suspiciousActivity: Math.random() > 0.9,
-          unusualAccessPattern: Math.random() > 0.85,
-          dataExfiltrationRisk: Math.random() > 0.95,
-          privilegeEscalationAttempt: Math.random() > 0.98,
-          bruteForceIndicator: Math.random() > 0.95
-        },
-        metadata: {
-          requestSize: Math.floor(Math.random() * 1000),
-          responseSize: Math.floor(Math.random() * 5000),
-          cacheHit: Math.random() > 0.5,
-          databaseQueryCount: Math.floor(Math.random() * 10) + 1,
-          apiRate: Math.floor(Math.random() * 100)
-        }
-      })) as AuditLogEntry[];
+        // Mock API call - in real app, this would be an actual API call
+        const mockLogs = Array.from({ length: 150 }, (_, index) => ({
+          id: `audit_${Date.now()}_${index}`,
+          timestamp: new Date(
+            Date.now() - Math.random() * 24 * 60 * 60 * 1000
+          ).toISOString(),
+          userId: `user_${Math.floor(Math.random() * 100)}`,
+          userRole: ['TEACHER', 'LIBRARIAN', 'ADMIN', 'STAFF'][
+            Math.floor(Math.random() * 4)
+          ] as AuditLogEntry['userRole'],
+          sessionId: `session_${Math.random().toString(36).substr(2, 9)}`,
+          requestId: `req_${Math.random().toString(36).substr(2, 9)}`,
+          endpoint: [
+            '/api/students',
+            '/api/activities',
+            '/api/books',
+            '/api/equipment',
+          ][Math.floor(Math.random() * 4)] as AuditLogEntry['endpoint'],
+          method: ['GET', 'POST', 'PUT', 'DELETE'][
+            Math.floor(Math.random() * 4)
+          ] as AuditLogEntry['method'],
+          ipAddress: `192.168.1.${Math.floor(Math.random() * 255)}`,
+          userAgent:
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          entityType: ['student', 'activity', 'book', 'equipment'][
+            Math.floor(Math.random() * 4)
+          ],
+          entityId: `entity_${Math.floor(Math.random() * 1000)}`,
+          action: ['READ', 'CREATE', 'UPDATE', 'DELETE', 'EXPORT', '_SEARCH'][
+            Math.floor(Math.random() * 6)
+          ] as AuditLogEntry['action'],
+          fieldsAccessed: ['name', 'email', 'grade', 'section'].slice(
+            0,
+            Math.floor(Math.random() * 4) + 1
+          ),
+          sensitiveFieldsAccessed:
+            Math.random() > 0.7 ? ['email', 'phone'] : [],
+          encryptedFieldsAccessed:
+            Math.random() > 0.8 ? ['ssn', 'medical_info'] : [],
+          dataAccessLevel: [
+            'PUBLIC',
+            'LIMITED',
+            'SENSITIVE',
+            'RESTRICTED',
+            'CONFIDENTIAL',
+          ][Math.floor(Math.random() * 5)] as AuditLogEntry['dataAccessLevel'],
+          recordsAffected: Math.floor(Math.random() * 100),
+          dataSize: Math.floor(Math.random() * 10000),
+          responseStatus:
+            Math.random() > 0.1
+              ? 200
+              : [400, 401, 403, 404, 500][Math.floor(Math.random() * 5)],
+          success: Math.random() > 0.1,
+          duration: Math.floor(Math.random() * 1000) + 10,
+          ferpaCompliance: {
+            required: Math.random() > 0.5,
+            verified: Math.random() > 0.3,
+            accessRequestId:
+              Math.random() > 0.7
+                ? `req_${Math.random().toString(36).substr(2, 9)}`
+                : undefined,
+            justificationProvided: Math.random() > 0.4,
+          },
+          securityFlags: {
+            suspiciousActivity: Math.random() > 0.9,
+            unusualAccessPattern: Math.random() > 0.85,
+            dataExfiltrationRisk: Math.random() > 0.95,
+            privilegeEscalationAttempt: Math.random() > 0.98,
+            bruteForceIndicator: Math.random() > 0.95,
+          },
+          metadata: {
+            requestSize: Math.floor(Math.random() * 1000),
+            responseSize: Math.floor(Math.random() * 5000),
+            cacheHit: Math.random() > 0.5,
+            databaseQueryCount: Math.floor(Math.random() * 10) + 1,
+            apiRate: Math.floor(Math.random() * 100),
+          },
+        })) as AuditLogEntry[];
 
-      // Apply filters
-      let filteredLogs = mockLogs.filter(log => {
-        // Date range filter
-        const logDate = new Date(log.timestamp);
-        const now = new Date();
+        // Apply filters
+        const filteredLogs = mockLogs.filter((log) => {
+          // Date range filter
+          const logDate = new Date(log.timestamp);
+          const now = new Date();
 
-        if (filters.dateRange === '1h') {
-          const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-          if (logDate < oneHourAgo) return false;
-        } else if (filters.dateRange === '24h') {
-          const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-          if (logDate < oneDayAgo) return false;
-        } else if (filters.dateRange === '7d') {
-          const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          if (logDate < oneWeekAgo) return false;
-        } else if (filters.dateRange === '30d') {
-          const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          if (logDate < oneMonthAgo) return false;
-        }
+          if (filters.dateRange === '1h') {
+            const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+            if (logDate < oneHourAgo) {
+              return false;
+            }
+          } else if (filters.dateRange === '24h') {
+            const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            if (logDate < oneDayAgo) {
+              return false;
+            }
+          } else if (filters.dateRange === '7d') {
+            const oneWeekAgo = new Date(
+              now.getTime() - 7 * 24 * 60 * 60 * 1000
+            );
+            if (logDate < oneWeekAgo) {
+              return false;
+            }
+          } else if (filters.dateRange === '30d') {
+            const oneMonthAgo = new Date(
+              now.getTime() - 30 * 24 * 60 * 60 * 1000
+            );
+            if (logDate < oneMonthAgo) {
+              return false;
+            }
+          }
 
-        // Search filter
-        if (searchTerm && !JSON.stringify(log).toLowerCase().includes(searchTerm.toLowerCase())) {
-          return false;
-        }
+          // _Search filter
+          if (
+            searchTerm &&
+            !JSON.stringify(log)
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())
+          ) {
+            return false;
+          }
 
-        // Other filters
-        if (filters.userId && log.userId !== filters.userId) return false;
-        if (filters.userRole && log.userRole !== filters.userRole) return false;
-        if (filters.entityType && log.entityType !== filters.entityType) return false;
-        if (filters.action && log.action !== filters.action) return false;
-        if (filters.success !== undefined && log.success !== filters.success) return false;
-        if (filters.dataAccessLevel && log.dataAccessLevel !== filters.dataAccessLevel) return false;
-        if (filters.hasSecurityFlags && !Object.values(log.securityFlags).some(Boolean)) return false;
-        if (filters.ferpaRequired !== undefined && log.ferpaCompliance.required !== filters.ferpaRequired) return false;
+          // Other filters
+          if (filters.userId && log.userId !== filters.userId) {
+            return false;
+          }
+          if (filters.userRole && log.userRole !== filters.userRole) {
+            return false;
+          }
+          if (filters.entityType && log.entityType !== filters.entityType) {
+            return false;
+          }
+          if (filters.action && log.action !== filters.action) {
+            return false;
+          }
+          if (
+            filters.success !== undefined &&
+            log.success !== filters.success
+          ) {
+            return false;
+          }
+          if (
+            filters.dataAccessLevel &&
+            log.dataAccessLevel !== filters.dataAccessLevel
+          ) {
+            return false;
+          }
+          if (
+            filters.hasSecurityFlags &&
+            !Object.values(log.securityFlags).some(Boolean)
+          ) {
+            return false;
+          }
+          if (
+            filters.ferpaRequired !== undefined &&
+            log.ferpaCompliance.required !== filters.ferpaRequired
+          ) {
+            return false;
+          }
 
-        return true;
-      });
+          return true;
+        });
 
-      // Pagination
-      const startIndex = (page - 1) * logsPerPage;
-      const endIndex = startIndex + logsPerPage;
-      const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
+        // Pagination
+        const startIndex = (page - 1) * logsPerPage;
+        const endIndex = startIndex + logsPerPage;
+        const paginatedLogs = filteredLogs.slice(startIndex, endIndex);
 
-      setLogs(paginatedLogs);
-      setTotalPages(Math.ceil(filteredLogs.length / logsPerPage));
-      setCurrentPage(page);
-
-    } catch (error) {
-      console.error('Failed to fetch audit logs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+        setLogs(paginatedLogs);
+        setTotalPages(Math.ceil(filteredLogs.length / logsPerPage));
+        setCurrentPage(page);
+      } catch (error) {
+        console.error('Failed to fetch audit logs:', error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [filters, searchTerm, logsPerPage]
+  );
 
   useEffect(() => {
     fetchAuditLogs(currentPage);
-  }, [currentPage, filters, searchTerm]);
+  }, [currentPage, fetchAuditLogs]);
 
   const handleExport = async (format: 'csv' | 'json' | 'pdf') => {
     try {
       setExporting(true);
 
       // Mock export functionality
-      const exportData = logs.map(log => ({
+      const exportData = logs.map((log) => ({
         timestamp: log.timestamp,
         userId: log.userId,
         userRole: log.userRole,
@@ -239,12 +344,12 @@ const AuditLogViewer: React.FC = () => {
         success: log.success,
         dataAccessLevel: log.dataAccessLevel,
         hasSecurityFlags: Object.values(log.securityFlags).some(Boolean),
-        ferpaRequired: log.ferpaCompliance.required
+        ferpaRequired: log.ferpaCompliance.required,
       }));
 
       // In a real app, this would trigger an actual download
       const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-        type: format === 'json' ? 'application/json' : 'text/csv'
+        type: format === 'json' ? 'application/json' : 'text/csv',
       });
 
       const url = URL.createObjectURL(blob);
@@ -257,7 +362,6 @@ const AuditLogViewer: React.FC = () => {
       URL.revokeObjectURL(url);
 
       alert(`Audit logs exported as ${format.toUpperCase()}`);
-
     } catch (error) {
       console.error('Failed to export logs:', error);
       alert('Failed to export logs. Please try again.');
@@ -268,24 +372,37 @@ const AuditLogViewer: React.FC = () => {
 
   const getActionIcon = (action: string) => {
     switch (action) {
-      case 'CREATE': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'READ': return <Eye className="h-4 w-4 text-blue-500" />;
-      case 'UPDATE': return <RefreshCw className="h-4 w-4 text-yellow-500" />;
-      case 'DELETE': return <XCircle className="h-4 w-4 text-red-500" />;
-      case 'EXPORT': return <Download className="h-4 w-4 text-purple-500" />;
-      case 'SEARCH': return <Search className="h-4 w-4 text-gray-500" />;
-      default: return <Activity className="h-4 w-4 text-gray-500" />;
+      case 'CREATE':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'READ':
+        return <Eye className="h-4 w-4 text-blue-500" />;
+      case 'UPDATE':
+        return <RefreshCw className="h-4 w-4 text-yellow-500" />;
+      case 'DELETE':
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      case 'EXPORT':
+        return <Download className="h-4 w-4 text-purple-500" />;
+      case '_SEARCH':
+        return <Search className="h-4 w-4 text-gray-500" />;
+      default:
+        return <Activity className="h-4 w-4 text-gray-500" />;
     }
   };
 
   const getAccessLevelColor = (level: string) => {
     switch (level) {
-      case 'PUBLIC': return 'bg-green-100 text-green-800';
-      case 'LIMITED': return 'bg-blue-100 text-blue-800';
-      case 'SENSITIVE': return 'bg-yellow-100 text-yellow-800';
-      case 'RESTRICTED': return 'bg-orange-100 text-orange-800';
-      case 'CONFIDENTIAL': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'PUBLIC':
+        return 'bg-green-100 text-green-800';
+      case 'LIMITED':
+        return 'bg-blue-100 text-blue-800';
+      case 'SENSITIVE':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'RESTRICTED':
+        return 'bg-orange-100 text-orange-800';
+      case 'CONFIDENTIAL':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -358,14 +475,14 @@ const AuditLogViewer: React.FC = () => {
         </div>
       </div>
 
-      {/* Search and Filters */}
+      {/* _Search and Filters */}
       <div className="space-y-4">
         <div className="flex gap-4">
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search audit logs..."
+                placeholder="_Search audit logs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -375,7 +492,12 @@ const AuditLogViewer: React.FC = () => {
 
           <Select
             value={filters.dateRange}
-            onValueChange={(value: any) => setFilters(prev => ({ ...prev, dateRange: value }))}
+            onValueChange={(value: string) =>
+              setFilters((prev) => ({
+                ...prev,
+                dateRange: value as FilterOptions['dateRange'],
+              }))
+            }
           >
             <SelectTrigger className="w-32">
               <SelectValue />
@@ -400,15 +522,17 @@ const AuditLogViewer: React.FC = () => {
                   <Label>User Role</Label>
                   <Select
                     value={filters.userRole || ''}
-                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
-                      const newFilters = { ...prev };
-                      if (value === '') {
-                        delete newFilters.userRole;
-                      } else {
-                        newFilters.userRole = value;
-                      }
-                      return newFilters;
-                    })}
+                    onValueChange={(value) =>
+                      setFilters((prev: FilterOptions): FilterOptions => {
+                        const newFilters = { ...prev };
+                        if (value === '') {
+                          delete newFilters.userRole;
+                        } else {
+                          newFilters.userRole = value;
+                        }
+                        return newFilters;
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All Roles" />
@@ -427,15 +551,17 @@ const AuditLogViewer: React.FC = () => {
                   <Label>Entity Type</Label>
                   <Select
                     value={filters.entityType || ''}
-                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
-                      const newFilters = { ...prev };
-                      if (value === '') {
-                        delete newFilters.entityType;
-                      } else {
-                        newFilters.entityType = value;
-                      }
-                      return newFilters;
-                    })}
+                    onValueChange={(value) =>
+                      setFilters((prev: FilterOptions): FilterOptions => {
+                        const newFilters = { ...prev };
+                        if (value === '') {
+                          delete newFilters.entityType;
+                        } else {
+                          newFilters.entityType = value;
+                        }
+                        return newFilters;
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All Entities" />
@@ -454,15 +580,17 @@ const AuditLogViewer: React.FC = () => {
                   <Label>Action</Label>
                   <Select
                     value={filters.action || ''}
-                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
-                      const newFilters = { ...prev };
-                      if (value === '') {
-                        delete newFilters.action;
-                      } else {
-                        newFilters.action = value;
-                      }
-                      return newFilters;
-                    })}
+                    onValueChange={(value) =>
+                      setFilters((prev: FilterOptions): FilterOptions => {
+                        const newFilters = { ...prev };
+                        if (value === '') {
+                          delete newFilters.action;
+                        } else {
+                          newFilters.action = value;
+                        }
+                        return newFilters;
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All Actions" />
@@ -474,7 +602,7 @@ const AuditLogViewer: React.FC = () => {
                       <SelectItem value="UPDATE">Update</SelectItem>
                       <SelectItem value="DELETE">Delete</SelectItem>
                       <SelectItem value="EXPORT">Export</SelectItem>
-                      <SelectItem value="SEARCH">Search</SelectItem>
+                      <SelectItem value="_SEARCH">_Search</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -483,15 +611,17 @@ const AuditLogViewer: React.FC = () => {
                   <Label>Data Access Level</Label>
                   <Select
                     value={filters.dataAccessLevel || ''}
-                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
-                      const newFilters = { ...prev };
-                      if (value === '') {
-                        delete newFilters.dataAccessLevel;
-                      } else {
-                        newFilters.dataAccessLevel = value;
-                      }
-                      return newFilters;
-                    })}
+                    onValueChange={(value) =>
+                      setFilters((prev: FilterOptions): FilterOptions => {
+                        const newFilters = { ...prev };
+                        if (value === '') {
+                          delete newFilters.dataAccessLevel;
+                        } else {
+                          newFilters.dataAccessLevel = value;
+                        }
+                        return newFilters;
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All Levels" />
@@ -510,16 +640,24 @@ const AuditLogViewer: React.FC = () => {
                 <div className="space-y-2">
                   <Label>Success Status</Label>
                   <Select
-                    value={filters.success !== undefined ? (filters.success ? 'true' : 'false') : ''}
-                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
-                      const newFilters = { ...prev };
-                      if (value === '') {
-                        delete newFilters.success;
-                      } else {
-                        newFilters.success = value === 'true';
-                      }
-                      return newFilters;
-                    })}
+                    value={
+                      filters.success !== undefined
+                        ? filters.success
+                          ? 'true'
+                          : 'false'
+                        : ''
+                    }
+                    onValueChange={(value) =>
+                      setFilters((prev: FilterOptions): FilterOptions => {
+                        const newFilters = { ...prev };
+                        if (value === '') {
+                          delete newFilters.success;
+                        } else {
+                          newFilters.success = value === 'true';
+                        }
+                        return newFilters;
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All Status" />
@@ -537,15 +675,17 @@ const AuditLogViewer: React.FC = () => {
                   <div className="space-y-2">
                     <Checkbox
                       checked={filters.hasSecurityFlags || false}
-                      onCheckedChange={(checked) => setFilters((prev: FilterOptions): FilterOptions => {
-                        const newFilters = { ...prev };
-                        if (checked === true) {
-                          newFilters.hasSecurityFlags = true;
-                        } else {
-                          delete newFilters.hasSecurityFlags;
-                        }
-                        return newFilters;
-                      })}
+                      onCheckedChange={(checked) =>
+                        setFilters((prev: FilterOptions): FilterOptions => {
+                          const newFilters = { ...prev };
+                          if (checked === true) {
+                            newFilters.hasSecurityFlags = true;
+                          } else {
+                            delete newFilters.hasSecurityFlags;
+                          }
+                          return newFilters;
+                        })
+                      }
                     >
                       Has Security Flags
                     </Checkbox>
@@ -555,16 +695,24 @@ const AuditLogViewer: React.FC = () => {
                 <div className="space-y-2">
                   <Label>FERPA Required</Label>
                   <Select
-                    value={filters.ferpaRequired !== undefined ? (filters.ferpaRequired ? 'true' : 'false') : ''}
-                    onValueChange={(value) => setFilters((prev: FilterOptions): FilterOptions => {
-                      const newFilters = { ...prev };
-                      if (value === '') {
-                        delete newFilters.ferpaRequired;
-                      } else {
-                        newFilters.ferpaRequired = value === 'true';
-                      }
-                      return newFilters;
-                    })}
+                    value={
+                      filters.ferpaRequired !== undefined
+                        ? filters.ferpaRequired
+                          ? 'true'
+                          : 'false'
+                        : ''
+                    }
+                    onValueChange={(value) =>
+                      setFilters((prev: FilterOptions): FilterOptions => {
+                        const newFilters = { ...prev };
+                        if (value === '') {
+                          delete newFilters.ferpaRequired;
+                        } else {
+                          newFilters.ferpaRequired = value === 'true';
+                        }
+                        return newFilters;
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="All" />
@@ -633,7 +781,9 @@ const AuditLogViewer: React.FC = () => {
                     <TableCell>
                       <div>
                         <p className="font-medium">{log.userId}</p>
-                        <p className="text-sm text-muted-foreground">{log.userRole}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {log.userRole}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -650,7 +800,9 @@ const AuditLogViewer: React.FC = () => {
                     </TableCell>
                     <TableCell>{log.recordsAffected}</TableCell>
                     <TableCell>
-                      <Badge className={getAccessLevelColor(log.dataAccessLevel)}>
+                      <Badge
+                        className={getAccessLevelColor(log.dataAccessLevel)}
+                      >
                         {log.dataAccessLevel}
                       </Badge>
                     </TableCell>
@@ -676,7 +828,9 @@ const AuditLogViewer: React.FC = () => {
                     <TableCell>
                       {log.ferpaCompliance.required && (
                         <div className="flex items-center gap-1">
-                          <Shield className={`h-4 w-4 ${log.ferpaCompliance.verified ? 'text-green-500' : 'text-yellow-500'}`} />
+                          <Shield
+                            className={`h-4 w-4 ${log.ferpaCompliance.verified ? 'text-green-500' : 'text-yellow-500'}`}
+                          />
                           <span className="text-xs">
                             {log.ferpaCompliance.verified ? 'OK' : 'Required'}
                           </span>
@@ -707,7 +861,7 @@ const AuditLogViewer: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
               >
                 Previous
@@ -715,7 +869,9 @@ const AuditLogViewer: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
                 disabled={currentPage === totalPages}
               >
                 Next
@@ -753,7 +909,9 @@ const AuditLogViewer: React.FC = () => {
                   </div>
                   <div>
                     <Label>User</Label>
-                    <p>{selectedLog.userId} ({selectedLog.userRole})</p>
+                    <p>
+                      {selectedLog.userId} ({selectedLog.userRole})
+                    </p>
                   </div>
                   <div>
                     <Label>Session ID</Label>
@@ -787,7 +945,9 @@ const AuditLogViewer: React.FC = () => {
                     </div>
                     <div>
                       <Label>Entity</Label>
-                      <p className="capitalize">{selectedLog.entityType} ({selectedLog.entityId})</p>
+                      <p className="capitalize">
+                        {selectedLog.entityType} ({selectedLog.entityId})
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -798,23 +958,31 @@ const AuditLogViewer: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Fields Accessed</Label>
-                      <p className="text-sm">{selectedLog.fieldsAccessed.join(', ') || 'None'}</p>
+                      <p className="text-sm">
+                        {selectedLog.fieldsAccessed.join(', ') || 'None'}
+                      </p>
                     </div>
                     <div>
                       <Label>Sensitive Fields</Label>
                       <p className="text-sm text-red-600">
-                        {selectedLog.sensitiveFieldsAccessed.join(', ') || 'None'}
+                        {selectedLog.sensitiveFieldsAccessed.join(', ') ||
+                          'None'}
                       </p>
                     </div>
                     <div>
                       <Label>Encrypted Fields</Label>
                       <p className="text-sm text-blue-600">
-                        {selectedLog.encryptedFieldsAccessed.join(', ') || 'None'}
+                        {selectedLog.encryptedFieldsAccessed.join(', ') ||
+                          'None'}
                       </p>
                     </div>
                     <div>
                       <Label>Data Access Level</Label>
-                      <Badge className={getAccessLevelColor(selectedLog.dataAccessLevel)}>
+                      <Badge
+                        className={getAccessLevelColor(
+                          selectedLog.dataAccessLevel
+                        )}
+                      >
                         {selectedLog.dataAccessLevel}
                       </Badge>
                     </div>
@@ -851,7 +1019,9 @@ const AuditLogViewer: React.FC = () => {
                     {selectedLog.errorMessage && (
                       <div className="col-span-2">
                         <Label>Error Message</Label>
-                        <p className="text-sm text-red-600">{selectedLog.errorMessage}</p>
+                        <p className="text-sm text-red-600">
+                          {selectedLog.errorMessage}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -863,19 +1033,29 @@ const AuditLogViewer: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>FERPA Required</Label>
-                      <p>{selectedLog.ferpaCompliance.required ? 'Yes' : 'No'}</p>
+                      <p>
+                        {selectedLog.ferpaCompliance.required ? 'Yes' : 'No'}
+                      </p>
                     </div>
                     <div>
                       <Label>FERPA Verified</Label>
-                      <p>{selectedLog.ferpaCompliance.verified ? 'Yes' : 'No'}</p>
+                      <p>
+                        {selectedLog.ferpaCompliance.verified ? 'Yes' : 'No'}
+                      </p>
                     </div>
                     <div>
                       <Label>Justification Provided</Label>
-                      <p>{selectedLog.ferpaCompliance.justificationProvided ? 'Yes' : 'No'}</p>
+                      <p>
+                        {selectedLog.ferpaCompliance.justificationProvided
+                          ? 'Yes'
+                          : 'No'}
+                      </p>
                     </div>
                     <div>
                       <Label>Access Request ID</Label>
-                      <p className="font-mono text-sm">{selectedLog.ferpaCompliance.accessRequestId || 'N/A'}</p>
+                      <p className="font-mono text-sm">
+                        {selectedLog.ferpaCompliance.accessRequestId || 'N/A'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -885,24 +1065,48 @@ const AuditLogViewer: React.FC = () => {
                   <h3 className="font-medium mb-3">Security Flags</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className={`h-4 w-4 ${selectedLog.securityFlags.suspiciousActivity ? 'text-red-500' : 'text-gray-400'}`} />
+                      <AlertTriangle
+                        className={`h-4 w-4 ${selectedLog.securityFlags.suspiciousActivity ? 'text-red-500' : 'text-gray-400'}`}
+                      />
                       <Label>Suspicious Activity</Label>
-                      <span>{selectedLog.securityFlags.suspiciousActivity ? 'Yes' : 'No'}</span>
+                      <span>
+                        {selectedLog.securityFlags.suspiciousActivity
+                          ? 'Yes'
+                          : 'No'}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className={`h-4 w-4 ${selectedLog.securityFlags.unusualAccessPattern ? 'text-orange-500' : 'text-gray-400'}`} />
+                      <AlertTriangle
+                        className={`h-4 w-4 ${selectedLog.securityFlags.unusualAccessPattern ? 'text-orange-500' : 'text-gray-400'}`}
+                      />
                       <Label>Unusual Access Pattern</Label>
-                      <span>{selectedLog.securityFlags.unusualAccessPattern ? 'Yes' : 'No'}</span>
+                      <span>
+                        {selectedLog.securityFlags.unusualAccessPattern
+                          ? 'Yes'
+                          : 'No'}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className={`h-4 w-4 ${selectedLog.securityFlags.dataExfiltrationRisk ? 'text-red-500' : 'text-gray-400'}`} />
+                      <AlertTriangle
+                        className={`h-4 w-4 ${selectedLog.securityFlags.dataExfiltrationRisk ? 'text-red-500' : 'text-gray-400'}`}
+                      />
                       <Label>Data Exfiltration Risk</Label>
-                      <span>{selectedLog.securityFlags.dataExfiltrationRisk ? 'Yes' : 'No'}</span>
+                      <span>
+                        {selectedLog.securityFlags.dataExfiltrationRisk
+                          ? 'Yes'
+                          : 'No'}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className={`h-4 w-4 ${selectedLog.securityFlags.privilegeEscalationAttempt ? 'text-red-500' : 'text-gray-400'}`} />
+                      <AlertTriangle
+                        className={`h-4 w-4 ${selectedLog.securityFlags.privilegeEscalationAttempt ? 'text-red-500' : 'text-gray-400'}`}
+                      />
                       <Label>Privilege Escalation Attempt</Label>
-                      <span>{selectedLog.securityFlags.privilegeEscalationAttempt ? 'Yes' : 'No'}</span>
+                      <span>
+                        {selectedLog.securityFlags.privilegeEscalationAttempt
+                          ? 'Yes'
+                          : 'No'}
+                      </span>
                     </div>
                   </div>
                 </div>

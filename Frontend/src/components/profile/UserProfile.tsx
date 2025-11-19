@@ -1,5 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,12 +61,14 @@ export default function UserProfile() {
     text: string;
   }>({ type: null, text: '' });
 
-  useEffect(() => {
-    fetchProfile();
-    fetchActivityLogs();
+  const showMessage = useCallback((type: 'success' | 'error', text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => {
+      setMessage({ type: null, text: '' });
+    }, 5000);
   }, []);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/profile', {
@@ -79,9 +87,9 @@ export default function UserProfile() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showMessage]);
 
-  const fetchActivityLogs = async () => {
+  const fetchActivityLogs = useCallback(async () => {
     try {
       const response = await fetch('/api/profile/activity', {
         credentials: 'include',
@@ -94,7 +102,12 @@ export default function UserProfile() {
     } catch (error) {
       console.error('Failed to fetch activity logs:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchProfile();
+    fetchActivityLogs();
+  }, [fetchProfile, fetchActivityLogs]);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,26 +161,24 @@ export default function UserProfile() {
     }
   };
 
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => {
-      setMessage({ type: null, text: '' });
-    }, 5000);
-  };
-
   const formatDate = (date: Date | null) => {
-    if (!date) return 'Never';
+    if (!date) {
+      return 'Never';
+    }
     return new Date(date).toLocaleString();
   };
 
   const getRoleBadge = (role: string) => {
-    const variants: Record<string, string> = {
+    const variants: Record<
+      string,
+      'default' | 'secondary' | 'destructive' | 'outline'
+    > = {
       ADMIN: 'destructive',
       LIBRARIAN: 'default',
       STAFF: 'secondary',
     };
     return (
-      <Badge variant={variants[role] as any}>
+      <Badge variant={variants[role] || 'default'}>
         <Shield className="w-3 h-3 mr-1" />
         {role}
       </Badge>
@@ -295,7 +306,10 @@ export default function UserProfile() {
                 type="password"
                 value={passwordForm.currentPassword}
                 onChange={(e) =>
-                  setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
+                  setPasswordForm({
+                    ...passwordForm,
+                    currentPassword: e.target.value,
+                  })
                 }
                 disabled={changingPassword}
               />
@@ -308,7 +322,10 @@ export default function UserProfile() {
                 type="password"
                 value={passwordForm.newPassword}
                 onChange={(e) =>
-                  setPasswordForm({ ...passwordForm, newPassword: e.target.value })
+                  setPasswordForm({
+                    ...passwordForm,
+                    newPassword: e.target.value,
+                  })
                 }
                 disabled={changingPassword}
               />
@@ -324,7 +341,10 @@ export default function UserProfile() {
                 type="password"
                 value={passwordForm.confirmPassword}
                 onChange={(e) =>
-                  setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
+                  setPasswordForm({
+                    ...passwordForm,
+                    confirmPassword: e.target.value,
+                  })
                 }
                 disabled={changingPassword}
               />
@@ -344,9 +364,7 @@ export default function UserProfile() {
             <Activity className="w-5 h-5" />
             Recent Activity
           </CardTitle>
-          <CardDescription>
-            Your recent actions in the system
-          </CardDescription>
+          <CardDescription>Your recent actions in the system</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="border rounded-lg">
@@ -361,14 +379,19 @@ export default function UserProfile() {
               <TableBody>
                 {activityLogs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={3}
+                      className="text-center text-muted-foreground"
+                    >
                       No recent activity
                     </TableCell>
                   </TableRow>
                 ) : (
                   activityLogs.map((log) => (
                     <TableRow key={log.id}>
-                      <TableCell className="font-medium">{log.action}</TableCell>
+                      <TableCell className="font-medium">
+                        {log.action}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">
                         {log.details}
                       </TableCell>

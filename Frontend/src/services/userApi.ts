@@ -1,6 +1,12 @@
 import api from './api';
 
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'LIBRARIAN' | 'ASSISTANT' | 'TEACHER' | 'VIEWER';
+export type UserRole =
+  | 'SUPER_ADMIN'
+  | 'ADMIN'
+  | 'LIBRARIAN'
+  | 'ASSISTANT'
+  | 'TEACHER'
+  | 'VIEWER';
 
 export interface User {
   id: string;
@@ -92,7 +98,9 @@ export const userApi = {
 
   // Update user permissions
   async updateUserPermissions(userId: string, permissions: string[]) {
-    const response = await api.patch(`/users/${userId}/permissions`, { permissions });
+    const response = await api.patch(`/users/${userId}/permissions`, {
+      permissions,
+    });
     return response.data;
   },
 
@@ -109,7 +117,11 @@ export const userApi = {
   },
 
   // Change password
-  async changePassword(userId: string, oldPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string
+  ) {
     const response = await api.post(`/users/${userId}/change-password`, {
       oldPassword,
       newPassword,

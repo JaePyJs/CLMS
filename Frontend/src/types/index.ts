@@ -162,7 +162,12 @@ interface Equipment extends BaseEntity {
   barcodeImage?: string;
 }
 
-type EquipmentCondition = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'MAINTENANCE_REQUIRED';
+type EquipmentCondition =
+  | 'EXCELLENT'
+  | 'GOOD'
+  | 'FAIR'
+  | 'POOR'
+  | 'MAINTENANCE_REQUIRED';
 
 // Equipment sessions
 interface EquipmentSession extends BaseEntity {

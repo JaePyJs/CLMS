@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,13 +19,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
-  Textarea,
-} from '@/components/ui/textarea';
-import {
-  Switch,
-} from '@/components/ui/switch';
-import { Search, Star, Bookmark, Edit, Trash2, Eye, Users, BookOpen, Monitor, Plus, Copy, Share2, Bell, Clock, TrendingUp } from 'lucide-react';
+  Search,
+  Star,
+  Bookmark,
+  Edit,
+  Trash2,
+  Eye,
+  Users,
+  BookOpen,
+  Monitor,
+  Plus,
+  Copy,
+  Share2,
+  Bell,
+  Clock,
+  TrendingUp,
+} from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { useMultipleLoadingStates, useMultipleModals, useForm } from '@/hooks';
@@ -36,7 +48,7 @@ interface SavedSearch {
   name: string;
   description?: string;
   entityType: 'books' | 'students' | 'equipment' | 'global';
-  searchParams: any;
+  searchParams: Record<string, unknown>;
   isPublic: boolean;
   enableNotifications: boolean;
   createdAt: string;
@@ -54,7 +66,7 @@ export default function SavedSearches() {
     loadSearches: { isLoading: false },
     createSearch: { isLoading: false },
     updateSearch: { isLoading: false },
-    deleteSearch: { isLoading: false }
+    deleteSearch: { isLoading: false },
   });
 
   // Consolidated modal/dialog states
@@ -62,25 +74,26 @@ export default function SavedSearches() {
     createDialog: false,
     editDialog: false,
     deleteDialog: false,
-    shareDialog: false
+    shareDialog: false,
   });
 
-  // Search/filter state
+  // _Search/filter state
   const [searchFilters, searchFilterActions] = useForm({
     initialValues: {
       activeTab: 'my-searches',
       filterEntityType: 'all',
       searchQuery: '',
-      editingSearch: null as SavedSearch | null
+      editingSearch: null as SavedSearch | null,
     },
-    validationSchema: {}
+    validationSchema: {},
   });
 
   // Derived state for easier access
   const searchQuery = searchFilters.values.searchQuery;
   const loading = loadingStates.loadSearches.isLoading;
-  const setShowCreateDialog = (show: boolean) => modalActions.createDialog.setState(show);
-  const setFormData = (data: any) => formActions.setValues(data);
+  const setShowCreateDialog = (show: boolean) =>
+    modalActions.createDialog.setState(show);
+  const setFormData = (data: unknown) => formActions.setValues(data);
 
   // Form state for create/edit
   const [formData, formActions] = useForm({
@@ -94,22 +107,17 @@ export default function SavedSearches() {
     },
     validationSchema: {
       name: { required: true },
-      entityType: { required: true }
-    }
+      entityType: { required: true },
+    },
   });
 
-  // Load saved searches on mount
-  useEffect(() => {
-    loadSavedSearches();
-    loadPopularSearches();
-  }, []);
-
-  const loadSavedSearches = async () => {
+  const loadSavedSearches = useCallback(async () => {
     loadingActions.loadSearches.start();
     try {
-      const response = await apiClient.get('/api/search/saved');
+      const response = await apiClient.get('/api/_search/saved');
       if (response.success && response.data) {
-        setSavedSearches((response.data as any).searches || []);
+        const data = response.data as Record<string, unknown>;
+        setSavedSearches((data.searches as SavedSearch[]) || []);
       }
     } catch (error) {
       console.error('Failed to load saved searches:', error);
@@ -117,18 +125,24 @@ export default function SavedSearches() {
     } finally {
       loadingActions.loadSearches.finish();
     }
-  };
+  }, [loadingActions.loadSearches]);
 
-  const loadPopularSearches = async () => {
+  const loadPopularSearches = useCallback(async () => {
     try {
-      const response = await apiClient.get('/api/search/saved/popular');
+      const response = await apiClient.get('/api/_search/saved/popular');
       if (response.success && response.data) {
         setPopularSearches(Array.isArray(response.data) ? response.data : []);
       }
     } catch (error) {
       console.error('Failed to load popular searches:', error);
     }
-  };
+  }, []);
+
+  // Load saved searches on mount
+  useEffect(() => {
+    loadSavedSearches();
+    loadPopularSearches();
+  }, [loadSavedSearches, loadPopularSearches]);
 
   const createSavedSearch = async () => {
     if (!formData.values.name.trim() || !formData.values.entityType) {
@@ -138,16 +152,19 @@ export default function SavedSearches() {
 
     loadingActions.createSearch.start();
     try {
-      const response = await apiClient.post('/api/search/saved', formData.values);
+      const response = await apiClient.post(
+        '/api/_search/saved',
+        formData.values
+      );
       if (response.success) {
-        toast.success('Saved search created successfully');
+        toast.success('Saved _search created successfully');
         modalActions.createDialog.close();
         formActions.reset();
         loadSavedSearches();
       }
     } catch (error) {
-      console.error('Failed to create saved search:', error);
-      toast.error('Failed to create saved search');
+      console.error('Failed to create saved _search:', error);
+      toast.error('Failed to create saved _search');
     } finally {
       loadingActions.createSearch.finish();
     }
@@ -161,68 +178,74 @@ export default function SavedSearches() {
 
     loadingActions.updateSearch.start();
     try {
-      const response = await apiClient.put(`/api/search/saved/${searchFilters.values.editingSearch.id}`, formData.values);
+      const response = await apiClient.put(
+        `/api/_search/saved/${searchFilters.values.editingSearch.id}`,
+        formData.values
+      );
       if (response.success) {
-        toast.success('Saved search updated successfully');
+        toast.success('Saved _search updated successfully');
         searchFilterActions.setValue('editingSearch', null);
         formActions.reset();
         loadSavedSearches();
       }
     } catch (error) {
-      console.error('Failed to update saved search:', error);
-      toast.error('Failed to update saved search');
+      console.error('Failed to update saved _search:', error);
+      toast.error('Failed to update saved _search');
     } finally {
       loadingActions.updateSearch.finish();
     }
   };
 
   const deleteSavedSearch = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this saved search?')) {
+    if (!confirm('Are you sure you want to delete this saved _search?')) {
       return;
     }
 
     loadingActions.deleteSearch.start();
     try {
-      const response = await apiClient.delete(`/api/search/saved/${id}`);
+      const response = await apiClient.delete(`/api/_search/saved/${id}`);
       if (response.success) {
-        toast.success('Saved search deleted successfully');
+        toast.success('Saved _search deleted successfully');
         loadSavedSearches();
       }
     } catch (error) {
-      console.error('Failed to delete saved search:', error);
-      toast.error('Failed to delete saved search');
+      console.error('Failed to delete saved _search:', error);
+      toast.error('Failed to delete saved _search');
     } finally {
       loadingActions.deleteSearch.finish();
     }
   };
 
-  const useSavedSearch = async (search: SavedSearch) => {
+  const applySavedSearch = async (_search: SavedSearch) => {
     try {
       // Record the usage
-      await apiClient.get(`/api/search/saved/${search.id}`);
+      await apiClient.get(`/api/_search/saved/${_search.id}`);
 
-      // Navigate to appropriate search page with the saved parameters
-      const baseUrl = '/search';
-      const entityPath = search.entityType === 'global' ? '' : `/${search.entityType}`;
-      const params = new URLSearchParams(search.searchParams);
+      // Navigate to appropriate _search page with the saved parameters
+      const baseUrl = '/_search';
+      const entityPath =
+        _search.entityType === 'global' ? '' : `/${_search.entityType}`;
+      const params = new URLSearchParams(
+        _search.searchParams as Record<string, string>
+      );
 
       // This would typically trigger a navigation
       window.location.href = `${baseUrl}${entityPath}?${params.toString()}`;
     } catch (error) {
-      console.error('Failed to use saved search:', error);
-      toast.error('Failed to load saved search');
+      console.error('Failed to use saved _search:', error);
+      toast.error('Failed to load saved _search');
     }
   };
 
-  const editSavedSearch = (search: SavedSearch) => {
-    searchFilterActions.setFieldValue('editingSearch', search);
+  const editSavedSearch = (_search: SavedSearch) => {
+    searchFilterActions.setFieldValue('editingSearch', _search);
     formActions.setValues({
-      name: search.name,
-      description: search.description || '',
-      entityType: search.entityType,
-      searchParams: search.searchParams,
-      isPublic: search.isPublic,
-      enableNotifications: search.enableNotifications,
+      name: _search.name,
+      description: _search.description || '',
+      entityType: _search.entityType,
+      searchParams: _search.searchParams,
+      isPublic: _search.isPublic,
+      enableNotifications: _search.enableNotifications,
     });
   };
 
@@ -267,24 +290,45 @@ export default function SavedSearches() {
     }
   };
 
-  const getSearchParamsSummary = (searchParams: any) => {
+  const getSearchParamsSummary = (searchParams: Record<string, unknown>) => {
     const params = [];
 
-    if (searchParams.query) params.push(`"${searchParams.query}"`);
-    if (searchParams.category) params.push(`Category: ${searchParams.category}`);
-    if (searchParams.gradeCategory) params.push(`Grade: ${searchParams.gradeCategory}`);
-    if (searchParams.type) params.push(`Type: ${searchParams.type}`);
-    if (searchParams.location) params.push(`Location: ${searchParams.location}`);
-    if (searchParams.isAvailable) params.push('Available only');
-    if (searchParams.hasFines) params.push('Has fines');
+    if (searchParams.query) {
+      params.push(`"${String(searchParams.query)}"`);
+    }
+    if (searchParams.category) {
+      params.push(`Category: ${String(searchParams.category)}"`);
+    }
+    if (searchParams.gradeCategory) {
+      params.push(`Grade: ${String(searchParams.gradeCategory)}"`);
+    }
+    if (searchParams.type) {
+      params.push(`Type: ${searchParams.type}`);
+    }
+    if (searchParams.location) {
+      params.push(`Location: ${searchParams.location}`);
+    }
+    if (searchParams.isAvailable) {
+      params.push('Available only');
+    }
+    if (searchParams.hasFines) {
+      params.push('Has fines');
+    }
 
     return params.slice(0, 3).join(', ') + (params.length > 3 ? '...' : '');
   };
 
-  const filteredSearches = savedSearches.filter(search => {
-    const matchesQuery = search.name.toLowerCase().includes(searchFilters.values.searchQuery.toLowerCase()) ||
-                         (search.description?.toLowerCase().includes(searchFilters.values.searchQuery.toLowerCase()));
-    const matchesEntityType = searchFilters.values.filterEntityType === 'all' || search.entityType === searchFilters.values.filterEntityType;
+  const filteredSearches = savedSearches.filter((_search) => {
+    const matchesQuery =
+      _search.name
+        .toLowerCase()
+        .includes(searchFilters.values.searchQuery.toLowerCase()) ||
+      _search.description
+        ?.toLowerCase()
+        .includes(searchFilters.values.searchQuery.toLowerCase());
+    const matchesEntityType =
+      searchFilters.values.filterEntityType === 'all' ||
+      _search.entityType === searchFilters.values.filterEntityType;
     return matchesQuery && matchesEntityType;
   });
 
@@ -297,33 +341,40 @@ export default function SavedSearches() {
             Saved Searches
           </h1>
           <p className="text-muted-foreground">
-            Manage your saved search queries and discover popular searches
+            Manage your saved _search queries and discover popular searches
           </p>
         </div>
 
         <Button onClick={() => modalActions.createDialog.open()}>
           <Plus className="w-4 h-4 mr-2" />
-          Create New Search
+          Create New _Search
         </Button>
       </div>
 
-      {/* Search and Filter Bar */}
+      {/* _Search and Filter Bar */}
       <Card>
         <CardContent className="p-4">
           <div className="flex gap-4 items-center">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search your saved searches..."
+                placeholder="_Search your saved searches..."
                 value={searchFilters.values.searchQuery}
-                onChange={(e) => searchFilterActions.setFieldValue('searchQuery', e.target.value)}
+                onChange={(e) =>
+                  searchFilterActions.setFieldValue(
+                    'searchQuery',
+                    e.target.value
+                  )
+                }
                 className="pl-10"
               />
             </div>
 
             <Select
               value={searchFilters.values.filterEntityType}
-              onValueChange={(value) => searchFilterActions.setFieldValue('filterEntityType', value)}
+              onValueChange={(value) =>
+                searchFilterActions.setFieldValue('filterEntityType', value)
+              }
             >
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Filter by type" />
@@ -341,7 +392,12 @@ export default function SavedSearches() {
       </Card>
 
       {/* Main Content */}
-      <Tabs value={searchFilters.values.activeTab} onValueChange={(value) => searchFilterActions.setFieldValue('activeTab', value)}>
+      <Tabs
+        value={searchFilters.values.activeTab}
+        onValueChange={(value) =>
+          searchFilterActions.setFieldValue('activeTab', value)
+        }
+      >
         <TabsList>
           <TabsTrigger value="my-searches">
             <Star className="w-4 h-4 mr-2" />
@@ -357,34 +413,41 @@ export default function SavedSearches() {
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="text-muted-foreground mt-2">Loading saved searches...</p>
+              <p className="text-muted-foreground mt-2">
+                Loading saved searches...
+              </p>
             </div>
           ) : filteredSearches.length > 0 ? (
             <div className="grid gap-4">
-              {filteredSearches.map((search) => (
-                <Card key={search.id} className="hover:shadow-md transition-shadow">
+              {filteredSearches.map((_search) => (
+                <Card
+                  key={_search.id}
+                  className="hover:shadow-md transition-shadow"
+                >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <div className="flex items-center gap-2">
-                            {getEntityTypeIcon(search.entityType)}
-                            <h3 className="font-semibold text-lg">{search.name}</h3>
+                            {getEntityTypeIcon(_search.entityType)}
+                            <h3 className="font-semibold text-lg">
+                              {_search.name}
+                            </h3>
                           </div>
 
                           <div className="flex gap-2">
                             <Badge variant="outline">
-                              {getEntityTypeLabel(search.entityType)}
+                              {getEntityTypeLabel(_search.entityType)}
                             </Badge>
 
-                            {search.isPublic && (
+                            {_search.isPublic && (
                               <Badge variant="secondary">
                                 <Share2 className="w-3 h-3 mr-1" />
                                 Public
                               </Badge>
                             )}
 
-                            {search.enableNotifications && (
+                            {_search.enableNotifications && (
                               <Badge variant="outline">
                                 <Bell className="w-3 h-3 mr-1" />
                                 Notifications
@@ -393,29 +456,36 @@ export default function SavedSearches() {
                           </div>
                         </div>
 
-                        {search.description && (
-                          <p className="text-muted-foreground mb-3">{search.description}</p>
+                        {_search.description && (
+                          <p className="text-muted-foreground mb-3">
+                            {_search.description}
+                          </p>
                         )}
 
                         <div className="space-y-2">
                           <div className="text-sm text-muted-foreground">
-                            <strong>Parameters:</strong> {getSearchParamsSummary(search.searchParams)}
+                            <strong>Parameters:</strong>{' '}
+                            {getSearchParamsSummary(_search.searchParams)}
                           </div>
 
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              Used {search.useCount} times
+                              Used {_search.useCount} times
                             </span>
 
-                            {search.lastUsedAt && (
+                            {_search.lastUsedAt && (
                               <span>
-                                Last used {new Date(search.lastUsedAt).toLocaleDateString()}
+                                Last used{' '}
+                                {new Date(
+                                  _search.lastUsedAt
+                                ).toLocaleDateString()}
                               </span>
                             )}
 
                             <span>
-                              Created {new Date(search.createdAt).toLocaleDateString()}
+                              Created{' '}
+                              {new Date(_search.createdAt).toLocaleDateString()}
                             </span>
                           </div>
                         </div>
@@ -425,7 +495,7 @@ export default function SavedSearches() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => useSavedSearch(search)}
+                          onClick={() => applySavedSearch(_search)}
                         >
                           <Eye className="w-4 h-4 mr-1" />
                           Use
@@ -434,7 +504,7 @@ export default function SavedSearches() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => editSavedSearch(search)}
+                          onClick={() => editSavedSearch(_search)}
                         >
                           <Edit className="w-4 h-4 mr-1" />
                           Edit
@@ -443,7 +513,7 @@ export default function SavedSearches() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => deleteSavedSearch(search.id)}
+                          onClick={() => deleteSavedSearch(_search.id)}
                         >
                           <Trash2 className="w-4 h-4 mr-1" />
                           Delete
@@ -459,7 +529,9 @@ export default function SavedSearches() {
               <CardContent className="flex flex-col items-center justify-center h-32">
                 <Bookmark className="w-8 h-8 text-muted-foreground mb-2" />
                 <p className="text-muted-foreground">
-                  {searchQuery ? 'No saved searches found matching your criteria' : 'No saved searches yet'}
+                  {searchQuery
+                    ? 'No saved searches found matching your criteria'
+                    : 'No saved searches yet'}
                 </p>
                 <Button
                   variant="outline"
@@ -468,7 +540,7 @@ export default function SavedSearches() {
                   onClick={() => setShowCreateDialog(true)}
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Create Your First Search
+                  Create Your First _Search
                 </Button>
               </CardContent>
             </Card>
@@ -478,40 +550,49 @@ export default function SavedSearches() {
         <TabsContent value="popular" className="space-y-4">
           {popularSearches.length > 0 ? (
             <div className="grid gap-4">
-              {popularSearches.map((search) => (
-                <Card key={search.id} className="hover:shadow-md transition-shadow">
+              {popularSearches.map((_search) => (
+                <Card
+                  key={_search.id}
+                  className="hover:shadow-md transition-shadow"
+                >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <div className="flex items-center gap-2">
-                            {getEntityTypeIcon(search.entityType)}
-                            <h3 className="font-semibold text-lg">{search.name}</h3>
+                            {getEntityTypeIcon(_search.entityType)}
+                            <h3 className="font-semibold text-lg">
+                              {_search.name}
+                            </h3>
                           </div>
 
                           <div className="flex gap-2">
                             <Badge variant="outline">
-                              {getEntityTypeLabel(search.entityType)}
+                              {getEntityTypeLabel(_search.entityType)}
                             </Badge>
 
                             <Badge className="bg-green-500">
                               <TrendingUp className="w-3 h-3 mr-1" />
-                              {search.useCount} uses
+                              {_search.useCount} uses
                             </Badge>
                           </div>
                         </div>
 
-                        {search.description && (
-                          <p className="text-muted-foreground mb-3">{search.description}</p>
+                        {_search.description && (
+                          <p className="text-muted-foreground mb-3">
+                            {_search.description}
+                          </p>
                         )}
 
                         <div className="space-y-2">
                           <div className="text-sm text-muted-foreground">
-                            <strong>Parameters:</strong> {getSearchParamsSummary(search.searchParams)}
+                            <strong>Parameters:</strong>{' '}
+                            {getSearchParamsSummary(_search.searchParams)}
                           </div>
 
                           <div className="text-sm text-muted-foreground">
-                            Created by {search.userId} • {new Date(search.createdAt).toLocaleDateString()}
+                            Created by {_search.userId} •{' '}
+                            {new Date(_search.createdAt).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
@@ -520,7 +601,7 @@ export default function SavedSearches() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => useSavedSearch(search)}
+                          onClick={() => applySavedSearch(_search)}
                         >
                           <Eye className="w-4 h-4 mr-1" />
                           Use
@@ -530,12 +611,12 @@ export default function SavedSearches() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            // Copy search parameters to create new search
+                            // Copy _search parameters to create new _search
                             setFormData({
-                              name: `Copy of ${search.name}`,
-                              description: search.description || '',
-                              entityType: search.entityType,
-                              searchParams: search.searchParams,
+                              name: `Copy of ${_search.name}`,
+                              description: _search.description || '',
+                              entityType: _search.entityType,
+                              searchParams: _search.searchParams,
                               isPublic: false,
                               enableNotifications: false,
                             });
@@ -555,7 +636,9 @@ export default function SavedSearches() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center h-32">
                 <TrendingUp className="w-8 h-8 text-muted-foreground mb-2" />
-                <p className="text-muted-foreground">No popular searches available yet</p>
+                <p className="text-muted-foreground">
+                  No popular searches available yet
+                </p>
               </CardContent>
             </Card>
           )}
@@ -563,20 +646,30 @@ export default function SavedSearches() {
       </Tabs>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={modalStates.createDialog.isOpen || !!searchFilters.values.editingSearch} onOpenChange={(open) => {
-        if (!open) {
-          modalActions.createDialog.close();
-          searchFilterActions.setFieldValue('editingSearch', null);
-          resetForm();
+      <Dialog
+        open={
+          modalStates.createDialog.isOpen ||
+          !!searchFilters.values.editingSearch
         }
-      }}>
+        onOpenChange={(open) => {
+          if (!open) {
+            modalActions.createDialog.close();
+            searchFilterActions.setFieldValue('editingSearch', null);
+            resetForm();
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {searchFilters.values.editingSearch ? 'Edit Saved Search' : 'Create New Saved Search'}
+              {searchFilters.values.editingSearch
+                ? 'Edit Saved _Search'
+                : 'Create New Saved _Search'}
             </DialogTitle>
             <DialogDescription>
-              {searchFilters.values.editingSearch ? 'Update your saved search parameters' : 'Save your current search for future use'}
+              {searchFilters.values.editingSearch
+                ? 'Update your saved _search parameters'
+                : 'Save your current _search for future use'}
             </DialogDescription>
           </DialogHeader>
 
@@ -584,9 +677,11 @@ export default function SavedSearches() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Name *</label>
               <Input
-                placeholder="Enter search name..."
+                placeholder="Enter _search name..."
                 value={formData.values.name}
-                onChange={(e) => formActions.setFieldValue('name', e.target.value)}
+                onChange={(e) =>
+                  formActions.setFieldValue('name', e.target.value)
+                }
               />
             </div>
 
@@ -595,7 +690,9 @@ export default function SavedSearches() {
               <Textarea
                 placeholder="Optional description..."
                 value={formData.values.description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => formActions.setFieldValue('description', e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                  formActions.setFieldValue('description', e.target.value)
+                }
                 rows={3}
               />
             </div>
@@ -604,7 +701,9 @@ export default function SavedSearches() {
               <label className="text-sm font-medium">Entity Type *</label>
               <Select
                 value={formData.values.entityType}
-                onValueChange={(value: any) => formActions.setFieldValue('entityType', value)}
+                onValueChange={(value: string) =>
+                  formActions.setFieldValue('entityType', value)
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -620,27 +719,33 @@ export default function SavedSearches() {
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <label className="text-sm font-medium">Public Search</label>
+                <label className="text-sm font-medium">Public _Search</label>
                 <p className="text-xs text-muted-foreground">
-                  Allow other users to see and use this search
+                  Allow other users to see and use this _search
                 </p>
               </div>
               <Switch
                 checked={formData.values.isPublic}
-                onCheckedChange={(checked) => formActions.setFieldValue('isPublic', checked)}
+                onCheckedChange={(checked) =>
+                  formActions.setFieldValue('isPublic', checked)
+                }
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <label className="text-sm font-medium">Enable Notifications</label>
+                <label className="text-sm font-medium">
+                  Enable Notifications
+                </label>
                 <p className="text-xs text-muted-foreground">
-                  Get notified when new items match this search
+                  Get notified when new items match this _search
                 </p>
               </div>
               <Switch
                 checked={formData.values.enableNotifications}
-                onCheckedChange={(checked) => formActions.setFieldValue('enableNotifications', checked)}
+                onCheckedChange={(checked) =>
+                  formActions.setFieldValue('enableNotifications', checked)
+                }
               />
             </div>
           </div>
@@ -656,7 +761,13 @@ export default function SavedSearches() {
             >
               Cancel
             </Button>
-            <Button onClick={searchFilters.values.editingSearch ? updateSavedSearch : createSavedSearch}>
+            <Button
+              onClick={
+                searchFilters.values.editingSearch
+                  ? updateSavedSearch
+                  : createSavedSearch
+              }
+            >
               {searchFilters.values.editingSearch ? 'Update' : 'Create'}
             </Button>
           </DialogFooter>

@@ -53,7 +53,9 @@ export const useReactPerformance = (
 
   // Track render end
   const endRender = useCallback(() => {
-    if (renderStartRef.current === 0) return;
+    if (renderStartRef.current === 0) {
+      return;
+    }
 
     const renderTime = performance.now() - renderStartRef.current;
     const metrics = metricsRef.current;
@@ -76,20 +78,22 @@ export const useReactPerformance = (
           `⚠️ Slow render in ${componentName}: ${renderTime.toFixed(2)}ms (threshold: ${warningThreshold}ms)`
         );
       } else if (logRenders) {
-        console.log(
+        console.debug(
           `✅ ${componentName} rendered in ${renderTime.toFixed(2)}ms`
         );
       }
     }
 
     // Emit performance event
-    window.dispatchEvent(new CustomEvent('component-performance', {
-      detail: {
-        componentName,
-        metrics: { ...metrics },
-        renderTime,
-      }
-    }));
+    window.dispatchEvent(
+      new CustomEvent('component-performance', {
+        detail: {
+          componentName,
+          metrics: { ...metrics },
+          renderTime,
+        },
+      })
+    );
 
     renderStartRef.current = 0;
   }, [componentName, logRenders, warningThreshold, errorThreshold]);
@@ -102,7 +106,7 @@ export const useReactPerformance = (
       metricsRef.current.isMounted = true;
 
       if (logRenders || process.env.NODE_ENV === 'development') {
-        console.log(`🚀 ${componentName} mounted in ${mountTime}ms`);
+        console.debug(`🚀 ${componentName} mounted in ${mountTime}ms`);
       }
     }
 
@@ -145,7 +149,7 @@ export const useReactPerformance = (
 };
 
 // Hook for optimizing expensive calculations
-export const useOptimizedCalculation = <T,>(
+export const useOptimizedCalculation = <T>(
   calculation: () => T,
   dependencies: React.DependencyList,
   options: {
@@ -176,7 +180,9 @@ export const useOptimizedCalculation = <T,>(
 
       const endTime = performance.now();
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Calculation completed in ${(endTime - startTime).toFixed(2)}ms`);
+        console.debug(
+          `Calculation completed in ${(endTime - startTime).toFixed(2)}ms`
+        );
       }
     } catch (error) {
       console.error('Calculation failed:', error);
@@ -187,8 +193,8 @@ export const useOptimizedCalculation = <T,>(
 
   useEffect(() => {
     if (memoize) {
-      const hasDependenciesChanged = !dependencies.every((dep, index) =>
-        dep === dependenciesRef.current[index]
+      const hasDependenciesChanged = !dependencies.every(
+        (dep, index) => dep === dependenciesRef.current[index]
       );
 
       if (hasDependenciesChanged) {
@@ -230,7 +236,9 @@ export const useStableCallback = <T extends (...args: any[]) => any>(
   }, [dependencies]);
 
   return useCallback((...args: Parameters<T>) => {
-    if (dependencies.every((dep, index) => dep === dependenciesRef.current[index])) {
+    if (
+      dependencies.every((dep, index) => dep === dependenciesRef.current[index])
+    ) {
       return callbackRef.current(...args);
     }
     return callback(...args);
@@ -246,7 +254,7 @@ export const useAsyncPerformance = () => {
     operationsRef.current.set(operationName, startTime);
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`⏱️ Started ${operationName}`);
+      console.debug(`⏱️ Started ${operationName}`);
     }
 
     return startTime;
@@ -254,25 +262,29 @@ export const useAsyncPerformance = () => {
 
   const endOperation = useCallback((operationName: string) => {
     const startTime = operationsRef.current.get(operationName);
-    if (!startTime) return null;
+    if (!startTime) {
+      return null;
+    }
 
     const endTime = performance.now();
     const duration = endTime - startTime;
     operationsRef.current.delete(operationName);
 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`✅ Completed ${operationName} in ${duration.toFixed(2)}ms`);
+      console.debug(`✅ Completed ${operationName} in ${duration.toFixed(2)}ms`);
     }
 
     // Emit performance event
-    window.dispatchEvent(new CustomEvent('async-operation-performance', {
-      detail: {
-        operationName,
-        duration,
-        startTime,
-        endTime,
-      }
-    }));
+    window.dispatchEvent(
+      new CustomEvent('async-operation-performance', {
+        detail: {
+          operationName,
+          duration,
+          startTime,
+          endTime,
+        },
+      })
+    );
 
     return duration;
   }, []);
@@ -298,7 +310,9 @@ export const usePerformanceComparison = (variantName: string) => {
 
   const getStats = useCallback(() => {
     const metrics = metricsRef.current;
-    if (metrics.length === 0) return null;
+    if (metrics.length === 0) {
+      return null;
+    }
 
     const sum = metrics.reduce((a, b) => a + b, 0);
     const average = sum / metrics.length;

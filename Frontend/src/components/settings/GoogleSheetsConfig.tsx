@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +31,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { settingsApi } from '@/lib/api';
+import { getErrorMessage, hasProperty } from '@/utils/errorHandling';
 
 interface GoogleSheetsConfigData {
   spreadsheetId: string;
@@ -58,20 +65,32 @@ const DEFAULT_CONFIG: GoogleSheetsConfigData = {
 
 export default function GoogleSheetsConfig() {
   const queryClient = useQueryClient();
-  const [localConfig, setLocalConfig] = useState<GoogleSheetsConfigData>(DEFAULT_CONFIG);
+  const [localConfig, setLocalConfig] =
+    useState<GoogleSheetsConfigData>(DEFAULT_CONFIG);
 
   // Fetch Google Sheets configuration
-  const { data: config = DEFAULT_CONFIG, isLoading, error } = useQuery({
+  const {
+    data: config = DEFAULT_CONFIG,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['google-sheets-config'],
     queryFn: async () => {
       try {
         const response = await settingsApi.getGoogleSheetsConfig();
-        const data = (response.data as GoogleSheetsConfigData) || DEFAULT_CONFIG;
+        const data =
+          (response.data as GoogleSheetsConfigData) || DEFAULT_CONFIG;
         setLocalConfig(data);
         return data;
-      } catch (err: any) {
+      } catch (err: unknown) {
         // If no config exists yet, use defaults
-        if (err?.response?.status === 404) {
+        if (
+          hasProperty(err, 'response') &&
+          typeof err.response === 'object' &&
+          err.response !== null &&
+          hasProperty(err.response, 'status') &&
+          err.response.status === 404
+        ) {
           toast.info('Google Sheets integration not configured yet');
           return DEFAULT_CONFIG;
         }
@@ -86,18 +105,18 @@ export default function GoogleSheetsConfig() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append('credentials', file);
-      
+
       const response = await fetch('/api/settings/google-sheets/upload', {
         method: 'POST',
         credentials: 'include',
         body: formData,
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Failed to upload credentials');
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
@@ -116,11 +135,13 @@ export default function GoogleSheetsConfig() {
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['google-sheets-config'] });
       const data = response.data as { message?: string };
-      toast.success(data?.message || 'Successfully connected to Google Sheets!');
+      toast.success(
+        data?.message || 'Successfully connected to Google Sheets!'
+      );
       setLocalConfig((prev) => ({ ...prev, connectionStatus: 'connected' }));
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to connect to Google Sheets');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to connect to Google Sheets'));
       setLocalConfig((prev) => ({ ...prev, connectionStatus: 'error' }));
     },
   });
@@ -134,28 +155,35 @@ export default function GoogleSheetsConfig() {
       const recordCount = data?.recordCount || 0;
       toast.success(`Successfully synced ${recordCount} records!`);
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to sync data');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to sync data'));
     },
   });
 
   // Save schedule mutation
   const scheduleMutation = useMutation({
-    mutationFn: (scheduleConfig: { autoSync: boolean; syncSchedule: string; spreadsheetId: string }) =>
-      settingsApi.updateGoogleSheetsSchedule(scheduleConfig),
+    mutationFn: (scheduleConfig: {
+      autoSync: boolean;
+      syncSchedule: string;
+      spreadsheetId: string;
+    }) => settingsApi.updateGoogleSheetsSchedule(scheduleConfig),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['google-sheets-config'] });
       toast.success('Sync schedule updated successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to save schedule');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to save schedule'));
     },
   });
 
   // Handlers
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     if (!file.name.endsWith('.json')) {
       toast.error('Please upload a JSON credentials file');
@@ -181,7 +209,10 @@ export default function GoogleSheetsConfig() {
   };
 
   const manualSync = () => {
-    if (localConfig.connectionStatus !== 'connected' && config.connectionStatus !== 'connected') {
+    if (
+      localConfig.connectionStatus !== 'connected' &&
+      config.connectionStatus !== 'connected'
+    ) {
       toast.error('Please test connection first');
       return;
     }
@@ -198,7 +229,9 @@ export default function GoogleSheetsConfig() {
   };
 
   const formatDate = (date: Date | null) => {
-    if (!date) return 'Never';
+    if (!date) {
+      return 'Never';
+    }
     return new Date(date).toLocaleString();
   };
 
@@ -276,7 +309,8 @@ export default function GoogleSheetsConfig() {
                 <span className="text-sm text-muted-foreground">Status:</span>
                 {getConnectionStatusBadge()}
               </div>
-              {(config.credentialsUploaded || localConfig.credentialsUploaded) && (
+              {(config.credentialsUploaded ||
+                localConfig.credentialsUploaded) && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <CheckCircle2 className="w-4 h-4 text-green-500" />
                   Credentials uploaded
@@ -304,11 +338,16 @@ export default function GoogleSheetsConfig() {
               placeholder="Enter the spreadsheet ID from the URL"
               value={localConfig.spreadsheetId}
               onChange={(e) =>
-                setLocalConfig({ ...localConfig, spreadsheetId: e.target.value })
+                setLocalConfig({
+                  ...localConfig,
+                  spreadsheetId: e.target.value,
+                })
               }
             />
             <p className="text-xs text-muted-foreground">
-              Find this in your Google Sheets URL: docs.google.com/spreadsheets/d/<strong>[SPREADSHEET_ID]</strong>/edit
+              Find this in your Google Sheets URL:
+              docs.google.com/spreadsheets/d/<strong>[SPREADSHEET_ID]</strong>
+              /edit
             </p>
           </div>
 
@@ -341,7 +380,8 @@ export default function GoogleSheetsConfig() {
               disabled={
                 testMutation.isPending ||
                 !localConfig.spreadsheetId ||
-                (!localConfig.credentialsUploaded && !config.credentialsUploaded)
+                (!localConfig.credentialsUploaded &&
+                  !config.credentialsUploaded)
               }
             >
               {testMutation.isPending ? (
@@ -361,7 +401,8 @@ export default function GoogleSheetsConfig() {
               onClick={manualSync}
               disabled={
                 syncMutation.isPending ||
-                (localConfig.connectionStatus !== 'connected' && config.connectionStatus !== 'connected')
+                (localConfig.connectionStatus !== 'connected' &&
+                  config.connectionStatus !== 'connected')
               }
             >
               {syncMutation.isPending ? (
@@ -410,7 +451,10 @@ export default function GoogleSheetsConfig() {
                 setLocalConfig({ ...localConfig, autoSync: e.target.checked })
               }
               className="h-4 w-4"
-              disabled={localConfig.connectionStatus !== 'connected' && config.connectionStatus !== 'connected'}
+              disabled={
+                localConfig.connectionStatus !== 'connected' &&
+                config.connectionStatus !== 'connected'
+              }
             />
           </div>
 
@@ -423,7 +467,10 @@ export default function GoogleSheetsConfig() {
                 onValueChange={(value) =>
                   setLocalConfig({ ...localConfig, syncSchedule: value })
                 }
-                disabled={localConfig.connectionStatus !== 'connected' && config.connectionStatus !== 'connected'}
+                disabled={
+                  localConfig.connectionStatus !== 'connected' &&
+                  config.connectionStatus !== 'connected'
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -444,7 +491,8 @@ export default function GoogleSheetsConfig() {
             onClick={saveSchedule}
             disabled={
               scheduleMutation.isPending ||
-              (localConfig.connectionStatus !== 'connected' && config.connectionStatus !== 'connected')
+              (localConfig.connectionStatus !== 'connected' &&
+                config.connectionStatus !== 'connected')
             }
           >
             {scheduleMutation.isPending ? 'Saving...' : 'Save Schedule'}
@@ -465,11 +513,15 @@ export default function GoogleSheetsConfig() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last synced:</span>
-                <span className="font-medium">{formatDate(config.lastSync)}</span>
+                <span className="font-medium">
+                  {formatDate(config.lastSync)}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Records synced:</span>
-                <span className="font-medium">{config.lastSyncRecordCount}</span>
+                <span className="font-medium">
+                  {config.lastSyncRecordCount}
+                </span>
               </div>
               {config.autoSync && (
                 <div className="flex justify-between">

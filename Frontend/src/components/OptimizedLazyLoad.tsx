@@ -1,9 +1,8 @@
-import React, { Suspense, lazy } from 'react';
-import type { ComponentType } from 'react';
+import React, { Suspense, lazy, type ComponentType } from 'react';
 import { Loader2 } from 'lucide-react';
 
 interface LazyLoadProps {
-  loader: () => Promise<{ default: ComponentType<any> }>;
+  loader: () => Promise<{ default: ComponentType<Record<string, unknown>> }>;
   fallback?: React.ReactNode;
   error?: React.ReactNode;
   delay?: number;
@@ -16,11 +15,15 @@ interface LoadingSpinnerProps {
   className?: string;
 }
 
-export function LoadingSpinner({ size = 'md', message = 'Loading...', className = '' }: LoadingSpinnerProps) {
+export function LoadingSpinner({
+  size = 'md',
+  message = 'Loading...',
+  className = '',
+}: LoadingSpinnerProps) {
   const sizeClasses = {
     sm: 'w-4 h-4',
     md: 'w-6 h-6',
-    lg: 'w-8 h-8'
+    lg: 'w-8 h-8',
   };
 
   return (
@@ -35,7 +38,7 @@ export function LoadingSpinner({ size = 'md', message = 'Loading...', className 
 
 export function ErrorFallback({
   message = 'Failed to load component',
-  onRetry
+  onRetry,
 }: {
   message?: string;
   onRetry?: () => void;
@@ -62,7 +65,10 @@ class ErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback?: React.ReactNode },
   { hasError: boolean; error?: Error }
 > {
-  constructor(props: { children: React.ReactNode; fallback?: React.ReactNode }) {
+  constructor(props: {
+    children: React.ReactNode;
+    fallback?: React.ReactNode;
+  }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -78,7 +84,11 @@ class ErrorBoundary extends React.Component<
   override render() {
     if (this.state.hasError) {
       const errorMessage = this.state.error?.message;
-      return this.props.fallback || <ErrorFallback {...(errorMessage && { message: errorMessage })} />;
+      return (
+        this.props.fallback || (
+          <ErrorFallback {...(errorMessage && { message: errorMessage })} />
+        )
+      );
     }
 
     return this.props.children;
@@ -90,15 +100,15 @@ export function OptimizedLazyLoad({
   fallback,
   error,
   delay = 200,
-  className = ''
+  className = '',
 }: LazyLoadProps) {
   const LazyComponent = lazy(() => {
-    return loader().catch(err => {
+    return loader().catch((err) => {
       console.error('Failed to load component:', err);
-      // Return a default error component
-      return {
-        default: () => error || <ErrorFallback message="Failed to load component" />
-      };
+      const fallbackNode = React.isValidElement(error)
+        ? error
+        : <ErrorFallback message={typeof error === 'string' ? error : 'Failed to load component'} />;
+      return { default: () => fallbackNode };
     });
   });
 
@@ -120,9 +130,23 @@ export function OptimizedLazyLoad({
     />
   );
 
+  const normalizedFallback = React.isValidElement(error)
+    ? error
+    : (error
+        ? <ErrorFallback message={typeof error === 'string' ? error : 'Failed to load component'} />
+        : undefined);
+
   return (
-    <ErrorBoundary fallback={error}>
-      <Suspense fallback={showFallback ? (fallback || defaultFallback) : <div className={className} />}>
+    <ErrorBoundary fallback={normalizedFallback}>
+      <Suspense
+        fallback={
+          showFallback ? (
+            fallback || defaultFallback
+          ) : (
+            <div className={className} />
+          )
+        }
+      >
         <LazyComponent />
       </Suspense>
     </ErrorBoundary>
@@ -130,7 +154,9 @@ export function OptimizedLazyLoad({
 }
 
 // Preload utilities
-export function preloadComponent(loader: () => Promise<{ default: ComponentType<any> }>) {
+export function preloadComponent(
+  loader: () => Promise<{ default: ComponentType<Record<string, unknown>> }>
+) {
   // Start loading the component in the background
   loader().catch(() => {
     // Ignore errors during preloading
@@ -146,7 +172,9 @@ export function useIntersectionObserver(
 
   React.useEffect(() => {
     const element = ref.current;
-    if (!element) return;
+    if (!element) {
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -157,7 +185,7 @@ export function useIntersectionObserver(
       {
         threshold: 0.1,
         rootMargin: '50px',
-        ...options
+        ...options,
       }
     );
 
@@ -173,10 +201,12 @@ export function useIntersectionObserver(
 
 // Hook for lazy loading components when they come into view
 export function useLazyLoad(
-  loader: () => Promise<{ default: ComponentType<any> }>,
+  loader: () => Promise<{ default: ComponentType<Record<string, unknown>> }>,
   options: IntersectionObserverInit = {}
 ) {
-  const [Component, setComponent] = React.useState<ComponentType<any> | null>(null);
+  const [Component, setComponent] = React.useState<ComponentType<
+    Record<string, unknown>
+  > | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<Error | null>(null);
   const ref = React.useRef<HTMLDivElement>(null);
@@ -208,7 +238,7 @@ export function LazyLoadOnIntersection({
   loader,
   fallback,
   error,
-  className = ''
+  className = '',
 }: Omit<LazyLoadProps, 'delay'> & { className?: string }) {
   const { Component, loading, error: loadError, ref } = useLazyLoad(loader);
 
@@ -319,7 +349,7 @@ export function useBundleSizeMonitor() {
     try {
       observer.observe({ entryTypes: ['resource'] });
     } catch (error) {
-      console.log('Performance observer not supported');
+      console.debug('Performance observer not supported');
     }
 
     return () => observer.disconnect();

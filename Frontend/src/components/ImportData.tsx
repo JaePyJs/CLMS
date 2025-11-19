@@ -12,7 +12,11 @@ export default function ImportData() {
 
   const toggleImporter = () => {
     setUseEnhancedImporter(!useEnhancedImporter);
-    toast.info(useEnhancedImporter ? 'Switched to Enhanced Importer' : 'Switched to Legacy Importer');
+    toast.info(
+      useEnhancedImporter
+        ? 'Switched to Enhanced Importer'
+        : 'Switched to Legacy Importer'
+    );
   };
 
   return (
@@ -21,10 +25,16 @@ export default function ImportData() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Import Data</h2>
           <p className="text-muted-foreground">
-            {useEnhancedImporter ? 'Enhanced CSV/Excel import with intelligent field mapping' : 'Basic CSV file import functionality'}
+            {useEnhancedImporter
+              ? 'Enhanced CSV/Excel import with intelligent field mapping'
+              : 'Basic CSV file import functionality'}
           </p>
         </div>
-        <Button variant="outline" onClick={toggleImporter} className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          onClick={toggleImporter}
+          className="flex items-center gap-2"
+        >
           <Settings className="h-4 w-4" />
           {useEnhancedImporter ? 'Use Legacy' : 'Use Enhanced'}
         </Button>
@@ -35,7 +45,8 @@ export default function ImportData() {
           <Zap className="h-4 w-4" />
           <AlertTitle>Enhanced Import Mode Active</AlertTitle>
           <AlertDescription>
-            Excel support, auto field detection, intelligent data mapping, and real-time preview functionality.
+            Excel support, auto field detection, intelligent data mapping, and
+            real-time preview functionality.
           </AlertDescription>
         </Alert>
       ) : (
@@ -51,8 +62,14 @@ export default function ImportData() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {useEnhancedImporter ? <FileText className="h-5 w-5" /> : <Database className="h-5 w-5" />}
-            {useEnhancedImporter ? 'Enhanced Import Manager' : 'Basic Import Manager'}
+            {useEnhancedImporter ? (
+              <FileText className="h-5 w-5" />
+            ) : (
+              <Database className="h-5 w-5" />
+            )}
+            {useEnhancedImporter
+              ? 'Enhanced Import Manager'
+              : 'Basic Import Manager'}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -61,7 +78,8 @@ export default function ImportData() {
           ) : (
             <div className="space-y-4">
               <p className="text-muted-foreground">
-                Basic CSV import functionality is available. Switch to Enhanced mode for Excel support and advanced features.
+                Basic CSV import functionality is available. Switch to Enhanced
+                mode for Excel support and advanced features.
               </p>
               <Button onClick={toggleImporter} className="w-full">
                 <Zap className="h-4 w-4 mr-2" />

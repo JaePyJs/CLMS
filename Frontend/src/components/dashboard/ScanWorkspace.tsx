@@ -25,7 +25,35 @@ import { useStudentActivity } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { offlineActions } from '@/lib/offline-queue';
 import { toast } from 'sonner';
-import { Camera, Keyboard, Edit3, Users, BookOpen, Monitor, Gamepad2, Clock, AlertCircle, Play, Square, RefreshCw, Plus, Timer, UserPlus, FileText, Settings, Eye, AlertTriangle, Filter, Printer, ExternalLink, Calendar, BarChart3, Activity, Shield, Download } from 'lucide-react';
+import {
+  Camera,
+  Keyboard,
+  Edit3,
+  Users,
+  BookOpen,
+  Monitor,
+  Gamepad2,
+  Clock,
+  AlertCircle,
+  Play,
+  Square,
+  RefreshCw,
+  Plus,
+  Timer,
+  UserPlus,
+  FileText,
+  Settings,
+  Eye,
+  AlertTriangle,
+  Filter,
+  Printer,
+  ExternalLink,
+  Calendar,
+  BarChart3,
+  Activity,
+  Shield,
+  Download,
+} from 'lucide-react';
 
 interface Student {
   id: string;
@@ -66,7 +94,8 @@ export function ScanWorkspace() {
   const [statistics, setStatistics] = useState<any>(null);
 
   const { isOnline, lastScanResult } = useAppStore();
-  const { toggleListening, isListening, currentInput, lastScannedCode } = useUsbScanner();
+  const { toggleListening, isListening, currentInput, lastScannedCode } =
+    useUsbScanner();
   const { isOpen, input, setIsOpen, setInput, handleSubmit } = useManualEntry();
   const { mutate: logActivity } = useStudentActivity();
 
@@ -84,10 +113,12 @@ export function ScanWorkspace() {
 
   // Cooldown timer effect
   useEffect(() => {
-    if (!cooldownInfo) return;
+    if (!cooldownInfo) {
+      return;
+    }
 
     const interval = setInterval(() => {
-      setCooldownInfo(prev => {
+      setCooldownInfo((prev) => {
         if (!prev || prev.remainingSeconds <= 1) {
           return null;
         }
@@ -114,9 +145,17 @@ export function ScanWorkspace() {
         new Date(new Date().setHours(0, 0, 0, 0)), // Today start
         new Date() // Now
       );
-      setStatistics(result.data);
+      if (result && result.success && result.data) {
+        setStatistics(result.data);
+      } else {
+        setStatistics(null);
+        toast.error('Failed to load statistics');
+      }
     } catch (error) {
       console.error('Failed to load statistics:', error);
+      setStatistics(null);
+      const msg = (error as any)?.message || 'Failed to load statistics';
+      toast.error(String(msg));
     }
   };
 
@@ -129,9 +168,11 @@ export function ScanWorkspace() {
       if (result.success) {
         // Play success sound
         try {
-          successSound.play().catch(e => console.log('Audio play failed:', e));
+          successSound
+            .play()
+            .catch((e) => console.debug('Audio play failed:', e));
         } catch (e) {
-          console.log('Audio not available:', e);
+          console.debug('Audio not available:', e);
         }
 
         toast.success(result.message, {
@@ -142,15 +183,18 @@ export function ScanWorkspace() {
 
         setScanResult({
           student: result.student
-            ? {
+            ? ({
                 id: result.student.id,
                 studentId: result.student.studentId,
                 firstName: result.student.name?.split(' ')[0] || '',
-                lastName: result.student.name?.split(' ').slice(1).join(' ') || result.student.name || '',
+                lastName:
+                  result.student.name?.split(' ').slice(1).join(' ') ||
+                  result.student.name ||
+                  '',
                 gradeLevel: result.student.gradeLevel,
                 gradeCategory: result.student.gradeLevel || '', // Use gradeLevel as gradeCategory
                 section: result.student.section || '',
-              } as Student
+              } as Student)
             : undefined,
           barcode,
           type: 'student' as const,
@@ -164,9 +208,11 @@ export function ScanWorkspace() {
         if (result.cooldownRemaining && result.cooldownRemaining > 0) {
           // Play cooldown warning sound
           try {
-            cooldownSound.play().catch(e => console.log('Audio play failed:', e));
+            cooldownSound
+              .play()
+              .catch((e) => console.debug('Audio play failed:', e));
           } catch (e) {
-            console.log('Audio not available:', e);
+            console.debug('Audio not available:', e);
           }
 
           const minutes = Math.ceil(result.cooldownRemaining / 60);
@@ -183,9 +229,11 @@ export function ScanWorkspace() {
         } else {
           // Play error sound
           try {
-            errorSound.play().catch(e => console.log('Audio play failed:', e));
+            errorSound
+              .play()
+              .catch((e) => console.debug('Audio play failed:', e));
           } catch (e) {
-            console.log('Audio not available:', e);
+            console.debug('Audio not available:', e);
           }
 
           toast.error(result.message);
@@ -201,7 +249,9 @@ export function ScanWorkspace() {
 
   // Handle action execution
   const executeAction = async () => {
-    if (!scanResult || !selectedAction) return;
+    if (!scanResult || !selectedAction) {
+      return;
+    }
 
     const activityData = {
       studentId: scanResult.student?.id || scanResult.barcode,
@@ -473,20 +523,23 @@ export function ScanWorkspace() {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
             <span>
-              <strong>Cooldown Active:</strong> Please wait before checking in again
+              <strong>Cooldown Active:</strong> Please wait before checking in
+              again
             </span>
             <div className="flex items-center gap-2">
               <div className="w-32 bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-orange-500 h-2 rounded-full transition-all duration-1000"
                   style={{
-                    width: `${((30 * 60 - cooldownInfo.remainingSeconds) / (30 * 60)) * 100}%`
+                    width: `${((30 * 60 - cooldownInfo.remainingSeconds) / (30 * 60)) * 100}%`,
                   }}
                 />
               </div>
               <span className="font-mono text-sm font-semibold">
                 {Math.floor(cooldownInfo.remainingSeconds / 60)}:
-                {(cooldownInfo.remainingSeconds % 60).toString().padStart(2, '0')}
+                {(cooldownInfo.remainingSeconds % 60)
+                  .toString()
+                  .padStart(2, '0')}
               </span>
             </div>
           </AlertDescription>
@@ -500,8 +553,12 @@ export function ScanWorkspace() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Check-ins Today</p>
-                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{statistics.totalCheckIns}</p>
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                    Check-ins Today
+                  </p>
+                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                    {statistics.totalCheckIns}
+                  </p>
                 </div>
                 <Users className="h-8 w-8 text-blue-500" />
               </div>
@@ -512,8 +569,12 @@ export function ScanWorkspace() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-green-600 dark:text-green-400">Unique Students</p>
-                  <p className="text-2xl font-bold text-green-700 dark:text-green-300">{statistics.uniqueStudents}</p>
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                    Unique Students
+                  </p>
+                  <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+                    {statistics.uniqueStudents}
+                  </p>
                 </div>
                 <Activity className="h-8 w-8 text-green-500" />
               </div>
@@ -524,8 +585,12 @@ export function ScanWorkspace() {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Avg Time</p>
-                  <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">{statistics.averageTimeSpent} min</p>
+                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                    Avg Time
+                  </p>
+                  <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
+                    {statistics.averageTimeSpent} min
+                  </p>
                 </div>
                 <Clock className="h-8 w-8 text-purple-500" />
               </div>
@@ -572,6 +637,8 @@ export function ScanWorkspace() {
             onClick={() =>
               toast.info('Manual session entry - would open entry form')
             }
+            aria-label="manual-entry"
+            data-testid="manual-entry"
           >
             <Plus className="h-3 w-3 mr-1" />
             Manual Entry
@@ -582,9 +649,28 @@ export function ScanWorkspace() {
             onClick={() =>
               toast.info('End all active sessions - would confirm action')
             }
+            aria-label="end-all-sessions"
+            data-testid="end-all-sessions"
           >
             <Square className="h-3 w-3 mr-1" />
             End All
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                await fetch('/api/kiosk/broadcast', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Please keep noise to a minimum. Thank you!' }) });
+                toast.success('Announcement broadcasted');
+              } catch {
+                toast.error('Failed to broadcast announcement');
+              }
+            }}
+            aria-label="broadcast-announcement"
+            data-testid="broadcast-announcement"
+          >
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Broadcast
           </Button>
         </div>
       </div>
@@ -973,10 +1059,10 @@ export function ScanWorkspace() {
                         scanResult.type === 'student'
                           ? 'default'
                           : scanResult.type === 'book'
-                          ? 'secondary'
-                          : scanResult.type === 'equipment'
-                          ? 'outline'
-                          : 'destructive'
+                            ? 'secondary'
+                            : scanResult.type === 'equipment'
+                              ? 'outline'
+                              : 'destructive'
                       }
                     >
                       {scanResult.type.toUpperCase()}

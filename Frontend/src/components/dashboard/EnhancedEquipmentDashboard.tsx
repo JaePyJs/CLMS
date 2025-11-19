@@ -1,109 +1,160 @@
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { useMobileOptimization, useTouchOptimization, getResponsiveClasses } from '@/hooks/useMobileOptimization'
-import { useAppStore } from '@/store/useAppStore'
-import { DashboardCardSkeleton } from '@/components/LoadingStates'
-import { Monitor, Gamepad2, Cpu, Play, Square, RotateCcw, CheckCircle, Clock, User, WifiOff, Calendar, Wrench, TrendingUp, Search, Plus, Edit, MapPin, Tag, RefreshCw, Eye } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  useMobileOptimization,
+  useTouchOptimization,
+  getResponsiveClasses,
+} from '@/hooks/useMobileOptimization';
+import { useAppStore } from '@/store/useAppStore';
+import { DashboardCardSkeleton } from '@/components/LoadingStates';
+import {
+  Monitor,
+  Gamepad2,
+  Cpu,
+  Play,
+  Square,
+  RotateCcw,
+  CheckCircle,
+  Clock,
+  User,
+  WifiOff,
+  Calendar,
+  Wrench,
+  TrendingUp,
+  Search,
+  Plus,
+  Edit,
+  MapPin,
+  Tag,
+  RefreshCw,
+  Eye,
+} from 'lucide-react';
 
 interface EquipmentItem {
-  id: string
-  equipmentId: string
-  name: string
-  type: string
-  status: 'AVAILABLE' | 'IN_USE' | 'MAINTENANCE' | 'OUT_OF_ORDER' | 'RESERVED' | 'RETIRED'
-  location: string
-  conditionRating: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'DAMAGED'
-  maxTimeMinutes: number
-  requiresSupervision: boolean
-  description?: string
-  category?: string
-  specifications?: Record<string, any>
-  purchaseDate?: string
-  purchaseCost?: number
-  serialNumber?: string
-  assetTag?: string
-  warrantyExpiry?: string
-  nextMaintenance?: string
-  totalUsageHours: number
-  tags?: string[]
+  id: string;
+  equipmentId: string;
+  name: string;
+  type: string;
+  status:
+    | 'AVAILABLE'
+    | 'IN_USE'
+    | 'MAINTENANCE'
+    | 'OUT_OF_ORDER'
+    | 'RESERVED'
+    | 'RETIRED';
+  location: string;
+  conditionRating: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR' | 'DAMAGED';
+  maxTimeMinutes: number;
+  requiresSupervision: boolean;
+  description?: string;
+  category?: string;
+  specifications?: Record<string, any>;
+  purchaseDate?: string;
+  purchaseCost?: number;
+  serialNumber?: string;
+  assetTag?: string;
+  warrantyExpiry?: string;
+  nextMaintenance?: string;
+  totalUsageHours: number;
+  tags?: string[];
   currentSession?: {
-    id: string
-    studentId: string
-    studentName: string
-    startTime: string
-    timeLimitMinutes: number
-    remainingMinutes: number
-  }
+    id: string;
+    studentId: string;
+    studentName: string;
+    startTime: string;
+    timeLimitMinutes: number;
+    remainingMinutes: number;
+  };
   upcomingReservations?: Array<{
-    id: string
-    studentName: string
-    startTime: string
-    endTime: string
-  }>
+    id: string;
+    studentName: string;
+    startTime: string;
+    endTime: string;
+  }>;
   pendingMaintenance?: Array<{
-    id: string
-    type: string
-    priority: string
-    scheduledDate: string
-  }>
+    id: string;
+    type: string;
+    priority: string;
+    scheduledDate: string;
+  }>;
 }
 
 interface EquipmentMetrics {
-  totalEquipment: number
-  available: number
-  inUse: number
-  maintenance: number
-  reserved: number
-  outOfOrder: number
-  utilizationRate: number
-  averageSessionLength: number
-  totalUsageHours: number
-  maintenancePending: number
-  upcomingMaintenance: number
+  totalEquipment: number;
+  available: number;
+  inUse: number;
+  maintenance: number;
+  reserved: number;
+  outOfOrder: number;
+  utilizationRate: number;
+  averageSessionLength: number;
+  totalUsageHours: number;
+  maintenancePending: number;
+  upcomingMaintenance: number;
   equipmentByType: Array<{
-    type: string
-    count: number
-    utilization: number
-  }>
+    type: string;
+    count: number;
+    utilization: number;
+  }>;
   equipmentByCondition: Array<{
-    condition: string
-    count: number
-  }>
+    condition: string;
+    count: number;
+  }>;
   topUsedEquipment: Array<{
-    equipmentId: string
-    name: string
-    usageHours: number
-    sessions: number
-  }>
+    equipmentId: string;
+    name: string;
+    usageHours: number;
+    sessions: number;
+  }>;
 }
 
 export function EnhancedEquipmentDashboard() {
   // Mobile optimization
-  const mobileState = useMobileOptimization()
-  const { isMobile, isTablet: _isTablet } = mobileState
-  const { handleTouchStart, handleTouchEnd } = useTouchOptimization()
+  const mobileState = useMobileOptimization();
+  const { isMobile, isTablet: _isTablet } = mobileState;
+  const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
 
   // State management
-  const [equipment, setEquipment] = useState<EquipmentItem[]>([])
-  const [metrics, setMetrics] = useState<EquipmentMetrics | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedFilter, setSelectedFilter] = useState('all')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('all')
-  const [selectedLocation] = useState('all')
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false)
-  const [showReservationDialog, setShowReservationDialog] = useState(false)
-  const [selectedEquipment, setSelectedEquipment] = useState<EquipmentItem | null>(null)
-  const isOnline = useAppStore((state) => state.isOnline)
+  const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
+  const [metrics, setMetrics] = useState<EquipmentMetrics | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedLocation] = useState('all');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false);
+  const [showReservationDialog, setShowReservationDialog] = useState(false);
+  const [selectedEquipment, setSelectedEquipment] =
+    useState<EquipmentItem | null>(null);
+  const isOnline = useAppStore((state) => state.isOnline);
 
   // Mock data for development
   const mockEquipment: EquipmentItem[] = [
@@ -118,7 +169,12 @@ export function EnhancedEquipmentDashboard() {
       maxTimeMinutes: 60,
       requiresSupervision: false,
       category: 'Computer Workstation',
-      specifications: { cpu: 'Intel i5-12400', ram: '16GB', gpu: 'Integrated', storage: '512GB SSD' },
+      specifications: {
+        cpu: 'Intel i5-12400',
+        ram: '16GB',
+        gpu: 'Integrated',
+        storage: '512GB SSD',
+      },
       purchaseDate: '2023-01-15',
       purchaseCost: 899.99,
       assetTag: 'IT-001-PC',
@@ -154,7 +210,12 @@ export function EnhancedEquipmentDashboard() {
       maxTimeMinutes: 60,
       requiresSupervision: false,
       category: 'Computer Workstation',
-      specifications: { cpu: 'Intel i5-12400', ram: '16GB', gpu: 'Integrated', storage: '512GB SSD' },
+      specifications: {
+        cpu: 'Intel i5-12400',
+        ram: '16GB',
+        gpu: 'Integrated',
+        storage: '512GB SSD',
+      },
       purchaseDate: '2023-01-15',
       purchaseCost: 899.99,
       assetTag: 'IT-002-PC',
@@ -173,7 +234,11 @@ export function EnhancedEquipmentDashboard() {
       maxTimeMinutes: 45,
       requiresSupervision: true,
       category: 'Gaming Console',
-      specifications: { console: 'PS5', storage: '825GB SSD', accessories: 'DualSense Controller' },
+      specifications: {
+        console: 'PS5',
+        storage: '825GB SSD',
+        accessories: 'DualSense Controller',
+      },
       purchaseDate: '2022-11-01',
       purchaseCost: 499.99,
       assetTag: 'IT-003-PS',
@@ -200,7 +265,11 @@ export function EnhancedEquipmentDashboard() {
       maxTimeMinutes: 30,
       requiresSupervision: true,
       category: 'Virtual Reality',
-      specifications: { headset: 'Oculus Quest 2', controllers: 'Touch Controllers', space: '3m x 3m' },
+      specifications: {
+        headset: 'Oculus Quest 2',
+        controllers: 'Touch Controllers',
+        space: '3m x 3m',
+      },
       purchaseDate: '2023-06-01',
       purchaseCost: 299.99,
       assetTag: 'IT-004-VR',
@@ -216,7 +285,7 @@ export function EnhancedEquipmentDashboard() {
         },
       ],
     },
-  ]
+  ];
 
   const mockMetrics: EquipmentMetrics = {
     totalEquipment: 25,
@@ -243,121 +312,181 @@ export function EnhancedEquipmentDashboard() {
       { condition: 'DAMAGED', count: 0 },
     ],
     topUsedEquipment: [
-      { equipmentId: 'PC01', name: 'Computer Station 1', usageHours: 1250.5, sessions: 847 },
-      { equipmentId: 'PC02', name: 'Computer Station 2', usageHours: 1187.3, sessions: 756 },
-      { equipmentId: 'PC03', name: 'Computer Station 3', usageHours: 1098.7, sessions: 692 },
+      {
+        equipmentId: 'PC01',
+        name: 'Computer Station 1',
+        usageHours: 1250.5,
+        sessions: 847,
+      },
+      {
+        equipmentId: 'PC02',
+        name: 'Computer Station 2',
+        usageHours: 1187.3,
+        sessions: 756,
+      },
+      {
+        equipmentId: 'PC03',
+        name: 'Computer Station 3',
+        usageHours: 1098.7,
+        sessions: 692,
+      },
     ],
-  }
+  };
 
   // Initialize data
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
         // In a real implementation, these would be API calls
         // const equipmentData = await api.getEquipment()
         // const metricsData = await api.getEquipmentMetrics()
-        setEquipment(mockEquipment)
-        setMetrics(mockMetrics)
+        setEquipment(mockEquipment);
+        setMetrics(mockMetrics);
       } catch (error) {
-        console.error('Error loading equipment data:', error)
+        console.error('Error loading equipment data:', error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    loadData()
-  }, [])
+    loadData();
+  }, []);
 
-  // Filter equipment based on search and filters
-  const filteredEquipment = equipment.filter(item => {
-    const matchesSearch = searchQuery === '' ||
+  // Filter equipment based on _search and filters
+  const filteredEquipment = equipment.filter((item) => {
+    const matchesSearch =
+      searchQuery === '' ||
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.equipmentId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchQuery.toLowerCase())
+      item.location.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesFilter = selectedFilter === 'all' || item.status === selectedFilter
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory
-    const matchesLocation = selectedLocation === 'all' || item.location === selectedLocation
+    const matchesFilter =
+      selectedFilter === 'all' || item.status === selectedFilter;
+    const matchesCategory =
+      selectedCategory === 'all' || item.category === selectedCategory;
+    const matchesLocation =
+      selectedLocation === 'all' || item.location === selectedLocation;
 
-    return matchesSearch && matchesFilter && matchesCategory && matchesLocation
-  })
+    return matchesSearch && matchesFilter && matchesCategory && matchesLocation;
+  });
 
   // Status helpers
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'AVAILABLE': return 'bg-green-500 dark:bg-green-400'
-      case 'IN_USE': return 'bg-blue-500 dark:bg-blue-400'
-      case 'MAINTENANCE': return 'bg-yellow-500 dark:bg-yellow-400'
-      case 'OUT_OF_ORDER': return 'bg-red-500 dark:bg-red-400'
-      case 'RESERVED': return 'bg-purple-500 dark:bg-purple-400'
-      case 'RETIRED': return 'bg-gray-500'
-      default: return 'bg-gray-500'
+      case 'AVAILABLE':
+        return 'bg-green-500 dark:bg-green-400';
+      case 'IN_USE':
+        return 'bg-blue-500 dark:bg-blue-400';
+      case 'MAINTENANCE':
+        return 'bg-yellow-500 dark:bg-yellow-400';
+      case 'OUT_OF_ORDER':
+        return 'bg-red-500 dark:bg-red-400';
+      case 'RESERVED':
+        return 'bg-purple-500 dark:bg-purple-400';
+      case 'RETIRED':
+        return 'bg-gray-500';
+      default:
+        return 'bg-gray-500';
     }
-  }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'AVAILABLE': return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Available</Badge>
-      case 'IN_USE': return <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">In Use</Badge>
-      case 'MAINTENANCE': return <Badge variant="secondary">Maintenance</Badge>
-      case 'OUT_OF_ORDER': return <Badge variant="destructive">Out of Order</Badge>
-      case 'RESERVED': return <Badge variant="default" className="bg-purple-500 hover:bg-purple-600">Reserved</Badge>
-      case 'RETIRED': return <Badge variant="outline">Retired</Badge>
-      default: return <Badge variant="outline">Unknown</Badge>
+      case 'AVAILABLE':
+        return (
+          <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+            Available
+          </Badge>
+        );
+      case 'IN_USE':
+        return (
+          <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">
+            In Use
+          </Badge>
+        );
+      case 'MAINTENANCE':
+        return <Badge variant="secondary">Maintenance</Badge>;
+      case 'OUT_OF_ORDER':
+        return <Badge variant="destructive">Out of Order</Badge>;
+      case 'RESERVED':
+        return (
+          <Badge
+            variant="default"
+            className="bg-purple-500 hover:bg-purple-600"
+          >
+            Reserved
+          </Badge>
+        );
+      case 'RETIRED':
+        return <Badge variant="outline">Retired</Badge>;
+      default:
+        return <Badge variant="outline">Unknown</Badge>;
     }
-  }
+  };
 
   const getConditionColor = (condition: string) => {
     switch (condition) {
-      case 'EXCELLENT': return 'text-green-600 dark:text-green-400'
-      case 'GOOD': return 'text-blue-600 dark:text-blue-400'
-      case 'FAIR': return 'text-yellow-600 dark:text-yellow-400'
-      case 'POOR': return 'text-orange-600 dark:text-orange-400'
-      case 'DAMAGED': return 'text-red-600 dark:text-red-400'
-      default: return 'text-gray-600 dark:text-gray-400'
+      case 'EXCELLENT':
+        return 'text-green-600 dark:text-green-400';
+      case 'GOOD':
+        return 'text-blue-600 dark:text-blue-400';
+      case 'FAIR':
+        return 'text-yellow-600 dark:text-yellow-400';
+      case 'POOR':
+        return 'text-orange-600 dark:text-orange-400';
+      case 'DAMAGED':
+        return 'text-red-600 dark:text-red-400';
+      default:
+        return 'text-gray-600 dark:text-gray-400';
     }
-  }
+  };
 
   const getEquipmentIcon = (type: string) => {
     switch (type) {
-      case 'COMPUTER': return <Monitor className="h-5 w-5" />
-      case 'GAMING': return <Gamepad2 className="h-5 w-5" />
-      case 'AVR': return <Cpu className="h-5 w-5" />
-      default: return <Monitor className="h-5 w-5" />
+      case 'COMPUTER':
+        return <Monitor className="h-5 w-5" />;
+      case 'GAMING':
+        return <Gamepad2 className="h-5 w-5" />;
+      case 'AVR':
+        return <Cpu className="h-5 w-5" />;
+      default:
+        return <Monitor className="h-5 w-5" />;
     }
-  }
+  };
 
   const formatTimeRemaining = (minutes: number) => {
-    if (minutes <= 0) return 'Expired'
-    return `${minutes}m remaining`
-  }
+    if (minutes <= 0) {
+      return 'Expired';
+    }
+    return `${minutes}m remaining`;
+  };
 
   // Action handlers
   const handleStartSession = (equipment: EquipmentItem) => {
     // Implementation for starting equipment session
-    console.log('Starting session for equipment:', equipment.id)
-  }
+    console.debug('Starting session for equipment:', equipment.id);
+  };
 
   const handleEndSession = (sessionId: string) => {
     // Implementation for ending equipment session
-    console.log('Ending session:', sessionId)
-  }
+    console.debug('Ending session:', sessionId);
+  };
 
   const handleScheduleMaintenance = (equipment: EquipmentItem) => {
-    setSelectedEquipment(equipment)
-    setShowMaintenanceDialog(true)
-  }
+    setSelectedEquipment(equipment);
+    setShowMaintenanceDialog(true);
+  };
 
   const handleCreateReservation = (equipment: EquipmentItem) => {
-    setSelectedEquipment(equipment)
-    setShowReservationDialog(true)
-  }
+    setSelectedEquipment(equipment);
+    setShowReservationDialog(true);
+  };
 
   const handleRefresh = () => {
     // Implementation for refreshing equipment data
-    window.location.reload()
-  }
+    window.location.reload();
+  };
 
   if (isLoading) {
     return (
@@ -365,7 +494,7 @@ export function EnhancedEquipmentDashboard() {
         <DashboardCardSkeleton />
         <DashboardCardSkeleton />
       </div>
-    )
+    );
   }
 
   return (
@@ -377,7 +506,9 @@ export function EnhancedEquipmentDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Equipment Management</h2>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Equipment Management
+          </h2>
           <p className="text-muted-foreground">
             Monitor and manage library equipment, reservations, and maintenance.
           </p>
@@ -394,7 +525,9 @@ export function EnhancedEquipmentDashboard() {
                 Add Equipment
               </Button>
             </DialogTrigger>
-            <DialogContent className={getResponsiveClasses('max-w-2xl', mobileState)}>
+            <DialogContent
+              className={getResponsiveClasses('max-w-2xl', mobileState)}
+            >
               <DialogHeader>
                 <DialogTitle>Add New Equipment</DialogTitle>
                 <DialogDescription>
@@ -414,10 +547,14 @@ export function EnhancedEquipmentDashboard() {
 
       {/* Status Overview */}
       {metrics && (
-        <div className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}>
+        <div
+          className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-4'}`}
+        >
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Equipment</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Equipment
+              </CardTitle>
               <Monitor className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -437,9 +574,7 @@ export function EnhancedEquipmentDashboard() {
               <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {metrics.available}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Ready for use
-              </p>
+              <p className="text-xs text-muted-foreground">Ready for use</p>
             </CardContent>
           </Card>
 
@@ -452,9 +587,7 @@ export function EnhancedEquipmentDashboard() {
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {metrics.inUse}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Active sessions
-              </p>
+              <p className="text-xs text-muted-foreground">Active sessions</p>
             </CardContent>
           </Card>
 
@@ -480,18 +613,19 @@ export function EnhancedEquipmentDashboard() {
         <Alert>
           <WifiOff className="h-4 w-4" />
           <AlertDescription>
-            You are currently offline. Equipment changes will be queued and synced when connection is restored.
+            You are currently offline. Equipment changes will be queued and
+            synced when connection is restored.
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Filters and Search */}
+      {/* Filters and _Search */}
       <div className="flex flex-col space-y-4 lg:flex-row lg:space-y-0 lg:space-x-4">
         <div className="flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search equipment..."
+              placeholder="_Search equipment..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -500,7 +634,9 @@ export function EnhancedEquipmentDashboard() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Select value={selectedFilter} onValueChange={setSelectedFilter}>
-            <SelectTrigger className={getResponsiveClasses('w-full lg:w-40', mobileState)}>
+            <SelectTrigger
+              className={getResponsiveClasses('w-full lg:w-40', mobileState)}
+            >
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -513,7 +649,9 @@ export function EnhancedEquipmentDashboard() {
             </SelectContent>
           </Select>
           <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className={getResponsiveClasses('w-full lg:w-40', mobileState)}>
+            <SelectTrigger
+              className={getResponsiveClasses('w-full lg:w-40', mobileState)}
+            >
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -535,13 +673,13 @@ export function EnhancedEquipmentDashboard() {
             <TabsTrigger value="in-use">In Use</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
-          <Badge variant="outline">
-            {filteredEquipment.length} items
-          </Badge>
+          <Badge variant="outline">{filteredEquipment.length} items</Badge>
         </div>
 
         <TabsContent value="all" className={`space-y-${isMobile ? '3' : '4'}`}>
-          <div className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'lg:grid-cols-2'}`}>
+          <div
+            className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'lg:grid-cols-2'}`}
+          >
             {filteredEquipment.map((item) => (
               <Card key={item.id} className="relative">
                 <CardHeader className="pb-3">
@@ -550,11 +688,15 @@ export function EnhancedEquipmentDashboard() {
                       {getEquipmentIcon(item.type)}
                       <div>
                         <CardTitle className="text-sm">{item.name}</CardTitle>
-                        <CardDescription>ID: {item.equipmentId}</CardDescription>
+                        <CardDescription>
+                          ID: {item.equipmentId}
+                        </CardDescription>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <div className={`h-2 w-2 rounded-full ${getStatusColor(item.status)}`}></div>
+                      <div
+                        className={`h-2 w-2 rounded-full ${getStatusColor(item.status)}`}
+                      ></div>
                       {getStatusBadge(item.status)}
                     </div>
                   </div>
@@ -572,17 +714,23 @@ export function EnhancedEquipmentDashboard() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">Condition:</span>
-                      <div className={`font-medium ${getConditionColor(item.conditionRating)}`}>
+                      <div
+                        className={`font-medium ${getConditionColor(item.conditionRating)}`}
+                      >
                         {item.conditionRating}
                       </div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Max Time:</span>
-                      <div className="font-medium">{item.maxTimeMinutes} min</div>
+                      <div className="font-medium">
+                        {item.maxTimeMinutes} min
+                      </div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Usage:</span>
-                      <div className="font-medium">{item.totalUsageHours.toFixed(1)} hrs</div>
+                      <div className="font-medium">
+                        {item.totalUsageHours.toFixed(1)} hrs
+                      </div>
                     </div>
                   </div>
 
@@ -590,7 +738,11 @@ export function EnhancedEquipmentDashboard() {
                   {item.tags && item.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {item.tags.map((tag, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
+                        <Badge
+                          key={index}
+                          variant="outline"
+                          className="text-xs"
+                        >
                           <Tag className="h-2 w-2 mr-1" />
                           {tag}
                         </Badge>
@@ -603,9 +755,13 @@ export function EnhancedEquipmentDashboard() {
                     <div className="space-y-3">
                       <div className="p-3 bg-primary/10 dark:bg-primary/5 rounded-lg border border-primary/20 dark:border-primary/10">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium">Active Session</span>
+                          <span className="text-sm font-medium">
+                            Active Session
+                          </span>
                           <Badge variant="outline" className="text-xs">
-                            {formatTimeRemaining(item.currentSession.remainingMinutes)}
+                            {formatTimeRemaining(
+                              item.currentSession.remainingMinutes
+                            )}
                           </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground space-y-1">
@@ -615,11 +771,21 @@ export function EnhancedEquipmentDashboard() {
                           </div>
                           <div className="flex items-center space-x-1">
                             <Clock className="h-3 w-3" />
-                            <span>Started: {new Date(item.currentSession.startTime).toLocaleTimeString()}</span>
+                            <span>
+                              Started:{' '}
+                              {new Date(
+                                item.currentSession.startTime
+                              ).toLocaleTimeString()}
+                            </span>
                           </div>
                         </div>
                         <Progress
-                          value={((item.currentSession.timeLimitMinutes - item.currentSession.remainingMinutes) / item.currentSession.timeLimitMinutes) * 100}
+                          value={
+                            ((item.currentSession.timeLimitMinutes -
+                              item.currentSession.remainingMinutes) /
+                              item.currentSession.timeLimitMinutes) *
+                            100
+                          }
                           className="mt-2 h-2"
                         />
                       </div>
@@ -628,7 +794,9 @@ export function EnhancedEquipmentDashboard() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleEndSession(item.currentSession?.id || '')}
+                          onClick={() =>
+                            handleEndSession(item.currentSession?.id || '')
+                          }
                           className="flex-1"
                         >
                           <Square className="h-3 w-3 mr-1" />
@@ -658,18 +826,29 @@ export function EnhancedEquipmentDashboard() {
                         </div>
                       )}
 
-                      {item.status === 'RESERVED' && item.upcomingReservations && (
-                        <div className="p-3 bg-purple-10 dark:bg-purple-5 rounded-lg border border-purple-20 dark:border-purple-10">
-                          <div className="text-sm">
-                            <div className="font-medium mb-2">Upcoming Reservations</div>
-                            {item.upcomingReservations.map((reservation, index) => (
-                              <div key={index} className="text-muted-foreground">
-                                {reservation.studentName} - {new Date(reservation.startTime).toLocaleTimeString()}
+                      {item.status === 'RESERVED' &&
+                        item.upcomingReservations && (
+                          <div className="p-3 bg-purple-10 dark:bg-purple-5 rounded-lg border border-purple-20 dark:border-purple-10">
+                            <div className="text-sm">
+                              <div className="font-medium mb-2">
+                                Upcoming Reservations
                               </div>
-                            ))}
+                              {item.upcomingReservations.map(
+                                (reservation, index) => (
+                                  <div
+                                    key={index}
+                                    className="text-muted-foreground"
+                                  >
+                                    {reservation.studentName} -{' '}
+                                    {new Date(
+                                      reservation.startTime
+                                    ).toLocaleTimeString()}
+                                  </div>
+                                )
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
                       {item.status === 'MAINTENANCE' && (
                         <div className="text-center py-4">
@@ -679,7 +858,10 @@ export function EnhancedEquipmentDashboard() {
                           </p>
                           {item.nextMaintenance && (
                             <p className="text-xs text-muted-foreground">
-                              Next maintenance: {new Date(item.nextMaintenance).toLocaleDateString()}
+                              Next maintenance:{' '}
+                              {new Date(
+                                item.nextMaintenance
+                              ).toLocaleDateString()}
                             </p>
                           )}
                         </div>
@@ -722,21 +904,30 @@ export function EnhancedEquipmentDashboard() {
           </div>
         </TabsContent>
 
-        <TabsContent value="analytics" className={`space-y-${isMobile ? '3' : '4'}`}>
+        <TabsContent
+          value="analytics"
+          className={`space-y-${isMobile ? '3' : '4'}`}
+        >
           {metrics && (
-            <div className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'lg:grid-cols-2'}`}>
+            <div
+              className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'lg:grid-cols-2'}`}
+            >
               {/* Usage Statistics */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Usage Statistics</CardTitle>
-                  <CardDescription>Equipment utilization by type</CardDescription>
+                  <CardDescription>
+                    Equipment utilization by type
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {metrics.equipmentByType.map((type, index) => (
                       <div key={index} className="space-y-2">
                         <div className="flex justify-between">
-                          <span className="text-sm font-medium">{type.type}</span>
+                          <span className="text-sm font-medium">
+                            {type.type}
+                          </span>
                           <span className="text-sm">{type.count} items</span>
                         </div>
                         <Progress value={type.utilization} className="h-2" />
@@ -753,13 +944,20 @@ export function EnhancedEquipmentDashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Equipment Condition</CardTitle>
-                  <CardDescription>Condition rating distribution</CardDescription>
+                  <CardDescription>
+                    Condition rating distribution
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {metrics.equipmentByCondition.map((condition, index) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <span className="text-sm font-medium">{condition.condition}</span>
+                      <div
+                        key={index}
+                        className="flex justify-between items-center"
+                      >
+                        <span className="text-sm font-medium">
+                          {condition.condition}
+                        </span>
                         <Badge variant="outline">{condition.count}</Badge>
                       </div>
                     ))}
@@ -771,24 +969,37 @@ export function EnhancedEquipmentDashboard() {
               <Card className="lg:col-span-2">
                 <CardHeader>
                   <CardTitle className="text-lg">Most Used Equipment</CardTitle>
-                  <CardDescription>Top equipment by usage hours</CardDescription>
+                  <CardDescription>
+                    Top equipment by usage hours
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {metrics.topUsedEquipment.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
                         <div className="flex items-center space-x-3">
                           <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium">{index + 1}</span>
+                            <span className="text-sm font-medium">
+                              {index + 1}
+                            </span>
                           </div>
                           <div>
                             <div className="font-medium">{item.name}</div>
-                            <div className="text-sm text-muted-foreground">{item.equipmentId}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {item.equipmentId}
+                            </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-medium">{item.usageHours.toFixed(1)} hrs</div>
-                          <div className="text-sm text-muted-foreground">{item.sessions} sessions</div>
+                          <div className="font-medium">
+                            {item.usageHours.toFixed(1)} hrs
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {item.sessions} sessions
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -801,8 +1012,13 @@ export function EnhancedEquipmentDashboard() {
       </Tabs>
 
       {/* Maintenance Dialog */}
-      <Dialog open={showMaintenanceDialog} onOpenChange={setShowMaintenanceDialog}>
-        <DialogContent className={getResponsiveClasses('max-w-2xl', mobileState)}>
+      <Dialog
+        open={showMaintenanceDialog}
+        onOpenChange={setShowMaintenanceDialog}
+      >
+        <DialogContent
+          className={getResponsiveClasses('max-w-2xl', mobileState)}
+        >
           <DialogHeader>
             <DialogTitle>Schedule Maintenance</DialogTitle>
             <DialogDescription>
@@ -818,8 +1034,13 @@ export function EnhancedEquipmentDashboard() {
       </Dialog>
 
       {/* Reservation Dialog */}
-      <Dialog open={showReservationDialog} onOpenChange={setShowReservationDialog}>
-        <DialogContent className={getResponsiveClasses('max-w-2xl', mobileState)}>
+      <Dialog
+        open={showReservationDialog}
+        onOpenChange={setShowReservationDialog}
+      >
+        <DialogContent
+          className={getResponsiveClasses('max-w-2xl', mobileState)}
+        >
           <DialogHeader>
             <DialogTitle>Create Reservation</DialogTitle>
             <DialogDescription>
@@ -834,7 +1055,7 @@ export function EnhancedEquipmentDashboard() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
 
-export default EnhancedEquipmentDashboard
+export default EnhancedEquipmentDashboard;

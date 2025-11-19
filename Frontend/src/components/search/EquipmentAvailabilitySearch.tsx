@@ -1,5 +1,11 @@
 import { useState, useCallback, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -18,7 +24,23 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Monitor, Filter, X, Download, Clock, CheckCircle, XCircle, Calendar, ChevronDown, Zap, Settings, MapPin, UserCheck, Users } from 'lucide-react';
+import {
+  Search,
+  Monitor,
+  Filter,
+  X,
+  Download,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Calendar,
+  ChevronDown,
+  Zap,
+  Settings,
+  MapPin,
+  UserCheck,
+  Users,
+} from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -35,9 +57,9 @@ interface Equipment {
   total_usage_hours: number;
   daily_usage_hours: number;
   max_time_minutes: number;
-  currentSession?: any;
-  upcomingReservation?: any;
-  pendingMaintenance?: any;
+  currentSession?: Record<string, unknown>;
+  upcomingReservation?: Record<string, unknown>;
+  pendingMaintenance?: Record<string, unknown>;
   utilizationRate: number;
   recentUsageStats: {
     totalSessions: number;
@@ -93,10 +115,11 @@ export default function EquipmentAvailabilitySearch() {
   const [suggestions, setSuggestions] = useState<EquipmentSuggestion>({
     names: [],
     types: [],
-    locations: []
+    locations: [],
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [searchResults, setSearchResults] = useState<EquipmentSearchResult | null>(null);
+  const [searchResults, setSearchResults] =
+    useState<EquipmentSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<EquipmentSearchOptions>({
     sortBy: 'name',
@@ -117,12 +140,15 @@ export default function EquipmentAvailabilitySearch() {
 
     setLoading(true);
     try {
-      const response = await apiClient.get('/api/search/equipment/suggestions', {
-        params: {
-          query: searchQuery,
-          limit: 5,
-        },
-      });
+      const response = await apiClient.get(
+        '/api/_search/equipment/suggestions',
+        {
+          params: {
+            query: searchQuery,
+            limit: 5,
+          },
+        }
+      );
 
       if (response.success && response.data) {
         setSuggestions(response.data as EquipmentSuggestion);
@@ -134,7 +160,7 @@ export default function EquipmentAvailabilitySearch() {
     }
   }, []);
 
-  // Debounced search input handler
+  // Debounced _search input handler
   const handleSearchInput = (value: string) => {
     setQuery(value);
     setCurrentPage(1);
@@ -156,54 +182,90 @@ export default function EquipmentAvailabilitySearch() {
     }
   };
 
-  // Enhanced equipment search function
+  // Enhanced equipment _search function
   const performSearch = async (page = 1, resetPagination = true) => {
-    if (!query.trim() && !Object.keys(filters).some(key =>
-      filters[key as keyof EquipmentSearchOptions] !== undefined &&
-      filters[key as keyof EquipmentSearchOptions] !== ''
-    )) {
+    if (
+      !query.trim() &&
+      !Object.keys(filters).some(
+        (key) =>
+          filters[key as keyof EquipmentSearchOptions] !== undefined &&
+          filters[key as keyof EquipmentSearchOptions] !== ''
+      )
+    ) {
       return;
     }
 
     setLoading(true);
     try {
-      const searchParams: any = {
+      // Build query params
+      const searchParams: Record<string, unknown> = {
         page,
         limit: 20,
       };
 
-      // Add filters to search params
-      if (query) searchParams.query = query;
-      if (filters.type) searchParams.type = filters.type;
-      if (filters.status) searchParams.status = filters.status;
-      if (filters.location) searchParams.location = filters.location;
-      if (filters.category) searchParams.category = filters.category;
-      if (filters.isAvailable !== undefined) searchParams.isAvailable = filters.isAvailable;
-      if (filters.requiresSupervision !== undefined) searchParams.requiresSupervision = filters.requiresSupervision;
-      if (filters.maintenanceDue !== undefined) searchParams.maintenanceDue = filters.maintenanceDue;
-      if (filters.conditionRating) searchParams.conditionRating = filters.conditionRating;
-      if (filters.minUsageHours !== undefined) searchParams.minUsageHours = filters.minUsageHours;
-      if (filters.maxUsageHours !== undefined) searchParams.maxUsageHours = filters.maxUsageHours;
-      if (filters.sortBy) searchParams.sortBy = filters.sortBy;
-      if (filters.sortOrder) searchParams.sortOrder = filters.sortOrder;
+      // Add filters to _search params
+      if (query) {
+        searchParams.query = query;
+      }
+      if (filters.type) {
+        searchParams.type = filters.type;
+      }
+      if (filters.status) {
+        searchParams.status = filters.status;
+      }
+      if (filters.location) {
+        searchParams.location = filters.location;
+      }
+      if (filters.category) {
+        searchParams.category = filters.category;
+      }
+      if (filters.isAvailable !== undefined) {
+        searchParams.isAvailable = filters.isAvailable;
+      }
+      if (filters.requiresSupervision !== undefined) {
+        searchParams.requiresSupervision = filters.requiresSupervision;
+      }
+      if (filters.maintenanceDue !== undefined) {
+        searchParams.maintenanceDue = filters.maintenanceDue;
+      }
+      if (filters.conditionRating) {
+        searchParams.conditionRating = filters.conditionRating;
+      }
+      if (filters.minUsageHours !== undefined) {
+        searchParams.minUsageHours = filters.minUsageHours;
+      }
+      if (filters.maxUsageHours !== undefined) {
+        searchParams.maxUsageHours = filters.maxUsageHours;
+      }
+      if (filters.sortBy) {
+        searchParams.sortBy = filters.sortBy;
+      }
+      if (filters.sortOrder) {
+        searchParams.sortOrder = filters.sortOrder;
+      }
 
-      const response = await apiClient.get('/api/search/equipment', { params: searchParams });
+      const response = await apiClient.get('/api/_search/equipment', {
+        params: searchParams,
+      });
 
       if (response.success && response.data) {
         if (resetPagination) {
           setSearchResults(response.data as EquipmentSearchResult);
         } else {
           // Append results for pagination
-          setSearchResults(prev => ({
+          setSearchResults((prev) => ({
             ...(response.data as EquipmentSearchResult),
-            equipment: [...(prev?.equipment || []), ...(response.data as EquipmentSearchResult).equipment],
+            equipment: [
+              ...(prev?.equipment || []),
+              ...(response.data as EquipmentSearchResult).equipment,
+            ],
           }));
         }
         setCurrentPage(page);
       }
     } catch (error) {
-      console.error('Equipment search error:', error);
-      toast.error('Failed to perform equipment search');
+      console.error('Equipment _search error:', error);
+      toast.error('Failed to perform equipment _search');
     } finally {
       setLoading(false);
     }
@@ -229,7 +291,10 @@ export default function EquipmentAvailabilitySearch() {
   };
 
   // Apply suggestion
-  const applySuggestion = (type: 'name' | 'type' | 'location', value: string) => {
+  const applySuggestion = (
+    type: 'name' | 'type' | 'location',
+    value: string
+  ) => {
     setQuery(value);
     setShowSuggestions(false);
 
@@ -246,36 +311,38 @@ export default function EquipmentAvailabilitySearch() {
 
   // Toggle equipment selection
   const toggleEquipmentSelection = (equipmentId: string) => {
-    setSelectedEquipment(prev =>
+    setSelectedEquipment((prev) =>
       prev.includes(equipmentId)
-        ? prev.filter(id => id !== equipmentId)
+        ? prev.filter((id) => id !== equipmentId)
         : [...prev, equipmentId]
     );
   };
 
   // Export results
   const exportResults = () => {
-    if (!searchResults || searchResults.equipment.length === 0) return;
+    if (!searchResults || searchResults.equipment.length === 0) {
+      return;
+    }
 
-    const data = searchResults.equipment.map(equipment => ({
+    const data = searchResults.equipment.map((equipment) => ({
       'Equipment ID': equipment.equipment_id,
-      'Name': equipment.name,
-      'Type': equipment.type,
-      'Location': equipment.location,
-      'Status': equipment.status,
-      'Condition': equipment.condition_rating,
+      Name: equipment.name,
+      Type: equipment.type,
+      Location: equipment.location,
+      Status: equipment.status,
+      Condition: equipment.condition_rating,
       'Usage Hours': equipment.total_usage_hours.toFixed(1),
       'Utilization Rate': `${equipment.utilizationRate.toFixed(1)}%`,
       'Sessions (30d)': equipment.recentUsageStats.totalSessions,
       'Max Session': `${equipment.max_time_minutes} min`,
-      'Supervision': equipment.requires_supervision ? 'Required' : 'Not Required',
+      Supervision: equipment.requires_supervision ? 'Required' : 'Not Required',
       'Next Available': equipment.nextAvailableDate || 'Available Now',
     }));
 
     const csvRows = [Object.keys(data[0] || {}).join(',')];
-    data.forEach(row => {
+    data.forEach((row) => {
       const values: string[] = [];
-      Object.keys(row).forEach(key => {
+      Object.keys(row).forEach((key) => {
         const value = row[key as keyof typeof row];
         values.push(`"${String(value ?? '')}"`);
       });
@@ -287,7 +354,7 @@ export default function EquipmentAvailabilitySearch() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `equipment-search-results-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `equipment-_search-results-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -296,17 +363,47 @@ export default function EquipmentAvailabilitySearch() {
   const getStatusBadge = (equipment: Equipment) => {
     switch (equipment.status) {
       case 'AVAILABLE':
-        return <Badge className="bg-green-500"><CheckCircle className="w-3 h-3 mr-1" />Available</Badge>;
+        return (
+          <Badge className="bg-green-500">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Available
+          </Badge>
+        );
       case 'IN_USE':
-        return <Badge className="bg-blue-500"><Users className="w-3 h-3 mr-1" />In Use</Badge>;
+        return (
+          <Badge className="bg-blue-500">
+            <Users className="w-3 h-3 mr-1" />
+            In Use
+          </Badge>
+        );
       case 'MAINTENANCE':
-        return <Badge className="bg-orange-500"><Settings className="w-3 h-3 mr-1" />Maintenance</Badge>;
+        return (
+          <Badge className="bg-orange-500">
+            <Settings className="w-3 h-3 mr-1" />
+            Maintenance
+          </Badge>
+        );
       case 'OUT_OF_ORDER':
-        return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Out of Order</Badge>;
+        return (
+          <Badge variant="destructive">
+            <XCircle className="w-3 h-3 mr-1" />
+            Out of Order
+          </Badge>
+        );
       case 'RESERVED':
-        return <Badge className="bg-purple-500"><Calendar className="w-3 h-3 mr-1" />Reserved</Badge>;
+        return (
+          <Badge className="bg-purple-500">
+            <Calendar className="w-3 h-3 mr-1" />
+            Reserved
+          </Badge>
+        );
       case 'RETIRED':
-        return <Badge variant="secondary"><XCircle className="w-3 h-3 mr-1" />Retired</Badge>;
+        return (
+          <Badge variant="secondary">
+            <XCircle className="w-3 h-3 mr-1" />
+            Retired
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{equipment.status}</Badge>;
     }
@@ -315,59 +412,80 @@ export default function EquipmentAvailabilitySearch() {
   // Get condition rating badge
   const getConditionBadge = (condition: string) => {
     const colors: Record<string, string> = {
-      'EXCELLENT': 'bg-green-500',
-      'GOOD': 'bg-blue-500',
-      'FAIR': 'bg-yellow-500',
-      'POOR': 'bg-orange-500',
-      'DAMAGED': 'bg-red-500',
+      EXCELLENT: 'bg-green-500',
+      GOOD: 'bg-blue-500',
+      FAIR: 'bg-yellow-500',
+      POOR: 'bg-orange-500',
+      DAMAGED: 'bg-red-500',
     };
 
     return (
-      <Badge className={colors[condition] || 'bg-gray-500'}>
-        {condition}
-      </Badge>
+      <Badge className={colors[condition] || 'bg-gray-500'}>{condition}</Badge>
     );
   };
 
   // Get utilization rate badge
   const getUtilizationBadge = (rate: number) => {
     if (rate >= 80) {
-      return <Badge className="bg-red-500"><Zap className="w-3 h-3 mr-1" />High Usage</Badge>;
+      return (
+        <Badge className="bg-red-500">
+          <Zap className="w-3 h-3 mr-1" />
+          High Usage
+        </Badge>
+      );
     } else if (rate >= 50) {
-      return <Badge className="bg-orange-500"><Zap className="w-3 h-3 mr-1" />Moderate</Badge>;
+      return (
+        <Badge className="bg-orange-500">
+          <Zap className="w-3 h-3 mr-1" />
+          Moderate
+        </Badge>
+      );
     } else if (rate >= 20) {
-      return <Badge className="bg-green-500"><Zap className="w-3 h-3 mr-1" />Low Usage</Badge>;
+      return (
+        <Badge className="bg-green-500">
+          <Zap className="w-3 h-3 mr-1" />
+          Low Usage
+        </Badge>
+      );
     }
-    return <Badge variant="outline"><Zap className="w-3 h-3 mr-1" />Minimal</Badge>;
+    return (
+      <Badge variant="outline">
+        <Zap className="w-3 h-3 mr-1" />
+        Minimal
+      </Badge>
+    );
   };
 
   return (
     <div className="space-y-6">
-      {/* Search Section */}
+      {/* _Search Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Monitor className="w-5 h-5" />
-            Equipment Availability Search
+            Equipment Availability _Search
           </CardTitle>
           <CardDescription>
-            Search and filter equipment by type, location, availability, and usage statistics
+            _Search and filter equipment by type, location, availability, and
+            usage statistics
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search Bar with Suggestions */}
+          {/* _Search Bar with Suggestions */}
           <div className="relative">
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
-                  placeholder="Search by name, equipment ID, type, or location..."
+                  placeholder="_Search by name, equipment ID, type, or location..."
                   value={query}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => query.length >= 2 && setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  onKeyPress={(e) => {
+                  onBlur={() =>
+                    setTimeout(() => setShowSuggestions(false), 200)
+                  }
+                  onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       setShowSuggestions(false);
                       performSearch();
@@ -377,63 +495,74 @@ export default function EquipmentAvailabilitySearch() {
                 />
 
                 {/* Suggestions Dropdown */}
-                {showSuggestions && (suggestions.names.length > 0 || suggestions.types.length > 0 || suggestions.locations.length > 0) && (
-                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg">
-                    <div className="p-2 space-y-2">
-                      {suggestions.names.length > 0 && (
-                        <div>
-                          <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Equipment Names</div>
-                          {suggestions.names.map((name, index) => (
-                            <div
-                              key={`name-${index}`}
-                              className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
-                              onClick={() => applySuggestion('name', name)}
-                            >
-                              <Monitor className="w-3 h-3 mr-2 inline" />
-                              {name}
+                {showSuggestions &&
+                  (suggestions.names.length > 0 ||
+                    suggestions.types.length > 0 ||
+                    suggestions.locations.length > 0) && (
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg">
+                      <div className="p-2 space-y-2">
+                        {suggestions.names.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                              Equipment Names
                             </div>
-                          ))}
-                        </div>
-                      )}
+                            {suggestions.names.map((name, index) => (
+                              <div
+                                key={`name-${index}`}
+                                className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
+                                onClick={() => applySuggestion('name', name)}
+                              >
+                                <Monitor className="w-3 h-3 mr-2 inline" />
+                                {name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
-                      {suggestions.types.length > 0 && (
-                        <div>
-                          <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Types</div>
-                          {suggestions.types.map((type, index) => (
-                            <div
-                              key={`type-${index}`}
-                              className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
-                              onClick={() => applySuggestion('type', type)}
-                            >
-                              <Monitor className="w-3 h-3 mr-2 inline" />
-                              {type}
+                        {suggestions.types.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                              Types
                             </div>
-                          ))}
-                        </div>
-                      )}
+                            {suggestions.types.map((type, index) => (
+                              <div
+                                key={`type-${index}`}
+                                className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
+                                onClick={() => applySuggestion('type', type)}
+                              >
+                                <Monitor className="w-3 h-3 mr-2 inline" />
+                                {type}
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
-                      {suggestions.locations.length > 0 && (
-                        <div>
-                          <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Locations</div>
-                          {suggestions.locations.map((location, index) => (
-                            <div
-                              key={`location-${index}`}
-                              className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
-                              onClick={() => applySuggestion('location', location)}
-                            >
-                              <MapPin className="w-3 h-3 mr-2 inline" />
-                              {location}
+                        {suggestions.locations.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                              Locations
                             </div>
-                          ))}
-                        </div>
-                      )}
+                            {suggestions.locations.map((location, index) => (
+                              <div
+                                key={`location-${index}`}
+                                className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
+                                onClick={() =>
+                                  applySuggestion('location', location)
+                                }
+                              >
+                                <MapPin className="w-3 h-3 mr-2 inline" />
+                                {location}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
 
               <Button onClick={() => performSearch()} disabled={loading}>
-                {loading ? 'Searching...' : 'Search'}
+                {loading ? 'Searching...' : '_Search'}
               </Button>
 
               <Button
@@ -442,7 +571,10 @@ export default function EquipmentAvailabilitySearch() {
               >
                 <Filter className="w-4 h-4 mr-2" />
                 Filters
-                {(filters.type || filters.status || filters.location || filters.isAvailable) && (
+                {(filters.type ||
+                  filters.status ||
+                  filters.location ||
+                  filters.isAvailable) && (
                   <ChevronDown className="w-4 h-4 ml-2" />
                 )}
               </Button>
@@ -458,7 +590,7 @@ export default function EquipmentAvailabilitySearch() {
             {/* Quick Filters */}
             <div className="flex gap-2 flex-wrap">
               <Button
-                variant={filters.isAvailable ? "default" : "outline"}
+                variant={filters.isAvailable ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => {
                   setFilters({ ...filters, isAvailable: !filters.isAvailable });
@@ -471,10 +603,13 @@ export default function EquipmentAvailabilitySearch() {
               </Button>
 
               <Button
-                variant={filters.maintenanceDue ? "default" : "outline"}
+                variant={filters.maintenanceDue ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => {
-                  setFilters({ ...filters, maintenanceDue: !filters.maintenanceDue });
+                  setFilters({
+                    ...filters,
+                    maintenanceDue: !filters.maintenanceDue,
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -484,10 +619,13 @@ export default function EquipmentAvailabilitySearch() {
               </Button>
 
               <Button
-                variant={filters.requiresSupervision ? "default" : "outline"}
+                variant={filters.requiresSupervision ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => {
-                  setFilters({ ...filters, requiresSupervision: !filters.requiresSupervision });
+                  setFilters({
+                    ...filters,
+                    requiresSupervision: !filters.requiresSupervision,
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -499,7 +637,13 @@ export default function EquipmentAvailabilitySearch() {
               <Select
                 value={filters.sortBy || ''}
                 onValueChange={(value: string) => {
-                  const sortBy = value as 'name' | 'type' | 'status' | 'usageHours' | 'condition' | 'location';
+                  const sortBy = value as
+                    | 'name'
+                    | 'type'
+                    | 'status'
+                    | 'usageHours'
+                    | 'condition'
+                    | 'location';
                   const newFilters = { ...filters };
                   if (value) {
                     newFilters.sortBy = sortBy;
@@ -648,7 +792,9 @@ export default function EquipmentAvailabilitySearch() {
                     placeholder="0"
                     value={filters.minUsageHours || ''}
                     onChange={(e) => {
-                      const minUsageHours = e.target.value ? parseInt(e.target.value) : undefined;
+                      const minUsageHours = e.target.value
+                        ? parseInt(e.target.value)
+                        : undefined;
                       const newFilters = { ...filters };
                       if (minUsageHours !== undefined) {
                         newFilters.minUsageHours = minUsageHours;
@@ -669,7 +815,9 @@ export default function EquipmentAvailabilitySearch() {
                     placeholder="9999"
                     value={filters.maxUsageHours || ''}
                     onChange={(e) => {
-                      const maxUsageHours = e.target.value ? parseInt(e.target.value) : undefined;
+                      const maxUsageHours = e.target.value
+                        ? parseInt(e.target.value)
+                        : undefined;
                       const newFilters = { ...filters };
                       if (maxUsageHours !== undefined) {
                         newFilters.maxUsageHours = maxUsageHours;
@@ -686,11 +834,7 @@ export default function EquipmentAvailabilitySearch() {
                 <div className="space-y-2 md:col-span-3 lg:col-span-6">
                   <label className="text-sm font-medium">Actions</label>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={clearFilters}
-                    >
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
                       <X className="w-4 h-4 mr-1" />
                       Clear All
                     </Button>
@@ -707,13 +851,13 @@ export default function EquipmentAvailabilitySearch() {
         </CardContent>
       </Card>
 
-      {/* Search Results */}
+      {/* _Search Results */}
       {searchResults && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Equipment Search Results</CardTitle>
+                <CardTitle>Equipment _Search Results</CardTitle>
                 <CardDescription>
                   Found {searchResults.pagination.total} equipment items
                   {query && ` for "${query}"`}
@@ -723,14 +867,11 @@ export default function EquipmentAvailabilitySearch() {
               <div className="flex gap-2">
                 {searchResults.pagination.total > 20 && (
                   <Badge variant="outline">
-                    Page {searchResults.pagination.page} of {searchResults.pagination.pages}
+                    Page {searchResults.pagination.page} of{' '}
+                    {searchResults.pagination.pages}
                   </Badge>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearFilters}
-                >
+                <Button variant="outline" size="sm" onClick={clearFilters}>
                   <X className="w-4 h-4 mr-1" />
                   Clear
                 </Button>
@@ -745,10 +886,15 @@ export default function EquipmentAvailabilitySearch() {
                     <TableHead className="w-12">
                       <input
                         type="checkbox"
-                        checked={selectedEquipment.length === searchResults.equipment.length}
+                        checked={
+                          selectedEquipment.length ===
+                          searchResults.equipment.length
+                        }
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedEquipment(searchResults.equipment.map(e => e.id));
+                            setSelectedEquipment(
+                              searchResults.equipment.map((e) => e.id)
+                            );
                           } else {
                             setSelectedEquipment([]);
                           }
@@ -772,7 +918,9 @@ export default function EquipmentAvailabilitySearch() {
                         <input
                           type="checkbox"
                           checked={selectedEquipment.includes(equipment.id)}
-                          onChange={() => toggleEquipmentSelection(equipment.id)}
+                          onChange={() =>
+                            toggleEquipmentSelection(equipment.id)
+                          }
                         />
                       </TableCell>
                       <TableCell className="font-medium">
@@ -816,13 +964,16 @@ export default function EquipmentAvailabilitySearch() {
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
                             <Clock className="w-3 h-3" />
-                            <span className="text-sm">{equipment.total_usage_hours.toFixed(1)}h total</span>
+                            <span className="text-sm">
+                              {equipment.total_usage_hours.toFixed(1)}h total
+                            </span>
                           </div>
                           <div className="flex items-center gap-1">
                             {getUtilizationBadge(equipment.utilizationRate)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {equipment.recentUsageStats.totalSessions} sessions (30d)
+                            {equipment.recentUsageStats.totalSessions} sessions
+                            (30d)
                           </div>
                         </div>
                       </TableCell>
@@ -830,13 +981,24 @@ export default function EquipmentAvailabilitySearch() {
                         <div className="text-sm">
                           {equipment.nextAvailableDate ? (
                             <div>
-                              <div>{new Date(equipment.nextAvailableDate).toLocaleDateString()}</div>
+                              <div>
+                                {new Date(
+                                  equipment.nextAvailableDate
+                                ).toLocaleDateString()}
+                              </div>
                               <div className="text-xs text-muted-foreground">
-                                {new Date(equipment.nextAvailableDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(
+                                  equipment.nextAvailableDate
+                                ).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
                               </div>
                             </div>
                           ) : (
-                            <Badge className="bg-green-500">Available Now</Badge>
+                            <Badge className="bg-green-500">
+                              Available Now
+                            </Badge>
                           )}
                         </div>
                       </TableCell>
@@ -856,11 +1018,7 @@ export default function EquipmentAvailabilitySearch() {
             {/* Load More Button */}
             {searchResults.pagination.page < searchResults.pagination.pages && (
               <div className="flex justify-center mt-6 p-4">
-                <Button
-                  onClick={loadMore}
-                  disabled={loading}
-                  variant="outline"
-                >
+                <Button onClick={loadMore} disabled={loading} variant="outline">
                   {loading ? 'Loading...' : 'Load More'}
                 </Button>
               </div>
@@ -873,7 +1031,7 @@ export default function EquipmentAvailabilitySearch() {
         <Card>
           <CardContent className="flex items-center justify-center h-32">
             <p className="text-muted-foreground">
-              {query ? 'No results found' : 'Enter a search query to begin'}
+              {query ? 'No results found' : 'Enter a _search query to begin'}
             </p>
           </CardContent>
         </Card>

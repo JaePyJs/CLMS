@@ -78,10 +78,17 @@ export const selfServiceApi = {
   /**
    * Get self-service statistics
    */
-  async getStatistics(startDate?: Date, endDate?: Date): Promise<SelfServiceStatistics> {
-    const params: any = {};
-    if (startDate) params.startDate = startDate.toISOString();
-    if (endDate) params.endDate = endDate.toISOString();
+  async getStatistics(
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<SelfServiceStatistics> {
+    const params: Record<string, unknown> = {};
+    if (startDate) {
+      params.startDate = startDate.toISOString();
+    }
+    if (endDate) {
+      params.endDate = endDate.toISOString();
+    }
 
     const response = await api.get('/self-service/statistics', { params });
     return response.data;

@@ -6,9 +6,23 @@ import bookRoutes from './books';
 import borrowRoutes from './borrows';
 import studentRoutes from './students';
 import equipmentRoutes from './equipment';
+import equipmentAutomationRoutes from './equipmentAutomation';
 import analyticsRoutes from './analytics';
 import importRoutes from './import';
 import updateRoutes from './update';
+import selfServiceRoutes from './selfService';
+import settingsRoutes from './settings';
+import attendanceExportRoutes from './attendanceExport';
+import errorLogsRoutes from './errorLogs';
+import notificationsRoutes from './notifications';
+import librarySectionsRoutes from './librarySections';
+import borrowingPoliciesRoutes from './borrowingPolicies';
+import finesRoutes from './fines';
+import printingRoutes from './printing';
+import announcementsRoutes from './announcements';
+import { kioskRoutes } from './kiosk';
+import { enhancedLibraryRoutes } from './enhanced-library';
+import { versionRoutes } from './version';
 
 const router = Router();
 
@@ -17,11 +31,25 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/books', bookRoutes);
 router.use('/equipment', equipmentRoutes);
+router.use('/equipment/automation', equipmentAutomationRoutes);
 router.use('/borrows', borrowRoutes);
 router.use('/students', studentRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/import', importRoutes);
 router.use('/update', updateRoutes);
+router.use('/self-service', selfServiceRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/attendance-export', attendanceExportRoutes);
+router.use('/logs', errorLogsRoutes);
+router.use('/notifications', notificationsRoutes);
+router.use('/sections', librarySectionsRoutes);
+router.use('/policies', borrowingPoliciesRoutes);
+router.use('/fines', finesRoutes);
+router.use('/printing', printingRoutes);
+router.use('/announcements', announcementsRoutes);
+router.use('/kiosk', kioskRoutes);
+router.use('/enhanced-library', enhancedLibraryRoutes);
+router.use('/version', versionRoutes);
 
 // Health check endpoint
 router.get('/health', (_req: Request, res: Response) => {
@@ -29,7 +57,7 @@ router.get('/health', (_req: Request, res: Response) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    memory: process.memoryUsage()
+    memory: process.memoryUsage(),
   });
 });
 
@@ -50,7 +78,18 @@ router.get('/info', (_req: Request, res: Response) => {
       equipment: '/api/equipment',
       analytics: '/api/analytics',
       import: '/api/import',
-      update: '/api/update'
+      update: '/api/update',
+      selfService: '/api/self-service',
+      sections: '/api/sections',
+      policies: '/api/policies',
+      fines: '/api/fines',
+      printing: '/api/printing',
+      announcements: '/api/announcements',
+      enhancedLibrary: '/api/enhanced-library',
+      settings: '/api/settings',
+      attendanceExport: '/api/attendance-export',
+      logs: '/api/logs',
+      notifications: '/api/notifications',
     },
     features: {
       authentication: 'JWT-based auth with RBAC',
@@ -58,8 +97,9 @@ router.get('/info', (_req: Request, res: Response) => {
       websocket: 'Real-time communication',
       updates: 'One-click auto-update system',
       import: 'CSV import/export functionality',
-      analytics: 'Comprehensive reporting'
-    }
+      analytics: 'Comprehensive reporting',
+      errorLogging: 'Real-time error monitoring and logging',
+    },
   });
 });
 

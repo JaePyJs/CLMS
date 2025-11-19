@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -10,7 +16,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, BookOpen, Filter, X, TrendingUp, Star, ChevronDown, Eye, Users, Sparkles } from 'lucide-react';
+import {
+  Search,
+  BookOpen,
+  Filter,
+  X,
+  TrendingUp,
+  Star,
+  ChevronDown,
+  Eye,
+  Users,
+  Sparkles,
+} from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -32,7 +49,7 @@ interface Book {
   isAvailable?: boolean;
   created_at?: string;
   updated_at?: string;
-  book_checkouts?: any[];
+  book_checkouts?: Array<Record<string, unknown>>;
 }
 
 interface EnhancedBookSearchProps {
@@ -48,7 +65,13 @@ interface SearchFilters {
   location?: string;
   availableOnly?: boolean;
   readingLevel?: string;
-  sortBy?: 'title' | 'author' | 'category' | 'popularity' | 'newest' | 'available';
+  sortBy?:
+    | 'title'
+    | 'author'
+    | 'category'
+    | 'popularity'
+    | 'newest'
+    | 'available';
   sortOrder?: 'asc' | 'desc';
   includeCovers?: boolean;
 }
@@ -87,15 +110,19 @@ interface PopularBooks {
   books: Book[];
 }
 
-export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBookSearchProps = {}) {
+export default function EnhancedBookSearch({
+  onNavigateToDetails,
+}: EnhancedBookSearchProps = {}) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<SearchSuggestion>({
     titles: [],
     authors: [],
-    categories: []
+    categories: [],
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
+  const [searchResults, setSearchResults] = useState<SearchResponse | null>(
+    null
+  );
   const [popularBooks, setPopularBooks] = useState<Book[]>([]);
   const [newBooks, setNewBooks] = useState<Book[]>([]);
   const [availableBooks, setAvailableBooks] = useState<Book[]>([]);
@@ -111,11 +138,13 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
   const searchInputRef = useRef<HTMLInputElement>(null);
   const suggestionTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-
   // Fetch popular books
   const fetchPopularBooks = useCallback(async () => {
     try {
-      const response = await apiClient.get<PopularBooks>('/api/search/popular', { limit: 8 });
+      const response = await apiClient.get<PopularBooks>(
+        '/api/_search/popular',
+        { limit: 8 }
+      );
 
       if (response.success && response.data) {
         setPopularBooks(response.data.books);
@@ -128,7 +157,9 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
   // Fetch new books
   const fetchNewBooks = useCallback(async () => {
     try {
-      const response = await apiClient.get<PopularBooks>('/api/search/new', { limit: 8 });
+      const response = await apiClient.get<PopularBooks>('/api/_search/new', {
+        limit: 8,
+      });
 
       if (response.success && response.data) {
         setNewBooks(response.data.books);
@@ -141,7 +172,10 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
   // Fetch available books
   const fetchAvailableBooks = useCallback(async () => {
     try {
-      const response = await apiClient.get<PopularBooks>('/api/search/available', { limit: 8 });
+      const response = await apiClient.get<PopularBooks>(
+        '/api/_search/available',
+        { limit: 8 }
+      );
 
       if (response.success && response.data) {
         setAvailableBooks(response.data.books);
@@ -167,11 +201,14 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
 
     setLoading(true);
     try {
-      const response = await apiClient.get<SearchSuggestion>('/api/search/suggestions', {
-        query: searchQuery,
-        limit: 5,
-        type: 'all',
-      });
+      const response = await apiClient.get<SearchSuggestion>(
+        '/api/_search/suggestions',
+        {
+          query: searchQuery,
+          limit: 5,
+          type: 'all',
+        }
+      );
 
       if (response.success && response.data) {
         setSuggestions(response.data);
@@ -184,7 +221,7 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
     }
   }, []);
 
-  // Debounced search input handler
+  // Debounced _search input handler
   const handleSearchInput = (value: string) => {
     setQuery(value);
     setCurrentPage(1);
@@ -206,41 +243,70 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
     }
   };
 
-  // Enhanced search function
+  // Enhanced _search function
   const performSearch = async (page = 1, resetPagination = true) => {
-    if (!query.trim() && !Object.keys(filters).some(key => filters[key as keyof SearchFilters])) {
+    if (
+      !query.trim() &&
+      !Object.keys(filters).some((key) => filters[key as keyof SearchFilters])
+    ) {
       return;
     }
 
     setLoading(true);
     try {
-      const searchParams: any = {
+      // Build query params
+      const searchParams: Record<string, unknown> = {
         page,
         limit: 20,
         includeCovers: filters.includeCovers,
       };
 
-      // Add filters to search params
-      if (query) searchParams.query = query;
-      if (filters.category) searchParams.category = filters.category;
-      if (filters.subcategory) searchParams.subcategory = filters.subcategory;
-      if (filters.author) searchParams.author = filters.author;
-      if (filters.publisher) searchParams.publisher = filters.publisher;
-      if (filters.location) searchParams.location = filters.location;
-      if (filters.availableOnly) searchParams.availableOnly = filters.availableOnly;
-      if (filters.readingLevel) searchParams.readingLevel = filters.readingLevel;
-      if (filters.sortBy) searchParams.sortBy = filters.sortBy;
-      if (filters.sortOrder) searchParams.sortOrder = filters.sortOrder;
+      // Add filters to _search params
+      if (query) {
+        searchParams.query = query;
+      }
+      if (filters.category) {
+        searchParams.category = filters.category;
+      }
+      if (filters.subcategory) {
+        searchParams.subcategory = filters.subcategory;
+      }
+      if (filters.author) {
+        searchParams.author = filters.author;
+      }
+      if (filters.publisher) {
+        searchParams.publisher = filters.publisher;
+      }
+      if (filters.location) {
+        searchParams.location = filters.location;
+      }
+      if (filters.availableOnly) {
+        searchParams.availableOnly = filters.availableOnly;
+      }
+      if (filters.readingLevel) {
+        searchParams.readingLevel = filters.readingLevel;
+      }
+      if (filters.sortBy) {
+        searchParams.sortBy = filters.sortBy;
+      }
+      if (filters.sortOrder) {
+        searchParams.sortOrder = filters.sortOrder;
+      }
 
-      const response = await apiClient.get<SearchResponse>('/api/search/books', searchParams);
+      const response = await apiClient.get<SearchResponse>(
+        '/api/_search/books',
+        searchParams
+      );
 
       if (response.success && response.data) {
         if (resetPagination) {
           setSearchResults(response.data);
         } else {
           // Append results for pagination
-          setSearchResults(prev => {
-            if (!prev || !response.data) return prev;
+          setSearchResults((prev) => {
+            if (!prev || !response.data) {
+              return prev;
+            }
             return {
               ...response.data,
               books: [...prev.books, ...response.data.books],
@@ -255,24 +321,32 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
         }
       }
     } catch (error) {
-      console.error('Search error:', error);
-      toast.error('Failed to perform search');
+      console.error('_Search error:', error);
+      toast.error('Failed to perform _search');
     } finally {
       setLoading(false);
     }
   };
 
-
   // Fetch recommendations
   const fetchRecommendations = async (book?: Book) => {
-    if (!book) return;
+    if (!book) {
+      return;
+    }
 
     try {
-      const params: any = { limit: 8 };
-      if (book.category) params.category = book.category;
-      if (book.author) params.author = book.author;
+      const params: Record<string, unknown> = { limit: 8 };
+      if (book.category) {
+        params.category = book.category;
+      }
+      if (book.author) {
+        params.author = book.author;
+      }
 
-      const response = await apiClient.get<Recommendation[]>('/api/search/recommendations', params);
+      const response = await apiClient.get<Recommendation[]>(
+        '/api/_search/recommendations',
+        params
+      );
 
       if (response.success && response.data) {
         setRecommendations(response.data);
@@ -303,16 +377,19 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
     setShowSuggestions(false);
   };
 
-  // Apply saved search
-  const applySuggestion = (type: 'title' | 'author' | 'category', value: string) => {
+  // Apply saved _search
+  const applySuggestion = (
+    type: 'title' | 'author' | 'category',
+    value: string
+  ) => {
     setQuery(value);
     setShowSuggestions(false);
 
     // Update filters based on suggestion type
     if (type === 'author') {
-      setFilters(prev => ({ ...prev, author: value }));
+      setFilters((prev) => ({ ...prev, author: value }));
     } else if (type === 'category') {
-      setFilters(prev => ({ ...prev, category: value }));
+      setFilters((prev) => ({ ...prev, category: value }));
     }
 
     setCurrentPage(1);
@@ -323,11 +400,13 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
   const getAvailabilityBadge = (book: Book | Recommendation) => {
     // For recommendations, use isAvailable property
     if ('isAvailable' in book && typeof book.isAvailable === 'boolean') {
-      return book.isAvailable 
-        ? <Badge variant="default">Available</Badge>
-        : <Badge variant="destructive">Not Available</Badge>;
+      return book.isAvailable ? (
+        <Badge variant="default">Available</Badge>
+      ) : (
+        <Badge variant="destructive">Not Available</Badge>
+      );
     }
-    
+
     // For full Book objects
     if ('is_active' in book && 'available_copies' in book) {
       if (!book.is_active) {
@@ -341,49 +420,64 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
       }
       return <Badge variant="default">{book.available_copies} Available</Badge>;
     }
-    
+
     // Fallback
     return <Badge variant="outline">Unknown</Badge>;
   };
 
   // Popularity score display
   const getPopularityDisplay = (score?: number) => {
-    if (!score) return null;
+    if (!score) {
+      return null;
+    }
     if (score >= 80) {
-      return <Badge variant="default"><TrendingUp className="w-3 h-3 mr-1" />Very Popular</Badge>;
+      return (
+        <Badge variant="default">
+          <TrendingUp className="w-3 h-3 mr-1" />
+          Very Popular
+        </Badge>
+      );
     } else if (score >= 50) {
-      return <Badge variant="secondary"><Star className="w-3 h-3 mr-1" />Popular</Badge>;
+      return (
+        <Badge variant="secondary">
+          <Star className="w-3 h-3 mr-1" />
+          Popular
+        </Badge>
+      );
     }
     return null;
   };
 
   return (
     <div className="space-y-6">
-      {/* Search Section */}
+      {/* _Search Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BookOpen className="w-5 h-5" />
-            Enhanced Book Search
+            Enhanced Book _Search
           </CardTitle>
           <CardDescription>
-            Discover books with advanced filtering, recommendations, and cover images
+            Discover books with advanced filtering, recommendations, and cover
+            images
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search Bar with Suggestions */}
+          {/* _Search Bar with Suggestions */}
           <div className="relative">
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
-                  placeholder="Search by title, author, ISBN, or keyword..."
+                  placeholder="_Search by title, author, ISBN, or keyword..."
                   value={query}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => query.length >= 2 && setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  onKeyPress={(e) => {
+                  onBlur={() =>
+                    setTimeout(() => setShowSuggestions(false), 200)
+                  }
+                  onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       setShowSuggestions(false);
                       performSearch();
@@ -393,63 +487,76 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                 />
 
                 {/* Suggestions Dropdown */}
-                {showSuggestions && (suggestions.titles.length > 0 || suggestions.authors.length > 0 || suggestions.categories.length > 0) && (
-                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg">
-                    <div className="p-2 space-y-2">
-                      {suggestions.titles.length > 0 && (
-                        <div>
-                          <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Titles</div>
-                          {suggestions.titles.map((title, index) => (
-                            <div
-                              key={`title-${index}`}
-                              className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
-                              onClick={() => applySuggestion('title', title)}
-                            >
-                              <BookOpen className="w-3 h-3 mr-2 inline" />
-                              {title}
+                {showSuggestions &&
+                  (suggestions.titles.length > 0 ||
+                    suggestions.authors.length > 0 ||
+                    suggestions.categories.length > 0) && (
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg">
+                      <div className="p-2 space-y-2">
+                        {suggestions.titles.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                              Titles
                             </div>
-                          ))}
-                        </div>
-                      )}
+                            {suggestions.titles.map((title, index) => (
+                              <div
+                                key={`title-${index}`}
+                                className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
+                                onClick={() => applySuggestion('title', title)}
+                              >
+                                <BookOpen className="w-3 h-3 mr-2 inline" />
+                                {title}
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
-                      {suggestions.authors.length > 0 && (
-                        <div>
-                          <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Authors</div>
-                          {suggestions.authors.map((author, index) => (
-                            <div
-                              key={`author-${index}`}
-                              className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
-                              onClick={() => applySuggestion('author', author)}
-                            >
-                              <Users className="w-3 h-3 mr-2 inline" />
-                              {author}
+                        {suggestions.authors.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                              Authors
                             </div>
-                          ))}
-                        </div>
-                      )}
+                            {suggestions.authors.map((author, index) => (
+                              <div
+                                key={`author-${index}`}
+                                className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
+                                onClick={() =>
+                                  applySuggestion('author', author)
+                                }
+                              >
+                                <Users className="w-3 h-3 mr-2 inline" />
+                                {author}
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
-                      {suggestions.categories.length > 0 && (
-                        <div>
-                          <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Categories</div>
-                          {suggestions.categories.map((category, index) => (
-                            <div
-                              key={`category-${index}`}
-                              className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
-                              onClick={() => applySuggestion('category', category)}
-                            >
-                              <Filter className="w-3 h-3 mr-2 inline" />
-                              {category}
+                        {suggestions.categories.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                              Categories
                             </div>
-                          ))}
-                        </div>
-                      )}
+                            {suggestions.categories.map((category, index) => (
+                              <div
+                                key={`category-${index}`}
+                                className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
+                                onClick={() =>
+                                  applySuggestion('category', category)
+                                }
+                              >
+                                <Filter className="w-3 h-3 mr-2 inline" />
+                                {category}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
 
               <Button onClick={() => performSearch()} disabled={loading}>
-                {loading ? 'Searching...' : 'Search'}
+                {loading ? 'Searching...' : '_Search'}
               </Button>
 
               <Button
@@ -458,7 +565,9 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
               >
                 <Filter className="w-4 h-4 mr-2" />
                 Filters
-                {(filters.category || filters.author || filters.availableOnly) && (
+                {(filters.category ||
+                  filters.author ||
+                  filters.availableOnly) && (
                   <ChevronDown className="w-4 h-4 ml-2" />
                 )}
               </Button>
@@ -467,10 +576,13 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
             {/* Quick Filters */}
             <div className="flex gap-2 flex-wrap">
               <Button
-                variant={filters.availableOnly ? "default" : "outline"}
+                variant={filters.availableOnly ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => {
-                  setFilters({ ...filters, availableOnly: !filters.availableOnly });
+                  setFilters({
+                    ...filters,
+                    availableOnly: !filters.availableOnly,
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -481,8 +593,11 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
 
               <Select
                 value={filters.sortBy ?? 'title'}
-                onValueChange={(value: any) => {
-                  setFilters({ ...filters, sortBy: value });
+                onValueChange={(value: string) => {
+                  setFilters({
+                    ...filters,
+                    sortBy: value as SearchFilters['sortBy'],
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -502,8 +617,11 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
 
               <Select
                 value={filters.sortOrder ?? 'asc'}
-                onValueChange={(value: any) => {
-                  setFilters({ ...filters, sortOrder: value });
+                onValueChange={(value: string) => {
+                  setFilters({
+                    ...filters,
+                    sortOrder: value as SearchFilters['sortOrder'],
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -527,7 +645,7 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                   <label className="text-sm font-medium">Category</label>
                   <Select
                     value={filters.category || ''}
-                    onValueChange={(value: any) => {
+                    onValueChange={(value: string) => {
                       setFilters({ ...filters, category: value });
                       setCurrentPage(1);
                       performSearch();
@@ -586,7 +704,7 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                   <label className="text-sm font-medium">Reading Level</label>
                   <Select
                     value={filters.readingLevel || ''}
-                    onValueChange={(value: any) => {
+                    onValueChange={(value: string) => {
                       setFilters({ ...filters, readingLevel: value });
                       setCurrentPage(1);
                       performSearch();
@@ -598,7 +716,9 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                     <SelectContent>
                       <SelectItem value="">All Levels</SelectItem>
                       <SelectItem value="Elementary">Elementary</SelectItem>
-                      <SelectItem value="Middle School">Middle School</SelectItem>
+                      <SelectItem value="Middle School">
+                        Middle School
+                      </SelectItem>
                       <SelectItem value="High School">High School</SelectItem>
                       <SelectItem value="Young Adult">Young Adult</SelectItem>
                       <SelectItem value="Adult">Adult</SelectItem>
@@ -609,11 +729,7 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Actions</label>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={clearFilters}
-                    >
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
                       <X className="w-4 h-4 mr-1" />
                       Clear
                     </Button>
@@ -654,7 +770,8 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                       className="w-10 h-14 object-cover rounded"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).style.background = '#f3f4f6';
+                        (e.target as HTMLImageElement).style.background =
+                          '#f3f4f6';
                       }}
                     />
                   ) : (
@@ -663,7 +780,9 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{book.title}</div>
+                    <div className="font-medium text-sm truncate">
+                      {book.title}
+                    </div>
                     <div className="text-xs text-muted-foreground truncate">
                       {book.author}
                     </div>
@@ -705,7 +824,8 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                       className="w-10 h-14 object-cover rounded"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).style.background = '#f3f4f6';
+                        (e.target as HTMLImageElement).style.background =
+                          '#f3f4f6';
                       }}
                     />
                   ) : (
@@ -714,7 +834,9 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{book.title}</div>
+                    <div className="font-medium text-sm truncate">
+                      {book.title}
+                    </div>
                     <div className="text-xs text-muted-foreground truncate">
                       {book.author}
                     </div>
@@ -758,7 +880,8 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                       className="w-10 h-14 object-cover rounded"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
-                        (e.target as HTMLImageElement).style.background = '#f3f4f6';
+                        (e.target as HTMLImageElement).style.background =
+                          '#f3f4f6';
                       }}
                     />
                   ) : (
@@ -767,7 +890,9 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{book.title}</div>
+                    <div className="font-medium text-sm truncate">
+                      {book.title}
+                    </div>
                     <div className="text-xs text-muted-foreground truncate">
                       {book.author}
                     </div>
@@ -788,11 +913,15 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
           </CardHeader>
           <CardContent className="pt-0 space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Popular Books</span>
+              <span className="text-sm text-muted-foreground">
+                Popular Books
+              </span>
               <span className="font-semibold">{popularBooks.length}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">New Arrivals</span>
+              <span className="text-sm text-muted-foreground">
+                New Arrivals
+              </span>
               <span className="font-semibold">{newBooks.length}</span>
             </div>
             <div className="flex justify-between items-center">
@@ -805,13 +934,13 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
         </Card>
       </div>
 
-      {/* Search Results */}
+      {/* _Search Results */}
       {searchResults && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Search Results</CardTitle>
+                <CardTitle>_Search Results</CardTitle>
                 <CardDescription>
                   Found {searchResults.pagination.total} books
                   {query && ` for "${query}"`}
@@ -821,14 +950,11 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
               <div className="flex gap-2">
                 {searchResults.pagination.total > 20 && (
                   <Badge variant="outline">
-                    Page {searchResults.pagination.page} of {searchResults.pagination.pages}
+                    Page {searchResults.pagination.page} of{' '}
+                    {searchResults.pagination.pages}
                   </Badge>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearFilters}
-                >
+                <Button variant="outline" size="sm" onClick={clearFilters}>
                   <X className="w-4 h-4 mr-1" />
                   Clear
                 </Button>
@@ -849,7 +975,7 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                       // Fallback to hash navigation for simple routing
                       window.location.hash = `book/${book.id}`;
                     }
-                    console.log('Navigate to book details:', book.id);
+                    console.debug('Navigate to book details:', book.id);
                   }}
                 >
                   <CardContent className="p-4">
@@ -862,9 +988,12 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                             alt={book.title}
                             className="w-full h-full object-cover rounded-lg"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                              (e.target as HTMLImageElement).style.background = '#f3f4f6';
-                              (e.target as HTMLImageElement).innerHTML = '<BookOpen className="w-8 h-8 text-muted-foreground m-auto" />';
+                              (e.target as HTMLImageElement).style.display =
+                                'none';
+                              (e.target as HTMLImageElement).style.background =
+                                '#f3f4f6';
+                              (e.target as HTMLImageElement).innerHTML =
+                                '<BookOpen className="w-8 h-8 text-muted-foreground m-auto" />';
                             }}
                           />
                         ) : (
@@ -881,7 +1010,9 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
 
                       {/* Book Info */}
                       <div className="space-y-2">
-                        <h3 className="font-semibold text-sm line-clamp-2">{book.title}</h3>
+                        <h3 className="font-semibold text-sm line-clamp-2">
+                          {book.title}
+                        </h3>
                         <p className="text-sm text-muted-foreground line-clamp-1">
                           by {book.author}
                         </p>
@@ -900,7 +1031,8 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
 
                         {/* Copies Info */}
                         <div className="text-xs text-muted-foreground">
-                          {book.available_copies} of {book.total_copies} copies available
+                          {book.available_copies} of {book.total_copies} copies
+                          available
                         </div>
                       </div>
                     </div>
@@ -912,11 +1044,7 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
             {/* Load More Button */}
             {searchResults.pagination.page < searchResults.pagination.pages && (
               <div className="flex justify-center mt-6">
-                <Button
-                  onClick={loadMore}
-                  disabled={loading}
-                  variant="outline"
-                >
+                <Button onClick={loadMore} disabled={loading} variant="outline">
                   {loading ? 'Loading...' : 'Load More'}
                 </Button>
               </div>
@@ -934,7 +1062,7 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
               Recommended for You
             </CardTitle>
             <CardDescription>
-              Based on your search and library popularity
+              Based on your _search and library popularity
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -951,7 +1079,7 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                       // Fallback to hash navigation for simple routing
                       window.location.hash = `book/${book.id}`;
                     }
-                    console.log('Navigate to recommended book:', book.id);
+                    console.debug('Navigate to recommended book:', book.id);
                   }}
                 >
                   <CardContent className="p-4">
@@ -964,9 +1092,12 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
                             alt={book.title}
                             className="w-full h-full object-cover rounded-lg"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                              (e.target as HTMLImageElement).style.background = '#f3f4f6';
-                              (e.target as HTMLImageElement).innerHTML = '<BookOpen className="w-6 h-6 text-muted-foreground m-auto" />';
+                              (e.target as HTMLImageElement).style.display =
+                                'none';
+                              (e.target as HTMLImageElement).style.background =
+                                '#f3f4f6';
+                              (e.target as HTMLImageElement).innerHTML =
+                                '<BookOpen className="w-6 h-6 text-muted-foreground m-auto" />';
                             }}
                           />
                         ) : (
@@ -985,7 +1116,9 @@ export default function EnhancedBookSearch({ onNavigateToDetails }: EnhancedBook
 
                       {/* Book Info */}
                       <div className="space-y-2">
-                        <h4 className="font-medium text-sm line-clamp-2">{book.title}</h4>
+                        <h4 className="font-medium text-sm line-clamp-2">
+                          {book.title}
+                        </h4>
                         <p className="text-xs text-muted-foreground line-clamp-1">
                           {book.author}
                         </p>

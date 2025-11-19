@@ -15,12 +15,15 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 
 # Install production dependencies
-RUN npm ci --only=production && \
+RUN npm install --omit=dev && \
     npm cache clean --force
 
 # Stage 2: Install dev dependencies and build
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Toolchain for native builds (e.g., gifsicle, sharp, etc.)
+RUN apk add --no-cache autoconf automake libtool build-base zlib-dev libpng-dev nasm libjpeg-turbo-dev
 
 # Copy production dependencies
 COPY --from=deps /app/node_modules ./node_modules
@@ -29,7 +32,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json package-lock.json* ./
 
 # Install dev dependencies needed for build
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY . .

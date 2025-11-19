@@ -4,7 +4,10 @@
  */
 
 // Simple icon factory that can be used across components
-export const createIcon = (iconName: string, props: { className?: string } = {}) => {
+export const createIcon = (
+  iconName: string,
+  props: { className?: string } = {}
+) => {
   // This is a placeholder - in practice, you'd import specific icons as needed
   // The goal is to reduce the massive import lists in components
   const iconClassName = props.className || '';
@@ -15,7 +18,7 @@ export const createIcon = (iconName: string, props: { className?: string } = {})
     info: () => `<Info className="${iconClassName}" />`,
     loading: () => `<Loader2 className="${iconClassName}" />`,
   };
-  
+
   // Use the iconName parameter to return the appropriate method
   return iconMethods[iconName as keyof typeof iconMethods] || iconMethods.error;
 };
@@ -24,11 +27,11 @@ export const createIcon = (iconName: string, props: { className?: string } = {})
 export const ICON_USAGE_PATTERNS = {
   // Status indicators
   SUCCESS: 'CheckCircle',
-  ERROR: 'XCircle', 
+  ERROR: 'XCircle',
   WARNING: 'AlertTriangle',
   INFO: 'Info',
   LOADING: 'Loader2',
-  
+
   // Navigation
   DASHBOARD: 'LayoutDashboard',
   ANALYTICS: 'BarChart3',
@@ -39,7 +42,7 @@ export const ICON_USAGE_PATTERNS = {
   REPORTS: 'FileText',
   SCANNER: 'Scan',
   NOTIFICATIONS: 'Bell',
-  
+
   // System
   PERFORMANCE: 'Activity',
   MONITORING: 'Zap',
@@ -47,7 +50,7 @@ export const ICON_USAGE_PATTERNS = {
   TARGET: 'Target',
   CLOCK: 'Clock',
   DATABASE: 'Database',
-  
+
   // Actions
   ADD: 'Plus',
   EDIT: 'Edit',
@@ -57,7 +60,7 @@ export const ICON_USAGE_PATTERNS = {
   PRINT: 'Printer',
   EXPORT: 'FileSpreadsheet',
   REFRESH: 'RefreshCw',
-  
+
   // Connection
   CONNECTED: 'Wifi',
   DISCONNECTED: 'WifiOff',
@@ -76,13 +79,14 @@ export const REFACTORING_GUIDE = {
       BarChart3, Eye, Edit, ExternalLink, Bell 
     } from 'lucide-react';
   `,
-  
+
   // After: Simplified import
   AFTER: `
     import { Icons, ICON_USAGE_PATTERNS } from '@/lib/icons';
     // Use ICON_USAGE_PATTERNS.SUCCESS instead of CheckCircle
-  `
+  `,
 };
 
-export type IconName = typeof ICON_USAGE_PATTERNS[keyof typeof ICON_USAGE_PATTERNS];
+export type IconName =
+  (typeof ICON_USAGE_PATTERNS)[keyof typeof ICON_USAGE_PATTERNS];
 export type IconProps = { className?: string };

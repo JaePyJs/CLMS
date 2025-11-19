@@ -26,7 +26,7 @@ export interface AppApiError {
 export function normalizeApiError(
   status: number,
   payload: ApiErrorPayload | undefined,
-  fallbackMessage: string,
+  fallbackMessage: string
 ): AppApiError {
   const validationErrors = payload?.validationErrors ?? [];
 

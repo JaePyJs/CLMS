@@ -1,0 +1,99 @@
+src/routes/borrows.ts(114,9): error TS2561: Object literal may only specify known properties, but 'books' does not exist in type 'book_checkoutsInclude<DefaultArgs>'. Did you mean to write 'book'?
+src/routes/borrows.ts(384,9): error TS2561: Object literal may only specify known properties, but 'books' does not exist in type 'book_checkoutsInclude<DefaultArgs>'. Did you mean to write 'book'?
+src/routes/students.ts(8,3): error TS6133: 'createStudentSchema' is declared but its value is never read.
+src/routes/students.ts(9,3): error TS6133: 'updateStudentSchema' is declared but its value is never read.
+src/routes/students.ts(435,23): error TS2339: Property 'errors' does not exist on type 'Error'.
+src/routes/students.ts(512,23): error TS2339: Property 'errors' does not exist on type 'Error'.
+src/routes/students.ts(544,11): error TS6133: 'student' is declared but its value is never read.
+src/routes/update.ts(14,25): error TS6133: 'VersionInfo' is declared but its value is never read.
+src/routes/update.ts(14,38): error TS6133: 'UpdateStatus' is declared but its value is never read.
+src/routes/update.ts(210,23): error TS6133: 'req' is declared but its value is never read.
+src/routes/update.ts(276,23): error TS6133: 'req' is declared but its value is never read.
+src/routes/update.ts(332,23): error TS6133: 'req' is declared but its value is never read.
+src/routes/users.ts(238,13): error TS6133: 'email' is declared but its value is never read.
+src/routes/users.ts(238,20): error TS6133: 'role' is declared but its value is never read.
+src/routes/users.ts(238,49): error TS6133: 'is_active' is declared but its value is never read.
+src/server.ts(16,26): error TS2349: This expression is not callable.
+  Type 'typeof import("express")' has no call signatures.
+src/server.ts(58,17): error TS2339: Property 'json' does not exist on type 'typeof import("express")'.
+src/server.ts(59,17): error TS2339: Property 'urlencoded' does not exist on type 'typeof import("express")'.
+src/services/notification.service.ts(1,10): error TS2305: Module '"@prisma/client"' has no exported member 'notifications_type'.
+src/services/notification.service.ts(1,30): error TS2305: Module '"@prisma/client"' has no exported member 'notifications_priority'.
+src/services/notification.service.ts(5,58): error TS2307: Cannot find module '@/repositories' or its corresponding type declarations.
+src/services/notification.service.ts(6,24): error TS2307: Cannot find module '@/utils/prisma' or its corresponding type declarations.
+src/services/notification.service.ts(7,18): error TS2307: Cannot find module 'bull' or its corresponding type declarations.
+src/services/notification.service.ts(178,23): error TS2551: Property 'broadcastToUser' does not exist on type 'WebSocketServer'. Did you mean 'broadcastToRoom'?
+src/services/studentService.ts(1,24): error TS2305: Module '"@prisma/client"' has no exported member 'students_grade_category'.
+src/services/studentService.ts(38,11): error TS2322: Type 'string' is not assignable to type 'number'.
+src/services/studentService.ts(82,9): error TS2322: Type '{ updated_at: Date; first_name?: string; last_name?: string; grade_level?: string; grade_category?: students_grade_category; section?: string; is_active?: boolean; }' is not assignable to type '(Without<studentsUpdateInput, studentsUncheckedUpdateInput> & studentsUncheckedUpdateInput) | (Without<...> & studentsUpdateInput)'.
+  Type '{ updated_at: Date; first_name?: string; last_name?: string; grade_level?: string; grade_category?: students_grade_category; section?: string; is_active?: boolean; }' is not assignable to type 'Without<studentsUncheckedUpdateInput, studentsUpdateInput> & studentsUpdateInput'.
+    Types of property 'grade_level' are incompatible.
+      Type 'string' is not assignable to type 'number | IntFieldUpdateOperationsInput'.
+src/services/updateService.ts(15,39): error TS6133: 'existsSync' is declared but its value is never read.
+src/services/updateService.ts(16,16): error TS6133: 'dirname' is declared but its value is never read.
+src/services/updateService.ts(57,20): error TS6133: 'UPDATE_DIR' is declared but its value is never read.
+src/services/updateService.ts(78,25): error TS6133: 'forceCheck' is declared but its value is never read.
+src/services/updateService.ts(81,5): error TS2739: Type '{ checking: true; status: string; }' is missing the following properties from type 'UpdateStatus': downloading, installing, completed
+src/websocket/clientManager.ts(3,1): error TS6192: All imports in import declaration are unused.
+src/websocket/clientManager.ts(3,10): error TS2724: '"../services/authService"' has no exported member named 'authService'. Did you mean 'AuthService'?
+src/websocket/clientManager.ts(3,23): error TS2305: Module '"../services/authService"' has no exported member 'JWTPayload'.
+src/websocket/equipmentWebSocket.ts(3,10): error TS2724: '"@/services/authService"' has no exported member named 'authService'. Did you mean 'AuthService'?
+src/websocket/equipmentWebSocket.ts(4,1): error TS6133: 'prisma' is declared but its value is never read.
+src/websocket/equipmentWebSocket.ts(4,24): error TS2307: Cannot find module '@/utils/prisma' or its corresponding type declarations.
+src/websocket/equipmentWebSocket.ts(37,14): error TS2339: Property 'terminate' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(39,23): error TS2339: Property 'readyState' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(40,14): error TS2339: Property 'ping' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(56,10): error TS2339: Property 'connectionId' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(60,10): error TS2339: Property 'on' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(74,10): error TS2339: Property 'on' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(79,10): error TS2339: Property 'on' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(89,10): error TS2339: Property 'on' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(119,80): error TS2339: Property 'connectionId' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(149,26): error TS2339: Property 'connectionId' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(156,26): error TS2339: Property 'connectionId' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(171,8): error TS2339: Property 'subscribedEquipment' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(171,33): error TS2339: Property 'subscribedEquipment' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(173,10): error TS2339: Property 'subscribedEquipment' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(176,10): error TS2339: Property 'subscribedAll' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(181,46): error TS2339: Property 'subscribedAll' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(186,24): error TS2339: Property 'connectionId' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(200,12): error TS2339: Property 'subscribedEquipment' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(202,12): error TS2339: Property 'subscribedEquipment' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(204,12): error TS2339: Property 'subscribedEquipment' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(209,10): error TS2339: Property 'subscribedAll' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(219,24): error TS2339: Property 'connectionId' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(321,14): error TS2339: Property 'readyState' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(323,14): error TS2339: Property 'send' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(328,30): error TS2339: Property 'connectionId' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(344,12): error TS2339: Property 'subscribedAll' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(345,27): error TS2339: Property 'subscribedEquipment' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(345,53): error TS2339: Property 'subscribedEquipment' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(351,12): error TS2339: Property 'readyState' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(353,12): error TS2339: Property 'send' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(357,28): error TS2339: Property 'connectionId' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(393,10): error TS2339: Property 'close' does not exist on type 'AuthenticatedWebSocket'.
+src/websocket/equipmentWebSocket.ts(401,16): error TS2665: Invalid module name in augmentation. Module 'ws' resolves to an untyped module at 'C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Backend/node_modules/ws/index.js', which cannot be augmented.
+src/websocket/eventTypes.ts(903,23): error TS6133: 'TPayload' is declared but its value is never read.
+src/websocket/realtimeService.ts(2,24): error TS2307: Cannot find module '../utils/prisma' or its corresponding type declarations.
+src/websocket/realtimeService.ts(5,11): error TS6196: 'EquipmentSessionData' is declared but never used.
+src/websocket/realtimeService.ts(55,11): error TS2353: Object literal may only specify known properties, and 'payload' does not exist in type 'WebSocketMessage'.
+src/websocket/realtimeService.ts(95,11): error TS2353: Object literal may only specify known properties, and 'payload' does not exist in type 'WebSocketMessage'.
+src/websocket/realtimeService.ts(160,50): error TS2345: Argument of type '{ type: string; payload: TimeLimitAlert; timestamp: Date; }' is not assignable to parameter of type 'WebSocketMessage'.
+  Type '{ type: string; payload: TimeLimitAlert; timestamp: Date; }' is missing the following properties from type 'WebSocketMessage': id, data
+src/websocket/realtimeService.ts(163,21): error TS2551: Property 'broadcastToUser' does not exist on type 'WebSocketServer'. Did you mean 'broadcastToRoom'?
+src/websocket/realtimeService.ts(189,9): error TS2353: Object literal may only specify known properties, and 'payload' does not exist in type 'WebSocketMessage'.
+src/websocket/realtimeService.ts(194,23): error TS2551: Property 'broadcastToUser' does not exist on type 'WebSocketServer'. Did you mean 'broadcastToRoom'?
+src/websocket/realtimeService.ts(218,9): error TS2353: Object literal may only specify known properties, and 'payload' does not exist in type 'WebSocketMessage'.
+src/websocket/realtimeService.ts(268,41): error TS2339: Property 'getConnectedClients' does not exist on type 'WebSocketServer'.
+src/websocket/realtimeService.ts(278,7): error TS2353: Object literal may only specify known properties, and 'payload' does not exist in type 'WebSocketMessage'.
+src/websocket/realtimeService.ts(289,7): error TS2353: Object literal may only specify known properties, and 'payload' does not exist in type 'WebSocketMessage'.
+src/websocket/realtimeService.ts(311,23): error TS2551: Property 'broadcastToUser' does not exist on type 'WebSocketServer'. Did you mean 'broadcastToRoom'?
+src/websocket/realtimeService.ts(313,58): error TS2345: Argument of type '{ type: string; payload: { userId?: string; room?: string; title: string; message: string; type: "INFO" | "SUCCESS" | "WARNING" | "ERROR"; }; timestamp: Date; }' is not assignable to parameter of type 'WebSocketMessage'.
+  Type '{ type: string; payload: { userId?: string; room?: string; title: string; message: string; type: "ERROR" | "INFO" | "SUCCESS" | "WARNING"; }; timestamp: Date; }' is missing the following properties from type 'WebSocketMessage': id, data
+src/websocket/realtimeService.ts(315,38): error TS2345: Argument of type '{ type: string; payload: { userId?: string; room?: string; title: string; message: string; type: "INFO" | "SUCCESS" | "WARNING" | "ERROR"; }; timestamp: Date; }' is not assignable to parameter of type 'WebSocketMessage'.
+  Type '{ type: string; payload: { userId?: string; room?: string; title: string; message: string; type: "ERROR" | "INFO" | "SUCCESS" | "WARNING"; }; timestamp: Date; }' is missing the following properties from type 'WebSocketMessage': id, data
+src/websocket/realtimeService.ts(330,7): error TS2353: Object literal may only specify known properties, and 'payload' does not exist in type 'WebSocketMessage'.
+src/websocket/realtimeService.ts(378,13): error TS2353: Object literal may only specify known properties, and 'payload' does not exist in type 'WebSocketMessage'.
+src/websocket/realtimeService.ts(399,13): error TS2353: Object literal may only specify known properties, and 'payload' does not exist in type 'WebSocketMessage'.
+src/websocket/realtimeService.ts(419,11): error TS2353: Object literal may only specify known properties, and 'payload' does not exist in type 'WebSocketMessage'.
+src/websocket/websocketServer.ts(1,1): error TS6133: 'randomUUID' is declared but its value is never read.

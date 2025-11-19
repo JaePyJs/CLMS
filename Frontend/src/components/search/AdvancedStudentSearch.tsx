@@ -1,5 +1,11 @@
 import { useState, useCallback, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -18,7 +24,20 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Users, Filter, X, Download, BookOpen, Monitor, AlertTriangle, Calendar, ChevronDown, UserCheck, UserX } from 'lucide-react';
+import {
+  Search,
+  Users,
+  Filter,
+  X,
+  Download,
+  BookOpen,
+  Monitor,
+  AlertTriangle,
+  Calendar,
+  ChevronDown,
+  UserCheck,
+  UserX,
+} from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -41,7 +60,7 @@ interface Student {
   totalActivities: number;
   lastActivityDate?: string;
   lastCheckoutDate?: string;
-  currentEquipmentSession?: any;
+  currentEquipmentSession?: Record<string, unknown>;
   hasOverdueItems: boolean;
   equipmentBanStatus: {
     isBanned: boolean;
@@ -60,7 +79,12 @@ interface StudentSearchOptions {
   activityType?: string;
   dateFrom?: string;
   dateTo?: string;
-  sortBy?: 'name' | 'gradeLevel' | 'lastActivity' | 'fineBalance' | 'checkoutCount';
+  sortBy?:
+    | 'name'
+    | 'gradeLevel'
+    | 'lastActivity'
+    | 'fineBalance'
+    | 'checkoutCount';
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
@@ -90,10 +114,11 @@ export default function AdvancedStudentSearch() {
   const [suggestions, setSuggestions] = useState<StudentSuggestion>({
     names: [],
     studentIds: [],
-    grades: []
+    grades: [],
   });
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [searchResults, setSearchResults] = useState<StudentSearchResult | null>(null);
+  const [searchResults, setSearchResults] =
+    useState<StudentSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<StudentSearchOptions>({
     sortBy: 'name',
@@ -115,12 +140,15 @@ export default function AdvancedStudentSearch() {
 
     setLoading(true);
     try {
-      const response = await apiClient.get('/api/search/students/suggestions', {
-        params: {
-          query: searchQuery,
-          limit: 5,
-        },
-      });
+      const response = await apiClient.get(
+        '/api/_search/students/suggestions',
+        {
+          params: {
+            query: searchQuery,
+            limit: 5,
+          },
+        }
+      );
 
       if (response.success && response.data) {
         setSuggestions(response.data as StudentSuggestion);
@@ -132,7 +160,7 @@ export default function AdvancedStudentSearch() {
     }
   }, []);
 
-  // Debounced search input handler
+  // Debounced _search input handler
   const handleSearchInput = (value: string) => {
     setQuery(value);
     setCurrentPage(1);
@@ -154,36 +182,65 @@ export default function AdvancedStudentSearch() {
     }
   };
 
-  // Enhanced student search function
+  // Enhanced student _search function
   const performSearch = async (page = 1, resetPagination = true) => {
-    if (!query.trim() && !Object.keys(filters).some(key =>
-      filters[key as keyof StudentSearchOptions] !== undefined &&
-      filters[key as keyof StudentSearchOptions] !== ''
-    )) {
+    if (
+      !query.trim() &&
+      !Object.keys(filters).some(
+        (key) =>
+          filters[key as keyof StudentSearchOptions] !== undefined &&
+          filters[key as keyof StudentSearchOptions] !== ''
+      )
+    ) {
       return;
     }
 
     setLoading(true);
     try {
-      const searchParams: any = {
+      // Build query params
+      const searchParams: Record<string, unknown> = {
         page,
         limit: 20,
       };
 
-      // Add filters to search params
-      if (query) searchParams.query = query;
-      if (filters.gradeCategory) searchParams.gradeCategory = filters.gradeCategory;
-      if (filters.gradeLevel) searchParams.gradeLevel = filters.gradeLevel;
-      if (filters.isActive !== undefined) searchParams.isActive = filters.isActive;
-      if (filters.hasEquipmentBan !== undefined) searchParams.hasEquipmentBan = filters.hasEquipmentBan;
-      if (filters.hasFines !== undefined) searchParams.hasFines = filters.hasFines;
-      if (filters.activityType) searchParams.activityType = filters.activityType;
-      if (filters.dateFrom) searchParams.dateFrom = filters.dateFrom;
-      if (filters.dateTo) searchParams.dateTo = filters.dateTo;
-      if (filters.sortBy) searchParams.sortBy = filters.sortBy;
-      if (filters.sortOrder) searchParams.sortOrder = filters.sortOrder;
+      // Add filters to _search params
+      if (query) {
+        searchParams.query = query;
+      }
+      if (filters.gradeCategory) {
+        searchParams.gradeCategory = filters.gradeCategory;
+      }
+      if (filters.gradeLevel) {
+        searchParams.gradeLevel = filters.gradeLevel;
+      }
+      if (filters.isActive !== undefined) {
+        searchParams.isActive = filters.isActive;
+      }
+      if (filters.hasEquipmentBan !== undefined) {
+        searchParams.hasEquipmentBan = filters.hasEquipmentBan;
+      }
+      if (filters.hasFines !== undefined) {
+        searchParams.hasFines = filters.hasFines;
+      }
+      if (filters.activityType) {
+        searchParams.activityType = filters.activityType;
+      }
+      if (filters.dateFrom) {
+        searchParams.dateFrom = filters.dateFrom;
+      }
+      if (filters.dateTo) {
+        searchParams.dateTo = filters.dateTo;
+      }
+      if (filters.sortBy) {
+        searchParams.sortBy = filters.sortBy;
+      }
+      if (filters.sortOrder) {
+        searchParams.sortOrder = filters.sortOrder;
+      }
 
-      const response = await apiClient.get('/api/search/students', { params: searchParams });
+      const response = await apiClient.get('/api/_search/students', {
+        params: searchParams,
+      });
 
       if (response.success && response.data) {
         const data = response.data as StudentSearchResult;
@@ -191,7 +248,7 @@ export default function AdvancedStudentSearch() {
           setSearchResults(data);
         } else {
           // Append results for pagination
-          setSearchResults(prev => ({
+          setSearchResults((prev) => ({
             ...data,
             students: [...(prev?.students || []), ...data.students],
           }));
@@ -199,8 +256,8 @@ export default function AdvancedStudentSearch() {
         setCurrentPage(page);
       }
     } catch (error) {
-      console.error('Student search error:', error);
-      toast.error('Failed to perform student search');
+      console.error('Student _search error:', error);
+      toast.error('Failed to perform student _search');
     } finally {
       setLoading(false);
     }
@@ -227,13 +284,16 @@ export default function AdvancedStudentSearch() {
   };
 
   // Apply suggestion
-  const applySuggestion = (type: 'name' | 'studentId' | 'grade', value: string) => {
+  const applySuggestion = (
+    type: 'name' | 'studentId' | 'grade',
+    value: string
+  ) => {
     setQuery(value);
     setShowSuggestions(false);
 
     // Update filters based on suggestion type
     if (type === 'studentId') {
-      // Student ID search is more specific
+      // Student ID _search is more specific
       setFilters({ ...filters, query: value });
     } else if (type === 'grade') {
       setFilters({ ...filters, gradeLevel: value });
@@ -245,23 +305,25 @@ export default function AdvancedStudentSearch() {
 
   // Toggle student selection
   const toggleStudentSelection = (studentId: string) => {
-    setSelectedStudents(prev =>
+    setSelectedStudents((prev) =>
       prev.includes(studentId)
-        ? prev.filter(id => id !== studentId)
+        ? prev.filter((id) => id !== studentId)
         : [...prev, studentId]
     );
   };
 
   // Export results
   const exportResults = () => {
-    if (!searchResults || searchResults.students.length === 0) return;
+    if (!searchResults || searchResults.students.length === 0) {
+      return;
+    }
 
-    const data = searchResults.students.map(student => ({
+    const data = searchResults.students.map((student) => ({
       'Student ID': student.student_id,
-      'Name': student.fullName,
-      'Grade': student.grade_level,
-      'Section': student.section || '',
-      'Status': student.is_active ? 'Active' : 'Inactive',
+      Name: student.fullName,
+      Grade: student.grade_level,
+      Section: student.section || '',
+      Status: student.is_active ? 'Active' : 'Inactive',
       'Fine Balance': student.fine_balance,
       'Active Checkouts': student.activeCheckouts,
       'Overdue Items': student.overdueCheckouts,
@@ -269,16 +331,24 @@ export default function AdvancedStudentSearch() {
       'Last Activity': student.lastActivityDate || 'Never',
     }));
 
+    if (data.length === 0) {
+      throw new Error('No data to export');
+    }
+
     const csv = [
-      Object.keys(data[0]!).join(','),
-      ...data.map(row => Object.values(row).map(v => `"${v}"`).join(','))
+      Object.keys(data[0]).join(','),
+      ...data.map((row) =>
+        Object.values(row)
+          .map((v) => `"${v}"`)
+          .join(',')
+      ),
     ].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `student-search-results-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `student-_search-results-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -288,7 +358,11 @@ export default function AdvancedStudentSearch() {
     const badges = [];
 
     if (!student.is_active) {
-      badges.push(<Badge key="inactive" variant="secondary">Inactive</Badge>);
+      badges.push(
+        <Badge key="inactive" variant="secondary">
+          Inactive
+        </Badge>
+      );
     }
 
     if (student.equipment_ban) {
@@ -340,31 +414,34 @@ export default function AdvancedStudentSearch() {
 
   return (
     <div className="space-y-6">
-      {/* Search Section */}
+      {/* _Search Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
-            Advanced Student Search
+            Advanced Student _Search
           </CardTitle>
           <CardDescription>
-            Search and filter students by various criteria including grade, activity, and status
+            _Search and filter students by various criteria including grade,
+            activity, and status
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search Bar with Suggestions */}
+          {/* _Search Bar with Suggestions */}
           <div className="relative">
             <div className="flex gap-2">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
-                  placeholder="Search by name, student ID, or grade..."
+                  placeholder="_Search by name, student ID, or grade..."
                   value={query}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => query.length >= 2 && setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  onKeyPress={(e) => {
+                  onBlur={() =>
+                    setTimeout(() => setShowSuggestions(false), 200)
+                  }
+                  onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       setShowSuggestions(false);
                       performSearch();
@@ -374,63 +451,74 @@ export default function AdvancedStudentSearch() {
                 />
 
                 {/* Suggestions Dropdown */}
-                {showSuggestions && (suggestions.names.length > 0 || suggestions.studentIds.length > 0 || suggestions.grades.length > 0) && (
-                  <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg">
-                    <div className="p-2 space-y-2">
-                      {suggestions.names.length > 0 && (
-                        <div>
-                          <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Names</div>
-                          {suggestions.names.map((name, index) => (
-                            <div
-                              key={`name-${index}`}
-                              className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
-                              onClick={() => applySuggestion('name', name)}
-                            >
-                              <Users className="w-3 h-3 mr-2 inline" />
-                              {name}
+                {showSuggestions &&
+                  (suggestions.names.length > 0 ||
+                    suggestions.studentIds.length > 0 ||
+                    suggestions.grades.length > 0) && (
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg">
+                      <div className="p-2 space-y-2">
+                        {suggestions.names.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                              Names
                             </div>
-                          ))}
-                        </div>
-                      )}
+                            {suggestions.names.map((name, index) => (
+                              <div
+                                key={`name-${index}`}
+                                className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
+                                onClick={() => applySuggestion('name', name)}
+                              >
+                                <Users className="w-3 h-3 mr-2 inline" />
+                                {name}
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
-                      {suggestions.studentIds.length > 0 && (
-                        <div>
-                          <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Student IDs</div>
-                          {suggestions.studentIds.map((studentId, index) => (
-                            <div
-                              key={`id-${index}`}
-                              className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
-                              onClick={() => applySuggestion('studentId', studentId)}
-                            >
-                              <Users className="w-3 h-3 mr-2 inline" />
-                              {studentId}
+                        {suggestions.studentIds.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                              Student IDs
                             </div>
-                          ))}
-                        </div>
-                      )}
+                            {suggestions.studentIds.map((studentId, index) => (
+                              <div
+                                key={`id-${index}`}
+                                className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
+                                onClick={() =>
+                                  applySuggestion('studentId', studentId)
+                                }
+                              >
+                                <Users className="w-3 h-3 mr-2 inline" />
+                                {studentId}
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
-                      {suggestions.grades.length > 0 && (
-                        <div>
-                          <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Grades</div>
-                          {suggestions.grades.map((grade, index) => (
-                            <div
-                              key={`grade-${index}`}
-                              className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
-                              onClick={() => applySuggestion('grade', grade)}
-                            >
-                              <Users className="w-3 h-3 mr-2 inline" />
-                              {grade}
+                        {suggestions.grades.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                              Grades
                             </div>
-                          ))}
-                        </div>
-                      )}
+                            {suggestions.grades.map((grade, index) => (
+                              <div
+                                key={`grade-${index}`}
+                                className="px-2 py-1 text-sm hover:bg-accent cursor-pointer rounded"
+                                onClick={() => applySuggestion('grade', grade)}
+                              >
+                                <Users className="w-3 h-3 mr-2 inline" />
+                                {grade}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
 
               <Button onClick={() => performSearch()} disabled={loading}>
-                {loading ? 'Searching...' : 'Search'}
+                {loading ? 'Searching...' : '_Search'}
               </Button>
 
               <Button
@@ -439,9 +527,10 @@ export default function AdvancedStudentSearch() {
               >
                 <Filter className="w-4 h-4 mr-2" />
                 Filters
-                {(filters.gradeCategory || filters.gradeLevel || filters.hasEquipmentBan || filters.hasFines) && (
-                  <ChevronDown className="w-4 h-4 ml-2" />
-                )}
+                {(filters.gradeCategory ||
+                  filters.gradeLevel ||
+                  filters.hasEquipmentBan ||
+                  filters.hasFines) && <ChevronDown className="w-4 h-4 ml-2" />}
               </Button>
 
               {searchResults && searchResults.students.length > 0 && (
@@ -455,7 +544,7 @@ export default function AdvancedStudentSearch() {
             {/* Quick Filters */}
             <div className="flex gap-2 flex-wrap">
               <Button
-                variant={filters.isActive ? "default" : "outline"}
+                variant={filters.isActive ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => {
                   setFilters({ ...filters, isActive: !filters.isActive });
@@ -463,15 +552,22 @@ export default function AdvancedStudentSearch() {
                   performSearch();
                 }}
               >
-                {filters.isActive ? <UserCheck className="w-3 h-3 mr-1" /> : <UserX className="w-3 h-3 mr-1" />}
+                {filters.isActive ? (
+                  <UserCheck className="w-3 h-3 mr-1" />
+                ) : (
+                  <UserX className="w-3 h-3 mr-1" />
+                )}
                 {filters.isActive ? 'Active' : 'Inactive'} Only
               </Button>
 
               <Button
-                variant={filters.hasEquipmentBan ? "default" : "outline"}
+                variant={filters.hasEquipmentBan ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => {
-                  setFilters({ ...filters, hasEquipmentBan: !filters.hasEquipmentBan });
+                  setFilters({
+                    ...filters,
+                    hasEquipmentBan: !filters.hasEquipmentBan,
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -481,7 +577,7 @@ export default function AdvancedStudentSearch() {
               </Button>
 
               <Button
-                variant={filters.hasFines ? "default" : "outline"}
+                variant={filters.hasFines ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => {
                   setFilters({ ...filters, hasFines: !filters.hasFines });
@@ -494,8 +590,11 @@ export default function AdvancedStudentSearch() {
 
               <Select
                 value={filters.sortBy ?? 'name'}
-                onValueChange={(value: any) => {
-                  setFilters({ ...filters, sortBy: value });
+                onValueChange={(value: string) => {
+                  setFilters({
+                    ...filters,
+                    sortBy: value as StudentSearchOptions['sortBy'],
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -514,8 +613,11 @@ export default function AdvancedStudentSearch() {
 
               <Select
                 value={filters.sortOrder ?? 'asc'}
-                onValueChange={(value: any) => {
-                  setFilters({ ...filters, sortOrder: value });
+                onValueChange={(value: string) => {
+                  setFilters({
+                    ...filters,
+                    sortOrder: value as StudentSearchOptions['sortOrder'],
+                  });
                   setCurrentPage(1);
                   performSearch();
                 }}
@@ -539,7 +641,7 @@ export default function AdvancedStudentSearch() {
                   <label className="text-sm font-medium">Grade Category</label>
                   <Select
                     value={filters.gradeCategory || ''}
-                    onValueChange={(value: any) => {
+                    onValueChange={(value: string) => {
                       setFilters({ ...filters, gradeCategory: value });
                       setCurrentPage(1);
                       performSearch();
@@ -575,7 +677,7 @@ export default function AdvancedStudentSearch() {
                   <label className="text-sm font-medium">Activity Type</label>
                   <Select
                     value={filters.activityType || ''}
-                    onValueChange={(value: any) => {
+                    onValueChange={(value: string) => {
                       setFilters({ ...filters, activityType: value });
                       setCurrentPage(1);
                       performSearch();
@@ -589,8 +691,12 @@ export default function AdvancedStudentSearch() {
                       <SelectItem value="COMPUTER_USE">Computer Use</SelectItem>
                       <SelectItem value="GAMING_SESSION">Gaming</SelectItem>
                       <SelectItem value="AVR_SESSION">AVR</SelectItem>
-                      <SelectItem value="BOOK_CHECKOUT">Book Checkout</SelectItem>
-                      <SelectItem value="GENERAL_VISIT">General Visit</SelectItem>
+                      <SelectItem value="BOOK_CHECKOUT">
+                        Book Checkout
+                      </SelectItem>
+                      <SelectItem value="GENERAL_VISIT">
+                        General Visit
+                      </SelectItem>
                       <SelectItem value="STUDY">Study</SelectItem>
                     </SelectContent>
                   </Select>
@@ -625,11 +731,7 @@ export default function AdvancedStudentSearch() {
                 <div className="space-y-2 md:col-span-3 lg:col-span-5">
                   <label className="text-sm font-medium">Actions</label>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={clearFilters}
-                    >
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
                       <X className="w-4 h-4 mr-1" />
                       Clear All
                     </Button>
@@ -646,13 +748,13 @@ export default function AdvancedStudentSearch() {
         </CardContent>
       </Card>
 
-      {/* Search Results */}
+      {/* _Search Results */}
       {searchResults && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Student Search Results</CardTitle>
+                <CardTitle>Student _Search Results</CardTitle>
                 <CardDescription>
                   Found {searchResults.pagination.total} students
                   {query && ` for "${query}"`}
@@ -662,14 +764,11 @@ export default function AdvancedStudentSearch() {
               <div className="flex gap-2">
                 {searchResults.pagination.total > 20 && (
                   <Badge variant="outline">
-                    Page {searchResults.pagination.page} of {searchResults.pagination.pages}
+                    Page {searchResults.pagination.page} of{' '}
+                    {searchResults.pagination.pages}
                   </Badge>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={clearFilters}
-                >
+                <Button variant="outline" size="sm" onClick={clearFilters}>
                   <X className="w-4 h-4 mr-1" />
                   Clear
                 </Button>
@@ -684,10 +783,15 @@ export default function AdvancedStudentSearch() {
                     <TableHead className="w-12">
                       <input
                         type="checkbox"
-                        checked={selectedStudents.length === searchResults.students.length}
+                        checked={
+                          selectedStudents.length ===
+                          searchResults.students.length
+                        }
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedStudents(searchResults.students.map(s => s.id));
+                            setSelectedStudents(
+                              searchResults.students.map((s) => s.id)
+                            );
                           } else {
                             setSelectedStudents([]);
                           }
@@ -714,13 +818,19 @@ export default function AdvancedStudentSearch() {
                           onChange={() => toggleStudentSelection(student.id)}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{student.fullName}</TableCell>
+                      <TableCell className="font-medium">
+                        {student.fullName}
+                      </TableCell>
                       <TableCell>{student.student_id}</TableCell>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{student.grade_level}</div>
+                          <div className="font-medium">
+                            {student.grade_level}
+                          </div>
                           {student.section && (
-                            <div className="text-sm text-muted-foreground">{student.section}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {student.section}
+                            </div>
                           )}
                         </div>
                       </TableCell>
@@ -741,7 +851,9 @@ export default function AdvancedStudentSearch() {
                       </TableCell>
                       <TableCell>
                         {student.fine_balance > 0 ? (
-                          <Badge variant="destructive">${student.fine_balance.toFixed(2)}</Badge>
+                          <Badge variant="destructive">
+                            ${student.fine_balance.toFixed(2)}
+                          </Badge>
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
@@ -761,7 +873,9 @@ export default function AdvancedStudentSearch() {
                           {student.lastActivityDate && (
                             <div className="text-xs text-muted-foreground">
                               <Calendar className="w-3 h-3 inline mr-1" />
-                              {new Date(student.lastActivityDate).toLocaleDateString()}
+                              {new Date(
+                                student.lastActivityDate
+                              ).toLocaleDateString()}
                             </div>
                           )}
                           <div className="flex gap-1 flex-wrap">
@@ -785,11 +899,7 @@ export default function AdvancedStudentSearch() {
             {/* Load More Button */}
             {searchResults.pagination.page < searchResults.pagination.pages && (
               <div className="flex justify-center mt-6 p-4">
-                <Button
-                  onClick={loadMore}
-                  disabled={loading}
-                  variant="outline"
-                >
+                <Button onClick={loadMore} disabled={loading} variant="outline">
                   {loading ? 'Loading...' : 'Load More'}
                 </Button>
               </div>
@@ -802,7 +912,7 @@ export default function AdvancedStudentSearch() {
         <Card>
           <CardContent className="flex items-center justify-center h-32">
             <p className="text-muted-foreground">
-              {query ? 'No results found' : 'Enter a search query to begin'}
+              {query ? 'No results found' : 'Enter a _search query to begin'}
             </p>
           </CardContent>
         </Card>

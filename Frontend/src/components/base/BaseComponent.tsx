@@ -1,5 +1,4 @@
-import React from 'react';
-import type { ComponentType, ReactNode } from 'react';
+import React, { type ComponentType, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -79,7 +78,9 @@ export function withBaseComponent<T extends BaseComponentProps>(
 /**
  * Base component class that provides common functionality
  */
-export abstract class BaseComponent<P extends BaseComponentProps = BaseComponentProps> {
+export abstract class BaseComponent<
+  P extends BaseComponentProps = BaseComponentProps,
+> {
   protected props: P;
   protected element?: HTMLElement | undefined;
 
@@ -178,7 +179,7 @@ export function createComponentVariants<T extends Record<string, string>>(
   const result = {} as T;
 
   Object.entries(variants).forEach(([key, value]) => {
-    (result as any)[key] = `${base} ${value}`;
+    (result as Record<string, string>)[key] = `${base} ${value}`;
   });
 
   return result;
@@ -255,7 +256,9 @@ export const ComponentPatterns = {
       <div className="loading-spinner" role="status" aria-label="Loading">
         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current" />
       </div>
-    ) : children,
+    ) : (
+      children
+    ),
   }),
 
   /**
@@ -263,14 +266,16 @@ export const ComponentPatterns = {
    */
   errorBoundary: (error: Error | null, errorComponent?: ReactNode) => {
     if (error) {
-      return errorComponent || (
-        <div className="error-boundary" role="alert">
-          <p>Something went wrong.</p>
-          <details>
-            <summary>Error details</summary>
-            <pre>{error.message}</pre>
-          </details>
-        </div>
+      return (
+        errorComponent || (
+          <div className="error-boundary" role="alert">
+            <p>Something went wrong.</p>
+            <details>
+              <summary>Error details</summary>
+              <pre>{error.message}</pre>
+            </details>
+          </div>
+        )
       );
     }
     return null;

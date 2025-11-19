@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -35,8 +35,27 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { BookOpen, Plus, Search, Download, Edit, Trash2, Eye, BookMarked, CheckCircle, XCircle, AlertCircle, RefreshCw, MapPin, Award } from 'lucide-react';
-import { TableSkeleton, ButtonLoading, EmptyState } from '@/components/LoadingStates';
+import {
+  BookOpen,
+  Plus,
+  Search,
+  Download,
+  Edit,
+  Trash2,
+  Eye,
+  BookMarked,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  RefreshCw,
+  MapPin,
+  Award,
+} from 'lucide-react';
+import {
+  TableSkeleton,
+  ButtonLoading,
+  EmptyState,
+} from '@/components/LoadingStates';
 
 interface Book {
   id: string;
@@ -125,10 +144,112 @@ export function BookCatalog() {
     'Young Adult',
   ];
 
+  // Calculate book statistics
+  const calculateStats = useCallback((booksList: Book[]) => {
+    const total = booksList.length;
+    const available = booksList.filter((b) => Number(b.availableCopies || 0) > 0).length;
+    const checkedOut = booksList.reduce(
+      (sum, b) => sum + Math.max(0, Number(b.totalCopies || 0) - Number(b.availableCopies || 0)),
+      0
+    );
+    const uniqueCategories = new Set(booksList.map((b) => String(b.category || ''))).size;
+
+    setStats({
+      total,
+      available,
+      checkedOut,
+      overdue: 0,
+      categories: uniqueCategories,
+    });
+  }, []);
+
   // Fetch books from API
+  const fetchBooks = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const base = String(import.meta.env.VITE_API_URL || 'http://localhost:3001');
+      const token = localStorage.getItem('clms_token') || localStorage.getItem('token');
+      const response = await fetch(`${base}/api/books`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch books');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setBooks(data.data.books || []);
+        calculateStats(data.data.books || []);
+      } else {
+        const isDev = (import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+        if (isDev) {
+          const sample: Book[] = [
+            {
+              id: 'BOOK-1',
+              title: 'Sample Book',
+              author: 'John Doe',
+              isbn: '9780000000001',
+              materialType: 'Fiction',
+              available: true,
+              location: 'Shelf A1',
+            },
+            {
+              id: 'BOOK-2',
+              title: 'Another Sample',
+              author: 'Jane Roe',
+              isbn: '9780000000002',
+              materialType: 'Filipiniana',
+              available: true,
+              location: 'Shelf B2',
+            },
+          ];
+          setBooks(sample);
+          calculateStats(sample);
+        } else {
+          const errMsg = typeof (data as any)?.error === 'string' ? (data as any).error : (data as any)?.error?.message || 'Failed to load books';
+          toast.error(String(errMsg));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching books:', error);
+      const isDev = (import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+      if (isDev) {
+        const sample: Book[] = [
+          {
+            id: 'BOOK-1',
+            title: 'Sample Book',
+            author: 'John Doe',
+            isbn: '9780000000001',
+            materialType: 'Fiction',
+            available: true,
+            location: 'Shelf A1',
+          },
+          {
+            id: 'BOOK-2',
+            title: 'Another Sample',
+            author: 'Jane Roe',
+            isbn: '9780000000002',
+            materialType: 'Filipiniana',
+            available: true,
+            location: 'Shelf B2',
+          },
+        ];
+        setBooks(sample);
+        calculateStats(sample);
+      } else {
+        const msg = (error as any)?.message || 'Failed to load books. Please try again.';
+        toast.error(String(msg));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [calculateStats]);
+
+  // Fetch books on mount
   useEffect(() => {
     fetchBooks();
-  }, []);
+  }, [fetchBooks]);
 
   // Filter books
   useEffect(() => {
@@ -163,54 +284,13 @@ export function BookCatalog() {
     setFilteredBooks(filtered);
   }, [books, searchTerm, filterCategory, filterStatus]);
 
-  const fetchBooks = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('http://localhost:3001/api/books', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch books');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setBooks(data.data.books || []);
-        calculateStats(data.data.books || []);
-      } else {
-        toast.error('Failed to load books');
-      }
-    } catch (error) {
-      console.error('Error fetching books:', error);
-      toast.error('Failed to load books. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const calculateStats = (booksList: Book[]) => {
-    const total = booksList.length;
-    const available = booksList.filter((b) => b.availableCopies > 0).length;
-    const checkedOut = booksList.reduce(
-      (sum, b) => sum + (b.totalCopies - b.availableCopies),
-      0
-    );
-    const uniqueCategories = new Set(booksList.map((b) => b.category)).size;
-
-    setStats({
-      total,
-      available,
-      checkedOut,
-      overdue: 0, // Would come from backend
-      categories: uniqueCategories,
-    });
-  };
-
   const handleAddBook = async () => {
-    if (!newBook.accessionNo || !newBook.title || !newBook.author || !newBook.category) {
+    if (
+      !newBook.accessionNo ||
+      !newBook.title ||
+      !newBook.author ||
+      !newBook.category
+    ) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -221,7 +301,7 @@ export function BookCatalog() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
           ...newBook,
@@ -247,7 +327,8 @@ export function BookCatalog() {
         });
         fetchBooks();
       } else {
-        toast.error(data.error || 'Failed to add book');
+        const errMsg = typeof (data as any)?.error === 'string' ? (data as any).error : (data as any)?.error?.message || 'Failed to add book';
+        toast.error(String(errMsg));
       }
     } catch (error) {
       console.error('Error adding book:', error);
@@ -258,18 +339,23 @@ export function BookCatalog() {
   };
 
   const handleUpdateBook = async () => {
-    if (!selectedBook) return;
+    if (!selectedBook) {
+      return;
+    }
 
     setIsUpdatingBook(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/books/${selectedBook.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify(selectedBook),
-      });
+      const response = await fetch(
+        `http://localhost:3001/api/books/${selectedBook.id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify(selectedBook),
+        }
+      );
 
       const data = await response.json();
 
@@ -279,7 +365,8 @@ export function BookCatalog() {
         setSelectedBook(null);
         fetchBooks();
       } else {
-        toast.error(data.error || 'Failed to update book');
+        const errMsg = typeof (data as any)?.error === 'string' ? (data as any).error : (data as any)?.error?.message || 'Failed to update book';
+        toast.error(String(errMsg));
       }
     } catch (error) {
       console.error('Error updating book:', error);
@@ -290,16 +377,21 @@ export function BookCatalog() {
   };
 
   const handleDeleteBook = async () => {
-    if (!selectedBook) return;
+    if (!selectedBook) {
+      return;
+    }
 
     setIsDeletingBook(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/books/${selectedBook.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const response = await fetch(
+        `http://localhost:3001/api/books/${selectedBook.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
 
       const data = await response.json();
 
@@ -309,7 +401,8 @@ export function BookCatalog() {
         setSelectedBook(null);
         fetchBooks();
       } else {
-        toast.error(data.error || 'Failed to delete book');
+        const errMsg = typeof (data as any)?.error === 'string' ? (data as any).error : (data as any)?.error?.message || 'Failed to delete book';
+        toast.error(String(errMsg));
       }
     } catch (error) {
       console.error('Error deleting book:', error);
@@ -324,8 +417,9 @@ export function BookCatalog() {
     try {
       const csvContent = [
         'Accession No,ISBN,Title,Author,Publisher,Category,Location,Total Copies,Available Copies,Status',
-        ...filteredBooks.map((b) =>
-          `${b.accessionNo},${b.isbn || ''},${b.title},${b.author},${b.publisher || ''},${b.category},${b.location || ''},${b.totalCopies},${b.availableCopies},${b.isActive ? 'Active' : 'Inactive'}`
+        ...filteredBooks.map(
+          (b) =>
+            `${b.accessionNo},${b.isbn || ''},${b.title},${b.author},${b.publisher || ''},${b.category},${b.location || ''},${b.totalCopies},${b.availableCopies},${b.isActive ? 'Active' : 'Inactive'}`
         ),
       ].join('\n');
 
@@ -357,14 +451,20 @@ export function BookCatalog() {
       );
     } else if (book.availableCopies < book.totalCopies) {
       return (
-        <Badge variant="default" className="flex items-center gap-1 bg-yellow-500">
+        <Badge
+          variant="default"
+          className="flex items-center gap-1 bg-yellow-500"
+        >
           <AlertCircle className="h-3 w-3" />
           {book.availableCopies} Available
         </Badge>
       );
     } else {
       return (
-        <Badge variant="default" className="flex items-center gap-1 bg-green-500">
+        <Badge
+          variant="default"
+          className="flex items-center gap-1 bg-green-500"
+        >
           <CheckCircle className="h-3 w-3" />
           Available
         </Badge>
@@ -375,14 +475,22 @@ export function BookCatalog() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className={`${isMobile ? 'space-y-4' : 'flex items-center justify-between'}`}>
+      <div
+        className={`${isMobile ? 'space-y-4' : 'flex items-center justify-between'}`}
+      >
         <div>
-          <h2 className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold tracking-tight`}>Book Catalog</h2>
+          <h2
+            className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold tracking-tight`}
+          >
+            Book Catalog
+          </h2>
           <p className="text-muted-foreground">
             Manage your library's book collection
           </p>
         </div>
-        <div className={`${isMobile ? 'grid grid-cols-2 gap-2' : 'flex items-center space-x-2'}`}>
+        <div
+          className={`${isMobile ? 'grid grid-cols-2 gap-2' : 'flex items-center space-x-2'}`}
+        >
           <Button variant="outline" size="sm" onClick={fetchBooks}>
             <RefreshCw className="h-4 w-4 mr-2" />
             {isMobile ? '' : 'Refresh'}
@@ -402,7 +510,10 @@ export function BookCatalog() {
               </>
             )}
           </Button>
-          <Button onClick={() => setShowAddBook(true)} className={isMobile ? 'col-span-2' : ''}>
+          <Button
+            onClick={() => setShowAddBook(true)}
+            className={isMobile ? 'col-span-2' : ''}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Book
           </Button>
@@ -428,7 +539,9 @@ export function BookCatalog() {
             <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.available}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {stats.available}
+            </div>
             <p className="text-xs text-muted-foreground">Ready to borrow</p>
           </CardContent>
         </Card>
@@ -439,7 +552,9 @@ export function BookCatalog() {
             <BookMarked className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.checkedOut}</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {stats.checkedOut}
+            </div>
             <p className="text-xs text-muted-foreground">Currently borrowed</p>
           </CardContent>
         </Card>
@@ -450,7 +565,9 @@ export function BookCatalog() {
             <AlertCircle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.overdue}</div>
+            <div className="text-2xl font-bold text-red-600">
+              {stats.overdue}
+            </div>
             <p className="text-xs text-muted-foreground">Needs attention</p>
           </CardContent>
         </Card>
@@ -461,24 +578,32 @@ export function BookCatalog() {
             <Award className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.categories}</div>
+            <div className="text-2xl font-bold text-purple-600">
+              {stats.categories}
+            </div>
             <p className="text-xs text-muted-foreground">Different types</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search and Filters */}
+      {/* _Search and Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Search & Filter</CardTitle>
+          <CardTitle>_Search & Filter</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className={`${isMobile ? 'space-y-4' : 'grid gap-4 md:grid-cols-4'}`}>
+          <div
+            className={`${isMobile ? 'space-y-4' : 'grid gap-4 md:grid-cols-4'}`}
+          >
             <div className={isMobile ? '' : 'md:col-span-2'}>
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={isMobile ? "Search books..." : "Search by title, author, ISBN, or accession number..."}
+                  placeholder={
+                    isMobile
+                      ? '_Search books...'
+                      : '_Search by title, author, ISBN, or accession number...'
+                  }
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-8"
@@ -489,7 +614,9 @@ export function BookCatalog() {
             <div className={isMobile ? 'grid grid-cols-2 gap-2' : ''}>
               <Select value={filterCategory} onValueChange={setFilterCategory}>
                 <SelectTrigger>
-                  <SelectValue placeholder={isMobile ? "Category" : "All Categories"} />
+                  <SelectValue
+                    placeholder={isMobile ? 'Category' : 'All Categories'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
@@ -503,7 +630,9 @@ export function BookCatalog() {
 
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger>
-                  <SelectValue placeholder={isMobile ? "Status" : "All Status"} />
+                  <SelectValue
+                    placeholder={isMobile ? 'Status' : 'All Status'}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
@@ -536,7 +665,7 @@ export function BookCatalog() {
               title="No books found"
               description={
                 searchTerm || filterCategory !== 'all'
-                  ? 'Try adjusting your search or filters'
+                  ? 'Try adjusting your _search or filters'
                   : 'Start by adding your first book to the catalog'
               }
               action={
@@ -653,7 +782,9 @@ export function BookCatalog() {
                 <label className="text-sm font-medium">ISBN</label>
                 <Input
                   value={newBook.isbn}
-                  onChange={(e) => setNewBook({ ...newBook, isbn: e.target.value })}
+                  onChange={(e) =>
+                    setNewBook({ ...newBook, isbn: e.target.value })
+                  }
                   placeholder="e.g., 978-3-16-148410-0"
                 />
               </div>
@@ -663,7 +794,9 @@ export function BookCatalog() {
               <label className="text-sm font-medium">Title *</label>
               <Input
                 value={newBook.title}
-                onChange={(e) => setNewBook({ ...newBook, title: e.target.value })}
+                onChange={(e) =>
+                  setNewBook({ ...newBook, title: e.target.value })
+                }
                 placeholder="Enter book title"
               />
             </div>
@@ -673,7 +806,9 @@ export function BookCatalog() {
                 <label className="text-sm font-medium">Author *</label>
                 <Input
                   value={newBook.author}
-                  onChange={(e) => setNewBook({ ...newBook, author: e.target.value })}
+                  onChange={(e) =>
+                    setNewBook({ ...newBook, author: e.target.value })
+                  }
                   placeholder="Enter author name"
                 />
               </div>
@@ -729,7 +864,10 @@ export function BookCatalog() {
                 min="1"
                 value={newBook.totalCopies}
                 onChange={(e) =>
-                  setNewBook({ ...newBook, totalCopies: parseInt(e.target.value) || 1 })
+                  setNewBook({
+                    ...newBook,
+                    totalCopies: parseInt(e.target.value) || 1,
+                  })
                 }
               />
             </div>
@@ -750,9 +888,7 @@ export function BookCatalog() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Book</DialogTitle>
-            <DialogDescription>
-              Update the book details
-            </DialogDescription>
+            <DialogDescription>Update the book details</DialogDescription>
           </DialogHeader>
           {selectedBook && (
             <div className="grid gap-4 py-4">
@@ -762,7 +898,10 @@ export function BookCatalog() {
                   <Input
                     value={selectedBook.accessionNo}
                     onChange={(e) =>
-                      setSelectedBook({ ...selectedBook, accessionNo: e.target.value })
+                      setSelectedBook({
+                        ...selectedBook,
+                        accessionNo: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -793,7 +932,10 @@ export function BookCatalog() {
                   <Input
                     value={selectedBook.author}
                     onChange={(e) =>
-                      setSelectedBook({ ...selectedBook, author: e.target.value })
+                      setSelectedBook({
+                        ...selectedBook,
+                        author: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -802,7 +944,10 @@ export function BookCatalog() {
                   <Input
                     value={selectedBook.publisher || ''}
                     onChange={(e) =>
-                      setSelectedBook({ ...selectedBook, publisher: e.target.value })
+                      setSelectedBook({
+                        ...selectedBook,
+                        publisher: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -834,7 +979,10 @@ export function BookCatalog() {
                   <Input
                     value={selectedBook.location || ''}
                     onChange={(e) =>
-                      setSelectedBook({ ...selectedBook, location: e.target.value })
+                      setSelectedBook({
+                        ...selectedBook,
+                        location: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -856,7 +1004,9 @@ export function BookCatalog() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Available Copies</label>
+                  <label className="text-sm font-medium">
+                    Available Copies
+                  </label>
                   <Input
                     type="number"
                     min="0"
@@ -878,7 +1028,11 @@ export function BookCatalog() {
               Cancel
             </Button>
             <Button onClick={handleUpdateBook} disabled={isUpdatingBook}>
-              {isUpdatingBook ? <ButtonLoading text="Updating..." /> : 'Update Book'}
+              {isUpdatingBook ? (
+                <ButtonLoading text="Updating..." />
+              ) : (
+                'Update Book'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -890,12 +1044,15 @@ export function BookCatalog() {
           <DialogHeader>
             <DialogTitle>Delete Book</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{selectedBook?.title}"? This action cannot
-              be undone.
+              Are you sure you want to delete "{selectedBook?.title}"? This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteConfirm(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -935,7 +1092,9 @@ export function BookCatalog() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Title</label>
+                <label className="text-sm font-medium text-muted-foreground">
+                  Title
+                </label>
                 <p className="text-lg font-semibold">{selectedBook.title}</p>
               </div>
 
@@ -976,7 +1135,9 @@ export function BookCatalog() {
                   <label className="text-sm font-medium text-muted-foreground">
                     Total Copies
                   </label>
-                  <p className="text-2xl font-bold">{selectedBook.totalCopies}</p>
+                  <p className="text-2xl font-bold">
+                    {selectedBook.totalCopies}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">
@@ -998,7 +1159,8 @@ export function BookCatalog() {
 
               <div className="pt-4 border-t">
                 <p className="text-sm text-muted-foreground">
-                  Added on {new Date(selectedBook.createdAt).toLocaleDateString()}
+                  Added on{' '}
+                  {new Date(selectedBook.createdAt).toLocaleDateString()}
                 </p>
               </div>
             </div>

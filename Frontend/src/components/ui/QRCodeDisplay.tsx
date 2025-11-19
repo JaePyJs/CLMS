@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import QRCode from 'qrcode';
 
 interface QRCodeDisplayProps {
@@ -17,30 +17,21 @@ export function QRCodeDisplay({
   size = 150,
   margin = 1,
   color = { dark: '#000000', light: '#FFFFFF' },
-  className = ''
+  className = '',
 }: QRCodeDisplayProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [error, setError] = useState<string>('');
 
-  useEffect(() => {
-    if (value) {
-      generateQRCode();
-    } else {
-      setQrCodeUrl('');
-      setError('');
-    }
-  }, [value, size, margin, color]);
-
-  const generateQRCode = async () => {
+  const generateQRCode = useCallback(async () => {
     try {
       const url = await QRCode.toDataURL(value, {
         width: size,
         margin,
         color: {
           dark: color.dark || '#000000',
-          light: color.light || '#FFFFFF'
+          light: color.light || '#FFFFFF',
         },
-        errorCorrectionLevel: 'M'
+        errorCorrectionLevel: 'M',
       });
       setQrCodeUrl(url);
       setError('');
@@ -49,11 +40,22 @@ export function QRCodeDisplay({
       setError('Failed to generate QR code');
       setQrCodeUrl('');
     }
-  };
+  }, [value, size, margin, color]);
+
+  useEffect(() => {
+    if (value) {
+      generateQRCode();
+    } else {
+      setQrCodeUrl('');
+      setError('');
+    }
+  }, [value, generateQRCode]);
 
   if (!value) {
     return (
-      <div className={`flex items-center justify-center h-36 w-36 bg-gray-100 border border-gray-300 rounded ${className}`}>
+      <div
+        className={`flex items-center justify-center h-36 w-36 bg-gray-100 border border-gray-300 rounded ${className}`}
+      >
         <span className="text-gray-500 text-xs text-center">No QR data</span>
       </div>
     );
@@ -61,8 +63,12 @@ export function QRCodeDisplay({
 
   if (error) {
     return (
-      <div className={`flex items-center justify-center h-36 w-36 bg-red-50 border border-red-200 rounded ${className}`}>
-        <span className="text-red-500 text-xs text-center">{error}</span>
+      <div
+        className={`flex items-center justify-center h-36 w-36 bg-red-50 border border-red-200 rounded ${className}`}
+      >
+        <span className="text-red-500 text-xs text-center">
+          {typeof error === 'string' ? error : String(error)}
+        </span>
       </div>
     );
   }

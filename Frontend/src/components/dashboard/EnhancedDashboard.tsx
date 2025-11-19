@@ -1,5 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -69,7 +75,13 @@ interface WeeklyStats {
   };
   popularBooks: Array<{ title: string; count: number }>;
   popularCategories: Array<{ name: string; count: number }>;
-  dailyBreakdown: Array<{ date: string; dayOfWeek: string; visits: number; checkouts: number; uniqueStudents: number }>;
+  dailyBreakdown: Array<{
+    date: string;
+    dayOfWeek: string;
+    visits: number;
+    checkouts: number;
+    uniqueStudents: number;
+  }>;
 }
 
 export default function EnhancedDashboard() {
@@ -77,19 +89,32 @@ export default function EnhancedDashboard() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  useEffect(() => {
-    fetchDashboardData();
-    // Auto-refresh every 5 minutes
-    const interval = setInterval(fetchDashboardData, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const calculateTrend = useCallback(
+    (dailyBreakdown: Array<Record<string, unknown>>) => {
+      if (!dailyBreakdown || dailyBreakdown.length < 2) {
+        return 0;
+      }
+      const recent =
+        dailyBreakdown
+          .slice(-3)
+          .reduce((sum, day) => sum + (Number(day.visits) || 0), 0) / 3;
+      const previous =
+        dailyBreakdown
+          .slice(0, 3)
+          .reduce((sum, day) => sum + (Number(day.visits) || 0), 0) / 3;
+      return previous > 0
+        ? Math.round(((recent - previous) / previous) * 100)
+        : 0;
+    },
+    []
+  );
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch today's report
       const dailyResponse = await reportsApi.getDailyReport();
-      
+
       // Fetch weekly report
       const weeklyResponse = await reportsApi.getWeeklyReport();
 
@@ -123,24 +148,32 @@ export default function EnhancedDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [calculateTrend]);
 
-  const calculateTrend = (dailyBreakdown: any[]) => {
-    if (!dailyBreakdown || dailyBreakdown.length < 2) return 0;
-    const recent = dailyBreakdown.slice(-3).reduce((sum, day) => sum + day.visits, 0) / 3;
-    const previous = dailyBreakdown.slice(0, 3).reduce((sum, day) => sum + day.visits, 0) / 3;
-    return previous > 0 ? Math.round(((recent - previous) / previous) * 100) : 0;
-  };
+  useEffect(() => {
+    fetchDashboardData();
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(fetchDashboardData, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchDashboardData]);
 
   const getTrendColor = (trend: number) => {
-    if (trend > 0) return 'text-green-500';
-    if (trend < 0) return 'text-red-500';
+    if (trend > 0) {
+      return 'text-green-500';
+    }
+    if (trend < 0) {
+      return 'text-red-500';
+    }
     return 'text-gray-500';
   };
 
   const getTrendIcon = (trend: number) => {
-    if (trend > 0) return '↑';
-    if (trend < 0) return '↓';
+    if (trend > 0) {
+      return '↑';
+    }
+    if (trend < 0) {
+      return '↓';
+    }
     return '→';
   };
 
@@ -171,13 +204,15 @@ export default function EnhancedDashboard() {
           <span className="text-sm text-muted-foreground">
             Last updated: {lastUpdated.toLocaleTimeString()}
           </span>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={fetchDashboardData}
             disabled={loading}
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`}
+            />
             Refresh
           </Button>
         </div>
@@ -189,7 +224,9 @@ export default function EnhancedDashboard() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Today's Check-Ins</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Today's Check-Ins
+                </CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -198,8 +235,11 @@ export default function EnhancedDashboard() {
                   {stats.today.uniqueStudents} unique students
                 </p>
                 {stats.trends.visitsTrend !== 0 && (
-                  <p className={`text-xs mt-1 ${getTrendColor(stats.trends.visitsTrend)}`}>
-                    {getTrendIcon(stats.trends.visitsTrend)} {Math.abs(stats.trends.visitsTrend)}% vs last week
+                  <p
+                    className={`text-xs mt-1 ${getTrendColor(stats.trends.visitsTrend)}`}
+                  >
+                    {getTrendIcon(stats.trends.visitsTrend)}{' '}
+                    {Math.abs(stats.trends.visitsTrend)}% vs last week
                   </p>
                 )}
               </CardContent>
@@ -207,11 +247,15 @@ export default function EnhancedDashboard() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Books Circulated</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Books Circulated
+                </CardTitle>
                 <BookOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.today.booksCirculated}</div>
+                <div className="text-2xl font-bold">
+                  {stats.today.booksCirculated}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Today's circulation
                 </p>
@@ -220,7 +264,9 @@ export default function EnhancedDashboard() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Now</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Active Now
+                </CardTitle>
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -235,14 +281,16 @@ export default function EnhancedDashboard() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Weekly Average</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Weekly Average
+                </CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.thisWeek.averageDaily}</div>
-                <p className="text-xs text-muted-foreground">
-                  Visits per day
-                </p>
+                <div className="text-2xl font-bold">
+                  {stats.thisWeek.averageDaily}
+                </div>
+                <p className="text-xs text-muted-foreground">Visits per day</p>
               </CardContent>
             </Card>
           </div>
@@ -275,9 +323,15 @@ export default function EnhancedDashboard() {
                     <div className="space-y-3">
                       {stats.thisWeek.topBooks.length > 0 ? (
                         stats.thisWeek.topBooks.map((book, index) => (
-                          <div key={index} className="flex items-center justify-between">
+                          <div
+                            key={index}
+                            className="flex items-center justify-between"
+                          >
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="h-6 w-6 flex items-center justify-center p-0">
+                              <Badge
+                                variant="outline"
+                                className="h-6 w-6 flex items-center justify-center p-0"
+                              >
                                 {index + 1}
                               </Badge>
                               <span className="text-sm font-medium truncate max-w-[200px]">
@@ -303,20 +357,27 @@ export default function EnhancedDashboard() {
                       <PieChart className="w-5 h-5" />
                       Top Categories
                     </CardTitle>
-                    <CardDescription>Most popular book categories</CardDescription>
+                    <CardDescription>
+                      Most popular book categories
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {stats.thisWeek.topCategories.length > 0 ? (
                         stats.thisWeek.topCategories.map((category, index) => (
-                          <div key={index} className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{category.name}</span>
+                          <div
+                            key={index}
+                            className="flex items-center justify-between"
+                          >
+                            <span className="text-sm font-medium">
+                              {category.name}
+                            </span>
                             <div className="flex items-center gap-2">
                               <div className="w-24 bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                                <div 
-                                  className="bg-primary h-2 rounded-full" 
-                                  style={{ 
-                                    width: `${stats.thisWeek.topCategories[0] ? (category.count / stats.thisWeek.topCategories[0].count) * 100 : 0}%` 
+                                <div
+                                  className="bg-primary h-2 rounded-full"
+                                  style={{
+                                    width: `${stats.thisWeek.topCategories[0] ? (category.count / stats.thisWeek.topCategories[0].count) * 100 : 0}%`,
                                   }}
                                 ></div>
                               </div>
@@ -346,15 +407,25 @@ export default function EnhancedDashboard() {
                 <CardContent>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Average Daily Visits</span>
-                      <span className="font-medium">{stats.thisWeek.averageDaily}</span>
+                      <span className="text-muted-foreground">
+                        Average Daily Visits
+                      </span>
+                      <span className="font-medium">
+                        {stats.thisWeek.averageDaily}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Books Circulated Today</span>
-                      <span className="font-medium">{stats.today.booksCirculated}</span>
+                      <span className="text-muted-foreground">
+                        Books Circulated Today
+                      </span>
+                      <span className="font-medium">
+                        {stats.today.booksCirculated}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Current Occupancy</span>
+                      <span className="text-muted-foreground">
+                        Current Occupancy
+                      </span>
                       <span className="font-medium text-green-500">
                         {Math.max(0, stats.today.activeNow)} students
                       </span>

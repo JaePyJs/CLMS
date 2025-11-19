@@ -1,5 +1,4 @@
-import { render } from '@testing-library/react';
-import type { RenderOptions } from '@testing-library/react';
+import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
@@ -15,13 +14,12 @@ const customRender = (
   const { queryClient, ...renderOptions } = options || {};
 
   return render(ui, {
-    wrapper: ({ children }) => (
+    wrapper: ({ children }) =>
       queryClient ? (
         <TestProviders queryClient={queryClient}>{children}</TestProviders>
       ) : (
         <TestProviders>{children}</TestProviders>
-      )
-    ),
+      ),
     ...renderOptions,
   });
 };

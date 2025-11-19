@@ -15,8 +15,9 @@ import {
   RefreshCw,
   Filter,
 } from 'lucide-react';
-import notificationApi from '../services/notificationApi';
-import type { AppNotification } from '../services/notificationApi';
+import notificationApi, {
+  type AppNotification,
+} from '../services/notificationApi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationWebSocket } from '@/hooks/useWebSocket';
 import { toast } from 'sonner';
@@ -35,46 +36,58 @@ const NotificationCenter: React.FC = () => {
   const { isConnected } = useNotificationWebSocket();
 
   // Handle real-time notifications
-  const handleRealTimeNotification = useCallback((message: any) => {
-    if (message.type === 'notification') {
-      const newNotification = message.payload;
+  const handleRealTimeNotification = useCallback(
+    (message: { type: string; payload: AppNotification }) => {
+      if (message.type === 'notification') {
+        const newNotification = message.payload;
 
-      // Add to notifications list
-      setNotifications(prev => [newNotification, ...prev.slice(0, 49)]);
+        // Add to notifications list
+        setNotifications((prev) => [newNotification, ...prev.slice(0, 49)]);
 
-      // Update unread count
-      setUnreadCount(prev => prev + 1);
+        // Update unread count
+        setUnreadCount((prev) => prev + 1);
 
-      // Show toast notification
-      const priority = newNotification.priority;
-      const toastConfig = {
-        duration: priority === 'URGENT' ? 10000 : priority === 'HIGH' ? 5000 : 3000,
-      };
+        // Show toast notification
+        const priority = newNotification.priority;
+        const toastConfig = {
+          duration:
+            priority === 'URGENT' ? 10000 : priority === 'HIGH' ? 5000 : 3000,
+        };
 
-      if (priority === 'URGENT') {
-        toast.error(newNotification.title, {
-          description: newNotification.message,
-          ...toastConfig,
-        });
-      } else if (priority === 'HIGH') {
-        toast.warning(newNotification.title, {
-          description: newNotification.message,
-          ...toastConfig,
-        });
-      } else {
-        toast.info(newNotification.title, {
-          description: newNotification.message,
-          ...toastConfig,
-        });
+        if (priority === 'URGENT') {
+          toast.error(newNotification.title, {
+            description: newNotification.message,
+            ...toastConfig,
+          });
+        } else if (priority === 'HIGH') {
+          toast.warning(newNotification.title, {
+            description: newNotification.message,
+            ...toastConfig,
+          });
+        } else {
+          toast.info(newNotification.title, {
+            description: newNotification.message,
+            ...toastConfig,
+          });
+        }
       }
-    }
-  }, []);
+    },
+    []
+  );
 
   // Initialize WebSocket listener
   useEffect(() => {
     if (isConnected && user) {
       // Subscribe to real-time notifications
-      const socket = (window as any).socket;
+      const socket = (
+        window as {
+          socket?: {
+            emit: (event: string, ...args: unknown[]) => void;
+            on: (event: string, callback: (data: unknown) => void) => void;
+            off: (event: string, callback: (data: unknown) => void) => void;
+          };
+        }
+      ).socket;
       if (socket) {
         socket.emit('notification:subscribe');
 
@@ -93,11 +106,13 @@ const NotificationCenter: React.FC = () => {
 
   const fetchNotifications = useCallback(async () => {
     // Don't fetch if not authenticated
-    if (!token) return;
+    if (!token) {
+      return;
+    }
 
     try {
       setLoading(true);
-      const params: any = {
+      const params: Record<string, unknown> = {
         unreadOnly: filter === 'unread',
         limit: 50,
       };
@@ -107,7 +122,13 @@ const NotificationCenter: React.FC = () => {
       }
 
       const response = await notificationApi.getNotifications(params);
-      setNotifications(response.data.notifications);
+      
+      // Filter out return confirmations to avoid showing them on checkout screen
+      const filteredNotifications = response.data.notifications.filter(
+        (notification) => !notification.title.toLowerCase().includes('return confirmation')
+      );
+      
+      setNotifications(filteredNotifications);
       setUnreadCount(response.data.unreadCount);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -119,34 +140,44 @@ const NotificationCenter: React.FC = () => {
   }, [filter, typeFilter, token]);
 
   useEffect(() => {
-    // Only fetch if authenticated
-    if (!token) return;
-    
-    // Initial fetch
+    // Only fetch if authenticated and notification panel is open
+    if (!token || !isOpen) {
+      return;
+    }
+
+    // Initial fetch when panel opens
     fetchNotifications();
-    
-    // Poll for new notifications every 30 seconds
+
+    // Poll for new notifications every 30 seconds only when panel is open
     const interval = setInterval(() => {
       fetchNotifications();
     }, 30000);
-    
+
     return () => clearInterval(interval);
-  }, [filter, typeFilter, token, fetchNotifications]); // fetchNotifications will be captured by closure when effect re-runs
+  }, [filter, typeFilter, token, fetchNotifications, isOpen]); // fetchNotifications will be captured by closure when effect re-runs
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
       // Update UI optimistically
-      setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read: true, readAt: new Date().toISOString() } : n)
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n.id === notificationId
+            ? { ...n, read: true, readAt: new Date().toISOString() }
+            : n
+        )
       );
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
 
       // Mark via WebSocket if available
-      const socket = (window as any).socket;
+      const socket = (
+        window as {
+          socket?: { emit: (event: string, ...args: unknown[]) => void };
+        }
+      ).socket;
       if (socket && isConnected) {
         socket.emit('notification:mark-read', { notificationId });
       }
-      
+
       // Fallback to API call
       await notificationApi.markAsRead(notificationId);
     } catch (error) {
@@ -182,15 +213,18 @@ const NotificationCenter: React.FC = () => {
     }
   };
 
-  const getNotificationIcon = (type: AppNotification['type'], priority: AppNotification['priority']) => {
+  const getNotificationIcon = (
+    type: AppNotification['type'],
+    priority: AppNotification['priority']
+  ) => {
     const iconClass = `w-5 h-5 ${
       priority === 'URGENT'
         ? 'text-red-600'
         : priority === 'HIGH'
-        ? 'text-orange-600'
-        : priority === 'NORMAL'
-        ? 'text-blue-600'
-        : 'text-gray-600'
+          ? 'text-orange-600'
+          : priority === 'NORMAL'
+            ? 'text-blue-600'
+            : 'text-gray-600'
     }`;
 
     switch (type) {
@@ -234,10 +268,18 @@ const NotificationCenter: React.FC = () => {
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffMins < 1) {
+      return 'Just now';
+    }
+    if (diffMins < 60) {
+      return `${diffMins}m ago`;
+    }
+    if (diffHours < 24) {
+      return `${diffHours}h ago`;
+    }
+    if (diffDays < 7) {
+      return `${diffDays}d ago`;
+    }
     return date.toLocaleDateString();
   };
 
@@ -247,15 +289,17 @@ const NotificationCenter: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-        title={isConnected ? "Connected" : "Disconnected"}
+        title={isConnected ? 'Connected' : 'Disconnected'}
         data-testid="notification-center"
       >
         <Bell className="w-6 h-6" />
 
         {/* Connection Status Indicator */}
-        <div className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${
-          isConnected ? 'bg-green-500' : 'bg-red-500'
-        }`} />
+        <div
+          className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${
+            isConnected ? 'bg-green-500' : 'bg-red-500'
+          }`}
+        />
 
         {/* Unread Count Badge */}
         {unreadCount > 0 && (
@@ -281,9 +325,16 @@ const NotificationCenter: React.FC = () => {
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                   Notifications
-                  <div className={`w-2 h-2 rounded-full ${
-                    isConnected ? 'bg-green-500' : 'bg-red-500'
-                  }`} title={isConnected ? "Real-time connected" : "Real-time disconnected"} />
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      isConnected ? 'bg-green-500' : 'bg-red-500'
+                    }`}
+                    title={
+                      isConnected
+                        ? 'Real-time connected'
+                        : 'Real-time disconnected'
+                    }
+                  />
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
@@ -400,7 +451,10 @@ const NotificationCenter: React.FC = () => {
                       <div className="flex gap-3">
                         {/* Icon */}
                         <div className="flex-shrink-0 mt-0.5">
-                          {getNotificationIcon(notification.type, notification.priority)}
+                          {getNotificationIcon(
+                            notification.type,
+                            notification.priority
+                          )}
                         </div>
 
                         {/* Content */}
@@ -422,7 +476,9 @@ const NotificationCenter: React.FC = () => {
                           <div className="flex items-center gap-2 mt-2">
                             {!notification.read && (
                               <button
-                                onClick={() => handleMarkAsRead(notification.id)}
+                                onClick={() =>
+                                  handleMarkAsRead(notification.id)
+                                }
                                 className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition-colors"
                                 title="Mark as read"
                               >

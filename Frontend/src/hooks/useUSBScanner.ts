@@ -34,44 +34,50 @@ export function useUSBScanner(config: ScannerConfig = { enabled: true }) {
     suffix = '',
     timeout = 100,
     onScan,
-    onError
+    onError,
   } = config;
 
-  const processBuffer = useCallback((finalBuffer: string) => {
-    try {
-      let code = finalBuffer.trim();
+  const processBuffer = useCallback(
+    (finalBuffer: string) => {
+      try {
+        let code = finalBuffer.trim();
 
-      // Remove prefix if specified
-      if (prefix && code.startsWith(prefix)) {
-        code = code.substring(prefix.length);
+        // Remove prefix if specified
+        if (prefix && code.startsWith(prefix)) {
+          code = code.substring(prefix.length);
+        }
+
+        // Remove suffix if specified
+        if (suffix && code.endsWith(suffix)) {
+          code = code.substring(0, code.length - suffix.length);
+        }
+
+        // Validate length
+        if (code.length < minLength || code.length > maxLength) {
+          throw new Error(
+            `Invalid scan length: ${code.length} (expected ${minLength}-${maxLength})`
+          );
+        }
+
+        const result: ScanResult = {
+          code,
+          raw: finalBuffer,
+          timestamp: new Date(),
+        };
+
+        setLastScan(result);
+        onScan?.(code);
+
+        return result;
+      } catch (error) {
+        const err =
+          error instanceof Error ? error : new Error('Unknown scan error');
+        onError?.(err);
+        throw err;
       }
-
-      // Remove suffix if specified
-      if (suffix && code.endsWith(suffix)) {
-        code = code.substring(0, code.length - suffix.length);
-      }
-
-      // Validate length
-      if (code.length < minLength || code.length > maxLength) {
-        throw new Error(`Invalid scan length: ${code.length} (expected ${minLength}-${maxLength})`);
-      }
-
-      const result: ScanResult = {
-        code,
-        raw: finalBuffer,
-        timestamp: new Date()
-      };
-
-      setLastScan(result);
-      onScan?.(code);
-
-      return result;
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error('Unknown scan error');
-      onError?.(err);
-      throw err;
-    }
-  }, [prefix, suffix, minLength, maxLength, onScan, onError]);
+    },
+    [prefix, suffix, minLength, maxLength, onScan, onError]
+  );
 
   const clearBuffer = useCallback(() => {
     bufferRef.current = '';
@@ -82,70 +88,75 @@ export function useUSBScanner(config: ScannerConfig = { enabled: true }) {
     }
   }, []);
 
-  const handleKeyPress = useCallback((event: KeyboardEvent) => {
-    if (!enabled) return;
-
-    // Detect scanner input (typically very fast typing)
-    const key = event.key;
-
-    // Start scanning on first character
-    if (bufferRef.current === '') {
-      setIsScanning(true);
-    }
-
-    // Clear existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    // Handle Enter key (common scanner suffix)
-    if (key === 'Enter') {
-      event.preventDefault();
-      
-      if (bufferRef.current.length >= minLength) {
-        processBuffer(bufferRef.current);
+  const handleKeyPress = useCallback(
+    (event: KeyboardEvent) => {
+      if (!enabled) {
+        return;
       }
-      
-      clearBuffer();
-      setIsScanning(false);
-      return;
-    }
 
-    // Handle Tab key (alternative scanner suffix)
-    if (key === 'Tab' && bufferRef.current.length > 0) {
-      event.preventDefault();
-      
-      if (bufferRef.current.length >= minLength) {
-        processBuffer(bufferRef.current);
+      // Detect scanner input (typically very fast typing)
+      const key = event.key;
+
+      // Start scanning on first character
+      if (bufferRef.current === '') {
+        setIsScanning(true);
       }
-      
-      clearBuffer();
-      setIsScanning(false);
-      return;
-    }
 
-    // Ignore special keys
-    if (key.length > 1 && key !== 'Enter' && key !== 'Tab') {
-      return;
-    }
+      // Clear existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
 
-    // Add character to buffer
-    bufferRef.current += key;
-    setBuffer(bufferRef.current);
+      // Handle Enter key (common scanner suffix)
+      if (key === 'Enter') {
+        event.preventDefault();
 
-    // Set timeout to clear buffer if no more input
-    timeoutRef.current = setTimeout(() => {
-      if (bufferRef.current.length >= minLength) {
-        try {
+        if (bufferRef.current.length >= minLength) {
           processBuffer(bufferRef.current);
-        } catch (error) {
-          console.error('Scanner processing error:', error);
         }
+
+        clearBuffer();
+        setIsScanning(false);
+        return;
       }
-      clearBuffer();
-      setIsScanning(false);
-    }, timeout);
-  }, [enabled, minLength, timeout, processBuffer, clearBuffer]);
+
+      // Handle Tab key (alternative scanner suffix)
+      if (key === 'Tab' && bufferRef.current.length > 0) {
+        event.preventDefault();
+
+        if (bufferRef.current.length >= minLength) {
+          processBuffer(bufferRef.current);
+        }
+
+        clearBuffer();
+        setIsScanning(false);
+        return;
+      }
+
+      // Ignore special keys
+      if (key.length > 1 && key !== 'Enter' && key !== 'Tab') {
+        return;
+      }
+
+      // Add character to buffer
+      bufferRef.current += key;
+      setBuffer(bufferRef.current);
+
+      // Set timeout to clear buffer if no more input
+      timeoutRef.current = setTimeout(() => {
+        if (bufferRef.current.length >= minLength) {
+          try {
+            processBuffer(bufferRef.current);
+          } catch (error) {
+            console.error('Scanner processing error:', error);
+          }
+        }
+        clearBuffer();
+        setIsScanning(false);
+      }, timeout);
+    },
+    [enabled, minLength, timeout, processBuffer, clearBuffer]
+  );
 
   useEffect(() => {
     if (enabled) {
@@ -171,7 +182,7 @@ export function useUSBScanner(config: ScannerConfig = { enabled: true }) {
     lastScan,
     buffer,
     reset,
-    clearBuffer
+    clearBuffer,
   };
 }
 
@@ -188,7 +199,7 @@ export function useQRScanner() {
   const startScanning = useCallback(async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: { facingMode: 'environment' },
       });
 
       setStream(mediaStream);
@@ -199,7 +210,8 @@ export function useQRScanner() {
         videoRef.current.srcObject = mediaStream;
       }
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Failed to access camera');
+      const error =
+        err instanceof Error ? err : new Error('Failed to access camera');
       setError(error);
       toast.error('Failed to access camera');
     }
@@ -207,7 +219,7 @@ export function useQRScanner() {
 
   const stopScanning = useCallback(() => {
     if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+      stream.getTracks().forEach((track) => track.stop());
       setStream(null);
     }
     setIsOpen(false);
@@ -215,13 +227,17 @@ export function useQRScanner() {
   }, [stream]);
 
   const captureFrame = useCallback(() => {
-    if (!videoRef.current || !canvasRef.current || !scanningRef.current) return;
+    if (!videoRef.current || !canvasRef.current || !scanningRef.current) {
+      return;
+    }
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
 
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -229,16 +245,16 @@ export function useQRScanner() {
 
     // Extract QR code (you would use a QR code library like jsQR here)
     // Camera-based QR scanning using qr-scanner library
-    
+
     // Use QrScanner to scan the canvas directly
     QrScanner.scanImage(canvas, { returnDetailedScanResult: true })
-      .then(result => {
+      .then((result) => {
         if (result?.data) {
           setResult(result.data);
           stopScanning();
         }
       })
-      .catch(error => {
+      .catch((error) => {
         console.warn('QR scan failed:', error);
         // Continue to next frame if QR not found
       });
@@ -274,29 +290,39 @@ export function useQRScanner() {
     canvasRef,
     startScanning,
     stopScanning,
-    reset
+    reset,
   };
 }
 
 // Hook for continuous scanner monitoring
-export function useScannerMonitor(onScan: (code: string, type: 'barcode' | 'qr') => void) {
+export function useScannerMonitor(
+  onScan: (code: string, type: 'barcode' | 'qr') => void
+) {
   const [scanCount, setScanCount] = useState(0);
   const [lastScanTime, setLastScanTime] = useState<Date | null>(null);
-  const [scanHistory, setScanHistory] = useState<Array<{ code: string; timestamp: Date; type: string }>>([]);
+  const [scanHistory, setScanHistory] = useState<
+    Array<{ code: string; timestamp: Date; type: string }>
+  >([]);
 
-  const handleUSBScan = useCallback((code: string) => {
-    setScanCount(prev => prev + 1);
-    setLastScanTime(new Date());
-    setScanHistory(prev => [...prev.slice(-9), { code, timestamp: new Date(), type: 'usb' }]);
-    onScan(code, 'barcode');
-  }, [onScan]);
+  const handleUSBScan = useCallback(
+    (code: string) => {
+      setScanCount((prev) => prev + 1);
+      setLastScanTime(new Date());
+      setScanHistory((prev) => [
+        ...prev.slice(-9),
+        { code, timestamp: new Date(), type: 'usb' },
+      ]);
+      onScan(code, 'barcode');
+    },
+    [onScan]
+  );
 
   const usbScanner = useUSBScanner({
     enabled: true,
     minLength: 3,
     maxLength: 50,
     timeout: 100,
-    onScan: handleUSBScan
+    onScan: handleUSBScan,
   });
 
   const clearHistory = useCallback(() => {
@@ -310,7 +336,7 @@ export function useScannerMonitor(onScan: (code: string, type: 'barcode' | 'qr')
     lastScanTime,
     scanHistory,
     clearHistory,
-    isScanning: usbScanner.isScanning
+    isScanning: usbScanner.isScanning,
   };
 }
 

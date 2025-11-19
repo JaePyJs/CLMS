@@ -81,15 +81,22 @@ export const generateDensitySrcSet = (
 ): string => {
   const densities = [1, 2, 3];
   return densities
-    .map(density => {
+    .map((density) => {
       const w = width ? width * density : undefined;
       const h = height ? height * density : undefined;
-      const config: any = {
+      const config: { quality: number; width?: number; height?: number } = {
         quality: Math.max(quality - (density - 1) * 10, 50), // Reduce quality for higher densities
       };
-      if (w !== undefined) config.width = w;
-      if (h !== undefined) config.height = h;
-      const url = imageOptimizationService.generateOptimizedUrl(baseUrl, config);
+      if (w !== undefined) {
+        config.width = w;
+      }
+      if (h !== undefined) {
+        config.height = h;
+      }
+      const url = imageOptimizationService.generateOptimizedUrl(
+        baseUrl,
+        config
+      );
       return `${url} ${density}x`;
     })
     .join(', ');
@@ -102,12 +109,18 @@ export const getOptimalDimensions = (
   useCase: keyof typeof IMAGE_SIZES,
   size: 'small' | 'medium' | 'large' = 'medium'
 ): { width: number; height: number } => {
-  const useCaseConfig = IMAGE_SIZES[useCase] as Record<string, { width: number; height: number }>;
+  const useCaseConfig = IMAGE_SIZES[useCase] as Record<
+    string,
+    { width: number; height: number }
+  >;
   if (size in useCaseConfig && useCaseConfig[size]) {
     return useCaseConfig[size];
   }
   // Fallback to medium if size doesn't exist
-  const fallback = 'medium' in useCaseConfig ? useCaseConfig['medium'] : Object.values(useCaseConfig)[0];
+  const fallback =
+    'medium' in useCaseConfig
+      ? useCaseConfig['medium']
+      : Object.values(useCaseConfig)[0];
   return fallback ?? { width: 800, height: 600 }; // Default fallback with nullish coalescing
 };
 
@@ -135,7 +148,7 @@ export const preloadCriticalImages = async (
   imageUrls: string[],
   priority: 'high' | 'low' = 'high'
 ): Promise<void[]> => {
-  const promises = imageUrls.map(async url => {
+  const promises = imageUrls.map(async (url) => {
     try {
       await imageOptimizationService.preloadImage(url, priority);
     } catch (error) {
@@ -266,7 +279,9 @@ export const compressImageFile = (
  * Get image file size in human readable format
  */
 export const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) {
+    return '0 Bytes';
+  }
 
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -287,10 +302,10 @@ export const getAspectRatio = (width: number, height: number): number => {
  */
 export const ASPECT_RATIOS = {
   square: 1,
-  portrait: 3/4,
-  landscape: 4/3,
-  widescreen: 16/9,
-  cinema: 21/9,
+  portrait: 3 / 4,
+  landscape: 4 / 3,
+  widescreen: 16 / 9,
+  cinema: 21 / 9,
 } as const;
 
 /**
@@ -299,10 +314,13 @@ export const ASPECT_RATIOS = {
 export const getImagePriority = (
   position: 'above-fold' | 'below-fold' | 'hidden'
 ): 'high' | 'low' | 'auto' => {
-  const priorities: Record<'above-fold' | 'below-fold' | 'hidden', 'high' | 'low' | 'auto'> = {
+  const priorities: Record<
+    'above-fold' | 'below-fold' | 'hidden',
+    'high' | 'low' | 'auto'
+  > = {
     'above-fold': 'high',
     'below-fold': 'auto',
-    'hidden': 'low',
+    hidden: 'low',
   };
   return priorities[position];
 };
@@ -316,7 +334,11 @@ export const generateBlurPlaceholder = async (
   height: number = 40
 ): Promise<string> => {
   try {
-    return await imageOptimizationService.generateBlurPlaceholder(imageUrl, width, height);
+    return await imageOptimizationService.generateBlurPlaceholder(
+      imageUrl,
+      width,
+      height
+    );
   } catch (error) {
     console.warn('Failed to generate blur placeholder:', error);
     return generatePlaceholder(width, height, 'solid');

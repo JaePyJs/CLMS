@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { loginWithCredentials, navigateToTab, assertLoggedIn } from './test-utils';
 
 // Test configuration
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
@@ -6,22 +7,53 @@ const API_URL = process.env.API_URL || 'http://localhost:3001';
 
 // Test user credentials
 const TEST_USER = {
-  username: 'admin',
-  password: 'librarian123'
+  username: 'librarian',
+  password: 'lib123'
 };
 
 // Helper functions
 async function login(page: Page) {
-  await page.goto(`${BASE_URL}/login`);
-  await page.fill('input[name="username"]', TEST_USER.username);
-  await page.fill('input[name="password"]', TEST_USER.password);
-  await page.click('button[type="submit"]');
-  await page.waitForURL(`${BASE_URL}/dashboard`);
+  await loginWithCredentials(page, TEST_USER);
+  await assertLoggedIn(page);
 }
 
 async function navigateToStudentManagement(page: Page) {
-  await page.click('[data-testid="students-tab"]');
-  await expect(page.locator('h2:has-text("Student Management")')).toBeVisible();
+  const topTabTestId = page.locator('[data-testid="top-students-tab"]').first();
+  const testIdVisible = await topTabTestId.isVisible().catch(() => false);
+  if (testIdVisible) {
+    await topTabTestId.scrollIntoViewIfNeeded();
+    await topTabTestId.click({ timeout: 10000 });
+    await page.waitForSelector('#tabpanel-students:not([hidden])', { timeout: 10000 });
+  } else {
+    const topTabByRole = page.getByRole('tab', { name: /students/i }).first();
+    const roleVisible = await topTabByRole.isVisible().catch(() => false);
+    if (roleVisible) {
+      await topTabByRole.scrollIntoViewIfNeeded();
+      await topTabByRole.click({ timeout: 10000 });
+      await page.waitForSelector('#tabpanel-students:not([hidden])', { timeout: 10000 });
+    } else {
+      const viewAll = page.getByRole('button', { name: /view all/i }).first();
+      const viewAllVisible = await viewAll.isVisible().catch(() => false);
+      if (viewAllVisible) {
+        await viewAll.click({ timeout: 10000 });
+      }
+    }
+  }
+  await page.waitForSelector('#tabpanel-students:not([hidden])', { timeout: 20000 });
+  let ready = false;
+  for (let i = 0; i < 2 && !ready; i++) {
+    const innerTab = page
+      .locator('#tabpanel-students')
+      .getByRole('tab', { name: /students/i })
+      .first();
+    const visible = await innerTab.isVisible().catch(() => false);
+    if (visible) {
+      await innerTab.click({ timeout: 10000 });
+    }
+    await page.waitForTimeout(500);
+    ready = await page.locator('[data-testid="status-filter"]').isVisible().catch(() => false);
+  }
+  await page.waitForSelector('[data-testid="status-filter"]', { state: 'visible', timeout: 20000 });
 }
 
 test.describe('Student Management E2E Tests', () => {
@@ -44,9 +76,9 @@ test.describe('Student Management E2E Tests', () => {
 
     test('should display student statistics', async ({ page }) => {
       // Check for stat cards
-      await expect(page.locator('text=Total Students')).toBeVisible();
-      await expect(page.locator('text=Active Students')).toBeVisible();
-      await expect(page.locator('text=Inactive Students')).toBeVisible();
+      await expect(page.getByText('Total Students', { exact: true })).toBeVisible();
+      await expect(page.getByText('Active Students', { exact: true })).toBeVisible();
+      await expect(page.getByText('Inactive Students', { exact: true })).toBeVisible();
 
       // Verify stat values are numbers
       const totalText = await page.locator('[data-testid="total-students"]').textContent();
@@ -72,9 +104,10 @@ test.describe('Student Management E2E Tests', () => {
     });
 
     test('should filter by status', async ({ page }) => {
-      // Click status filter
-      await page.click('[data-testid="status-filter"]');
-      await page.click('text=Active');
+      const statusTrigger = page.locator('[data-testid="status-filter"]');
+      await statusTrigger.scrollIntoViewIfNeeded();
+      await statusTrigger.click();
+      await page.click('[data-testid="status-active"]');
 
       // Wait for filtered results
       await page.waitForTimeout(500);
@@ -86,9 +119,10 @@ test.describe('Student Management E2E Tests', () => {
     });
 
     test('should filter by grade', async ({ page }) => {
-      // Click grade filter
-      await page.click('[data-testid="grade-filter"]');
-      await page.click('text=Grade School');
+      const gradeTrigger = page.locator('[data-testid="grade-filter"]');
+      await gradeTrigger.scrollIntoViewIfNeeded();
+      await gradeTrigger.click();
+      await page.click('[data-testid="grade-gradeSchool"]');
 
       // Wait for filtered results
       await page.waitForTimeout(500);

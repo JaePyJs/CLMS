@@ -35,7 +35,8 @@ export const getPWAInfo = async (): Promise<PWAInfo> => {
     document.referrer.includes('android-app://');
 
   // Check if app is installed
-  const isInstalled = isStandalone || localStorage.getItem('pwa-installed') === 'true';
+  const isInstalled =
+    isStandalone || localStorage.getItem('pwa-installed') === 'true';
 
   // Detect platform
   const userAgent = navigator.userAgent.toLowerCase();
@@ -98,7 +99,8 @@ export const getDeviceInfo = () => {
     notifications: 'Notification' in window,
     bluetooth: 'bluetooth' in navigator,
     usb: 'usb' in navigator,
-    camera: 'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices,
+    camera:
+      'mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices,
     geolocation: 'geolocation' in navigator,
     vibration: 'vibrate' in navigator,
     fullscreen: 'fullscreenEnabled' in document,
@@ -168,7 +170,8 @@ export const cacheUtils = {
         }
 
         // Estimate size (rough calculation)
-        for (const request of keys.slice(0, 10)) { // Sample first 10 entries
+        for (const request of keys.slice(0, 10)) {
+          // Sample first 10 entries
           try {
             const response = await cache.match(request);
             if (response) {
@@ -202,7 +205,9 @@ export const cacheUtils = {
 
   // Clear specific cache
   async clearCache(pattern: string): Promise<boolean> {
-    if (!('caches' in window)) return false;
+    if (!('caches' in window)) {
+      return false;
+    }
 
     try {
       const cacheNames = await caches.keys();
@@ -224,11 +229,13 @@ export const cacheUtils = {
 
   // Clear all caches
   async clearAll(): Promise<boolean> {
-    if (!('caches' in window)) return false;
+    if (!('caches' in window)) {
+      return false;
+    }
 
     try {
       const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map(name => caches.delete(name)));
+      await Promise.all(cacheNames.map((name) => caches.delete(name)));
       localStorage.setItem('cache-last-cleared', Date.now().toString());
       return true;
     } catch (error) {
@@ -239,7 +246,9 @@ export const cacheUtils = {
 
   // Warm up cache with specific URLs
   async warmup(urls: string[]): Promise<void> {
-    if (!('caches' in window)) return;
+    if (!('caches' in window)) {
+      return;
+    }
 
     try {
       const cache = await caches.open('pwa-warmup');
@@ -250,7 +259,10 @@ export const cacheUtils = {
             await cache.put(url, response);
           }
         } catch (error) {
-          console.warn(`[CacheUtils] Failed to warm up cache for ${url}:`, error);
+          console.warn(
+            `[CacheUtils] Failed to warm up cache for ${url}:`,
+            error
+          );
         }
       });
 
@@ -314,7 +326,10 @@ export const notificationUtils = {
   },
 
   // Schedule notification (for when app is in background)
-  async schedule(title: string, options?: NotificationOptions & { delay?: number }): Promise<void> {
+  async schedule(
+    title: string,
+    options?: NotificationOptions & { delay?: number }
+  ): Promise<void> {
     const delay = options?.delay || 0;
 
     if (delay > 0) {
@@ -331,11 +346,14 @@ export const notificationUtils = {
 export const networkUtils = {
   // Check network quality
   getConnectionType(): string {
-    const connection = (navigator as any).connection ||
-                      (navigator as any).mozConnection ||
-                      (navigator as any).webkitConnection;
+    const connection =
+      (navigator as any).connection ||
+      (navigator as any).mozConnection ||
+      (navigator as any).webkitConnection;
 
-    if (!connection) return 'unknown';
+    if (!connection) {
+      return 'unknown';
+    }
 
     return connection.effectiveType || connection.type || 'unknown';
   },
@@ -348,9 +366,10 @@ export const networkUtils = {
 
   // Get network information
   getInfo() {
-    const connection = (navigator as any).connection ||
-                      (navigator as any).mozConnection ||
-                      (navigator as any).webkitConnection;
+    const connection =
+      (navigator as any).connection ||
+      (navigator as any).mozConnection ||
+      (navigator as any).webkitConnection;
 
     if (!connection) {
       return {
@@ -375,14 +394,16 @@ export const networkUtils = {
   onChange(callback: (online: boolean, info: any) => void): () => void {
     const handleOnline = () => callback(true, this.getInfo());
     const handleOffline = () => callback(false, this.getInfo());
-    const handleConnectionChange = () => callback(navigator.onLine, this.getInfo());
+    const handleConnectionChange = () =>
+      callback(navigator.onLine, this.getInfo());
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    const connection = (navigator as any).connection ||
-                      (navigator as any).mozConnection ||
-                      (navigator as any).webkitConnection;
+    const connection =
+      (navigator as any).connection ||
+      (navigator as any).mozConnection ||
+      (navigator as any).webkitConnection;
 
     if (connection) {
       connection.addEventListener('change', handleConnectionChange);
@@ -425,20 +446,28 @@ export const performanceUtils = {
 
   // Log performance metrics
   logMetrics(): void {
-    console.log('[Performance] Load time:', this.getLoadTime() + 'ms');
+    console.debug('[Performance] Load time:', this.getLoadTime() + 'ms');
 
     const memory = this.getMemoryUsage();
     if (memory) {
-      console.log('[Performance] Memory:', memory.used + '/' + memory.total + 'MB');
+      console.debug(
+        '[Performance] Memory:',
+        memory.used + '/' + memory.total + 'MB'
+      );
     }
 
     const network = networkUtils.getInfo();
-    console.log('[Performance] Network:', network.effectiveType);
+    console.debug('[Performance] Network:', network.effectiveType);
   },
 
   // Create performance observer
-  createObserver(type: string, callback: (entries: PerformanceEntryList) => void): PerformanceObserver | null {
-    if (!('PerformanceObserver' in window)) return null;
+  createObserver(
+    type: string,
+    callback: (entries: PerformanceEntryList) => void
+  ): PerformanceObserver | null {
+    if (!('PerformanceObserver' in window)) {
+      return null;
+    }
 
     try {
       const observer = new PerformanceObserver((list) => {
@@ -492,7 +521,8 @@ export const installUtils = {
 
   // Check if can show install prompt
   canShowPrompt(): boolean {
-    const wasDismissed = localStorage.getItem('pwa-install-dismissed') === 'true';
+    const wasDismissed =
+      localStorage.getItem('pwa-install-dismissed') === 'true';
     const wasInstalled = localStorage.getItem('pwa-installed') === 'true';
 
     return !wasDismissed && !wasInstalled;
@@ -534,7 +564,9 @@ export const themeUtils = {
     const root = document.documentElement;
 
     if (theme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const prefersDark = window.matchMedia(
+        '(prefers-color-scheme: dark)'
+      ).matches;
       root.classList.toggle('dark', prefersDark);
     } else {
       root.classList.toggle('dark', theme === 'dark');

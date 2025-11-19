@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -28,7 +34,11 @@ import {
 interface AutomationJob {
   id: string;
   name: string;
-  type: 'GOOGLE_SHEETS_SYNC' | 'DAILY_BACKUP' | 'OVERDUE_NOTIFICATIONS' | 'FINE_CALCULATION';
+  type:
+    | 'GOOGLE_SHEETS_SYNC'
+    | 'DAILY_BACKUP'
+    | 'OVERDUE_NOTIFICATIONS'
+    | 'FINE_CALCULATION';
   schedule: string;
   isEnabled: boolean;
   lastRunAt: Date | null;
@@ -54,11 +64,19 @@ export default function AutomationSettings() {
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
 
   // Fetch automation jobs
-  const { data: jobs = [], isLoading, error } = useQuery({
+  const {
+    data: jobs = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['automation-jobs'],
     queryFn: async () => {
-      const response = await fetch('/api/automation/jobs', { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to load jobs');
+      const response = await fetch('/api/automation/jobs', {
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to load jobs');
+      }
       return response.json();
     },
     staleTime: 30 * 1000, // 30 seconds
@@ -69,11 +87,18 @@ export default function AutomationSettings() {
   const { data: jobHistory = [], isLoading: loadingHistory } = useQuery({
     queryKey: ['job-history', selectedJob],
     queryFn: async () => {
-      if (!selectedJob) return [];
-      const response = await fetch(`/api/automation/jobs/${selectedJob}/history`, {
-        credentials: 'include',
-      });
-      if (!response.ok) return [];
+      if (!selectedJob) {
+        return [];
+      }
+      const response = await fetch(
+        `/api/automation/jobs/${selectedJob}/history`,
+        {
+          credentials: 'include',
+        }
+      );
+      if (!response.ok) {
+        return [];
+      }
       return response.json();
     },
     enabled: !!selectedJob,
@@ -82,7 +107,13 @@ export default function AutomationSettings() {
 
   // Toggle job status mutation
   const toggleMutation = useMutation({
-    mutationFn: async ({ jobId, currentStatus }: { jobId: string; currentStatus: boolean }) => {
+    mutationFn: async ({
+      jobId,
+      currentStatus,
+    }: {
+      jobId: string;
+      currentStatus: boolean;
+    }) => {
       const endpoint = currentStatus
         ? `/api/automation/jobs/${jobId}/disable`
         : `/api/automation/jobs/${jobId}/enable`;
@@ -98,7 +129,9 @@ export default function AutomationSettings() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['automation-jobs'] });
-      toast.success(`Job ${variables.currentStatus ? 'disabled' : 'enabled'} successfully!`);
+      toast.success(
+        `Job ${variables.currentStatus ? 'disabled' : 'enabled'} successfully!`
+      );
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to update job status');
@@ -131,14 +164,20 @@ export default function AutomationSettings() {
   });
 
   const formatDate = (date: Date | null) => {
-    if (!date) return 'Never';
+    if (!date) {
+      return 'Never';
+    }
     return new Date(date).toLocaleString();
   };
 
   const formatDuration = (ms: number | null) => {
-    if (!ms) return '-';
+    if (!ms) {
+      return '-';
+    }
     const seconds = Math.floor(ms / 1000);
-    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}m ${remainingSeconds}s`;
@@ -372,7 +411,9 @@ export default function AutomationSettings() {
                         <TableCell className="text-sm">
                           {formatDate(history.completedAt)}
                         </TableCell>
-                        <TableCell>{formatDuration(history.duration)}</TableCell>
+                        <TableCell>
+                          {formatDuration(history.duration)}
+                        </TableCell>
                         <TableCell>{getStatusBadge(history.status)}</TableCell>
                         <TableCell className="text-sm max-w-xs truncate">
                           {history.error || history.result || '-'}
@@ -400,13 +441,17 @@ export default function AutomationSettings() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Active Jobs:</span>
               <span className="font-medium">
-                {jobs.filter((j: AutomationJob) => j.isEnabled).length} / {jobs.length}
+                {jobs.filter((j: AutomationJob) => j.isEnabled).length} /{' '}
+                {jobs.length}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Running Jobs:</span>
               <span className="font-medium">
-                {jobs.filter((j: AutomationJob) => j.status === 'RUNNING').length}
+                {
+                  jobs.filter((j: AutomationJob) => j.status === 'RUNNING')
+                    .length
+                }
               </span>
             </div>
             <div className="flex justify-between">

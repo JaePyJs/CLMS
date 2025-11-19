@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response, NextFunction } from 'express';
 import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
@@ -14,13 +15,13 @@ export class AppError extends Error {
     message: string,
     statusCode: number = 500,
     isOperational: boolean = true,
-    code?: string | undefined
+    code?: string | undefined,
   ) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = isOperational;
     this.code = code;
-    
+
     Error.captureStackTrace(this, this.constructor);
   }
 }
@@ -82,11 +83,13 @@ interface ErrorResponse {
 }
 
 // Handle different types of errors
-const handlePrismaError = (error: Prisma.PrismaClientKnownRequestError): AppError => {
+const handlePrismaError = (
+  error: Prisma.PrismaClientKnownRequestError,
+): AppError => {
   switch (error.code) {
     case 'P2002':
       return new ConflictError(
-        `Duplicate entry: ${error.meta?.['target'] || 'unique constraint violation'}`
+        `Duplicate entry: ${error.meta?.['target'] || 'unique constraint violation'}`,
       );
     case 'P2025':
       return new NotFoundError('Record');
@@ -95,8 +98,16 @@ const handlePrismaError = (error: Prisma.PrismaClientKnownRequestError): AppErro
     case 'P2014':
       return new ValidationError('Invalid ID provided');
     default:
-      logger.error('Unhandled Prisma error:', { code: error.code, message: error.message });
-      return new AppError('Database operation failed', 500, true, 'DATABASE_ERROR');
+      logger.error('Unhandled Prisma error:', {
+        code: error.code,
+        message: error.message,
+      });
+      return new AppError(
+        'Database operation failed',
+        500,
+        true,
+        'DATABASE_ERROR',
+      );
   }
 };
 
@@ -108,7 +119,7 @@ const handleZodError = (error: ZodError): ValidationError => {
   }));
 
   const message = `Validation failed: ${details.map((d: any) => `${d.field} ${d.message}`).join(', ')}`;
-  
+
   return new ValidationError(message, details);
 };
 
@@ -127,7 +138,7 @@ export const errorHandler = (
   error: Error,
   req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): void => {
   let appError: AppError;
 
@@ -138,7 +149,10 @@ export const errorHandler = (
     appError = handlePrismaError(error);
   } else if (error instanceof ZodError) {
     appError = handleZodError(error);
-  } else if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+  } else if (
+    error.name === 'JsonWebTokenError' ||
+    error.name === 'TokenExpiredError'
+  ) {
     appError = handleJWTError(error);
   } else if (error.name === 'MulterError') {
     appError = new ValidationError(`File upload error: ${error.message}`);
@@ -147,7 +161,7 @@ export const errorHandler = (
     appError = new AppError(
       env.NODE_ENV === 'production' ? 'Internal server error' : error.message,
       500,
-      false
+      false,
     );
   }
 
@@ -204,7 +218,7 @@ export const errorHandler = (
 
 // Async error wrapper
 export const asyncHandler = (
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<any>
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<any>,
 ) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     Promise.resolve(fn(req, res, next)).catch(next);
@@ -212,7 +226,11 @@ export const asyncHandler = (
 };
 
 // 404 handler
-export const notFoundHandler = (req: Request, _res: Response, next: NextFunction): void => {
+export const notFoundHandler = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): void => {
   const error = new NotFoundError(`Route ${req.originalUrl}`);
   next(error);
 };
@@ -224,7 +242,7 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
     stack: reason?.stack,
     promise: promise.toString(),
   });
-  
+
   // Graceful shutdown
   process.exit(1);
 });
@@ -235,7 +253,7 @@ process.on('uncaughtException', (error: Error) => {
     message: error.message,
     stack: error.stack,
   });
-  
+
   // Graceful shutdown
   process.exit(1);
 });

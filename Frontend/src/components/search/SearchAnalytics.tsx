@@ -1,5 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,7 +31,22 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Search, TrendingUp, Clock, Zap, Database, Users, BookOpen, Monitor, Activity, AlertTriangle, CheckCircle, Target, BarChart3, RefreshCw } from 'lucide-react';
+import {
+  Search,
+  TrendingUp,
+  Clock,
+  Zap,
+  Database,
+  Users,
+  BookOpen,
+  Monitor,
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  Target,
+  BarChart3,
+  RefreshCw,
+} from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 
@@ -89,27 +110,35 @@ interface UserBehavior {
   }>;
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+const COLORS = [
+  '#0088FE',
+  '#00C49F',
+  '#FFBB28',
+  '#FF8042',
+  '#8884D8',
+  '#82CA9D',
+];
 
 export default function SearchAnalytics() {
   const [analytics, setAnalytics] = useState<SearchAnalyticsData | null>(null);
-  const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics | null>(null);
+  const [performanceMetrics, setPerformanceMetrics] =
+    useState<PerformanceMetrics | null>(null);
   const [userBehavior, setUserBehavior] = useState<UserBehavior | null>(null);
   const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState('30');
   const [activeTab, setActiveTab] = useState('overview');
 
-  useEffect(() => {
-    loadAnalyticsData();
-  }, [timeRange]);
-
-  const loadAnalyticsData = async () => {
+  const loadAnalyticsData = useCallback(async () => {
     setLoading(true);
     try {
       const [analyticsRes, performanceRes, behaviorRes] = await Promise.all([
-        apiClient.get('/api/analytics/search', { params: { days: timeRange } }),
-        apiClient.get('/api/analytics/search/performance'),
-        apiClient.get('/api/analytics/search/behavior', { params: { days: timeRange } }),
+        apiClient.get('/api/analytics/_search', {
+          params: { days: timeRange },
+        }),
+        apiClient.get('/api/analytics/_search/performance'),
+        apiClient.get('/api/analytics/_search/behavior', {
+          params: { days: timeRange },
+        }),
       ]);
 
       if (analyticsRes.success) {
@@ -125,11 +154,15 @@ export default function SearchAnalytics() {
       }
     } catch (error) {
       console.error('Failed to load analytics data:', error);
-      toast.error('Failed to load search analytics');
+      toast.error('Failed to load _search analytics');
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeRange]);
+
+  useEffect(() => {
+    loadAnalyticsData();
+  }, [loadAnalyticsData]);
 
   const getEntityIcon = (entityType: string) => {
     switch (entityType) {
@@ -145,8 +178,12 @@ export default function SearchAnalytics() {
   };
 
   const getPerformanceColor = (responseTime: number) => {
-    if (responseTime < 100) return 'text-green-600';
-    if (responseTime < 500) return 'text-yellow-600';
+    if (responseTime < 100) {
+      return 'text-green-600';
+    }
+    if (responseTime < 500) {
+      return 'text-yellow-600';
+    }
     return 'text-red-600';
   };
 
@@ -165,10 +202,11 @@ export default function SearchAnalytics() {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <BarChart3 className="w-6 h-6" />
-            Search Analytics
+            _Search Analytics
           </h1>
           <p className="text-muted-foreground">
-            Monitor search performance, user behavior, and system usage patterns
+            Monitor _search performance, user behavior, and system usage
+            patterns
           </p>
         </div>
 
@@ -202,9 +240,12 @@ export default function SearchAnalytics() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{analytics.totalSearches.toLocaleString()}</div>
+              <div className="text-2xl font-bold">
+                {analytics.totalSearches.toLocaleString()}
+              </div>
               <p className="text-sm text-muted-foreground">
-                {analytics.averageSearchesPerDay?.toFixed(1) || 0} searches per day
+                {analytics.averageSearchesPerDay?.toFixed(1) || 0} searches per
+                day
               </p>
             </CardContent>
           </Card>
@@ -217,11 +258,13 @@ export default function SearchAnalytics() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${getPerformanceColor(analytics.averageResponseTime)}`}>
+              <div
+                className={`text-2xl font-bold ${getPerformanceColor(analytics.averageResponseTime)}`}
+              >
                 {analytics.averageResponseTime.toFixed(0)}ms
               </div>
               <p className="text-sm text-muted-foreground">
-                Across all search types
+                Across all _search types
               </p>
             </CardContent>
           </Card>
@@ -234,11 +277,13 @@ export default function SearchAnalytics() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${analytics.cacheHitRate > 70 ? 'text-green-600' : 'text-yellow-600'}`}>
+              <div
+                className={`text-2xl font-bold ${analytics.cacheHitRate > 70 ? 'text-green-600' : 'text-yellow-600'}`}
+              >
                 {analytics.cacheHitRate.toFixed(1)}%
               </div>
               <p className="text-sm text-muted-foreground">
-                Search results from cache
+                _Search results from cache
               </p>
             </CardContent>
           </Card>
@@ -251,8 +296,15 @@ export default function SearchAnalytics() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${analytics.failedSearches === 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {((analytics.totalSearches - analytics.failedSearches) / analytics.totalSearches * 100).toFixed(1)}%
+              <div
+                className={`text-2xl font-bold ${analytics.failedSearches === 0 ? 'text-green-600' : 'text-red-600'}`}
+              >
+                {(
+                  ((analytics.totalSearches - analytics.failedSearches) /
+                    analytics.totalSearches) *
+                  100
+                ).toFixed(1)}
+                %
               </div>
               <p className="text-sm text-muted-foreground">
                 {analytics.failedSearches} failed searches
@@ -282,12 +334,12 @@ export default function SearchAnalytics() {
         <TabsContent value="overview" className="space-y-6">
           {analytics && (
             <>
-              {/* Search Trends */}
+              {/* _Search Trends */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Search Trends Over Time</CardTitle>
+                  <CardTitle>_Search Trends Over Time</CardTitle>
                   <CardDescription>
-                    Daily search volume by entity type
+                    Daily _search volume by entity type
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -298,7 +350,12 @@ export default function SearchAnalytics() {
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Line type="monotone" dataKey="count" stroke="#8884d8" strokeWidth={2} />
+                      <Line
+                        type="monotone"
+                        dataKey="count"
+                        stroke="#8884d8"
+                        strokeWidth={2}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -310,11 +367,9 @@ export default function SearchAnalytics() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <PieChart className="w-5 h-5" />
-                      Search Distribution
+                      _Search Distribution
                     </CardTitle>
-                    <CardDescription>
-                      Searches by entity type
-                    </CardDescription>
+                    <CardDescription>Searches by entity type</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
@@ -324,13 +379,18 @@ export default function SearchAnalytics() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ name, percentage }) => `${name}: ${percentage.toFixed(1)}%`}
+                          label={({ name, percentage }) =>
+                            `${name}: ${percentage.toFixed(1)}%`
+                          }
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="count"
                         >
                           {analytics.entityBreakdown.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
                           ))}
                         </Pie>
                         <Tooltip />
@@ -343,7 +403,7 @@ export default function SearchAnalytics() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="w-5 h-5" />
-                      Popular Search Terms
+                      Popular _Search Terms
                     </CardTitle>
                     <CardDescription>
                       Most frequently searched terms
@@ -351,16 +411,23 @@ export default function SearchAnalytics() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {analytics.popularSearchTerms.slice(0, 10).map((term, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {getEntityIcon(term.entityType)}
-                            <span className="font-medium">{term.term}</span>
-                            <Badge variant="outline">{term.entityType}</Badge>
+                      {analytics.popularSearchTerms
+                        .slice(0, 10)
+                        .map((term, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              {getEntityIcon(term.entityType)}
+                              <span className="font-medium">{term.term}</span>
+                              <Badge variant="outline">{term.entityType}</Badge>
+                            </div>
+                            <Badge variant="secondary">
+                              {term.count} searches
+                            </Badge>
                           </div>
-                          <Badge variant="secondary">{term.count} searches</Badge>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -384,19 +451,25 @@ export default function SearchAnalytics() {
                     <div className="space-y-4">
                       <div className="flex justify-between items-center">
                         <span>Average Response Time</span>
-                        <span className={`font-medium ${getPerformanceColor(performanceMetrics.averageResponseTime)}`}>
+                        <span
+                          className={`font-medium ${getPerformanceColor(performanceMetrics.averageResponseTime)}`}
+                        >
                           {performanceMetrics.averageResponseTime.toFixed(0)}ms
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span>Cache Hit Rate</span>
-                        <span className={`font-medium ${performanceMetrics.cacheHitRate > 70 ? 'text-green-600' : 'text-yellow-600'}`}>
+                        <span
+                          className={`font-medium ${performanceMetrics.cacheHitRate > 70 ? 'text-green-600' : 'text-yellow-600'}`}
+                        >
                           {performanceMetrics.cacheHitRate.toFixed(1)}%
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span>Error Rate</span>
-                        <span className={`font-medium ${performanceMetrics.errorRate < 1 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span
+                          className={`font-medium ${performanceMetrics.errorRate < 1 ? 'text-green-600' : 'text-red-600'}`}
+                        >
                           {performanceMetrics.errorRate.toFixed(1)}%
                         </span>
                       </div>
@@ -449,21 +522,25 @@ export default function SearchAnalytics() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {performanceMetrics.slowestQueries.slice(0, 5).map((query, index) => (
-                        <div key={index} className="p-3 border rounded">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <p className="font-medium text-sm truncate">{query.query}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(query.timestamp).toLocaleString()}
-                              </p>
+                      {performanceMetrics.slowestQueries
+                        .slice(0, 5)
+                        .map((query, index) => (
+                          <div key={index} className="p-3 border rounded">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <p className="font-medium text-sm truncate">
+                                  {query.query}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(query.timestamp).toLocaleString()}
+                                </p>
+                              </div>
+                              <Badge variant="destructive">
+                                {query.responseTime.toFixed(0)}ms
+                              </Badge>
                             </div>
-                            <Badge variant="destructive">
-                              {query.responseTime.toFixed(0)}ms
-                            </Badge>
                           </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -471,27 +548,29 @@ export default function SearchAnalytics() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Fastest Queries</CardTitle>
-                    <CardDescription>
-                      Well-optimized queries
-                    </CardDescription>
+                    <CardDescription>Well-optimized queries</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {performanceMetrics.fastestQueries.slice(0, 5).map((query, index) => (
-                        <div key={index} className="p-3 border rounded">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <p className="font-medium text-sm truncate">{query.query}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(query.timestamp).toLocaleString()}
-                              </p>
+                      {performanceMetrics.fastestQueries
+                        .slice(0, 5)
+                        .map((query, index) => (
+                          <div key={index} className="p-3 border rounded">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <p className="font-medium text-sm truncate">
+                                  {query.query}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(query.timestamp).toLocaleString()}
+                                </p>
+                              </div>
+                              <Badge className="bg-green-500">
+                                {query.responseTime.toFixed(0)}ms
+                              </Badge>
                             </div>
-                            <Badge className="bg-green-500">
-                              {query.responseTime.toFixed(0)}ms
-                            </Badge>
                           </div>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -506,9 +585,9 @@ export default function SearchAnalytics() {
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Search Activity</CardTitle>
+                    <CardTitle>_Search Activity</CardTitle>
                     <CardDescription>
-                      User search patterns by hour of day
+                      User _search patterns by hour of day
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -528,20 +607,29 @@ export default function SearchAnalytics() {
                   <CardHeader>
                     <CardTitle>Most Searched Entities</CardTitle>
                     <CardDescription>
-                      Popular search categories
+                      Popular _search categories
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {userBehavior.mostSearchedEntities.map((entity, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            {getEntityIcon(entity.entityType)}
-                            <span className="capitalize">{entity.entityType}</span>
+                      {userBehavior.mostSearchedEntities.map(
+                        (entity, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-2">
+                              {getEntityIcon(entity.entityType)}
+                              <span className="capitalize">
+                                {entity.entityType}
+                              </span>
+                            </div>
+                            <Badge variant="secondary">
+                              {entity.count} searches
+                            </Badge>
                           </div>
-                          <Badge variant="secondary">{entity.count} searches</Badge>
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -550,19 +638,24 @@ export default function SearchAnalytics() {
               <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Favorite Search Terms</CardTitle>
+                    <CardTitle>Favorite _Search Terms</CardTitle>
                     <CardDescription>
                       Most frequently searched terms
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {userBehavior.favoriteSearchTerms.slice(0, 10).map((term, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <span className="font-medium">{term.term}</span>
-                          <Badge variant="outline">{term.count} times</Badge>
-                        </div>
-                      ))}
+                      {userBehavior.favoriteSearchTerms
+                        .slice(0, 10)
+                        .map((term, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between"
+                          >
+                            <span className="font-medium">{term.term}</span>
+                            <Badge variant="outline">{term.count} times</Badge>
+                          </div>
+                        ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -570,16 +663,19 @@ export default function SearchAnalytics() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Top Saved Searches</CardTitle>
-                    <CardDescription>
-                      Most used saved searches
-                    </CardDescription>
+                    <CardDescription>Most used saved searches</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {userBehavior.topSavedSearches.map((search, index) => (
-                        <div key={index} className="flex items-center justify-between">
-                          <span className="font-medium">{search.name}</span>
-                          <Badge variant="outline">{search.useCount} uses</Badge>
+                      {userBehavior.topSavedSearches.map((_search, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between"
+                        >
+                          <span className="font-medium">{_search.name}</span>
+                          <Badge variant="outline">
+                            {_search.useCount} uses
+                          </Badge>
                         </div>
                       ))}
                     </div>

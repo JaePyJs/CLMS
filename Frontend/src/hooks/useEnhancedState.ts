@@ -1,5 +1,15 @@
-import React, { useCallback, useEffect, useRef, useMemo, useState } from 'react';
-import type { EnhancedStateStore, StateSelector, StateUpdater } from '@/store/state-manager';
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+  useState,
+} from 'react';
+import type {
+  EnhancedStateStore,
+  StateSelector,
+  StateUpdater,
+} from '@/store/state-manager';
 
 /**
  * React hooks for the enhanced state management system
@@ -27,9 +37,12 @@ export function useEnhancedState<T>(
     return unsubscribe;
   }, [store]);
 
-  const updateState = useCallback<StateUpdater<T>>((updater) => {
-    store.setState(updater);
-  }, [store]);
+  const updateState = useCallback<StateUpdater<T>>(
+    (updater) => {
+      store.setState(updater);
+    },
+    [store]
+  );
 
   return [state, updateState, store];
 }
@@ -73,7 +86,10 @@ export function useSelector<T, R>(
     });
 
     // Update selector if it has changed
-    if (previousSelectorRef.current !== selector || previousEqualityFnRef.current !== equalityFn) {
+    if (
+      previousSelectorRef.current !== selector ||
+      previousEqualityFnRef.current !== equalityFn
+    ) {
       previousSelectorRef.current = selector;
       previousEqualityFnRef.current = equalityFn;
 
@@ -89,22 +105,6 @@ export function useSelector<T, R>(
   }, [store, selector, equalityFn, selectedState]);
 
   return selectedState;
-}
-
-/**
- * Hook to use multiple selectors from the enhanced state store
- */
-export function useSelectors<T>(
-  store: EnhancedStateStore<T>
-): <R>(selector: StateSelector<T, R>, equalityFn?: (a: R, b: R) => boolean) => R {
-  const useSelectedState = useCallback(<R>(
-    selector: StateSelector<T, R>,
-    equalityFn?: (a: R, b: R) => boolean
-  ) => {
-    return useSelector(store, selector, equalityFn);
-  }, [store]);
-
-  return useSelectedState;
 }
 
 /**
@@ -220,17 +220,21 @@ export function useOptimisticState<T>(
   const [state, setState] = useEnhancedState(store);
   const [optimisticState, setOptimisticState] = React.useState<T>(state);
 
-  const updateWithOptimism = useCallback<StateUpdater<T>>((updater) => {
-    // Apply optimistic update immediately
-    const optimisticUpdate = typeof updater === 'function'
-      ? (updater as (state: T) => T)(optimisticState)
-      : updater;
+  const updateWithOptimism = useCallback<StateUpdater<T>>(
+    (updater) => {
+      // Apply optimistic update immediately
+      const optimisticUpdate =
+        typeof updater === 'function'
+          ? (updater as (state: T) => T)(optimisticState)
+          : updater;
 
-    setOptimisticState(optimisticUpdate);
+      setOptimisticState(optimisticUpdate);
 
-    // Apply actual update
-    setState(updater);
-  }, [optimisticState, setState]);
+      // Apply actual update
+      setState(updater);
+    },
+    [optimisticState, setState]
+  );
 
   const resetOptimistic = useCallback(() => {
     setOptimisticState(state);
@@ -255,20 +259,24 @@ export function useDebouncedState<T>(
   const [debouncedState, setDebouncedState] = React.useState<T>(state);
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-  const debouncedSetState = useCallback<StateUpdater<T>>((updater) => {
-    setState(updater);
+  const debouncedSetState = useCallback<StateUpdater<T>>(
+    (updater) => {
+      setState(updater);
 
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
 
-    timeoutRef.current = setTimeout(() => {
-      setDebouncedState(typeof updater === 'function'
-        ? (updater as (state: T) => T)(store.getState())
-        : updater
-      );
-    }, delay);
-  }, [setState, store, delay]);
+      timeoutRef.current = setTimeout(() => {
+        setDebouncedState(
+          typeof updater === 'function'
+            ? (updater as (state: T) => T)(store.getState())
+            : updater
+        );
+      }, delay);
+    },
+    [setState, store, delay]
+  );
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -301,27 +309,31 @@ export function useUndoRedoState<T>(
   const [history, setHistory] = React.useState<T[]>([state]);
   const [currentIndex, setCurrentIndex] = React.useState(0);
 
-  const updateWithHistory = useCallback<StateUpdater<T>>((updater) => {
-    const newState = typeof updater === 'function'
-      ? (updater as (state: T) => T)(state)
-      : updater;
+  const updateWithHistory = useCallback<StateUpdater<T>>(
+    (updater) => {
+      const newState =
+        typeof updater === 'function'
+          ? (updater as (state: T) => T)(state)
+          : updater;
 
-    setState(newState);
+      setState(newState);
 
-    // Update history
-    const newHistory = history.slice(0, currentIndex + 1);
-    newHistory.push(newState);
+      // Update history
+      const newHistory = history.slice(0, currentIndex + 1);
+      newHistory.push(newState);
 
-    // Limit history size
-    if (newHistory.length > maxHistory) {
-      newHistory.shift();
-      setCurrentIndex(prev => prev - 1);
-    } else {
-      setCurrentIndex(newHistory.length - 1);
-    }
+      // Limit history size
+      if (newHistory.length > maxHistory) {
+        newHistory.shift();
+        setCurrentIndex((prev) => prev - 1);
+      } else {
+        setCurrentIndex(newHistory.length - 1);
+      }
 
-    setHistory(newHistory);
-  }, [state, setState, history, currentIndex, maxHistory]);
+      setHistory(newHistory);
+    },
+    [state, setState, history, currentIndex, maxHistory]
+  );
 
   const undo = useCallback(() => {
     if (currentIndex > 0) {
@@ -367,20 +379,26 @@ export function useValidatedState<T>(
   validator: (state: T) => string | null
 ): [T, StateUpdater<T>, string | null, boolean] {
   const [state, setState] = useEnhancedState(store);
-  const [error, setError] = React.useState<string | null>(() => validator(state));
+  const [error, setError] = React.useState<string | null>(() =>
+    validator(state)
+  );
 
-  const validateAndUpdate = useCallback<StateUpdater<T>>((updater) => {
-    const newState = typeof updater === 'function'
-      ? (updater as (state: T) => T)(state)
-      : updater;
+  const validateAndUpdate = useCallback<StateUpdater<T>>(
+    (updater) => {
+      const newState =
+        typeof updater === 'function'
+          ? (updater as (state: T) => T)(state)
+          : updater;
 
-    const validationError = validator(newState);
-    setError(validationError);
+      const validationError = validator(newState);
+      setError(validationError);
 
-    if (!validationError) {
-      setState(updater);
-    }
-  }, [state, setState, validator]);
+      if (!validationError) {
+        setState(updater);
+      }
+    },
+    [state, setState, validator]
+  );
 
   // Re-validate when state changes externally
   useEffect(() => {
@@ -418,25 +436,35 @@ export function useCachedState<T>(
     return null;
   }, [cacheKey, cacheTimeout]);
 
-  const saveToCache = useCallback((data: T) => {
-    try {
-      localStorage.setItem(cacheKey, JSON.stringify({
-        data,
-        timestamp: Date.now(),
-      }));
-    } catch (error) {
-      console.error('Cache write error:', error);
-    }
-  }, [cacheKey]);
+  const saveToCache = useCallback(
+    (data: T) => {
+      try {
+        localStorage.setItem(
+          cacheKey,
+          JSON.stringify({
+            data,
+            timestamp: Date.now(),
+          })
+        );
+      } catch (error) {
+        console.error('Cache write error:', error);
+      }
+    },
+    [cacheKey]
+  );
 
-  const updateWithCache = useCallback<StateUpdater<T>>((updater) => {
-    const newState = typeof updater === 'function'
-      ? (updater as (state: T) => T)(state)
-      : updater;
+  const updateWithCache = useCallback<StateUpdater<T>>(
+    (updater) => {
+      const newState =
+        typeof updater === 'function'
+          ? (updater as (state: T) => T)(state)
+          : updater;
 
-    setState(newState);
-    saveToCache(newState);
-  }, [state, setState, saveToCache]);
+      setState(newState);
+      saveToCache(newState);
+    },
+    [state, setState, saveToCache]
+  );
 
   const clearCache = useCallback(() => {
     localStorage.removeItem(cacheKey);

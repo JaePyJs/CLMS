@@ -1,67 +1,83 @@
-import React, { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useAuth } from '@/contexts/AuthContext'
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginFormData {
-  username: string
-  password: string
+  username: string;
+  password: string;
+  rememberMe: boolean;
 }
 
 interface LoginFormProps {
-  onLoginSuccess: (user: { id: string; username: string; role: string }) => void
+  onLoginSuccess: () => void;
 }
 
 export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
-  const { login } = useAuth()
+  const { login } = useAuth();
   const [formData, setFormData] = useState<LoginFormData>({
     username: '',
-    password: ''
-  })
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+    password: '',
+    rememberMe: false,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
+    const { name, value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
-    }))
+      [name]: value,
+    }));
     // Clear error when user starts typing
-    if (error) setError('')
-  }
+    if (error) {
+      setError('');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     // Basic validation
     if (!formData.username.trim() || !formData.password.trim()) {
-      setError('Please enter both username and password')
-      return
+      setError('Please enter both username and password');
+      return;
     }
 
-    setIsLoading(true)
-    setError('')
+    setIsLoading(true);
+    setError('');
 
     try {
-      const success = await login(formData.username, formData.password)
-      
+      const success = await login(
+        formData.username,
+        formData.password,
+        formData.rememberMe
+      );
+
       if (success) {
-        // Login was successful, the AuthContext will handle the rest
-        onLoginSuccess({} as any) // We don't need the user data here since AuthContext handles it
+        onLoginSuccess();
+        // Let the App component handle the transition naturally
+        // No need for manual navigation since isAuthenticated will trigger the UI change
       } else {
-        setError('Login failed')
+        setError('Login failed');
       }
-    } catch (err: any) {
-      const errorMessage = 'An error occurred during login'
-      setError(errorMessage)
+    } catch (err) {
+      const errorMessage = 'An error occurred during login';
+      setError(errorMessage);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-background px-4">
@@ -70,7 +86,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
         className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-[0.35] dark:opacity-[0.08] pointer-events-none z-0"
         style={{ backgroundImage: `url('/Background.png')` }}
       />
-      
+
       <Card className="w-full max-w-md relative z-10">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -80,19 +96,23 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
               className="w-16 h-16 object-contain"
             />
           </div>
-          <CardTitle className="text-2xl">Administrator Login</CardTitle>
+          <CardTitle className="text-2xl">Librarian Login</CardTitle>
           <CardDescription>
             Sacred Heart of Jesus Catholic School Library
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4" data-testid="login-form">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4"
+            data-testid="login-form"
+          >
             {error && (
               <Alert variant="destructive" data-testid="error-message">
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>{typeof error === 'string' ? error : String(error)}</AlertDescription>
               </Alert>
             )}
-            
+
             <div className="space-y-2">
               <label htmlFor="username" className="text-sm font-medium">
                 Username
@@ -109,7 +129,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
                 autoComplete="username"
               />
             </div>
-            
+
             <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium">
                 Password
@@ -118,7 +138,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
                 <Input
                   id="password"
                   name="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleInputChange}
                   placeholder="Enter your password"
@@ -134,35 +154,72 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
                   tabIndex={-1}
                 >
                   {showPassword ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
                     </svg>
                   ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
                     </svg>
                   )}
                 </button>
               </div>
             </div>
-            
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="remember-me"
+                checked={formData.rememberMe}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    rememberMe: checked as boolean,
+                  }))
+                }
+              />
+              <label
+                htmlFor="remember-me"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Remember me
+              </label>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
-          
+
           <div className="mt-6 text-center text-sm text-muted-foreground">
             <p>Authorized personnel only</p>
-            <p className="text-xs mt-1">Contact library administrator for access</p>
+            <p className="text-xs mt-1">
+              Contact library administrator for access
+            </p>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

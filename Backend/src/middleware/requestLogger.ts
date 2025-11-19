@@ -13,7 +13,11 @@ declare global {
 }
 
 // Request logging middleware
-export const requestLogger = (req: Request, res: Response, next: NextFunction): void => {
+export const requestLogger = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
   // Generate unique request ID
   req.requestId = uuidv4();
   req.startTime = Date.now();
@@ -23,15 +27,16 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
 
   // Skip logging for health checks and static assets
   const skipPaths = ['/health', '/favicon.ico', '/robots.txt'];
-  const shouldSkip = skipPaths.some(path => req.path.startsWith(path)) ||
-                    req.path.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg)$/);
+  const shouldSkip =
+    skipPaths.some(path => req.path.startsWith(path)) ||
+    req.path.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg)$/);
 
   if (shouldSkip) {
     return next();
   }
 
   // Log incoming request
-  const requestLog: any = {
+  const requestLog: Record<string, unknown> = {
     requestId: req.requestId,
     method: req.method,
     url: req.originalUrl,
@@ -57,9 +62,10 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
 
   // Override res.end to log response
   const originalEnd = res.end;
-  res.end = function(chunk?: any, encoding?: any): Response {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  res.end = function (chunk?: any, encoding?: any): Response {
     const responseTime = Date.now() - req.startTime;
-    
+
     // Log response
     const responseLog = {
       requestId: req.requestId,
@@ -98,7 +104,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
 };
 
 // Sanitize request body to remove sensitive information
-const sanitizeRequestBody = (body: any): any => {
+const sanitizeRequestBody = (body: unknown): Record<string, unknown> => {
   if (!body || typeof body !== 'object') {
     return {};
   }
@@ -123,17 +129,17 @@ const sanitizeRequestBody = (body: any): any => {
 
   const sanitized = { ...body };
 
-  const sanitizeObject = (obj: any): any => {
+  const sanitizeObject = (obj: unknown): unknown => {
     if (Array.isArray(obj)) {
       return obj.map(item => sanitizeObject(item));
     }
 
     if (obj && typeof obj === 'object') {
-      const result: any = {};
-      
+      const result: Record<string, unknown> = {};
+
       for (const [key, value] of Object.entries(obj)) {
         const lowerKey = key.toLowerCase();
-        
+
         if (sensitiveFields.some(field => lowerKey.includes(field))) {
           result[key] = '[REDACTED]';
         } else if (typeof value === 'object') {
@@ -142,18 +148,22 @@ const sanitizeRequestBody = (body: any): any => {
           result[key] = value;
         }
       }
-      
+
       return result;
     }
 
     return obj;
   };
 
-  return sanitizeObject(sanitized);
+  return sanitizeObject(sanitized) as Record<string, unknown>;
 };
 
 // Performance monitoring middleware
-export const performanceLogger = (req: Request, res: Response, next: NextFunction): void => {
+export const performanceLogger = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
   const startTime = process.hrtime.bigint();
 
   res.on('finish', () => {
@@ -171,11 +181,14 @@ export const performanceLogger = (req: Request, res: Response, next: NextFunctio
     };
 
     // Log performance metrics
-    if (duration > 5000) { // 5 seconds
+    if (duration > 5000) {
+      // 5 seconds
       logger.error('Very Slow Request', performanceLog);
-    } else if (duration > 2000) { // 2 seconds
+    } else if (duration > 2000) {
+      // 2 seconds
       logger.warn('Slow Request', performanceLog);
-    } else if (duration > 1000) { // 1 second
+    } else if (duration > 1000) {
+      // 1 second
       logger.info('Moderate Request', performanceLog);
     }
   });
@@ -184,12 +197,17 @@ export const performanceLogger = (req: Request, res: Response, next: NextFunctio
 };
 
 // Request correlation middleware for distributed tracing
-export const correlationLogger = (req: Request, res: Response, next: NextFunction): void => {
+export const correlationLogger = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
   // Check for existing correlation ID from upstream services
-  const correlationId = req.get('X-Correlation-ID') || 
-                       req.get('X-Request-ID') || 
-                       req.requestId || 
-                       uuidv4();
+  const correlationId =
+    req.get('X-Correlation-ID') ||
+    req.get('X-Request-ID') ||
+    req.requestId ||
+    uuidv4();
 
   // Set correlation ID
   req.requestId = correlationId;
@@ -205,7 +223,11 @@ export const correlationLogger = (req: Request, res: Response, next: NextFunctio
 };
 
 // Security logging middleware
-export const securityLogger = (req: Request, res: Response, next: NextFunction): void => {
+export const securityLogger = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void => {
   const securityLog = {
     requestId: req.requestId,
     ip: req.ip,
@@ -217,15 +239,17 @@ export const securityLogger = (req: Request, res: Response, next: NextFunction):
 
   // Log suspicious patterns
   const suspiciousPatterns = [
-    /\.\./,  // Directory traversal
-    /<script/i,  // XSS attempts
-    /union.*select/i,  // SQL injection
-    /javascript:/i,  // JavaScript injection
-    /eval\(/i,  // Code injection
+    /\.\./, // Directory traversal
+    /<script/i, // XSS attempts
+    /union.*select/i, // SQL injection
+    /javascript:/i, // JavaScript injection
+    /eval\(/i, // Code injection
   ];
 
   const urlAndQuery = req.originalUrl + JSON.stringify(req.body || {});
-  const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(urlAndQuery));
+  const isSuspicious = suspiciousPatterns.some(pattern =>
+    pattern.test(urlAndQuery),
+  );
 
   if (isSuspicious) {
     logger.warn('Suspicious Request Detected', {

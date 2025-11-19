@@ -6,11 +6,19 @@ import React, {
   useRef,
   memo,
   Profiler,
+  type ComponentType,
+  type ReactNode,
+  type ProfilerOnRenderCallback,
 } from 'react';
-import type { ComponentType, ReactNode, ProfilerOnRenderCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { AlertCircle, Activity, BarChart3 } from 'lucide-react';
 
 // Performance monitoring types
@@ -36,7 +44,7 @@ export const createMemoizedComponent = <P extends object>(
     // Custom comparison function for optimization
     const keys = Object.keys(prevProps) as (keyof P)[];
 
-    return keys.every(key => {
+    return keys.every((key) => {
       const prev = prevProps[key];
       const next = nextProps[key];
 
@@ -46,12 +54,18 @@ export const createMemoizedComponent = <P extends object>(
       }
 
       if (Array.isArray(prev) && Array.isArray(next)) {
-        if (prev.length !== next.length) return false;
+        if (prev.length !== next.length) {
+          return false;
+        }
         return prev.every((item, index) => item === next[index]);
       }
 
-      if (typeof prev === 'object' && prev !== null &&
-          typeof next === 'object' && next !== null) {
+      if (
+        typeof prev === 'object' &&
+        prev !== null &&
+        typeof next === 'object' &&
+        next !== null
+      ) {
         return JSON.stringify(prev) === JSON.stringify(next);
       }
 
@@ -94,9 +108,10 @@ export const withPerformanceMonitoring = <P extends object>(
       const renderTime = actualDuration;
       renderStartTime.current = Date.now();
 
-      setMetrics(prev => {
+      setMetrics((prev) => {
         const newRenderCount = prev.renderCount + 1;
-        const totalTime = prev.averageRenderTime * prev.renderCount + renderTime;
+        const totalTime =
+          prev.averageRenderTime * prev.renderCount + renderTime;
         const newAverage = totalTime / newRenderCount;
 
         return {
@@ -112,10 +127,14 @@ export const withPerformanceMonitoring = <P extends object>(
       // Log performance warnings in development
       if (process.env.NODE_ENV === 'development') {
         if (renderTime > 16) {
-          console.warn(`⚠️ Slow render detected in ${name}: ${renderTime.toFixed(2)}ms`);
+          console.warn(
+            `⚠️ Slow render detected in ${name}: ${renderTime.toFixed(2)}ms`
+          );
         }
         if (renderTime > 100) {
-          console.error(`🚨 Very slow render in ${name}: ${renderTime.toFixed(2)}ms`);
+          console.error(
+            `🚨 Very slow render in ${name}: ${renderTime.toFixed(2)}ms`
+          );
         }
       }
     };
@@ -125,7 +144,8 @@ export const withPerformanceMonitoring = <P extends object>(
         <Component {...props} />
         {process.env.NODE_ENV === 'development' && (
           <div className="fixed bottom-4 right-4 bg-black/80 text-white p-2 rounded text-xs">
-            {name}: {metrics.renderTime.toFixed(2)}ms ({metrics.renderCount} renders)
+            {name}: {metrics.renderTime.toFixed(2)}ms ({metrics.renderCount}{' '}
+            renders)
           </div>
         )}
       </Profiler>
@@ -158,30 +178,30 @@ export const VirtualizedList = <T,>({
   className = '',
 }: VirtualizedListProps<T>) => {
   const [scrollTop, setScrollTop] = useState(0);
-  
+
   const containerHeight = typeof height === 'number' ? height : 400;
   const itemSize = typeof itemHeight === 'function' ? 50 : itemHeight;
-  
+
   const startIndex = Math.floor(scrollTop / itemSize);
   const endIndex = Math.min(
     startIndex + Math.ceil(containerHeight / itemSize) + overscanCount,
     items.length
   );
-  
+
   const visibleItems = items.slice(startIndex, endIndex);
-  
+
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     setScrollTop(e.currentTarget.scrollTop);
   };
 
   return (
-    <div 
-      className={className} 
-      style={{ 
-        height: containerHeight, 
-        width, 
+    <div
+      className={className}
+      style={{
+        height: containerHeight,
+        width,
         overflow: 'auto',
-        position: 'relative'
+        position: 'relative',
       }}
       onScroll={handleScroll}
     >
@@ -213,7 +233,7 @@ export const useExpensiveCalculation = <T,>(
 };
 
 // Stable callback hook
-export const useStableCallback = <T extends (...args: any[]) => any>(
+export const useStableCallback = <T extends (...args: never[]) => unknown>(
   callback: T,
   dependencies: React.DependencyList
 ): T => {
@@ -223,7 +243,7 @@ export const useStableCallback = <T extends (...args: any[]) => any>(
 // Performance optimization utilities
 export const performanceUtils = {
   // Debounce function for expensive operations
-  debounce: <T extends (...args: any[]) => any>(
+  debounce: <T extends (...args: never[]) => unknown>(
     func: T,
     wait: number
   ): ((...args: Parameters<T>) => void) => {
@@ -235,7 +255,7 @@ export const performanceUtils = {
   },
 
   // Throttle function for frequent operations
-  throttle: <T extends (...args: any[]) => any>(
+  throttle: <T extends (...args: never[]) => unknown>(
     func: T,
     limit: number
   ): ((...args: Parameters<T>) => void) => {
@@ -244,13 +264,13 @@ export const performanceUtils = {
       if (!inThrottle) {
         func(...args);
         inThrottle = true;
-        setTimeout(() => inThrottle = false, limit);
+        setTimeout(() => (inThrottle = false), limit);
       }
     };
   },
 
   // Memoize expensive computations
-  memoize: <T extends (...args: any[]) => any>(func: T): T => {
+  memoize: <T extends (...args: never[]) => unknown>(func: T): T => {
     const cache = new Map();
     return ((...args: Parameters<T>) => {
       const key = JSON.stringify(args);
@@ -266,34 +286,56 @@ export const performanceUtils = {
 
 // Performance Dashboard Component
 export const PerformanceDashboard: React.FC = () => {
-  const [performanceData, setPerformanceData] = useState<ComponentPerformanceData>({});
+  const [performanceData, setPerformanceData] =
+    useState<ComponentPerformanceData>({});
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     // Listen for custom performance events
     const handlePerformanceUpdate = (event: CustomEvent) => {
-      setPerformanceData(prev => ({
+      setPerformanceData((prev) => ({
         ...prev,
         [event.detail.componentName]: event.detail.metrics,
       }));
     };
 
-    window.addEventListener('performance-update', handlePerformanceUpdate as EventListener);
+    window.addEventListener(
+      'performance-update',
+      handlePerformanceUpdate as EventListener
+    );
 
     return () => {
-      window.removeEventListener('performance-update', handlePerformanceUpdate as EventListener);
+      window.removeEventListener(
+        'performance-update',
+        handlePerformanceUpdate as EventListener
+      );
     };
   }, []);
 
-  const getPerformanceGrade = (averageTime: number): { grade: string; color: string } => {
-    if (averageTime < 10) return { grade: 'A', color: 'text-green-600' };
-    if (averageTime < 20) return { grade: 'B', color: 'text-yellow-600' };
-    if (averageTime < 50) return { grade: 'C', color: 'text-orange-600' };
+  const getPerformanceGrade = (
+    averageTime: number
+  ): { grade: string; color: string } => {
+    if (averageTime < 10) {
+      return { grade: 'A', color: 'text-green-600' };
+    }
+    if (averageTime < 20) {
+      return { grade: 'B', color: 'text-yellow-600' };
+    }
+    if (averageTime < 50) {
+      return { grade: 'C', color: 'text-orange-600' };
+    }
     return { grade: 'D', color: 'text-red-600' };
   };
 
-  const totalRenders = Object.values(performanceData).reduce((sum, metrics) => sum + metrics.renderCount, 0);
-  const averageRenderTime = Object.values(performanceData).reduce((sum, metrics) => sum + metrics.averageRenderTime, 0) / Object.keys(performanceData).length || 0;
+  const totalRenders = Object.values(performanceData).reduce(
+    (sum, metrics) => sum + metrics.renderCount,
+    0
+  );
+  const averageRenderTime =
+    Object.values(performanceData).reduce(
+      (sum, metrics) => sum + metrics.averageRenderTime,
+      0
+    ) / Object.keys(performanceData).length || 0;
 
   if (!isVisible) {
     return (
@@ -334,11 +376,15 @@ export const PerformanceDashboard: React.FC = () => {
         {/* Summary Stats */}
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded">
-            <div className="text-xs text-slate-600 dark:text-slate-400">Total Renders</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400">
+              Total Renders
+            </div>
             <div className="text-lg font-semibold">{totalRenders}</div>
           </div>
           <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded">
-            <div className="text-xs text-slate-600 dark:text-slate-400">Avg Time</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400">
+              Avg Time
+            </div>
             <div className="text-lg font-semibold">
               {averageRenderTime.toFixed(1)}ms
             </div>
@@ -353,7 +399,9 @@ export const PerformanceDashboard: React.FC = () => {
             return (
               <div key={componentName} className="border rounded p-2">
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium truncate">{componentName}</span>
+                  <span className="text-sm font-medium truncate">
+                    {componentName}
+                  </span>
                   <Badge variant="outline" className={grade.color}>
                     {grade.grade}
                   </Badge>
@@ -385,7 +433,9 @@ export const PerformanceDashboard: React.FC = () => {
 
         {/* Performance Tips */}
         <div className="border-t pt-2">
-          <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Tips:</div>
+          <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">
+            Tips:
+          </div>
           <ul className="text-xs space-y-1 text-slate-500 dark:text-slate-400">
             <li>• Use React.memo for pure components</li>
             <li>• Memoize expensive calculations with useMemo</li>
@@ -403,41 +453,47 @@ export const PerformanceDashboard: React.FC = () => {
 export const usePerformanceOptimization = () => {
   const [metrics, setMetrics] = useState<ComponentPerformanceData>({});
 
-  const recordPerformance = useCallback((componentName: string, renderTime: number) => {
-    setMetrics(prev => {
-      const existing = prev[componentName] || {
-        renderTime: 0,
-        renderCount: 0,
-        lastRenderTime: 0,
-        averageRenderTime: 0,
-        slowestRender: 0,
-        fastestRender: Infinity,
-      };
+  const recordPerformance = useCallback(
+    (componentName: string, renderTime: number) => {
+      setMetrics((prev) => {
+        const existing = prev[componentName] || {
+          renderTime: 0,
+          renderCount: 0,
+          lastRenderTime: 0,
+          averageRenderTime: 0,
+          slowestRender: 0,
+          fastestRender: Infinity,
+        };
 
-      const newRenderCount = existing.renderCount + 1;
-      const totalTime = existing.averageRenderTime * existing.renderCount + renderTime;
-      const newAverage = totalTime / newRenderCount;
+        const newRenderCount = existing.renderCount + 1;
+        const totalTime =
+          existing.averageRenderTime * existing.renderCount + renderTime;
+        const newAverage = totalTime / newRenderCount;
 
-      const updated = {
-        renderTime,
-        renderCount: newRenderCount,
-        lastRenderTime: renderTime,
-        averageRenderTime: newAverage,
-        slowestRender: Math.max(existing.slowestRender, renderTime),
-        fastestRender: Math.min(existing.fastestRender, renderTime),
-      };
+        const updated = {
+          renderTime,
+          renderCount: newRenderCount,
+          lastRenderTime: renderTime,
+          averageRenderTime: newAverage,
+          slowestRender: Math.max(existing.slowestRender, renderTime),
+          fastestRender: Math.min(existing.fastestRender, renderTime),
+        };
 
-      // Emit custom event for dashboard
-      window.dispatchEvent(new CustomEvent('performance-update', {
-        detail: { componentName, metrics: updated }
-      }));
+        // Emit custom event for dashboard
+        window.dispatchEvent(
+          new CustomEvent('performance-update', {
+            detail: { componentName, metrics: updated },
+          })
+        );
 
-      return {
-        ...prev,
-        [componentName]: updated,
-      };
-    });
-  }, []);
+        return {
+          ...prev,
+          [componentName]: updated,
+        };
+      });
+    },
+    []
+  );
 
   return { metrics, recordPerformance };
 };

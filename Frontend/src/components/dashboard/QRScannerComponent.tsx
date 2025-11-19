@@ -1,14 +1,36 @@
 import { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Camera, CameraOff, QrCode, RefreshCw, CheckCircle, Zap, Settings, Activity } from 'lucide-react';
+import {
+  Camera,
+  CameraOff,
+  QrCode,
+  RefreshCw,
+  CheckCircle,
+  Zap,
+  Settings,
+  Activity,
+} from 'lucide-react';
 import { BrowserMultiFormatReader, Result } from '@zxing/library';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 interface QRScanResult {
   text: string;
@@ -38,7 +60,7 @@ export default function QRScannerComponent({
   onScanError,
   enabled = true,
   showSettings = true,
-  className = ""
+  className = '',
 }: QRScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [hasCamera, setHasCamera] = useState(false);
@@ -104,7 +126,9 @@ export default function QRScannerComponent({
   const checkCameraAvailability = async () => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      const videoDevices = devices.filter(
+        (device) => device.kind === 'videoinput'
+      );
 
       setCameras(videoDevices);
       setHasCamera(videoDevices.length > 0);
@@ -151,7 +175,8 @@ export default function QRScannerComponent({
         startContinuousScanning();
       } else {
         // Single scan mode
-        codeReaderRef.current.decodeOnceFromVideoDevice(selectedCamera, 'video')
+        codeReaderRef.current
+          .decodeOnceFromVideoDevice(selectedCamera, 'video')
           .then(handleQRResult)
           .catch(handleQRScanError);
       }
@@ -169,7 +194,7 @@ export default function QRScannerComponent({
 
       // Stop video stream
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
 
@@ -191,10 +216,14 @@ export default function QRScannerComponent({
   };
 
   const startContinuousScanning = () => {
-    if (!codeReaderRef.current || !isScanning) return;
+    if (!codeReaderRef.current || !isScanning) {
+      return;
+    }
 
     const scan = async () => {
-      if (!isScanning) return;
+      if (!isScanning) {
+        return;
+      }
 
       try {
         // Check if enough time has passed since last scan
@@ -205,7 +234,10 @@ export default function QRScannerComponent({
         }
 
         if (videoRef.current && codeReaderRef.current) {
-          const result = await codeReaderRef.current.decodeOnceFromVideoDevice(selectedCamera, 'video');
+          const result = await codeReaderRef.current.decodeOnceFromVideoDevice(
+            selectedCamera,
+            'video'
+          );
           if (result) {
             handleQRResult(result);
           }
@@ -239,11 +271,13 @@ export default function QRScannerComponent({
 
       // Update statistics
       const scanTime = now - (statistics.lastScanTime?.getTime() || now);
-      setStatistics(prev => ({
+      setStatistics((prev) => ({
         totalScans: prev.totalScans + 1,
         successfulScans: prev.successfulScans + 1,
         failedScans: prev.failedScans,
-        averageScanTime: (prev.averageScanTime * prev.totalScans + scanTime) / (prev.totalScans + 1),
+        averageScanTime:
+          (prev.averageScanTime * prev.totalScans + scanTime) /
+          (prev.totalScans + 1),
         lastScanTime: new Date(),
       }));
 
@@ -272,16 +306,16 @@ export default function QRScannerComponent({
     }
   };
 
-  const handleQRScanError = (error: any) => {
+  const handleQRScanError = (error: unknown) => {
     console.error('QR scan error:', error);
 
-    setStatistics(prev => ({
+    setStatistics((prev) => ({
       ...prev,
       totalScans: prev.totalScans + 1,
       failedScans: prev.failedScans + 1,
     }));
 
-    const errorMessage = error?.message || 'Failed to scan QR code';
+    const errorMessage = getErrorMessage(error, 'Failed to scan QR code');
     onScanError?.(errorMessage);
 
     // Don't show error toast for continuous scanning errors
@@ -293,7 +327,11 @@ export default function QRScannerComponent({
   const playBeep = () => {
     try {
       // Create audio context for beep
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext;
+      const audioContext = new AudioContextClass();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
@@ -304,7 +342,10 @@ export default function QRScannerComponent({
       oscillator.type = 'sine';
 
       gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.01,
+        audioContext.currentTime + 0.1
+      );
 
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.1);
@@ -318,12 +359,20 @@ export default function QRScannerComponent({
       if (streamRef.current) {
         const track = streamRef.current.getVideoTracks()[0];
         if (track) {
-          const capabilities = track.getCapabilities() as any;
+          const capabilities =
+            track.getCapabilities() as MediaTrackCapabilities & {
+              torch?: boolean;
+            };
           if (capabilities.torch) {
             await track.applyConstraints({
-              advanced: [{ torch: !settings.torchEnabled } as any]
+              advanced: [
+                { torch: !settings.torchEnabled },
+              ] as unknown as MediaTrackConstraintSet[],
             } as MediaTrackConstraints);
-            setSettings(prev => ({ ...prev, torchEnabled: !prev.torchEnabled }));
+            setSettings((prev) => ({
+              ...prev,
+              torchEnabled: !prev.torchEnabled,
+            }));
           } else {
             toast.error('Torch not supported on this device');
           }
@@ -390,7 +439,8 @@ export default function QRScannerComponent({
                     <SelectItem key={camera.deviceId} value={camera.deviceId}>
                       <div className="flex items-center">
                         <Camera className="h-4 w-4 mr-2" />
-                        {camera.label || `Camera ${camera.deviceId.slice(0, 8)}`}
+                        {camera.label ||
+                          `Camera ${camera.deviceId.slice(0, 8)}`}
                       </div>
                     </SelectItem>
                   ))}
@@ -425,8 +475,8 @@ export default function QRScannerComponent({
 
             {/* Status Indicator */}
             <div className="absolute top-2 right-2">
-              <Badge variant={isScanning ? "default" : "secondary"}>
-                {isScanning ? "Scanning" : "Ready"}
+              <Badge variant={isScanning ? 'default' : 'secondary'}>
+                {isScanning ? 'Scanning' : 'Ready'}
               </Badge>
             </div>
           </div>
@@ -458,7 +508,7 @@ export default function QRScannerComponent({
                 disabled={!streamRef.current}
               >
                 <Zap className="h-4 w-4 mr-2" />
-                {settings.torchEnabled ? "Torch Off" : "Torch On"}
+                {settings.torchEnabled ? 'Torch Off' : 'Torch On'}
               </Button>
             )}
           </div>
@@ -468,7 +518,8 @@ export default function QRScannerComponent({
               <CameraOff className="h-12 w-12 mx-auto text-gray-400 mb-4" />
               <p className="text-gray-600">No camera detected</p>
               <p className="text-sm text-gray-500">
-                Please ensure you have a camera connected and have granted camera permissions
+                Please ensure you have a camera connected and have granted
+                camera permissions
               </p>
             </div>
           )}
@@ -494,7 +545,9 @@ export default function QRScannerComponent({
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Timestamp:</span>
-                    <span className="text-sm">{lastResult.timestamp.toLocaleTimeString()}</span>
+                    <span className="text-sm">
+                      {lastResult.timestamp.toLocaleTimeString()}
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -518,7 +571,9 @@ export default function QRScannerComponent({
               <Switch
                 id="auto-start"
                 checked={settings.autoStart}
-                onCheckedChange={(checked: boolean) => setSettings(prev => ({ ...prev, autoStart: checked }))}
+                onCheckedChange={(checked: boolean) =>
+                  setSettings((prev) => ({ ...prev, autoStart: checked }))
+                }
               />
             </div>
 
@@ -528,7 +583,7 @@ export default function QRScannerComponent({
                 id="continuous"
                 checked={settings.continuous}
                 onCheckedChange={(checked: boolean) => {
-                  setSettings(prev => ({ ...prev, continuous: checked }));
+                  setSettings((prev) => ({ ...prev, continuous: checked }));
                   if (checked && isScanning) {
                     startContinuousScanning();
                   }
@@ -541,7 +596,9 @@ export default function QRScannerComponent({
               <Switch
                 id="beep-on-scan"
                 checked={settings.beepOnScan}
-                onCheckedChange={(checked: boolean) => setSettings(prev => ({ ...prev, beepOnScan: checked }))}
+                onCheckedChange={(checked: boolean) =>
+                  setSettings((prev) => ({ ...prev, beepOnScan: checked }))
+                }
               />
             </div>
 
@@ -550,7 +607,9 @@ export default function QRScannerComponent({
               <Switch
                 id="vibrate-on-scan"
                 checked={settings.vibrateOnScan}
-                onCheckedChange={(checked: boolean) => setSettings(prev => ({ ...prev, vibrateOnScan: checked }))}
+                onCheckedChange={(checked: boolean) =>
+                  setSettings((prev) => ({ ...prev, vibrateOnScan: checked }))
+                }
               />
             </div>
 
@@ -559,7 +618,9 @@ export default function QRScannerComponent({
               <Switch
                 id="show-overlay"
                 checked={settings.showOverlay}
-                onCheckedChange={(checked: boolean) => setSettings(prev => ({ ...prev, showOverlay: checked }))}
+                onCheckedChange={(checked: boolean) =>
+                  setSettings((prev) => ({ ...prev, showOverlay: checked }))
+                }
               />
             </div>
 
@@ -568,7 +629,9 @@ export default function QRScannerComponent({
               <Switch
                 id="max-resolution"
                 checked={settings.maxResolutions}
-                onCheckedChange={(checked: boolean) => setSettings(prev => ({ ...prev, maxResolutions: checked }))}
+                onCheckedChange={(checked: boolean) =>
+                  setSettings((prev) => ({ ...prev, maxResolutions: checked }))
+                }
               />
             </div>
 
@@ -578,7 +641,12 @@ export default function QRScannerComponent({
                 id="scan-delay"
                 type="number"
                 value={settings.scanDelay}
-                onChange={(e) => setSettings(prev => ({ ...prev, scanDelay: parseInt(e.target.value) || 1000 }))}
+                onChange={(e) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    scanDelay: parseInt(e.target.value) || 1000,
+                  }))
+                }
                 min="100"
                 max="5000"
                 step="100"
@@ -609,15 +677,21 @@ export default function QRScannerComponent({
               <p className="text-sm text-gray-600">Total Scans</p>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{statistics.successfulScans}</div>
+              <div className="text-2xl font-bold text-green-600">
+                {statistics.successfulScans}
+              </div>
               <p className="text-sm text-gray-600">Successful</p>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{statistics.failedScans}</div>
+              <div className="text-2xl font-bold text-red-600">
+                {statistics.failedScans}
+              </div>
               <p className="text-sm text-gray-600">Failed</p>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold">{statistics.averageScanTime.toFixed(0)}ms</div>
+              <div className="text-2xl font-bold">
+                {statistics.averageScanTime.toFixed(0)}ms
+              </div>
               <p className="text-sm text-gray-600">Avg Time</p>
             </div>
           </div>

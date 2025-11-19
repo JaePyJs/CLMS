@@ -1,14 +1,26 @@
-import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useMobileOptimization, useTouchOptimization, getResponsiveClasses } from '@/hooks/useMobileOptimization'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useEndSession } from '@/hooks/api-hooks'
-import { useAppStore } from '@/store/useAppStore'
-import { offlineActions } from '@/lib/offline-queue'
+import { useState, useEffect } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  useMobileOptimization,
+  useTouchOptimization,
+  getResponsiveClasses,
+} from '@/hooks/useMobileOptimization';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { useEndSession } from '@/hooks/api-hooks';
+import { useAppStore } from '@/store/useAppStore';
+import { offlineActions } from '@/lib/offline-queue';
 
 import {
   Monitor,
@@ -22,27 +34,28 @@ import {
   Clock,
   User,
   Settings,
-  WifiOff
-} from 'lucide-react'
+  WifiOff,
+  History,
+} from 'lucide-react';
 
 interface EquipmentItem {
-  id: string
-  type: 'computer' | 'gaming' | 'avr'
-  name: string
-  status: 'available' | 'in-use' | 'maintenance' | 'offline'
+  id: string;
+  type: 'computer' | 'gaming' | 'avr';
+  name: string;
+  status: 'available' | 'in-use' | 'maintenance' | 'offline';
   currentSession?: {
-    id: string
-    studentId: string
-    studentName: string
-    startTime: Date
-    timeLimitMinutes: number
-    remainingMinutes: number
-  }
+    id: string;
+    studentId: string;
+    studentName: string;
+    startTime: Date;
+    timeLimitMinutes: number;
+    remainingMinutes: number;
+  };
   specs?: {
-    cpu?: string
-    ram?: string
-    gpu?: string
-  }
+    cpu?: string;
+    ram?: string;
+    gpu?: string;
+  };
 }
 
 export function EquipmentDashboard() {
@@ -51,9 +64,54 @@ export function EquipmentDashboard() {
   const { isMobile } = mobileState;
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
 
-  const [selectedFilter, setSelectedFilter] = useState<string>('all')
-  const { equipment: equipmentData, isOnline } = useAppStore()
-  const { mutate: endSession } = useEndSession()
+  const [selectedFilter, setSelectedFilter] = useState<string>('all');
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [devStudentId, setDevStudentId] = useState<string>('S-0001');
+  const [devStudentName, setDevStudentName] = useState<string>('Alice Example');
+  const [devGradeLevel, setDevGradeLevel] = useState<string>('Grade 5');
+  const [devHistory, setDevHistory] = useState<Record<string, { studentName: string; startTime: Date; endTime: Date; durationMinutes: number }[]>>({});
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    try {
+      const raw = localStorage.getItem('clms-equipment-dev-history');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const revive = Object.fromEntries(Object.entries(parsed).map(([k, arr]: any) => [k, (arr || []).map((h: any) => ({ studentName: String(h.studentName || ''), startTime: new Date(h.startTime), endTime: new Date(h.endTime), durationMinutes: Number(h.durationMinutes || 0) }))]));
+        setDevHistory(revive as any);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    try {
+      const serializable = Object.fromEntries(Object.entries(devHistory).map(([k, arr]) => [k, (arr || []).map((h) => ({ ...h, startTime: new Date(h.startTime).toISOString(), endTime: new Date(h.endTime).toISOString() }))]));
+      localStorage.setItem('clms-equipment-dev-history', JSON.stringify(serializable));
+    } catch {}
+  }, [devHistory]);
+  const { equipment: equipmentData, isOnline } = useAppStore();
+  const setEquipment = useAppStore((state) => state.setEquipment);
+  const { mutate: endSession } = useEndSession();
+
+  useEffect(() => {
+    const isDevApp = String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development') || import.meta.env.DEV;
+    if (!isDevApp) return;
+    const interval = setInterval(() => {
+      setEquipment((prev: any[]) =>
+        (prev || []).map((e: any) => {
+          const cs = e.currentSession;
+          if (e.status === 'in-use' && cs && typeof cs.remainingMinutes === 'number') {
+            const next = Math.max(0, Number(cs.remainingMinutes) - 1);
+            if (next === 0) {
+              return { ...e, status: 'available', currentSession: undefined };
+            }
+            return { ...e, currentSession: { ...cs, remainingMinutes: next } };
+          }
+          return e;
+        })
+      );
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [setEquipment]);
 
   // Mock equipment data for now
   const mockEquipment: EquipmentItem[] = [
@@ -68,16 +126,16 @@ export function EquipmentDashboard() {
         studentName: 'Juan Dela Cruz',
         startTime: new Date(Date.now() - 25 * 60000), // 25 minutes ago
         timeLimitMinutes: 30,
-        remainingMinutes: 5
+        remainingMinutes: 5,
       },
-      specs: { cpu: 'Intel i5', ram: '8GB', gpu: 'Integrated' }
+      specs: { cpu: 'Intel i5', ram: '8GB', gpu: 'Integrated' },
     },
     {
       id: 'PC02',
       type: 'computer',
       name: 'Computer Station 2',
       status: 'available',
-      specs: { cpu: 'Intel i5', ram: '8GB', gpu: 'Integrated' }
+      specs: { cpu: 'Intel i5', ram: '8GB', gpu: 'Integrated' },
     },
     {
       id: 'PS01',
@@ -90,88 +148,173 @@ export function EquipmentDashboard() {
         studentName: 'Maria Santos',
         startTime: new Date(Date.now() - 40 * 60000), // 40 minutes ago
         timeLimitMinutes: 45,
-        remainingMinutes: 5
-      }
+        remainingMinutes: 5,
+      },
     },
     {
       id: 'PS02',
       type: 'gaming',
       name: 'PlayStation 2',
-      status: 'available'
+      status: 'available',
     },
     {
       id: 'AVR01',
       type: 'avr',
       name: 'VR Station 1',
-      status: 'maintenance'
-    }
-  ]
+      status: 'maintenance',
+    },
+  ];
 
-  const equipment = equipmentData.length > 0 ? equipmentData : mockEquipment
+  const equipment = Array.isArray(equipmentData) && equipmentData.length > 0 ? equipmentData : mockEquipment;
 
   // Filter equipment based on selected filter
-  const filteredEquipment = equipment.filter(item => {
-    if (selectedFilter === 'all') return true
-    if (selectedFilter === 'available') return item.status === 'available'
-    if (selectedFilter === 'in-use') return item.status === 'in-use'
-    if (selectedFilter === 'computers') return item.type === 'computer'
-    if (selectedFilter === 'gaming') return item.type === 'gaming'
-    if (selectedFilter === 'avr') return item.type === 'avr'
-    return true
-  })
+  const filteredEquipment = (Array.isArray(equipment) ? equipment : []).filter((item) => {
+    if (selectedFilter === 'all') {
+      return true;
+    }
+    if (selectedFilter === 'available') {
+      return item.status === 'available';
+    }
+    if (selectedFilter === 'in-use') {
+      return item.status === 'in-use';
+    }
+    if (selectedFilter === 'computers') {
+      return item.type === 'computer';
+    }
+    if (selectedFilter === 'gaming') {
+      return item.type === 'gaming';
+    }
+    if (selectedFilter === 'avr') {
+      return item.type === 'avr';
+    }
+    return true;
+  });
 
   const handleEndSession = async (sessionId: string) => {
-    if (isOnline) {
-      endSession(sessionId)
-    } else {
-      await offlineActions.endSession(sessionId)
+    const isDevApp = String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+    if (isDevApp) {
+      const endedItem = equipment.find((i) => i.currentSession && i.currentSession.id === sessionId);
+      if (endedItem && endedItem.currentSession) {
+        const end = new Date();
+        const start = endedItem.currentSession.startTime;
+        const duration = Math.max(1, Math.round((end.getTime() - new Date(start).getTime()) / 60000));
+        setDevHistory((prev) => {
+          const arr = prev[endedItem.id] ? [...prev[endedItem.id]] : [];
+          arr.unshift({ studentName: endedItem.currentSession!.studentName, startTime: new Date(start), endTime: end, durationMinutes: duration });
+          return { ...prev, [endedItem.id]: arr.slice(0, 10) };
+        });
+      }
+      const updated = equipment.map((item) => (item.currentSession && item.currentSession.id === sessionId ? { ...item, status: 'available', currentSession: undefined } : item));
+      setEquipment(updated as any);
+      return;
     }
-  }
+    if (isOnline) {
+      endSession(sessionId);
+    } else {
+      await offlineActions.endSession(sessionId);
+    }
+  };
+
+  const handleEndAllSessions = () => {
+    const isDevApp = String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+    if (!isDevApp) return;
+    const now = new Date();
+    setEquipment(prev => (prev || []).map((item) => {
+      const cs = item.currentSession;
+      if (item.status === 'in-use' && cs) {
+        const duration = Math.max(1, Math.round((now.getTime() - new Date(cs.startTime).getTime()) / 60000));
+        setDevHistory((prevHist) => {
+          const arr = prevHist[item.id] ? [...prevHist[item.id]] : [];
+          arr.unshift({ studentName: cs.studentName, startTime: new Date(cs.startTime), endTime: now, durationMinutes: duration });
+          return { ...prevHist, [item.id]: arr.slice(0, 10) };
+        });
+        return { ...item, status: 'available', currentSession: undefined };
+      }
+      return item;
+    }));
+  };
+
+  const getDevTimeLimitByGrade = (grade: string): number => {
+    const g = (grade || '').toLowerCase();
+    if (g.includes('grade 1') || g.includes('grade 2') || g.includes('grade 3')) return 15;
+    if (g.includes('grade 4') || g.includes('grade 5') || g.includes('grade 6')) return 30;
+    if (g.includes('grade 7') || g.includes('grade 8') || g.includes('grade 9')) return 45;
+    if (g.includes('grade 10') || g.includes('grade 11') || g.includes('grade 12')) return 60;
+    return 30;
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'available': return 'bg-green-500 dark:bg-green-400'
-      case 'in-use': return 'bg-blue-500 dark:bg-blue-400'
-      case 'maintenance': return 'bg-yellow-500'
-      case 'offline': return 'bg-red-500'
-      default: return 'bg-gray-500'
+      case 'available':
+        return 'bg-green-500 dark:bg-green-400';
+      case 'in-use':
+        return 'bg-blue-500 dark:bg-blue-400';
+      case 'maintenance':
+        return 'bg-yellow-500';
+      case 'offline':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
     }
-  }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'available': return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Available</Badge>
-      case 'in-use': return <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">In Use</Badge>
-      case 'maintenance': return <Badge variant="secondary">Maintenance</Badge>
-      case 'offline': return <Badge variant="destructive">Offline</Badge>
-      default: return <Badge variant="outline">Unknown</Badge>
+      case 'available':
+        return (
+          <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+            Available
+          </Badge>
+        );
+      case 'in-use':
+        return (
+          <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">
+            In Use
+          </Badge>
+        );
+      case 'maintenance':
+        return <Badge variant="secondary">Maintenance</Badge>;
+      case 'offline':
+        return <Badge variant="destructive">Offline</Badge>;
+      default:
+        return <Badge variant="outline">Unknown</Badge>;
     }
-  }
+  };
 
   const getEquipmentIcon = (type: string) => {
     switch (type) {
-      case 'computer': return <Monitor className="h-5 w-5" />
-      case 'gaming': return <Gamepad2 className="h-5 w-5" />
-      case 'avr': return <Cpu className="h-5 w-5" />
-      default: return <Monitor className="h-5 w-5" />
+      case 'computer':
+        return <Monitor className="h-5 w-5" />;
+      case 'gaming':
+        return <Gamepad2 className="h-5 w-5" />;
+      case 'avr':
+        return <Cpu className="h-5 w-5" />;
+      default:
+        return <Monitor className="h-5 w-5" />;
     }
-  }
+  };
 
   const formatTimeRemaining = (minutes: number) => {
-    if (minutes <= 0) return 'Expired'
-    return `${minutes}m remaining`
-  }
+    if (minutes <= 0) {
+      return 'Expired';
+    }
+    return `${minutes}m remaining`;
+  };
 
-  const getSessionProgress = (session: any) => {
-    if (!session) return 0
-    const elapsed = session.timeLimitMinutes - session.remainingMinutes
-    return (elapsed / session.timeLimitMinutes) * 100
-  }
+  const getSessionProgress = (session: Record<string, unknown> | null) => {
+    if (!session) {
+      return 0;
+    }
+    const timeLimitMinutes = Number(session.timeLimitMinutes);
+    const remainingMinutes = Number(session.remainingMinutes);
+    const elapsed = timeLimitMinutes - remainingMinutes;
+    return (elapsed / timeLimitMinutes) * 100;
+  };
 
   // Handle double-tap to refresh on mobile - removed gesture functionality
 
   return (
-    <div 
+    <div
       className={getResponsiveClasses('space-y-6', mobileState)}
       onTouchStart={isMobile ? handleTouchStart : undefined}
       onTouchEnd={isMobile ? handleTouchEnd : undefined}
@@ -179,13 +322,19 @@ export function EquipmentDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Equipment Management</h2>
+          <h2 className="text-3xl font-bold tracking-tight">
+            Equipment Management
+          </h2>
           <p className="text-muted-foreground">
             Monitor and manage library equipment and computer stations.
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => { setIsRefreshing(true); setTimeout(() => setIsRefreshing(false), 1000); }} disabled={isRefreshing}>
+            <Clock className="h-4 w-4 mr-2" />
+            {isRefreshing ? 'Refreshing…' : 'Refresh'}
+          </Button>
+          <Button variant="outline" size="sm" disabled={isRefreshing}>
             <Settings className="h-4 w-4 mr-2" />
             Settings
           </Button>
@@ -193,17 +342,19 @@ export function EquipmentDashboard() {
       </div>
 
       {/* Status Overview */}
-      <div className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
+      <div
+        className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-4'}`}
+      >
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Equipment</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Equipment
+            </CardTitle>
             <Monitor className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{equipment.length}</div>
-            <p className="text-xs text-muted-foreground">
-              All stations
-            </p>
+            <p className="text-xs text-muted-foreground">All stations</p>
           </CardContent>
         </Card>
 
@@ -214,11 +365,9 @@ export function EquipmentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {equipment.filter(e => e.status === 'available').length}
+              {equipment.filter((e) => e.status === 'available').length}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Ready for use
-            </p>
+            <p className="text-xs text-muted-foreground">Ready for use</p>
           </CardContent>
         </Card>
 
@@ -229,11 +378,9 @@ export function EquipmentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {equipment.filter(e => e.status === 'in-use').length}
+              {equipment.filter((e) => e.status === 'in-use').length}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Active sessions
-            </p>
+            <p className="text-xs text-muted-foreground">Active sessions</p>
           </CardContent>
         </Card>
 
@@ -244,11 +391,13 @@ export function EquipmentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {equipment.filter(e => ['maintenance', 'offline'].includes(e.status)).length}
+              {
+                equipment.filter((e) =>
+                  ['maintenance', 'offline'].includes(e.status)
+                ).length
+              }
             </div>
-            <p className="text-xs text-muted-foreground">
-              Need attention
-            </p>
+            <p className="text-xs text-muted-foreground">Need attention</p>
           </CardContent>
         </Card>
       </div>
@@ -258,7 +407,8 @@ export function EquipmentDashboard() {
         <Alert>
           <WifiOff className="h-4 w-4" />
           <AlertDescription>
-            You are currently offline. Session changes will be queued and synced when connection is restored.
+            You are currently offline. Session changes will be queued and synced
+            when connection is restored.
           </AlertDescription>
         </Alert>
       )}
@@ -267,48 +417,96 @@ export function EquipmentDashboard() {
       <Tabs defaultValue="all" className={`space-y-${isMobile ? '3' : '4'}`}>
         <div className="flex items-center justify-between">
           <TabsList>
-            <TabsTrigger value="all" onClick={() => setSelectedFilter('all')}>
+            <TabsTrigger value="all" onClick={() => setSelectedFilter('all')} disabled={isRefreshing}>
               All Equipment
             </TabsTrigger>
-            <TabsTrigger value="available" onClick={() => setSelectedFilter('available')}>
+            <TabsTrigger
+              value="available"
+              onClick={() => setSelectedFilter('available')}
+              disabled={isRefreshing}
+            >
               Available
             </TabsTrigger>
-            <TabsTrigger value="in-use" onClick={() => setSelectedFilter('in-use')}>
+            <TabsTrigger
+              value="in-use"
+              onClick={() => setSelectedFilter('in-use')}
+              disabled={isRefreshing}
+            >
               In Use
             </TabsTrigger>
-            <TabsTrigger value="computers" onClick={() => setSelectedFilter('computers')}>
+            <TabsTrigger
+              value="computers"
+              onClick={() => setSelectedFilter('computers')}
+              disabled={isRefreshing}
+            >
               Computers
             </TabsTrigger>
-            <TabsTrigger value="gaming" onClick={() => setSelectedFilter('gaming')}>
+            <TabsTrigger
+              value="gaming"
+              onClick={() => setSelectedFilter('gaming')}
+              disabled={isRefreshing}
+            >
               Gaming
             </TabsTrigger>
           </TabsList>
-
           <div className="flex items-center space-x-2">
-            <Badge variant="outline">
-              {filteredEquipment.length} items
-            </Badge>
+            <Badge variant="outline">{filteredEquipment.length} items</Badge>
           </div>
         </div>
 
         <TabsContent value="all" className={`space-y-${isMobile ? '3' : '4'}`}>
-          <div className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
-            {filteredEquipment.map((item: any) => (
+          <div
+            className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-3'}`}
+          >
+            {filteredEquipment.map((item: EquipmentItem) => (
               <Card key={item.id} className="relative">
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      {getEquipmentIcon(item.type)}
-                      <CardTitle className="text-sm">{item.name}</CardTitle>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className={`h-2 w-2 rounded-full ${getStatusColor(item.status)}`}></div>
-                      {getStatusBadge(item.status)}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          {getEquipmentIcon(item.type)}
+          <CardTitle className="text-sm">{item.name}</CardTitle>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div
+            className={`h-2 w-2 rounded-full ${getStatusColor(item.status)}`}
+          ></div>
+          {getStatusBadge(item.status)}
+          {import.meta.env.DEV && (
+            <Button variant="outline" size="sm" onClick={handleEndAllSessions} disabled={isRefreshing}>
+              End All Sessions
+            </Button>
+          )}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" disabled={isRefreshing}>
+                <History className="h-3 w-3 mr-1" />
+                History
+              </Button>
+            </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Session History – {item.name}</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-2 text-sm">
+                            {(devHistory[item.id] || []).length === 0 ? (
+                              <div className="text-muted-foreground">No previous sessions</div>
+                            ) : (
+                              (devHistory[item.id] || []).map((h, idx) => (
+                                <div key={`${item.id}-hist-${idx}`} className="flex items-center justify-between">
+                                  <div>
+                                    <div className="font-medium">{h.studentName}</div>
+                                    <div className="text-xs text-muted-foreground">{new Date(h.startTime).toLocaleTimeString()} – {new Date(h.endTime).toLocaleTimeString()}</div>
+                                  </div>
+                                  <Badge variant="outline">{h.durationMinutes}m</Badge>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
-                  <CardDescription>
-                    ID: {item.id}
-                  </CardDescription>
+                  <CardDescription>ID: {item.id}</CardDescription>
                 </CardHeader>
 
                 <CardContent className="space-y-4">
@@ -317,9 +515,13 @@ export function EquipmentDashboard() {
                     <div className="space-y-3">
                       <div className="p-3 bg-primary/10 dark:bg-primary/5 rounded-lg border border-primary/20 dark:border-primary/10">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium">Active Session</span>
+                          <span className="text-sm font-medium">
+                            Active Session
+                          </span>
                           <Badge variant="outline" className="text-xs">
-                            {formatTimeRemaining(item.currentSession.remainingMinutes)}
+                            {formatTimeRemaining(
+                              item.currentSession.remainingMinutes
+                            )}
                           </Badge>
                         </div>
                         <div className="text-sm text-muted-foreground space-y-1">
@@ -329,7 +531,12 @@ export function EquipmentDashboard() {
                           </div>
                           <div className="flex items-center space-x-1">
                             <Clock className="h-3 w-3" />
-                            <span>Started: {new Date(item.currentSession.startTime).toLocaleTimeString()}</span>
+                            <span>
+                              Started:{' '}
+                              {new Date(
+                                item.currentSession.startTime
+                              ).toLocaleTimeString()}
+                            </span>
                           </div>
                         </div>
                         <Progress
@@ -342,8 +549,11 @@ export function EquipmentDashboard() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleEndSession(item.currentSession.id)}
+                          onClick={() =>
+                            handleEndSession(item.currentSession.id)
+                          }
                           className="flex-1"
+                          disabled={isRefreshing}
                         >
                           <Square className="h-3 w-3 mr-1" />
                           End Session
@@ -351,10 +561,55 @@ export function EquipmentDashboard() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => {/* Handle extend session */}}
-                        >
+                          onClick={() => {
+                            const isDevApp = String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+                            if (isDevApp && item.currentSession) {
+                              const updated = equipment.map((e) => {
+                                if (e.id === item.id && e.currentSession) {
+                                  const add = 10;
+                                  const newRemaining = Number(e.currentSession.remainingMinutes) + add;
+                                  return {
+                                    ...e,
+                                    currentSession: { ...e.currentSession, remainingMinutes: newRemaining },
+                                  };
+                                }
+                                return e;
+                              });
+                              setEquipment(updated as any);
+                            }
+                          }}
+                          disabled={isRefreshing}
+                          >
                           <RotateCcw className="h-3 w-3" />
                         </Button>
+                        <div className="flex items-center gap-1">
+                          {[15,30,45,60].map((m) => (
+                            <Button
+                              key={`ext-${item.id}-${m}`}
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                const isDevApp = String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+                                if (isDevApp && item.currentSession) {
+                                  const updated = equipment.map((e) => {
+                                    if (e.id === item.id && e.currentSession) {
+                                      const newRemaining = Number(e.currentSession.remainingMinutes) + m;
+                                      return {
+                                        ...e,
+                                        currentSession: { ...e.currentSession, remainingMinutes: newRemaining },
+                                      };
+                                    }
+                                    return e;
+                                  });
+                                  setEquipment(updated as any);
+                                }
+                              }}
+                              disabled={isRefreshing}
+                            >
+                              +{m}m
+                            </Button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -365,13 +620,57 @@ export function EquipmentDashboard() {
                           <p className="text-sm text-muted-foreground mb-3">
                             Equipment is ready for use
                           </p>
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <Input
+                              placeholder="Student ID"
+                              value={devStudentId}
+                              onChange={(e) => setDevStudentId(e.target.value)}
+                              disabled={isRefreshing}
+                            />
+                            <Input
+                              placeholder="Student Name"
+                              value={devStudentName}
+                              onChange={(e) => setDevStudentName(e.target.value)}
+                              disabled={isRefreshing}
+                            />
+                            <Input
+                              placeholder="Grade Level"
+                              value={devGradeLevel}
+                              onChange={(e) => setDevGradeLevel(e.target.value)}
+                              disabled={isRefreshing}
+                            />
+                          </div>
                           <Button
                             size="sm"
-                            onClick={() => {/* Handle start session */}}
+                            onClick={() => {
+                              const isDevApp = String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+                              if (isDevApp) {
+                                const updated = equipment.map((e) => {
+                                  if (e.id === item.id) {
+                                    const tl = getDevTimeLimitByGrade(devGradeLevel);
+                                    return {
+                                      ...e,
+                                      status: 'in-use',
+                                      currentSession: {
+                                        id: `dev-${Date.now()}`,
+                                        studentId: devStudentId || 'DEV-STUDENT',
+                                        studentName: devStudentName || 'Dev Student',
+                                        startTime: new Date(),
+                                        timeLimitMinutes: tl,
+                                        remainingMinutes: tl,
+                                      },
+                                    };
+                                  }
+                                  return e;
+                                });
+                                setEquipment(updated as any);
+                              }
+                            }}
                             className="w-full"
+                            disabled={isRefreshing}
                           >
-                            <Play className="h-3 w-3 mr-1" />
-                            Start Session
+                          <Play className="h-3 w-3 mr-1" />
+                          Start Session
                           </Button>
                         </div>
                       )}
@@ -414,7 +713,9 @@ export function EquipmentDashboard() {
       </Tabs>
 
       {/* Equipment Stats */}
-      <div className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2'}`}>
+      <div
+        className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2'}`}
+      >
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Usage Statistics</CardTitle>
@@ -469,7 +770,7 @@ export function EquipmentDashboard() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
-export default EquipmentDashboard
+export default EquipmentDashboard;

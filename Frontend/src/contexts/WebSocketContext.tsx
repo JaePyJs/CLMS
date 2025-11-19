@@ -1,8 +1,41 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { ReactNode } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import type { WebSocketState } from '@/hooks/useWebSocket';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  type ReactNode,
+} from 'react';
+import { useWebSocket, type WebSocketState, type WebSocketMessage } from '@/hooks/useWebSocket';
 import { useAuth } from '@/contexts/AuthContext';
+
+// Define types for WebSocket data structures
+
+interface DashboardFilters {
+  [key: string]: unknown;
+}
+
+interface RecentActivity {
+  id: string;
+  type: string;
+  timestamp: number;
+  [key: string]: unknown;
+}
+
+interface EquipmentStatus {
+  [equipmentId: string]: unknown;
+}
+
+interface Notification {
+  id: string;
+  message: string;
+  timestamp: number;
+  [key: string]: unknown;
+}
+
+interface DashboardData {
+  [dataType: string]: unknown;
+}
 
 export interface WebSocketContextType extends WebSocketState {
   // Connection methods
@@ -10,80 +43,113 @@ export interface WebSocketContextType extends WebSocketState {
   disconnect: () => void;
 
   // Message methods
-  sendMessage: (message: any) => boolean;
+  sendMessage: (message: WebSocketMessage) => boolean;
 
   // Subscription methods
   subscribe: (subscription: string) => boolean;
   unsubscribe: (subscription: string) => boolean;
 
   // Dashboard methods
-  requestDashboardData: (dataType: string, filters?: any) => boolean;
+  requestDashboardData: (
+    dataType: string,
+    filters?: DashboardFilters
+  ) => boolean;
 
   // Communication methods
-  sendChatMessage: (message: string, targetRole?: string, targetUserId?: string) => boolean;
+  sendChatMessage: (
+    message: string,
+    targetRole?: string,
+    targetUserId?: string
+  ) => boolean;
 
   // Emergency methods
-  triggerEmergencyAlert: (alertType: string, message: string, location?: string) => boolean;
+  triggerEmergencyAlert: (
+    alertType: string,
+    message: string,
+    location?: string
+  ) => boolean;
 
   // Real-time data
-  recentActivities: any[];
-  equipmentStatus: any;
-  notifications: any[];
-  dashboardData: any;
+  recentActivities: RecentActivity[];
+  equipmentStatus: EquipmentStatus;
+  notifications: Notification[];
+  dashboardData: DashboardData;
 
   // Utility methods
   clearNotifications: () => void;
-  refreshDashboard: (dataType: string, filters?: any) => void;
+  refreshDashboard: (dataType: string, filters?: DashboardFilters) => void;
 }
 
-const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
+const WebSocketContext = createContext<WebSocketContextType | undefined>(
+  undefined
+);
 
 interface WebSocketProviderProps {
   children: ReactNode;
 }
 
-export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
+export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const { user } = useAuth();
-  const [recentActivities, setRecentActivities] = useState<any[]>([]);
-  const [equipmentStatus, setEquipmentStatus] = useState<any>({});
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [dashboardData, setDashboardData] = useState<any>({});
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>(
+    []
+  );
+  const [equipmentStatus, setEquipmentStatus] = useState<EquipmentStatus>({});
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData>({});
+
+  // Memoized event handlers to prevent infinite re-renders
+  const handleMessage = useCallback((message: WebSocketMessage) => {
+    switch (message.type) {
+      case 'student_activity_update':
+        setRecentActivities((prev: RecentActivity[]) => [
+          message.data as RecentActivity,
+          ...prev.slice(0, 49),
+        ]);
+        break;
+      case 'equipment_status_update':
+        setEquipmentStatus((prev: EquipmentStatus) => ({
+          ...prev,
+          [(message.data as { equipmentId: string }).equipmentId]:
+            message.data,
+        }));
+        break;
+      case 'system_notification':
+        setNotifications((prev: Notification[]) => [
+          message.data as Notification,
+          ...prev.slice(0, 49),
+        ]);
+        break;
+      case 'dashboard_data':
+        setDashboardData((prev: DashboardData) => ({
+          ...prev,
+          [(message.data as { dataType: string }).dataType]: (
+            message.data as { data: unknown }
+          ).data,
+        }));
+        break;
+    }
+  }, []);
+
+  const handleError = useCallback((error: string) => {
+    console.error('WebSocket connection error:', error);
+  }, []);
+
+  const handleDisconnect = useCallback(() => {
+    console.debug('WebSocket disconnected');
+  }, []);
+
+  const handleConnect = useCallback(() => {
+    console.debug('WebSocket connected');
+  }, []);
 
   // WebSocket connection
   const ws = useWebSocket({
     autoConnect: true,
     subscriptions: ['activities', 'equipment', 'notifications', 'dashboard'],
-    onMessage: (message) => {
-      switch (message.type) {
-        case 'student_activity_update':
-          setRecentActivities((prev: any[]) => [message.data, ...prev.slice(0, 49)]);
-          break;
-        case 'equipment_status_update':
-          setEquipmentStatus((prev: any) => ({
-            ...prev,
-            [message.data.equipmentId]: message.data
-          }));
-          break;
-        case 'system_notification':
-          setNotifications((prev: any[]) => [message.data, ...prev.slice(0, 49)]);
-          break;
-        case 'dashboard_data':
-          setDashboardData((prev: any) => ({
-            ...prev,
-            [message.data.dataType]: message.data.data
-          }));
-          break;
-      }
-    },
-    onError: (error) => {
-      console.error('WebSocket connection error:', error);
-    },
-    onDisconnect: () => {
-      console.log('WebSocket disconnected');
-    },
-    onConnect: () => {
-      console.log('WebSocket connected');
-    }
+    onMessage: handleMessage,
+    onError: handleError,
+    onDisconnect: handleDisconnect,
+    onConnect: handleConnect,
   });
 
   // Clear notifications
@@ -92,9 +158,12 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   }, []);
 
   // Refresh dashboard data
-  const refreshDashboard = useCallback((dataType: string, filters?: any) => {
-    ws.requestDashboardData(dataType, filters);
-  }, [ws.requestDashboardData]);
+  const refreshDashboard = useCallback(
+    (dataType: string, filters?: DashboardFilters) => {
+      ws.requestDashboardData(dataType, filters);
+    },
+    [ws.requestDashboardData]
+  );
 
   // Auto-refresh dashboard data when connected
   useEffect(() => {
@@ -113,25 +182,65 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
   const contextValue: WebSocketContextType = {
     ...ws,
+    isConnected: ws.isConnected || String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true',
     recentActivities,
     equipmentStatus,
     notifications,
     dashboardData,
     clearNotifications,
-    refreshDashboard
+    refreshDashboard,
+  };
+
+  const DevWsBanner = ({
+    isConnected,
+    error,
+    attempts,
+  }: {
+    isConnected: boolean;
+    error: string | null;
+    attempts: number;
+  }) => {
+    const isDev = String(import.meta.env.DEV).toLowerCase() === 'true';
+    if (!isDev) return null;
+    if (isConnected && !error) return null;
+    const text = error ? `WS error: ${error}` : 'WS not connected';
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          padding: '6px 12px',
+          background: '#991b1b',
+          color: '#fff',
+          fontSize: '12px',
+        }}
+      >
+        {text} {attempts ? `(attempts: ${attempts})` : ''}
+      </div>
+    );
   };
 
   return (
     <WebSocketContext.Provider value={contextValue}>
+      <DevWsBanner
+        isConnected={ws.isConnected}
+        error={ws.error}
+        attempts={ws.connectionAttempts}
+      />
       {children}
     </WebSocketContext.Provider>
   );
-};
+}
 
 export const useWebSocketContext = (): WebSocketContextType => {
   const context = useContext(WebSocketContext);
   if (context === undefined) {
-    throw new Error('useWebSocketContext must be used within a WebSocketProvider');
+    throw new Error(
+      'useWebSocketContext must be used within a WebSocketProvider'
+    );
   }
   return context;
 };

@@ -1,20 +1,45 @@
-import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit, Trash2, Shield, ShieldAlert, ShieldCheck, Key, Search, RefreshCw, CheckCircle, XCircle, Eye } from 'lucide-react';
-import userApi from '../../services/userApi';
-import type { User, UserRole, CreateUserInput } from '../../services/userApi';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Users,
+  Plus,
+  Edit,
+  Trash2,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Key,
+  Search,
+  RefreshCw,
+  CheckCircle,
+  XCircle,
+  Eye,
+} from 'lucide-react';
+import userApi, {
+  type User,
+  type UserRole,
+  type CreateUserInput,
+} from '../../services/userApi';
 import { useToast } from '../ToastContainer';
 import { useForm } from '../../hooks';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'ALL'>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<
+    'ALL' | 'ACTIVE' | 'INACTIVE'
+  >('ALL');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [statistics, setStatistics] = useState<any>(null);
+  const [statistics, setStatistics] = useState<{
+    total: number;
+    active: number;
+    inactive: number;
+    byRole: Array<{ role: UserRole; _count: number }>;
+  } | null>(null);
 
   const toast = useToast();
 
@@ -45,15 +70,10 @@ const UserManagement: React.FC = () => {
     VIEWER: 'Viewer',
   };
 
-  useEffect(() => {
-    fetchUsers();
-    fetchStatistics();
-  }, [roleFilter, statusFilter, searchQuery]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = {};
+      const params: Record<string, unknown> = {};
 
       if (roleFilter !== 'ALL') {
         params.role = roleFilter;
@@ -64,7 +84,7 @@ const UserManagement: React.FC = () => {
       }
 
       if (searchQuery) {
-        params.search = searchQuery;
+        params._search = searchQuery;
       }
 
       const response = await userApi.getUsers(params);
@@ -75,16 +95,21 @@ const UserManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [roleFilter, statusFilter, searchQuery]); // toast is stable from useToast hook
 
-  const fetchStatistics = async () => {
+  const fetchStatistics = useCallback(async () => {
     try {
       const response = await userApi.getStatistics();
       setStatistics(response.data);
     } catch (error) {
       console.error('Error fetching statistics:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchStatistics();
+  }, [fetchUsers, fetchStatistics]);
 
   const handleCreateUser = async (data: CreateUserInput) => {
     try {
@@ -93,20 +118,23 @@ const UserManagement: React.FC = () => {
       setShowCreateModal(false);
       fetchUsers();
       fetchStatistics();
-    } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to create user');
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to create user'));
     }
   };
 
-  const handleUpdateUser = async (userId: string, data: any) => {
+  const handleUpdateUser = async (
+    userId: string,
+    data: Partial<CreateUserInput>
+  ) => {
     try {
       await userApi.updateUser(userId, data);
       toast.success('Success', 'User updated successfully');
       setShowEditModal(false);
       setSelectedUser(null);
       fetchUsers();
-    } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to update user');
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to update user'));
     }
   };
 
@@ -121,13 +149,20 @@ const UserManagement: React.FC = () => {
       }
       fetchUsers();
       fetchStatistics();
-    } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to update user status');
+    } catch (error: unknown) {
+      toast.error(
+        'Error',
+        getErrorMessage(error, 'Failed to update user status')
+      );
     }
   };
 
   const handleDeleteUser = async (user: User) => {
-    if (!window.confirm(`Are you sure you want to delete user "${user.username}"?`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete user "${user.username}"?`
+      )
+    ) {
       return;
     }
 
@@ -136,20 +171,24 @@ const UserManagement: React.FC = () => {
       toast.success('Success', 'User deleted successfully');
       fetchUsers();
       fetchStatistics();
-    } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to delete user');
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to delete user'));
     }
   };
 
   const handleResetPassword = async (user: User) => {
-    const newPassword = window.prompt(`Enter new password for ${user.username}:`);
-    if (!newPassword) return;
+    const newPassword = window.prompt(
+      `Enter new password for ${user.username}:`
+    );
+    if (!newPassword) {
+      return;
+    }
 
     try {
       await userApi.resetPassword(user.id, newPassword);
       toast.success('Success', 'Password reset successfully');
-    } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to reset password');
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to reset password'));
     }
   };
 
@@ -167,7 +206,9 @@ const UserManagement: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600 mt-1">Manage system users, roles, and permissions</p>
+          <p className="text-gray-600 mt-1">
+            Manage system users, roles, and permissions
+          </p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -185,7 +226,9 @@ const UserManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{statistics.total}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {statistics.total}
+                </p>
               </div>
               <Users className="w-8 h-8 text-blue-600" />
             </div>
@@ -195,7 +238,9 @@ const UserManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Active Users</p>
-                <p className="text-2xl font-bold text-green-600">{statistics.active}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {statistics.active}
+                </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
@@ -205,7 +250,9 @@ const UserManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Inactive Users</p>
-                <p className="text-2xl font-bold text-gray-600">{statistics.inactive}</p>
+                <p className="text-2xl font-bold text-gray-600">
+                  {statistics.inactive}
+                </p>
               </div>
               <XCircle className="w-8 h-8 text-gray-600" />
             </div>
@@ -216,7 +263,8 @@ const UserManagement: React.FC = () => {
               <div>
                 <p className="text-sm text-gray-600">Admins</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {statistics.byRole.find((r: any) => r.role === 'ADMIN')?._count || 0}
+                  {statistics.byRole.find((r) => r.role === 'ADMIN')?._count ||
+                    0}
                 </p>
               </div>
               <ShieldCheck className="w-8 h-8 text-red-600" />
@@ -228,13 +276,13 @@ const UserManagement: React.FC = () => {
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
         <div className="flex items-center gap-4 flex-wrap">
-          {/* Search */}
+          {/* _Search */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search users..."
+                placeholder="_Search users..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -245,7 +293,7 @@ const UserManagement: React.FC = () => {
           {/* Role Filter */}
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as any)}
+            onChange={(e) => setRoleFilter(e.target.value as UserRole | 'ALL')}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="ALL">All Roles</option>
@@ -260,7 +308,9 @@ const UserManagement: React.FC = () => {
           {/* Status Filter */}
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
+            onChange={(e) =>
+              setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')
+            }
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="ALL">All Status</option>
@@ -321,12 +371,18 @@ const UserManagement: React.FC = () => {
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div>
-                        <div className="font-medium text-gray-900">{user.username}</div>
+                        <div className="font-medium text-gray-900">
+                          {user.username}
+                        </div>
                         {user.fullName && (
-                          <div className="text-sm text-gray-500">{user.fullName}</div>
+                          <div className="text-sm text-gray-500">
+                            {user.fullName}
+                          </div>
                         )}
                         {user.email && (
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="text-sm text-gray-500">
+                            {user.email}
+                          </div>
                         )}
                       </div>
                     </td>
@@ -354,7 +410,9 @@ const UserManagement: React.FC = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {user.lastLoginAt ? formatDate(user.lastLoginAt) : 'Never'}
+                      {user.lastLoginAt
+                        ? formatDate(user.lastLoginAt)
+                        : 'Never'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {formatDate(user.createdAt)}
@@ -451,8 +509,8 @@ const CreateUserModal: React.FC<{
       password: { required: true },
       email: { required: false },
       fullName: { required: false },
-      role: { required: true }
-    }
+      role: { required: true },
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -473,7 +531,9 @@ const CreateUserModal: React.FC<{
               type="text"
               required
               value={createForm.values.username}
-              onChange={(e) => createFormActions.setValue('username', e.target.value)}
+              onChange={(e) =>
+                createFormActions.setValue('username', e.target.value)
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -486,7 +546,9 @@ const CreateUserModal: React.FC<{
               type="password"
               required
               value={createForm.values.password}
-              onChange={(e) => createFormActions.setValue('password', e.target.value)}
+              onChange={(e) =>
+                createFormActions.setValue('password', e.target.value)
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -498,27 +560,37 @@ const CreateUserModal: React.FC<{
             <input
               type="text"
               value={createForm.values.fullName}
-              onChange={(e) => createFormActions.setValue('fullName', e.target.value)}
+              onChange={(e) =>
+                createFormActions.setValue('fullName', e.target.value)
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
             <input
               type="email"
               value={createForm.values.email}
-              onChange={(e) => createFormActions.setValue('email', e.target.value)}
+              onChange={(e) =>
+                createFormActions.setValue('email', e.target.value)
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Role *
+            </label>
             <select
               required
               value={createForm.values.role}
-              onChange={(e) => createFormActions.setValue('role', e.target.value as UserRole)}
+              onChange={(e) =>
+                createFormActions.setValue('role', e.target.value as UserRole)
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="LIBRARIAN">Librarian</option>
@@ -555,7 +627,7 @@ const CreateUserModal: React.FC<{
 const EditUserModal: React.FC<{
   user: User;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: unknown) => void;
 }> = ({ user, onClose, onSubmit }) => {
   const [editForm, editFormActions] = useForm({
     initialValues: {
@@ -568,8 +640,8 @@ const EditUserModal: React.FC<{
       username: { required: true },
       fullName: { required: false },
       email: { required: false },
-      role: { required: true }
-    }
+      role: { required: true },
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -590,7 +662,9 @@ const EditUserModal: React.FC<{
               type="text"
               required
               value={editForm.values.username}
-              onChange={(e) => editFormActions.setValue('username', e.target.value)}
+              onChange={(e) =>
+                editFormActions.setValue('username', e.target.value)
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -602,27 +676,37 @@ const EditUserModal: React.FC<{
             <input
               type="text"
               value={editForm.values.fullName}
-              onChange={(e) => editFormActions.setValue('fullName', e.target.value)}
+              onChange={(e) =>
+                editFormActions.setValue('fullName', e.target.value)
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
             <input
               type="email"
               value={editForm.values.email}
-              onChange={(e) => editFormActions.setValue('email', e.target.value)}
+              onChange={(e) =>
+                editFormActions.setValue('email', e.target.value)
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Role *
+            </label>
             <select
               required
               value={editForm.values.role}
-              onChange={(e) => editFormActions.setValue('role', e.target.value as UserRole)}
+              onChange={(e) =>
+                editFormActions.setValue('role', e.target.value as UserRole)
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="LIBRARIAN">Librarian</option>

@@ -1,12 +1,13 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
+    "module": "CommonJS",
     "moduleResolution": "node",
     "lib": ["ES2022"],
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": "./src",
+    "typeRoots": ["./src/types", "./node_modules/@types", "../node_modules/@types"],
     "paths": {
       "@/*": ["*"],
       "@/config/*": ["config/*"],
@@ -16,35 +17,35 @@
       "@/utils/*": ["utils/*"],
       "@/types/*": ["types/*"]
     },
-    
-    // Strict Type Checking Options (Relaxed for build compatibility)
-    "strict": false,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
-    "strictFunctionTypes": false,
-    "strictBindCallApply": false,
+
+    // Strict Type Checking Options
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
     "strictPropertyInitialization": false,
     "noImplicitReturns": false,
-    "noImplicitThis": false,
-    "alwaysStrict": false,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
     "exactOptionalPropertyTypes": false,
-    "noImplicitOverride": false,
+    "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": false,
     "noUncheckedIndexedAccess": false,
-    
+
     // Additional Checks
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
-    
+
     // Module Resolution
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    
+
     // Emit Options
     "declaration": true,
     "declarationMap": true,
@@ -52,7 +53,7 @@
     "removeComments": false,
     "importHelpers": true,
     "downlevelIteration": true,
-    
+
     // Advanced Options
     "skipLibCheck": true,
     "allowJs": false,
@@ -60,10 +61,7 @@
     "incremental": true,
     "tsBuildInfoFile": "./.tsbuildinfo"
   },
-  "include": [
-    "src/**/*",
-    "src/**/*.json"
-  ],
+  "include": ["src/**/*", "src/**/*.json"],
   "exclude": [
     "node_modules",
     "dist",
