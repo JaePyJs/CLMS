@@ -105,11 +105,10 @@ export function OptimizedLazyLoad({
   const LazyComponent = lazy(() => {
     return loader().catch((err) => {
       console.error('Failed to load component:', err);
-      // Return a default error component
-      return {
-        default: () =>
-          error || <ErrorFallback message="Failed to load component" />,
-      };
+      const fallbackNode = React.isValidElement(error)
+        ? error
+        : <ErrorFallback message={typeof error === 'string' ? error : 'Failed to load component'} />;
+      return { default: () => fallbackNode };
     });
   });
 
@@ -131,8 +130,14 @@ export function OptimizedLazyLoad({
     />
   );
 
+  const normalizedFallback = React.isValidElement(error)
+    ? error
+    : (error
+        ? <ErrorFallback message={typeof error === 'string' ? error : 'Failed to load component'} />
+        : undefined);
+
   return (
-    <ErrorBoundary fallback={error}>
+    <ErrorBoundary fallback={normalizedFallback}>
       <Suspense
         fallback={
           showFallback ? (

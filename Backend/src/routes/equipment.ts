@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
-import { authenticate } from '../middleware/authenticate';
+import { authenticate, requireRole } from '../middleware/authenticate';
 import { logger } from '../utils/logger';
 import { PrismaClient } from '@prisma/client';
 
@@ -12,6 +12,7 @@ const router = Router();
 router.get(
   '/',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get equipment request', {
       query: req.query,
@@ -83,6 +84,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get equipment by ID request', {
       equipmentId: req.params['id'],
@@ -119,6 +121,7 @@ router.get(
 router.post(
   '/',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Create equipment request', {
       name: req.body.name,
@@ -159,6 +162,7 @@ router.post(
 router.put(
   '/:id',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Update equipment request', {
       equipmentId: req.params['id'],
@@ -196,6 +200,7 @@ router.put(
 router.patch(
   '/:id',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Partial update equipment request', {
       equipmentId: req.params['id'],
@@ -233,6 +238,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Delete equipment request', {
       equipmentId: req.params['id'],

@@ -214,12 +214,19 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_API_URL || 'http://localhost:3001',
         changeOrigin: true,
+        rewrite: (path) => path,
+      },
+      '/ws': {
+        target: process.env.VITE_API_URL || 'http://localhost:3001',
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path,
       },
     },
     // Removed invalid cacheDir configuration
-    // Enable HTTP/2 for development
+    // Enable HTTP/2 for development server
     // Removed HTTPS configuration for development server
     // Enable file watching optimizations
     watch: {
@@ -228,9 +235,8 @@ export default defineConfig({
     },
     // T029: Error handling configuration
     hmr: {
-      overlay: true, // Show error overlay
-      // T030: HMR error recovery configuration
-      clientErrorOverlay: true,
+      overlay: false,
+      clientErrorOverlay: false,
     },
     // Prevent server crashes on errors
     strictPort: false, // Fallback to next port if busy

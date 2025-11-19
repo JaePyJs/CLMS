@@ -16,12 +16,12 @@ import { useAttendanceWebSocket } from '@/hooks/useAttendanceWebSocket';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-interface StudentReminder {
+interface AttendanceReminder {
   type: 'overdue_book' | 'book_due_soon' | 'custom' | 'general';
   message: string;
   priority: 'low' | 'normal' | 'high';
   bookTitle?: string;
-  dueDate?: Date;
+  dueDate?: string;
 }
 
 interface AttendanceEvent {
@@ -29,7 +29,7 @@ interface AttendanceEvent {
   type: 'checkin' | 'checkout';
   studentName: string;
   timestamp: Date;
-  reminders?: StudentReminder[];
+  reminders?: AttendanceReminder[];
   customMessage?: string;
 }
 
@@ -39,7 +39,7 @@ interface ActiveStudent {
   name: string;
   checkinTime: Date;
   autoLogoutAt: Date;
-  reminders?: StudentReminder[];
+  reminders?: AttendanceReminder[];
 }
 
 /**
@@ -117,6 +117,26 @@ export const AttendanceDisplay: React.FC = () => {
       setTimeout(() => {
         setRecentEvent(null);
       }, 5000);
+    } else if (latestEvent.type === 'announcement') {
+      setRecentEvent({
+        id: String(Date.now()),
+        type: 'checkin',
+        studentName: latestEvent.data.message,
+        timestamp: new Date(),
+        customMessage: latestEvent.data.message,
+      });
+      setTimeout(() => setRecentEvent(null), 5000);
+    } else if (latestEvent.type === 'attendance_section_change') {
+      const from = Array.isArray(latestEvent.data?.from) ? latestEvent.data.from.join(', ') : '—';
+      const to = Array.isArray(latestEvent.data?.to) ? latestEvent.data.to.join(', ') : '—';
+      setRecentEvent({
+        id: String(Date.now()),
+        type: 'checkin',
+        studentName: latestEvent.data?.studentName || 'Student',
+        timestamp: new Date(),
+        customMessage: `Section change: ${from} → ${to}`,
+      });
+      setTimeout(() => setRecentEvent(null), 5000);
     }
   }, [events]);
 
@@ -215,6 +235,11 @@ export const AttendanceDisplay: React.FC = () => {
                 <p className="text-6xl font-semibold text-white">
                   {recentEvent.studentName}
                 </p>
+                <div className="mt-4">
+                  <Badge variant={recentEvent.type === 'checkin' ? 'default' : 'secondary'} className="text-2xl px-4 py-2">
+                    {recentEvent.type === 'checkin' ? 'IN' : 'OUT'}
+                  </Badge>
+                </div>
 
                 {/* Custom message from librarian */}
                 {recentEvent.customMessage && (

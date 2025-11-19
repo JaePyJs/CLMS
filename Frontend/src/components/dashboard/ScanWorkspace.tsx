@@ -145,9 +145,17 @@ export function ScanWorkspace() {
         new Date(new Date().setHours(0, 0, 0, 0)), // Today start
         new Date() // Now
       );
-      setStatistics(result.data);
+      if (result && result.success && result.data) {
+        setStatistics(result.data);
+      } else {
+        setStatistics(null);
+        toast.error('Failed to load statistics');
+      }
     } catch (error) {
       console.error('Failed to load statistics:', error);
+      setStatistics(null);
+      const msg = (error as any)?.message || 'Failed to load statistics';
+      toast.error(String(msg));
     }
   };
 
@@ -629,6 +637,8 @@ export function ScanWorkspace() {
             onClick={() =>
               toast.info('Manual session entry - would open entry form')
             }
+            aria-label="manual-entry"
+            data-testid="manual-entry"
           >
             <Plus className="h-3 w-3 mr-1" />
             Manual Entry
@@ -639,9 +649,28 @@ export function ScanWorkspace() {
             onClick={() =>
               toast.info('End all active sessions - would confirm action')
             }
+            aria-label="end-all-sessions"
+            data-testid="end-all-sessions"
           >
             <Square className="h-3 w-3 mr-1" />
             End All
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                await fetch('/api/kiosk/broadcast', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Please keep noise to a minimum. Thank you!' }) });
+                toast.success('Announcement broadcasted');
+              } catch {
+                toast.error('Failed to broadcast announcement');
+              }
+            }}
+            aria-label="broadcast-announcement"
+            data-testid="broadcast-announcement"
+          >
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Broadcast
           </Button>
         </div>
       </div>

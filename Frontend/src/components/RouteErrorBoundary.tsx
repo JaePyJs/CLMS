@@ -91,8 +91,8 @@ export function RouteErrorBoundary({ children }: RouteErrorBoundaryProps) {
     <ErrorBoundary
       FallbackComponent={RouteErrorFallback}
       onReset={() => {
-        // Reset any route-specific state if needed
-        window.location.reload();
+        // Intentionally avoid full page reload to prevent potential loops
+        // Components wrapped by this boundary will re-render on reset
       }}
     >
       {children}

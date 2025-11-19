@@ -138,7 +138,7 @@ const NetworkStatus = memo(() => {
 
     const checkConnection = async () => {
       try {
-        const response = await fetch('/api/health', {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/health`, {
           method: 'HEAD',
           cache: 'no-store',
           signal: AbortSignal.timeout(3000),
@@ -261,7 +261,7 @@ export const createLazyLoad = <
         observerRef.current?.disconnect();
       };
       // Props like prefetch, trigger, threshold, rootMargin, importFunc don't need to be deps
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      // Dependencies intentionally excluded for performance
     }, []);
 
     // Reset state when component changes
@@ -269,7 +269,7 @@ export const createLazyLoad = <
       setCurrentRetryCount(0);
       setLoadingState('loading');
       // importFunc is a prop and doesn't need to be in deps
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      // Dependencies intentionally excluded for performance
     }, []);
 
     if (loadingState === 'retry' && currentRetryCount > 0) {

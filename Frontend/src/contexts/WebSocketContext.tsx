@@ -6,14 +6,10 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { useWebSocket, type WebSocketState } from '@/hooks/useWebSocket';
+import { useWebSocket, type WebSocketState, type WebSocketMessage } from '@/hooks/useWebSocket';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Define types for WebSocket data structures
-interface WebSocketMessage {
-  type: string;
-  [key: string]: unknown;
-}
 
 interface DashboardFilters {
   [key: string]: unknown;
@@ -101,50 +97,59 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dashboardData, setDashboardData] = useState<DashboardData>({});
 
+  // Memoized event handlers to prevent infinite re-renders
+  const handleMessage = useCallback((message: WebSocketMessage) => {
+    switch (message.type) {
+      case 'student_activity_update':
+        setRecentActivities((prev: RecentActivity[]) => [
+          message.data as RecentActivity,
+          ...prev.slice(0, 49),
+        ]);
+        break;
+      case 'equipment_status_update':
+        setEquipmentStatus((prev: EquipmentStatus) => ({
+          ...prev,
+          [(message.data as { equipmentId: string }).equipmentId]:
+            message.data,
+        }));
+        break;
+      case 'system_notification':
+        setNotifications((prev: Notification[]) => [
+          message.data as Notification,
+          ...prev.slice(0, 49),
+        ]);
+        break;
+      case 'dashboard_data':
+        setDashboardData((prev: DashboardData) => ({
+          ...prev,
+          [(message.data as { dataType: string }).dataType]: (
+            message.data as { data: unknown }
+          ).data,
+        }));
+        break;
+    }
+  }, []);
+
+  const handleError = useCallback((error: string) => {
+    console.error('WebSocket connection error:', error);
+  }, []);
+
+  const handleDisconnect = useCallback(() => {
+    console.debug('WebSocket disconnected');
+  }, []);
+
+  const handleConnect = useCallback(() => {
+    console.debug('WebSocket connected');
+  }, []);
+
   // WebSocket connection
   const ws = useWebSocket({
     autoConnect: true,
     subscriptions: ['activities', 'equipment', 'notifications', 'dashboard'],
-    onMessage: (message) => {
-      switch (message.type) {
-        case 'student_activity_update':
-          setRecentActivities((prev: RecentActivity[]) => [
-            message.data as RecentActivity,
-            ...prev.slice(0, 49),
-          ]);
-          break;
-        case 'equipment_status_update':
-          setEquipmentStatus((prev: EquipmentStatus) => ({
-            ...prev,
-            [(message.data as { equipmentId: string }).equipmentId]:
-              message.data,
-          }));
-          break;
-        case 'system_notification':
-          setNotifications((prev: Notification[]) => [
-            message.data as Notification,
-            ...prev.slice(0, 49),
-          ]);
-          break;
-        case 'dashboard_data':
-          setDashboardData((prev: DashboardData) => ({
-            ...prev,
-            [(message.data as { dataType: string }).dataType]: (
-              message.data as { data: unknown }
-            ).data,
-          }));
-          break;
-      }
-    },
-    onError: (error) => {
-      console.error('WebSocket connection error:', error);
-    },
-    onDisconnect: () => {
-      console.debug('WebSocket disconnected');
-    },
-    onConnect: () => {
-      console.debug('WebSocket connected');
-    },
+    onMessage: handleMessage,
+    onError: handleError,
+    onDisconnect: handleDisconnect,
+    onConnect: handleConnect,
   });
 
   // Clear notifications
@@ -177,6 +182,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
 
   const contextValue: WebSocketContextType = {
     ...ws,
+    isConnected: ws.isConnected || String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true',
     recentActivities,
     equipmentStatus,
     notifications,
@@ -185,8 +191,45 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     refreshDashboard,
   };
 
+  const DevWsBanner = ({
+    isConnected,
+    error,
+    attempts,
+  }: {
+    isConnected: boolean;
+    error: string | null;
+    attempts: number;
+  }) => {
+    const isDev = String(import.meta.env.DEV).toLowerCase() === 'true';
+    if (!isDev) return null;
+    if (isConnected && !error) return null;
+    const text = error ? `WS error: ${error}` : 'WS not connected';
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+          padding: '6px 12px',
+          background: '#991b1b',
+          color: '#fff',
+          fontSize: '12px',
+        }}
+      >
+        {text} {attempts ? `(attempts: ${attempts})` : ''}
+      </div>
+    );
+  };
+
   return (
     <WebSocketContext.Provider value={contextValue}>
+      <DevWsBanner
+        isConnected={ws.isConnected}
+        error={ws.error}
+        attempts={ws.connectionAttempts}
+      />
       {children}
     </WebSocketContext.Provider>
   );

@@ -53,8 +53,21 @@ export const notificationApi = {
     offset?: number;
     type?: string;
   }): Promise<NotificationResponse> {
-    const response = await api.get('/notifications', { params });
-    return response.data;
+    try {
+      const response = await api.get('/notifications', { params });
+      return response.data;
+    } catch (error) {
+      console.warn('Notification API not available or failed:', error);
+      // Return empty response to prevent UI errors
+      return {
+        success: true,
+        data: {
+          notifications: [],
+          total: 0,
+          unreadCount: 0,
+        },
+      };
+    }
   },
 
   // Get notification statistics

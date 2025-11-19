@@ -9,17 +9,23 @@ frontend-dev.log
 build.log
 
 # Temporary files
-nul
 *.tmp
 *.temp
 
 # Test results
 test_results*.txt
+test-results/**
+playwright-report/
+playwright-report-smoke/
+coverage/
 
 # Environment variables
 .env
 .env.local
+.env.production
 .env.*.local
+*.env
+!*.env.example
 
 # Dependencies
 node_modules/
@@ -38,6 +44,7 @@ Thumbs.db
 
 # Prisma
 prisma/.env
+Backend/prisma/*.db
 
 # Uploads
 uploads/*
@@ -47,3 +54,13 @@ uploads/*
 barcodes/
 qr-codes/
 generated/
+*.tsbuildinfo
+
+# Tooling caches
+.genkit/
+Frontend/.genkit/
+
+# Credentials
+google-credentials.json
+
+CLMS_Release.zip

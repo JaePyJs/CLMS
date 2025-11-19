@@ -409,7 +409,7 @@ export const MobileScanner: React.FC<MobileScannerProps> = ({
                   placeholder={placeholder}
                   value={manualInput}
                   onChange={(e) => setManualInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleManualSubmit()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleManualSubmit()}
                   className="pl-10 pr-12 text-base"
                   autoComplete="off"
                   autoCorrect="off"

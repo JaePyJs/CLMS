@@ -449,10 +449,10 @@ export function DocumentationDashboard() {
                       <div className="font-medium">
                         {update.changes[0]?.file || 'Multiple files'}
                       </div>
-                      <div className="text-gray-600">
+                      <div className="text-muted-foreground">
                         {update.type.replace('_', ' ')}
                       </div>
-                      <div className="text-gray-500">
+                      <div className="text-muted-foreground">
                         {formatLastUpdated(update.timestamp)}
                       </div>
                     </div>
@@ -533,7 +533,7 @@ export function DocumentationDashboard() {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Last Updated:</span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {formatLastUpdated(docsInfo.lastUpdated)}
               </span>
             </div>
@@ -594,7 +594,7 @@ export function DocumentationDashboard() {
               </Badge>
             </div>
             <div className="pt-2 border-t">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <FileText className="h-4 w-4" />
                 <span>
                   {allDocsExist
@@ -620,7 +620,7 @@ export function DocumentationDashboard() {
               <CardContent className="p-4 text-center">
                 <Database className="h-8 w-8 mx-auto mb-2 text-blue-600" />
                 <div className="text-2xl font-bold">{totalTables}</div>
-                <div className="text-xs text-gray-500">Database Tables</div>
+                <div className="text-xs text-muted-foreground">Database Tables</div>
               </CardContent>
             </Card>
             <Card>
@@ -629,21 +629,21 @@ export function DocumentationDashboard() {
                 <div className="text-2xl font-bold">
                   {docsInfo.features.backend.tests}
                 </div>
-                <div className="text-xs text-gray-500">Backend Tests</div>
+                <div className="text-xs text-muted-foreground">Backend Tests</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
                 <Package className="h-8 w-8 mx-auto mb-2 text-purple-600" />
                 <div className="text-2xl font-bold">{totalServices}</div>
-                <div className="text-xs text-gray-500">Services</div>
+                <div className="text-xs text-muted-foreground">Services</div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
                 <GitBranch className="h-8 w-8 mx-auto mb-2 text-orange-600" />
                 <div className="text-2xl font-bold">{totalEndpoints}</div>
-                <div className="text-xs text-gray-500">API Endpoints</div>
+                <div className="text-xs text-muted-foreground">API Endpoints</div>
               </CardContent>
             </Card>
           </div>
@@ -657,7 +657,7 @@ export function DocumentationDashboard() {
                 <div className="text-2xl font-bold">
                   {docsInfo.features.frontend.tests}
                 </div>
-                <div className="text-xs text-gray-500">Frontend Tests</div>
+                <div className="text-xs text-muted-foreground">Frontend Tests</div>
               </CardContent>
             </Card>
             <Card>
@@ -666,7 +666,7 @@ export function DocumentationDashboard() {
                 <div className="text-2xl font-bold">
                   {docsInfo.features.frontend.components}
                 </div>
-                <div className="text-xs text-gray-500">Components</div>
+                <div className="text-xs text-muted-foreground">Components</div>
               </CardContent>
             </Card>
             <Card>
@@ -675,7 +675,7 @@ export function DocumentationDashboard() {
                 <div className="text-2xl font-bold">
                   {docsInfo.features.frontend.pages}
                 </div>
-                <div className="text-xs text-gray-500">Pages</div>
+                <div className="text-xs text-muted-foreground">Pages</div>
               </CardContent>
             </Card>
             <Card>

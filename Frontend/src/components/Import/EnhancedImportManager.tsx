@@ -44,7 +44,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { getErrorMessage } from '@/utils/errorHandling';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api`;
 
 interface ImportResult {
   success: boolean;
@@ -351,27 +351,40 @@ export default function EnhancedImportManager() {
 
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('mapping', JSON.stringify(fieldMapping));
 
-      const endpoint =
-        activeTab === 'students' ? '/import/students' : '/import/books';
+      let endpoint = '/import/students';
+      if (activeTab === 'books') {
+        endpoint = '/import/books/enhanced';
+        const headers = previewData?.headers || [];
+        const mappings = [] as { sourceField: string; targetField: string; required?: boolean }[];
+        const pick = (label: string) => headers.find((h) => h.trim().toLowerCase() === label.toLowerCase());
+        const pushMap = (src: string | undefined, target: string, required?: boolean) => {
+          if (src) mappings.push({ sourceField: src, targetField: target, required });
+        };
+        pushMap(pick('Barcode'), 'accession_no', true);
+        pushMap(pick('Title'), 'title', true);
+        pushMap(pick('Author'), 'author', true);
+        pushMap(pick('ISBN'), 'isbn');
+        pushMap(pick('Publisher'), 'publisher');
+        pushMap(pick('Collection Code'), 'category');
+        pushMap(pick('Year'), 'year');
+        formData.append('fieldMappings', JSON.stringify(mappings));
+        formData.append('dryRun', 'false');
+      } else {
+        // students legacy import
+        formData.append('mapping', JSON.stringify(fieldMapping));
+      }
 
-      const response = await axios.post(
-        `${API_BASE_URL}${endpoint}`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            Authorization: `Bearer ${token}`,
-          },
-          onUploadProgress: (progressEvent) => {
-            const progress = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total!
-            );
-            setImportProgress(progress);
-          },
-        }
-      );
+      const response = await axios.post(`${API_BASE_URL}${endpoint}` as string, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`,
+        },
+        onUploadProgress: (progressEvent) => {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total!);
+          setImportProgress(progress);
+        },
+      });
 
       setResult(response.data.data);
       setFile(null);

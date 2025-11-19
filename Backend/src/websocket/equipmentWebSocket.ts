@@ -1,4 +1,5 @@
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocketServer } from 'ws';
+import type { WebSocket } from 'ws';
 import { logger } from '@/utils/logger';
 import { AuthService } from '@/services/authService';
 // TODO: Fix prisma import path

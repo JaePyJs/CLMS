@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
+import { isDevelopment } from '../config/env';
 import { asyncHandler } from '../middleware/errorHandler';
-import { authenticate } from '../middleware/authenticate';
+import { authenticate, requireRole } from '../middleware/authenticate';
 import { AuthService } from '../services/authService';
 import { logger } from '../utils/logger';
+import { prisma } from '../config/database';
 
 const router = Router();
 
@@ -218,18 +220,18 @@ router.post(
   }),
 );
 
-// GET /api/v1/auth/me
-router.get(
-  '/me',
-  authenticate,
-  asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (!req.user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+  // GET /api/v1/auth/me
+  router.get(
+    '/me',
+    authenticate,
+    asyncHandler(async (req: Request, res: Response): Promise<void> => {
+      if (!req.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
 
-    try {
-      const user = await AuthService.getCurrentUser(req.user.userId);
+      try {
+        const user = await AuthService.getCurrentUser(req.user.userId);
 
       logger.info('Get current user successful', {
         userId: req.user.userId,
@@ -241,18 +243,85 @@ router.get(
         success: true,
         data: user,
       });
+      } catch (error) {
+        logger.error('Get current user failed', {
+          userId: req.user?.userId,
+          ip: req.ip,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+        if (isDevelopment() && req.user) {
+          res.json({
+            success: true,
+            data: {
+              id: req.user.userId,
+              username: req.user.username,
+              role: req.user.role,
+            },
+          });
+          return;
+        }
+        res.status(500).json({
+          success: false,
+          message: 'Failed to get user information',
+          code: 'GET_USER_FAILED',
+        });
+      }
+    }),
+  );
+
+router.post(
+  '/kiosk-token',
+  authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { deviceName } = req.body;
+    try {
+      const result = await AuthService.createKioskToken(String(deviceName || 'Kiosk Display'));
+      res.status(201).json({ success: true, data: result });
     } catch (error) {
-      logger.error('Get current user failed', {
+      logger.error('Create kiosk token failed', {
         userId: req.user?.userId,
         ip: req.ip,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+      res.status(500).json({ success: false, error: 'Failed to create kiosk token' });
+    }
+  }),
+);
 
-      res.status(500).json({
-        success: false,
-        message: 'Failed to get user information',
-        code: 'GET_USER_FAILED',
+router.get(
+  '/kiosk-users',
+  authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
+  asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const users = await prisma.users.findMany({
+        where: { role: 'KIOSK_DISPLAY' },
+        select: { id: true, username: true, full_name: true, is_active: true, created_at: true, last_login_at: true },
+        orderBy: { created_at: 'desc' },
       });
+      res.json({ success: true, data: users });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Failed to list kiosk users' });
+    }
+  }),
+);
+
+router.post(
+  '/kiosk-revoke',
+  authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { userId } = req.body as { userId: string };
+    if (!userId) {
+      res.status(400).json({ success: false, error: 'userId is required' });
+      return;
+    }
+    try {
+      const user = await prisma.users.update({ where: { id: String(userId) }, data: { is_active: false } });
+      res.json({ success: true, data: { id: user.id, is_active: user.is_active } });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Failed to revoke kiosk user' });
     }
   }),
 );

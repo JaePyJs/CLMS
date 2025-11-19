@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback } from 'react';
+import { useWebSocketSubscription } from './useWebSocket';
 
 interface StudentReminder {
   type: 'overdue_book' | 'book_due_soon' | 'custom' | 'general';
@@ -33,7 +34,48 @@ interface StudentCheckOutEvent {
   };
 }
 
-type AttendanceWebSocketEvent = StudentCheckInEvent | StudentCheckOutEvent;
+interface AnnouncementEvent {
+  type: 'announcement';
+  data: {
+    message: string;
+  };
+}
+
+interface AttendanceSectionChangeEvent {
+  type: 'attendance_section_change';
+  data: {
+    studentId: string;
+    studentName: string;
+    from?: string[];
+    to: string[];
+    at: string;
+  };
+}
+
+interface AttendanceOccupancyEvent {
+  type: 'attendance_occupancy';
+  data: {
+    sections: Record<string, number>;
+    updatedAt: string;
+  };
+}
+
+interface AnnouncementConfigEvent {
+  type: 'announcement_config';
+  data: {
+    quietMode: boolean;
+    intervalSeconds: number;
+    messages: string[];
+  };
+}
+
+type AttendanceWebSocketEvent =
+  | StudentCheckInEvent
+  | StudentCheckOutEvent
+  | AnnouncementEvent
+  | AttendanceSectionChangeEvent
+  | AttendanceOccupancyEvent
+  | AnnouncementConfigEvent;
 
 interface UseAttendanceWebSocketReturn {
   events: AttendanceWebSocketEvent[];
@@ -47,101 +89,23 @@ interface UseAttendanceWebSocketReturn {
  * Subscribes to student check-in and check-out WebSocket events.
  */
 export const useAttendanceWebSocket = (): UseAttendanceWebSocketReturn => {
-  const [events, setEvents] = useState<AttendanceWebSocketEvent[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-
-  const connect = useCallback(() => {
-    try {
-      // Determine WebSocket URL based on environment
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const wsUrl = `${protocol}//${host}/ws`;
-
-      const ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        // eslint-disable-next-line no-console
-        console.log('[AttendanceWebSocket] Connected');
-        setIsConnected(true);
-
-        // Subscribe to attendance events
-        ws.send(
-          JSON.stringify({
-            type: 'subscribe',
-            channels: ['attendance'],
-          })
-        );
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-
-          // Handle student check-in/check-out events
-          if (
-            message.type === 'student_checkin' ||
-            message.type === 'student_checkout'
-          ) {
-            setEvents((prev) => [...prev, message as AttendanceWebSocketEvent]);
-          }
-        } catch (error) {
-          console.error('[AttendanceWebSocket] Error parsing message:', error);
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('[AttendanceWebSocket] Error:', error);
-      };
-
-      ws.onclose = () => {
-        // eslint-disable-next-line no-console
-        console.log('[AttendanceWebSocket] Disconnected');
-        setIsConnected(false);
-
-        // Attempt to reconnect after 5 seconds
-        reconnectTimeoutRef.current = setTimeout(() => {
-          // eslint-disable-next-line no-console
-          console.log('[AttendanceWebSocket] Attempting to reconnect...');
-          connect();
-        }, 5000);
-      };
-
-      wsRef.current = ws;
-    } catch (error) {
-      console.error('[AttendanceWebSocket] Connection error:', error);
-      setIsConnected(false);
-
-      // Retry connection after 5 seconds
-      reconnectTimeoutRef.current = setTimeout(connect, 5000);
-    }
-  }, []);
-
+  const ws = useWebSocketSubscription('attendance');
+  const filtered = ws.messages.filter(m => (
+    m.type === 'student_checkin' ||
+    m.type === 'student_checkout' ||
+    m.type === 'announcement' ||
+    m.type === 'attendance_section_change' ||
+    m.type === 'attendance_occupancy' ||
+    m.type === 'announcement_config' ||
+    m.type === 'attendance:checkin' ||
+    m.type === 'attendance:checkout' ||
+    m.type === 'attendance:section-change' ||
+    m.type === 'attendance:occupancy' ||
+    m.type === 'announcement:config'
+  )) as unknown as AttendanceWebSocketEvent[];
   const reconnect = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-    connect();
-  }, [connect]);
-
-  // Initial connection
-  useEffect(() => {
-    connect();
-
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, [connect]);
-
-  return {
-    events,
-    isConnected,
-    reconnect,
-  };
+    ws.disconnect();
+    ws.connect();
+  }, [ws]);
+  return { events: filtered, isConnected: ws.isConnected, reconnect };
 };

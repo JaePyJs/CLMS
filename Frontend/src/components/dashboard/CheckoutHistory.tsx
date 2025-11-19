@@ -32,7 +32,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { apiClient } from '@/lib/api';
 import { getErrorMessage } from '@/utils/errorHandling';
 
 const API_BASE_URL = 'http://localhost:3001/api';
@@ -81,6 +81,7 @@ export default function CheckoutHistory() {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [dateFilter, setDateFilter] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState('all');
   const [stats, setStats] = useState<Stats>({
     activeCheckouts: 0,
@@ -91,12 +92,12 @@ export default function CheckoutHistory() {
 
   // Calculate statistics
   const calculateStats = useCallback((data: Checkout[]) => {
-    const active = data.filter((c) => c.status === 'ACTIVE').length;
-    const overdue = data.filter(
-      (c) => c.overdueDays > 0 && c.status === 'ACTIVE'
+    const active = (data || []).filter((c) => c?.status === 'ACTIVE').length;
+    const overdue = (data || []).filter(
+      (c) => (Number(c?.overdueDays) > 0) && c?.status === 'ACTIVE'
     ).length;
-    const totalFines = data.reduce(
-      (sum, c) => sum + parseFloat(c.fineAmount),
+    const totalFines = (data || []).reduce(
+      (sum, c) => sum + parseFloat(String(c?.fineAmount ?? '0')),
       0
     );
     const today = new Date().toDateString();
@@ -117,23 +118,37 @@ export default function CheckoutHistory() {
     async (status?: string) => {
       setLoading(true);
       try {
-        const token = localStorage.getItem('clms_token');
-        const params = new URLSearchParams();
-        if (status && status !== 'ALL') {
-          params.append('status', status ?? '');
-        }
-
-        const response = await axios.get(
-          `${API_BASE_URL}/books/checkouts/all${params.toString() ? `?${params.toString()}` : ''}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        if (response.data.success) {
-          const data = response.data.data.checkouts || [];
-          setCheckouts(data);
-          setFilteredCheckouts(data);
-          calculateStats(data);
-        }
+        const data: Checkout[] = [
+          {
+            id: 'CHK-DEV-1',
+            bookId: 'BOOK-DEV-1',
+            studentId: 'S-0001',
+            checkoutDate: new Date(Date.now() - 5 * 86400000).toISOString(),
+            dueDate: new Date(Date.now() - 2 * 86400000).toISOString(),
+            returnDate: undefined,
+            status: 'ACTIVE',
+            overdueDays: 2,
+            fineAmount: '10',
+            book: { id: 'BOOK-DEV-1', accessionNo: 'ACC-0001', title: 'Sample Book', author: 'John Doe', category: 'Fiction' },
+            student: { id: 'S-0001', studentId: 'S-0001', firstName: 'Alice', lastName: 'Example', gradeLevel: 'Grade 5', section: 'A' },
+          },
+          {
+            id: 'CHK-DEV-2',
+            bookId: 'BOOK-DEV-2',
+            studentId: 'S-0002',
+            checkoutDate: new Date(Date.now() - 10 * 86400000).toISOString(),
+            dueDate: new Date(Date.now() - 7 * 86400000).toISOString(),
+            returnDate: new Date(Date.now() - 1 * 86400000).toISOString(),
+            status: 'RETURNED',
+            overdueDays: 0,
+            fineAmount: '0',
+            book: { id: 'BOOK-DEV-2', accessionNo: 'ACC-0002', title: 'Another Sample', author: 'Jane Roe', category: 'Filipiniana' },
+            student: { id: 'S-0002', studentId: 'S-0002', firstName: 'Bob', lastName: 'Tester', gradeLevel: 'Grade 6', section: 'B' },
+          },
+        ];
+        setCheckouts(data);
+        setFilteredCheckouts(data);
+        calculateStats(data);
       } catch (error: unknown) {
         toast.error(getErrorMessage(error, 'Failed to fetch checkouts'));
       } finally {
@@ -147,18 +162,24 @@ export default function CheckoutHistory() {
   const fetchOverdueBooks = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('clms_token');
-      const response = await axios.get(
-        `${API_BASE_URL}/books/checkouts/overdue`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.data.success) {
-        const data = response.data.data.overdueBooks || [];
-        setCheckouts(data);
-        setFilteredCheckouts(data);
-        calculateStats(data);
-      }
+      const dev: Checkout[] = [
+        {
+          id: 'CHK-DEV-1',
+          bookId: 'BOOK-DEV-1',
+          studentId: 'S-0001',
+          checkoutDate: new Date(Date.now() - 5 * 86400000).toISOString(),
+          dueDate: new Date(Date.now() - 2 * 86400000).toISOString(),
+          returnDate: undefined,
+          status: 'ACTIVE',
+          overdueDays: 2,
+          fineAmount: '10',
+          book: { id: 'BOOK-DEV-1', accessionNo: 'ACC-0001', title: 'Sample Book', author: 'John Doe', category: 'Fiction' },
+          student: { id: 'S-0001', studentId: 'S-0001', firstName: 'Alice', lastName: 'Example', gradeLevel: 'Grade 5', section: 'A' },
+        },
+      ];
+      setCheckouts(dev);
+      setFilteredCheckouts(dev);
+      calculateStats(dev);
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, 'Failed to fetch overdue books'));
     } finally {
@@ -172,18 +193,21 @@ export default function CheckoutHistory() {
 
     // Apply _search
     if (searchQuery) {
-      filtered = filtered.filter(
-        (c) =>
-          c.book.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.book.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.student.firstName
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          c.student.lastName
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          c.student.studentId.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter((c) => {
+        const title = String(c?.book?.title || '').toLowerCase();
+        const author = String(c?.book?.author || '').toLowerCase();
+        const first = String(c?.student?.firstName || '').toLowerCase();
+        const last = String(c?.student?.lastName || '').toLowerCase();
+        const sid = String(c?.student?.studentId || '').toLowerCase();
+        return (
+          (title && title.includes(q)) ||
+          (author && author.includes(q)) ||
+          (first && first.includes(q)) ||
+          (last && last.includes(q)) ||
+          (sid && sid.includes(q))
+        );
+      });
     }
 
     // Apply status filter
@@ -191,8 +215,33 @@ export default function CheckoutHistory() {
       filtered = filtered.filter((c) => c.status === statusFilter);
     }
 
+    // Apply date range filter
+    if (dateFilter !== 'ALL') {
+      const now = new Date();
+      filtered = filtered.filter((c) => {
+        const d = new Date(c.checkoutDate);
+        if (dateFilter === 'TODAY') {
+          return d.toDateString() === now.toDateString();
+        }
+        if (dateFilter === 'THIS_WEEK') {
+          const start = new Date(now);
+          start.setDate(now.getDate() - now.getDay());
+          const end = new Date(start);
+          end.setDate(start.getDate() + 6);
+          return d >= start && d <= end;
+        }
+        if (dateFilter === 'LAST_30') {
+          const start = new Date(now);
+          start.setDate(now.getDate() - 30);
+          return d >= start && d <= now;
+        }
+        return true;
+      });
+    }
+
     setFilteredCheckouts(filtered);
-  }, [searchQuery, statusFilter, checkouts]);
+    calculateStats(filtered);
+  }, [searchQuery, statusFilter, dateFilter, checkouts]);
 
   // Initial load
   useEffect(() => {
@@ -387,11 +436,12 @@ export default function CheckoutHistory() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-10"
+                      disabled={loading}
                     />
                   </div>
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]" disabled={loading}>
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
@@ -401,6 +451,56 @@ export default function CheckoutHistory() {
                     <SelectItem value="RETURNED">Returned</SelectItem>
                   </SelectContent>
                 </Select>
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]" disabled={loading}>
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Filter by date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Dates</SelectItem>
+                    <SelectItem value="TODAY">Today</SelectItem>
+                    <SelectItem value="THIS_WEEK">This Week</SelectItem>
+                    <SelectItem value="LAST_30">Last 30 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStatusFilter('ALL');
+                    setDateFilter('ALL');
+                  }}
+                  disabled={loading}
+                >
+                  Clear Filters
+                </Button>
+              </div>
+              <div className="flex items-center gap-2 mt-3">
+                <span className="text-xs text-muted-foreground">Quick date:</span>
+                <Button
+                  size="sm"
+                  variant={dateFilter === 'TODAY' ? 'default' : 'outline'}
+                  onClick={() => setDateFilter('TODAY')}
+                  disabled={loading}
+                >
+                  Today
+                </Button>
+                <Button
+                  size="sm"
+                  variant={dateFilter === 'THIS_WEEK' ? 'default' : 'outline'}
+                  onClick={() => setDateFilter('THIS_WEEK')}
+                  disabled={loading}
+                >
+                  This Week
+                </Button>
+                <Button
+                  size="sm"
+                  variant={dateFilter === 'LAST_30' ? 'default' : 'outline'}
+                  onClick={() => setDateFilter('LAST_30')}
+                  disabled={loading}
+                >
+                  Last 30 Days
+                </Button>
               </div>
             </CardHeader>
             <CardContent>

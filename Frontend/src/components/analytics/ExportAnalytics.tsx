@@ -197,7 +197,7 @@ export function ExportAnalytics({
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="flex items-center gap-2">
+        <Button variant="outline" className="flex items-center gap-2" aria-label="export-analytics" data-testid="export-analytics">
           <Download className="h-4 w-4" />
           Export Analytics
         </Button>
@@ -407,11 +407,7 @@ export function ExportAnalytics({
           </Button>
           <Button
             onClick={handleExport}
-            disabled={
-              isExporting ||
-              (selectedSections.length === 0 &&
-                !exportSections.every((s) => s.defaultIncluded))
-            }
+            disabled={isExporting}
           >
             {isExporting ? (
               <>

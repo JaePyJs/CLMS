@@ -15,6 +15,14 @@ import settingsRoutes from './settings';
 import attendanceExportRoutes from './attendanceExport';
 import errorLogsRoutes from './errorLogs';
 import notificationsRoutes from './notifications';
+import librarySectionsRoutes from './librarySections';
+import borrowingPoliciesRoutes from './borrowingPolicies';
+import finesRoutes from './fines';
+import printingRoutes from './printing';
+import announcementsRoutes from './announcements';
+import { kioskRoutes } from './kiosk';
+import { enhancedLibraryRoutes } from './enhanced-library';
+import { versionRoutes } from './version';
 
 const router = Router();
 
@@ -34,6 +42,14 @@ router.use('/settings', settingsRoutes);
 router.use('/attendance-export', attendanceExportRoutes);
 router.use('/logs', errorLogsRoutes);
 router.use('/notifications', notificationsRoutes);
+router.use('/sections', librarySectionsRoutes);
+router.use('/policies', borrowingPoliciesRoutes);
+router.use('/fines', finesRoutes);
+router.use('/printing', printingRoutes);
+router.use('/announcements', announcementsRoutes);
+router.use('/kiosk', kioskRoutes);
+router.use('/enhanced-library', enhancedLibraryRoutes);
+router.use('/version', versionRoutes);
 
 // Health check endpoint
 router.get('/health', (_req: Request, res: Response) => {
@@ -64,6 +80,12 @@ router.get('/info', (_req: Request, res: Response) => {
       import: '/api/import',
       update: '/api/update',
       selfService: '/api/self-service',
+      sections: '/api/sections',
+      policies: '/api/policies',
+      fines: '/api/fines',
+      printing: '/api/printing',
+      announcements: '/api/announcements',
+      enhancedLibrary: '/api/enhanced-library',
       settings: '/api/settings',
       attendanceExport: '/api/attendance-export',
       logs: '/api/logs',

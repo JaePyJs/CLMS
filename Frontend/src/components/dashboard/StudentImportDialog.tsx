@@ -136,6 +136,7 @@ export function StudentImportDialog({
     failed: number;
     errors: string[];
   }>({ success: 0, failed: 0, errors: [] });
+  const [generatedBarcodes, setGeneratedBarcodes] = useState<Array<{ row: number; barcode: string }>>([]);
   const [skipHeaderRow, setSkipHeaderRow] = useState(true);
   // Reset state when dialog closes
   const handleClose = () => {
@@ -349,10 +350,10 @@ export function StudentImportDialog({
   const previewImportMutation = useMutation({
     mutationFn: async (data: { file: File; fieldMappings: FieldMapping[] }) => {
       try {
-        const result = await studentsApi.importStudents(
+        const result = await studentsApi.previewImport(
           data.file,
-          data.fieldMappings,
-          true
+          'students',
+          10
         );
         return result.data;
       } catch (error: unknown) {
@@ -424,12 +425,14 @@ export function StudentImportDialog({
       importedRecords?: number;
       errorRecords?: number;
       errors?: string[];
+      generated?: Array<{ row: number; barcode: string }>;
     }) => {
       setImportResults({
         success: result.importedRecords || 0,
         failed: result.errorRecords || 0,
         errors: result.errors || [],
       });
+      setGeneratedBarcodes(Array.isArray(result.generated) ? result.generated : []);
       setCurrentStep('complete');
       queryClient.invalidateQueries({ queryKey: ['students'] });
 
@@ -666,18 +669,22 @@ export function StudentImportDialog({
                   <CardHeader>
                     <CardTitle className="text-sm">File Requirements</CardTitle>
                   </CardHeader>
-                  <CardContent className="text-sm space-y-2">
-                    <p>• File format: CSV (.csv) or Excel (.xlsx, .xls)</p>
-                    <p>• Maximum file size: 10MB</p>
-                    <p>
-                      • Required columns: First Name, Last Name, Grade Level
-                    </p>
-                    <p>
-                      • Optional columns: Section, Email, Phone, Parent Name,
-                      Parent Phone, Parent Email, Address, Emergency Contact,
-                      Notes
-                    </p>
-                  </CardContent>
+          <CardContent className="text-sm space-y-2">
+            <p>• File format: CSV (.csv) or Excel (.xlsx, .xls)</p>
+            <p>• Maximum file size: 10MB</p>
+            <p>
+              • Required columns: First Name, Last Name, Grade Level
+            </p>
+            <p>
+              • Optional columns: Section, Email, Phone, Parent Name,
+              Parent Phone, Parent Email, Address, Emergency Contact,
+              Notes
+            </p>
+            <p>
+              • Barcode: If missing, the system generates a unique PN-prefixed barcode
+              (e.g., PN00018). Scanners can read both numeric-only and PN-prefixed codes.
+            </p>
+          </CardContent>
                 </Card>
 
                 <div className="flex justify-center">
@@ -965,13 +972,13 @@ export function StudentImportDialog({
                     <AlertDescription>
                       <div className="space-y-1">
                         <p className="font-medium">Import Errors:</p>
-                        {importResults.errors
-                          .slice(0, 5)
-                          .map((error, index) => (
-                            <p key={index} className="text-sm text-red-600">
-                              {error}
-                            </p>
-                          ))}
+            {importResults.errors
+              .slice(0, 5)
+              .map((error, index) => (
+                <p key={index} className="text-sm text-red-600">
+                  {typeof error === 'string' ? error : String(error)}
+                </p>
+              ))}
                         {importResults.errors.length > 5 && (
                           <p className="text-sm text-muted-foreground">
                             ... and {importResults.errors.length - 5} more
@@ -981,6 +988,33 @@ export function StudentImportDialog({
                       </div>
                     </AlertDescription>
                   </Alert>
+                )}
+
+                {generatedBarcodes.length > 0 && (
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        const headers = ['row', 'barcode'];
+                        const csv = [headers.join(',')]
+                          .concat(
+                            generatedBarcodes.map((g) => `${g.row},${g.barcode}`)
+                          )
+                          .join('\n');
+                        const blob = new Blob([csv], { type: 'text/csv' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'generated-barcodes.csv';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                      }}
+                    >
+                      Download Generated Barcodes CSV
+                    </Button>
+                  </div>
                 )}
 
                 <div className="flex justify-end">

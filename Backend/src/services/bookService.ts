@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
 
 export interface CreateBookData {
   isbn?: string;

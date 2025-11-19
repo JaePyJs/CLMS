@@ -13,8 +13,8 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('system');
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
+  const [theme, setThemeState] = useState<Theme>('dark');
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('dark');
 
   // Get system theme preference
   const getSystemTheme = (): ResolvedTheme => {
@@ -80,19 +80,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize theme on mount
   useEffect(() => {
-    // Get saved theme or default to system
-    const savedTheme = localStorage.getItem('clms_theme') as Theme | null;
-    const initialTheme = savedTheme || 'system';
-
+    const initialTheme: Theme = 'dark';
+    localStorage.setItem('clms_theme', initialTheme);
     setThemeState(initialTheme);
-    applyTheme(resolveTheme(initialTheme));
+    applyTheme('dark');
 
     // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e: MediaQueryListEvent) => {
-      if (theme === 'system') {
-        applyTheme(e.matches ? 'dark' : 'light');
-      }
+      // Full dark mode enforced; ignore system changes
     };
 
     // Modern browsers
@@ -112,7 +108,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Update resolved theme when theme changes
   useEffect(() => {
-    applyTheme(resolveTheme(theme));
+    applyTheme('dark');
   }, [theme]);
 
   return (

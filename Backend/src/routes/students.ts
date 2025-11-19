@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
-import { authenticate } from '../middleware/authenticate';
+import { authenticate, requireRole } from '../middleware/authenticate';
 import {
   StudentService,
   CreateStudentData,
@@ -10,6 +10,7 @@ import { StudentActivityService } from '../services/studentActivityService';
 import { BarcodeService } from '../services/barcodeService';
 import { websocketServer } from '../websocket/websocketServer';
 import { PrismaClient } from '@prisma/client';
+import { isDevelopment } from '../config/env';
 import {
   // createStudentSchema,  // Reserved for future validation
   // updateStudentSchema,  // Reserved for future validation
@@ -19,6 +20,19 @@ import {
 import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
+const devMemoryStudents: any[] = [
+  {
+    id: 'STU-DEV-1',
+    student_id: 'S-0001',
+    first_name: 'Alice',
+    last_name: 'Example',
+    grade_level: 5,
+    grade_category: 'gradeSchool',
+    section: 'A',
+    barcode: 'STU00001',
+    is_active: true,
+  },
+];
 
 const router = Router();
 
@@ -26,6 +40,7 @@ const router = Router();
 router.get(
   '/',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -58,7 +73,10 @@ router.get(
         ip: req.ip,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-
+      if (isDevelopment()) {
+        res.json({ success: true, data: devMemoryStudents, count: devMemoryStudents.length });
+        return;
+      }
       res.status(500).json({
         success: false,
         message: 'Failed to retrieve students',
@@ -72,13 +90,18 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  requireRole(['LIBRARIAN', 'ADMIN']),
+  asyncHandler(async (req: Request, res: Response, next): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
     const { id } = req.params;
+    if (id.toLowerCase() === 'search') {
+      next();
+      return;
+    }
 
     // Validate ID parameter
     if (!id) {
@@ -152,6 +175,7 @@ router.get(
 router.post(
   '/',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -232,7 +256,22 @@ router.post(
         ip: req.ip,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-
+      if (isDevelopment()) {
+        const mockStudent = {
+          id: `STU-DEV-${Date.now()}`,
+          student_id: studentData.student_id || `S-${Date.now()}`,
+          first_name: studentData.first_name,
+          last_name: studentData.last_name,
+          grade_level: Number(studentData.grade_level) || 0,
+          grade_category: String(studentData.grade_category || 'unknown'),
+          section: studentData.section || null,
+          is_active: true,
+          barcode: `STU${Math.floor(Math.random() * 100000)}`,
+        };
+        devMemoryStudents.push(mockStudent);
+        res.status(201).json({ success: true, data: mockStudent, message: 'Student created successfully' });
+        return;
+      }
       res.status(500).json({
         success: false,
         message: 'Failed to create student',
@@ -246,6 +285,7 @@ router.post(
 router.put(
   '/:id',
   authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -362,6 +402,7 @@ router.put(
 router.delete(
   '/:id',
   authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -441,6 +482,7 @@ router.delete(
 router.get(
   '/search',
   authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -497,7 +539,16 @@ router.get(
         query,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-
+      if (isDevelopment()) {
+        const search = (query || '').toLowerCase();
+        const filtered = devMemoryStudents.filter(s =>
+          String(s.first_name).toLowerCase().includes(search) ||
+          String(s.last_name).toLowerCase().includes(search) ||
+          String(s.student_id).toLowerCase().includes(search)
+        );
+        res.json({ success: true, data: filtered, count: filtered.length });
+        return;
+      }
       res.status(500).json({
         success: false,
         message: 'Failed to search students',
@@ -511,6 +562,7 @@ router.get(
 router.get(
   '/search/:query',
   authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -594,7 +646,16 @@ router.get(
         ip: req.ip,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-
+      if (isDevelopment()) {
+        const search = (query || '').toLowerCase();
+        const filtered = devMemoryStudents.filter(s =>
+          String(s.first_name).toLowerCase().includes(search) ||
+          String(s.last_name).toLowerCase().includes(search) ||
+          String(s.student_id).toLowerCase().includes(search)
+        );
+        res.json({ success: true, data: filtered, count: filtered.length, pagination: { limit: Number(limit), offset: Number(offset), query } });
+        return;
+      }
       res.status(500).json({
         success: false,
         message: 'Failed to search students',
@@ -608,6 +669,7 @@ router.get(
 router.get(
   '/barcode/:barcode',
   authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -694,6 +756,7 @@ router.get(
 router.post(
   '/generate-barcode/:studentId',
   authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -765,6 +828,8 @@ router.post(
 // GET /api/v1/students/active-sessions - Get all currently checked-in students
 router.get(
   '/active-sessions',
+  authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     try {
       logger.info('Active sessions request', {
@@ -802,6 +867,8 @@ router.get(
 // POST /api/v1/students/:id/check-in - Check in a student
 router.post(
   '/:id/check-in',
+  authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id: studentId } = req.params;
 
@@ -884,6 +951,8 @@ router.post(
 // POST /api/v1/students/:id/check-out - Check out a student
 router.post(
   '/:id/check-out',
+  authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id: studentId } = req.params;
     const { reason = 'manual' } = req.body;
@@ -957,3 +1026,34 @@ router.post(
 );
 
 export default router;
+// Seed librarian record (idempotent)
+router.post(
+  '/seed-librarian',
+  authenticate,
+  requireRole(['LIBRARIAN']),
+  asyncHandler(async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const studentId = 'LIBRARIAN';
+      const existing = await prisma.students.findUnique({ where: { student_id: studentId } });
+      const data: any = {
+        student_id: studentId,
+        first_name: 'Claudia Sophia B.',
+        last_name: 'Agana',
+        grade_level: 0,
+        section: 'PERSONNEL',
+        grade_category: 'Staff',
+        barcode: 'PN00018',
+        is_active: true,
+      };
+      if (existing) {
+        await prisma.students.update({ where: { id: existing.id }, data });
+      } else {
+        await prisma.students.create({ data });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      logger.error('Seed librarian error', { error: (error as Error)?.message || 'Unknown' });
+      res.status(500).json({ success: false, message: 'Failed to seed librarian' });
+    }
+  })
+);

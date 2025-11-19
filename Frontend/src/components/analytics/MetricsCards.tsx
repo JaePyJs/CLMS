@@ -55,7 +55,7 @@ export function MetricsCards({
     ): MetricCard[] => {
       // Complex analytics data structure with deeply nested dynamic properties
       const { overview, circulation, equipment, fines, trends } =
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // @ts-ignore - Complex analytics data structure
         analyticsData as any;
 
       return [
@@ -166,7 +166,7 @@ export function MetricsCards({
         },
       ];
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Dependencies are intentionally minimal for performance
     []
   );
 

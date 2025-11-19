@@ -212,7 +212,7 @@ export default function SelfServiceMode() {
                 placeholder="Scan your ID card or enter Student ID..."
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 disabled={loading || showSuccess}
                 className="text-2xl py-8 text-center font-mono tracking-wider"
                 autoFocus
@@ -327,9 +327,9 @@ export default function SelfServiceMode() {
                 <Alert variant="destructive">
                   <AlertCircle className="h-6 w-6" />
                   <AlertTitle className="text-xl mb-2">Error</AlertTitle>
-                  <AlertDescription className="text-lg">
-                    {lastScan.message}
-                  </AlertDescription>
+                <AlertDescription className="text-lg">
+                  {typeof lastScan?.message === 'string' ? lastScan.message : String(lastScan?.message || '')}
+                </AlertDescription>
                 </Alert>
               )}
             </div>

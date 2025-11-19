@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { WebSocket } from 'ws';
+import type { WebSocket } from 'ws';
 import { logger } from '../utils/logger';
 
 export interface ClientConnection {

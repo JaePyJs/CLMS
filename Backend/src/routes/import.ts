@@ -1,17 +1,21 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
-import { authenticate } from '../middleware/authenticate';
+import { authenticate, requireRole } from '../middleware/authenticate';
 import { logger } from '../utils/logger';
 import { PrismaClient } from '@prisma/client';
+import multer from 'multer';
+import { BarcodeService } from '../services/barcodeService';
 
 const prisma = new PrismaClient();
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 // POST /api/import/students - Import students from CSV/Excel
 router.post(
   '/students',
   authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Import students request', {
       fileName: req.body.fileName,
@@ -95,20 +99,26 @@ router.post(
           }
 
           // Prepare student data
+          let barcode = String(studentData.barcode || '').trim();
+          if (!barcode) {
+            barcode = `PN${String(Date.now()).slice(-6)}`;
+            const collision = await prisma.students.findFirst({ where: { barcode } });
+            if (collision) {
+              barcode = `PN${String(Date.now() + i).slice(-6)}`;
+            }
+          }
+
           const createData = {
-            student_id: studentData.student_id,
-            first_name: studentData.first_name,
-            last_name: studentData.last_name,
-            grade_level: studentData.grade_level
-              ? parseInt(studentData.grade_level)
-              : 1,
+            student_id: String(studentData.student_id),
+            first_name: String(studentData.first_name),
+            last_name: String(studentData.last_name),
+            grade_level: studentData.grade_level ? parseInt(String(studentData.grade_level)) : 1,
             email: studentData.email || null,
-            barcode: studentData.barcode || null,
+            barcode,
             grade_category: studentData.grade_category || null,
             is_active:
               studentData.is_active !== undefined
-                ? studentData.is_active === true ||
-                  studentData.is_active === 'true'
+                ? studentData.is_active === true || studentData.is_active === 'true'
                 : true,
           };
 
@@ -122,6 +132,10 @@ router.post(
             await prisma.students.create({
               data: createData,
             });
+          }
+
+          if (!existingStudent && !studentData.barcode) {
+            result.errors.push(`Row ${i + 1}: Barcode generated: ${createData.barcode}`);
           }
 
           result.importedRecords++;
@@ -155,6 +169,7 @@ router.post(
 router.post(
   '/books',
   authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Import books request', {
       fileName: req.body.fileName,
@@ -324,6 +339,7 @@ router.post(
 router.get(
   '/template/:type',
   authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get import template request', {
       type: req.params['type'],
@@ -453,6 +469,7 @@ router.get(
 router.post(
   '/export/:type',
   authenticate,
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Export data request', {
       type: req.params['type'],
@@ -635,3 +652,323 @@ router.post(
 );
 
 export default router;
+
+// Enhanced import: preview
+router.post(
+  '/preview',
+  authenticate,
+  requireRole(['LIBRARIAN']),
+  upload.single('file'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const file = (req as any).file as Express.Multer.File | undefined;
+    const importType = String((req.body?.importType || 'students')).toLowerCase();
+    const maxPreviewRows = Math.max(1, Math.min(100, parseInt(String(req.body?.maxPreviewRows || '10'))));
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+    const name = file.originalname.toLowerCase();
+    const isCSV = name.endsWith('.csv') || file.mimetype === 'text/csv';
+    const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls');
+    let headers: string[] = [];
+    let rows: Array<string | string[]> = [];
+    if (isCSV) {
+      const text = file.buffer.toString('utf-8');
+      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      if (lines.length === 0) {
+        return res.status(400).json({ success: false, message: 'Empty file' });
+      }
+      headers = lines[0].split(',').map((h) => h.trim());
+      rows = lines.slice(1, 1 + maxPreviewRows);
+    } else if (isExcel) {
+      try {
+        const xlsx: any = await import('xlsx');
+        const wb = xlsx.read(file.buffer, { type: 'buffer' });
+        const sheetName = wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const json = xlsx.utils.sheet_to_json(ws, { header: 1 });
+        if (!json || json.length === 0) {
+          return res.status(400).json({ success: false, message: 'Empty file' });
+        }
+        headers = (json[0] as string[]).map((h: any) => String(h).trim());
+        rows = (json.slice(1, 1 + maxPreviewRows) as any[]).map((arr: any[]) => arr.map((v) => String(v ?? '').trim()));
+      } catch (_e) {
+        return res.status(415).json({ success: false, message: 'Excel parsing not available on server' });
+      }
+    } else {
+      return res.status(415).json({ success: false, message: 'Unsupported file type' });
+    }
+    const records: any[] = [];
+    for (let i = 0; i < rows.length; i++) {
+      const rowData = Array.isArray(rows[i]) ? (rows[i] as string[]) : parseCSVLine(String(rows[i]));
+      const obj: Record<string, string> = {};
+      headers.forEach((h, idx) => {
+        obj[h] = (rowData[idx] ?? '').trim();
+      });
+      if (importType === 'students') {
+        const requiredMissing = [
+          !obj['student_id'] ? 'student_id' : null,
+          !obj['first_name'] ? 'first_name' : null,
+          !obj['last_name'] ? 'last_name' : null,
+        ].filter(Boolean) as string[];
+        const rec: any = {
+          rowNumber: i + 1,
+          firstName: obj['first_name'] || '',
+          lastName: obj['last_name'] || '',
+          gradeLevel: obj['grade_level'] || '',
+          section: obj['section'] || '',
+          email: obj['email'] || '',
+          errors: [] as string[],
+          warnings: [] as string[],
+        };
+        if (requiredMissing.length > 0) {
+          rec.errors.push(`Missing required: ${requiredMissing.join(', ')}`);
+        }
+        if (!obj['barcode']) {
+          rec.warnings.push('Barcode will be generated');
+        }
+        records.push(rec);
+      }
+    }
+    return res.status(200).json({ success: true, data: { records, duplicateRecords: 0 } });
+  })
+);
+
+// Enhanced import: students (multipart CSV)
+router.post(
+  '/students/enhanced',
+  authenticate,
+  requireRole(['LIBRARIAN']),
+  upload.single('file'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const file = (req as any).file as Express.Multer.File | undefined;
+    const rawMappings = String(req.body?.fieldMappings || '[]');
+    let fieldMappings: Array<{ sourceField: string; targetField: string; required?: boolean }> = [];
+    try {
+      fieldMappings = JSON.parse(rawMappings) as any[];
+    } catch (_e) {
+      fieldMappings = [];
+    }
+    const dryRun = String(req.body?.dryRun || 'false').toLowerCase() === 'true';
+
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+    const name = file.originalname.toLowerCase();
+    const isCSV = name.endsWith('.csv') || file.mimetype === 'text/csv';
+    const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls');
+    let headers: string[] = [];
+    let dataRows: string[][] = [];
+    if (isCSV) {
+      const text = file.buffer.toString('utf-8');
+      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      if (lines.length === 0) {
+        return res.status(400).json({ success: false, message: 'Empty file' });
+      }
+      headers = lines[0].split(',').map((h) => h.trim());
+      dataRows = lines.slice(1).map((line) => parseCSVLine(line));
+    } else if (isExcel) {
+      try {
+        const xlsx: any = await import('xlsx');
+        const wb = xlsx.read(file.buffer, { type: 'buffer' });
+        const sheetName = wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const json = xlsx.utils.sheet_to_json(ws, { header: 1 });
+        if (!json || json.length === 0) {
+          return res.status(400).json({ success: false, message: 'Empty file' });
+        }
+        headers = (json[0] as string[]).map((h: any) => String(h).trim());
+        dataRows = (json.slice(1) as any[]).map((arr: any[]) => arr.map((v) => String(v ?? '').trim()));
+      } catch (_e) {
+        return res.status(415).json({ success: false, message: 'Excel parsing not available on server' });
+      }
+    } else {
+      return res.status(415).json({ success: false, message: 'Unsupported file type' });
+    }
+    const result = { importedRecords: 0, errorRecords: 0, errors: [] as string[], generated: [] as Array<{ row: number; barcode: string }> };
+    for (let i = 0; i < dataRows.length; i++) {
+      try {
+        const cols = dataRows[i];
+        const row: Record<string, string> = {};
+        headers.forEach((h, idx) => { row[h] = (cols[idx] ?? '').trim(); });
+        const mapped: any = {};
+        if (fieldMappings && fieldMappings.length > 0) {
+          fieldMappings.forEach((m) => {
+            if (row[m.sourceField]) {
+              mapped[m.targetField] = row[m.sourceField];
+            }
+          });
+        } else {
+          Object.assign(mapped, row);
+        }
+        if (!mapped.student_id || !mapped.first_name || !mapped.last_name) {
+          result.errorRecords++; result.errors.push(`Row ${i + 1}: missing required fields`); continue;
+        }
+        let barcode = String(mapped.barcode || '').trim();
+        if (!barcode) {
+          barcode = await BarcodeService.getNextPNBarcode();
+          result.errors.push(`Row ${i + 1}: Barcode generated ${barcode}`);
+          result.generated.push({ row: i + 1, barcode });
+        }
+        const createData = {
+          student_id: String(mapped.student_id),
+          first_name: String(mapped.first_name),
+          last_name: String(mapped.last_name),
+          grade_level: mapped.grade_level ? parseInt(String(mapped.grade_level)) : 1,
+          email: mapped.email || null,
+          barcode,
+          grade_category: mapped.grade_category || null,
+          is_active: mapped.is_active !== undefined ? (mapped.is_active === true || mapped.is_active === 'true') : true,
+        };
+        if (!dryRun) {
+          const existing = await prisma.students.findUnique({ where: { student_id: createData.student_id } });
+          if (existing) {
+            await prisma.students.update({ where: { id: existing.id }, data: createData });
+          } else {
+            await prisma.students.create({ data: createData });
+          }
+        }
+        result.importedRecords++;
+      } catch (err) {
+        result.errorRecords++; result.errors.push(`Row ${i}: ${(err as Error)?.message || 'Unknown error'}`);
+      }
+    }
+    return res.status(200).json({ success: result.importedRecords > 0, data: result });
+  })
+);
+
+router.post(
+  '/books/enhanced',
+  authenticate,
+  requireRole(['LIBRARIAN']),
+  upload.single('file'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const file = (req as any).file as Express.Multer.File | undefined;
+    const rawMappings = String(req.body?.fieldMappings || '[]');
+    let fieldMappings: Array<{ sourceField: string; targetField: string; required?: boolean }> = [];
+    try {
+      fieldMappings = JSON.parse(rawMappings) as any[];
+    } catch (_e) {
+      fieldMappings = [];
+    }
+    const dryRun = String(req.body?.dryRun || 'false').toLowerCase() === 'true';
+
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+    const name = file.originalname.toLowerCase();
+    const isCSV = name.endsWith('.csv') || file.mimetype === 'text/csv';
+    const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls');
+    let headers: string[] = [];
+    let dataRows: string[][] = [];
+    if (isCSV) {
+      const text = file.buffer.toString('utf-8');
+      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      if (lines.length === 0) {
+        return res.status(400).json({ success: false, message: 'Empty file' });
+      }
+      headers = lines[0].split(',').map((h) => h.trim());
+      dataRows = lines.slice(1).map((line) => parseCSVLine(line));
+    } else if (isExcel) {
+      try {
+        const xlsx: any = await import('xlsx');
+        const wb = xlsx.read(file.buffer, { type: 'buffer' });
+        const sheetName = wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const json = xlsx.utils.sheet_to_json(ws, { header: 1 });
+        if (!json || json.length === 0) {
+          return res.status(400).json({ success: false, message: 'Empty file' });
+        }
+        headers = (json[0] as string[]).map((h: any) => String(h).trim());
+        dataRows = (json.slice(1) as any[]).map((arr: any[]) => arr.map((v) => String(v ?? '').trim()));
+      } catch (_e) {
+        return res.status(415).json({ success: false, message: 'Excel parsing not available on server' });
+      }
+    } else {
+      return res.status(415).json({ success: false, message: 'Unsupported file type' });
+    }
+    const result = { importedRecords: 0, errorRecords: 0, errors: [] as string[] };
+    for (let i = 0; i < dataRows.length; i++) {
+      try {
+        const cols = dataRows[i];
+        const row: Record<string, string> = {};
+        headers.forEach((h, idx) => { row[h] = (cols[idx] ?? '').trim(); });
+        const mapped: any = {};
+        if (fieldMappings && fieldMappings.length > 0) {
+          fieldMappings.forEach((m) => {
+            if (row[m.sourceField]) {
+              mapped[m.targetField] = row[m.sourceField];
+            }
+          });
+        } else {
+          Object.assign(mapped, row);
+        }
+        if (!mapped.title || !mapped.author || !mapped.accession_no || !mapped.category) {
+          result.errorRecords++; result.errors.push(`Row ${i + 1}: missing required fields`); continue;
+        }
+        const createData = {
+          title: String(mapped.title),
+          author: String(mapped.author),
+          isbn: mapped.isbn || null,
+          publisher: mapped.publisher || null,
+          category: String(mapped.category),
+          subcategory: mapped.subcategory || null,
+          location: mapped.location || null,
+          accession_no: String(mapped.accession_no),
+          available_copies: mapped.available_copies ? parseInt(String(mapped.available_copies)) : 1,
+          total_copies: mapped.total_copies ? parseInt(String(mapped.total_copies)) : 1,
+          cost_price: mapped.cost_price ? parseFloat(String(mapped.cost_price)) : null,
+          edition: mapped.edition || null,
+          pages: mapped.pages || null,
+          remarks: mapped.remarks || null,
+          source_of_fund: mapped.source_of_fund || null,
+          volume: mapped.volume || null,
+          year: mapped.year ? parseInt(String(mapped.year)) : null,
+          is_active: mapped.is_active !== undefined ? (mapped.is_active === true || mapped.is_active === 'true') : true,
+        };
+        if (createData.available_copies > createData.total_copies) {
+          result.errorRecords++; result.errors.push(`Row ${i + 1}: Available copies cannot exceed total copies`); continue;
+        }
+        if (!dryRun) {
+          const existing = await prisma.books.findUnique({ where: { accession_no: createData.accession_no } });
+          if (existing) {
+            await prisma.books.update({ where: { id: existing.id }, data: createData });
+          } else {
+            await prisma.books.create({ data: createData });
+          }
+        }
+        result.importedRecords++;
+      } catch (err) {
+        result.errorRecords++; result.errors.push(`Row ${i}: ${(err as Error)?.message || 'Unknown error'}`);
+      }
+    }
+    return res.status(200).json({ success: result.importedRecords > 0, data: result });
+  })
+);
+
+// Templates alias for students
+router.get(
+  '/templates/students',
+  authenticate,
+  requireRole(['LIBRARIAN']),
+  asyncHandler(async (_req: Request, res: Response) => {
+    res.redirect(302, '/api/import/template/students');
+  })
+);
+
+function parseCSVLine(line: string): string[] {
+  const out: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; } else { inQuotes = !inQuotes; }
+    } else if (ch === ',' && !inQuotes) {
+      out.push(current); current = '';
+    } else {
+      current += ch;
+    }
+  }
+  out.push(current);
+  return out;
+}

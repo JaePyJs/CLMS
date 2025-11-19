@@ -71,14 +71,13 @@ export const SessionTimeoutWarning: React.FC<SessionTimeoutWarningProps> = ({
   }, [showWarning, countdown]);
 
   const handleExtendSession = () => {
-    // Trigger a token refresh by making any authenticated request
-    // This will reset the session timer
+    // Close the warning dialog
     setShowWarning(false);
     setCountdown(0);
 
     // The auto-refresh mechanism in AuthContext will handle the actual refresh
     // We just need to close the modal and reset the warning timer
-    window.location.reload();
+    // No need to reload the page
   };
 
   const handleLogout = () => {

@@ -288,7 +288,7 @@ export default function AdvancedSearch() {
                 placeholder="_Search for books, students, or activities..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && performSearch()}
+                onKeyDown={(e) => e.key === 'Enter' && performSearch()}
                 className="pl-10"
               />
             </div>

@@ -9,6 +9,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
   Clock,
@@ -18,8 +26,21 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Monitor,
+  Eye,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import type { AttendanceDisplaySettings } from '@/types/settings';
+
+const defaultAttendanceSettings: AttendanceDisplaySettings = {
+  enabled: true,
+  autoLogoutDuration: 15,
+  messageDuration: 5000,
+  theme: 'auto',
+  fontSizeMultiplier: 1.0,
+  showClock: true,
+  viewMode: 'list',
+};
 
 interface AttendanceSetting {
   key: string;
@@ -36,6 +57,12 @@ export default function AttendanceSettings() {
   const [_settings, setSettings] = useState<AttendanceSetting[]>([]);
   const [minCheckInInterval, setMinCheckInInterval] = useState(10);
   const [defaultSessionTime, setDefaultSessionTime] = useState(30);
+
+  // Attendance Display Settings
+  const [displaySettings, setDisplaySettings] =
+    useState<AttendanceDisplaySettings>({
+      ...defaultAttendanceSettings,
+    });
 
   // Date range for export
   const [startDate, setStartDate] = useState(() => {
@@ -105,6 +132,34 @@ export default function AttendanceSettings() {
         {
           key: 'attendance.default_session_time_minutes',
           value: defaultSessionTime.toString(),
+        },
+        {
+          key: 'attendance.display.enabled',
+          value: displaySettings.enabled.toString(),
+        },
+        {
+          key: 'attendance.display.auto_logout_duration',
+          value: displaySettings.autoLogoutDuration.toString(),
+        },
+        {
+          key: 'attendance.display.message_duration',
+          value: displaySettings.messageDuration.toString(),
+        },
+        {
+          key: 'attendance.display.theme',
+          value: displaySettings.theme,
+        },
+        {
+          key: 'attendance.display.font_size_multiplier',
+          value: displaySettings.fontSizeMultiplier.toString(),
+        },
+        {
+          key: 'attendance.display.show_clock',
+          value: displaySettings.showClock.toString(),
+        },
+        {
+          key: 'attendance.display.view_mode',
+          value: displaySettings.viewMode,
         },
       ];
 
@@ -365,6 +420,185 @@ export default function AttendanceSettings() {
               )}
               Reset to Defaults
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Attendance Display Settings Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Monitor className="h-5 w-5" />
+            Attendance Display Screen
+          </CardTitle>
+          <CardDescription>
+            Configure the dedicated attendance display screen for
+            self-monitoring. This screen shows real-time check-in/check-out
+            status.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Enable Display */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label
+                htmlFor="display-enabled"
+                className="text-base font-semibold"
+              >
+                Enable Attendance Display
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Turn on the attendance display screen feature
+              </p>
+            </div>
+            <Switch
+              id="display-enabled"
+              checked={displaySettings.enabled}
+              onCheckedChange={(checked) =>
+                setDisplaySettings({ ...displaySettings, enabled: checked })
+              }
+            />
+          </div>
+
+          {/* Auto-logout Duration */}
+          <div className="space-y-2">
+            <Label htmlFor="auto-logout" className="text-base font-semibold">
+              Auto-Logout Duration (Minutes)
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Automatically check out students after this duration of inactivity
+            </p>
+            <Input
+              id="auto-logout"
+              type="number"
+              min="5"
+              max="120"
+              value={displaySettings.autoLogoutDuration}
+              onChange={(e) =>
+                setDisplaySettings({
+                  ...displaySettings,
+                  autoLogoutDuration: parseInt(e.target.value) || 15,
+                })
+              }
+              className="max-w-xs"
+              disabled={!displaySettings.enabled}
+            />
+          </div>
+
+          {/* Message Duration */}
+          <div className="space-y-2">
+            <Label
+              htmlFor="message-duration"
+              className="text-base font-semibold"
+            >
+              Welcome/Goodbye Message Duration (Seconds)
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              How long to show welcome and goodbye messages
+            </p>
+            <Input
+              id="message-duration"
+              type="number"
+              min="1"
+              max="30"
+              value={displaySettings.messageDuration / 1000}
+              onChange={(e) =>
+                setDisplaySettings({
+                  ...displaySettings,
+                  messageDuration: (parseInt(e.target.value) || 5) * 1000,
+                })
+              }
+              className="max-w-xs"
+              disabled={!displaySettings.enabled}
+            />
+          </div>
+
+          {/* Theme */}
+          <div className="space-y-2">
+            <Label htmlFor="display-theme" className="text-base font-semibold">
+              Display Theme
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Choose the color theme for the attendance display
+            </p>
+            <Select
+              value={displaySettings.theme}
+              onValueChange={(value: 'light' | 'dark' | 'auto') =>
+                setDisplaySettings({ ...displaySettings, theme: value })
+              }
+              disabled={!displaySettings.enabled}
+            >
+              <SelectTrigger className="max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="light">Light</SelectItem>
+                <SelectItem value="dark">Dark</SelectItem>
+                <SelectItem value="auto">Auto (System)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* View Mode */}
+          <div className="space-y-2">
+            <Label htmlFor="view-mode" className="text-base font-semibold">
+              Student List View Mode
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              How to display the list of checked-in students
+            </p>
+            <Select
+              value={displaySettings.viewMode}
+              onValueChange={(value: 'grid' | 'list') =>
+                setDisplaySettings({ ...displaySettings, viewMode: value })
+              }
+              disabled={!displaySettings.enabled}
+            >
+              <SelectTrigger className="max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="list">List View</SelectItem>
+                <SelectItem value="grid">Grid View</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Show Clock */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="show-clock" className="text-base font-semibold">
+                Show Current Time
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Display current time on the attendance screen
+              </p>
+            </div>
+            <Switch
+              id="show-clock"
+              checked={displaySettings.showClock}
+              onCheckedChange={(checked) =>
+                setDisplaySettings({ ...displaySettings, showClock: checked })
+              }
+              disabled={!displaySettings.enabled}
+            />
+          </div>
+
+          {/* Preview Button */}
+          <div className="pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => window.open('/attendance-display', '_blank')}
+              disabled={!displaySettings.enabled}
+              className="gap-2"
+            >
+              <Eye className="h-4 w-4" />
+              Preview Display Screen
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Opens the attendance display in a new window. Recommended for use
+              on a second monitor.
+            </p>
           </div>
         </CardContent>
       </Card>

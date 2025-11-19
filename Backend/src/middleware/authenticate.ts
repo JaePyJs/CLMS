@@ -99,8 +99,9 @@ export function requireRole(roles: string | string[]) {
 
       const allowedRoles = Array.isArray(roles) ? roles : [roles];
       const userRole = req.user.role;
+      const effectiveRole = userRole === 'ADMIN' ? 'LIBRARIAN' : userRole;
 
-      if (!allowedRoles.includes(userRole)) {
+      if (!allowedRoles.includes(effectiveRole)) {
         logger.warn('Role check failed: insufficient permissions', {
           userId: req.user.userId,
           username: req.user.username,
@@ -113,7 +114,7 @@ export function requireRole(roles: string | string[]) {
           message: 'Insufficient permissions',
           code: 'INSUFFICIENT_PERMISSIONS',
           required: allowedRoles,
-          current: userRole,
+        current: effectiveRole,
         });
         return;
       }
@@ -121,7 +122,7 @@ export function requireRole(roles: string | string[]) {
       logger.debug('Role check successful', {
         userId: req.user.userId,
         username: req.user.username,
-        role: userRole,
+        role: effectiveRole,
         ip: req.ip,
       });
 
