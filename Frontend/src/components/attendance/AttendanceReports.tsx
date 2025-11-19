@@ -1,5 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useCallback } from 'react';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -58,18 +64,23 @@ export default function AttendanceReports() {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [stats, setStats] = useState<AttendanceStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
   const [gradeFilter, setGradeFilter] = useState<string>('ALL');
   const [message, setMessage] = useState<{
     type: 'success' | 'error' | null;
     text: string;
   }>({ type: null, text: '' });
 
-  useEffect(() => {
-    fetchAttendance();
-  }, [selectedDate, gradeFilter]);
+  const showMessage = useCallback((type: 'success' | 'error', text: string) => {
+    setMessage({ type, text });
+    setTimeout(() => {
+      setMessage({ type: null, text: '' });
+    }, 5000);
+  }, []);
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -95,7 +106,11 @@ export default function AttendanceReports() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate, gradeFilter, showMessage]);
+
+  useEffect(() => {
+    fetchAttendance();
+  }, [fetchAttendance]);
 
   const exportAttendance = async () => {
     try {
@@ -129,20 +144,20 @@ export default function AttendanceReports() {
     }
   };
 
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => {
-      setMessage({ type: null, text: '' });
-    }, 5000);
-  };
-
   const formatTime = (date: Date | null) => {
-    if (!date) return '-';
-    return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (!date) {
+      return '-';
+    }
+    return new Date(date).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const formatDuration = (minutes: number | null) => {
-    if (!minutes) return '-';
+    if (!minutes) {
+      return '-';
+    }
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     if (hours > 0) {
@@ -197,20 +212,22 @@ export default function AttendanceReports() {
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Visits</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Visits
+              </CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalVisits}</div>
-              <p className="text-xs text-muted-foreground">
-                Check-ins today
-              </p>
+              <p className="text-xs text-muted-foreground">Check-ins today</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Unique Students</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Unique Students
+              </CardTitle>
               <UserCheck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -223,7 +240,9 @@ export default function AttendanceReports() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Duration</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Avg Duration
+              </CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -243,9 +262,7 @@ export default function AttendanceReports() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.peakHour}</div>
-              <p className="text-xs text-muted-foreground">
-                Most active time
-              </p>
+              <p className="text-xs text-muted-foreground">Most active time</p>
             </CardContent>
           </Card>
         </div>
@@ -263,7 +280,10 @@ export default function AttendanceReports() {
           <CardContent>
             <div className="grid gap-4 md:grid-cols-3">
               {Object.entries(stats.gradeBreakdown).map(([grade, count]) => (
-                <div key={grade} className="flex items-center justify-between p-3 border rounded-lg">
+                <div
+                  key={grade}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
                   <span className="font-medium">{grade}</span>
                   <Badge variant="outline">{count} visits</Badge>
                 </div>
@@ -336,7 +356,10 @@ export default function AttendanceReports() {
               <TableBody>
                 {records.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={6}
+                      className="text-center text-muted-foreground"
+                    >
                       No attendance records for this date
                     </TableCell>
                   </TableRow>
@@ -345,7 +368,9 @@ export default function AttendanceReports() {
                     <TableRow key={record.id}>
                       <TableCell>
                         <div>
-                          <div className="font-medium">{record.studentName}</div>
+                          <div className="font-medium">
+                            {record.studentName}
+                          </div>
                           <div className="text-xs text-muted-foreground">
                             {record.studentId}
                           </div>

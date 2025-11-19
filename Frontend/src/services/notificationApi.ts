@@ -3,8 +3,17 @@ import api from './api';
 export interface AppNotification {
   id: string;
   userId?: string;
-  type: 'OVERDUE_BOOK' | 'FINE_ADDED' | 'FINE_WAIVED' | 'BOOK_DUE_SOON' | 
-        'EQUIPMENT_EXPIRING' | 'SYSTEM_ALERT' | 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS';
+  type:
+    | 'OVERDUE_BOOK'
+    | 'FINE_ADDED'
+    | 'FINE_WAIVED'
+    | 'BOOK_DUE_SOON'
+    | 'EQUIPMENT_EXPIRING'
+    | 'SYSTEM_ALERT'
+    | 'INFO'
+    | 'WARNING'
+    | 'ERROR'
+    | 'SUCCESS';
   title: string;
   message: string;
   priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
@@ -44,8 +53,21 @@ export const notificationApi = {
     offset?: number;
     type?: string;
   }): Promise<NotificationResponse> {
-    const response = await api.get('/notifications', { params });
-    return response.data;
+    try {
+      const response = await api.get('/notifications', { params });
+      return response.data;
+    } catch (error) {
+      console.warn('Notification API not available or failed:', error);
+      // Return empty response to prevent UI errors
+      return {
+        success: true,
+        data: {
+          notifications: [],
+          total: 0,
+          unreadCount: 0,
+        },
+      };
+    }
   },
 
   // Get notification statistics
@@ -57,37 +79,49 @@ export const notificationApi = {
   },
 
   // Create a notification
-  async createNotification(data: Partial<AppNotification>): Promise<{ success: boolean; data: AppNotification }> {
+  async createNotification(
+    data: Partial<AppNotification>
+  ): Promise<{ success: boolean; data: AppNotification }> {
     const response = await api.post('/notifications', data);
     return response.data;
   },
 
   // Create multiple notifications
-  async createBulkNotifications(notifications: Partial<AppNotification>[]): Promise<{ success: boolean; data: any }> {
+  async createBulkNotifications(
+    notifications: Partial<AppNotification>[]
+  ): Promise<{ success: boolean; data: any }> {
     const response = await api.post('/notifications/bulk', { notifications });
     return response.data;
   },
 
   // Mark notification as read
-  async markAsRead(notificationId: string): Promise<{ success: boolean; data: AppNotification }> {
+  async markAsRead(
+    notificationId: string
+  ): Promise<{ success: boolean; data: AppNotification }> {
     const response = await api.patch(`/notifications/${notificationId}/read`);
     return response.data;
   },
 
   // Mark all notifications as read
-  async markAllAsRead(userId?: string): Promise<{ success: boolean; data: any }> {
+  async markAllAsRead(
+    userId?: string
+  ): Promise<{ success: boolean; data: any }> {
     const response = await api.patch('/notifications/read-all', { userId });
     return response.data;
   },
 
   // Delete a notification
-  async deleteNotification(notificationId: string): Promise<{ success: boolean; message: string }> {
+  async deleteNotification(
+    notificationId: string
+  ): Promise<{ success: boolean; message: string }> {
     const response = await api.delete(`/notifications/${notificationId}`);
     return response.data;
   },
 
   // Delete all read notifications
-  async deleteReadNotifications(userId?: string): Promise<{ success: boolean; data: any; message: string }> {
+  async deleteReadNotifications(
+    userId?: string
+  ): Promise<{ success: boolean; data: any; message: string }> {
     const response = await api.delete('/notifications/read/all', {
       params: { userId },
     });
@@ -95,7 +129,11 @@ export const notificationApi = {
   },
 
   // Clean up expired notifications
-  async cleanupExpired(): Promise<{ success: boolean; data: any; message: string }> {
+  async cleanupExpired(): Promise<{
+    success: boolean;
+    data: any;
+    message: string;
+  }> {
     const response = await api.post('/notifications/cleanup');
     return response.data;
   },

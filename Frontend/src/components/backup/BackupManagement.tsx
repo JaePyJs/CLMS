@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Database,
   Download,
@@ -15,31 +15,33 @@ import {
   History as HistoryIcon,
   Play,
 } from 'lucide-react';
-import backupApi from '../../services/backupApi';
-import type { BackupMetadata, BackupStatistics } from '../../services/backupApi';
+import backupApi, {
+  type BackupMetadata,
+  type BackupStatistics,
+} from '../../services/backupApi';
 import { useToast } from '../ToastContainer';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 const BackupManagement: React.FC = () => {
   const [backups, setBackups] = useState<BackupMetadata[]>([]);
   const [statistics, setStatistics] = useState<BackupStatistics | null>(null);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<'ALL' | 'FULL' | 'INCREMENTAL'>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'FULL' | 'INCREMENTAL'>(
+    'ALL'
+  );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const [selectedBackup, setSelectedBackup] = useState<BackupMetadata | null>(null);
+  const [selectedBackup, setSelectedBackup] = useState<BackupMetadata | null>(
+    null
+  );
 
   const toast = useToast();
 
-  useEffect(() => {
-    fetchBackups();
-    fetchStatistics();
-  }, [typeFilter]);
-
-  const fetchBackups = async () => {
+  const fetchBackups = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = {};
+      const params: Record<string, unknown> = {};
 
       if (typeFilter !== 'ALL') {
         params.type = typeFilter;
@@ -53,18 +55,26 @@ const BackupManagement: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [typeFilter, toast]);
 
-  const fetchStatistics = async () => {
+  const fetchStatistics = useCallback(async () => {
     try {
       const response = await backupApi.getStatistics();
       setStatistics(response.data);
     } catch (error) {
       console.error('Error fetching statistics:', error);
     }
-  };
+  }, []);
 
-  const handleCreateBackup = async (type: 'FULL' | 'INCREMENTAL', description?: string) => {
+  useEffect(() => {
+    fetchBackups();
+    fetchStatistics();
+  }, [fetchBackups, fetchStatistics]);
+
+  const handleCreateBackup = async (
+    type: 'FULL' | 'INCREMENTAL',
+    description?: string
+  ) => {
     try {
       setCreating(true);
 
@@ -79,8 +89,8 @@ const BackupManagement: React.FC = () => {
       setShowCreateModal(false);
       fetchBackups();
       fetchStatistics();
-    } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to create backup');
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to create backup'));
     } finally {
       setCreating(false);
     }
@@ -97,18 +107,23 @@ const BackupManagement: React.FC = () => {
       }
 
       fetchBackups();
-    } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to verify backup');
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to verify backup'));
     }
   };
 
-  const handleRestoreBackup = async (backup: BackupMetadata, dryRun: boolean = false) => {
+  const handleRestoreBackup = async (
+    backup: BackupMetadata,
+    dryRun: boolean = false
+  ) => {
     if (!dryRun) {
       const confirmed = window.confirm(
         `⚠️ WARNING: This will restore the database to the state at ${formatDateTime(backup.createdAt)}.\n\nAll current data will be replaced with the backup data.\n\nAre you absolutely sure you want to proceed?`
       );
 
-      if (!confirmed) return;
+      if (!confirmed) {
+        return;
+      }
     }
 
     try {
@@ -123,13 +138,17 @@ const BackupManagement: React.FC = () => {
 
       setShowRestoreModal(false);
       setSelectedBackup(null);
-    } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to restore backup');
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to restore backup'));
     }
   };
 
   const handleDeleteBackup = async (backup: BackupMetadata) => {
-    if (!window.confirm(`Are you sure you want to delete backup "${backup.filename}"?`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete backup "${backup.filename}"?`
+      )
+    ) {
       return;
     }
 
@@ -138,13 +157,15 @@ const BackupManagement: React.FC = () => {
       toast.success('Success', 'Backup deleted successfully');
       fetchBackups();
       fetchStatistics();
-    } catch (error: any) {
-      toast.error('Error', error.response?.data?.message || 'Failed to delete backup');
+    } catch (error: unknown) {
+      toast.error('Error', getErrorMessage(error, 'Failed to delete backup'));
     }
   };
 
   const formatSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) {
+      return '0 B';
+    }
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -188,7 +209,9 @@ const BackupManagement: React.FC = () => {
     const badge = badges[status];
 
     return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${badge.color}`}>
+      <span
+        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${badge.color}`}
+      >
         {badge.icon}
         {badge.text}
       </span>
@@ -201,7 +224,9 @@ const BackupManagement: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Backup & Restore</h1>
-          <p className="text-gray-600 mt-1">Manage database backups and restore points</p>
+          <p className="text-gray-600 mt-1">
+            Manage database backups and restore points
+          </p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -220,7 +245,9 @@ const BackupManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Backups</p>
-                <p className="text-2xl font-bold text-gray-900">{statistics.total}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {statistics.total}
+                </p>
               </div>
               <Database className="w-8 h-8 text-blue-600" />
             </div>
@@ -230,7 +257,9 @@ const BackupManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Full Backups</p>
-                <p className="text-2xl font-bold text-purple-600">{statistics.fullBackups}</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {statistics.fullBackups}
+                </p>
               </div>
               <FileArchive className="w-8 h-8 text-purple-600" />
             </div>
@@ -240,7 +269,9 @@ const BackupManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Incremental</p>
-                <p className="text-2xl font-bold text-green-600">{statistics.incrementalBackups}</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {statistics.incrementalBackups}
+                </p>
               </div>
               <HistoryIcon className="w-8 h-8 text-green-600" />
             </div>
@@ -250,7 +281,9 @@ const BackupManagement: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">Total Size</p>
-                <p className="text-2xl font-bold text-orange-600">{formatSize(statistics.totalSize)}</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {formatSize(statistics.totalSize)}
+                </p>
               </div>
               <HardDrive className="w-8 h-8 text-orange-600" />
             </div>
@@ -268,7 +301,8 @@ const BackupManagement: React.FC = () => {
                 Last backup: {formatDateTime(statistics.lastBackup.createdAt)}
               </p>
               <p className="text-sm text-gray-600">
-                {statistics.lastBackup.type} backup • {formatSize(statistics.lastBackup.size)}
+                {statistics.lastBackup.type} backup •{' '}
+                {formatSize(statistics.lastBackup.size)}
               </p>
             </div>
           </div>
@@ -280,7 +314,9 @@ const BackupManagement: React.FC = () => {
         <div className="flex items-center gap-4">
           <select
             value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value as any)}
+            onChange={(e) =>
+              setTypeFilter(e.target.value as 'ALL' | 'FULL' | 'INCREMENTAL')
+            }
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="ALL">All Types</option>
@@ -346,9 +382,13 @@ const BackupManagement: React.FC = () => {
                   <tr key={backup.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div>
-                        <div className="font-medium text-gray-900">{backup.filename}</div>
+                        <div className="font-medium text-gray-900">
+                          {backup.filename}
+                        </div>
                         {backup.description && (
-                          <div className="text-sm text-gray-500">{backup.description}</div>
+                          <div className="text-sm text-gray-500">
+                            {backup.description}
+                          </div>
                         )}
                         {backup.verified && (
                           <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
@@ -366,13 +406,23 @@ const BackupManagement: React.FC = () => {
                             : 'bg-green-100 text-green-800 border-green-300'
                         }`}
                       >
-                        {backup.type === 'FULL' ? <Database className="w-3 h-3" /> : <HistoryIcon className="w-3 h-3" />}
+                        {backup.type === 'FULL' ? (
+                          <Database className="w-3 h-3" />
+                        ) : (
+                          <HistoryIcon className="w-3 h-3" />
+                        )}
                         {backup.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4">{getStatusBadge(backup.status)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{formatSize(backup.size)}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{formatDateTime(backup.createdAt)}</td>
+                    <td className="px-6 py-4">
+                      {getStatusBadge(backup.status)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {formatSize(backup.size)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {formatDateTime(backup.createdAt)}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         {backup.status === 'COMPLETED' && (
@@ -457,19 +507,25 @@ const CreateBackupModal: React.FC<{
         <h2 className="text-xl font-bold mb-4">Create New Backup</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Backup Type *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Backup Type *
+            </label>
             <div className="space-y-2">
               <label className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
                 <input
                   type="radio"
                   value="FULL"
                   checked={type === 'FULL'}
-                  onChange={(e) => setType(e.target.value as any)}
+                  onChange={(e) =>
+                    setType(e.target.value as 'FULL' | 'INCREMENTAL')
+                  }
                   className="text-blue-600"
                 />
                 <div>
                   <div className="font-medium">Full Backup</div>
-                  <div className="text-sm text-gray-500">Complete database snapshot</div>
+                  <div className="text-sm text-gray-500">
+                    Complete database snapshot
+                  </div>
                 </div>
               </label>
               <label className="flex items-center gap-3 p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
@@ -477,12 +533,16 @@ const CreateBackupModal: React.FC<{
                   type="radio"
                   value="INCREMENTAL"
                   checked={type === 'INCREMENTAL'}
-                  onChange={(e) => setType(e.target.value as any)}
+                  onChange={(e) =>
+                    setType(e.target.value as 'FULL' | 'INCREMENTAL')
+                  }
                   className="text-blue-600"
                 />
                 <div>
                   <div className="font-medium">Incremental Backup</div>
-                  <div className="text-sm text-gray-500">Changes since last backup</div>
+                  <div className="text-sm text-gray-500">
+                    Changes since last backup
+                  </div>
                 </div>
               </label>
             </div>
@@ -551,7 +611,8 @@ const RestoreBackupModal: React.FC<{
         <div className="space-y-4">
           <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
             <p className="text-sm text-orange-800">
-              <strong>Warning:</strong> This action will replace all current data with the backup data from{' '}
+              <strong>Warning:</strong> This action will replace all current
+              data with the backup data from{' '}
               <strong>{new Date(backup.createdAt).toLocaleString()}</strong>.
             </p>
           </div>
@@ -567,7 +628,9 @@ const RestoreBackupModal: React.FC<{
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Size:</span>
-              <span className="font-medium">{(backup.size / (1024 * 1024)).toFixed(2)} MB</span>
+              <span className="font-medium">
+                {(backup.size / (1024 * 1024)).toFixed(2)} MB
+              </span>
             </div>
             {backup.description && (
               <div className="flex justify-between text-sm">

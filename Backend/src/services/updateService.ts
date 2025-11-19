@@ -12,8 +12,9 @@
 
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { readFileSync, writeFileSync } from 'fs';
+// Reserved for future use: existsSync, dirname
+import { join } from 'path';
 import { logger } from '../utils/logger';
 
 const execAsync = promisify(exec);
@@ -50,11 +51,12 @@ class UpdateService {
     checking: false,
     downloading: false,
     installing: false,
-    completed: false
+    completed: false,
   };
 
   private readonly VERSION_FILE = join(process.cwd(), 'version.json');
-  private readonly UPDATE_DIR = join(process.cwd(), 'updates');
+  // Reserved for future update download feature
+  // private readonly UPDATE_DIR = join(process.cwd(), 'updates');
   private readonly BACKUP_DIR = join(process.cwd(), 'backups');
 
   /**
@@ -63,7 +65,7 @@ class UpdateService {
   async getCurrentVersion(): Promise<string> {
     try {
       const packageJson = JSON.parse(
-        readFileSync(join(process.cwd(), 'package.json'), 'utf-8')
+        readFileSync(join(process.cwd(), 'package.json'), 'utf-8'),
       );
       return packageJson.version || '1.0.0';
     } catch (error) {
@@ -75,12 +77,15 @@ class UpdateService {
   /**
    * Check for available updates
    */
-  async checkForUpdates(forceCheck = false): Promise<VersionInfo> {
+  async checkForUpdates(_forceCheck = false): Promise<VersionInfo> {
     logger.info('Checking for updates...');
 
     this.updateStatus = {
       checking: true,
-      status: 'Checking for updates...'
+      downloading: false,
+      installing: false,
+      completed: false,
+      status: 'Checking for updates...',
     };
 
     try {
@@ -89,14 +94,15 @@ class UpdateService {
       // Simulate update check (in production, this would query a remote server)
       const latestVersion = await this.getLatestVersion();
 
-      const isOutdated = this.compareVersions(latestVersion, currentVersion) > 0;
+      const isOutdated =
+        this.compareVersions(latestVersion, currentVersion) > 0;
 
       const versionInfo: VersionInfo = {
         current: currentVersion,
         latest: latestVersion,
         isOutdated,
         forceUpdate: false,
-        releaseNotes: await this.getReleaseNotes(latestVersion)
+        releaseNotes: await this.getReleaseNotes(latestVersion),
       };
 
       logger.info('Update check complete:', versionInfo);
@@ -106,7 +112,8 @@ class UpdateService {
     } catch (error) {
       logger.error('Update check failed:', error);
       this.updateStatus.checking = false;
-      this.updateStatus.error = error instanceof Error ? error.message : 'Unknown error';
+      this.updateStatus.error =
+        error instanceof Error ? error.message : 'Unknown error';
 
       throw error;
     }
@@ -141,8 +148,12 @@ class UpdateService {
       const part1 = parts1[i] || 0;
       const part2 = parts2[i] || 0;
 
-      if (part1 > part2) return 1;
-      if (part1 < part2) return -1;
+      if (part1 > part2) {
+        return 1;
+      }
+      if (part1 < part2) {
+        return -1;
+      }
     }
 
     return 0;
@@ -197,13 +208,14 @@ class UpdateService {
         downloading: false,
         installing: false,
         completed: true,
-        status: 'Update completed successfully!'
+        status: 'Update completed successfully!',
       };
 
       logger.info('One-click update completed successfully');
     } catch (error) {
       logger.error('Update failed:', error);
-      this.updateStatus.error = error instanceof Error ? error.message : 'Unknown error';
+      this.updateStatus.error =
+        error instanceof Error ? error.message : 'Unknown error';
       this.updateStatus.status = 'Update failed';
 
       // Rollback on failure
@@ -226,14 +238,14 @@ class UpdateService {
       logger.info('Installing dependencies...');
       await execAsync('npm ci --production', {
         cwd: process.cwd(),
-        timeout: 300000
+        timeout: 300000,
       });
 
       // Build TypeScript
       logger.info('Building TypeScript...');
       await execAsync('npm run build', {
         cwd: process.cwd(),
-        timeout: 300000
+        timeout: 300000,
       });
 
       const duration = Date.now() - startTime;
@@ -241,18 +253,19 @@ class UpdateService {
 
       return {
         success: true,
-        duration
+        duration,
       };
     } catch (error) {
       const duration = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown build error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown build error';
 
       logger.error('Build failed:', errorMessage);
 
       return {
         success: false,
         error: errorMessage,
-        duration
+        duration,
       };
     }
   }
@@ -300,7 +313,7 @@ class UpdateService {
       // Update version file
       const versionData = {
         current: versionInfo.latest,
-        updated: new Date().toISOString()
+        updated: new Date().toISOString(),
       };
 
       writeFileSync(this.VERSION_FILE, JSON.stringify(versionData, null, 2));
@@ -322,7 +335,9 @@ class UpdateService {
       // In a production environment, this would use PM2, systemd, or Docker
       // For now, we'll just log the restart
 
-      logger.info('Services restart triggered (manual restart required in development)');
+      logger.info(
+        'Services restart triggered (manual restart required in development)',
+      );
     } catch (error) {
       logger.error('Service restart failed:', error);
       throw error;
@@ -385,12 +400,14 @@ class UpdateService {
     const currentVersion = await this.getCurrentVersion();
     const latestVersion = await this.getLatestVersion();
 
-    return [{
-      current: currentVersion,
-      latest: latestVersion,
-      isOutdated: this.compareVersions(latestVersion, currentVersion) > 0,
-      forceUpdate: false
-    }];
+    return [
+      {
+        current: currentVersion,
+        latest: latestVersion,
+        isOutdated: this.compareVersions(latestVersion, currentVersion) > 0,
+        forceUpdate: false,
+      },
+    ];
   }
 
   /**
@@ -447,7 +464,8 @@ class UpdateService {
       logger.info('Quick update completed successfully');
     } catch (error) {
       logger.error('Quick update failed:', error);
-      this.updateStatus.error = error instanceof Error ? error.message : 'Unknown error';
+      this.updateStatus.error =
+        error instanceof Error ? error.message : 'Unknown error';
 
       throw error;
     }

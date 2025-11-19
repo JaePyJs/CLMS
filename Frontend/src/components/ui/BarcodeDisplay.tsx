@@ -16,7 +16,7 @@ export function BarcodeDisplay({
   width = 2,
   height = 100,
   displayValue = true,
-  className = ''
+  className = '',
 }: BarcodeDisplayProps) {
   const barcodeRef = useRef<SVGSVGElement>(null);
 
@@ -29,7 +29,7 @@ export function BarcodeDisplay({
           height,
           displayValue,
           fontSize: 14,
-          margin: 10
+          margin: 10,
         });
       } catch (error) {
         console.error('Error generating barcode:', error);
@@ -39,7 +39,9 @@ export function BarcodeDisplay({
 
   if (!value) {
     return (
-      <div className={`flex items-center justify-center h-24 bg-gray-100 border border-gray-300 rounded ${className}`}>
+      <div
+        className={`flex items-center justify-center h-24 bg-gray-100 border border-gray-300 rounded ${className}`}
+      >
         <span className="text-gray-500 text-sm">No barcode data</span>
       </div>
     );

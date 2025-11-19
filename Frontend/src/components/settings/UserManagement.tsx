@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,8 +36,17 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { UserPlus, Edit, Trash2, Search, AlertCircle, UserCheck, UserX } from 'lucide-react';
+import {
+  UserPlus,
+  Edit,
+  Trash2,
+  Search,
+  AlertCircle,
+  UserCheck,
+  UserX,
+} from 'lucide-react';
 import { settingsApi } from '@/lib/api';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 interface User {
   id: string;
@@ -44,7 +59,7 @@ interface User {
 
 interface UserFormData {
   username: string;
-  password: string;
+  password?: string; // Make password optional
   role: 'ADMIN' | 'LIBRARIAN' | 'STAFF';
   isActive: boolean;
 }
@@ -64,7 +79,11 @@ export default function UserManagement() {
   const [formData, setFormData] = useState<UserFormData>(EMPTY_FORM);
 
   // Fetch users with TanStack Query
-  const { data: users = [], isLoading, error } = useQuery({
+  const {
+    data: users = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
       const response = await settingsApi.getUsers();
@@ -82,8 +101,8 @@ export default function UserManagement() {
       setDialogOpen(false);
       setFormData(EMPTY_FORM);
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to create user');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to create user'));
     },
   });
 
@@ -97,8 +116,8 @@ export default function UserManagement() {
       setDialogOpen(false);
       setFormData(EMPTY_FORM);
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to update user');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to update user'));
     },
   });
 
@@ -109,8 +128,8 @@ export default function UserManagement() {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('User deleted successfully!');
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to delete user');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to delete user'));
     },
   });
 
@@ -156,7 +175,11 @@ export default function UserManagement() {
       return;
     }
 
-    const userData: any = {
+    const userData: Partial<UserFormData> & {
+      username: string;
+      role: UserFormData['role'];
+      isActive: boolean;
+    } = {
       username: formData.username,
       role: formData.role,
       isActive: formData.isActive,
@@ -170,7 +193,7 @@ export default function UserManagement() {
     if (editingUser) {
       updateMutation.mutate({ id: editingUser.id, data: userData });
     } else {
-      createMutation.mutate(userData);
+      createMutation.mutate(userData as UserFormData);
     }
   };
 
@@ -186,7 +209,9 @@ export default function UserManagement() {
   };
 
   const formatDate = (date: Date | null) => {
-    if (!date) return 'Never';
+    if (!date) {
+      return 'Never';
+    }
     return new Date(date).toLocaleString();
   };
 
@@ -233,7 +258,6 @@ export default function UserManagement() {
 
   return (
     <div className="space-y-6">
-
       <Card>
         <CardHeader>
           <CardTitle>User Management</CardTitle>
@@ -242,12 +266,12 @@ export default function UserManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Search and Add User */}
+          {/* _Search and Add User */}
           <div className="flex items-center justify-between gap-4">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search users..."
+                placeholder="_Search users..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -275,14 +299,19 @@ export default function UserManagement() {
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={6}
+                      className="text-center text-muted-foreground"
+                    >
                       No users found
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredUsers.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.username}</TableCell>
+                      <TableCell className="font-medium">
+                        {user.username}
+                      </TableCell>
                       <TableCell>
                         <Badge variant={getRoleBadgeVariant(user.role)}>
                           {user.role}
@@ -380,7 +409,9 @@ export default function UserManagement() {
               <Input
                 id="password"
                 type="password"
-                placeholder={editingUser ? 'Enter new password' : 'Enter password'}
+                placeholder={
+                  editingUser ? 'Enter new password' : 'Enter password'
+                }
                 value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
@@ -395,8 +426,11 @@ export default function UserManagement() {
               <Label htmlFor="role">Role</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: any) =>
-                  setFormData({ ...formData, role: value })
+                onValueChange={(value: string) =>
+                  setFormData({
+                    ...formData,
+                    role: value as 'ADMIN' | 'LIBRARIAN' | 'STAFF',
+                  })
                 }
               >
                 <SelectTrigger>
@@ -441,8 +475,8 @@ export default function UserManagement() {
               {createMutation.isPending || updateMutation.isPending
                 ? 'Saving...'
                 : editingUser
-                ? 'Update User'
-                : 'Create User'}
+                  ? 'Update User'
+                  : 'Create User'}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -15,7 +15,7 @@ export function MobileCardList<T>({
   renderCard,
   renderTable,
   emptyMessage = 'No items found',
-  className = ''
+  className = '',
 }: MobileCardListProps<T>) {
   const { isMobile, isTablet } = useMobileOptimization();
 
@@ -62,7 +62,12 @@ interface MobileTableProps {
   className?: string;
 }
 
-export function MobileTable({ headers, rows, mobileHeaders, className = '' }: MobileTableProps) {
+export function MobileTable({
+  headers,
+  rows,
+  mobileHeaders,
+  className = '',
+}: MobileTableProps) {
   const { isMobile, isTablet } = useMobileOptimization();
 
   if (isMobile || isTablet) {
@@ -75,7 +80,10 @@ export function MobileTable({ headers, rows, mobileHeaders, className = '' }: Mo
             <CardContent className="p-4">
               <div className="space-y-2">
                 {row.map((cell, cellIndex) => (
-                  <div key={cellIndex} className="flex justify-between items-start gap-4">
+                  <div
+                    key={cellIndex}
+                    className="flex justify-between items-start gap-4"
+                  >
                     <span className="text-sm font-medium text-muted-foreground">
                       {displayHeaders[cellIndex]}:
                     </span>

@@ -1,13 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { settingsApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { Save, RotateCcw, Clock, DollarSign, BookOpen, Calendar, AlertCircle, Users, Building2 } from 'lucide-react';
+import { getErrorMessage } from '@/utils/errorHandling';
+import {
+  Save,
+  RotateCcw,
+  Clock,
+  DollarSign,
+  BookOpen,
+  Calendar,
+  AlertCircle,
+  Users,
+  Building2,
+} from 'lucide-react';
 
 interface SystemConfig {
   libraryName?: string;
@@ -53,7 +70,11 @@ export default function SystemSettings() {
   const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch settings with TanStack Query
-  const { data: settingsData, isLoading, error } = useQuery({
+  const {
+    data: settingsData,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['system-settings'],
     queryFn: async () => {
       const response = await settingsApi.getSystemSettings();
@@ -64,7 +85,8 @@ export default function SystemSettings() {
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: (newSettings: SystemConfig) => settingsApi.updateSystemSettings(newSettings),
+    mutationFn: (newSettings: SystemConfig) =>
+      settingsApi.updateSystemSettings(newSettings),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['system-settings'] });
       toast.success('Settings saved successfully!');
@@ -73,8 +95,8 @@ export default function SystemSettings() {
       }
       setHasChanges(false);
     },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.error || 'Failed to save settings');
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to save settings'));
     },
   });
 
@@ -117,7 +139,10 @@ export default function SystemSettings() {
     }
   };
 
-  const handleInputChange = (field: keyof SystemConfig, value: any) => {
+  const handleInputChange = (
+    field: keyof SystemConfig,
+    value: string | number | boolean | Record<string, number>
+  ) => {
     setSettings((prev) => ({
       ...prev,
       [field]: value,
@@ -213,7 +238,10 @@ export default function SystemSettings() {
                   step="0.5"
                   value={settings.fineRatePerDay}
                   onChange={(e) =>
-                    handleInputChange('fineRatePerDay', parseFloat(e.target.value) || 0)
+                    handleInputChange(
+                      'fineRatePerDay',
+                      parseFloat(e.target.value) || 0
+                    )
                   }
                   className="pl-7"
                 />
@@ -232,7 +260,10 @@ export default function SystemSettings() {
                   min="0"
                   value={settings.overdueGracePeriod}
                   onChange={(e) =>
-                    handleInputChange('overdueGracePeriod', parseInt(e.target.value) || 0)
+                    handleInputChange(
+                      'overdueGracePeriod',
+                      parseInt(e.target.value) || 0
+                    )
                   }
                   className="pr-16"
                 />
@@ -270,7 +301,10 @@ export default function SystemSettings() {
                   min="1"
                   value={settings.defaultCheckoutPeriod}
                   onChange={(e) =>
-                    handleInputChange('defaultCheckoutPeriod', parseInt(e.target.value) || 7)
+                    handleInputChange(
+                      'defaultCheckoutPeriod',
+                      parseInt(e.target.value) || 7
+                    )
                   }
                   className="pr-16"
                 />
@@ -291,7 +325,10 @@ export default function SystemSettings() {
                 min="1"
                 value={settings.maxBooksPerStudent}
                 onChange={(e) =>
-                  handleInputChange('maxBooksPerStudent', parseInt(e.target.value) || 5)
+                  handleInputChange(
+                    'maxBooksPerStudent',
+                    parseInt(e.target.value) || 5
+                  )
                 }
               />
               <p className="text-xs text-muted-foreground">
@@ -309,9 +346,7 @@ export default function SystemSettings() {
             <Clock className="w-5 h-5" />
             Library Hours
           </CardTitle>
-          <CardDescription>
-            Set your library's operating hours
-          </CardDescription>
+          <CardDescription>Set your library's operating hours</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
@@ -321,7 +356,9 @@ export default function SystemSettings() {
                 id="openTime"
                 type="time"
                 value={settings.libraryHours.open}
-                onChange={(e) => handleLibraryHoursChange('open', e.target.value)}
+                onChange={(e) =>
+                  handleLibraryHoursChange('open', e.target.value)
+                }
               />
             </div>
 
@@ -331,7 +368,9 @@ export default function SystemSettings() {
                 id="closeTime"
                 type="time"
                 value={settings.libraryHours.close}
-                onChange={(e) => handleLibraryHoursChange('close', e.target.value)}
+                onChange={(e) =>
+                  handleLibraryHoursChange('close', e.target.value)
+                }
               />
             </div>
           </div>
@@ -360,7 +399,10 @@ export default function SystemSettings() {
                   min="5"
                   value={settings.sessionTimeout}
                   onChange={(e) =>
-                    handleInputChange('sessionTimeout', parseInt(e.target.value) || 30)
+                    handleInputChange(
+                      'sessionTimeout',
+                      parseInt(e.target.value) || 30
+                    )
                   }
                   className="pr-20"
                 />
@@ -486,7 +528,8 @@ export default function SystemSettings() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Maximum time students can use computers/equipment per session based on their grade level
+            Maximum time students can use computers/equipment per session based
+            on their grade level
           </p>
         </CardContent>
       </Card>
@@ -511,7 +554,9 @@ export default function SystemSettings() {
           )}
           <Button
             onClick={saveSettings}
-            disabled={updateMutation.isPending || resetMutation.isPending || !hasChanges}
+            disabled={
+              updateMutation.isPending || resetMutation.isPending || !hasChanges
+            }
           >
             <Save className="w-4 h-4 mr-2" />
             {updateMutation.isPending ? 'Saving...' : 'Save Changes'}

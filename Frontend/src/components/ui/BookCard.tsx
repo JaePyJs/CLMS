@@ -5,7 +5,14 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { BookOpen, BookMarked, CheckCircle, XCircle, AlertCircle, Eye } from 'lucide-react';
+import {
+  BookOpen,
+  BookMarked,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Eye,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Book {
@@ -39,13 +46,15 @@ export function BookCard({
   onCheckout,
   onViewDetails,
   compact = false,
-  className
+  className,
 }: BookCardProps) {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [imageError, setImageError] = useState(false);
 
   const handleCheckout = async () => {
-    if (!onCheckout || book.availableCopies === 0) return;
+    if (!onCheckout || book.availableCopies === 0) {
+      return;
+    }
 
     setIsCheckingOut(true);
     try {
@@ -69,14 +78,20 @@ export function BookCard({
       );
     } else if (book.availableCopies < book.totalCopies) {
       return (
-        <Badge variant="default" className="flex items-center gap-1 bg-yellow-500">
+        <Badge
+          variant="default"
+          className="flex items-center gap-1 bg-yellow-500"
+        >
           <AlertCircle className="h-3 w-3" />
           {book.availableCopies} left
         </Badge>
       );
     } else {
       return (
-        <Badge variant="default" className="flex items-center gap-1 bg-green-500">
+        <Badge
+          variant="default"
+          className="flex items-center gap-1 bg-green-500"
+        >
           <CheckCircle className="h-3 w-3" />
           Available
         </Badge>
@@ -85,23 +100,31 @@ export function BookCard({
   };
 
   const getCardOpacity = () => {
-    if (!book.isActive) return 'opacity-60';
-    if (book.availableCopies === 0) return 'opacity-75';
+    if (!book.isActive) {
+      return 'opacity-60';
+    }
+    if (book.availableCopies === 0) {
+      return 'opacity-75';
+    }
     return 'opacity-100';
   };
 
   return (
-    <Card className={cn(
-      'group hover:shadow-lg transition-all duration-200 cursor-pointer',
-      getCardOpacity(),
-      compact ? 'p-3' : 'p-4',
-      className
-    )}>
+    <Card
+      className={cn(
+        'group hover:shadow-lg transition-all duration-200 cursor-pointer',
+        getCardOpacity(),
+        compact ? 'p-3' : 'p-4',
+        className
+      )}
+    >
       {/* Book Cover/Visual */}
-      <div className={cn(
-        'flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 rounded-lg mb-3',
-        compact ? 'h-24' : 'h-32'
-      )}>
+      <div
+        className={cn(
+          'flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 rounded-lg mb-3',
+          compact ? 'h-24' : 'h-32'
+        )}
+      >
         {book.barcodeImage && !imageError ? (
           <img
             src={book.barcodeImage}
@@ -113,37 +136,40 @@ export function BookCard({
             onError={() => setImageError(true)}
           />
         ) : (
-          <BookOpen className={cn(
-            'text-slate-400',
-            compact ? 'h-8 w-8' : 'h-12 w-12'
-          )} />
+          <BookOpen
+            className={cn('text-slate-400', compact ? 'h-8 w-8' : 'h-12 w-12')}
+          />
         )}
       </div>
 
       {/* Book Info */}
       <CardContent className={cn('p-0', compact ? 'space-y-1' : 'space-y-2')}>
         {/* Title */}
-        <h3 className={cn(
-          'font-semibold text-slate-900 dark:text-foreground line-clamp-2 group-hover:text-primary transition-colors',
-          compact ? 'text-sm' : 'text-base'
-        )}>
+        <h3
+          className={cn(
+            'font-semibold text-slate-900 dark:text-foreground line-clamp-2 group-hover:text-primary transition-colors',
+            compact ? 'text-sm' : 'text-base'
+          )}
+        >
           {book.title}
         </h3>
 
         {/* Author */}
-        <p className={cn(
-          'text-slate-600 dark:text-slate-400 line-clamp-1',
-          compact ? 'text-xs' : 'text-sm'
-        )}>
+        <p
+          className={cn(
+            'text-slate-600 dark:text-slate-400 line-clamp-1',
+            compact ? 'text-xs' : 'text-sm'
+          )}
+        >
           {book.author}
         </p>
 
         {/* Category and Location */}
         <div className="flex items-center justify-between gap-2">
-          <Badge variant="outline" className={cn(
-            'text-xs',
-            compact ? 'px-1 py-0' : 'px-2 py-1'
-          )}>
+          <Badge
+            variant="outline"
+            className={cn('text-xs', compact ? 'px-1 py-0' : 'px-2 py-1')}
+          >
             {book.category}
           </Badge>
           {book.location && (
@@ -170,10 +196,12 @@ export function BookCard({
       </CardContent>
 
       {/* Actions */}
-      <CardFooter className={cn(
-        'p-0 pt-3 flex items-center gap-2',
-        compact ? 'flex-col' : 'flex-row'
-      )}>
+      <CardFooter
+        className={cn(
+          'p-0 pt-3 flex items-center gap-2',
+          compact ? 'flex-col' : 'flex-row'
+        )}
+      >
         <Button
           variant="outline"
           size={compact ? 'sm' : 'default'}

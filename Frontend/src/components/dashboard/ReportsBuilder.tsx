@@ -25,7 +25,33 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { PieChart, TrendingUp, FileText, Download, Printer, Mail, Settings, Save, Play, Eye, Edit, Trash2, Plus, Users, BookOpen, Monitor, Activity, RefreshCw, Share2, Star, CalendarClock, BarChart, LineChart, AreaChart, ScatterChart } from 'lucide-react';
+import {
+  PieChart,
+  TrendingUp,
+  FileText,
+  Download,
+  Printer,
+  Mail,
+  Settings,
+  Save,
+  Play,
+  Eye,
+  Edit,
+  Trash2,
+  Plus,
+  Users,
+  BookOpen,
+  Monitor,
+  Activity,
+  RefreshCw,
+  Share2,
+  Star,
+  CalendarClock,
+  BarChart,
+  LineChart,
+  AreaChart,
+  ScatterChart,
+} from 'lucide-react';
 
 interface ReportTemplate {
   id: string;
@@ -81,8 +107,11 @@ export function ReportsBuilder() {
   // State management
   const [activeTab, setActiveTab] = useState('templates');
   const [reportTemplates, setReportTemplates] = useState<ReportTemplate[]>([]);
-  const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
+  const [generatedReports, setGeneratedReports] = useState<GeneratedReport[]>(
+    []
+  );
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<ReportTemplate | null>(null);
   const [reportConfig] = useState<ReportConfig | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -103,13 +132,24 @@ export function ReportsBuilder() {
       type: 'student',
       category: 'summary',
       chartTypes: ['bar', 'pie', 'line'],
-      metrics: ['total_sessions', 'unique_students', 'avg_duration', 'peak_hours'],
+      metrics: [
+        'total_sessions',
+        'unique_students',
+        'avg_duration',
+        'peak_hours',
+      ],
       filters: ['grade_level', 'date_range', 'activity_type', 'status'],
-      columns: ['student_name', 'grade_level', 'total_sessions', 'last_activity', 'status'],
+      columns: [
+        'student_name',
+        'grade_level',
+        'total_sessions',
+        'last_activity',
+        'status',
+      ],
       isDefault: true,
       isFavorite: true,
       lastUsed: '2024-01-20',
-      useCount: 45
+      useCount: 45,
     },
     {
       id: '2',
@@ -118,13 +158,24 @@ export function ReportsBuilder() {
       type: 'equipment',
       category: 'detailed',
       chartTypes: ['bar', 'area', 'line'],
-      metrics: ['utilization_rate', 'downtime', 'maintenance_scheduled', 'usage_patterns'],
+      metrics: [
+        'utilization_rate',
+        'downtime',
+        'maintenance_scheduled',
+        'usage_patterns',
+      ],
       filters: ['equipment_type', 'date_range', 'location', 'status'],
-      columns: ['equipment_name', 'total_hours', 'utilization_rate', 'maintenance_due', 'status'],
+      columns: [
+        'equipment_name',
+        'total_hours',
+        'utilization_rate',
+        'maintenance_due',
+        'status',
+      ],
       isDefault: true,
       isFavorite: false,
       lastUsed: '2024-01-19',
-      useCount: 23
+      useCount: 23,
     },
     {
       id: '3',
@@ -133,13 +184,25 @@ export function ReportsBuilder() {
       type: 'book',
       category: 'trend',
       chartTypes: ['line', 'bar', 'scatter'],
-      metrics: ['borrowed_books', 'returned_books', 'overdue_books', 'popular_categories'],
+      metrics: [
+        'borrowed_books',
+        'returned_books',
+        'overdue_books',
+        'popular_categories',
+      ],
       filters: ['category', 'date_range', 'grade_level', 'book_status'],
-      columns: ['book_title', 'author', 'category', 'total_borrows', 'current_status', 'overdue_count'],
+      columns: [
+        'book_title',
+        'author',
+        'category',
+        'total_borrows',
+        'current_status',
+        'overdue_count',
+      ],
       isDefault: false,
       isFavorite: true,
       lastUsed: '2024-01-18',
-      useCount: 31
+      useCount: 31,
     },
     {
       id: '4',
@@ -154,7 +217,7 @@ export function ReportsBuilder() {
       isDefault: true,
       isFavorite: false,
       lastUsed: '2024-01-20',
-      useCount: 67
+      useCount: 67,
     },
     {
       id: '5',
@@ -163,14 +226,30 @@ export function ReportsBuilder() {
       type: 'student',
       category: 'statistical',
       chartTypes: ['scatter', 'line', 'bar'],
-      metrics: ['library_usage', 'grades_correlation', 'improvement_trends', 'engagement_score'],
-      filters: ['grade_level', 'subject_area', 'time_period', 'performance_range'],
-      columns: ['student_name', 'library_hours', 'grade_average', 'improvement_rate', 'engagement_level'],
+      metrics: [
+        'library_usage',
+        'grades_correlation',
+        'improvement_trends',
+        'engagement_score',
+      ],
+      filters: [
+        'grade_level',
+        'subject_area',
+        'time_period',
+        'performance_range',
+      ],
+      columns: [
+        'student_name',
+        'library_hours',
+        'grade_average',
+        'improvement_rate',
+        'engagement_level',
+      ],
       isDefault: false,
       isFavorite: false,
       lastUsed: '2024-01-15',
-      useCount: 12
-    }
+      useCount: 12,
+    },
   ];
 
   const mockGeneratedReports: GeneratedReport[] = [
@@ -184,7 +263,7 @@ export function ReportsBuilder() {
       status: 'completed',
       fileUrl: '/reports/student-activity-jan-2024.pdf',
       fileSize: 2456789,
-      recordCount: 156
+      recordCount: 156,
     },
     {
       id: '2',
@@ -196,7 +275,7 @@ export function ReportsBuilder() {
       status: 'completed',
       fileUrl: '/reports/equipment-q4-2023.xlsx',
       fileSize: 1234567,
-      recordCount: 89
+      recordCount: 89,
     },
     {
       id: '3',
@@ -205,8 +284,8 @@ export function ReportsBuilder() {
       generatedAt: '2024-01-20T08:00:00Z',
       generatedBy: 'System',
       dateRange: '2024-01-14 to 2024-01-20',
-      status: 'generating'
-    }
+      status: 'generating',
+    },
   ];
 
   useEffect(() => {
@@ -224,7 +303,7 @@ export function ReportsBuilder() {
     setIsGenerating(true);
     try {
       // Simulate report generation
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 3000));
 
       const newReport: GeneratedReport = {
         id: Date.now().toString(),
@@ -236,7 +315,7 @@ export function ReportsBuilder() {
         status: 'completed',
         fileUrl: `/reports/${reportConfig.name.toLowerCase().replace(/\s+/g, '-')}.pdf`,
         fileSize: Math.floor(Math.random() * 5000000) + 500000,
-        recordCount: Math.floor(Math.random() * 200) + 50
+        recordCount: Math.floor(Math.random() * 200) + 50,
       };
 
       setGeneratedReports([newReport, ...generatedReports]);
@@ -249,11 +328,14 @@ export function ReportsBuilder() {
     }
   };
 
-  const handleExportReport = async (_report: GeneratedReport, format: 'pdf' | 'excel' | 'csv') => {
+  const handleExportReport = async (
+    _report: GeneratedReport,
+    format: 'pdf' | 'excel' | 'csv'
+  ) => {
     setIsExporting(true);
     try {
       // Simulate export
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       toast.success(`Report exported as ${format.toUpperCase()} successfully!`);
     } catch (error) {
       toast.error('Failed to export report');
@@ -266,7 +348,7 @@ export function ReportsBuilder() {
     setIsSavingTemplate(true);
     try {
       // Simulate template saving
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const newTemplate: ReportTemplate = {
         id: Date.now().toString(),
         name: template.name || 'New Template',
@@ -279,7 +361,7 @@ export function ReportsBuilder() {
         columns: template.columns || [],
         isDefault: false,
         isFavorite: false,
-        useCount: 0
+        useCount: 0,
       };
 
       setReportTemplates([...reportTemplates, newTemplate]);
@@ -294,47 +376,67 @@ export function ReportsBuilder() {
 
   const handleDeleteTemplate = (templateId: string) => {
     if (confirm('Are you sure you want to delete this template?')) {
-      setReportTemplates(reportTemplates.filter(t => t.id !== templateId));
+      setReportTemplates(reportTemplates.filter((t) => t.id !== templateId));
       toast.success('Template deleted successfully!');
     }
   };
 
   const handleToggleFavorite = (templateId: string) => {
-    setReportTemplates(reportTemplates.map(t =>
-      t.id === templateId ? { ...t, isFavorite: !t.isFavorite } : t
-    ));
+    setReportTemplates(
+      reportTemplates.map((t) =>
+        t.id === templateId ? { ...t, isFavorite: !t.isFavorite } : t
+      )
+    );
   };
 
   const getChartIcon = (chartType: string) => {
     switch (chartType) {
-      case 'bar': return <BarChart className="h-4 w-4" />;
-      case 'pie': return <PieChart className="h-4 w-4" />;
-      case 'line': return <LineChart className="h-4 w-4" />;
-      case 'area': return <AreaChart className="h-4 w-4" />;
-      case 'scatter': return <ScatterChart className="h-4 w-4" />;
-      default: return <BarChart className="h-4 w-4" />;
+      case 'bar':
+        return <BarChart className="h-4 w-4" />;
+      case 'pie':
+        return <PieChart className="h-4 w-4" />;
+      case 'line':
+        return <LineChart className="h-4 w-4" />;
+      case 'area':
+        return <AreaChart className="h-4 w-4" />;
+      case 'scatter':
+        return <ScatterChart className="h-4 w-4" />;
+      default:
+        return <BarChart className="h-4 w-4" />;
     }
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'student': return <Users className="h-4 w-4" />;
-      case 'equipment': return <Monitor className="h-4 w-4" />;
-      case 'book': return <BookOpen className="h-4 w-4" />;
-      case 'activity': return <Activity className="h-4 w-4" />;
-      case 'financial': return <TrendingUp className="h-4 w-4" />;
-      default: return <FileText className="h-4 w-4" />;
+      case 'student':
+        return <Users className="h-4 w-4" />;
+      case 'equipment':
+        return <Monitor className="h-4 w-4" />;
+      case 'book':
+        return <BookOpen className="h-4 w-4" />;
+      case 'activity':
+        return <Activity className="h-4 w-4" />;
+      case 'financial':
+        return <TrendingUp className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
     }
   };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'summary': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300';
-      case 'detailed': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
-      case 'comparison': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300';
-      case 'trend': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300';
-      case 'statistical': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300';
+      case 'summary':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300';
+      case 'detailed':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
+      case 'comparison':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300';
+      case 'trend':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300';
+      case 'statistical':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300';
     }
   };
 
@@ -384,7 +486,11 @@ export function ReportsBuilder() {
       </div>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="templates">Templates</TabsTrigger>
           <TabsTrigger value="builder">Report Builder</TabsTrigger>
@@ -395,11 +501,13 @@ export function ReportsBuilder() {
         {/* Templates Tab */}
         <TabsContent value="templates" className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {reportTemplates.map(template => (
+            {reportTemplates.map((template) => (
               <Card
                 key={template.id}
                 className={`hover:shadow-lg transition-all cursor-pointer ${
-                  selectedTemplate?.id === template.id ? 'ring-2 ring-blue-500' : ''
+                  selectedTemplate?.id === template.id
+                    ? 'ring-2 ring-blue-500'
+                    : ''
                 }`}
                 onClick={() => setSelectedTemplate(template)}
               >
@@ -417,7 +525,9 @@ export function ReportsBuilder() {
                         handleToggleFavorite(template.id);
                       }}
                     >
-                      <Star className={`h-4 w-4 ${template.isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                      <Star
+                        className={`h-4 w-4 ${template.isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`}
+                      />
                     </Button>
                   </div>
                   <CardDescription className="text-sm">
@@ -437,9 +547,15 @@ export function ReportsBuilder() {
                     <div>
                       <p className="text-sm font-medium mb-1">Chart Types:</p>
                       <div className="flex gap-1">
-                        {template.chartTypes.slice(0, 3).map(chartType => (
-                          <Badge key={chartType} variant="outline" className="text-xs">
-                            {getChartIcon(selectedTemplate?.chartTypes[0] ?? 'bar')}
+                        {template.chartTypes.slice(0, 3).map((chartType) => (
+                          <Badge
+                            key={chartType}
+                            variant="outline"
+                            className="text-xs"
+                          >
+                            {getChartIcon(
+                              selectedTemplate?.chartTypes[0] ?? 'bar'
+                            )}
                           </Badge>
                         ))}
                         {template.chartTypes.length > 3 && (
@@ -452,8 +568,12 @@ export function ReportsBuilder() {
                     <div>
                       <p className="text-sm font-medium mb-1">Metrics:</p>
                       <div className="flex flex-wrap gap-1">
-                        {template.metrics.slice(0, 3).map(metric => (
-                          <Badge key={metric} variant="outline" className="text-xs">
+                        {template.metrics.slice(0, 3).map((metric) => (
+                          <Badge
+                            key={metric}
+                            variant="outline"
+                            className="text-xs"
+                          >
                             {metric}
                           </Badge>
                         ))}
@@ -466,7 +586,9 @@ export function ReportsBuilder() {
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>Used {template.useCount} times</span>
-                      {template.lastUsed && <span>Last: {template.lastUsed}</span>}
+                      {template.lastUsed && (
+                        <span>Last: {template.lastUsed}</span>
+                      )}
                     </div>
                     <div className="flex gap-2 pt-2">
                       <Button
@@ -531,16 +653,20 @@ export function ReportsBuilder() {
                     </div>
                     <div>
                       <label className="text-sm font-medium">Chart Type</label>
-                      <Select defaultValue={selectedTemplate.chartTypes[0] ?? 'bar'}>
+                      <Select
+                        defaultValue={selectedTemplate.chartTypes[0] ?? 'bar'}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {selectedTemplate.chartTypes.map(chartType => (
+                          {selectedTemplate.chartTypes.map((chartType) => (
                             <SelectItem key={chartType} value={chartType}>
                               <div className="flex items-center gap-2">
                                 {getChartIcon(chartType)}
-                                {chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart
+                                {chartType.charAt(0).toUpperCase() +
+                                  chartType.slice(1)}{' '}
+                                Chart
                               </div>
                             </SelectItem>
                           ))}
@@ -557,8 +683,12 @@ export function ReportsBuilder() {
                           <SelectItem value="day">Day</SelectItem>
                           <SelectItem value="week">Week</SelectItem>
                           <SelectItem value="month">Month</SelectItem>
-                          <SelectItem value="grade_level">Grade Level</SelectItem>
-                          <SelectItem value="activity_type">Activity Type</SelectItem>
+                          <SelectItem value="grade_level">
+                            Grade Level
+                          </SelectItem>
+                          <SelectItem value="activity_type">
+                            Activity Type
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -584,9 +714,11 @@ export function ReportsBuilder() {
                     <CardTitle className="text-lg">Filters</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {selectedTemplate.filters.map(filter => (
+                    {selectedTemplate.filters.map((filter) => (
                       <div key={filter}>
-                        <label className="text-sm font-medium capitalize">{filter.replace('_', ' ')}</label>
+                        <label className="text-sm font-medium capitalize">
+                          {filter.replace('_', ' ')}
+                        </label>
                         <Select>
                           <SelectTrigger>
                             <SelectValue placeholder={`Select ${filter}`} />
@@ -646,21 +778,36 @@ export function ReportsBuilder() {
                         {/* Mock Chart Preview */}
                         <div className="h-64 bg-muted rounded-lg flex items-center justify-center">
                           <div className="text-center">
-                            {getChartIcon(selectedTemplate.chartTypes[0] ?? 'bar')}
+                            {getChartIcon(
+                              selectedTemplate.chartTypes[0] ?? 'bar'
+                            )}
                             <p className="mt-2 text-muted-foreground">
-                              {(selectedTemplate.chartTypes[0] ?? 'bar').charAt(0).toUpperCase() + (selectedTemplate.chartTypes[0] ?? 'bar').slice(1)} Chart Preview
+                              {(selectedTemplate.chartTypes[0] ?? 'bar')
+                                .charAt(0)
+                                .toUpperCase() +
+                                (selectedTemplate.chartTypes[0] ?? 'bar').slice(
+                                  1
+                                )}{' '}
+                              Chart Preview
                             </p>
                           </div>
                         </div>
                         {/* Mock Data Table */}
                         <div className="border rounded-lg">
                           <div className="grid grid-cols-3 gap-4 p-3 bg-muted font-medium text-sm">
-                            {(selectedTemplate.columns?.slice(0, 3) ?? []).map(column => (
-                              <div key={column}>{column.replace('_', ' ').toUpperCase()}</div>
-                            ))}
+                            {(selectedTemplate.columns?.slice(0, 3) ?? []).map(
+                              (column) => (
+                                <div key={column}>
+                                  {column.replace('_', ' ').toUpperCase()}
+                                </div>
+                              )
+                            )}
                           </div>
                           {Array.from({ length: 5 }).map((_, index) => (
-                            <div key={index} className="grid grid-cols-3 gap-4 p-3 border-t text-sm">
+                            <div
+                              key={index}
+                              className="grid grid-cols-3 gap-4 p-3 border-t text-sm"
+                            >
                               <div>Sample Data {index + 1}</div>
                               <div>Value {index + 1}</div>
                               <div>Status {index + 1}</div>
@@ -671,7 +818,9 @@ export function ReportsBuilder() {
                     ) : (
                       <div className="text-center py-12">
                         <Eye className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                        <p className="text-muted-foreground">Click "Show Preview" to see report preview</p>
+                        <p className="text-muted-foreground">
+                          Click "Show Preview" to see report preview
+                        </p>
                       </div>
                     )}
                   </CardContent>
@@ -682,7 +831,10 @@ export function ReportsBuilder() {
             <Card>
               <CardContent className="text-center py-12">
                 <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">Select a template from the Templates tab to start building your report</p>
+                <p className="text-muted-foreground">
+                  Select a template from the Templates tab to start building
+                  your report
+                </p>
               </CardContent>
             </Card>
           )}
@@ -702,28 +854,44 @@ export function ReportsBuilder() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {generatedReports.map(report => (
-                  <div key={report.id} className="flex items-center justify-between p-4 rounded-lg border">
+                {generatedReports.map((report) => (
+                  <div
+                    key={report.id}
+                    className="flex items-center justify-between p-4 rounded-lg border"
+                  >
                     <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${
-                        report.status === 'completed' ? 'bg-green-500' :
-                        report.status === 'generating' ? 'bg-yellow-500' : 'bg-red-500'
-                      }`} />
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          report.status === 'completed'
+                            ? 'bg-green-500'
+                            : report.status === 'generating'
+                              ? 'bg-yellow-500'
+                              : 'bg-red-500'
+                        }`}
+                      />
                       <div>
                         <div className="font-medium">{report.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {report.templateName} • {report.dateRange} • Generated by {report.generatedBy}
+                          {report.templateName} • {report.dateRange} • Generated
+                          by {report.generatedBy}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          {report.generatedAt && new Date(report.generatedAt).toLocaleString()}
-                          {report.recordCount && ` • ${report.recordCount} records`}
-                          {report.fileSize && ` • ${(report.fileSize / 1024 / 1024).toFixed(2)} MB`}
+                          {report.generatedAt &&
+                            new Date(report.generatedAt).toLocaleString()}
+                          {report.recordCount &&
+                            ` • ${report.recordCount} records`}
+                          {report.fileSize &&
+                            ` • ${(report.fileSize / 1024 / 1024).toFixed(2)} MB`}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge
-                        variant={report.status === 'completed' ? 'default' : 'secondary'}
+                        variant={
+                          report.status === 'completed'
+                            ? 'default'
+                            : 'secondary'
+                        }
                       >
                         {report.status}
                       </Badge>
@@ -740,21 +908,33 @@ export function ReportsBuilder() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => toast.info('Email report - would open email dialog')}
+                            onClick={() =>
+                              toast.info(
+                                'Email report - would open email dialog'
+                              )
+                            }
                           >
                             <Mail className="h-3 w-3" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => toast.info('Print report - would open print dialog')}
+                            onClick={() =>
+                              toast.info(
+                                'Print report - would open print dialog'
+                              )
+                            }
                           >
                             <Printer className="h-3 w-3" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => toast.info('Share report - would open share dialog')}
+                            onClick={() =>
+                              toast.info(
+                                'Share report - would open share dialog'
+                              )
+                            }
                           >
                             <Share2 className="h-3 w-3" />
                           </Button>
@@ -774,7 +954,11 @@ export function ReportsBuilder() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Scheduled Reports</span>
-                <Button variant="outline" size="sm" onClick={() => setShowScheduleReport(true)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowScheduleReport(true)}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Schedule
                 </Button>
@@ -786,8 +970,12 @@ export function ReportsBuilder() {
             <CardContent>
               <div className="text-center py-12">
                 <CalendarClock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">No scheduled reports yet</p>
-                <p className="text-sm text-muted-foreground mt-2">Click "Add Schedule" to create your first scheduled report</p>
+                <p className="text-muted-foreground">
+                  No scheduled reports yet
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Click "Add Schedule" to create your first scheduled report
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -844,9 +1032,11 @@ export function ReportsBuilder() {
                 {/* Filters */}
                 <div className="space-y-4">
                   <h4 className="font-medium">Filters</h4>
-                  {selectedTemplate.filters.map(filter => (
+                  {selectedTemplate.filters.map((filter) => (
                     <div key={filter}>
-                      <label className="text-sm font-medium capitalize">{filter.replace('_', ' ')}</label>
+                      <label className="text-sm font-medium capitalize">
+                        {filter.replace('_', ' ')}
+                      </label>
                       <Select>
                         <SelectTrigger>
                           <SelectValue placeholder={`Select ${filter}`} />
@@ -865,7 +1055,7 @@ export function ReportsBuilder() {
                 <div className="space-y-4">
                   <h4 className="font-medium">Metrics to Include</h4>
                   <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {selectedTemplate.metrics.map(metric => (
+                    {selectedTemplate.metrics.map((metric) => (
                       <div key={metric} className="flex items-center space-x-2">
                         <input
                           type="checkbox"
@@ -874,7 +1064,8 @@ export function ReportsBuilder() {
                           className="rounded"
                         />
                         <label htmlFor={metric} className="text-sm font-medium">
-                          {metric.replace('_', ' ').charAt(0).toUpperCase() + metric.replace('_', ' ').slice(1)}
+                          {metric.replace('_', ' ').charAt(0).toUpperCase() +
+                            metric.replace('_', ' ').slice(1)}
                         </label>
                       </div>
                     ))}
@@ -884,7 +1075,9 @@ export function ReportsBuilder() {
 
               {/* Schedule Options */}
               <div className="border-t pt-4">
-                <h4 className="font-medium mb-4">Schedule Options (Optional)</h4>
+                <h4 className="font-medium mb-4">
+                  Schedule Options (Optional)
+                </h4>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="flex items-center space-x-2">
                     <input type="checkbox" id="schedule" className="rounded" />
@@ -909,7 +1102,10 @@ export function ReportsBuilder() {
             </div>
           )}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowCreateReport(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateReport(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleGenerateReport} disabled={isGenerating}>
@@ -982,7 +1178,9 @@ export function ReportsBuilder() {
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium">Default Chart Type</label>
+                <label className="text-sm font-medium">
+                  Default Chart Type
+                </label>
                 <Select>
                   <SelectTrigger>
                     <SelectValue placeholder="Select chart type" />
@@ -1000,11 +1198,18 @@ export function ReportsBuilder() {
             <div>
               <label className="text-sm font-medium">Available Filters</label>
               <div className="grid grid-cols-2 gap-2 mt-2">
-                {['date_range', 'grade_level', 'activity_type', 'status', 'equipment_type'].map(filter => (
+                {[
+                  'date_range',
+                  'grade_level',
+                  'activity_type',
+                  'status',
+                  'equipment_type',
+                ].map((filter) => (
                   <div key={filter} className="flex items-center space-x-2">
                     <input type="checkbox" id={filter} className="rounded" />
                     <label htmlFor={filter} className="text-sm">
-                      {filter.replace('_', ' ').charAt(0).toUpperCase() + filter.replace('_', ' ').slice(1)}
+                      {filter.replace('_', ' ').charAt(0).toUpperCase() +
+                        filter.replace('_', ' ').slice(1)}
                     </label>
                   </div>
                 ))}
@@ -1012,10 +1217,16 @@ export function ReportsBuilder() {
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowEditTemplate(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowEditTemplate(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={() => handleSaveTemplate({})} disabled={isSavingTemplate}>
+            <Button
+              onClick={() => handleSaveTemplate({})}
+              disabled={isSavingTemplate}
+            >
               {isSavingTemplate ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -1049,7 +1260,7 @@ export function ReportsBuilder() {
                   <SelectValue placeholder="Choose a template" />
                 </SelectTrigger>
                 <SelectContent>
-                  {reportTemplates.map(template => (
+                  {reportTemplates.map((template) => (
                     <SelectItem key={template.id} value={template.id}>
                       {template.name}
                     </SelectItem>
@@ -1080,20 +1291,33 @@ export function ReportsBuilder() {
               <Input type="time" defaultValue="09:00" />
             </div>
             <div className="flex items-center space-x-2">
-              <input type="checkbox" id="include-attachments" className="rounded" defaultChecked />
-              <label htmlFor="include-attachments" className="text-sm font-medium">
+              <input
+                type="checkbox"
+                id="include-attachments"
+                className="rounded"
+                defaultChecked
+              />
+              <label
+                htmlFor="include-attachments"
+                className="text-sm font-medium"
+              >
                 Include report as attachment
               </label>
             </div>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowScheduleReport(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowScheduleReport(false)}
+            >
               Cancel
             </Button>
-            <Button onClick={() => {
-              toast.success('Report scheduled successfully!');
-              setShowScheduleReport(false);
-            }}>
+            <Button
+              onClick={() => {
+                toast.success('Report scheduled successfully!');
+                setShowScheduleReport(false);
+              }}
+            >
               <CalendarClock className="h-4 w-4 mr-2" />
               Schedule Report
             </Button>

@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Sheet, Bot, Database, FileText, Settings } from 'lucide-react';
+import {
+  Users,
+  Sheet,
+  Bot,
+  Database,
+  FileText,
+  Settings,
+  Clock,
+} from 'lucide-react';
 
 // Import setting tab components
 const SystemSettings = React.lazy(() => import('./SystemSettings'));
@@ -9,6 +17,7 @@ const GoogleSheetsConfig = React.lazy(() => import('./GoogleSheetsConfig'));
 const AutomationSettings = React.lazy(() => import('./AutomationSettings'));
 const BackupRestore = React.lazy(() => import('./BackupRestore'));
 const SystemLogs = React.lazy(() => import('./SystemLogs'));
+const AttendanceSettings = React.lazy(() => import('./AttendanceSettings'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
@@ -31,11 +40,19 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 gap-2">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
           <TabsTrigger value="system" className="gap-2">
             <Settings className="w-4 h-4" />
             <span className="hidden sm:inline">System</span>
+          </TabsTrigger>
+          <TabsTrigger value="attendance" className="gap-2">
+            <Clock className="w-4 h-4" />
+            <span className="hidden sm:inline">Attendance</span>
           </TabsTrigger>
           <TabsTrigger value="users" className="gap-2">
             <Users className="w-4 h-4" />
@@ -62,6 +79,12 @@ export default function SettingsPage() {
         <TabsContent value="system">
           <React.Suspense fallback={<LoadingFallback />}>
             <SystemSettings />
+          </React.Suspense>
+        </TabsContent>
+
+        <TabsContent value="attendance">
+          <React.Suspense fallback={<LoadingFallback />}>
+            <AttendanceSettings />
           </React.Suspense>
         </TabsContent>
 

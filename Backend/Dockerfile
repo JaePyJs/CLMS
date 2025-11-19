@@ -36,12 +36,11 @@ COPY . .
 # Generate Prisma client
 RUN npx prisma generate
 
-# Compile TypeScript to JavaScript using production configuration
-# Continue build even with TypeScript errors for now
-RUN npm run build:prod || true
+# Compile TypeScript to JavaScript
+RUN npm run build
 
-# Copy production register-paths.js to the dist directory
-RUN cp register-paths.prod.js dist/register-paths.js
+# Copy production register-paths.js to the dist directory (if exists)
+RUN if [ -f register-paths.prod.cjs ]; then cp register-paths.prod.cjs dist/register-paths.cjs; fi
 
 # Stage 4: Production runner with compiled JavaScript
 FROM node:20-alpine AS runner
@@ -63,9 +62,9 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Copy package files
 COPY package.json package-lock.json* ./
 
-# Install production dependencies plus tsconfig-paths for path resolution
-RUN npm install --omit=dev && \
-    npm install tsconfig-paths && \
+# Install app dependencies (including dev ones needed for build/runtime)
+RUN rm -f package-lock.json && \
+    npm install && \
     npm cache clean --force
 
 # Copy compiled application from builder stage
@@ -88,4 +87,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Start the application with compiled JavaScript using dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "-r", "./dist/register-paths.js", "./dist/src/server.js"]
+CMD ["node", "./dist/index.js"]

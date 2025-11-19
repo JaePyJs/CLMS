@@ -7,7 +7,6 @@
 # ============================================================================
 
 services:
-
   # ============================================================================
   # MySQL Database - Primary Data Store
   # ============================================================================
@@ -31,7 +30,15 @@ services:
     networks:
       - clms-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$$MYSQL_ROOT_PASSWORD"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-p$$MYSQL_ROOT_PASSWORD",
+        ]
       timeout: 20s
       retries: 10
       interval: 30s
@@ -110,7 +117,15 @@ services:
     networks:
       - clms-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p$$MYSQL_ROOT_PASSWORD"]
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-p$$MYSQL_ROOT_PASSWORD",
+        ]
       timeout: 20s
       retries: 10
       interval: 30s
@@ -131,10 +146,11 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
-      - "9229:9229"  # Node.js debugger port
+      - "9229:9229" # Node.js debugger port
     environment:
       NODE_ENV: development
       PORT: 3001
+      HOST: 0.0.0.0
       DATABASE_URL: mysql://clms_user:clms_password@mysql:3306/clms_database?connection_limit=20&pool_timeout=10000
       KOHA_DATABASE_URL: mysql://koha_user:koha_password@koha-mysql:3306/koha_database
       REDIS_HOST: redis
@@ -144,6 +160,8 @@ services:
       JWT_SECRET: your-super-secret-jwt-key-for-clms-documentation-system-32-chars
       JWT_REFRESH_SECRET: your-super-secret-refresh-key-for-clms-documentation-system-32-chars
       BCRYPT_ROUNDS: 10
+      RATE_LIMIT_MAX: 1000
+      RATE_LIMIT_WINDOW: 60000
     volumes:
       # Mount source code for hot-reload
       - ./Backend/src:/app/src:delegated

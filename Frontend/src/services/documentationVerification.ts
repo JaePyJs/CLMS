@@ -163,8 +163,9 @@ export class DocumentationVerificationService {
     const startTime = Date.now();
 
     // Check if verification is already running
-    if (this.activeVerifications.has('current')) {
-      return await this.activeVerifications.get('current')!;
+    const activeVerification = this.activeVerifications.get('current');
+    if (activeVerification) {
+      return await activeVerification;
     }
 
     const verificationPromise = this.executeVerification(
@@ -578,8 +579,8 @@ export class DocumentationVerificationService {
     }
 
     // Log results
-    console.log(`Documentation verification completed: ${report.status}`);
-    console.log(
+    console.debug(`Documentation verification completed: ${report.status}`);
+    console.debug(
       `Passed: ${report.passedRules}, Failed: ${report.failedRules}, Warnings: ${report.warningRules}`
     );
 
@@ -598,7 +599,7 @@ export class DocumentationVerificationService {
     try {
       // This would send webhook notifications
       // Implementation depends on webhook configuration
-      console.log(
+      console.debug(
         'Webhook notification sent for verification report:',
         report.id
       );
@@ -639,7 +640,7 @@ export class DocumentationVerificationService {
 
   public getLatestReport(): VerificationReport | null {
     return this.verificationHistory.length > 0
-      ? this.verificationHistory[this.verificationHistory.length - 1] ?? null
+      ? (this.verificationHistory[this.verificationHistory.length - 1] ?? null)
       : null;
   }
 

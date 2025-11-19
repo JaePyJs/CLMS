@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
 
 export interface CreateBookData {
   isbn?: string;
@@ -68,10 +68,10 @@ export interface BookAvailabilityInfo {
 export class BookService {
   public static async createBook(data: CreateBookData): Promise<any> {
     try {
-      logger.info('Creating book', { 
+      logger.info('Creating book', {
         accession_no: data.accession_no,
         title: data.title,
-        author: data.author 
+        author: data.author,
       });
 
       const book = await prisma.books.create({
@@ -97,9 +97,9 @@ export class BookService {
         },
       });
 
-      logger.info('Book created successfully', { 
+      logger.info('Book created successfully', {
         bookId: book.id,
-        accession_no: book.accession_no 
+        accession_no: book.accession_no,
       });
 
       return book;
@@ -107,7 +107,7 @@ export class BookService {
       logger.error('Book creation failed', {
         accession_no: data.accession_no,
         title: data.title,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
     }
@@ -121,9 +121,9 @@ export class BookService {
           checkouts: {
             where: { status: 'ACTIVE' },
             take: 1,
-            orderBy: { due_date: 'asc' }
-          }
-        }
+            orderBy: { due_date: 'asc' },
+          },
+        },
       });
 
       if (!book) {
@@ -132,31 +132,46 @@ export class BookService {
 
       return book;
     } catch (error) {
-      logger.error('Get book by ID failed', { id, error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Get book by ID failed', {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
 
-  public static async updateBook(id: string, data: UpdateBookData): Promise<any> {
+  public static async updateBook(
+    id: string,
+    data: UpdateBookData,
+  ): Promise<any> {
     try {
       logger.info('Updating book', { id });
 
       // Check if we're updating copies and adjust availability
-      if (data.total_copies !== undefined || data.available_copies !== undefined) {
+      if (
+        data.total_copies !== undefined ||
+        data.available_copies !== undefined
+      ) {
         const currentBook = await prisma.books.findUnique({
           where: { id },
           include: {
             checkouts: {
               where: { status: 'ACTIVE' },
-              select: { id: true }
-            }
-          }
+              select: { id: true },
+            },
+          },
         });
 
         if (currentBook) {
-          const newTotalCopies = data.total_copies !== undefined ? data.total_copies : currentBook.total_copies;
-          const newAvailableCopies = data.available_copies !== undefined ? data.available_copies : currentBook.available_copies;
-          
+          const newTotalCopies =
+            data.total_copies !== undefined
+              ? data.total_copies
+              : currentBook.total_copies;
+          const newAvailableCopies =
+            data.available_copies !== undefined
+              ? data.available_copies
+              : currentBook.available_copies;
+
           if (newAvailableCopies > newTotalCopies) {
             throw new Error('Available copies cannot exceed total copies');
           }
@@ -164,9 +179,12 @@ export class BookService {
           // Update available copies based on borrowed books
           const borrowedCount = currentBook.checkouts.length;
           const calculatedAvailable = newTotalCopies - borrowedCount;
-          
+
           // Only update available_copies if it wasn't explicitly provided or if it needs to be recalculated
-          if (data.available_copies === undefined || data.available_copies !== currentBook.available_copies) {
+          if (
+            data.available_copies === undefined ||
+            data.available_copies !== currentBook.available_copies
+          ) {
             data.available_copies = calculatedAvailable;
           }
         }
@@ -180,10 +198,16 @@ export class BookService {
         },
       });
 
-      logger.info('Book updated successfully', { id, accession_no: book.accession_no });
+      logger.info('Book updated successfully', {
+        id,
+        accession_no: book.accession_no,
+      });
       return book;
     } catch (error) {
-      logger.error('Book update failed', { id, error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Book update failed', {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -191,28 +215,27 @@ export class BookService {
   public static async deleteBook(id: string): Promise<void> {
     try {
       logger.info('Deleting book', { id });
-      
-      // Check for active checkouts
-      const activeCheckouts = await prisma.book_checkouts.count({
-        where: {
-          book_id: id,
-          status: 'ACTIVE'
-        }
+
+      // Delete all related checkouts first (both active and returned)
+      await prisma.book_checkouts.deleteMany({
+        where: { book_id: id },
       });
 
-      if (activeCheckouts > 0) {
-        throw new Error(`Cannot delete book with ${activeCheckouts} active checkout(s)`);
-      }
-
+      // Now delete the book
       await prisma.books.delete({ where: { id } });
       logger.info('Book deleted successfully', { id });
     } catch (error) {
-      logger.error('Book deletion failed', { id, error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Book deletion failed', {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
 
-  public static async listBooks(filters: BookSearchFilters = {}): Promise<{ books: any[]; total: number; page: number; limit: number }> {
+  public static async listBooks(
+    filters: BookSearchFilters = {},
+  ): Promise<{ books: any[]; total: number; page: number; limit: number }> {
     try {
       const {
         search,
@@ -223,7 +246,7 @@ export class BookService {
         page = 1,
         limit = 10,
         sortBy = 'createdAt',
-        sortOrder = 'desc'
+        sortOrder = 'desc',
       } = filters;
 
       const where: any = {};
@@ -231,19 +254,19 @@ export class BookService {
       // Build search conditions
       if (search) {
         where.OR = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { author: { contains: search, mode: 'insensitive' } },
-          { isbn: { contains: search, mode: 'insensitive' } },
-          { accession_no: { contains: search, mode: 'insensitive' } },
+          { title: { contains: search } },
+          { author: { contains: search } },
+          { isbn: { contains: search } },
+          { accession_no: { contains: search } },
         ];
       }
 
       if (category) {
-        where.category = { contains: category, mode: 'insensitive' };
+        where.category = { contains: category };
       }
 
       if (author) {
-        where.author = { contains: author, mode: 'insensitive' };
+        where.author = { contains: author };
       }
 
       if (isbn) {
@@ -282,33 +305,37 @@ export class BookService {
           _count: {
             select: {
               checkouts: {
-                where: { status: 'ACTIVE' }
-              }
-            }
-          }
-        }
+                where: { status: 'ACTIVE' },
+              },
+            },
+          },
+        },
       });
 
-      logger.info('Books list retrieved', { 
+      logger.info('Books list retrieved', {
         total,
         count: books.length,
         page,
-        limit 
+        limit,
       });
 
       return {
         books,
         total,
         page,
-        limit
+        limit,
       };
     } catch (error) {
-      logger.error('List books failed', { error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('List books failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
 
-  public static async getBookAvailability(id: string): Promise<BookAvailabilityInfo> {
+  public static async getBookAvailability(
+    id: string,
+  ): Promise<BookAvailabilityInfo> {
     try {
       const book = await prisma.books.findUnique({
         where: { id },
@@ -318,11 +345,11 @@ export class BookService {
             select: {
               id: true,
               due_date: true,
-              return_date: true
+              return_date: true,
             },
-            orderBy: { due_date: 'asc' }
-          }
-        }
+            orderBy: { due_date: 'asc' },
+          },
+        },
       });
 
       if (!book) {
@@ -345,15 +372,22 @@ export class BookService {
         total_copies: totalCopies,
         available_copies: availableCopies,
         borrowed_copies: borrowedCopies,
-        next_available_date: nextAvailableDate
+        next_available_date: nextAvailableDate,
       };
     } catch (error) {
-      logger.error('Get book availability failed', { id, error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Get book availability failed', {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
 
-  public static async searchBooks(query: string, filters: Partial<BookSearchFilters> = {}): Promise<{ books: any[]; total: number }> {
+  public static async searchBooks(
+    query: string,
+    filters: Partial<BookSearchFilters> = {},
+  ): Promise<{ books: any[]; total: number }> {
+    logger.error('searchBooks called with query:', query);
     try {
       const {
         category,
@@ -363,26 +397,27 @@ export class BookService {
         page = 1,
         limit = 10,
         sortBy = 'title',
-        sortOrder = 'asc'
+        sortOrder = 'asc',
       } = filters;
+      const searchQuery = (query || '').toLowerCase();
 
       const where: any = {
         OR: [
-          { title: { contains: query, mode: 'insensitive' } },
-          { author: { contains: query, mode: 'insensitive' } },
-          { isbn: { contains: query, mode: 'insensitive' } },
-          { accession_no: { contains: query, mode: 'insensitive' } },
-          { category: { contains: query, mode: 'insensitive' } },
-          { publisher: { contains: query, mode: 'insensitive' } }
-        ]
+          { title: { contains: searchQuery } },
+          { author: { contains: searchQuery } },
+          { isbn: { contains: searchQuery } },
+          { accession_no: { contains: searchQuery } },
+          { category: { contains: searchQuery } },
+          { publisher: { contains: searchQuery } },
+        ],
       };
 
       if (category) {
-        where.category = { contains: category, mode: 'insensitive' };
+        where.category = { contains: (category || '').toLowerCase() };
       }
 
       if (author) {
-        where.author = { contains: author, mode: 'insensitive' };
+        where.author = { contains: (author || '').toLowerCase() };
       }
 
       if (isbn) {
@@ -416,33 +451,39 @@ export class BookService {
           _count: {
             select: {
               checkouts: {
-                where: { status: 'ACTIVE' }
-              }
-            }
-          }
-        }
+                where: { status: 'ACTIVE' },
+              },
+            },
+          },
+        },
       });
 
-      logger.info('Books search completed', { 
+      logger.info('Books search completed', {
         query,
         total,
-        count: books.length
+        count: books.length,
       });
 
       return { books, total };
     } catch (error) {
-      logger.error('Search books failed', { query, error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Search books failed', {
+        query,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
 
-  public static async getCategories(): Promise<{ categories: string[]; categoriesWithCount: any[] }> {
+  public static async getCategories(): Promise<{
+    categories: string[];
+    categoriesWithCount: any[];
+  }> {
     try {
       // Get unique categories
       const categories = await prisma.books.findMany({
         where: { is_active: true },
         select: { category: true },
-        distinct: ['category']
+        distinct: ['category'],
       });
 
       // Get categories with book counts
@@ -450,14 +491,17 @@ export class BookService {
         by: ['category'],
         where: { is_active: true },
         _count: {
-          id: true
+          id: true,
         },
         orderBy: {
-          category: 'asc'
-        }
+          category: 'asc',
+        },
       });
 
-      const categoryList = categories.map(c => c.category).filter(Boolean).sort();
+      const categoryList = categories
+        .map(c => c.category)
+        .filter((cat): cat is string => cat !== null)
+        .sort();
 
       logger.info('Categories retrieved', { count: categoryList.length });
 
@@ -465,16 +509,26 @@ export class BookService {
         categories: categoryList,
         categoriesWithCount: categoriesWithCount.map(c => ({
           category: c.category,
-          bookCount: c._count.id
-        }))
+          bookCount: c._count.id,
+        })),
       };
     } catch (error) {
-      logger.error('Get categories failed', { error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Get categories failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
 
-  public static async getBookHistory(id: string, filters: { page?: number; limit?: number; dateFrom?: Date; dateTo?: Date } = {}): Promise<any> {
+  public static async getBookHistory(
+    id: string,
+    filters: {
+      page?: number;
+      limit?: number;
+      dateFrom?: Date;
+      dateTo?: Date;
+    } = {},
+  ): Promise<any> {
     try {
       const { page = 1, limit = 10, dateFrom, dateTo } = filters;
 
@@ -482,8 +536,12 @@ export class BookService {
 
       if (dateFrom || dateTo) {
         where.created_at = {};
-        if (dateFrom) where.created_at.gte = dateFrom;
-        if (dateTo) where.created_at.lte = dateTo;
+        if (dateFrom) {
+          where.created_at.gte = dateFrom;
+        }
+        if (dateTo) {
+          where.created_at.lte = dateTo;
+        }
       }
 
       const skip = (page - 1) * limit;
@@ -497,29 +555,32 @@ export class BookService {
               student_id: true,
               first_name: true,
               last_name: true,
-              grade_level: true
-            }
-          }
+              grade_level: true,
+            },
+          },
         },
         orderBy: { checkout_date: 'desc' },
         skip,
-        take: limit
+        take: limit,
       });
 
-      logger.info('Book history retrieved', { 
+      logger.info('Book history retrieved', {
         bookId: id,
         total,
-        count: history.length
+        count: history.length,
       });
 
       return {
         history,
         total,
         page,
-        limit
+        limit,
       };
     } catch (error) {
-      logger.error('Get book history failed', { id, error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Get book history failed', {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }

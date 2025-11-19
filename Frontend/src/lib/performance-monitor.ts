@@ -132,7 +132,12 @@ class PerformanceMonitor {
             this.recordMetric('largest_contentful_paint', lastEntry.startTime, {
               type: 'duration',
               unit: 'ms',
-              tags: { element: (lastEntry as any).element?.tagName || (lastEntry as any).url || 'unknown' },
+              tags: {
+                element:
+                  (lastEntry as any).element?.tagName ||
+                  (lastEntry as any).url ||
+                  'unknown',
+              },
             });
           }
         });
@@ -145,10 +150,14 @@ class PerformanceMonitor {
       try {
         const fidObserver = new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
-            this.recordMetric('first_input_delay', (entry as any).processingStart - entry.startTime, {
-              type: 'duration',
-              unit: 'ms',
-            });
+            this.recordMetric(
+              'first_input_delay',
+              (entry as any).processingStart - entry.startTime,
+              {
+                type: 'duration',
+                unit: 'ms',
+              }
+            );
           }
         });
         fidObserver.observe({ entryTypes: ['first-input'] });
@@ -194,22 +203,50 @@ class PerformanceMonitor {
   }
 
   private collectNavigationTiming(): void {
-    if (!this.config.enableNavigationTiming) return;
+    if (!this.config.enableNavigationTiming) {
+      return;
+    }
 
     const timing = performance.timing;
-    if (!timing) return;
+    if (!timing) {
+      return;
+    }
 
     const navigationStart = timing.navigationStart;
     const metrics = [
-      { name: 'dns_lookup', start: timing.domainLookupStart, end: timing.domainLookupEnd },
-      { name: 'tcp_connection', start: timing.connectStart, end: timing.connectEnd },
-      { name: 'request', start: timing.requestStart, end: timing.responseStart },
-      { name: 'response', start: timing.responseStart, end: timing.responseEnd },
-      { name: 'dom_processing', start: timing.domLoading, end: timing.domComplete },
-      { name: 'load_event', start: timing.loadEventStart, end: timing.loadEventEnd },
+      {
+        name: 'dns_lookup',
+        start: timing.domainLookupStart,
+        end: timing.domainLookupEnd,
+      },
+      {
+        name: 'tcp_connection',
+        start: timing.connectStart,
+        end: timing.connectEnd,
+      },
+      {
+        name: 'request',
+        start: timing.requestStart,
+        end: timing.responseStart,
+      },
+      {
+        name: 'response',
+        start: timing.responseStart,
+        end: timing.responseEnd,
+      },
+      {
+        name: 'dom_processing',
+        start: timing.domLoading,
+        end: timing.domComplete,
+      },
+      {
+        name: 'load_event',
+        start: timing.loadEventStart,
+        end: timing.loadEventEnd,
+      },
     ];
 
-    metrics.forEach(metric => {
+    metrics.forEach((metric) => {
       const duration = metric.end - metric.start;
       if (duration > 0) {
         this.recordMetric(metric.name, duration, {
@@ -228,10 +265,12 @@ class PerformanceMonitor {
   }
 
   private collectPaintTiming(): void {
-    if (!this.config.enablePaintTiming) return;
+    if (!this.config.enablePaintTiming) {
+      return;
+    }
 
     const paintEntries = performance.getEntriesByType('paint');
-    paintEntries.forEach(entry => {
+    paintEntries.forEach((entry) => {
       this.recordMetric(entry.name, entry.startTime, {
         type: 'duration',
         unit: 'ms',
@@ -240,10 +279,14 @@ class PerformanceMonitor {
   }
 
   private collectResourceTiming(): void {
-    if (!this.config.enableResourceTiming) return;
+    if (!this.config.enableResourceTiming) {
+      return;
+    }
 
-    const resourceEntries = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
-    resourceEntries.forEach(entry => {
+    const resourceEntries = performance.getEntriesByType(
+      'resource'
+    ) as PerformanceResourceTiming[];
+    resourceEntries.forEach((entry) => {
       const duration = entry.responseEnd - entry.startTime;
       const size = entry.transferSize || 0;
 
@@ -270,15 +313,25 @@ class PerformanceMonitor {
   }
 
   private getResourceType(url: string): string {
-    if (url.match(/\.(js|mjs)$/)) return 'script';
-    if (url.match(/\.(css)$/)) return 'stylesheet';
-    if (url.match(/\.(png|jpg|jpeg|gif|webp|svg)$/)) return 'image';
-    if (url.match(/\.(woff|woff2|ttf|eot)$/)) return 'font';
+    if (url.match(/\.(js|mjs)$/)) {
+      return 'script';
+    }
+    if (url.match(/\.(css)$/)) {
+      return 'stylesheet';
+    }
+    if (url.match(/\.(png|jpg|jpeg|gif|webp|svg)$/)) {
+      return 'image';
+    }
+    if (url.match(/\.(woff|woff2|ttf|eot)$/)) {
+      return 'font';
+    }
     return 'other';
   }
 
   private startFlushTimer(): void {
-    if (this.flushTimer) return;
+    if (this.flushTimer) {
+      return;
+    }
 
     this.flushTimer = window.setInterval(() => {
       this.flush();
@@ -297,7 +350,9 @@ class PerformanceMonitor {
   }
 
   private flush(): void {
-    if (!this.shouldSample()) return;
+    if (!this.shouldSample()) {
+      return;
+    }
 
     const data = {
       metrics: this.metrics.slice(),
@@ -321,14 +376,16 @@ class PerformanceMonitor {
     // Console logging for debugging
     if (this.config.enableConsoleLogging) {
       console.group('Performance Monitor Flush');
-      console.log('Metrics:', data.metrics);
-      console.log('Logs:', data.logs);
+      console.debug('Metrics:', data.metrics);
+      console.debug('Logs:', data.logs);
       console.groupEnd();
     }
   }
 
   private async sendToRemote(data: unknown): Promise<void> {
-    if (!this.config.remoteEndpoint) return;
+    if (!this.config.remoteEndpoint) {
+      return;
+    }
 
     try {
       await fetch(this.config.remoteEndpoint, {
@@ -366,7 +423,9 @@ class PerformanceMonitor {
    */
   end(id: string, error?: Error): void {
     const entry = this.activeEntries.get(id);
-    if (!entry) return;
+    if (!entry) {
+      return;
+    }
 
     const endTime = performance.now();
     const duration = endTime - entry.startTime;
@@ -395,12 +454,18 @@ class PerformanceMonitor {
   /**
    * Record a performance metric
    */
-  recordMetric(name: string, value: number, options?: {
-    type?: 'duration' | 'counter' | 'gauge' | 'histogram';
-    unit?: string;
-    tags?: Record<string, string>;
-  }): void {
-    if (!this.shouldSample()) return;
+  recordMetric(
+    name: string,
+    value: number,
+    options?: {
+      type?: 'duration' | 'counter' | 'gauge' | 'histogram';
+      unit?: string;
+      tags?: Record<string, string>;
+    }
+  ): void {
+    if (!this.shouldSample()) {
+      return;
+    }
 
     const metric: PerformanceMetric = {
       name,
@@ -462,8 +527,14 @@ class PerformanceMonitor {
     this.log('error', message, context);
   }
 
-  private log(level: LogEntry['level'], message: string, context?: Record<string, unknown>): void {
-    if (!this.shouldSample()) return;
+  private log(
+    level: LogEntry['level'],
+    message: string,
+    context?: Record<string, unknown>
+  ): void {
+    if (!this.shouldSample()) {
+      return;
+    }
 
     const logEntry: LogEntry = {
       level,
@@ -483,10 +554,14 @@ class PerformanceMonitor {
 
     // Console logging
     if (this.config.enableConsoleLogging) {
-      const consoleMethod = level === 'error' ? console.error :
-                          level === 'warn' ? console.warn :
-                          level === 'info' ? console.info :
-                          console.debug;
+      const consoleMethod =
+        level === 'error'
+          ? console.error
+          : level === 'warn'
+            ? console.warn
+            : level === 'info'
+              ? console.info
+              : console.debug;
       consoleMethod(`[${level.toUpperCase()}] ${message}`, context);
     }
 

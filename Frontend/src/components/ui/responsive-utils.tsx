@@ -15,7 +15,7 @@ interface ResponsiveContainerProps {
 export function ResponsiveContainer({
   children,
   className = '',
-  size = 'lg'
+  size = 'lg',
 }: ResponsiveContainerProps) {
   const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
@@ -24,31 +24,33 @@ export function ResponsiveContainer({
     md: 'max-w-4xl',
     lg: 'max-w-6xl',
     xl: 'max-w-7xl',
-    full: 'max-w-full'
+    full: 'max-w-full',
   };
 
   const paddingClasses = {
     mobile: 'px-4 py-3',
     tablet: 'px-6 py-4',
     desktop: 'px-8 py-6',
-    large: 'px-12 py-8'
+    large: 'px-12 py-8',
   };
 
   const responsivePadding = isMobile
     ? paddingClasses.mobile
     : isTablet
-    ? paddingClasses.tablet
-    : isDesktop
-    ? paddingClasses.desktop
-    : paddingClasses.large;
+      ? paddingClasses.tablet
+      : isDesktop
+        ? paddingClasses.desktop
+        : paddingClasses.large;
 
   return (
-    <div className={cn(
-      'w-full mx-auto',
-      sizeClasses[size],
-      responsivePadding,
-      className
-    )}>
+    <div
+      className={cn(
+        'w-full mx-auto',
+        sizeClasses[size],
+        responsivePadding,
+        className
+      )}
+    >
       {children}
     </div>
   );
@@ -79,21 +81,33 @@ export function ResponsiveGrid({
   children,
   className = '',
   cols = { mobile: 1, tablet: 2, desktop: 3, large: 4 },
-  gap = { mobile: 'gap-3', tablet: 'gap-4', desktop: 'gap-6', large: 'gap-8' }
+  gap = { mobile: 'gap-3', tablet: 'gap-4', desktop: 'gap-6', large: 'gap-8' },
 }: ResponsiveGridProps) {
   const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
   const getCols = () => {
-    if (isMobile) return cols.mobile || 1;
-    if (isTablet) return cols.tablet || 2;
-    if (isDesktop) return cols.desktop || 3;
+    if (isMobile) {
+      return cols.mobile || 1;
+    }
+    if (isTablet) {
+      return cols.tablet || 2;
+    }
+    if (isDesktop) {
+      return cols.desktop || 3;
+    }
     return cols.large || 4;
   };
 
   const getGap = () => {
-    if (isMobile) return gap.mobile || 'gap-3';
-    if (isTablet) return gap.tablet || 'gap-4';
-    if (isDesktop) return gap.desktop || 'gap-6';
+    if (isMobile) {
+      return gap.mobile || 'gap-3';
+    }
+    if (isTablet) {
+      return gap.tablet || 'gap-4';
+    }
+    if (isDesktop) {
+      return gap.desktop || 'gap-6';
+    }
     return gap.large || 'gap-8';
   };
 
@@ -103,16 +117,19 @@ export function ResponsiveGrid({
     3: 'grid-cols-3',
     4: 'grid-cols-4',
     5: 'grid-cols-5',
-    6: 'grid-cols-6'
+    6: 'grid-cols-6',
   };
 
   return (
-    <div className={cn(
-      'grid',
-      gridColsClasses[getCols() as keyof typeof gridColsClasses] || 'grid-cols-1',
-      getGap(),
-      className
-    )}>
+    <div
+      className={cn(
+        'grid',
+        gridColsClasses[getCols() as keyof typeof gridColsClasses] ||
+          'grid-cols-1',
+        getGap(),
+        className
+      )}
+    >
       {children}
     </div>
   );
@@ -143,20 +160,26 @@ export function ResponsiveFlex({
   justify = 'start',
   align = 'start',
   wrap = false,
-  gap = 'gap-4'
+  gap = 'gap-4',
 }: ResponsiveFlexProps) {
   const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
   const getDirection = () => {
-    if (isMobile) return direction.mobile || 'col';
-    if (isTablet) return direction.tablet || 'row';
-    if (isDesktop) return direction.desktop || 'row';
+    if (isMobile) {
+      return direction.mobile || 'col';
+    }
+    if (isTablet) {
+      return direction.tablet || 'row';
+    }
+    if (isDesktop) {
+      return direction.desktop || 'row';
+    }
     return direction.large || 'row';
   };
 
   const directionClasses = {
     row: 'flex-row',
-    col: 'flex-col'
+    col: 'flex-col',
   };
 
   const justifyClasses = {
@@ -165,26 +188,28 @@ export function ResponsiveFlex({
     end: 'justify-end',
     between: 'justify-between',
     around: 'justify-around',
-    evenly: 'justify-evenly'
+    evenly: 'justify-evenly',
   };
 
   const alignClasses = {
     start: 'items-start',
     center: 'items-center',
     end: 'items-end',
-    stretch: 'items-stretch'
+    stretch: 'items-stretch',
   };
 
   return (
-    <div className={cn(
-      'flex',
-      directionClasses[getDirection()],
-      justifyClasses[justify],
-      alignClasses[align],
-      wrap && 'flex-wrap',
-      gap,
-      className
-    )}>
+    <div
+      className={cn(
+        'flex',
+        directionClasses[getDirection()],
+        justifyClasses[justify],
+        alignClasses[align],
+        wrap && 'flex-wrap',
+        gap,
+        className
+      )}
+    >
       {children}
     </div>
   );
@@ -210,17 +235,28 @@ interface ResponsiveTextProps {
 export function ResponsiveText({
   children,
   className = '',
-  size = { mobile: 'text-sm', tablet: 'text-base', desktop: 'text-lg', large: 'text-xl' },
+  size = {
+    mobile: 'text-sm',
+    tablet: 'text-base',
+    desktop: 'text-lg',
+    large: 'text-xl',
+  },
   weight = 'normal',
   align = 'left',
-  color = ''
+  color = '',
 }: ResponsiveTextProps) {
   const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
   const getSize = () => {
-    if (isMobile) return size.mobile || 'text-sm';
-    if (isTablet) return size.tablet || 'text-base';
-    if (isDesktop) return size.desktop || 'text-lg';
+    if (isMobile) {
+      return size.mobile || 'text-sm';
+    }
+    if (isTablet) {
+      return size.tablet || 'text-base';
+    }
+    if (isDesktop) {
+      return size.desktop || 'text-lg';
+    }
     return size.large || 'text-xl';
   };
 
@@ -229,24 +265,26 @@ export function ResponsiveText({
     normal: 'font-normal',
     medium: 'font-medium',
     semibold: 'font-semibold',
-    bold: 'font-bold'
+    bold: 'font-bold',
   };
 
   const alignClasses = {
     left: 'text-left',
     center: 'text-center',
     right: 'text-right',
-    justify: 'text-justify'
+    justify: 'text-justify',
   };
 
   return (
-    <p className={cn(
-      getSize(),
-      weightClasses[weight],
-      alignClasses[align],
-      color,
-      className
-    )}>
+    <p
+      className={cn(
+        getSize(),
+        weightClasses[weight],
+        alignClasses[align],
+        color,
+        className
+      )}
+    >
       {children}
     </p>
   );
@@ -281,28 +319,35 @@ export function ResponsiveButton({
   disabled = false,
   loading = false,
   icon,
-  iconPosition = 'left'
+  iconPosition = 'left',
 }: ResponsiveButtonProps) {
   const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
   const getSize = () => {
-    if (isMobile) return size.mobile || 'md';
-    if (isTablet) return size.tablet || 'md';
-    if (isDesktop) return size.desktop || 'md';
+    if (isMobile) {
+      return size.mobile || 'md';
+    }
+    if (isTablet) {
+      return size.tablet || 'md';
+    }
+    if (isDesktop) {
+      return size.desktop || 'md';
+    }
     return size.large || 'md';
   };
 
   const sizeClasses = {
     sm: 'px-3 py-1.5 text-sm min-h-[36px]',
     md: 'px-4 py-2 text-base min-h-[44px]', // Touch-friendly minimum
-    lg: 'px-6 py-3 text-lg min-h-[48px]'
+    lg: 'px-6 py-3 text-lg min-h-[48px]',
   };
 
   const variantClasses = {
     primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
     secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-    outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-    ghost: 'hover:bg-accent hover:text-accent-foreground'
+    outline:
+      'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+    ghost: 'hover:bg-accent hover:text-accent-foreground',
   };
 
   const currentSize = getSize();
@@ -321,13 +366,9 @@ export function ResponsiveButton({
       {loading && (
         <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent mr-2" />
       )}
-      {icon && iconPosition === 'left' && (
-        <span className="mr-2">{icon}</span>
-      )}
+      {icon && iconPosition === 'left' && <span className="mr-2">{icon}</span>}
       {children}
-      {icon && iconPosition === 'right' && (
-        <span className="ml-2">{icon}</span>
-      )}
+      {icon && iconPosition === 'right' && <span className="ml-2">{icon}</span>}
     </button>
   );
 }
@@ -353,25 +394,34 @@ export function ResponsiveCard({
   className = '',
   padding = { mobile: 'p-4', tablet: 'p-6', desktop: 'p-6', large: 'p-8' },
   hover = false,
-  interactive = false
+  interactive = false,
 }: ResponsiveCardProps) {
   const { isMobile, isTablet, isDesktop } = useMobileOptimization();
 
   const getPadding = () => {
-    if (isMobile) return padding.mobile || 'p-4';
-    if (isTablet) return padding.tablet || 'p-6';
-    if (isDesktop) return padding.desktop || 'p-6';
+    if (isMobile) {
+      return padding.mobile || 'p-4';
+    }
+    if (isTablet) {
+      return padding.tablet || 'p-6';
+    }
+    if (isDesktop) {
+      return padding.desktop || 'p-6';
+    }
     return padding.large || 'p-8';
   };
 
   return (
-    <div className={cn(
-      'rounded-lg border bg-card text-card-foreground shadow-sm',
-      getPadding(),
-      hover && 'hover:shadow-md transition-shadow',
-      interactive && 'cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]',
-      className
-    )}>
+    <div
+      className={cn(
+        'rounded-lg border bg-card text-card-foreground shadow-sm',
+        getPadding(),
+        hover && 'hover:shadow-md transition-shadow',
+        interactive &&
+          'cursor-pointer hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]',
+        className
+      )}
+    >
       {children}
     </div>
   );

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import selfServiceApi from '@/services/selfServiceApi';
+import { getErrorMessage } from '@/utils/errorHandling';
 
 interface Student {
   id: string;
@@ -56,7 +57,7 @@ export default function SelfServiceMode() {
         setStudentId('');
         inputRef.current?.focus();
       }, 3000);
-      
+
       return () => clearTimeout(timeout);
     }
     return undefined;
@@ -64,17 +65,21 @@ export default function SelfServiceMode() {
 
   // Play sound feedback
   const playSound = (success: boolean) => {
-    const audio = new Audio(success ? '/sounds/success.mp3' : '/sounds/error.mp3');
+    const audio = new Audio(
+      success ? '/sounds/success.mp3' : '/sounds/error.mp3'
+    );
     audio.volume = 0.5;
     audio.play().catch(() => {
       // Fallback to system beep if sound file not found
-      console.log(success ? '✓ Success' : '✗ Error');
+      console.debug(success ? '✓ Success' : '✗ Error');
     });
     return undefined;
   };
 
   const handleScan = async (scannedId: string) => {
-    if (!scannedId.trim()) return;
+    if (!scannedId.trim()) {
+      return;
+    }
 
     setLoading(true);
     try {
@@ -96,7 +101,8 @@ export default function SelfServiceMode() {
             id: result.student.id,
             studentId: result.student.studentId,
             firstName: result.student.name?.split(' ')[0] || 'Unknown',
-            lastName: result.student.name?.split(' ').slice(1).join(' ') || 'Student',
+            lastName:
+              result.student.name?.split(' ').slice(1).join(' ') || 'Student',
             gradeLevel: result.student.gradeLevel,
             section: result.student.section,
           };
@@ -152,8 +158,8 @@ export default function SelfServiceMode() {
           toast.error(message || 'Failed to process scan');
         }
       }
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to process scan';
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error, 'Failed to process scan');
       setLastScan({
         success: false,
         action: 'error',
@@ -206,14 +212,16 @@ export default function SelfServiceMode() {
                 placeholder="Scan your ID card or enter Student ID..."
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 disabled={loading || showSuccess}
                 className="text-2xl py-8 text-center font-mono tracking-wider"
                 autoFocus
                 autoComplete="off"
               />
               <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                <Scan className={`w-8 h-8 ${loading ? 'animate-pulse text-primary' : 'text-muted-foreground'}`} />
+                <Scan
+                  className={`w-8 h-8 ${loading ? 'animate-pulse text-primary' : 'text-muted-foreground'}`}
+                />
               </div>
             </div>
 
@@ -300,7 +308,8 @@ export default function SelfServiceMode() {
                   </AlertTitle>
                   <AlertDescription className="space-y-2">
                     <p className="text-lg">
-                      {lastScan.student?.firstName}, you already checked in recently!
+                      {lastScan.student?.firstName}, you already checked in
+                      recently!
                     </p>
                     <p className="text-sm">
                       Please wait at least 30 minutes before scanning again.
@@ -317,12 +326,10 @@ export default function SelfServiceMode() {
               {lastScan.action === 'error' && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-6 w-6" />
-                  <AlertTitle className="text-xl mb-2">
-                    Error
-                  </AlertTitle>
-                  <AlertDescription className="text-lg">
-                    {lastScan.message}
-                  </AlertDescription>
+                  <AlertTitle className="text-xl mb-2">Error</AlertTitle>
+                <AlertDescription className="text-lg">
+                  {typeof lastScan?.message === 'string' ? lastScan.message : String(lastScan?.message || '')}
+                </AlertDescription>
                 </Alert>
               )}
             </div>

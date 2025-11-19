@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { PrismaClient } from '@prisma/client';
 import { env, isDevelopment } from './env';
 import { logger } from '../utils/logger';
@@ -9,9 +10,7 @@ const prismaConfig: any = {
       url: env.DATABASE_URL,
     },
   },
-  log: isDevelopment() 
-    ? ['query', 'info', 'warn', 'error']
-    : ['error'],
+  log: isDevelopment() ? ['query', 'info', 'warn', 'error'] : ['error'],
   errorFormat: 'pretty',
 };
 
@@ -23,7 +22,7 @@ declare global {
 // Create Prisma client with singleton pattern
 const createPrismaClient = (): PrismaClient => {
   const client = new PrismaClient(prismaConfig);
-  
+
   // Add query logging in development
   if (isDevelopment()) {
     (client as any).$on('query', (e: any) => {
@@ -34,7 +33,7 @@ const createPrismaClient = (): PrismaClient => {
       });
     });
   }
-  
+
   return client;
 };
 
@@ -115,7 +114,7 @@ export class DatabaseConfig {
       const result = await this.client.$queryRaw<Array<{ version: string }>>`
         SELECT version() as version
       `;
-      
+
       return {
         isConnected: this.isConnected,
         version: result[0]?.version || null,
@@ -132,9 +131,7 @@ export class DatabaseConfig {
   }
 
   // Transaction helper
-  public async transaction<T>(
-    fn: (tx: any) => Promise<T>
-  ): Promise<T> {
+  public async transaction<T>(fn: (tx: any) => Promise<T>): Promise<T> {
     return this.client.$transaction(fn);
   }
 
@@ -148,11 +145,11 @@ export class DatabaseConfig {
     };
   }> {
     const startTime = Date.now();
-    
+
     try {
       await this.client.$queryRaw`SELECT 1`;
       const responseTime = Date.now() - startTime;
-      
+
       return {
         status: 'healthy',
         details: {
@@ -162,7 +159,7 @@ export class DatabaseConfig {
       };
     } catch (error) {
       const responseTime = Date.now() - startTime;
-      
+
       return {
         status: 'unhealthy',
         details: {
@@ -184,23 +181,20 @@ export const connectDatabase = async (): Promise<void> => {
 };
 
 // Graceful shutdown handling
-process.on('SIGINT', async () => {
+process.on('SIGINT', () => {
   logger.info('Received SIGINT, closing database connection...');
-  await config.disconnect();
-  process.exit(0);
+  void config.disconnect().then(() => process.exit(0));
 });
 
-process.on('SIGTERM', async () => {
+process.on('SIGTERM', () => {
   logger.info('Received SIGTERM, closing database connection...');
-  await config.disconnect();
-  process.exit(0);
+  void config.disconnect().then(() => process.exit(0));
 });
 
 // Handle unhandled promise rejections
-process.on('unhandledRejection', async (reason, promise) => {
+process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  await config.disconnect();
-  process.exit(1);
+  void config.disconnect().then(() => process.exit(1));
 });
 
 export default config;

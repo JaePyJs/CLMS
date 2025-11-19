@@ -17,24 +17,24 @@ export default async function BookCatalogServer({
   searchQuery,
   sortBy = 'title',
   sortOrder = 'asc',
-  availableOnly = false
+  availableOnly = false,
 }: BookCatalogProps) {
   // Server-side data fetching with caching
-  const params: any = {
+  const params: Record<string, unknown> = {
     limit,
     sortBy,
     sortOrder,
-    availableOnly
+    availableOnly,
   };
-  
+
   if (category) {
     params.category = category;
   }
-  
+
   if (searchQuery) {
     params.searchQuery = searchQuery;
   }
-  
+
   const books = await getBooks(params);
 
   // Server component - no client-side state
@@ -51,8 +51,7 @@ export default async function BookCatalogServer({
               ? `No books matching "${searchQuery}"`
               : availableOnly
                 ? 'No available books found'
-                : 'No books in this category'
-            }
+                : 'No books in this category'}
           </p>
         </div>
       ) : (
@@ -62,7 +61,7 @@ export default async function BookCatalogServer({
             book={book}
             onCheckout={() => {
               // This will be handled by the client component
-              console.log('Checkout clicked for book:', book.id);
+              console.debug('Checkout clicked for book:', book.id);
             }}
           />
         ))

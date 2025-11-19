@@ -13,13 +13,17 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('system');
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
+  const [theme, setThemeState] = useState<Theme>('dark');
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('dark');
 
   // Get system theme preference
   const getSystemTheme = (): ResolvedTheme => {
-    if (typeof window === 'undefined') return 'light';
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (typeof window === 'undefined') {
+      return 'light';
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light';
   };
 
   // Resolve the actual theme to apply
@@ -33,17 +37,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // Apply theme to document
   const applyTheme = (resolved: ResolvedTheme) => {
     const root = document.documentElement;
-    
+
     // Add transitioning class for smooth animation
     root.classList.add('theme-transitioning');
-    
+
     // Apply the theme
     if (resolved === 'dark') {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
     }
-    
+
     // Update meta theme-color for mobile browsers
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
@@ -52,12 +56,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         resolved === 'dark' ? '#141b2e' : '#f8fafc'
       );
     }
-    
+
     // Remove transitioning class after animation
     setTimeout(() => {
       root.classList.remove('theme-transitioning');
     }, 300);
-    
+
     setResolvedTheme(resolved);
   };
 
@@ -76,19 +80,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize theme on mount
   useEffect(() => {
-    // Get saved theme or default to system
-    const savedTheme = localStorage.getItem('clms_theme') as Theme | null;
-    const initialTheme = savedTheme || 'system';
-    
+    const initialTheme: Theme = 'dark';
+    localStorage.setItem('clms_theme', initialTheme);
     setThemeState(initialTheme);
-    applyTheme(resolveTheme(initialTheme));
+    applyTheme('dark');
 
     // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e: MediaQueryListEvent) => {
-      if (theme === 'system') {
-        applyTheme(e.matches ? 'dark' : 'light');
-      }
+      // Full dark mode enforced; ignore system changes
     };
 
     // Modern browsers
@@ -101,18 +101,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       mediaQuery.addListener(handleChange);
       return () => mediaQuery.removeListener(handleChange);
     }
-    
+
     // Fallback for unsupported browsers
     return undefined;
   }, []);
 
   // Update resolved theme when theme changes
   useEffect(() => {
-    applyTheme(resolveTheme(theme));
+    applyTheme('dark');
   }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, resolvedTheme, setTheme, toggleTheme }}
+    >
       {children}
     </ThemeContext.Provider>
   );

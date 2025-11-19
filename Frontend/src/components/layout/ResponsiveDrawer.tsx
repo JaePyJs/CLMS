@@ -1,13 +1,19 @@
-import React from 'react'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import React from 'react';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 
 interface ResponsiveDrawerProps {
-  open: boolean
-  onOpenChange: (value: boolean) => void
-  title?: string
-  description?: string
-  side?: 'left' | 'right'
-  children: React.ReactNode
+  open: boolean;
+  onOpenChange: (value: boolean) => void;
+  title?: string;
+  description?: string;
+  side?: 'left' | 'right';
+  children: React.ReactNode;
 }
 
 export function ResponsiveDrawer({
@@ -20,7 +26,10 @@ export function ResponsiveDrawer({
 }: ResponsiveDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side={side} className="w-[85vw] sm:w-[400px] overflow-y-auto">
+      <SheetContent
+        side={side}
+        className="w-[85vw] sm:w-[400px] overflow-y-auto"
+      >
         {(title || description) && (
           <SheetHeader className="space-y-1 pb-4">
             {title && <SheetTitle>{title}</SheetTitle>}
@@ -30,5 +39,5 @@ export function ResponsiveDrawer({
         <div className="space-y-4">{children}</div>
       </SheetContent>
     </Sheet>
-  )
+  );
 }

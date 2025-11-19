@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { z } from 'zod';
 
 // ============================================================================
@@ -306,14 +307,14 @@ export interface ScannerResultPayload {
 // EVENT TYPE DEFINITIONS
 // ============================================================================
 
-export type WebSocketEvent = 
+export type WebSocketEvent =
   // Student Events
   | StudentCreateEvent
   | StudentUpdateEvent
   | StudentDeleteEvent
   | StudentCheckoutEvent
   | StudentReturnEvent
-  
+
   // Book Events
   | BookCreateEvent
   | BookUpdateEvent
@@ -321,7 +322,7 @@ export type WebSocketEvent =
   | BookCheckoutEvent
   | BookReturnEvent
   | BookReserveEvent
-  
+
   // Equipment Events
   | EquipmentCreateEvent
   | EquipmentUpdateEvent
@@ -329,23 +330,23 @@ export type WebSocketEvent =
   | EquipmentCheckoutEvent
   | EquipmentReturnEvent
   | EquipmentReserveEvent
-  
+
   // System Events
   | SystemNotificationEvent
   | SystemAlertEvent
   | SystemStatusEvent
-  
+
   // Import Events
   | ImportStartEvent
   | ImportProgressEvent
   | ImportCompletionEvent
-  
+
   // User Events
   | UserLoginEvent
   | UserLogoutEvent
   | UserPermissionsEvent
   | UserPreferencesEvent
-  
+
   // Scanner Events
   | ScannerScanEvent
   | ScannerResultEvent;
@@ -355,23 +356,28 @@ export type WebSocketEvent =
 // ============================================================================
 
 // Student Events
-export interface StudentCreateEvent extends BaseWebSocketEvent<StudentCreatePayload> {
+export interface StudentCreateEvent
+  extends BaseWebSocketEvent<StudentCreatePayload> {
   type: 'student:create';
 }
 
-export interface StudentUpdateEvent extends BaseWebSocketEvent<StudentUpdatePayload> {
+export interface StudentUpdateEvent
+  extends BaseWebSocketEvent<StudentUpdatePayload> {
   type: 'student:update';
 }
 
-export interface StudentDeleteEvent extends BaseWebSocketEvent<StudentDeletePayload> {
+export interface StudentDeleteEvent
+  extends BaseWebSocketEvent<StudentDeletePayload> {
   type: 'student:delete';
 }
 
-export interface StudentCheckoutEvent extends BaseWebSocketEvent<StudentCheckoutPayload> {
+export interface StudentCheckoutEvent
+  extends BaseWebSocketEvent<StudentCheckoutPayload> {
   type: 'student:checkout';
 }
 
-export interface StudentReturnEvent extends BaseWebSocketEvent<StudentReturnPayload> {
+export interface StudentReturnEvent
+  extends BaseWebSocketEvent<StudentReturnPayload> {
   type: 'student:return';
 }
 
@@ -388,7 +394,8 @@ export interface BookDeleteEvent extends BaseWebSocketEvent<BookDeletePayload> {
   type: 'book:delete';
 }
 
-export interface BookCheckoutEvent extends BaseWebSocketEvent<BookCheckoutPayload> {
+export interface BookCheckoutEvent
+  extends BaseWebSocketEvent<BookCheckoutPayload> {
   type: 'book:checkout';
 }
 
@@ -396,58 +403,71 @@ export interface BookReturnEvent extends BaseWebSocketEvent<BookReturnPayload> {
   type: 'book:return';
 }
 
-export interface BookReserveEvent extends BaseWebSocketEvent<BookReservePayload> {
+export interface BookReserveEvent
+  extends BaseWebSocketEvent<BookReservePayload> {
   type: 'book:reserve';
 }
 
 // Equipment Events
-export interface EquipmentCreateEvent extends BaseWebSocketEvent<EquipmentCreatePayload> {
+export interface EquipmentCreateEvent
+  extends BaseWebSocketEvent<EquipmentCreatePayload> {
   type: 'equipment:create';
 }
 
-export interface EquipmentUpdateEvent extends BaseWebSocketEvent<EquipmentUpdatePayload> {
+export interface EquipmentUpdateEvent
+  extends BaseWebSocketEvent<EquipmentUpdatePayload> {
   type: 'equipment:update';
 }
 
-export interface EquipmentDeleteEvent extends BaseWebSocketEvent<EquipmentDeletePayload> {
+export interface EquipmentDeleteEvent
+  extends BaseWebSocketEvent<EquipmentDeletePayload> {
   type: 'equipment:delete';
 }
 
-export interface EquipmentCheckoutEvent extends BaseWebSocketEvent<EquipmentCheckoutPayload> {
+export interface EquipmentCheckoutEvent
+  extends BaseWebSocketEvent<EquipmentCheckoutPayload> {
   type: 'equipment:checkout';
 }
 
-export interface EquipmentReturnEvent extends BaseWebSocketEvent<EquipmentReturnPayload> {
+export interface EquipmentReturnEvent
+  extends BaseWebSocketEvent<EquipmentReturnPayload> {
   type: 'equipment:return';
 }
 
-export interface EquipmentReserveEvent extends BaseWebSocketEvent<EquipmentReservePayload> {
+export interface EquipmentReserveEvent
+  extends BaseWebSocketEvent<EquipmentReservePayload> {
   type: 'equipment:reserve';
 }
 
 // System Events
-export interface SystemNotificationEvent extends BaseWebSocketEvent<SystemNotificationPayload> {
+export interface SystemNotificationEvent
+  extends BaseWebSocketEvent<SystemNotificationPayload> {
   type: 'system:notification';
 }
 
-export interface SystemAlertEvent extends BaseWebSocketEvent<SystemAlertPayload> {
+export interface SystemAlertEvent
+  extends BaseWebSocketEvent<SystemAlertPayload> {
   type: 'system:alert';
 }
 
-export interface SystemStatusEvent extends BaseWebSocketEvent<SystemStatusPayload> {
+export interface SystemStatusEvent
+  extends BaseWebSocketEvent<SystemStatusPayload> {
   type: 'system:status';
 }
 
 // Import Events
-export interface ImportStartEvent extends BaseWebSocketEvent<ImportStartPayload> {
+export interface ImportStartEvent
+  extends BaseWebSocketEvent<ImportStartPayload> {
   type: 'import:start';
 }
 
-export interface ImportProgressEvent extends BaseWebSocketEvent<ImportProgressPayload> {
+export interface ImportProgressEvent
+  extends BaseWebSocketEvent<ImportProgressPayload> {
   type: 'import:progress';
 }
 
-export interface ImportCompletionEvent extends BaseWebSocketEvent<ImportCompletionPayload> {
+export interface ImportCompletionEvent
+  extends BaseWebSocketEvent<ImportCompletionPayload> {
   type: 'import:completion';
 }
 
@@ -460,20 +480,24 @@ export interface UserLogoutEvent extends BaseWebSocketEvent<UserLogoutPayload> {
   type: 'user:logout';
 }
 
-export interface UserPermissionsEvent extends BaseWebSocketEvent<UserPermissionsPayload> {
+export interface UserPermissionsEvent
+  extends BaseWebSocketEvent<UserPermissionsPayload> {
   type: 'user:permissions';
 }
 
-export interface UserPreferencesEvent extends BaseWebSocketEvent<UserPreferencesPayload> {
+export interface UserPreferencesEvent
+  extends BaseWebSocketEvent<UserPreferencesPayload> {
   type: 'user:preferences';
 }
 
 // Scanner Events
-export interface ScannerScanEvent extends BaseWebSocketEvent<ScannerScanPayload> {
+export interface ScannerScanEvent
+  extends BaseWebSocketEvent<ScannerScanPayload> {
   type: 'scanner:scan';
 }
 
-export interface ScannerResultEvent extends BaseWebSocketEvent<ScannerResultPayload> {
+export interface ScannerResultEvent
+  extends BaseWebSocketEvent<ScannerResultPayload> {
   type: 'scanner:result';
 }
 
@@ -564,7 +588,9 @@ export const BookUpdatePayloadSchema = z.object({
     totalCopies: z.number().optional(),
     availableCopies: z.number().optional(),
     location: z.string().optional(),
-    status: z.enum(['available', 'checked-out', 'reserved', 'maintenance']).optional(),
+    status: z
+      .enum(['available', 'checked-out', 'reserved', 'maintenance'])
+      .optional(),
   }),
 });
 
@@ -609,7 +635,9 @@ export const EquipmentUpdatePayloadSchema = z.object({
     type: z.string().optional(),
     description: z.string().optional(),
     location: z.string().optional(),
-    status: z.enum(['available', 'in-use', 'maintenance', 'malfunctioning']).optional(),
+    status: z
+      .enum(['available', 'in-use', 'maintenance', 'malfunctioning'])
+      .optional(),
   }),
 });
 
@@ -762,7 +790,9 @@ export function isStudentDeleteEvent(event: any): event is StudentDeleteEvent {
   return event?.type === 'student:delete';
 }
 
-export function isStudentCheckoutEvent(event: any): event is StudentCheckoutEvent {
+export function isStudentCheckoutEvent(
+  event: any,
+): event is StudentCheckoutEvent {
   return event?.type === 'student:checkout';
 }
 
@@ -794,31 +824,45 @@ export function isBookReserveEvent(event: any): event is BookReserveEvent {
   return event?.type === 'book:reserve';
 }
 
-export function isEquipmentCreateEvent(event: any): event is EquipmentCreateEvent {
+export function isEquipmentCreateEvent(
+  event: any,
+): event is EquipmentCreateEvent {
   return event?.type === 'equipment:create';
 }
 
-export function isEquipmentUpdateEvent(event: any): event is EquipmentUpdateEvent {
+export function isEquipmentUpdateEvent(
+  event: any,
+): event is EquipmentUpdateEvent {
   return event?.type === 'equipment:update';
 }
 
-export function isEquipmentDeleteEvent(event: any): event is EquipmentDeleteEvent {
+export function isEquipmentDeleteEvent(
+  event: any,
+): event is EquipmentDeleteEvent {
   return event?.type === 'equipment:delete';
 }
 
-export function isEquipmentCheckoutEvent(event: any): event is EquipmentCheckoutEvent {
+export function isEquipmentCheckoutEvent(
+  event: any,
+): event is EquipmentCheckoutEvent {
   return event?.type === 'equipment:checkout';
 }
 
-export function isEquipmentReturnEvent(event: any): event is EquipmentReturnEvent {
+export function isEquipmentReturnEvent(
+  event: any,
+): event is EquipmentReturnEvent {
   return event?.type === 'equipment:return';
 }
 
-export function isEquipmentReserveEvent(event: any): event is EquipmentReserveEvent {
+export function isEquipmentReserveEvent(
+  event: any,
+): event is EquipmentReserveEvent {
   return event?.type === 'equipment:reserve';
 }
 
-export function isSystemNotificationEvent(event: any): event is SystemNotificationEvent {
+export function isSystemNotificationEvent(
+  event: any,
+): event is SystemNotificationEvent {
   return event?.type === 'system:notification';
 }
 
@@ -834,11 +878,15 @@ export function isImportStartEvent(event: any): event is ImportStartEvent {
   return event?.type === 'import:start';
 }
 
-export function isImportProgressEvent(event: any): event is ImportProgressEvent {
+export function isImportProgressEvent(
+  event: any,
+): event is ImportProgressEvent {
   return event?.type === 'import:progress';
 }
 
-export function isImportCompletionEvent(event: any): event is ImportCompletionEvent {
+export function isImportCompletionEvent(
+  event: any,
+): event is ImportCompletionEvent {
   return event?.type === 'import:completion';
 }
 
@@ -850,11 +898,15 @@ export function isUserLogoutEvent(event: any): event is UserLogoutEvent {
   return event?.type === 'user:logout';
 }
 
-export function isUserPermissionsEvent(event: any): event is UserPermissionsEvent {
+export function isUserPermissionsEvent(
+  event: any,
+): event is UserPermissionsEvent {
   return event?.type === 'user:permissions';
 }
 
-export function isUserPreferencesEvent(event: any): event is UserPreferencesEvent {
+export function isUserPreferencesEvent(
+  event: any,
+): event is UserPreferencesEvent {
   return event?.type === 'user:preferences';
 }
 
@@ -874,7 +926,14 @@ export interface EventTypeDefinition<TPayload = any> {
   type: string;
   payloadSchema: z.ZodSchema<TPayload>;
   description: string;
-  category: 'student' | 'book' | 'equipment' | 'system' | 'import' | 'user' | 'scanner';
+  category:
+    | 'student'
+    | 'book'
+    | 'equipment'
+    | 'system'
+    | 'import'
+    | 'user'
+    | 'scanner';
   requiresAuth: boolean;
   allowedRoles?: string[];
 }
@@ -896,11 +955,11 @@ export class EventTypeRegistry {
 
   static getByCategory(category: string): EventTypeDefinition[] {
     return Array.from(this.eventTypes.values()).filter(
-      eventType => eventType.category === category
+      eventType => eventType.category === category,
     );
   }
 
-  static validateEvent<TPayload>(event: any): { valid: boolean; error?: string } {
+  static validateEvent(event: any): { valid: boolean; error?: string } {
     const eventType = this.get(event.type);
     if (!eventType) {
       return { valid: false, error: `Unknown event type: ${event.type}` };
@@ -1187,7 +1246,7 @@ export function createWebSocketEvent<TPayload>(
     userId?: string;
     sessionId?: string;
     metadata?: Partial<EventMetadata>;
-  } = {}
+  } = {},
 ): BaseWebSocketEvent<TPayload> {
   const event: BaseWebSocketEvent<TPayload> = {
     id: options.id || crypto.randomUUID(),
@@ -1218,7 +1277,7 @@ export function createEventResponse<TPayload>(
   eventId: string,
   success: boolean,
   payload?: TPayload,
-  error?: EventError
+  error?: EventError,
 ): EventResponse<TPayload> {
   const response: EventResponse<TPayload> = {
     eventId,
@@ -1241,7 +1300,7 @@ export function createEventResponse<TPayload>(
  */
 export function parseWebSocketEvent<TPayload>(
   event: any,
-  schema: z.ZodSchema<TPayload>
+  schema: z.ZodSchema<TPayload>,
 ): { success: boolean; data?: TPayload; error?: string } {
   try {
     const data = schema.parse(event.payload);
@@ -1258,18 +1317,29 @@ export function parseWebSocketEvent<TPayload>(
  * Get all event types for a specific category
  */
 export function getEventTypesByCategory(category: string): string[] {
-  return EventTypeRegistry.getByCategory(category).map(eventType => eventType.type);
+  return EventTypeRegistry.getByCategory(category).map(
+    eventType => eventType.type,
+  );
 }
 
 /**
  * Check if a user has permission to send an event type
  */
-export function hasEventPermission(eventType: string, userRole: string): boolean {
+export function hasEventPermission(
+  eventType: string,
+  userRole: string,
+): boolean {
   const definition = EventTypeRegistry.get(eventType);
-  if (!definition) return false;
-  
-  if (!definition.requiresAuth) return true;
-  if (!definition.allowedRoles) return true;
-  
+  if (!definition) {
+    return false;
+  }
+
+  if (!definition.requiresAuth) {
+    return true;
+  }
+  if (!definition.allowedRoles) {
+    return true;
+  }
+
   return definition.allowedRoles.includes(userRole);
 }

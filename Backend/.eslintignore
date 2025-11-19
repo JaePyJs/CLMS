@@ -1,0 +1,9 @@
+# Lint ignore patterns for backend workspace
+node_modules/
+dist/
+build/
+coverage/
+logs/
+prisma/migrations/
+Dockerfile*
+**/*.d.ts

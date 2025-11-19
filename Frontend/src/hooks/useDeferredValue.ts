@@ -54,7 +54,7 @@ export function useDeferredList<T>(
   const deferredFilterValue = useDeferredValue(filterValue);
 
   const filteredItems = useMemo(() => {
-    return items.filter(item => filterFn(item, deferredFilterValue));
+    return items.filter((item) => filterFn(item, deferredFilterValue));
   }, [items, filterFn, deferredFilterValue]);
 
   return {

@@ -15,13 +15,13 @@ interface LoadingActions {
 
 /**
  * Hook for managing loading states consistently across components
- * 
+ *
  * @param initialState - Initial loading state
  * @returns [state, actions] - Current state and actions to modify it
- * 
+ *
  * @example
  * const [state, actions] = useLoadingState();
- * 
+ *
  * // In async operation
  * actions.start();
  * try {
@@ -40,7 +40,7 @@ export function useLoadingState(initialState: Partial<LoadingState> = {}) {
   });
 
   const start = useCallback(() => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       isLoading: true,
       error: null,
@@ -48,7 +48,7 @@ export function useLoadingState(initialState: Partial<LoadingState> = {}) {
   }, []);
 
   const finish = useCallback((data?: any) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       isLoading: false,
       data: data ?? prev.data,
@@ -57,7 +57,7 @@ export function useLoadingState(initialState: Partial<LoadingState> = {}) {
   }, []);
 
   const error = useCallback((errorMessage: string) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       isLoading: false,
       error: errorMessage,
@@ -79,25 +79,27 @@ export function useLoadingState(initialState: Partial<LoadingState> = {}) {
 
 /**
  * Hook for managing multiple loading states with shared interface
- * 
+ *
  * @param states - Object mapping state names to initial states
  * @returns [states, actions] - Current states and actions to modify them
- * 
+ *
  * @example
  * const [states, actions] = useMultipleLoadingStates({
  *   fetchStudents: {},
  *   exportData: {},
  *   generateQRCode: {},
  * });
- * 
+ *
  * // Use in component
  * {states.fetchStudents.isLoading && <Spinner />}
  * {states.exportData.error && <ErrorMessage error={states.exportData.error} />}
  */
-export function useMultipleLoadingStates<T extends Record<string, Partial<LoadingState>>>(
-  states: T
-) {
-  const [loadingStates, setLoadingStates] = useState<Record<keyof T, LoadingState>>(() => {
+export function useMultipleLoadingStates<
+  T extends Record<string, Partial<LoadingState>>,
+>(states: T) {
+  const [loadingStates, setLoadingStates] = useState<
+    Record<keyof T, LoadingState>
+  >(() => {
     const result = {} as Record<keyof T, LoadingState>;
     Object.entries(states).forEach(([key, value]) => {
       result[key as keyof T] = {
@@ -110,49 +112,52 @@ export function useMultipleLoadingStates<T extends Record<string, Partial<Loadin
     return result;
   });
 
-  const createActions = useCallback((stateKey: keyof T): LoadingActions => ({
-    start: () => {
-      setLoadingStates(prev => ({
-        ...prev,
-        [stateKey]: {
-          ...prev[stateKey],
-          isLoading: true,
-          error: null,
-        },
-      }));
-    },
-    finish: (data?: any) => {
-      setLoadingStates(prev => ({
-        ...prev,
-        [stateKey]: {
-          ...prev[stateKey],
-          isLoading: false,
-          data: data ?? prev[stateKey].data,
-          error: null,
-        },
-      }));
-    },
-    error: (errorMessage: string) => {
-      setLoadingStates(prev => ({
-        ...prev,
-        [stateKey]: {
-          ...prev[stateKey],
-          isLoading: false,
-          error: errorMessage,
-        },
-      }));
-    },
-    reset: () => {
-      setLoadingStates(prev => ({
-        ...prev,
-        [stateKey]: {
-          isLoading: false,
-          error: null,
-          data: null,
-        },
-      }));
-    },
-  }), []);
+  const createActions = useCallback(
+    (stateKey: keyof T): LoadingActions => ({
+      start: () => {
+        setLoadingStates((prev) => ({
+          ...prev,
+          [stateKey]: {
+            ...prev[stateKey],
+            isLoading: true,
+            error: null,
+          },
+        }));
+      },
+      finish: (data?: any) => {
+        setLoadingStates((prev) => ({
+          ...prev,
+          [stateKey]: {
+            ...prev[stateKey],
+            isLoading: false,
+            data: data ?? prev[stateKey].data,
+            error: null,
+          },
+        }));
+      },
+      error: (errorMessage: string) => {
+        setLoadingStates((prev) => ({
+          ...prev,
+          [stateKey]: {
+            ...prev[stateKey],
+            isLoading: false,
+            error: errorMessage,
+          },
+        }));
+      },
+      reset: () => {
+        setLoadingStates((prev) => ({
+          ...prev,
+          [stateKey]: {
+            isLoading: false,
+            error: null,
+            data: null,
+          },
+        }));
+      },
+    }),
+    []
+  );
 
   // Create actions object with all state keys
   const actions = Object.keys(states).reduce((acc, key) => {

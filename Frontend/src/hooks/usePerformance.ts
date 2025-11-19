@@ -6,8 +6,11 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import type { UseQueryOptions } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  type UseQueryOptions,
+} from '@tanstack/react-query';
 
 // Performance monitoring types
 interface PerformanceMetrics {
@@ -39,10 +42,13 @@ interface PerformanceConfig {
 
 // Performance monitoring configuration
 const PERFORMANCE_CONFIG: PerformanceConfig = {
-  enableMonitoring: import.meta.env.PROD || import.meta.env.VITE_ENABLE_PERFORMANCE_MONITORING === 'true',
+  enableMonitoring:
+    import.meta.env.PROD ||
+    import.meta.env.VITE_ENABLE_PERFORMANCE_MONITORING === 'true',
   enableAPITracking: import.meta.env.VITE_ENABLE_API_TRACKING !== 'false',
   enableRenderTracking: import.meta.env.VITE_ENABLE_RENDER_TRACKING !== 'false',
-  enableInteractionTracking: import.meta.env.VITE_ENABLE_INTERACTION_TRACKING !== 'false',
+  enableInteractionTracking:
+    import.meta.env.VITE_ENABLE_INTERACTION_TRACKING !== 'false',
   sampleRate: parseFloat(import.meta.env.VITE_PERFORMANCE_SAMPLE_RATE || '0.1'), // 10% sampling
   maxEntries: 100,
   reportingEndpoint: import.meta.env.VITE_PERFORMANCE_ENDPOINT,
@@ -52,7 +58,8 @@ const PERFORMANCE_CONFIG: PerformanceConfig = {
 class PerformanceStore {
   private entries: HookPerformanceEntry[] = [];
   private observers: PerformanceObserver[] = [];
-  private isSupported = 'performance' in window && 'PerformanceObserver' in window;
+  private isSupported =
+    'performance' in window && 'PerformanceObserver' in window;
 
   constructor() {
     if (this.isSupported && PERFORMANCE_CONFIG.enableMonitoring) {
@@ -73,8 +80,11 @@ class PerformanceStore {
               duration: entry.duration,
               type: 'navigation',
               metadata: {
-                domContentLoaded: (entry as any).domContentLoadedEventEnd - (entry as any).domContentLoadedEventStart,
-                loadComplete: (entry as any).loadEventEnd - (entry as any).loadEventStart,
+                domContentLoaded:
+                  (entry as any).domContentLoadedEventEnd -
+                  (entry as any).domContentLoadedEventStart,
+                loadComplete:
+                  (entry as any).loadEventEnd - (entry as any).loadEventStart,
               },
             });
           }
@@ -127,10 +137,14 @@ class PerformanceStore {
   }
 
   addEntry(entry: HookPerformanceEntry): void {
-    if (!PERFORMANCE_CONFIG.enableMonitoring) return;
+    if (!PERFORMANCE_CONFIG.enableMonitoring) {
+      return;
+    }
 
     // Sample rate filtering
-    if (Math.random() > PERFORMANCE_CONFIG.sampleRate) return;
+    if (Math.random() > PERFORMANCE_CONFIG.sampleRate) {
+      return;
+    }
 
     this.entries.push(entry);
 
@@ -147,7 +161,9 @@ class PerformanceStore {
 
   private async reportEntry(entry: HookPerformanceEntry): Promise<void> {
     try {
-      if (!navigator.sendBeacon) return;
+      if (!navigator.sendBeacon) {
+        return;
+      }
 
       const data = {
         ...entry,
@@ -156,7 +172,11 @@ class PerformanceStore {
         timestamp: Date.now(),
       };
 
-      navigator.sendBeacon(PERFORMANCE_CONFIG.reportingEndpoint!, JSON.stringify(data));
+      // reportingEndpoint is validated as non-null by the if statement above
+      navigator.sendBeacon(
+        PERFORMANCE_CONFIG.reportingEndpoint,
+        JSON.stringify(data)
+      );
     } catch (error) {
       console.warn('Performance reporting failed:', error);
     }
@@ -164,7 +184,7 @@ class PerformanceStore {
 
   getEntries(type?: HookPerformanceEntry['type']): HookPerformanceEntry[] {
     if (type) {
-      return this.entries.filter(entry => entry.type === type);
+      return this.entries.filter((entry) => entry.type === type);
     }
     return [...this.entries];
   }
@@ -174,21 +194,28 @@ class PerformanceStore {
     const apiEntries = this.getEntries('api');
     const interactionEntries = this.getEntries('interaction');
 
-    const avgRenderTime = renderEntries.length > 0
-      ? renderEntries.reduce((sum, entry) => sum + entry.duration, 0) / renderEntries.length
-      : 0;
+    const avgRenderTime =
+      renderEntries.length > 0
+        ? renderEntries.reduce((sum, entry) => sum + entry.duration, 0) /
+          renderEntries.length
+        : 0;
 
-    const avgApiTime = apiEntries.length > 0
-      ? apiEntries.reduce((sum, entry) => sum + entry.duration, 0) / apiEntries.length
-      : 0;
+    const avgApiTime =
+      apiEntries.length > 0
+        ? apiEntries.reduce((sum, entry) => sum + entry.duration, 0) /
+          apiEntries.length
+        : 0;
 
-    const avgInteractionTime = interactionEntries.length > 0
-      ? interactionEntries.reduce((sum, entry) => sum + entry.duration, 0) / interactionEntries.length
-      : 0;
+    const avgInteractionTime =
+      interactionEntries.length > 0
+        ? interactionEntries.reduce((sum, entry) => sum + entry.duration, 0) /
+          interactionEntries.length
+        : 0;
 
     return {
       renderTime: avgRenderTime,
-      componentMountTime: renderEntries.find(e => e.name === 'component-mount')?.duration || 0,
+      componentMountTime:
+        renderEntries.find((e) => e.name === 'component-mount')?.duration || 0,
       apiCallTime: avgApiTime,
       interactionTime: avgInteractionTime,
       memoryUsage: this.getMemoryUsage(),
@@ -214,7 +241,7 @@ class PerformanceStore {
   }
 
   destroy(): void {
-    this.observers.forEach(observer => observer.disconnect());
+    this.observers.forEach((observer) => observer.disconnect());
     this.observers = [];
     this.entries = [];
   }
@@ -278,24 +305,29 @@ export const usePerformanceMonitor = (componentName: string) => {
     }
   });
 
-  const trackInteraction = useCallback((interactionName: string, startTime?: number) => {
-    if (!PERFORMANCE_CONFIG.enableInteractionTracking) return;
+  const trackInteraction = useCallback(
+    (interactionName: string, startTime?: number) => {
+      if (!PERFORMANCE_CONFIG.enableInteractionTracking) {
+        return;
+      }
 
-    const start = startTime || performance.now();
+      const start = startTime || performance.now();
 
-    return {
-      end: () => {
-        const duration = performance.now() - start;
-        performanceStore.addEntry({
-          name: interactionName,
-          startTime: start,
-          duration,
-          type: 'interaction',
-          metadata: { component: componentName },
-        });
-      },
-    };
-  }, [componentName]);
+      return {
+        end: () => {
+          const duration = performance.now() - start;
+          performanceStore.addEntry({
+            name: interactionName,
+            startTime: start,
+            duration,
+            type: 'interaction',
+            metadata: { component: componentName },
+          });
+        },
+      };
+    },
+    [componentName]
+  );
 
   return {
     trackInteraction,
@@ -325,7 +357,7 @@ export const useTrackedQuery = <T>(
   useEffect(() => {
     if (PERFORMANCE_CONFIG.enableAPITracking && startTime.current) {
       const duration = performance.now() - startTime.current;
-      
+
       if (query.isSuccess && query.data !== undefined) {
         performanceStore.addEntry({
           name: `api-${Array.isArray(queryKey) ? queryKey.join('-') : String(queryKey)}`,
@@ -333,7 +365,9 @@ export const useTrackedQuery = <T>(
           duration,
           type: 'api',
           metadata: {
-            queryKey: Array.isArray(queryKey) ? queryKey.join('.') : String(queryKey),
+            queryKey: Array.isArray(queryKey)
+              ? queryKey.join('.')
+              : String(queryKey),
             success: true,
           },
         });
@@ -344,7 +378,9 @@ export const useTrackedQuery = <T>(
           duration,
           type: 'api',
           metadata: {
-            queryKey: Array.isArray(queryKey) ? queryKey.join('.') : String(queryKey),
+            queryKey: Array.isArray(queryKey)
+              ? queryKey.join('.')
+              : String(queryKey),
             success: false,
             error: query.error?.message || 'Unknown error',
           },
@@ -376,7 +412,7 @@ export const useTrackedMutation = <T, V>(
   useEffect(() => {
     if (PERFORMANCE_CONFIG.enableAPITracking && startTime.current) {
       const duration = performance.now() - startTime.current;
-      
+
       if (mutation.isSuccess && mutation.data !== undefined) {
         performanceStore.addEntry({
           name: `mutation-${mutationFn.name || 'unknown'}`,
@@ -385,7 +421,9 @@ export const useTrackedMutation = <T, V>(
           type: 'api',
           metadata: {
             success: true,
-            variables: mutation.variables ? JSON.stringify(mutation.variables)?.slice(0, 100) : '', // Limit size
+            variables: mutation.variables
+              ? JSON.stringify(mutation.variables)?.slice(0, 100)
+              : '', // Limit size
           },
         });
       } else if (mutation.isError) {
@@ -397,12 +435,21 @@ export const useTrackedMutation = <T, V>(
           metadata: {
             success: false,
             error: mutation.error?.message || 'Unknown error',
-            variables: mutation.variables ? JSON.stringify(mutation.variables)?.slice(0, 100) : '',
+            variables: mutation.variables
+              ? JSON.stringify(mutation.variables)?.slice(0, 100)
+              : '',
           },
         });
       }
     }
-  }, [mutation.isSuccess, mutation.isError, mutation.data, mutation.error, mutation.variables, mutationFn.name]);
+  }, [
+    mutation.isSuccess,
+    mutation.isError,
+    mutation.data,
+    mutation.error,
+    mutation.variables,
+    mutationFn.name,
+  ]);
 
   return mutation;
 };
@@ -421,15 +468,13 @@ export const useLazyLoad = <T>(
   const [error, setError] = useState<Error | null>(null);
   const elementRef = useRef<HTMLElement | null>(null);
 
-  const {
-    threshold = 0.1,
-    rootMargin = '0px',
-    triggerOnce = true,
-  } = options;
+  const { threshold = 0.1, rootMargin = '0px', triggerOnce = true } = options;
 
   useEffect(() => {
     const element = elementRef.current;
-    if (!element) return;
+    if (!element) {
+      return;
+    }
 
     const observer = new IntersectionObserver(
       async (entries) => {
@@ -489,12 +534,15 @@ export const useLazyLoad = <T>(
 };
 
 // Hook for image optimization and lazy loading
-export const useOptimizedImage = (src: string, options: {
-  placeholder?: string;
+export const useOptimizedImage = (
+  src: string,
+  options: {
+    placeholder?: string;
     threshold?: number;
     sizes?: string;
     quality?: number;
-  } = {}) => {
+  } = {}
+) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -509,7 +557,9 @@ export const useOptimizedImage = (src: string, options: {
 
   useEffect(() => {
     const image = imgRef.current;
-    if (!image) return;
+    if (!image) {
+      return;
+    }
 
     const observer = new IntersectionObserver(
       async (entries) => {
@@ -575,7 +625,9 @@ export const useOptimizedImage = (src: string, options: {
 
 // Hook for performance metrics
 export const usePerformanceMetrics = () => {
-  const [metrics, setMetrics] = useState<PerformanceMetrics>(() => performanceStore.getMetrics());
+  const [metrics, setMetrics] = useState<PerformanceMetrics>(() =>
+    performanceStore.getMetrics()
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {

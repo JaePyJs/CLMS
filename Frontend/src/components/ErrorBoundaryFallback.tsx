@@ -5,17 +5,17 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { FallbackProps } from 'react-error-boundary';
-import { 
-  AlertTriangle, 
-  RefreshCw, 
-  Home, 
-  Bug, 
-  Wifi, 
-  WifiOff, 
-  Clock, 
-  Send, 
-  CheckCircle, 
-  XCircle 
+import {
+  AlertTriangle,
+  RefreshCw,
+  Home,
+  Bug,
+  Wifi,
+  WifiOff,
+  Clock,
+  Send,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -29,7 +29,7 @@ import {
   goHome,
   sendDetailedReport,
   type ErrorType,
-  type RecoverySuggestion
+  type RecoverySuggestion,
 } from '@/utils/error-utils';
 
 /**
@@ -53,7 +53,7 @@ export function ErrorBoundaryFallback({
   resetErrorBoundary,
   maxRetries = 3,
   enableRetry = true,
-  onError
+  onError,
 }: ErrorBoundaryFallbackProps) {
   // State management using React hooks
   const [retryCount, setRetryCount] = useState(0);
@@ -74,7 +74,12 @@ export function ErrorBoundaryFallback({
     setIsOnline(online);
 
     // Auto-retry network errors when coming back online
-    if (online && errorType === 'NETWORK_ERROR' && autoRetry && retryCount < maxRetries) {
+    if (
+      online &&
+      errorType === 'NETWORK_ERROR' &&
+      autoRetry &&
+      retryCount < maxRetries
+    ) {
       handleRetry();
     }
   }, [errorType, autoRetry, retryCount, maxRetries]);
@@ -88,7 +93,7 @@ export function ErrorBoundaryFallback({
       return;
     }
 
-    setRetryCount(prev => prev + 1);
+    setRetryCount((prev) => prev + 1);
     setIsRecovering(true);
 
     // Exponential backoff: 1s, 2s, 4s, etc.
@@ -115,7 +120,7 @@ export function ErrorBoundaryFallback({
    */
   const handleCheckConnection = useCallback(async () => {
     setIsRecovering(true);
-    
+
     try {
       const isConnected = await checkConnection();
       if (isConnected) {
@@ -125,7 +130,9 @@ export function ErrorBoundaryFallback({
         setIsRecovering(false);
       }
     } catch {
-      alert('Unable to test connection. Please check your internet connection.');
+      alert(
+        'Unable to test connection. Please check your internet connection.'
+      );
       setIsRecovering(false);
     }
   }, [handleRetry]);
@@ -159,7 +166,7 @@ export function ErrorBoundaryFallback({
           description: 'Reload the page to restore connection',
           action: refreshPage,
           icon: <RefreshCw className="h-4 w-4" />,
-          auto: true,
+          auto: false,
         });
         break;
 
@@ -216,7 +223,13 @@ export function ErrorBoundaryFallback({
     }
 
     return suggestions;
-  }, [errorType, handleCheckConnection, handleRetry, handleReset, handleSendReport]);
+  }, [
+    errorType,
+    handleCheckConnection,
+    handleRetry,
+    handleReset,
+    handleSendReport,
+  ]);
 
   /**
    * Get appropriate icon for error type
@@ -224,7 +237,11 @@ export function ErrorBoundaryFallback({
   const getErrorIcon = useCallback(() => {
     switch (errorType) {
       case 'NETWORK_ERROR':
-        return isOnline ? <Wifi className="h-8 w-8" /> : <WifiOff className="h-8 w-8" />;
+        return isOnline ? (
+          <Wifi className="h-8 w-8" />
+        ) : (
+          <WifiOff className="h-8 w-8" />
+        );
       case 'AUTHENTICATION_ERROR':
         return <XCircle className="h-8 w-8" />;
       case 'VALIDATION_ERROR':
@@ -304,7 +321,7 @@ export function ErrorBoundaryFallback({
   // Effect for error reporting
   useEffect(() => {
     reportApplicationError(error, null, errorId, errorType, retryCount);
-    
+
     if (onError) {
       onError(error, errorId, errorType);
     }
@@ -312,16 +329,18 @@ export function ErrorBoundaryFallback({
 
   // Effect for automatic retry
   useEffect(() => {
-    const autoRecoverySuggestions = recoverySuggestions.filter(s => s.auto);
-    
+    const autoRecoverySuggestions = recoverySuggestions.filter((s) => s.auto);
+
     const suggestion = autoRecoverySuggestions[0];
     if (suggestion && retryCount < maxRetries) {
       const delay = Math.min(2000 * Math.pow(1.5, retryCount), 10000); // Progressive delay
-      
+
       const timer = setTimeout(() => {
-        console.log(`Auto-recovery attempt ${retryCount + 1}/${maxRetries}: ${suggestion.title}`);
+        console.debug(
+          `Auto-recovery attempt ${retryCount + 1}/${maxRetries}: ${suggestion.title}`
+        );
         setIsRecovering(true);
-        
+
         try {
           suggestion.action();
         } catch (recoveryError) {
@@ -351,9 +370,7 @@ export function ErrorBoundaryFallback({
                 <h1 className="text-2xl font-bold text-white">
                   {getErrorTitle()}
                 </h1>
-                <p className="text-white/80 mt-1">
-                  {getErrorDescription()}
-                </p>
+                <p className="text-white/80 mt-1">{getErrorDescription()}</p>
               </div>
               <div className="flex items-center gap-2">
                 {isOnline ? (
@@ -377,7 +394,8 @@ export function ErrorBoundaryFallback({
                       Attempting Automatic Recovery
                     </h3>
                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Trying to resolve the issue automatically... (Attempt {retryCount + 1}/{maxRetries})
+                      Trying to resolve the issue automatically... (Attempt{' '}
+                      {retryCount + 1}/{maxRetries})
                     </p>
                   </div>
                 </div>
@@ -450,11 +468,16 @@ export function ErrorBoundaryFallback({
                 onClick={handleRetry}
                 className="flex-1 gap-2"
                 variant="default"
-                disabled={isRecovering || retryCount >= maxRetries || !enableRetry}
+                disabled={
+                  isRecovering || retryCount >= maxRetries || !enableRetry
+                }
               >
                 <RefreshCw className="h-4 w-4" />
-                {isRecovering ? 'Recovering...' :
-                 retryCount >= maxRetries ? 'Max Retries Reached' : 'Try Again'}
+                {isRecovering
+                  ? 'Recovering...'
+                  : retryCount >= maxRetries
+                    ? 'Max Retries Reached'
+                    : 'Try Again'}
               </Button>
               <Button
                 onClick={goHome}
@@ -472,7 +495,8 @@ export function ErrorBoundaryFallback({
                 Error ID: {errorId}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                If this problem persists, please contact the system administrator
+                If this problem persists, please contact the system
+                administrator
               </p>
             </div>
           </div>
@@ -489,7 +513,8 @@ export function ErrorBoundaryFallback({
                     Automatic Retry Disabled
                   </h3>
                   <p className="text-sm text-amber-700 dark:text-amber-300">
-                    Maximum retry attempts reached. Please try one of the suggested actions above.
+                    Maximum retry attempts reached. Please try one of the
+                    suggested actions above.
                   </p>
                 </div>
               </div>

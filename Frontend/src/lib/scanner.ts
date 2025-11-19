@@ -191,7 +191,9 @@ export const useUsbScanner = () => {
   // Handle keyboard input
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      if (!isListening) return;
+      if (!isListening) {
+        return;
+      }
 
       // Ignore if user is typing in an input field (except our scanner input)
       const target = event.target as HTMLElement;

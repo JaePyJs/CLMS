@@ -2,11 +2,24 @@ import React, { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useMobileOptimization } from '@/hooks/useMobileOptimization';
+import {
+  useMobileOptimization,
+  useTouchOptimization,
+} from '@/hooks/useMobileOptimization';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
-import { useTouchOptimization } from '@/hooks/useMobileOptimization';
 import { toast } from 'sonner';
-import { Zap, ArrowRight, Library, BookOpen, Users, Camera, Clock, BarChart3, Settings, Plus } from 'lucide-react';
+import {
+  Zap,
+  ArrowRight,
+  Library,
+  BookOpen,
+  Users,
+  Camera,
+  Clock,
+  BarChart3,
+  Settings,
+  Plus,
+} from 'lucide-react';
 
 interface QuickAction {
   id: string;
@@ -70,8 +83,8 @@ export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
       color: 'text-blue-600 dark:text-blue-400',
       bgColor: 'bg-blue-100 dark:bg-blue-900/20',
       onClick: () => {
-        // Navigate to student search
-        window.location.hash = '#students?search=true';
+        // Navigate to student _search
+        window.location.hash = '#students?_search=true';
       },
       shortcut: '3',
     },
@@ -144,7 +157,9 @@ export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
 
   // Quick checkout handler
   const handleQuickCheckout = useCallback(async () => {
-    if (actionInProgress) return;
+    if (actionInProgress) {
+      return;
+    }
 
     try {
       setActionInProgress('quick-checkout');
@@ -155,7 +170,9 @@ export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
       // In a real app, this would open a scanner interface
       setTimeout(() => {
         const mockBookId = `BOOK-${Date.now().toString(36)}`;
-        const mockStudentId = `STU-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+        const mockStudentId = `STU-${Math.floor(Math.random() * 1000)
+          .toString()
+          .padStart(3, '0')}`;
 
         toast.success(`Checked out ${mockBookId} to Student ${mockStudentId}`);
 
@@ -184,7 +201,9 @@ export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
 
   // Quick checkin handler
   const handleQuickCheckin = useCallback(async () => {
-    if (actionInProgress) return;
+    if (actionInProgress) {
+      return;
+    }
 
     try {
       setActionInProgress('quick-checkin');
@@ -219,25 +238,30 @@ export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
   }, [actionInProgress, isOnline, queueAction]);
 
   // Handle action click
-  const handleActionClick = useCallback(async (action: QuickAction) => {
-    if (actionInProgress === action.id) return;
-
-    try {
-      // Provide haptic feedback
-      if ('vibrate' in navigator) {
-        navigator.vibrate(50);
+  const handleActionClick = useCallback(
+    async (action: QuickAction) => {
+      if (actionInProgress === action.id) {
+        return;
       }
 
-      // Execute action
-      await action.onClick();
+      try {
+        // Provide haptic feedback
+        if ('vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
 
-      // Notify parent
-      onActionClick?.(action.id);
-    } catch (error) {
-      console.error('[MobileQuickActions] Action failed:', error);
-      toast.error(`Failed to execute ${action.label}`);
-    }
-  }, [actionInProgress, onActionClick]);
+        // Execute action
+        await action.onClick();
+
+        // Notify parent
+        onActionClick?.(action.id);
+      } catch (error) {
+        console.error('[MobileQuickActions] Action failed:', error);
+        toast.error(`Failed to execute ${action.label}`);
+      }
+    },
+    [actionInProgress, onActionClick]
+  );
 
   // Don't show on desktop
   if (!isMobile && !isTablet) {
@@ -275,7 +299,9 @@ export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
                   disabled={isLoading}
                 >
                   <div className={`p-3 rounded-full ${action.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${action.color} ${isLoading ? 'animate-pulse' : ''}`} />
+                    <Icon
+                      className={`h-6 w-6 ${action.color} ${isLoading ? 'animate-pulse' : ''}`}
+                    />
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
@@ -286,12 +312,18 @@ export const MobileQuickActions: React.FC<MobileQuickActionsProps> = ({
                     </p>
                   </div>
                   {action.shortcut && (
-                    <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                    <Badge
+                      variant="secondary"
+                      className="text-[10px] px-1 py-0"
+                    >
                       {action.shortcut}
                     </Badge>
                   )}
                   {action.badge && action.badge > 0 && (
-                    <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                    <Badge
+                      variant="destructive"
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                    >
                       {action.badge}
                     </Badge>
                   )}

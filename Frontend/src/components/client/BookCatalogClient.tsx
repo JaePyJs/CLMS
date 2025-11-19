@@ -13,7 +13,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BookOpen, Search, RefreshCw, ArrowUpDown, Grid3X3, List } from 'lucide-react';
+import {
+  BookOpen,
+  Search,
+  RefreshCw,
+  ArrowUpDown,
+  Grid3X3,
+  List,
+} from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
@@ -57,7 +64,7 @@ const DEFAULT_CATEGORIES = [
 
 export function BookCatalogClient({
   initialBooks = [],
-  categories = DEFAULT_CATEGORIES
+  categories = DEFAULT_CATEGORIES,
 }: BookCatalogClientProps) {
   // Modern hooks for state management
   const [books, setBooks] = useState<Book[]>(initialBooks);
@@ -65,44 +72,50 @@ export function BookCatalogClient({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Search and filter state
+  // _Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'title' | 'author' | 'created_at'>('title');
+  const [sortBy, setSortBy] = useState<'title' | 'author' | 'created_at'>(
+    'title'
+  );
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [availableOnly, setAvailableOnly] = useState(false);
 
   // UI state with localStorage persistence
-  const [viewMode, setViewMode] = useLocalStorage<'grid' | 'list'>('book-view-mode', 'grid');
+  const [viewMode, setViewMode] = useLocalStorage<'grid' | 'list'>(
+    'book-view-mode',
+    'grid'
+  );
   const [booksPerPage] = useLocalStorage('books-per-page', 20);
 
-  // Debounced search query
+  // Debounced _search query
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
   // Memoized filter and sort logic
   const filteredAndSortedBooks = useMemo(() => {
     let filtered = books;
 
-    // Apply search filter
+    // Apply _search filter
     if (debouncedSearchQuery) {
       const query = debouncedSearchQuery.toLowerCase();
-      filtered = filtered.filter(book =>
-        book.title.toLowerCase().includes(query) ||
-        book.author.toLowerCase().includes(query) ||
-        book.isbn?.toLowerCase().includes(query) ||
-        book.accessionNo.toLowerCase().includes(query) ||
-        book.category.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        (book) =>
+          book.title.toLowerCase().includes(query) ||
+          book.author.toLowerCase().includes(query) ||
+          book.isbn?.toLowerCase().includes(query) ||
+          book.accessionNo.toLowerCase().includes(query) ||
+          book.category.toLowerCase().includes(query)
       );
     }
 
     // Apply category filter
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(book => book.category === selectedCategory);
+      filtered = filtered.filter((book) => book.category === selectedCategory);
     }
 
     // Apply availability filter
     if (availableOnly) {
-      filtered = filtered.filter(book => book.availableCopies > 0);
+      filtered = filtered.filter((book) => book.availableCopies > 0);
     }
 
     // Apply sorting
@@ -134,7 +147,14 @@ export function BookCatalogClient({
     });
 
     return filtered;
-  }, [books, debouncedSearchQuery, selectedCategory, sortBy, sortOrder, availableOnly]);
+  }, [
+    books,
+    debouncedSearchQuery,
+    selectedCategory,
+    sortBy,
+    sortOrder,
+    availableOnly,
+  ]);
 
   // Update filtered books when memoized result changes
   useEffect(() => {
@@ -149,7 +169,7 @@ export function BookCatalogClient({
     try {
       const response = await fetch('/api/books', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
@@ -179,7 +199,7 @@ export function BookCatalogClient({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
 
@@ -190,16 +210,19 @@ export function BookCatalogClient({
       const data = await response.json();
       if (data.success) {
         // Update local state to reflect checkout
-        setBooks(prev => prev.map(book =>
-          book.id === bookId
-            ? { ...book, availableCopies: book.availableCopies - 1 }
-            : book
-        ));
+        setBooks((prev) =>
+          prev.map((book) =>
+            book.id === bookId
+              ? { ...book, availableCopies: book.availableCopies - 1 }
+              : book
+          )
+        );
       } else {
         throw new Error(data.error || 'Checkout failed');
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Checkout failed';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Checkout failed';
       throw new Error(errorMessage);
     }
   }, []);
@@ -208,7 +231,7 @@ export function BookCatalogClient({
   const handleViewDetails = useCallback((book: Book) => {
     // This would typically open a dialog or navigate to a detail page
     toast.info(`Viewing details for "${book.title}"`);
-    console.log('Book details:', book);
+    console.debug('Book details:', book);
   }, []);
 
   // Reset filters
@@ -223,9 +246,12 @@ export function BookCatalogClient({
   // Stats calculation
   const stats = useMemo(() => {
     const total = books.length;
-    const available = books.filter(book => book.availableCopies > 0).length;
-    const checkedOut = books.reduce((sum, book) => sum + (book.totalCopies - book.availableCopies), 0);
-    const uniqueCategories = new Set(books.map(book => book.category)).size;
+    const available = books.filter((book) => book.availableCopies > 0).length;
+    const checkedOut = books.reduce(
+      (sum, book) => sum + (book.totalCopies - book.availableCopies),
+      0
+    );
+    const uniqueCategories = new Set(books.map((book) => book.category)).size;
 
     return { total, available, checkedOut, categories: uniqueCategories };
   }, [books]);
@@ -249,8 +275,15 @@ export function BookCatalogClient({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchBooks} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchBooks}
+            disabled={isLoading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`}
+            />
             Refresh
           </Button>
         </div>
@@ -261,7 +294,9 @@ export function BookCatalogClient({
         <div className="bg-background border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Total Books</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Total Books
+              </p>
               <p className="text-2xl font-bold">{stats.total}</p>
             </div>
             <BookOpen className="h-8 w-8 text-muted-foreground" />
@@ -271,8 +306,12 @@ export function BookCatalogClient({
         <div className="bg-background border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Available</p>
-              <p className="text-2xl font-bold text-green-600">{stats.available}</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Available
+              </p>
+              <p className="text-2xl font-bold text-green-600">
+                {stats.available}
+              </p>
             </div>
             <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
               <div className="h-4 w-4 bg-green-500 rounded-full" />
@@ -283,8 +322,12 @@ export function BookCatalogClient({
         <div className="bg-background border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Checked Out</p>
-              <p className="text-2xl font-bold text-blue-600">{stats.checkedOut}</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Checked Out
+              </p>
+              <p className="text-2xl font-bold text-blue-600">
+                {stats.checkedOut}
+              </p>
             </div>
             <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
               <div className="h-4 w-4 bg-blue-500 rounded-full" />
@@ -295,8 +338,12 @@ export function BookCatalogClient({
         <div className="bg-background border rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Categories</p>
-              <p className="text-2xl font-bold text-purple-600">{stats.categories}</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Categories
+              </p>
+              <p className="text-2xl font-bold text-purple-600">
+                {stats.categories}
+              </p>
             </div>
             <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
               <div className="h-4 w-4 bg-purple-500 rounded-full" />
@@ -305,14 +352,14 @@ export function BookCatalogClient({
         </div>
       </div>
 
-      {/* Search and Filters */}
+      {/* _Search and Filters */}
       <div className="bg-background border rounded-lg p-4 space-y-4">
         <div className="flex flex-col sm:flex-row gap-4">
-          {/* Search */}
+          {/* _Search */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search books..."
+              placeholder="_Search books..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -321,13 +368,16 @@ export function BookCatalogClient({
 
           {/* Filters */}
           <div className="flex gap-2">
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <Select
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+            >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {categories.map(category => (
+                {categories.map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
                   </SelectItem>
@@ -335,7 +385,12 @@ export function BookCatalogClient({
               </SelectContent>
             </Select>
 
-            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+            <Select
+              value={sortBy}
+              onValueChange={(value: string) =>
+                setSortBy(value as 'title' | 'author' | 'created_at')
+              }
+            >
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
@@ -355,7 +410,7 @@ export function BookCatalogClient({
             </Button>
 
             <Button
-              variant={availableOnly ? "default" : "outline"}
+              variant={availableOnly ? 'default' : 'outline'}
               size="sm"
               onClick={() => setAvailableOnly(!availableOnly)}
             >
@@ -394,11 +449,11 @@ export function BookCatalogClient({
       </div>
 
       {/* Error state */}
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{typeof error === 'string' ? error : String(error)}</AlertDescription>
+          </Alert>
+        )}
 
       {/* Loading state */}
       {isLoading && (
@@ -415,17 +470,19 @@ export function BookCatalogClient({
           <h3 className="text-lg font-semibold mb-2">No books found</h3>
           <p className="text-muted-foreground">
             {debouncedSearchQuery || selectedCategory !== 'all'
-              ? 'Try adjusting your search or filters'
-              : 'No books available in the catalog'
-            }
+              ? 'Try adjusting your _search or filters'
+              : 'No books available in the catalog'}
           </p>
         </div>
       ) : (
-        <div className={viewMode === 'grid'
-          ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-          : 'space-y-4'
-        }>
-          {paginatedBooks.map(book => (
+        <div
+          className={
+            viewMode === 'grid'
+              ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+              : 'space-y-4'
+          }
+        >
+          {paginatedBooks.map((book) => (
             <BookCard
               key={book.id}
               book={book}

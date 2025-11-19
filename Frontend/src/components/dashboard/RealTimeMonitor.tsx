@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -8,7 +14,20 @@ import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
 import { useScannerMonitor } from '@/hooks/useUSBScanner';
 import { toast } from 'sonner';
-import { Activity, Users, Monitor, WifiOff, AlertCircle, CheckCircle, TrendingUp, Zap, RefreshCw, Bell, Camera, Radio } from 'lucide-react';
+import {
+  Activity,
+  Users,
+  Monitor,
+  WifiOff,
+  AlertCircle,
+  CheckCircle,
+  TrendingUp,
+  Zap,
+  RefreshCw,
+  Bell,
+  Camera,
+  Radio,
+} from 'lucide-react';
 
 interface RealTimeMonitorProps {
   showScanner?: boolean;
@@ -20,7 +39,7 @@ interface RealTimeMonitorProps {
 export function RealTimeMonitor({
   showScanner = true,
   showActivities = true,
-  showEquipment = true
+  showEquipment = true,
 }: RealTimeMonitorProps) {
   const { isMobile } = useMobileOptimization();
   const {
@@ -30,23 +49,25 @@ export function RealTimeMonitor({
     notifications,
     dashboardData,
     refreshDashboard,
-    clearNotifications
+    clearNotifications,
   } = useWebSocketContext();
 
   const [stats, setStats] = useState({
     activeStudents: 0,
     availableEquipment: 0,
     activeSessions: 0,
-    todayVisits: 0
+    todayVisits: 0,
   });
 
-  const [recentScans, setRecentScans] = useState<Array<{ code: string; type: string; timestamp: Date }>>([]);
+  const [recentScans, setRecentScans] = useState<
+    Array<{ code: string; type: string; timestamp: Date }>
+  >([]);
 
   // Scanner monitoring
   const handleScan = (code: string, type: 'barcode' | 'qr') => {
-    setRecentScans(prev => [
+    setRecentScans((prev) => [
       { code, type, timestamp: new Date() },
-      ...prev.slice(0, 9)
+      ...prev.slice(0, 9),
     ]);
     toast.success(`Scanned: ${code}`);
   };
@@ -56,11 +77,12 @@ export function RealTimeMonitor({
   // Update stats from dashboard data
   useEffect(() => {
     if (dashboardData.overview) {
+      const overview = dashboardData.overview as Record<string, unknown>;
       setStats({
-        activeStudents: dashboardData.overview.activeStudents || 0,
-        availableEquipment: dashboardData.overview.availableEquipment || 0,
-        activeSessions: dashboardData.overview.activeSessions || 0,
-        todayVisits: dashboardData.overview.todayVisits || 0
+        activeStudents: Number(overview.activeStudents) || 0,
+        availableEquipment: Number(overview.availableEquipment) || 0,
+        activeSessions: Number(overview.activeSessions) || 0,
+        todayVisits: Number(overview.todayVisits) || 0,
       });
     }
   }, [dashboardData]);
@@ -78,9 +100,9 @@ export function RealTimeMonitor({
   }, [isConnected, refreshDashboard]);
 
   const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(date).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
@@ -98,7 +120,13 @@ export function RealTimeMonitor({
   return (
     <div className={`space-y-${isMobile ? '3' : '4'}`}>
       {/* Connection Status */}
-      <Card className={isConnected ? 'border-green-500 bg-green-50/30 dark:bg-green-950/10' : 'border-red-500 bg-red-50/30 dark:bg-red-950/10'}>
+      <Card
+        className={
+          isConnected
+            ? 'border-green-500 bg-green-50/30 dark:bg-green-950/10'
+            : 'border-red-500 bg-red-50/30 dark:bg-red-950/10'
+        }
+      >
         <CardContent className={`p-${isMobile ? '3' : '4'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -141,14 +169,18 @@ export function RealTimeMonitor({
       </Card>
 
       {/* Stats Grid */}
-      <div className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
+      <div
+        className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-4'}`}
+      >
         <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
           <CardContent className={`p-${isMobile ? '3' : '4'} text-center`}>
             <Users className="h-6 w-6 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
             <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
               {stats.activeStudents}
             </div>
-            <p className="text-xs text-blue-600 dark:text-blue-400">Active Students</p>
+            <p className="text-xs text-blue-600 dark:text-blue-400">
+              Active Students
+            </p>
           </CardContent>
         </Card>
 
@@ -158,7 +190,9 @@ export function RealTimeMonitor({
             <div className="text-2xl font-bold text-green-700 dark:text-green-300">
               {stats.availableEquipment}
             </div>
-            <p className="text-xs text-green-600 dark:text-green-400">Available</p>
+            <p className="text-xs text-green-600 dark:text-green-400">
+              Available
+            </p>
           </CardContent>
         </Card>
 
@@ -168,7 +202,9 @@ export function RealTimeMonitor({
             <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">
               {stats.activeSessions}
             </div>
-            <p className="text-xs text-purple-600 dark:text-purple-400">Active Sessions</p>
+            <p className="text-xs text-purple-600 dark:text-purple-400">
+              Active Sessions
+            </p>
           </CardContent>
         </Card>
 
@@ -178,7 +214,9 @@ export function RealTimeMonitor({
             <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
               {stats.todayVisits}
             </div>
-            <p className="text-xs text-orange-600 dark:text-orange-400">Today's Visits</p>
+            <p className="text-xs text-orange-600 dark:text-orange-400">
+              Today's Visits
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -226,7 +264,9 @@ export function RealTimeMonitor({
               <div className="text-center py-8 text-muted-foreground">
                 <Camera className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">Waiting for scanner input...</p>
-                <p className="text-xs mt-1">Scan a barcode or QR code to begin</p>
+                <p className="text-xs mt-1">
+                  Scan a barcode or QR code to begin
+                </p>
               </div>
             )}
           </CardContent>
@@ -244,7 +284,9 @@ export function RealTimeMonitor({
               </div>
               <Badge variant="outline">{recentActivities.length}</Badge>
             </div>
-            <CardDescription>Real-time student activity updates</CardDescription>
+            <CardDescription>
+              Real-time student activity updates
+            </CardDescription>
           </CardHeader>
           <CardContent className={isMobile ? 'p-3' : 'p-4'}>
             {recentActivities.length > 0 ? (
@@ -255,19 +297,24 @@ export function RealTimeMonitor({
                     className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      {getActivityIcon(activity.activityType)}
+                      {getActivityIcon(String(activity.activityType))}
                       <div>
                         <p className="font-medium text-sm">
-                          {activity.studentName || 'Unknown Student'}
+                          {String(activity.studentName || 'Unknown Student')}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {activity.activityType}
+                          {String(activity.activityType)}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <Badge variant="outline" className="text-xs">
-                        {formatTime(activity.checkInTime || activity.timestamp)}
+                        {formatTime(
+                          new Date(
+                            (activity.checkInTime as string | number) ||
+                              (activity.timestamp as number)
+                          )
+                        )}
                       </Badge>
                     </div>
                   </div>
@@ -294,35 +341,55 @@ export function RealTimeMonitor({
             <CardDescription>Live equipment monitoring</CardDescription>
           </CardHeader>
           <CardContent className={isMobile ? 'p-3' : 'p-4'}>
-            <div className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2'}`}>
-              {Object.values(equipmentStatus).slice(0, 6).map((equipment: any, index) => (
-                <div
-                  key={index}
-                  className="p-3 rounded-lg border"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium text-sm">{equipment.name}</span>
-                    <Badge
-                      variant={equipment.status === 'AVAILABLE' ? 'default' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {equipment.status}
-                    </Badge>
-                  </div>
-                  {equipment.currentSession && (
-                    <div className="text-xs text-muted-foreground">
-                      <div className="flex justify-between mb-1">
-                        <span>In use by: {equipment.currentSession.studentName}</span>
-                        <span>{equipment.currentSession.remainingMinutes}m left</span>
+            <div
+              className={`grid gap-3 ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2'}`}
+            >
+              {Object.values(equipmentStatus)
+                .slice(0, 6)
+                .map((equipment: Record<string, unknown>, index) => {
+                  const session = equipment.currentSession as
+                    | Record<string, unknown>
+                    | undefined;
+                  return (
+                    <div key={index} className="p-3 rounded-lg border">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-sm">
+                          {String(equipment.name)}
+                        </span>
+                        <Badge
+                          variant={
+                            equipment.status === 'AVAILABLE'
+                              ? 'default'
+                              : 'secondary'
+                          }
+                          className="text-xs"
+                        >
+                          {String(equipment.status)}
+                        </Badge>
                       </div>
-                      <Progress
-                        value={(equipment.currentSession.elapsedMinutes / equipment.currentSession.timeLimitMinutes) * 100}
-                        className="h-1"
-                      />
+                      {session && (
+                        <div className="text-xs text-muted-foreground">
+                          <div className="flex justify-between mb-1">
+                            <span>
+                              In use by: {String(session.studentName)}
+                            </span>
+                            <span>
+                              {String(session.remainingMinutes)}m left
+                            </span>
+                          </div>
+                          <Progress
+                            value={
+                              ((Number(session.elapsedMinutes) || 0) /
+                                (Number(session.timeLimitMinutes) || 1)) *
+                              100
+                            }
+                            className="h-1"
+                          />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  );
+                })}
             </div>
           </CardContent>
         </Card>
@@ -337,11 +404,7 @@ export function RealTimeMonitor({
                 <Bell className="h-5 w-5 text-orange-500" />
                 <CardTitle className="text-lg">Active Notifications</CardTitle>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearNotifications}
-              >
+              <Button variant="ghost" size="sm" onClick={clearNotifications}>
                 Clear All
               </Button>
             </div>
@@ -355,7 +418,7 @@ export function RealTimeMonitor({
                     <div className="flex justify-between">
                       <span>{notification.message}</span>
                       <span className="text-xs text-muted-foreground">
-                        {formatTime(notification.timestamp)}
+                        {formatTime(new Date(notification.timestamp))}
                       </span>
                     </div>
                   </AlertDescription>

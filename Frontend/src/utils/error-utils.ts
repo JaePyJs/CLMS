@@ -276,3 +276,22 @@ export function getStoredErrorReports(): ErrorReport[] {
 export function clearStoredErrorReports(): void {
   localStorage.removeItem('clms_error_reports');
 }
+
+/**
+ * Converts various error-like payloads to a user-friendly message string
+ */
+export function toUserMessage(err: unknown): string {
+  if (typeof err === 'string') return err;
+  const anyErr = err as any;
+  if (anyErr?.message && typeof anyErr.message === 'string') return anyErr.message;
+  if (anyErr?.error) {
+    if (typeof anyErr.error === 'string') return anyErr.error;
+    if (typeof anyErr.error?.message === 'string') return anyErr.error.message;
+  }
+  if (anyErr?.response?.data?.error) {
+    const e = anyErr.response.data.error;
+    if (typeof e === 'string') return e;
+    if (typeof e?.message === 'string') return e.message;
+  }
+  return 'An unexpected error occurred';
+}

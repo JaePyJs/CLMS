@@ -1,5 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -14,7 +20,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Shield, AlertTriangle, CheckCircle, XCircle, Clock, Users, Database, Activity, RefreshCw, Settings, FileText, Lock, AlertCircle } from 'lucide-react';
+import {
+  Shield,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Users,
+  Database,
+  Activity,
+  RefreshCw,
+  Settings,
+  FileText,
+  Lock,
+  AlertCircle,
+} from 'lucide-react';
 
 // Types for security data
 interface SecurityAlert {
@@ -100,7 +120,7 @@ const SecurityDashboard: React.FC = () => {
         dataAccessRequests: 18,
         complianceScore: 94,
         encryptionStatus: 'healthy',
-        auditLogStatus: 'healthy'
+        auditLogStatus: 'healthy',
       };
 
       const mockAlerts: SecurityAlert[] = [
@@ -109,7 +129,8 @@ const SecurityDashboard: React.FC = () => {
           type: 'FERPA_VIOLATION',
           severity: 'critical',
           title: 'Unauthorized FERPA Data Access',
-          description: 'User attempted to access sensitive student data without proper justification',
+          description:
+            'User attempted to access sensitive student data without proper justification',
           timestamp: '2024-01-15T14:30:00Z',
           status: 'active',
           ipAddress: '192.168.1.100',
@@ -118,8 +139,8 @@ const SecurityDashboard: React.FC = () => {
           actions: [
             { label: 'Investigate', action: 'investigate' },
             { label: 'Block User', action: 'block' },
-            { label: 'Create Incident', action: 'incident' }
-          ]
+            { label: 'Create Incident', action: 'incident' },
+          ],
         },
         {
           id: '2',
@@ -134,9 +155,9 @@ const SecurityDashboard: React.FC = () => {
           userRole: 'LIBRARIAN',
           actions: [
             { label: 'View Details', action: 'details' },
-            { label: 'Contact User', action: 'contact' }
-          ]
-        }
+            { label: 'Contact User', action: 'contact' },
+          ],
+        },
       ];
 
       const mockFERPAData: FERPAComplianceData = {
@@ -149,7 +170,7 @@ const SecurityDashboard: React.FC = () => {
         violations: 2,
         lastAuditDate: '2024-01-10T00:00:00Z',
         nextAuditDate: '2024-01-17T00:00:00Z',
-        dataRetentionStatus: 'compliant'
+        dataRetentionStatus: 'compliant',
       };
 
       const mockAccessPatterns: AccessPattern[] = [
@@ -159,7 +180,7 @@ const SecurityDashboard: React.FC = () => {
           accessCount: 47,
           lastAccess: '2024-01-15T14:30:00Z',
           unusualPattern: true,
-          riskLevel: 'high'
+          riskLevel: 'high',
         },
         {
           userId: 'user_456',
@@ -167,15 +188,14 @@ const SecurityDashboard: React.FC = () => {
           accessCount: 23,
           lastAccess: '2024-01-15T13:45:00Z',
           unusualPattern: false,
-          riskLevel: 'medium'
-        }
+          riskLevel: 'medium',
+        },
       ];
 
       setMetrics(mockMetrics);
       setAlerts(mockAlerts);
       setFerpaData(mockFERPAData);
       setAccessPatterns(mockAccessPatterns);
-
     } catch (error) {
       console.error('Failed to fetch security data:', error);
     } finally {
@@ -196,28 +216,40 @@ const SecurityDashboard: React.FC = () => {
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-blue-500';
-      default: return 'bg-gray-500';
+      case 'critical':
+        return 'bg-red-500';
+      case 'high':
+        return 'bg-orange-500';
+      case 'medium':
+        return 'bg-yellow-500';
+      case 'low':
+        return 'bg-blue-500';
+      default:
+        return 'bg-gray-500';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'active': return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case 'investigating': return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'resolved': return <CheckCircle className="h-4 w-4 text-green-500" />;
-      default: return <AlertCircle className="h-4 w-4 text-gray-500" />;
+      case 'active':
+        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case 'investigating':
+        return <Clock className="h-4 w-4 text-yellow-500" />;
+      case 'resolved':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      default:
+        return <AlertCircle className="h-4 w-4 text-gray-500" />;
     }
   };
 
   const getHealthIcon = (status: 'healthy' | 'warning' | 'critical') => {
     switch (status) {
-      case 'healthy': return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'warning': return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
-      case 'critical': return <XCircle className="h-5 w-5 text-red-500" />;
+      case 'healthy':
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
+      case 'warning':
+        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+      case 'critical':
+        return <XCircle className="h-5 w-5 text-red-500" />;
     }
   };
 
@@ -250,15 +282,13 @@ const SecurityDashboard: React.FC = () => {
             size="sm"
             onClick={() => setAutoRefresh(!autoRefresh)}
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${autoRefresh ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${autoRefresh ? 'animate-spin' : ''}`}
+            />
             Auto Refresh
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchSecurityData}
-          >
+          <Button variant="outline" size="sm" onClick={fetchSecurityData}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh Now
           </Button>
@@ -271,12 +301,22 @@ const SecurityDashboard: React.FC = () => {
       </div>
 
       {/* Critical Alerts */}
-      {alerts.filter(alert => alert.severity === 'critical' && alert.status === 'active').length > 0 && (
+      {alerts.filter(
+        (alert) => alert.severity === 'critical' && alert.status === 'active'
+      ).length > 0 && (
         <Alert className="border-red-500 bg-red-50">
           <AlertTriangle className="h-4 w-4 text-red-500" />
-          <AlertTitle className="text-red-700">Critical Security Alert</AlertTitle>
+          <AlertTitle className="text-red-700">
+            Critical Security Alert
+          </AlertTitle>
           <AlertDescription className="text-red-600">
-            {alerts.filter(alert => alert.severity === 'critical' && alert.status === 'active').length} critical alert(s) require immediate attention.
+            {
+              alerts.filter(
+                (alert) =>
+                  alert.severity === 'critical' && alert.status === 'active'
+              ).length
+            }{' '}
+            critical alert(s) require immediate attention.
           </AlertDescription>
         </Alert>
       )}
@@ -290,39 +330,45 @@ const SecurityDashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{metrics?.totalEvents}</div>
-            <p className="text-xs text-muted-foreground">
-              Last 24 hours
-            </p>
+            <p className="text-xs text-muted-foreground">Last 24 hours</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Threats</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Active Threats
+            </CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{metrics?.activeThreats}</div>
-            <p className="text-xs text-muted-foreground">
-              Requiring attention
-            </p>
+            <div className="text-2xl font-bold text-red-600">
+              {metrics?.activeThreats}
+            </div>
+            <p className="text-xs text-muted-foreground">Requiring attention</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Compliance Score</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Compliance Score
+            </CardTitle>
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{metrics?.complianceScore}%</div>
+            <div className="text-2xl font-bold text-green-600">
+              {metrics?.complianceScore}%
+            </div>
             <Progress value={metrics?.complianceScore} className="mt-2" />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Blocked Attempts</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Blocked Attempts
+            </CardTitle>
             <XCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -359,7 +405,10 @@ const SecurityDashboard: React.FC = () => {
               <ScrollArea className="h-96">
                 <div className="space-y-4">
                   {alerts.map((alert) => (
-                    <div key={alert.id} className="border rounded-lg p-4 space-y-2">
+                    <div
+                      key={alert.id}
+                      className="border rounded-lg p-4 space-y-2"
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           {getStatusIcon(alert.status)}
@@ -380,7 +429,9 @@ const SecurityDashboard: React.FC = () => {
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span>IP: {alert.ipAddress}</span>
                         {alert.userId && (
-                          <span>User: {alert.userId} ({alert.userRole})</span>
+                          <span>
+                            User: {alert.userId} ({alert.userRole})
+                          </span>
                         )}
                         <span>Type: {alert.type}</span>
                       </div>
@@ -415,19 +466,27 @@ const SecurityDashboard: React.FC = () => {
               <CardContent className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm">Total Requests</span>
-                  <span className="font-medium">{ferpaData?.totalRequests}</span>
+                  <span className="font-medium">
+                    {ferpaData?.totalRequests}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Approved</span>
-                  <span className="font-medium text-green-600">{ferpaData?.approvedRequests}</span>
+                  <span className="font-medium text-green-600">
+                    {ferpaData?.approvedRequests}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Pending</span>
-                  <span className="font-medium text-yellow-600">{ferpaData?.pendingRequests}</span>
+                  <span className="font-medium text-yellow-600">
+                    {ferpaData?.pendingRequests}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Denied</span>
-                  <span className="font-medium text-red-600">{ferpaData?.deniedRequests}</span>
+                  <span className="font-medium text-red-600">
+                    {ferpaData?.deniedRequests}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -442,16 +501,24 @@ const SecurityDashboard: React.FC = () => {
               <CardContent className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-sm">Compliance Level</span>
-                  <span className="font-medium">{ferpaData?.complianceLevel}%</span>
+                  <span className="font-medium">
+                    {ferpaData?.complianceLevel}%
+                  </span>
                 </div>
                 <Progress value={ferpaData?.complianceLevel} className="mt-2" />
                 <div className="flex justify-between">
                   <span className="text-sm">Violations</span>
-                  <span className="font-medium text-red-600">{ferpaData?.violations}</span>
+                  <span className="font-medium text-red-600">
+                    {ferpaData?.violations}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Last Audit</span>
-                  <span className="text-sm">{new Date(ferpaData?.lastAuditDate || '').toLocaleDateString()}</span>
+                  <span className="text-sm">
+                    {new Date(
+                      ferpaData?.lastAuditDate || ''
+                    ).toLocaleDateString()}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -466,15 +533,25 @@ const SecurityDashboard: React.FC = () => {
               <CardContent className="space-y-2">
                 <div className="flex items-center gap-2">
                   {getHealthIcon(
-                    ferpaData?.dataRetentionStatus === 'compliant' || ferpaData?.dataRetentionStatus === 'violation' 
-                      ? 'healthy' 
-                      : (ferpaData?.dataRetentionStatus as 'healthy' | 'warning' | 'critical') || 'healthy'
+                    ferpaData?.dataRetentionStatus === 'compliant' ||
+                      ferpaData?.dataRetentionStatus === 'violation'
+                      ? 'healthy'
+                      : (ferpaData?.dataRetentionStatus as
+                          | 'healthy'
+                          | 'warning'
+                          | 'critical') || 'healthy'
                   )}
-                  <span className="text-sm capitalize">{ferpaData?.dataRetentionStatus}</span>
+                  <span className="text-sm capitalize">
+                    {ferpaData?.dataRetentionStatus}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm">Next Audit</span>
-                  <span className="text-sm">{new Date(ferpaData?.nextAuditDate || '').toLocaleDateString()}</span>
+                  <span className="text-sm">
+                    {new Date(
+                      ferpaData?.nextAuditDate || ''
+                    ).toLocaleDateString()}
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -492,14 +569,26 @@ const SecurityDashboard: React.FC = () => {
                 <div className="flex items-center gap-2">
                   {getHealthIcon(metrics?.encryptionStatus || 'healthy')}
                   <span className="font-medium">Field Encryption</span>
-                  <Badge variant={metrics?.encryptionStatus === 'healthy' ? 'default' : 'destructive'}>
+                  <Badge
+                    variant={
+                      metrics?.encryptionStatus === 'healthy'
+                        ? 'default'
+                        : 'destructive'
+                    }
+                  >
                     {metrics?.encryptionStatus?.toUpperCase()}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2">
                   {getHealthIcon(metrics?.auditLogStatus || 'healthy')}
                   <span className="font-medium">Audit Logs</span>
-                  <Badge variant={metrics?.auditLogStatus === 'healthy' ? 'default' : 'destructive'}>
+                  <Badge
+                    variant={
+                      metrics?.auditLogStatus === 'healthy'
+                        ? 'default'
+                        : 'destructive'
+                    }
+                  >
                     {metrics?.auditLogStatus?.toUpperCase()}
                   </Badge>
                 </div>
@@ -535,15 +624,24 @@ const SecurityDashboard: React.FC = () => {
                 <TableBody>
                   {accessPatterns.map((pattern, index) => (
                     <TableRow key={index}>
-                      <TableCell className="font-medium">{pattern.userId}</TableCell>
+                      <TableCell className="font-medium">
+                        {pattern.userId}
+                      </TableCell>
                       <TableCell>{pattern.userRole}</TableCell>
                       <TableCell>{pattern.accessCount}</TableCell>
-                      <TableCell>{new Date(pattern.lastAccess).toLocaleString()}</TableCell>
                       <TableCell>
-                        <Badge variant={
-                          pattern.riskLevel === 'high' ? 'destructive' :
-                          pattern.riskLevel === 'medium' ? 'default' : 'secondary'
-                        }>
+                        {new Date(pattern.lastAccess).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            pattern.riskLevel === 'high'
+                              ? 'destructive'
+                              : pattern.riskLevel === 'medium'
+                                ? 'default'
+                                : 'secondary'
+                          }
+                        >
                           {pattern.riskLevel.toUpperCase()}
                         </Badge>
                       </TableCell>
@@ -573,7 +671,9 @@ const SecurityDashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Security Services</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Security Services
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -597,7 +697,9 @@ const SecurityDashboard: React.FC = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Performance Metrics</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Performance Metrics
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">

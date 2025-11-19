@@ -14,7 +14,9 @@ export default function CustomReport() {
   const [loading, setLoading] = useState(false);
 
   const generateReport = async () => {
-    if (!startDate || !endDate) return;
+    if (!startDate || !endDate) {
+      return;
+    }
     setLoading(true);
     try {
       const response = await reportsApi.getCustomReport(startDate, endDate);
@@ -57,11 +59,14 @@ export default function CustomReport() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button onClick={generateReport} disabled={loading || !startDate || !endDate}>
+            <Button
+              onClick={generateReport}
+              disabled={loading || !startDate || !endDate}
+            >
               {loading ? 'Generating...' : 'Generate Report'}
             </Button>
             {stats && (
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => exportReportToCSV(stats, 'custom')}
               >
@@ -80,7 +85,9 @@ export default function CustomReport() {
               <CardTitle className="text-sm">Total Check-Ins</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.summary?.totalCheckIns || 0}</div>
+              <div className="text-2xl font-bold">
+                {stats.summary?.totalCheckIns || 0}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -88,7 +95,9 @@ export default function CustomReport() {
               <CardTitle className="text-sm">Unique Students</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.summary?.uniqueStudents || 0}</div>
+              <div className="text-2xl font-bold">
+                {stats.summary?.uniqueStudents || 0}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -96,7 +105,9 @@ export default function CustomReport() {
               <CardTitle className="text-sm">Books Borrowed</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.summary?.booksBorrowed || 0}</div>
+              <div className="text-2xl font-bold">
+                {stats.summary?.booksBorrowed || 0}
+              </div>
             </CardContent>
           </Card>
           <Card>
@@ -104,7 +115,9 @@ export default function CustomReport() {
               <CardTitle className="text-sm">Books Returned</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.summary?.booksReturned || 0}</div>
+              <div className="text-2xl font-bold">
+                {stats.summary?.booksReturned || 0}
+              </div>
             </CardContent>
           </Card>
         </div>
