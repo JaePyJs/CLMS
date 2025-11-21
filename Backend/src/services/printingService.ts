@@ -98,6 +98,18 @@ export class PrintingService {
         throw new Error('Either student_id or guest_name is required');
       }
 
+      let studentUuid: string | undefined;
+
+      if (data.student_id) {
+        const student = await prisma.students.findUnique({
+          where: { student_id: data.student_id },
+        });
+        if (!student) {
+          throw new Error(`Student with ID ${data.student_id} not found`);
+        }
+        studentUuid = student.id;
+      }
+
       const pricePerPage = await this.getActivePrice(
         data.paper_size,
         data.color_level,
@@ -105,7 +117,7 @@ export class PrintingService {
       const totalCost = pricePerPage * data.pages;
       const job = await prisma.printing_jobs.create({
         data: {
-          student_id: data.student_id || undefined,
+          student_id: studentUuid,
           guest_name: data.guest_name || undefined,
           paper_size: data.paper_size,
           color_level: data.color_level,
