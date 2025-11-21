@@ -44,7 +44,8 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
   } = options;
 
   const { user, token } = useAuth();
-  const devBypassFlag = String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true';
+  const devBypassFlag =
+    String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true';
   const wsRef = useRef<Socket | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -60,14 +61,20 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
   const getWebSocketUrl = useCallback(() => {
     const explicit = import.meta.env.VITE_WS_URL as string | undefined;
     if (explicit) return explicit;
-    const secure = typeof window !== 'undefined' && window.location.protocol === 'https:';
+    const secure =
+      typeof window !== 'undefined' && window.location.protocol === 'https:';
     const scheme = secure ? 'https' : 'http';
-    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    return `${scheme}://${host}:3001`;
+    const host =
+      typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const url = `${scheme}://${host}:3001`;
+    console.log('[useWebSocket] Connecting to:', url);
+    return url;
   }, []);
 
   const createWebSocket = useCallback(() => {
-    const devBypass = String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true';
+    const devBypass =
+      String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true';
+
     if (!token && !devBypass) {
       setState((prev) => ({
         ...prev,
@@ -130,10 +137,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
   const connect = useCallback(() => {
     // Check if already connecting or connected using refs
-    if (
-      wsRef.current?.connected ||
-      state.isConnecting
-    ) {
+    if (wsRef.current?.connected || state.isConnecting) {
       return;
     }
 
@@ -148,6 +152,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     setState((prev) => ({
       ...prev,
       isConnecting: true,
+      isConnected: false, // Reset connected state when starting new connection
       error: null,
     }));
 
@@ -162,6 +167,12 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     } catch {}
 
     ws.on('connect', () => {
+      if (wsRef.current !== ws) {
+        console.debug(
+          'WebSocket connected but socket reference mismatch (cleanup occurred)'
+        );
+        return;
+      }
       console.debug('WebSocket connected');
       setState((prev) => ({
         ...prev,
@@ -184,6 +195,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     });
 
     ws.on('welcome', () => {
+      if (wsRef.current !== ws) return;
       setState((prev) => ({
         ...prev,
         isConnected: true,
@@ -200,7 +212,8 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
     ws.on('message', (data) => {
       try {
-        const message: WebSocketMessage = typeof data === 'string' ? JSON.parse(data) : data;
+        const message: WebSocketMessage =
+          typeof data === 'string' ? JSON.parse(data) : data;
 
         setState((prev) => ({
           ...prev,
@@ -274,6 +287,28 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
       }
     });
 
+    // Listen for dashboard_data events (backend emits these directly)
+    ws.on('dashboard_data', (data) => {
+      console.log('[useWebSocket] dashboard_data received:', data);
+      try {
+        const message: WebSocketMessage = {
+          id: `dashboard_${Date.now()}`,
+          type: 'dashboard_data',
+          data: data,
+          timestamp: new Date().toISOString(),
+        };
+
+        setState((prev) => ({
+          ...prev,
+          lastMessage: message,
+        }));
+
+        onMessage?.(message);
+      } catch (error) {
+        console.error('[useWebSocket] Error handling dashboard_data:', error);
+      }
+    });
+
     ws.on('disconnect', (reason) => {
       console.debug('WebSocket disconnected:', reason);
       clearHeartbeat();
@@ -305,7 +340,10 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
         isConnecting: true,
         connectionAttempts: attempt,
       }));
-      const nextDelay = Math.min(reconnectInterval * Math.pow(2, attempt - 1), reconnectInterval * 16);
+      const nextDelay = Math.min(
+        reconnectInterval * Math.pow(2, attempt - 1),
+        reconnectInterval * 16
+      );
       try {
         (ws as any).io.opts.reconnectionDelay = nextDelay;
       } catch {}
@@ -365,27 +403,21 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     }
   }, []);
 
-  const subscribe = useCallback(
-    (subscription: string) => {
-      if (wsRef.current?.connected) {
-        wsRef.current.emit('subscribe', { subscription });
-        return true;
-      }
-      return false;
-    },
-    []
-  );
+  const subscribe = useCallback((subscription: string) => {
+    if (wsRef.current?.connected) {
+      wsRef.current.emit('subscribe', { subscription });
+      return true;
+    }
+    return false;
+  }, []);
 
-  const unsubscribe = useCallback(
-    (subscription: string) => {
-      if (wsRef.current?.connected) {
-        wsRef.current.emit('unsubscribe', { subscription });
-        return true;
-      }
-      return false;
-    },
-    []
-  );
+  const unsubscribe = useCallback((subscription: string) => {
+    if (wsRef.current?.connected) {
+      wsRef.current.emit('unsubscribe', { subscription });
+      return true;
+    }
+    return false;
+  }, []);
 
   const requestDashboardData = useCallback(
     (dataType: string, filters?: any) => {
@@ -401,7 +433,11 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
   const sendChatMessage = useCallback(
     (message: string, targetRole?: string, targetUserId?: string) => {
       if (wsRef.current?.connected) {
-        wsRef.current.emit('chat_message', { message, targetRole, targetUserId });
+        wsRef.current.emit('chat_message', {
+          message,
+          targetRole,
+          targetUserId,
+        });
         return true;
       }
       return false;
@@ -412,7 +448,12 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
   const triggerEmergencyAlert = useCallback(
     (alertType: string, message: string, location?: string) => {
       if (wsRef.current?.connected) {
-        wsRef.current.emit('emergency_alert', { alertType, message, location, severity: 'critical' });
+        wsRef.current.emit('emergency_alert', {
+          alertType,
+          message,
+          location,
+          severity: 'critical',
+        });
         return true;
       }
       return false;
@@ -422,7 +463,8 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
   // Auto-connect on mount
   useEffect(() => {
-    const devBypass = String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true';
+    const devBypass =
+      String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true';
     if (autoConnect && (token || devBypass)) {
       if (wsRef.current) {
         return;
@@ -451,7 +493,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
   return {
     ...state,
-    isConnected: state.isConnected || Boolean(wsRef.current?.connected) || devBypassFlag,
+    isConnected: state.isConnected || Boolean(wsRef.current?.connected),
     connect,
     disconnect,
     sendMessage,

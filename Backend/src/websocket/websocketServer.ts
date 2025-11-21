@@ -4,10 +4,8 @@ import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { isDevelopment, getAllowedOrigins, env } from '../config/env';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
 
 export interface AuthenticatedSocket {
   id: string;
@@ -33,16 +31,35 @@ class WebSocketServer {
   private io: any = null;
   private connectedClients: Map<string, AuthenticatedSocket> = new Map();
   private roomSubscriptions: Map<string, Set<string>> = new Map();
-  private rateLimits: Map<string, { sub: { c: number; r: number }; dash: { c: number; r: number } }> = new Map();
+  private rateLimits: Map<
+    string,
+    { sub: { c: number; r: number }; dash: { c: number; r: number } }
+  > = new Map();
   private userConnections: Map<string, string> = new Map();
-  private subscriptionDeniedLogs: Array<{ socketId: string; room: string; userId?: string; role?: string; at: string } > = [];
-  private rateLimitLogs: Array<{ socketId: string; kind: 'subscribe' | 'dashboard'; count: number; userId?: string; role?: string; at: string }> = [];
+  private subscriptionDeniedLogs: Array<{
+    socketId: string;
+    room: string;
+    userId?: string;
+    role?: string;
+    at: string;
+  }> = [];
+  private rateLimitLogs: Array<{
+    socketId: string;
+    kind: 'subscribe' | 'dashboard';
+    count: number;
+    userId?: string;
+    role?: string;
+    at: string;
+  }> = [];
 
   initialize(httpServer: HTTPServer) {
     const allowedOrigins = getAllowedOrigins();
     this.io = new SocketIOServer(httpServer, {
       cors: {
-        origin: (origin: string, callback: (err: Error | null, allow?: boolean) => void) => {
+        origin: (
+          origin: string,
+          callback: (err: Error | null, allow?: boolean) => void,
+        ) => {
           if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
           } else {
@@ -70,7 +87,9 @@ class WebSocketServer {
           try {
             old?.disconnect();
           } catch (e) {
-            logger.warn('Failed to disconnect previous socket', { error: (e as Error)?.message || 'Unknown' });
+            logger.warn('Failed to disconnect previous socket', {
+              error: (e as Error)?.message || 'Unknown',
+            });
           }
         }
         this.userConnections.set(socket.userId, socket.id);
@@ -118,7 +137,7 @@ class WebSocketServer {
   private authenticateSocket(socket: AuthenticatedSocket) {
     const token = socket.handshake.auth?.token || socket.handshake.query?.token;
 
-    if (isDevelopment() && (process.env.WS_DEV_BYPASS === 'true') && !token) {
+    if (isDevelopment() && process.env.WS_DEV_BYPASS === 'true' && !token) {
       socket.userId = 'dev-user';
       socket.userRole = 'developer';
       logger.warn(`WebSocket dev bypass: ${socket.id} connected without token`);
@@ -142,7 +161,9 @@ class WebSocketServer {
         socket.userId = String(uid);
         socket.userRole = String(role);
       } else {
-        logger.warn(`JWT payload missing id/userId or role for socket ${socket.id}`);
+        logger.warn(
+          `JWT payload missing id/userId or role for socket ${socket.id}`,
+        );
       }
       logger.info(
         `WebSocket authenticated: ${socket.id}, User: ${socket.userId}, Role: ${socket.userRole}`,
@@ -176,21 +197,36 @@ class WebSocketServer {
         return role === 'LIBRARIAN' || role === 'ADMIN';
       }
       if (room === 'attendance') {
-        return role === 'LIBRARIAN' || role === 'ADMIN' || role === 'KIOSK_DISPLAY';
+        return (
+          role === 'LIBRARIAN' || role === 'ADMIN' || role === 'KIOSK_DISPLAY'
+        );
       }
       return role === 'LIBRARIAN' || role === 'ADMIN';
     };
     socket.on('subscribe', (data: { subscription: string }) => {
       const now = Date.now();
-      const rl = this.rateLimits.get(socket.id) || { sub: { c: 0, r: now + 60000 }, dash: { c: 0, r: now + 60000 } };
+      const rl = this.rateLimits.get(socket.id) || {
+        sub: { c: 0, r: now + 60000 },
+        dash: { c: 0, r: now + 60000 },
+      };
       if (now > rl.sub.r) {
         rl.sub = { c: 0, r: now + 60000 };
       }
       rl.sub.c += 1;
       this.rateLimits.set(socket.id, rl);
       if (rl.sub.c > 10) {
-        socket.emit('error', { message: 'Rate limit exceeded', subscription: String(data?.subscription || '') });
-        this.rateLimitLogs.push({ socketId: socket.id, kind: 'subscribe', count: rl.sub.c, userId: socket.userId, role: socket.userRole, at: new Date().toISOString() });
+        socket.emit('error', {
+          message: 'Rate limit exceeded',
+          subscription: String(data?.subscription || ''),
+        });
+        this.rateLimitLogs.push({
+          socketId: socket.id,
+          kind: 'subscribe',
+          count: rl.sub.c,
+          userId: socket.userId,
+          role: socket.userRole,
+          at: new Date().toISOString(),
+        });
         if (this.rateLimitLogs.length > 50) {
           this.rateLimitLogs.shift();
         }
@@ -198,8 +234,17 @@ class WebSocketServer {
       }
       const room = String(data?.subscription || '').trim();
       if (!room || !canSubscribe(room, socket.userRole)) {
-        socket.emit('error', { message: 'Subscription denied', subscription: room });
-        this.subscriptionDeniedLogs.push({ socketId: socket.id, room, userId: socket.userId, role: socket.userRole, at: new Date().toISOString() });
+        socket.emit('error', {
+          message: 'Subscription denied',
+          subscription: room,
+        });
+        this.subscriptionDeniedLogs.push({
+          socketId: socket.id,
+          room,
+          userId: socket.userId,
+          role: socket.userRole,
+          at: new Date().toISOString(),
+        });
         if (this.subscriptionDeniedLogs.length > 50) {
           this.subscriptionDeniedLogs.shift();
         }
@@ -246,39 +291,101 @@ class WebSocketServer {
         void (async () => {
           try {
             const now = Date.now();
-            const rl = this.rateLimits.get(socket.id) || { sub: { c: 0, r: now + 60000 }, dash: { c: 0, r: now + 60000 } };
+            const rl = this.rateLimits.get(socket.id) || {
+              sub: { c: 0, r: now + 60000 },
+              dash: { c: 0, r: now + 60000 },
+            };
             if (now > rl.dash.r) {
               rl.dash = { c: 0, r: now + 60000 };
             }
             rl.dash.c += 1;
             this.rateLimits.set(socket.id, rl);
             if (rl.dash.c > 20) {
-              socket.emit('error', { message: 'Rate limit exceeded', request: String(data?.dataType || '') });
-              this.rateLimitLogs.push({ socketId: socket.id, kind: 'dashboard', count: rl.dash.c, userId: socket.userId, role: socket.userRole, at: new Date().toISOString() });
+              socket.emit('error', {
+                message: 'Rate limit exceeded',
+                request: String(data?.dataType || ''),
+              });
+              this.rateLimitLogs.push({
+                socketId: socket.id,
+                kind: 'dashboard',
+                count: rl.dash.c,
+                userId: socket.userId,
+                role: socket.userRole,
+                at: new Date().toISOString(),
+              });
               if (this.rateLimitLogs.length > 50) {
                 this.rateLimitLogs.shift();
               }
               return;
             }
-            const dashboardData = {
-              overview: {
-                total_students: await prisma.students.count(),
-                total_books: await prisma.books.count(),
-                active_borrows: await prisma.book_checkouts.count({
-                  where: { status: 'ACTIVE' },
-                }),
-                overdue_borrows: await prisma.book_checkouts.count({
-                  where: {
-                    status: 'ACTIVE',
-                    due_date: { lt: new Date() },
-                  },
-                }),
-              },
+            const startOfDay = new Date();
+            startOfDay.setHours(0, 0, 0, 0);
+
+            const studentCount = await prisma.students.count();
+            logger.info(
+              `[WebSocket] Dashboard stats - Total Students: ${studentCount}`,
+            );
+
+            const overviewData = {
+              totalStudents: studentCount,
+              activeStudents: await prisma.student_activities.count({
+                where: { status: 'ACTIVE' },
+              }),
+              totalBooks: await prisma.books.count(),
+              activeBorrows: await prisma.book_checkouts.count({
+                where: { status: 'ACTIVE' },
+              }),
+              overdueBorrows: await prisma.book_checkouts.count({
+                where: {
+                  status: 'ACTIVE',
+                  due_date: { lt: new Date() },
+                },
+              }),
+              todayActivities: await prisma.student_activities.count({
+                where: {
+                  start_time: { gte: startOfDay },
+                },
+              }),
+              activeEquipment: await prisma.equipment.count({
+                where: { status: 'IN_USE' },
+              }),
+              activeConnections: this.connectedClients.size,
+              systemLoad: Math.floor(Math.random() * 20) + 1, // Simulated load 1-20%
             };
+
+            let responseData;
+            if (data.dataType === 'overview') {
+              responseData = overviewData;
+            } else if (data.dataType === 'activities') {
+              const activities = await prisma.student_activities.findMany({
+                take: 10,
+                orderBy: { start_time: 'desc' },
+                include: { student: true },
+              });
+              responseData = activities.map(a => ({
+                id: a.id,
+                studentName: a.student
+                  ? `${a.student.first_name} ${a.student.last_name}`
+                  : 'Unknown',
+                activityType: a.activity_type,
+                timestamp: a.start_time,
+                studentId: a.student_id,
+              }));
+            } else if (data.dataType === 'equipment') {
+              const equipment = await prisma.equipment.findMany({
+                where: { status: 'IN_USE' },
+              });
+              responseData = equipment.reduce((acc, curr) => {
+                acc[curr.id] = curr;
+                return acc;
+              }, {} as any);
+            } else {
+              responseData = { overview: overviewData };
+            }
 
             socket.emit('dashboard_data', {
               dataType: data.dataType,
-              data: dashboardData,
+              data: responseData,
               timestamp: new Date(),
             });
           } catch (error) {
@@ -335,8 +442,18 @@ class WebSocketServer {
     }
 
     const now = new Date();
-    const legacy: WebSocketMessage = { id: data.activityId, type: 'student_checkin', data, timestamp: now };
-    const modern: WebSocketMessage = { id: data.activityId, type: 'attendance:checkin', data, timestamp: now };
+    const legacy: WebSocketMessage = {
+      id: data.activityId,
+      type: 'student_checkin',
+      data,
+      timestamp: now,
+    };
+    const modern: WebSocketMessage = {
+      id: data.activityId,
+      type: 'attendance:checkin',
+      data,
+      timestamp: now,
+    };
     this.io.to('attendance').emit('message', legacy);
     this.io.to('attendance').emit('message', modern);
 
@@ -366,16 +483,53 @@ class WebSocketServer {
     }
 
     const now = new Date();
-    const legacy: WebSocketMessage = { id: data.activityId, type: 'student_checkout', data, timestamp: now };
-    const modern: WebSocketMessage = { id: data.activityId, type: 'attendance:checkout', data, timestamp: now };
+    const legacy: WebSocketMessage = {
+      id: data.activityId,
+      type: 'student_checkout',
+      data,
+      timestamp: now,
+    };
+    const modern: WebSocketMessage = {
+      id: data.activityId,
+      type: 'attendance:checkout',
+      data,
+      timestamp: now,
+    };
     this.io.to('attendance').emit('message', legacy);
     this.io.to('attendance').emit('message', modern);
 
     logger.info('Student check-out event emitted', {
       activityId: data.activityId,
       studentId: data.studentId,
-      reason: data.reason,
       subscriberCount: this.roomSubscriptions.get('attendance')?.size || 0,
+    });
+  }
+
+  /**
+   * Emit student moved event to attendance channel
+   */
+  public emitStudentMoved(data: { activityId: string; section: string }) {
+    if (!this.io) {
+      logger.warn(
+        'WebSocket server not initialized, cannot emit student moved event',
+      );
+      return;
+    }
+
+    const now = new Date();
+    const message: WebSocketMessage = {
+      id: data.activityId,
+      type: 'student_moved',
+      data,
+      timestamp: now,
+    };
+
+    this.io.to('attendance').emit('message', message);
+    this.io.to('dashboard').emit('message', message);
+
+    logger.info('Student moved event emitted', {
+      activityId: data.activityId,
+      section: data.section,
     });
   }
 
@@ -387,12 +541,24 @@ class WebSocketServer {
     at: string;
   }) {
     if (!this.io) {
-      logger.warn('WebSocket server not initialized, cannot emit section change');
+      logger.warn(
+        'WebSocket server not initialized, cannot emit section change',
+      );
       return;
     }
     const now = new Date();
-    const legacy: WebSocketMessage = { id: `${data.studentId}-${data.at}` , type: 'attendance_section_change', data, timestamp: now };
-    const modern: WebSocketMessage = { id: `${data.studentId}-${data.at}` , type: 'attendance:section-change', data, timestamp: now };
+    const legacy: WebSocketMessage = {
+      id: `${data.studentId}-${data.at}`,
+      type: 'attendance_section_change',
+      data,
+      timestamp: now,
+    };
+    const modern: WebSocketMessage = {
+      id: `${data.studentId}-${data.at}`,
+      type: 'attendance:section-change',
+      data,
+      timestamp: now,
+    };
     this.io.to('attendance').emit('message', legacy);
     this.io.to('attendance').emit('message', modern);
   }
@@ -426,7 +592,9 @@ class WebSocketServer {
     status: 'ACTIVE' | 'RETURNED';
   }) {
     if (!this.io) {
-      logger.warn('WebSocket server not initialized, cannot emit borrow/return update');
+      logger.warn(
+        'WebSocket server not initialized, cannot emit borrow/return update',
+      );
       return;
     }
     const message: WebSocketMessage = {

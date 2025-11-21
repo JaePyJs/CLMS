@@ -9,8 +9,8 @@ import {
 import { StudentActivityService } from '../services/studentActivityService';
 import { BarcodeService } from '../services/barcodeService';
 import { websocketServer } from '../websocket/websocketServer';
-import { PrismaClient } from '@prisma/client';
-import { isDevelopment } from '../config/env';
+import { prisma } from '../utils/prisma';
+// import { isDevelopment } from '../config/env';
 import {
   // createStudentSchema,  // Reserved for future validation
   // updateStudentSchema,  // Reserved for future validation
@@ -19,24 +19,11 @@ import {
 } from '../validation/student.schema';
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
-const devMemoryStudents: any[] = [
-  {
-    id: 'STU-DEV-1',
-    student_id: 'S-0001',
-    first_name: 'Alice',
-    last_name: 'Example',
-    grade_level: 5,
-    grade_category: 'gradeSchool',
-    section: 'A',
-    barcode: 'STU00001',
-    is_active: true,
-  },
-];
+// const prisma = new PrismaClient();
 
 const router = Router();
 
-// GET /api/v1/students - List all students
+// GET /api/v1/students - List all students with pagination
 router.get(
   '/',
   authenticate,
@@ -51,21 +38,53 @@ router.get(
       logger.info('List all students request', {
         userId: req.user.userId,
         username: req.user.username,
+        query: req.query,
         ip: req.ip,
       });
 
-      const students = await StudentService.listStudents();
+      // Extract pagination and filter params
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : 50;
+      const search = req.query.search as string;
+      const gradeLevel = req.query.gradeLevel
+        ? parseInt(req.query.gradeLevel as string, 10)
+        : undefined;
+      const section = req.query.section as string;
+      const isActive =
+        req.query.isActive === 'true'
+          ? true
+          : req.query.isActive === 'false'
+            ? false
+            : undefined;
+
+      const result = await StudentService.listStudents({
+        page,
+        limit,
+        search,
+        gradeLevel,
+        section,
+        isActive,
+      });
 
       logger.info('Students list retrieved successfully', {
-        count: students.length,
+        count: result.students.length,
+        total: result.total,
+        page: result.page,
         userId: req.user.userId,
         ip: req.ip,
       });
 
       res.json({
         success: true,
-        data: students,
-        count: students.length,
+        data: result.students,
+        pagination: {
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+          pages: Math.ceil(result.total / result.limit),
+        },
       });
     } catch (error) {
       logger.error('List students failed', {
@@ -73,14 +92,49 @@ router.get(
         ip: req.ip,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      if (isDevelopment()) {
-        res.json({ success: true, data: devMemoryStudents, count: devMemoryStudents.length });
-        return;
-      }
       res.status(500).json({
         success: false,
         message: 'Failed to retrieve students',
         code: 'LIST_STUDENTS_FAILED',
+      });
+    }
+  }),
+);
+
+// GET /api/v1/students/active-sessions - Get all currently checked-in students
+router.get(
+  '/active-sessions',
+  authenticate,
+  requireRole(['LIBRARIAN']),
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    try {
+      logger.info('Active sessions request', {
+        ip: req.ip,
+      });
+
+      const sessions = await StudentActivityService.getActiveSessions();
+
+      logger.info('Active sessions retrieved successfully', {
+        count: sessions.length,
+        ip: req.ip,
+      });
+
+      res.json({
+        success: true,
+        data: sessions,
+        count: sessions.length,
+        message: 'Active sessions retrieved successfully',
+      });
+    } catch (error) {
+      logger.error('Failed to get active sessions', {
+        ip: req.ip,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve active sessions',
+        code: 'GET_ACTIVE_SESSIONS_FAILED',
       });
     }
   }),
@@ -256,22 +310,6 @@ router.post(
         ip: req.ip,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      if (isDevelopment()) {
-        const mockStudent = {
-          id: `STU-DEV-${Date.now()}`,
-          student_id: studentData.student_id || `S-${Date.now()}`,
-          first_name: studentData.first_name,
-          last_name: studentData.last_name,
-          grade_level: Number(studentData.grade_level) || 0,
-          grade_category: String(studentData.grade_category || 'unknown'),
-          section: studentData.section || null,
-          is_active: true,
-          barcode: `STU${Math.floor(Math.random() * 100000)}`,
-        };
-        devMemoryStudents.push(mockStudent);
-        res.status(201).json({ success: true, data: mockStudent, message: 'Student created successfully' });
-        return;
-      }
       res.status(500).json({
         success: false,
         message: 'Failed to create student',
@@ -539,16 +577,7 @@ router.get(
         query,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      if (isDevelopment()) {
-        const search = (query || '').toLowerCase();
-        const filtered = devMemoryStudents.filter(s =>
-          String(s.first_name).toLowerCase().includes(search) ||
-          String(s.last_name).toLowerCase().includes(search) ||
-          String(s.student_id).toLowerCase().includes(search)
-        );
-        res.json({ success: true, data: filtered, count: filtered.length });
-        return;
-      }
+
       res.status(500).json({
         success: false,
         message: 'Failed to search students',
@@ -646,16 +675,6 @@ router.get(
         ip: req.ip,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      if (isDevelopment()) {
-        const search = (query || '').toLowerCase();
-        const filtered = devMemoryStudents.filter(s =>
-          String(s.first_name).toLowerCase().includes(search) ||
-          String(s.last_name).toLowerCase().includes(search) ||
-          String(s.student_id).toLowerCase().includes(search)
-        );
-        res.json({ success: true, data: filtered, count: filtered.length, pagination: { limit: Number(limit), offset: Number(offset), query } });
-        return;
-      }
       res.status(500).json({
         success: false,
         message: 'Failed to search students',
@@ -825,45 +844,6 @@ router.post(
   }),
 );
 
-// GET /api/v1/students/active-sessions - Get all currently checked-in students
-router.get(
-  '/active-sessions',
-  authenticate,
-  requireRole(['LIBRARIAN']),
-  asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    try {
-      logger.info('Active sessions request', {
-        ip: req.ip,
-      });
-
-      const sessions = await StudentActivityService.getActiveSessions();
-
-      logger.info('Active sessions retrieved successfully', {
-        count: sessions.length,
-        ip: req.ip,
-      });
-
-      res.json({
-        success: true,
-        data: sessions,
-        count: sessions.length,
-        message: 'Active sessions retrieved successfully',
-      });
-    } catch (error) {
-      logger.error('Failed to get active sessions', {
-        ip: req.ip,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-
-      res.status(500).json({
-        success: false,
-        message: 'Failed to retrieve active sessions',
-        code: 'GET_ACTIVE_SESSIONS_FAILED',
-      });
-    }
-  }),
-);
-
 // POST /api/v1/students/:id/check-in - Check in a student
 router.post(
   '/:id/check-in',
@@ -1025,7 +1005,58 @@ router.post(
   }),
 );
 
-export default router;
+// PUT /api/v1/students/activity/:id/section - Update student activity section (Move student)
+router.put(
+  '/activity/:id/section',
+  authenticate,
+  requireRole(['LIBRARIAN']),
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    const { id: activityId } = req.params;
+    const { section } = req.body;
+
+    if (!section) {
+      res.status(400).json({
+        success: false,
+        message: 'Section is required',
+      });
+      return;
+    }
+
+    try {
+      logger.info('Update activity section request', {
+        activityId,
+        section,
+        ip: req.ip,
+      });
+
+      await StudentActivityService.updateActivitySection(activityId, section);
+
+      // Emit WebSocket event to update dashboard
+      websocketServer.emitStudentMoved({
+        activityId,
+        section,
+      });
+
+      res.json({
+        success: true,
+        message: 'Student moved successfully',
+      });
+    } catch (error) {
+      logger.error('Failed to move student', {
+        activityId,
+        section,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to move student',
+        code: 'MOVE_STUDENT_FAILED',
+      });
+    }
+  }),
+);
+
 // Seed librarian record (idempotent)
 router.post(
   '/seed-librarian',
@@ -1034,7 +1065,10 @@ router.post(
   asyncHandler(async (_req: Request, res: Response): Promise<void> => {
     try {
       const studentId = 'LIBRARIAN';
-      const existing = await prisma.students.findUnique({ where: { student_id: studentId } });
+      const existing = await prisma.students.findUnique({
+        where: { student_id: studentId },
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: any = {
         student_id: studentId,
         first_name: 'Claudia Sophia B.',
@@ -1052,8 +1086,14 @@ router.post(
       }
       res.json({ success: true });
     } catch (error) {
-      logger.error('Seed librarian error', { error: (error as Error)?.message || 'Unknown' });
-      res.status(500).json({ success: false, message: 'Failed to seed librarian' });
+      logger.error('Seed librarian error', {
+        error: (error as Error)?.message || 'Unknown',
+      });
+      res
+        .status(500)
+        .json({ success: false, message: 'Failed to seed librarian' });
     }
-  })
+  }),
 );
+
+export default router;

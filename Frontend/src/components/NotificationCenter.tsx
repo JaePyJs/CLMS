@@ -15,6 +15,13 @@ import {
   RefreshCw,
   Filter,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 import notificationApi, {
   type AppNotification,
 } from '../services/notificationApi';
@@ -122,12 +129,13 @@ const NotificationCenter: React.FC = () => {
       }
 
       const response = await notificationApi.getNotifications(params);
-      
+
       // Filter out return confirmations to avoid showing them on checkout screen
       const filteredNotifications = response.data.notifications.filter(
-        (notification) => !notification.title.toLowerCase().includes('return confirmation')
+        (notification) =>
+          !notification.title.toLowerCase().includes('return confirmation')
       );
-      
+
       setNotifications(filteredNotifications);
       setUnreadCount(response.data.unreadCount);
     } catch (error) {
@@ -284,238 +292,247 @@ const NotificationCenter: React.FC = () => {
   };
 
   return (
-    <div className="relative">
-      {/* Bell Icon with Badge and Status Indicator */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-        title={isConnected ? 'Connected' : 'Disconnected'}
-        data-testid="notification-center"
-      >
-        <Bell className="w-6 h-6" />
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="relative"
+          title={isConnected ? 'Connected' : 'Disconnected'}
+          data-testid="notification-center"
+        >
+          <Bell className="h-4 w-4" />
 
-        {/* Connection Status Indicator */}
-        <div
-          className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${
-            isConnected ? 'bg-green-500' : 'bg-red-500'
-          }`}
-        />
-
-        {/* Unread Count Badge */}
-        {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
-        )}
-      </button>
-
-      {/* Notification Panel */}
-      {isOpen && (
-        <>
-          {/* Backdrop */}
+          {/* Connection Status Indicator */}
           <div
-            className="fixed inset-0 z-40"
-            onClick={() => setIsOpen(false)}
+            className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${
+              isConnected ? 'bg-green-500' : 'bg-red-500'
+            }`}
           />
 
-          {/* Panel */}
-          <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl z-50 border border-gray-200 max-h-[600px] flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b border-gray-200">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  Notifications
-                  <div
-                    className={`w-2 h-2 rounded-full ${
-                      isConnected ? 'bg-green-500' : 'bg-red-500'
-                    }`}
-                    title={
-                      isConnected
-                        ? 'Real-time connected'
-                        : 'Real-time disconnected'
-                    }
-                  />
-                </h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={fetchNotifications}
-                    className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                    title="Refresh notifications"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setShowPreferences(!showPreferences)}
-                    className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
-                    title="Notification preferences"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
+          {/* Unread Count Badge */}
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </Button>
+      </DropdownMenuTrigger>
 
-              {/* Filter Tabs */}
-              <div className="flex gap-2 mb-3">
-                <button
-                  onClick={() => setFilter('all')}
-                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                    filter === 'all'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setFilter('unread')}
-                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                    filter === 'unread'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Unread ({unreadCount})
-                </button>
-              </div>
-
-              {/* Type Filter */}
-              <div className="flex items-center gap-2 mb-3">
-                <Filter className="w-4 h-4 text-gray-500" />
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Types</option>
-                  <option value="OVERDUE_BOOK">Overdue Books</option>
-                  <option value="BOOK_DUE_SOON">Due Soon</option>
-                  <option value="FINE_ADDED">Fines</option>
-                  <option value="EQUIPMENT_EXPIRING">Equipment</option>
-                  <option value="SYSTEM_ALERT">System Alerts</option>
-                  <option value="INFO">Information</option>
-                  <option value="WARNING">Warnings</option>
-                  <option value="ERROR">Errors</option>
-                  <option value="SUCCESS">Success</option>
-                </select>
-              </div>
-
-              {/* Action Buttons */}
-              {notifications.length > 0 && (
-                <div className="flex gap-2">
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={handleMarkAllAsRead}
-                      className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                    >
-                      <CheckCheck className="w-3 h-3" />
-                      Mark all read
-                    </button>
-                  )}
-                  <button
-                    onClick={handleDeleteRead}
-                    className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Clear read
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Notification List */}
-            <div className="overflow-y-auto flex-1">
-              {loading ? (
-                <div className="flex items-center justify-center p-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-              ) : notifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-8 text-gray-500">
-                  <Bell className="w-12 h-12 mb-2 text-gray-400" />
-                  <p className="text-sm">No notifications</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`p-4 hover:bg-gray-50 transition-colors border-l-4 ${
-                        notification.read ? 'opacity-75' : ''
-                      } ${getPriorityColor(notification.priority)}`}
-                    >
-                      <div className="flex gap-3">
-                        {/* Icon */}
-                        <div className="flex-shrink-0 mt-0.5">
-                          {getNotificationIcon(
-                            notification.type,
-                            notification.priority
-                          )}
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <h4 className="text-sm font-semibold text-gray-900">
-                              {notification.title}
-                            </h4>
-                            <span className="text-xs text-gray-500 whitespace-nowrap">
-                              {formatTime(notification.createdAt)}
-                            </span>
-                          </div>
-
-                          <p className="mt-1 text-sm text-gray-600 line-clamp-2">
-                            {notification.message}
-                          </p>
-
-                          {/* Actions */}
-                          <div className="flex items-center gap-2 mt-2">
-                            {!notification.read && (
-                              <button
-                                onClick={() =>
-                                  handleMarkAsRead(notification.id)
-                                }
-                                className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition-colors"
-                                title="Mark as read"
-                              >
-                                <Check className="w-3 h-3" />
-                                Read
-                              </button>
-                            )}
-                            {notification.actionUrl && (
-                              <a
-                                href={notification.actionUrl}
-                                className="flex items-center gap-1 px-2 py-1 text-xs text-green-600 hover:bg-green-100 rounded transition-colors"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                View
-                              </a>
-                            )}
-                            <button
-                              onClick={() => handleDelete(notification.id)}
-                              className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:bg-red-100 rounded transition-colors ml-auto"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+      <DropdownMenuContent
+        align="end"
+        className="w-96 p-0 max-h-[600px] flex flex-col"
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              Notifications
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  isConnected ? 'bg-green-500' : 'bg-red-500'
+                }`}
+                title={
+                  isConnected ? 'Real-time connected' : 'Real-time disconnected'
+                }
+              />
+            </h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  fetchNotifications();
+                }}
+                className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                title="Refresh notifications"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowPreferences(!showPreferences);
+                }}
+                className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                title="Notification preferences"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
             </div>
           </div>
-        </>
-      )}
-    </div>
+
+          {/* Filter Tabs */}
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                setFilter('all');
+              }}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                filter === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                setFilter('unread');
+              }}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                filter === 'unread'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Unread ({unreadCount})
+            </button>
+          </div>
+
+          {/* Type Filter */}
+          <div className="flex items-center gap-2 mb-3">
+            <Filter className="w-4 h-4 text-gray-500" />
+            <select
+              value={typeFilter}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Types</option>
+              <option value="OVERDUE_BOOK">Overdue Books</option>
+              <option value="BOOK_DUE_SOON">Due Soon</option>
+              <option value="FINE_ADDED">Fines</option>
+              <option value="EQUIPMENT_EXPIRING">Equipment</option>
+              <option value="SYSTEM_ALERT">System Alerts</option>
+              <option value="INFO">Information</option>
+              <option value="WARNING">Warnings</option>
+              <option value="ERROR">Errors</option>
+              <option value="SUCCESS">Success</option>
+            </select>
+          </div>
+
+          {/* Action Buttons */}
+          {notifications.length > 0 && (
+            <div className="flex gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleMarkAllAsRead();
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                >
+                  <CheckCheck className="w-3 h-3" />
+                  Mark all read
+                </button>
+              )}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleDeleteRead();
+                }}
+                className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+                Clear read
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Notification List */}
+        <div className="overflow-y-auto flex-1 max-h-[400px]">
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-8 text-gray-500">
+              <Bell className="w-12 h-12 mb-2 text-gray-400" />
+              <p className="text-sm">No notifications</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {notifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`p-4 hover:bg-gray-50 transition-colors border-l-4 ${
+                    notification.read ? 'opacity-75' : ''
+                  } ${getPriorityColor(notification.priority)}`}
+                >
+                  <div className="flex gap-3">
+                    {/* Icon */}
+                    <div className="flex-shrink-0 mt-0.5">
+                      {getNotificationIcon(
+                        notification.type,
+                        notification.priority
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-sm font-semibold text-gray-900">
+                          {notification.title}
+                        </h4>
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                          {formatTime(notification.createdAt)}
+                        </span>
+                      </div>
+
+                      <p className="mt-1 text-sm text-gray-600 line-clamp-2">
+                        {notification.message}
+                      </p>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 mt-2">
+                        {!notification.read && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleMarkAsRead(notification.id);
+                            }}
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                            title="Mark as read"
+                          >
+                            <Check className="w-3 h-3" />
+                            Read
+                          </button>
+                        )}
+                        {notification.actionUrl && (
+                          <a
+                            href={notification.actionUrl}
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-green-600 hover:bg-green-100 rounded transition-colors"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            View
+                          </a>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDelete(notification.id);
+                          }}
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:bg-red-100 rounded transition-colors ml-auto"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };
 

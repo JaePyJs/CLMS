@@ -19,7 +19,7 @@ import {
   Calendar,
   Filter,
   Download,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { enhancedLibraryApi } from '@/lib/api';
@@ -69,7 +69,9 @@ interface LibraryAnalytics {
 export function LibraryAnalytics() {
   const [analytics, setAnalytics] = useState<LibraryAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month');
+  const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>(
+    'month'
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const currentAbort = useRef<AbortController | null>(null);
 
@@ -80,7 +82,7 @@ export function LibraryAnalytics() {
       currentAbort.current = controller;
       setLoading(true);
       const response = await enhancedLibraryApi.getLibraryAnalytics(timeRange);
-      
+
       if (response.success && response.data) {
         setAnalytics(response.data);
       } else {
@@ -106,7 +108,9 @@ export function LibraryAnalytics() {
       const response = await enhancedLibraryApi.exportAnalytics(timeRange);
       if (response.success && response.data) {
         // Create and download the file
-        const blob = new Blob([response.data.content], { type: response.data.mimeType });
+        const blob = new Blob([response.data.content], {
+          type: response.data.mimeType,
+        });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -127,12 +131,18 @@ export function LibraryAnalytics() {
 
   const getTopPurposeIcon = (purpose: string) => {
     switch (purpose) {
-      case 'AVR': return '🎧';
-      case 'Computer': return '💻';
-      case 'Library Space': return '📚';
-      case 'Borrowing': return '📖';
-      case 'Recreation': return '🎮';
-      default: return '📍';
+      case 'AVR':
+        return '🎧';
+      case 'Computer':
+        return '💻';
+      case 'Library Space':
+        return '📚';
+      case 'Borrowing':
+        return '📖';
+      case 'Recreation':
+        return '🎮';
+      default:
+        return '📍';
     }
   };
 
@@ -140,9 +150,12 @@ export function LibraryAnalytics() {
     const colors = {
       Filipiniana: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
       Fiction: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      'Easy Books': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      Reference: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      Textbook: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+      'Easy Books':
+        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      Reference:
+        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      Textbook:
+        'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
     };
     return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
@@ -167,7 +180,9 @@ export function LibraryAnalytics() {
               <BarChart className="h-5 w-5" />
               Library Analytics
             </CardTitle>
-            <CardDescription>Top users and popular books analytics</CardDescription>
+            <CardDescription>
+              Top users and popular books analytics
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center h-64">
@@ -214,12 +229,16 @@ export function LibraryAnalytics() {
                 <BarChart className="h-5 w-5" />
                 Library Analytics
               </CardTitle>
-              <CardDescription>Insights into library usage and popular resources</CardDescription>
+              <CardDescription>
+                Insights into library usage and popular resources
+              </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <select
                 value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value as 'week' | 'month' | 'year')}
+                onChange={(e) =>
+                  setTimeRange(e.target.value as 'week' | 'month' | 'year')
+                }
                 className="px-3 py-2 border rounded-md bg-background"
               >
                 <option value="week">This Week</option>
@@ -232,7 +251,9 @@ export function LibraryAnalytics() {
                 onClick={handleRefresh}
                 disabled={isRefreshing}
               >
-                <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`}
+                />
                 Refresh
               </Button>
               <Button
@@ -306,7 +327,8 @@ export function LibraryAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="text-lg font-bold text-orange-900 dark:text-orange-100">
-              {getTopPurposeIcon(analytics.mostPopularPurpose)} {analytics.mostPopularPurpose}
+              {getTopPurposeIcon(analytics.mostPopularPurpose)}{' '}
+              {analytics.mostPopularPurpose}
             </div>
             <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
               most visited area
@@ -335,17 +357,25 @@ export function LibraryAnalytics() {
           ) : (
             <div className="space-y-4">
               {analytics.topUsers.map((user, index) => (
-                <Card key={user.id} className="hover:shadow-md transition-shadow">
+                <Card
+                  key={user.id}
+                  className="hover:shadow-md transition-shadow"
+                >
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="flex-shrink-0">
-                          <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                            index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600' :
-                            index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500' :
-                            index === 2 ? 'bg-gradient-to-br from-orange-400 to-orange-600' :
-                            'bg-gradient-to-br from-blue-500 to-purple-600'
-                          }`}>
+                          <div
+                            className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                              index === 0
+                                ? 'bg-gradient-to-br from-yellow-400 to-yellow-600'
+                                : index === 1
+                                  ? 'bg-gradient-to-br from-gray-300 to-gray-500'
+                                  : index === 2
+                                    ? 'bg-gradient-to-br from-orange-400 to-orange-600'
+                                    : 'bg-gradient-to-br from-blue-500 to-purple-600'
+                            }`}
+                          >
                             <span className="text-white font-bold text-lg">
                               {index + 1}
                             </span>
@@ -374,15 +404,21 @@ export function LibraryAnalytics() {
                       </div>
                       <div className="text-right">
                         <div className="text-sm text-muted-foreground mb-2">
-                          Last visit: {new Date(user.lastVisit).toLocaleDateString()}
+                          Last visit:{' '}
+                          {new Date(user.lastVisit).toLocaleDateString()}
                         </div>
                         <div className="flex gap-1">
-                          {Object.entries(user.purposes).map(([purpose, count]) => 
-                            count > 0 && (
-                              <Badge key={purpose} variant="secondary" className="text-xs">
-                                {getTopPurposeIcon(purpose)} {count}
-                              </Badge>
-                            )
+                          {Object.entries(user.purposes).map(
+                            ([purpose, count]) =>
+                              count > 0 && (
+                                <Badge
+                                  key={purpose}
+                                  variant="secondary"
+                                  className="text-xs"
+                                >
+                                  {getTopPurposeIcon(purpose)} {count}
+                                </Badge>
+                              )
                           )}
                         </div>
                       </div>
@@ -402,7 +438,9 @@ export function LibraryAnalytics() {
             <Star className="h-5 w-5" />
             Most Popular Books
           </CardTitle>
-          <CardDescription>Books with the highest borrowing frequency</CardDescription>
+          <CardDescription>
+            Books with the highest borrowing frequency
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {analytics.popularBooks.length === 0 ? (
@@ -415,13 +453,16 @@ export function LibraryAnalytics() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {analytics.popularBooks.map((book) => (
-                <Card key={book.id} className="hover:shadow-md transition-shadow">
+                <Card
+                  key={book.id}
+                  className="hover:shadow-md transition-shadow"
+                >
                   <CardContent className="p-4">
                     <div className="flex items-start gap-4">
                       <div className="flex-shrink-0">
                         {book.coverImage ? (
-                          <img 
-                            src={book.coverImage} 
+                          <img
+                            src={book.coverImage}
                             alt={book.title}
                             className="w-16 h-20 object-cover rounded-md"
                           />
@@ -432,17 +473,19 @@ export function LibraryAnalytics() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-lg truncate">{book.title}</h3>
+                        <h3 className="font-semibold text-lg truncate">
+                          {book.title}
+                        </h3>
                         <p className="text-sm text-muted-foreground truncate">
                           by {book.author}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
-                          <Badge className={getMaterialTypeColor(book.materialType)}>
+                          <Badge
+                            className={getMaterialTypeColor(book.materialType)}
+                          >
                             {book.materialType}
                           </Badge>
-                          <Badge variant="outline">
-                            ISBN: {book.isbn}
-                          </Badge>
+                          <Badge variant="outline">ISBN: {book.isbn}</Badge>
                         </div>
                         <div className="flex items-center gap-2 mt-2">
                           <Badge variant="default">
@@ -458,13 +501,13 @@ export function LibraryAnalytics() {
                           <div className="flex items-center mt-2">
                             <div className="flex">
                               {[...Array(5)].map((_, i) => (
-                                <Star 
-                                  key={i} 
+                                <Star
+                                  key={i}
                                   className={`h-4 w-4 ${
-                                    i < Math.floor(book.averageRating) 
-                                      ? 'text-yellow-400 fill-current' 
+                                    i < Math.floor(book.averageRating)
+                                      ? 'text-yellow-400 fill-current'
                                       : 'text-muted-foreground'
-                                  }`} 
+                                  }`}
                                 />
                               ))}
                             </div>
@@ -474,7 +517,8 @@ export function LibraryAnalytics() {
                           </div>
                         )}
                         <div className="text-xs text-muted-foreground mt-2">
-                          Last borrowed: {new Date(book.lastBorrowed).toLocaleDateString()}
+                          Last borrowed:{' '}
+                          {new Date(book.lastBorrowed).toLocaleDateString()}
                         </div>
                       </div>
                     </div>

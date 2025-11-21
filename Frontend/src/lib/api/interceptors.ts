@@ -39,11 +39,15 @@ export function setupInterceptors(client: AxiosInstance) {
     // Always send credentials for cookie-based flows
     (config as any).withCredentials = true;
 
-    const existingCid = (config.headers as any)?.['x-correlation-id'] || (config.headers as any)?.['x-request-id'];
+    const existingCid =
+      (config.headers as any)?.['x-correlation-id'] ||
+      (config.headers as any)?.['x-request-id'];
     if (!existingCid) {
-      const cid = (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function')
-        ? (crypto as any).randomUUID()
-        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const cid =
+        typeof crypto !== 'undefined' &&
+        typeof (crypto as any).randomUUID === 'function'
+          ? (crypto as any).randomUUID()
+          : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
       (config.headers as any)['x-correlation-id'] = cid;
     }
 
@@ -113,7 +117,9 @@ export function setupInterceptors(client: AxiosInstance) {
           );
         }
       } else if (status === 429) {
-        toast.error(normalizedError.message || 'Too many requests. Please wait.');
+        toast.error(
+          normalizedError.message || 'Too many requests. Please wait.'
+        );
       } else if (status === 403) {
         toast.error(normalizedError.message || 'Access denied');
       } else if (status === 404) {

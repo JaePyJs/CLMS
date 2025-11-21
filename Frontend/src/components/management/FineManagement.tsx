@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
@@ -10,7 +17,12 @@ interface FineCheckout {
   due_date: string;
   fine_amount: number;
   status: string;
-  student?: { student_id: string; first_name: string; last_name: string; grade_level: number };
+  student?: {
+    student_id: string;
+    first_name: string;
+    last_name: string;
+    grade_level: number;
+  };
   book?: { title: string; accession_no: string };
 }
 
@@ -39,7 +51,11 @@ export default function FineManagement() {
       const res = await apiClient.post<any>(`/api/fines/calculate/${id}`);
       if (res.success && res.data) {
         toast.success('Fine calculated');
-        setItems((prev) => prev.map((c) => (c.id === id ? { ...c, fine_amount: res.data.fine_amount } : c)));
+        setItems((prev) =>
+          prev.map((c) =>
+            c.id === id ? { ...c, fine_amount: res.data.fine_amount } : c
+          )
+        );
       }
     } catch {
       toast.error('Failed to calculate fine');
@@ -87,13 +103,25 @@ export default function FineManagement() {
               ) : (
                 items.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell>{`${c.student?.first_name || ''} ${c.student?.last_name || ''}`.trim()}</TableCell>
+                    <TableCell>
+                      {`${c.student?.first_name || ''} ${c.student?.last_name || ''}`.trim()}
+                    </TableCell>
                     <TableCell>{c.book?.title || ''}</TableCell>
-                    <TableCell>{new Date(c.due_date).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {new Date(c.due_date).toLocaleDateString()}
+                    </TableCell>
                     <TableCell>{c.fine_amount || 0}</TableCell>
                     <TableCell className="flex gap-2">
-                      <Button size="sm" onClick={() => calculateFine(c.id)}>Calculate</Button>
-                      <Button size="sm" variant="secondary" onClick={() => markPaid(c.id)}>Mark Paid</Button>
+                      <Button size="sm" onClick={() => calculateFine(c.id)}>
+                        Calculate
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => markPaid(c.id)}
+                      >
+                        Mark Paid
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

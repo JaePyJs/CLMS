@@ -271,7 +271,9 @@ export const useAsyncPerformance = () => {
     operationsRef.current.delete(operationName);
 
     if (process.env.NODE_ENV === 'development') {
-      console.debug(`✅ Completed ${operationName} in ${duration.toFixed(2)}ms`);
+      console.debug(
+        `✅ Completed ${operationName} in ${duration.toFixed(2)}ms`
+      );
     }
 
     // Emit performance event

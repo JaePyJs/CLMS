@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   useMobileOptimization,
@@ -64,6 +64,8 @@ import {
   ExternalLink,
   TrendingUp,
   Activity,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 interface Student {
@@ -127,18 +129,6 @@ interface BackendStudent {
   barcode?: string;
 }
 
-interface MockStudentData {
-  students: Student[];
-  stats: {
-    total: number;
-    active: number;
-    inactive: number;
-    newThisMonth: number;
-    averageSessions: number;
-    overdueReturns: number;
-  };
-}
-
 export function StudentManagement() {
   const queryClient = useQueryClient();
 
@@ -147,47 +137,13 @@ export function StudentManagement() {
   const { isMobile, isTablet } = mobileState;
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
 
-  const DEV_MOCK_FALLBACK: StudentsApiResponse = {
-    students: [
-      {
-        id: 'STU-DEV-1',
-        studentId: 'S-0001',
-        firstName: 'Alice',
-        lastName: 'Example',
-        gradeLevel: 'Grade 5',
-        gradeCategory: 'gradeSchool',
-        section: 'A',
-        isActive: true,
-        email: '',
-        phone: '',
-        address: '',
-        parentName: '',
-        parentPhone: '',
-        parentEmail: '',
-        emergencyContact: '',
-        notes: '',
-        joinDate: new Date().toISOString(),
-        lastActivity: new Date().toISOString(),
-        totalSessions: 0,
-        specialPrivileges: [],
-        disciplinaryFlags: 0,
-        qrCodeGenerated: false,
-        barcodeGenerated: false,
-        libraryCardPrinted: false,
-      },
-    ],
-    total: 1,
-    pagination: {},
-  };
-
   // Data refresh with query
-  const [studentsRefreshState, _studentsRefreshActions] = useDataRefresh(
+  const [studentsRefreshState, studentsRefreshActions] = useDataRefresh(
     async (): Promise<StudentsApiResponse> => {
-      try {
-        const response = await studentsApi.getStudents();
-        const studentsData = (response?.data || []) as BackendStudent[];
-        const transformedData: StudentsApiResponse = {
-          students: studentsData.map((student) => ({
+      const response = await studentsApi.getAll();
+      const studentsData = (response?.data || []) as BackendStudent[];
+      const transformedData: StudentsApiResponse = {
+        students: studentsData.map((student) => ({
           id: student.id,
           studentId: student.student_id,
           firstName: student.first_name,
@@ -212,24 +168,15 @@ export function StudentManagement() {
           qrCodeGenerated: !!student.barcode,
           barcodeGenerated: !!student.barcode,
           libraryCardPrinted: false,
-          })),
-          total:
-            (response?.data as unknown as { count?: number })?.count ||
-            studentsData.length,
-          pagination: {},
-        };
-        return transformedData;
-      } catch (e) {
-        if ((import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development')) {
-          return DEV_MOCK_FALLBACK;
-        }
-        throw e;
-      }
+        })),
+        total:
+          (response?.data as unknown as { count?: number })?.count ||
+          studentsData.length,
+        pagination: {},
+      };
+      return transformedData;
     },
     {
-      initialData: ((import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development'))
-        ? DEV_MOCK_FALLBACK
-        : { students: [], total: 0, pagination: {} },
       interval: 5 * 60 * 1000, // Refresh every 5 minutes
     }
   );
@@ -265,7 +212,7 @@ export function StudentManagement() {
   }, [students]);
 
   // Search and filter state
-  const [searchFilters, _filterActions] = useSearchFilters({
+  const [searchFilters] = useSearchFilters({
     defaultSearchTerm: '',
     defaultFilters: { status: 'all', grade: 'all' },
   });
@@ -309,15 +256,13 @@ export function StudentManagement() {
   }, [students, searchFilters.searchTerm, searchFilters.filters]);
 
   // Modal states
-  const [modalStates, modalActions] = useMultipleModals({
+  const [, modalActions] = useMultipleModals({
     addStudent: false,
     editStudent: false,
     studentDetails: false,
     bulkImport: false,
     studentBarcode: false,
   });
-
-  const _studentDetailsData = modalStates.studentDetails.data;
 
   // Form state for new student
   const [formState, formActions] = useForm({
@@ -343,10 +288,9 @@ export function StudentManagement() {
   });
 
   const newStudent = formState.values;
-  const _formErrors = formState.errors;
 
   // Loading states for different operations
-  const [_loadingStates, loadingActions] = useMultipleLoadingStates({
+  const [, loadingActions] = useMultipleLoadingStates({
     generatingQRCodes: {},
     printingIDs: {},
     exporting: {},
@@ -365,13 +309,22 @@ export function StudentManagement() {
   const [showStudentBarcode, setShowStudentBarcode] = useState(false);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
-  const [isGeneratingQRCodes, _setIsGeneratingQRCodes] = useState(false);
-  const [isPrintingIDs, _setIsPrintingIDs] = useState(false);
-  const [isExporting, _setIsExporting] = useState(false);
+  const [isGeneratingQRCodes] = useState(false);
+  const [isPrintingIDs] = useState(false);
+  const [isExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterGrade, setFilterGrade] = useState('');
   const [showEditStudent, setShowEditStudent] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, filterGrade]);
 
   // Mutations
   const createStudentMutation = useMutation({
@@ -394,7 +347,7 @@ export function StudentManagement() {
       if (data.firstName !== undefined) payload.first_name = data.firstName;
       if (data.lastName !== undefined) payload.last_name = data.lastName;
       if (data.gradeLevel !== undefined) {
-        payload.grade_level = Number((data.gradeLevel.match(/\d+/)?.[0]) || 0);
+        payload.grade_level = Number(data.gradeLevel.match(/\d+/)?.[0] || 0);
         payload.grade_category = getGradeCategory(data.gradeLevel);
       }
       if (data.section !== undefined) payload.section = data.section;
@@ -448,96 +401,6 @@ export function StudentManagement() {
   });
 
   // Mock data
-  const _mockData: MockStudentData = {
-    students: [
-      {
-        id: '1',
-        studentId: 'STU001',
-        firstName: 'Juan',
-        lastName: 'Dela Cruz',
-        gradeLevel: 'Grade 5',
-        gradeCategory: 'gradeSchool',
-        section: 'A',
-        isActive: true,
-        email: 'juan.delacruz@email.com',
-        phone: '+63 912 345 6789',
-        address: '123 Main St, City',
-        parentName: 'Maria Dela Cruz',
-        parentPhone: '+63 912 345 6788',
-        parentEmail: 'maria.parent@email.com',
-        emergencyContact: '+63 912 345 6787',
-        notes: 'Regular visitor, prefers computer sessions',
-        joinDate: '2024-01-15',
-        lastActivity: '2024-01-20',
-        totalSessions: 45,
-        specialPrivileges: ['extended_time'],
-        disciplinaryFlags: 0,
-        qrCodeGenerated: true,
-        barcodeGenerated: true,
-        libraryCardPrinted: true,
-      },
-      {
-        id: '2',
-        studentId: 'STU002',
-        firstName: 'Maria',
-        lastName: 'Santos',
-        gradeLevel: 'Grade 8',
-        gradeCategory: 'juniorHigh',
-        section: 'B',
-        isActive: true,
-        email: 'maria.santos@email.com',
-        phone: '+63 913 456 7890',
-        address: '456 Oak Ave, Town',
-        parentName: 'Jose Santos',
-        parentPhone: '+63 913 456 7891',
-        parentEmail: 'jose.parent@email.com',
-        emergencyContact: '+63 913 456 7892',
-        notes: 'Good student, follows rules',
-        joinDate: '2023-09-10',
-        lastActivity: '2024-01-19',
-        totalSessions: 32,
-        specialPrivileges: [],
-        disciplinaryFlags: 0,
-        qrCodeGenerated: true,
-        barcodeGenerated: true,
-        libraryCardPrinted: true,
-      },
-      {
-        id: '3',
-        studentId: 'STU003',
-        firstName: 'Jose',
-        lastName: 'Reyes',
-        gradeLevel: 'Grade 10',
-        gradeCategory: 'seniorHigh',
-        section: 'C',
-        isActive: false,
-        email: '',
-        phone: '',
-        address: '',
-        parentName: '',
-        parentPhone: '',
-        parentEmail: '',
-        emergencyContact: '',
-        notes: 'Inactive since December 2023',
-        joinDate: '2023-08-20',
-        lastActivity: '2023-12-15',
-        totalSessions: 18,
-        specialPrivileges: [],
-        disciplinaryFlags: 2,
-        qrCodeGenerated: false,
-        barcodeGenerated: false,
-        libraryCardPrinted: false,
-      },
-    ],
-    stats: {
-      total: 3,
-      active: 2,
-      inactive: 1,
-      newThisMonth: 0,
-      averageSessions: 31.7,
-      overdueReturns: 0,
-    },
-  };
 
   // Handler functions
   const handleAddStudent = async () => {
@@ -554,7 +417,7 @@ export function StudentManagement() {
       student_id: `S-${Date.now()}`,
       first_name: newStudent.firstName,
       last_name: newStudent.lastName,
-      grade_level: Number((newStudent.gradeLevel.match(/\d+/)?.[0]) || 0),
+      grade_level: Number(newStudent.gradeLevel.match(/\d+/)?.[0] || 0),
       grade_category: getGradeCategory(newStudent.gradeLevel),
       section: newStudent.section || undefined,
       email: newStudent.email || undefined,
@@ -783,6 +646,13 @@ export function StudentManagement() {
     setShowStudentBarcode(true);
   };
 
+  // Pagination logic
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+  const paginatedStudents = filteredStudents.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   // Handle swipe gestures for mobile navigation
   const handleTouchEndWithGesture = useCallback(
     (e: React.TouchEvent) => {
@@ -825,7 +695,10 @@ export function StudentManagement() {
       {/* Enhanced Header */}
       <div className={`relative ${isMobile ? 'mb-4' : ''}`}>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-black dark:text-foreground" data-testid="student-management-title">
+          <h2
+            className="text-3xl font-bold tracking-tight text-black dark:text-foreground"
+            data-testid="student-management-title"
+          >
             Student Management
           </h2>
           <p className="text-black dark:text-muted-foreground">
@@ -859,7 +732,14 @@ export function StudentManagement() {
           <Button
             variant="outline"
             size="sm"
-            onClick={async () => { setIsStudentsRefreshing(true); try { await studentsRefreshState.refresh(); } finally { setIsStudentsRefreshing(false); } }}
+            onClick={async () => {
+              setIsStudentsRefreshing(true);
+              try {
+                await studentsRefreshActions.refresh();
+              } finally {
+                setIsStudentsRefreshing(false);
+              }
+            }}
             className="bg-white/90 hover:bg-white shadow-sm"
             disabled={isStudentsRefreshing}
           >
@@ -913,9 +793,14 @@ export function StudentManagement() {
         onValueChange={setActiveTab}
         className="space-y-4 sm:space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-2" data-testid="tab-list">
+        <TabsList
+          className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-2"
+          data-testid="tab-list"
+        >
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="students" data-testid="inner-students-tab">Students</TabsTrigger>
+          <TabsTrigger value="students" data-testid="inner-students-tab">
+            Students
+          </TabsTrigger>
           <TabsTrigger value="bulk">Bulk Operations</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
@@ -928,7 +813,10 @@ export function StudentManagement() {
             <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800">
               <CardContent className="p-4 text-center">
                 <Users className="h-8 w-8 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
-                <div className="text-2xl font-bold text-blue-700 dark:text-blue-300" data-testid="total-students">
+                <div
+                  className="text-2xl font-bold text-blue-700 dark:text-blue-300"
+                  data-testid="total-students"
+                >
                   {realStats.total}
                 </div>
                 <p className="text-sm text-blue-600 dark:text-blue-400">
@@ -1032,7 +920,11 @@ export function StudentManagement() {
         </TabsContent>
 
         {/* Students Tab */}
-        <TabsContent value="students" className="space-y-6" data-testid="students-tabpanel">
+        <TabsContent
+          value="students"
+          className="space-y-6"
+          data-testid="students-tabpanel"
+        >
           {/* Search and Filters */}
           <Card>
             <CardContent className="p-4">
@@ -1050,25 +942,61 @@ export function StudentManagement() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-[120px]" data-testid="status-filter" disabled={isStudentsRefreshing}>
+                    <SelectTrigger
+                      className="w-[120px]"
+                      data-testid="status-filter"
+                      disabled={isStudentsRefreshing}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all" data-testid="status-all">All Status</SelectItem>
-                      <SelectItem value="active" data-testid="status-active">Active</SelectItem>
-                      <SelectItem value="inactive" data-testid="status-inactive">Inactive</SelectItem>
+                      <SelectItem value="all" data-testid="status-all">
+                        All Status
+                      </SelectItem>
+                      <SelectItem value="active" data-testid="status-active">
+                        Active
+                      </SelectItem>
+                      <SelectItem
+                        value="inactive"
+                        data-testid="status-inactive"
+                      >
+                        Inactive
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={filterGrade} onValueChange={setFilterGrade}>
-                    <SelectTrigger className="w-[120px]" data-testid="grade-filter" disabled={isStudentsRefreshing}>
+                    <SelectTrigger
+                      className="w-[120px]"
+                      data-testid="grade-filter"
+                      disabled={isStudentsRefreshing}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all" data-testid="grade-all">All Grades</SelectItem>
-                      <SelectItem value="primary" data-testid="grade-primary">Primary</SelectItem>
-                      <SelectItem value="gradeSchool" data-testid="grade-gradeSchool">Grade School</SelectItem>
-                      <SelectItem value="juniorHigh" data-testid="grade-juniorHigh">Junior High</SelectItem>
-                      <SelectItem value="seniorHigh" data-testid="grade-seniorHigh">Senior High</SelectItem>
+                      <SelectItem value="all" data-testid="grade-all">
+                        All Grades
+                      </SelectItem>
+                      <SelectItem value="primary" data-testid="grade-primary">
+                        Primary
+                      </SelectItem>
+                      <SelectItem
+                        value="gradeSchool"
+                        data-testid="grade-gradeSchool"
+                      >
+                        Grade School
+                      </SelectItem>
+                      <SelectItem
+                        value="juniorHigh"
+                        data-testid="grade-juniorHigh"
+                      >
+                        Junior High
+                      </SelectItem>
+                      <SelectItem
+                        value="seniorHigh"
+                        data-testid="grade-seniorHigh"
+                      >
+                        Senior High
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1108,20 +1036,25 @@ export function StudentManagement() {
 
           {/* Students List */}
           <Card>
-          <CardHeader>
-            <CardTitle>Students ({filteredStudents.length})</CardTitle>
-            <CardDescription>
-              Manage student records and activities
-            </CardDescription>
-          </CardHeader>
+            <CardHeader>
+              <CardTitle>Students ({filteredStudents.length})</CardTitle>
+              <CardDescription>
+                Manage student records and activities
+              </CardDescription>
+            </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {filteredStudents.length === 0 && (
-                  <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700" data-testid="student-card">
-                    <div className="text-sm text-muted-foreground">No students found</div>
+                  <div
+                    className="p-4 rounded-lg border border-gray-200 dark:border-gray-700"
+                    data-testid="student-card"
+                  >
+                    <div className="text-sm text-muted-foreground">
+                      No students found
+                    </div>
                   </div>
                 )}
-                {filteredStudents.map((student: Student) => (
+                {paginatedStudents.map((student: Student) => (
                   <div
                     key={student.id}
                     className={`p-4 rounded-lg border ${
@@ -1144,14 +1077,20 @@ export function StudentManagement() {
                           className={`w-2 h-2 rounded-full ${student.isActive ? 'bg-green-500' : 'bg-red-500'}`}
                         />
                         <div>
-                          <div className="font-medium" data-testid="student-name">
+                          <div
+                            className="font-medium"
+                            data-testid="student-name"
+                          >
                             {student.firstName} {student.lastName}
                             {student.disciplinaryFlags > 0 && (
                               <AlertTriangle className="inline h-3 w-3 ml-2 text-red-500" />
                             )}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            <span data-testid="student-id">{student.studentId}</span> • {student.gradeLevel}{' '}
+                            <span data-testid="student-id">
+                              {student.studentId}
+                            </span>{' '}
+                            • {student.gradeLevel}{' '}
                             {student.section
                               ? `• Section ${student.section}`
                               : ''}
@@ -1279,6 +1218,67 @@ export function StudentManagement() {
                   </div>
                 ))}
               </div>
+
+              {/* Pagination Controls */}
+              {filteredStudents.length > 0 && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+                    {Math.min(
+                      currentPage * itemsPerPage,
+                      filteredStudents.length
+                    )}{' '}
+                    of {filteredStudents.length} students
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mr-4">
+                      <span className="text-sm text-muted-foreground">
+                        Rows per page:
+                      </span>
+                      <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                          setItemsPerPage(Number(value));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="w-[70px] h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <div className="text-sm font-medium">
+                      Page {currentPage} of {totalPages}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

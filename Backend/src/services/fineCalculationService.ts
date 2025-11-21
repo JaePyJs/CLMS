@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { differenceInCalendarDays } from 'date-fns';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
 
 export class FineCalculationService {
   public static async getRateForGrade(gradeLevel: number): Promise<number> {
@@ -16,20 +14,29 @@ export class FineCalculationService {
         },
         orderBy: { updated_at: 'desc' },
       });
-      if (policy) return policy.rate_per_day;
-      if (gradeLevel <= 3) return 2;
+      if (policy) {
+        return policy.rate_per_day;
+      }
+      if (gradeLevel <= 3) {
+        return 2;
+      }
       return 5;
     } catch (error) {
       logger.error('Get fine rate failed', {
         gradeLevel,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      if (gradeLevel <= 3) return 2;
+      if (gradeLevel <= 3) {
+        return 2;
+      }
       return 5;
     }
   }
 
-  public static async calculateFineForCheckout(checkoutId: string, asOfDate?: Date): Promise<any> {
+  public static async calculateFineForCheckout(
+    checkoutId: string,
+    asOfDate?: Date,
+  ): Promise<any> {
     try {
       const checkout = await prisma.book_checkouts.findUnique({
         where: { id: checkoutId },
@@ -39,7 +46,9 @@ export class FineCalculationService {
         throw new Error('Checkout not found');
       }
       const due = new Date(checkout.due_date);
-      const ref = asOfDate ? new Date(asOfDate) : new Date(checkout.return_date ?? new Date());
+      const ref = asOfDate
+        ? new Date(asOfDate)
+        : new Date(checkout.return_date ?? new Date());
       const daysOverdue = Math.max(0, differenceInCalendarDays(ref, due));
       const rate = await this.getRateForGrade(checkout.student.grade_level);
       const fine = daysOverdue * rate;
@@ -57,7 +66,12 @@ export class FineCalculationService {
           fine_policy_id: policy?.id ?? null,
         },
       });
-      return { checkout: updated, fine_amount: fine, days_overdue: daysOverdue, rate };
+      return {
+        checkout: updated,
+        fine_amount: fine,
+        days_overdue: daysOverdue,
+        rate,
+      };
     } catch (error) {
       logger.error('Calculate fine failed', {
         checkoutId,

@@ -1,38 +1,48 @@
-import { PrismaClient } from '@prisma/client'
-import * as dotenv from 'dotenv'
-import * as fs from 'fs'
-import * as path from 'path'
+import { prisma } from '../utils/prisma';
+import * as dotenv from 'dotenv';
+import * as fs from 'fs';
+import * as path from 'path';
 
-dotenv.config({ path: path.resolve(process.cwd(), 'Backend', '.env') })
-if (!process.env.DATABASE_URL || !/mysql:\/\//.test(String(process.env.DATABASE_URL))) {
-  process.env.DATABASE_URL = 'mysql://clms_user:change-me-app@localhost:3308/clms_database'
+dotenv.config({ path: path.resolve(process.cwd(), 'Backend', '.env') });
+if (
+  !process.env.DATABASE_URL ||
+  !/mysql:\/\//.test(String(process.env.DATABASE_URL))
+) {
+  process.env.DATABASE_URL =
+    'mysql://clms_user:change-me-app@localhost:3308/clms_database';
 }
-const prisma = new PrismaClient()
+// const prisma = new PrismaClient();
 
 function parseCSVLine(line: string): string[] {
-  const out: string[] = []
-  let current = ''
-  let inQuotes = false
+  const out: string[] = [];
+  let current = '';
+  let inQuotes = false;
   for (let i = 0; i < line.length; i++) {
-    const ch = line[i]
+    const ch = line[i];
     if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') { current += '"'; i++ } else { inQuotes = !inQuotes }
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
     } else if (ch === ',' && !inQuotes) {
-      out.push(current); current = ''
+      out.push(current);
+      current = '';
     } else {
-      current += ch
+      current += ch;
     }
   }
-  out.push(current)
-  return out
+  out.push(current);
+  return out;
 }
 
 function normalizeGradeLevel(v: string): number {
-  const s = String(v).toUpperCase().trim()
+  const s = String(v).toUpperCase().trim();
   const m: Record<string, number> = {
     'PRE NURSERY': 0,
-    'NURSERY': 0,
-    'KINDER': 0,
+    NURSERY: 0,
+    KINDER: 0,
     'GRADE 1': 1,
     'GRADE 2': 2,
     'GRADE 3': 3,
@@ -46,33 +56,43 @@ function normalizeGradeLevel(v: string): number {
     'GRADE 11': 11,
     'GRADE 12': 12,
     '2025-2026': 0,
-  }
-  return m[s] ?? 0
+  };
+  return m[s] ?? 0;
 }
 
 async function importStudents(csvPath: string) {
-  const text = fs.readFileSync(csvPath, 'utf-8')
-  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0)
-  if (lines.length <= 1) return
-  const headers = parseCSVLine(lines[0]).map(h => h.trim())
-  const idx = (name: string) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase())
-  const iUserId = idx('User ID')
-  const iSurname = idx('Surname')
-  const iFirst = idx('First Name')
-  const iGrade = idx('Grade Level')
-  const iSection = idx('Section')
-  const iDesignation = idx('Designation')
-  const result = { imported: 0, errors: 0 }
+  if (!fs.existsSync(csvPath)) {
+    console.error(`File not found: ${csvPath}`);
+    return { imported: 0, errors: 1 };
+  }
+  const text = fs.readFileSync(csvPath, 'utf-8');
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length <= 1) {
+    return { imported: 0, errors: 0 };
+  }
+  const headers = parseCSVLine(lines[0]).map(h => h.trim());
+  const idx = (name: string) =>
+    headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+  const iUserId = idx('User ID');
+  const iSurname = idx('Surname');
+  const iFirst = idx('First Name');
+  const iGrade = idx('Grade Level');
+  const iSection = idx('Section');
+  const iDesignation = idx('Designation');
+  const result = { imported: 0, errors: 0 };
   for (let r = 1; r < lines.length; r++) {
-    const cols = parseCSVLine(lines[r])
-    const userId = (cols[iUserId] || '').trim()
-    const lastName = (cols[iSurname] || '').trim()
-    const firstName = (cols[iFirst] || '').trim()
-    const grade = (cols[iGrade] || '').trim()
-    const section = (cols[iSection] || '').trim()
-    const designation = (cols[iDesignation] || '').trim()
-    if (!userId || !firstName || !lastName) { result.errors++; continue }
-    let barcode = userId
+    const cols = parseCSVLine(lines[r]);
+    const userId = (cols[iUserId] || '').trim();
+    const lastName = (cols[iSurname] || '').trim();
+    const firstName = (cols[iFirst] || '').trim();
+    const grade = (cols[iGrade] || '').trim();
+    const section = (cols[iSection] || '').trim();
+    const designation = (cols[iDesignation] || '').trim();
+    if (!userId || !firstName || !lastName) {
+      result.errors++;
+      continue;
+    }
+    const barcode = userId;
     const data = {
       student_id: userId,
       first_name: firstName,
@@ -83,45 +103,110 @@ async function importStudents(csvPath: string) {
       email: null as string | null,
       barcode,
       is_active: true,
-    }
+    };
     try {
-      const existing = await prisma.students.findUnique({ where: { student_id: data.student_id } })
+      const existing = await prisma.students.findUnique({
+        where: { student_id: data.student_id },
+      });
       if (existing) {
-        await prisma.students.update({ where: { id: (existing as any).id }, data })
+        await prisma.students.update({
+          where: { id: existing.id },
+          data,
+        });
       } else {
-        await prisma.students.create({ data })
+        await prisma.students.create({ data });
       }
-      result.imported++
-    } catch (e) { result.errors++; console.error('Student row error:', (e as any)?.message) }
+      result.imported++;
+    } catch (e) {
+      result.errors++;
+      console.error('Student row error:', (e as Error).message);
+    }
   }
-  return result
+  return result;
 }
 
 async function importBooks(csvPath: string) {
-  const text = fs.readFileSync(csvPath, 'utf-8')
-  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0)
-  if (lines.length <= 1) return
-  const headers = parseCSVLine(lines[0]).map(h => h.trim())
-  const idx = (name: string) => headers.findIndex(h => h.toLowerCase() === name.toLowerCase())
-  const iBarcode = idx('Barcode')
-  const iTitle = idx('Title')
-  const iAuthor = idx('Author')
-  const iYear = idx('Year')
-  const iISBN = idx('ISBN')
-  const iPublisher = idx('Publisher')
-  const iCollection = idx('Collection Code')
-  const result = { imported: 0, errors: 0 }
+  if (!fs.existsSync(csvPath)) {
+    console.error(`File not found: ${csvPath}`);
+    return { imported: 0, errors: 1 };
+  }
+  const text = fs.readFileSync(csvPath, 'utf-8');
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length <= 1) {
+    return { imported: 0, errors: 0 };
+  }
+  const headers = parseCSVLine(lines[0]).map(h => h.trim());
+  const idx = (name: string) =>
+    headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+  const iBarcode = idx('Barcode');
+  const iTitle = idx('Title');
+  const iAuthor = idx('Author');
+  const iYear = idx('Year');
+  const iISBN = idx('ISBN');
+  const iPublisher = idx('Publisher');
+  const iCollection = idx('Collection Code');
+  const result = { imported: 0, errors: 0, flagged: 0 };
+
+  // Helper function to safely truncate strings
+  const truncate = (str: string, maxLength: number): string => {
+    return str.length > maxLength ? str.substring(0, maxLength) : str;
+  };
+
+  // Counter for generating temporary barcodes
+  let tempBarcodeCounter = 1;
+
   for (let r = 1; r < lines.length; r++) {
-    const cols = parseCSVLine(lines[r])
-    const accession_no = (cols[iBarcode] || '').trim()
-    const title = (cols[iTitle] || '').trim()
-    const author = (cols[iAuthor] || '').trim()
-    const yearStr = (cols[iYear] || '').trim()
-    const isbn = (cols[iISBN] || '').trim()
-    const publisher = (cols[iPublisher] || '').trim()
-    const category = (cols[iCollection] || '').trim()
-    if (!accession_no || !title || !author || !category) { result.errors++; continue }
-    const year = yearStr ? parseInt(yearStr) : null
+    const cols = parseCSVLine(lines[r]);
+    let accession_no = truncate((cols[iBarcode] || '').trim(), 255);
+    let title = truncate((cols[iTitle] || '').trim(), 500);
+    let author = truncate((cols[iAuthor] || '').trim(), 255);
+    const yearStr = (cols[iYear] || '').trim();
+    const isbn = truncate((cols[iISBN] || '').trim(), 50);
+    const publisher = truncate((cols[iPublisher] || '').trim(), 255);
+    let category = truncate((cols[iCollection] || '').trim(), 100);
+
+    const issues: string[] = [];
+    let needsReview = false;
+
+    // Generate temporary barcode if missing
+    if (!accession_no) {
+      const timestamp = Date.now();
+      accession_no = `TEMP-${timestamp}-${tempBarcodeCounter++}`;
+      issues.push('Missing barcode - generated temporary ID');
+      needsReview = true;
+    }
+
+    // Handle missing title
+    if (!title) {
+      title = `Unknown Title (Row ${r + 1})`;
+      issues.push('Missing title');
+      needsReview = true;
+    }
+
+    // Apply smart defaults and track issues
+    if (!author) {
+      author = 'Unknown Author';
+      issues.push('Missing author');
+      needsReview = true;
+    }
+    if (!category) {
+      category = 'Needs Classification';
+      issues.push('Missing category');
+      needsReview = true;
+    }
+
+    // Track other potential issues
+    if (!isbn) {
+      issues.push('Missing ISBN');
+    }
+    if (!publisher) {
+      issues.push('Missing publisher');
+    }
+
+    const importNotes =
+      issues.length > 0 ? `Import Issues: ${issues.join('; ')}` : null;
+
+    const year = yearStr ? parseInt(yearStr) : null;
     const data = {
       accession_no,
       title,
@@ -141,30 +226,80 @@ async function importBooks(csvPath: string) {
       volume: null as string | null,
       year,
       is_active: true,
-    }
+      needs_review: needsReview,
+      import_notes: importNotes,
+    };
+
     try {
-      const existing = await prisma.books.findUnique({ where: { accession_no } })
+      const existing = await prisma.books.findUnique({
+        where: { accession_no },
+      });
       if (existing) {
-        await prisma.books.update({ where: { id: (existing as any).id }, data })
+        await prisma.books.update({
+          where: { id: existing.id },
+          data,
+        });
       } else {
-        await prisma.books.create({ data })
+        await prisma.books.create({ data });
       }
-      result.imported++
-    } catch (e) { result.errors++; console.error('Book row error:', (e as any)?.message) }
+      result.imported++;
+      if (needsReview) {
+        result.flagged++;
+      }
+    } catch (e) {
+      result.errors++;
+      console.error(`Book row error (Row ${r + 1}):`, (e as Error).message);
+    }
   }
-  return result
+  return result;
 }
 
 async function main() {
-  const root = path.resolve(process.cwd())
-  const studentsCsv = path.resolve(root, 'csv', 'SHJCS SCANLOGS - SHJCS USERS.csv')
-  const booksCsv = path.resolve(root, 'csv', 'SHJCS Bibliography - BOOK COLLECTIONS.csv')
-  console.log('Importing students from', studentsCsv)
-  const s = await importStudents(studentsCsv)
-  console.log('Students:', s)
-  console.log('Importing books from', booksCsv)
-  const b = await importBooks(booksCsv)
-  console.log('Books:', b)
+  console.log('Clearing database...');
+  try {
+    // Delete in order of dependency
+    await prisma.student_activities_sections.deleteMany({});
+    await prisma.student_activities.deleteMany({});
+    await prisma.book_checkouts.deleteMany({});
+    await prisma.printing_jobs.deleteMany({});
+    await prisma.books.deleteMany({});
+    await prisma.students.deleteMany({});
+    console.log('Database cleared.');
+  } catch (error) {
+    console.error('Error clearing database:', error);
+  }
+
+  const root = path.resolve(process.cwd());
+  // Check if we are in Backend directory, if so go up one level
+  const projectRoot = root.endsWith('Backend')
+    ? path.resolve(root, '..')
+    : root;
+
+  const studentsCsv = path.resolve(
+    projectRoot,
+    'csv',
+    'SHJCS SCANLOGS - SHJCS USERS.csv',
+  );
+  const booksCsv = path.resolve(
+    projectRoot,
+    'csv',
+    'SHJCS Bibliography - BOOK COLLECTIONS.csv',
+  );
+
+  console.log('Importing students from', studentsCsv);
+  const s = await importStudents(studentsCsv);
+  console.log('Students:', s);
+
+  console.log('Importing books from', booksCsv);
+  const b = await importBooks(booksCsv);
+  console.log('Books:', b);
 }
 
-main().catch(err => { console.error(err); process.exit(1) }).finally(async () => { await prisma.$disconnect() })
+main()
+  .catch(err => {
+    console.error(err);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

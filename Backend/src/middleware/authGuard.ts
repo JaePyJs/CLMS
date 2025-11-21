@@ -7,7 +7,7 @@ import { Request, Response, NextFunction } from 'express';
 export function requireAuth(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void {
   if (!req.user) {
     res.status(401).json({ error: 'Unauthorized - User not authenticated' });
@@ -21,7 +21,7 @@ export function requireAuth(
  * Throws if req.user is undefined (should never happen after auth middleware)
  */
 export function assertAuthenticated(
-  req: Request
+  req: Request,
 ): asserts req is Request & { user: NonNullable<Request['user']> } {
   if (!req.user) {
     throw new Error('Authentication middleware did not set req.user');

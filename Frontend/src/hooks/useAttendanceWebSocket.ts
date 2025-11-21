@@ -90,19 +90,20 @@ interface UseAttendanceWebSocketReturn {
  */
 export const useAttendanceWebSocket = (): UseAttendanceWebSocketReturn => {
   const ws = useWebSocketSubscription('attendance');
-  const filtered = ws.messages.filter(m => (
-    m.type === 'student_checkin' ||
-    m.type === 'student_checkout' ||
-    m.type === 'announcement' ||
-    m.type === 'attendance_section_change' ||
-    m.type === 'attendance_occupancy' ||
-    m.type === 'announcement_config' ||
-    m.type === 'attendance:checkin' ||
-    m.type === 'attendance:checkout' ||
-    m.type === 'attendance:section-change' ||
-    m.type === 'attendance:occupancy' ||
-    m.type === 'announcement:config'
-  )) as unknown as AttendanceWebSocketEvent[];
+  const filtered = ws.messages.filter(
+    (m) =>
+      m.type === 'student_checkin' ||
+      m.type === 'student_checkout' ||
+      m.type === 'announcement' ||
+      m.type === 'attendance_section_change' ||
+      m.type === 'attendance_occupancy' ||
+      m.type === 'announcement_config' ||
+      m.type === 'attendance:checkin' ||
+      m.type === 'attendance:checkout' ||
+      m.type === 'attendance:section-change' ||
+      m.type === 'attendance:occupancy' ||
+      m.type === 'announcement:config'
+  ) as unknown as AttendanceWebSocketEvent[];
   const reconnect = useCallback(() => {
     ws.disconnect();
     ws.connect();

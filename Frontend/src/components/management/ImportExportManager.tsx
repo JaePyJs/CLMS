@@ -1,0 +1,539 @@
+import React, { useState, useCallback } from 'react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { toast } from 'sonner';
+import { apiClient } from '@/lib/api';
+import {
+  Upload,
+  Download,
+  FileSpreadsheet,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  FileText,
+  Table as TableIcon,
+  Cloud,
+} from 'lucide-react';
+
+interface ImportPreview {
+  headers: string[];
+  data: any[];
+  totalRows: number;
+  validRows: number;
+  errors: Array<{ row: number; message: string }>;
+}
+
+export default function ImportExportManager() {
+  const [activeTab, setActiveTab] = useState('import');
+  const [importType, setImportType] = useState<'books' | 'students'>('books');
+  const [exportType, setExportType] = useState<'books' | 'students'>('books');
+  const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [importResult, setImportResult] = useState<any>(null);
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const droppedFile = e.dataTransfer.files[0];
+    if (droppedFile) {
+      handleFileSelect(droppedFile);
+    }
+  }, []);
+
+  const handleFileSelect = (selectedFile: File) => {
+    const validTypes = [
+      'text/csv',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    ];
+
+    if (
+      !validTypes.includes(selectedFile.type) &&
+      !selectedFile.name.endsWith('.csv')
+    ) {
+      toast.error('Please upload a CSV or Excel file');
+      return;
+    }
+
+    setFile(selectedFile);
+    parseFile(selectedFile);
+  };
+
+  const parseFile = async (file: File) => {
+    setIsProcessing(true);
+    setUploadProgress(10);
+
+    try {
+      const text = await file.text();
+      setUploadProgress(40);
+
+      // Simple CSV parsing
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      const headers =
+        lines[0]?.split(',').map((h) => h.trim().replace(/^"|"$/g, '')) || [];
+
+      setUploadProgress(60);
+
+      const data = lines.slice(1, 11).map((line) => {
+        const values = line
+          .split(',')
+          .map((v) => v.trim().replace(/^"|"$/g, ''));
+        const row: any = {};
+        headers.forEach((h, i) => {
+          row[h] = values[i] || '';
+        });
+        return row;
+      });
+
+      setUploadProgress(80);
+
+      // Basic validation
+      const errors: Array<{ row: number; message: string }> = [];
+      if (importType === 'books') {
+        data.forEach((row, idx) => {
+          if (!row['Title']) {
+            errors.push({ row: idx + 2, message: 'Missing title' });
+          }
+        });
+      } else if (importType === 'students') {
+        data.forEach((row, idx) => {
+          if (!row['First Name'] || !row['Last Name']) {
+            errors.push({ row: idx + 2, message: 'Missing name' });
+          }
+        });
+      }
+
+      setPreview({
+        headers,
+        data,
+        totalRows: lines.length - 1,
+        validRows: lines.length - 1 - errors.length,
+        errors,
+      });
+
+      setUploadProgress(100);
+      toast.success('File parsed successfully');
+    } catch (error) {
+      toast.error('Failed to parse file');
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!file || !preview) return;
+
+    setIsProcessing(true);
+    setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', importType);
+
+      setUploadProgress(30);
+
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => Math.min(prev + 10, 90));
+      }, 200);
+
+      const response = await apiClient.post(
+        `/api/${importType}/import`,
+        formData,
+        {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        }
+      );
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      if (response.success) {
+        setImportResult(response.data);
+        toast.success(
+          `Successfully imported ${(response.data as any).imported} ${importType}`
+        );
+      } else {
+        toast.error('Import failed');
+      }
+    } catch (error) {
+      toast.error('Import failed');
+      console.error(error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleExport = async (format: 'csv' | 'xlsx' | 'google-sheets') => {
+    toast.info(`Exporting ${exportType} to ${format.toUpperCase()}...`);
+
+    try {
+      if (format === 'google-sheets') {
+        // Trigger Google Sheets export
+        const response = await apiClient.post(
+          `/api/${exportType}/export-google-sheets`
+        );
+        if (response.success) {
+          toast.success('Exported to Google Sheets successfully!');
+          if ((response.data as any)?.url) {
+            window.open((response.data as any).url, '_blank');
+          }
+        }
+      } else {
+        // Download file
+        window.open(`/api/${exportType}/export?format=${format}`, '_blank');
+      }
+    } catch (error) {
+      toast.error('Export failed');
+      console.error(error);
+    }
+  };
+
+  return (
+    <div className="space-y-6 p-6">
+      <div>
+        <h2 className="text-3xl font-bold tracking-tight">
+          Import & Export Manager
+        </h2>
+        <p className="text-muted-foreground">
+          Manage your library data with CSV, Excel, and Google Sheets
+        </p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="import">
+            <Upload className="h-4 w-4 mr-2" />
+            Import Data
+          </TabsTrigger>
+          <TabsTrigger value="export">
+            <Download className="h-4 w-4 mr-2" />
+            Export Data
+          </TabsTrigger>
+        </TabsList>
+
+        {/* IMPORT TAB */}
+        <TabsContent value="import" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Import Data from File</CardTitle>
+              <CardDescription>
+                Upload CSV or Excel files to import books or students
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Data Type Selector */}
+              <div className="space-y-2">
+                <Label>Data Type</Label>
+                <Select
+                  value={importType}
+                  onValueChange={(v: any) => setImportType(v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="books">Books Collection</SelectItem>
+                    <SelectItem value="students">Students & Users</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* File Upload Area */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+                  isDragging
+                    ? 'border-primary bg-primary/5'
+                    : 'border-muted-foreground/25 hover:border-primary/50'
+                }`}
+              >
+                {file ? (
+                  <div className="space-y-4">
+                    <FileSpreadsheet className="h-16 w-16 mx-auto text-green-500" />
+                    <div>
+                      <p className="text-lg font-medium">{file.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {(file.size / 1024).toFixed(2)} KB
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setFile(null);
+                        setPreview(null);
+                        setImportResult(null);
+                      }}
+                    >
+                      Remove File
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <Upload className="h-16 w-16 mx-auto text-muted-foreground" />
+                    <div>
+                      <p className="text-lg font-medium">
+                        Drag and drop your file here
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        or click to browse
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        document.getElementById('file-upload')?.click()
+                      }
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Choose File
+                    </Button>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileSelect(file);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Upload Progress */}
+              {isProcessing && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Processing...</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <Progress value={uploadProgress} />
+                </div>
+              )}
+
+              {/* Preview */}
+              {preview && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Preview</h3>
+                    <div className="flex gap-2">
+                      <Badge variant="outline">
+                        <CheckCircle className="h-3 w-3 mr-1 text-green-500" />
+                        {preview.validRows} valid
+                      </Badge>
+                      {preview.errors.length > 0 && (
+                        <Badge variant="destructive">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          {preview.errors.length} errors
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          {preview.headers.slice(0, 5).map((header, idx) => (
+                            <TableHead key={idx}>{header}</TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {preview.data.map((row, idx) => (
+                          <TableRow key={idx}>
+                            {preview.headers
+                              .slice(0, 5)
+                              .map((header, cellIdx) => (
+                                <TableCell key={cellIdx}>
+                                  {row[header] || '-'}
+                                </TableCell>
+                              ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    Showing first 10 rows of {preview.totalRows} total
+                  </p>
+
+                  <Button
+                    onClick={handleImport}
+                    disabled={
+                      isProcessing || preview.errors.length >= preview.totalRows
+                    }
+                    className="w-full"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import {preview.validRows} Records
+                  </Button>
+                </div>
+              )}
+
+              {/* Import Results */}
+              {importResult && (
+                <Card className="border-green-200 bg-green-50 dark:bg-green-950/20">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                      <CheckCircle className="h-6 w-6 text-green-600 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-semibold text-green-900 dark:text-green-100">
+                          Import Successful
+                        </p>
+                        <div className="text-sm text-green-700 dark:text-green-300">
+                          <p>✅ {importResult.imported} records imported</p>
+                          {importResult.updated > 0 && (
+                            <p>🔄 {importResult.updated} records updated</p>
+                          )}
+                          {importResult.flagged > 0 && (
+                            <p>
+                              ⚠️ {importResult.flagged} records flagged for
+                              review
+                            </p>
+                          )}
+                          {importResult.errors > 0 && (
+                            <p>❌ {importResult.errors} records failed</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* EXPORT TAB */}
+        <TabsContent value="export" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Export Data</CardTitle>
+              <CardDescription>
+                Download your library data in various formats
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Data Type Selector */}
+              <div className="space-y-2">
+                <Label>Data to Export</Label>
+                <Select
+                  value={exportType}
+                  onValueChange={(v: any) => setExportType(v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="books">Books Collection</SelectItem>
+                    <SelectItem value="students">Students & Users</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Export Options */}
+              <div className="grid gap-4">
+                <Button
+                  variant="outline"
+                  className="h-auto p-6 justify-start"
+                  onClick={() => handleExport('csv')}
+                >
+                  <div className="flex items-start gap-4">
+                    <FileText className="h-8 w-8 text-blue-500" />
+                    <div className="text-left">
+                      <p className="font-semibold">Export as CSV</p>
+                      <p className="text-sm text-muted-foreground">
+                        Compatible with Excel, Google Sheets, and other
+                        spreadsheet apps
+                      </p>
+                    </div>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-auto p-6 justify-start"
+                  onClick={() => handleExport('xlsx')}
+                >
+                  <div className="flex items-start gap-4">
+                    <TableIcon className="h-8 w-8 text-green-500" />
+                    <div className="text-left">
+                      <p className="font-semibold">Export as Excel</p>
+                      <p className="text-sm text-muted-foreground">
+                        Native Microsoft Excel format (.xlsx)
+                      </p>
+                    </div>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-auto p-6 justify-start"
+                  onClick={() => handleExport('google-sheets')}
+                >
+                  <div className="flex items-start gap-4">
+                    <Cloud className="h-8 w-8 text-amber-500" />
+                    <div className="text-left">
+                      <p className="font-semibold">Export to Google Sheets</p>
+                      <p className="text-sm text-muted-foreground">
+                        Create a new Google Sheet with your data
+                      </p>
+                    </div>
+                  </div>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

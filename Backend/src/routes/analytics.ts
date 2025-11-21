@@ -4,12 +4,10 @@ const router = Router();
 import { asyncHandler } from '../middleware/errorHandler';
 import { authenticate } from '../middleware/authenticate';
 import { logger } from '../utils/logger';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { websocketServer } from '../websocket/websocketServer';
 let dashboardCache: { ts: number; data: any } | null = null;
 const DASHBOARD_CACHE_TTL_MS = 30000;
-
-const prisma = new PrismaClient();
 
 // GET /api/analytics/dashboard - Main dashboard statistics
 router.get(
@@ -20,7 +18,10 @@ router.get(
     logger.info('Get dashboard analytics request', {
       userId: (req as any).user?.id,
     });
-    if (dashboardCache && (Date.now() - dashboardCache.ts) < DASHBOARD_CACHE_TTL_MS) {
+    if (
+      dashboardCache &&
+      Date.now() - dashboardCache.ts < DASHBOARD_CACHE_TTL_MS
+    ) {
       res.json({ success: true, data: dashboardCache.data });
       return;
     }
@@ -111,7 +112,13 @@ router.get(
         borrowsByStudent.map(async item => {
           const student = await prisma.students.findUnique({
             where: { id: item.student_id },
-            select: { id: true, student_id: true, first_name: true, last_name: true, grade_level: true },
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+              grade_level: true,
+            },
           });
           return { ...student, active_borrows: item._count.id };
         }),
@@ -186,10 +193,13 @@ router.get(
       });
       const hourlyCounts = Array.from({ length: 24 }, () => 0);
       for (const b of recentBorrowsForHour) {
-        const h = new Date(b.checkout_date as Date).getHours();
+        const h = new Date(b.checkout_date).getHours();
         hourlyCounts[h] = (hourlyCounts[h] || 0) + 1;
       }
-      const borrowsByHour = hourlyCounts.map((count, hour) => ({ hour, count }));
+      const borrowsByHour = hourlyCounts.map((count, hour) => ({
+        hour,
+        count,
+      }));
 
       // Activity distribution (last 30 days)
       const activitiesStart = new Date();
@@ -213,9 +223,16 @@ router.get(
         return { dayStart, dayEnd };
       });
       const dayCounts = await Promise.all(
-        dayRanges.map(r => prisma.book_checkouts.count({ where: { checkout_date: { gte: r.dayStart, lte: r.dayEnd } } }))
+        dayRanges.map(r =>
+          prisma.book_checkouts.count({
+            where: { checkout_date: { gte: r.dayStart, lte: r.dayEnd } },
+          }),
+        ),
       );
-      const borrowsByDay = dayRanges.map((r, i) => ({ date: r.dayStart.toISOString().split('T')[0], count: dayCounts[i] }));
+      const borrowsByDay = dayRanges.map((r, i) => ({
+        date: r.dayStart.toISOString().split('T')[0],
+        count: dayCounts[i],
+      }));
 
       // Borrows by week (last 8 weeks, parallelized)
       const weeks = 8;
@@ -225,51 +242,58 @@ router.get(
       startOfWeekNow.setHours(0, 0, 0, 0);
       const weekRanges = Array.from({ length: weeks }, (_, idx) => {
         const weekStart = new Date(startOfWeekNow);
-        weekStart.setDate(startOfWeekNow.getDate() - ((weeks - 1 - idx) * 7));
+        weekStart.setDate(startOfWeekNow.getDate() - (weeks - 1 - idx) * 7);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 7);
         return { weekStart, weekEnd };
       });
       const weekCounts = await Promise.all(
-        weekRanges.map(r => prisma.book_checkouts.count({ where: { checkout_date: { gte: r.weekStart, lt: r.weekEnd } } }))
+        weekRanges.map(r =>
+          prisma.book_checkouts.count({
+            where: { checkout_date: { gte: r.weekStart, lt: r.weekEnd } },
+          }),
+        ),
       );
-      const borrowsByWeek = weekRanges.map((r, i) => ({ weekStart: r.weekStart.toISOString().split('T')[0], count: weekCounts[i] }));
+      const borrowsByWeek = weekRanges.map((r, i) => ({
+        weekStart: r.weekStart.toISOString().split('T')[0],
+        count: weekCounts[i],
+      }));
 
       const durationMs = Date.now() - startTs;
       logger.info('Analytics dashboard computed', { durationMs });
       const dataPayload = {
-          overview: {
-            total_students: totalStudents,
-            total_books: totalBooks,
-            total_equipment: totalEquipment,
-            total_users: totalUsers,
-            active_borrows: activeBorrows,
-            overdue_borrows: overdueBorrows,
-            returned_borrows: returnedBorrows,
-            available_book_copies: availableBooks._sum.available_copies || 0,
-            total_book_copies: totalBookCopies._sum.total_copies || 0,
-          },
-          popular_books: popularBooksDetails,
-          recent_activities: recentActivities,
-          recent_borrows: recentBorrows,
-          top_users: topUsers,
-          students_by_grade: studentsByGrade,
-          books_by_category: booksByCategory,
-          borrows_by_hour: borrowsByHour,
-          borrows_by_day: borrowsByDay,
-          borrows_by_week: borrowsByWeek,
-          activity_distribution: activityDistribution,
-          statistics: {
-            overdue_rate:
-              activeBorrows > 0
-                ? ((overdueBorrows / activeBorrows) * 100).toFixed(2)
-                : 0,
-            return_rate:
-              (
-                (returnedBorrows / (activeBorrows + returnedBorrows)) *
-                100
-              ).toFixed(2) || 0,
-          },
+        overview: {
+          total_students: totalStudents,
+          total_books: totalBooks,
+          total_equipment: totalEquipment,
+          total_users: totalUsers,
+          active_borrows: activeBorrows,
+          overdue_borrows: overdueBorrows,
+          returned_borrows: returnedBorrows,
+          available_book_copies: availableBooks._sum.available_copies || 0,
+          total_book_copies: totalBookCopies._sum.total_copies || 0,
+        },
+        popular_books: popularBooksDetails,
+        recent_activities: recentActivities,
+        recent_borrows: recentBorrows,
+        top_users: topUsers,
+        students_by_grade: studentsByGrade,
+        books_by_category: booksByCategory,
+        borrows_by_hour: borrowsByHour,
+        borrows_by_day: borrowsByDay,
+        borrows_by_week: borrowsByWeek,
+        activity_distribution: activityDistribution,
+        statistics: {
+          overdue_rate:
+            activeBorrows > 0
+              ? ((overdueBorrows / activeBorrows) * 100).toFixed(2)
+              : 0,
+          return_rate:
+            (
+              (returnedBorrows / (activeBorrows + returnedBorrows)) *
+              100
+            ).toFixed(2) || 0,
+        },
       };
       dashboardCache = { ts: Date.now(), data: dataPayload };
       res.json({ success: true, data: dataPayload });
@@ -277,7 +301,22 @@ router.get(
       logger.error('Error retrieving dashboard analytics', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      res.status(200).json({ success: true, data: { overview: {}, popular_books: [], recent_activities: [], recent_borrows: [], students_by_grade: [], books_by_category: [], borrows_by_hour: [], borrows_by_day: [], borrows_by_week: [], activity_distribution: [], statistics: {} } });
+      res.status(200).json({
+        success: true,
+        data: {
+          overview: {},
+          popular_books: [],
+          recent_activities: [],
+          recent_borrows: [],
+          students_by_grade: [],
+          books_by_category: [],
+          borrows_by_hour: [],
+          borrows_by_day: [],
+          borrows_by_week: [],
+          activity_distribution: [],
+          statistics: {},
+        },
+      });
     }
   }),
 );
@@ -295,13 +334,23 @@ router.post(
   '/export',
   authenticate,
   asyncHandler(async (req: Request, res: Response) => {
-    const { format = 'csv', timeframe = 'week', sections = [] } = req.body as { format?: string; timeframe?: string; sections?: string[] };
+    const {
+      format = 'csv',
+      timeframe = 'week',
+      sections = [],
+    } = req.body as {
+      format?: string;
+      timeframe?: string;
+      sections?: string[];
+    };
 
     try {
       const [studentsCount, booksCount, overdueCount] = await Promise.all([
         prisma.students.count({ where: { is_active: true } }),
         prisma.books.count({ where: { is_active: true } }),
-        prisma.book_checkouts.count({ where: { status: 'ACTIVE', due_date: { lt: new Date() } } }),
+        prisma.book_checkouts.count({
+          where: { status: 'ACTIVE', due_date: { lt: new Date() } },
+        }),
       ]);
 
       const rows = [
@@ -313,17 +362,21 @@ router.post(
 
       try {
         // Get books by category - simplified to avoid type issues
-        const byCategory: any[] = await prisma.books.groupBy({ 
-          by: ['category'], 
-          _count: { category: true } 
-        }).catch(async () => []);
+        const byCategory: any[] = await prisma.books
+          .groupBy({
+            by: ['category'],
+            _count: { category: true },
+          })
+          .catch(async () => []);
 
         for (const c of byCategory) {
-          const name = (c as any).category ?? (c as any).material_type ?? 'Unknown';
-          const count = (c as any)._count?.category ?? (c as any)._count?._all ?? 0;
+          const name = c.category ?? c.material_type ?? 'Unknown';
+          const count = c._count?.category ?? c._count?._all ?? 0;
           rows.push(['Categories', String(name), String(count), timeframe]);
         }
-      } catch {}
+      } catch {
+        // Ignore error
+      }
 
       try {
         const now = new Date();
@@ -333,16 +386,38 @@ router.post(
         prevWeekStart.setDate(startOfWeek.getDate() - 7);
         const prevWeekEnd = new Date(startOfWeek);
 
-        const currentWeekBorrows = await prisma.book_checkouts.count({ where: { checkout_date: { gte: startOfWeek } } });
-        const previousWeekBorrows = await prisma.book_checkouts.count({ where: { checkout_date: { gte: prevWeekStart, lt: prevWeekEnd } } });
-        rows.push(['Trends', 'Week-over-week', String(currentWeekBorrows - previousWeekBorrows), timeframe]);
+        const currentWeekBorrows = await prisma.book_checkouts.count({
+          where: { checkout_date: { gte: startOfWeek } },
+        });
+        const previousWeekBorrows = await prisma.book_checkouts.count({
+          where: { checkout_date: { gte: prevWeekStart, lt: prevWeekEnd } },
+        });
+        rows.push([
+          'Trends',
+          'Week-over-week',
+          String(currentWeekBorrows - previousWeekBorrows),
+          timeframe,
+        ]);
 
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const prevMonthStart = new Date(
+          now.getFullYear(),
+          now.getMonth() - 1,
+          1,
+        );
         const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
-        const currentMonthBorrows = await prisma.book_checkouts.count({ where: { checkout_date: { gte: startOfMonth } } });
-        const previousMonthBorrows = await prisma.book_checkouts.count({ where: { checkout_date: { gte: prevMonthStart, lt: prevMonthEnd } } });
-        rows.push(['Trends', 'Month-over-month', String(currentMonthBorrows - previousMonthBorrows), timeframe]);
+        const currentMonthBorrows = await prisma.book_checkouts.count({
+          where: { checkout_date: { gte: startOfMonth } },
+        });
+        const previousMonthBorrows = await prisma.book_checkouts.count({
+          where: { checkout_date: { gte: prevMonthStart, lt: prevMonthEnd } },
+        });
+        rows.push([
+          'Trends',
+          'Month-over-month',
+          String(currentMonthBorrows - previousMonthBorrows),
+          timeframe,
+        ]);
 
         // Daily series (last 7 days)
         for (let i = 6; i >= 0; i--) {
@@ -352,10 +427,19 @@ router.post(
           dayStart.setHours(0, 0, 0, 0);
           const dayEnd = new Date(date);
           dayEnd.setHours(23, 59, 59, 999);
-          const dailyCount = await prisma.book_checkouts.count({ where: { checkout_date: { gte: dayStart, lte: dayEnd } } });
-          rows.push(['Trends', `Daily ${dayStart.toISOString().split('T')[0]}`, String(dailyCount), timeframe]);
+          const dailyCount = await prisma.book_checkouts.count({
+            where: { checkout_date: { gte: dayStart, lte: dayEnd } },
+          });
+          rows.push([
+            'Trends',
+            `Daily ${dayStart.toISOString().split('T')[0]}`,
+            String(dailyCount),
+            timeframe,
+          ]);
         }
-      } catch {}
+      } catch {
+        // Ignore error
+      }
 
       try {
         const activitiesStart = new Date();
@@ -367,9 +451,16 @@ router.post(
           orderBy: { _count: { id: 'desc' } },
         });
         for (const a of activityDistribution) {
-          rows.push(['Activities', String((a as any).activity_type || 'Unknown'), String((a as any)._count?.id || 0), timeframe]);
+          rows.push([
+            'Activities',
+            String((a as any).activity_type || 'Unknown'),
+            String((a as any)._count?.id || 0),
+            timeframe,
+          ]);
         }
-      } catch {}
+      } catch {
+        // Ignore error
+      }
 
       if (String(format).toLowerCase() === 'json') {
         const payload = { timeframe, sections, rows };
@@ -378,11 +469,16 @@ router.post(
         return;
       }
 
-      const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const csv = rows
+        .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="analytics-${timeframe}-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="analytics-${timeframe}-${new Date().toISOString().split('T')[0]}.csv"`,
+      );
       res.status(200).send(csv);
-    } catch (error) {
+    } catch (_error) {
       const rows = [
         ['Section', 'Metric', 'Value', 'Timeframe'],
         ['Overview', 'Students', '5', timeframe],
@@ -402,7 +498,10 @@ router.post(
       }
       const csv = rows.map(r => r.join(',')).join('\n');
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="analytics-${timeframe}-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="analytics-${timeframe}-${new Date().toISOString().split('T')[0]}.csv"`,
+      );
       res.status(200).send(csv);
     }
   }),
@@ -766,7 +865,11 @@ router.get(
     const outstandingFines = Math.max(0, totalFines - collectedFines);
 
     // Payment trends (daily sums over period)
-    const paymentTrends: Array<{ period: string; amount: number; transactions: number }> = [];
+    const paymentTrends: Array<{
+      period: string;
+      amount: number;
+      transactions: number;
+    }> = [];
     for (let i = (Number.isNaN(days) ? 30 : days) - 1; i >= 0; i--) {
       const day = new Date();
       day.setDate(day.getDate() - i);
@@ -775,11 +878,21 @@ router.get(
       const dayEnd = new Date(day);
       dayEnd.setHours(23, 59, 59, 999);
       const dayPayments = await prisma.book_checkouts.findMany({
-        where: { fine_paid: true, fine_paid_at: { gte: dayStart, lte: dayEnd } },
+        where: {
+          fine_paid: true,
+          fine_paid_at: { gte: dayStart, lte: dayEnd },
+        },
         select: { fine_amount: true },
       });
-      const amount = dayPayments.reduce((sum, r) => sum + (r.fine_amount || 0), 0);
-      paymentTrends.push({ period: dayStart.toISOString().split('T')[0], amount, transactions: dayPayments.length });
+      const amount = dayPayments.reduce(
+        (sum, r) => sum + (r.fine_amount || 0),
+        0,
+      );
+      paymentTrends.push({
+        period: dayStart.toISOString().split('T')[0],
+        amount,
+        transactions: dayPayments.length,
+      });
     }
 
     // Fine categories (by book.category)
@@ -788,20 +901,32 @@ router.get(
       _sum: { fine_amount: true },
       where: { checkout_date: { gte: startDate } },
     });
-    const fineCategories: Array<{ category: string; amount: number; count: number }> = [];
+    const fineCategories: Array<{
+      category: string;
+      amount: number;
+      count: number;
+    }> = [];
     for (const fb of finesByCategory) {
-      const book = await prisma.books.findUnique({ where: { id: fb.book_id }, select: { category: true } });
+      const book = await prisma.books.findUnique({
+        where: { id: fb.book_id },
+        select: { category: true },
+      });
       const category = book?.category || 'Unknown';
       const existing = fineCategories.find(c => c.category === category);
       if (existing) {
         existing.amount += Number((fb as any)._sum?.fine_amount || 0);
         existing.count += 1;
       } else {
-        fineCategories.push({ category, amount: Number((fb as any)._sum?.fine_amount || 0), count: 1 });
+        fineCategories.push({
+          category,
+          amount: Number((fb as any)._sum?.fine_amount || 0),
+          count: 1,
+        });
       }
     }
 
-    const collectionRate = totalFines > 0 ? (collectedFines / totalFines) * 100 : 0;
+    const collectionRate =
+      totalFines > 0 ? (collectedFines / totalFines) * 100 : 0;
 
     res.json({
       success: true,
@@ -814,7 +939,11 @@ router.get(
         collectionRate: Number(collectionRate.toFixed(1)),
         overdueAnalysis: {
           patterns: [],
-          recommendations: ['Automate reminders', 'Offer payment plans', 'Adjust fine policy by grade'],
+          recommendations: [
+            'Automate reminders',
+            'Offer payment plans',
+            'Adjust fine policy by grade',
+          ],
         },
         period_days: Number.isNaN(days) ? 30 : days,
       },

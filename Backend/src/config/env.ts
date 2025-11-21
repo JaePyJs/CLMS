@@ -39,7 +39,8 @@ export function loadEnv(): EnvConfig {
     return cachedEnv;
   }
 
-  const NODE_ENV = (process.env.NODE_ENV as EnvConfig['NODE_ENV']) || 'development';
+  const NODE_ENV =
+    (process.env.NODE_ENV as EnvConfig['NODE_ENV']) || 'development';
   const PORT = Number(process.env.PORT || 3001);
   const HOST = process.env.HOST || 'localhost';
   const DATABASE_URL = process.env.DATABASE_URL || '';
@@ -52,7 +53,9 @@ export function loadEnv(): EnvConfig {
   const MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE || 10485760);
   const UPLOAD_PATH = process.env.UPLOAD_PATH || './uploads';
   const SMTP_HOST = process.env.SMTP_HOST;
-  const SMTP_PORT = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
+  const SMTP_PORT = process.env.SMTP_PORT
+    ? Number(process.env.SMTP_PORT)
+    : undefined;
   const SMTP_USER = process.env.SMTP_USER;
   const SMTP_PASS = process.env.SMTP_PASS;
   const REDIS_URL = process.env.REDIS_URL;
@@ -61,8 +64,10 @@ export function loadEnv(): EnvConfig {
   const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS || 12);
   const RATE_LIMIT_WINDOW = Number(process.env.RATE_LIMIT_WINDOW || 900000);
   const RATE_LIMIT_MAX = Number(process.env.RATE_LIMIT_MAX || 1000);
-  const ENABLE_SWAGGER = String(process.env.ENABLE_SWAGGER || 'false') === 'true';
-  const ENABLE_METRICS = String(process.env.ENABLE_METRICS || 'false') === 'true';
+  const ENABLE_SWAGGER =
+    String(process.env.ENABLE_SWAGGER || 'false') === 'true';
+  const ENABLE_METRICS =
+    String(process.env.ENABLE_METRICS || 'false') === 'true';
   const ENABLE_CACHE = String(process.env.ENABLE_CACHE || 'false') === 'true';
   const WS_DEV_BYPASS = String(process.env.WS_DEV_BYPASS || 'false') === 'true';
 
@@ -96,7 +101,23 @@ export function loadEnv(): EnvConfig {
   };
 
   if (!DATABASE_URL || !JWT_SECRET) {
-    logger.warn('Missing critical environment variables: DATABASE_URL or JWT_SECRET');
+    const missing = [];
+    if (!DATABASE_URL) {
+      missing.push('DATABASE_URL');
+    }
+    if (!JWT_SECRET) {
+      missing.push('JWT_SECRET');
+    }
+
+    if (NODE_ENV === 'production') {
+      throw new Error(
+        `Missing critical environment variables in production: ${missing.join(', ')}`,
+      );
+    } else {
+      logger.warn(
+        `Missing critical environment variables: ${missing.join(', ')}`,
+      );
+    }
   }
 
   logger.info('Environment configuration loaded', {

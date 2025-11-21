@@ -283,7 +283,8 @@ export function clearStoredErrorReports(): void {
 export function toUserMessage(err: unknown): string {
   if (typeof err === 'string') return err;
   const anyErr = err as any;
-  if (anyErr?.message && typeof anyErr.message === 'string') return anyErr.message;
+  if (anyErr?.message && typeof anyErr.message === 'string')
+    return anyErr.message;
   if (anyErr?.error) {
     if (typeof anyErr.error === 'string') return anyErr.error;
     if (typeof anyErr.error?.message === 'string') return anyErr.error.message;

@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
 
 export interface Setting {
   key: string;
@@ -86,12 +84,24 @@ export class SettingsService {
     key: string,
     value: string,
     userId?: string,
+    category?: string,
   ): Promise<boolean> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const updateData: any = { value, updated_by: userId };
+      if (category) {
+        updateData.category = category;
+      }
+
       await prisma.system_settings.upsert({
         where: { key },
-        update: { value, updated_by: userId },
-        create: { key, value, category: 'general', updated_by: userId },
+        update: updateData,
+        create: {
+          key,
+          value,
+          category: category || 'general',
+          updated_by: userId,
+        },
       });
 
       return true;

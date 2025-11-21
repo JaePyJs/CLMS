@@ -122,7 +122,13 @@ export function EquipmentUtilizationAnalytics({
   >([]);
 
   useEffect(() => {
-    if (!data && ((import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development'))) {
+    if (
+      !data &&
+      (import.meta.env.DEV ||
+        String(import.meta.env.VITE_APP_NAME || '')
+          .toLowerCase()
+          .includes('development'))
+    ) {
       setUtilizationData([
         { type: 'Computers', total: 10, inUse: 6, utilizationRate: 60 },
         { type: 'AVR', total: 4, inUse: 2, utilizationRate: 50 },
@@ -133,8 +139,20 @@ export function EquipmentUtilizationAnalytics({
         { hour: 13, sessions: 9, timeRange: '1:00–2:00', utilizationRate: 55 },
       ]);
       setMaintenanceInsights([
-        { equipmentId: 'PC-01', nextMaintenance: new Date(Date.now() + 7*86400000).toISOString(), type: 'Preventive', urgency: 'low', description: 'Routine cleaning' },
-        { equipmentId: 'AVR-02', nextMaintenance: new Date(Date.now() + 3*86400000).toISOString(), type: 'Corrective', urgency: 'medium', description: 'Audio calibration' },
+        {
+          equipmentId: 'PC-01',
+          nextMaintenance: new Date(Date.now() + 7 * 86400000).toISOString(),
+          type: 'Preventive',
+          urgency: 'low',
+          description: 'Routine cleaning',
+        },
+        {
+          equipmentId: 'AVR-02',
+          nextMaintenance: new Date(Date.now() + 3 * 86400000).toISOString(),
+          type: 'Corrective',
+          urgency: 'medium',
+          description: 'Audio calibration',
+        },
       ]);
     }
   }, [data]);
@@ -142,9 +160,14 @@ export function EquipmentUtilizationAnalytics({
   const handleExportEquipment = () => {
     const rows = [
       ['Type', 'Total', 'In Use', 'Utilization %'],
-      ...utilizationData.map(u => [u.type, String(u.total), String(u.inUse), String(u.utilizationRate)])
+      ...utilizationData.map((u) => [
+        u.type,
+        String(u.total),
+        String(u.inUse),
+        String(u.utilizationRate),
+      ]),
     ];
-    const csv = rows.map(r => r.join(',')).join('\n');
+    const csv = rows.map((r) => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -173,8 +196,8 @@ export function EquipmentUtilizationAnalytics({
           inUse: Number(item?.inUse ?? 0),
           utilizationRate: rate,
           status: getUtilizationStatus(rate),
-          avgSessionDuration: Math.random() * 60 + 15, // Mock 15-75 min
-          maintenanceAlerts: Math.floor(Math.random() * 3),
+          avgSessionDuration: 0,
+          maintenanceAlerts: 0,
         } as UtilizationData;
       }
     );
@@ -186,7 +209,7 @@ export function EquipmentUtilizationAnalytics({
         hour: Number(time?.hour ?? 0),
         sessions: Number(time?.sessions ?? 0),
         timeRange: String(time?.timeRange ?? ''),
-        utilizationRate: Math.random() * 40 + 60, // Mock 60-100% during peak
+        utilizationRate: 0,
       })
     ) as PeakUsageTime[];
     setPeakUsageTimes(peakTimes);

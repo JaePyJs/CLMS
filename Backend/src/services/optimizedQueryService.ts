@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { CacheService } from './cacheService';
 import { withQueryTracking } from '../middleware/performanceMonitor';
-
-const prisma = new PrismaClient();
 
 /**
  * Optimized query patterns for better performance

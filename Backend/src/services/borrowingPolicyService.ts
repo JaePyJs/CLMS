@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PrismaClient } from '@prisma/client';
 import { addDays } from 'date-fns';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
+import { prisma } from '../utils/prisma';
 
 export interface CreatePolicyData {
   name?: string;
@@ -45,7 +43,10 @@ export class BorrowingPolicyService {
     }
   }
 
-  public static async updatePolicy(id: string, data: UpdatePolicyData): Promise<any> {
+  public static async updatePolicy(
+    id: string,
+    data: UpdatePolicyData,
+  ): Promise<any> {
     try {
       logger.info('Updating borrowing policy', { id });
       const policy = await prisma.borrowing_policies.update({
@@ -81,9 +82,13 @@ export class BorrowingPolicyService {
     }
   }
 
-  public static async getPolicyByCategory(category: string): Promise<any | null> {
+  public static async getPolicyByCategory(
+    category: string,
+  ): Promise<any | null> {
     try {
-      const policy = await prisma.borrowing_policies.findUnique({ where: { category } });
+      const policy = await prisma.borrowing_policies.findUnique({
+        where: { category },
+      });
       return policy;
     } catch (error) {
       logger.error('Get policy by category failed', {
@@ -94,14 +99,20 @@ export class BorrowingPolicyService {
     }
   }
 
-  public static computeDueDate(checkoutDate: Date, policy: { loan_days: number; overnight: boolean }): Date {
+  public static computeDueDate(
+    checkoutDate: Date,
+    policy: { loan_days: number; overnight: boolean },
+  ): Date {
     if (policy.overnight) {
       return addDays(checkoutDate, 1);
     }
     return addDays(checkoutDate, Math.max(1, policy.loan_days));
   }
 
-  public static async assignDefaultPolicyToBook(bookId: string, policyId: string): Promise<any> {
+  public static async assignDefaultPolicyToBook(
+    bookId: string,
+    policyId: string,
+  ): Promise<any> {
     try {
       logger.info('Assigning default policy to book', { bookId, policyId });
       const book = await prisma.books.update({
