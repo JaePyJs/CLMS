@@ -110,8 +110,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     setUnauthorizedHandler(() => {
       performLogout({
-        message: 'Session expired. Please log in again.',
-        severity: 'error',
+        message: 'Please log in to continue',
+        severity: 'info',
       });
     });
 
@@ -125,7 +125,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     async (username: string, password: string, rememberMe: boolean = false) => {
       try {
         console.log('🚀 Starting login attempt for:', username);
-        
+
         const response = await apiClient.post<LoginResponse>(
           '/api/auth/login',
           {
@@ -139,8 +139,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (response.success && response.data) {
           const { accessToken, refreshToken, user } = response.data;
-          
-          console.log('✅ Login successful, token:', accessToken.substring(0, 10) + '...');
+
+          console.log(
+            '✅ Login successful, token:',
+            accessToken.substring(0, 10) + '...'
+          );
           console.log('👤 User:', user);
 
           // Store token in localStorage or sessionStorage based on rememberMe
@@ -161,7 +164,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
           // Update the access token provider immediately so interceptors can use it
           setAccessTokenProvider(() => accessToken);
-          
+
           console.log('🔄 Calling primeAuthState...');
 
           try {
@@ -220,7 +223,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       console.error('Auth check failed:', error);
       try {
-        const cached = localStorage.getItem('clms_user') || sessionStorage.getItem('clms_user');
+        const cached =
+          localStorage.getItem('clms_user') ||
+          sessionStorage.getItem('clms_user');
         if (cached) {
           const cachedUser = JSON.parse(cached) as AuthUser;
           queryClient.setQueryData(authKeys.current(), cachedUser);
@@ -229,7 +234,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } catch {
         // Ignore JSON parsing errors for invalid cache data
       }
-      performLogout({ message: 'Session expired. Please log in again.', severity: 'error' });
+      performLogout({ message: 'Please log in to continue', severity: 'info' });
       return false;
     }
   }, [performLogout, queryClient]);

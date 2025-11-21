@@ -1,12 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { authenticate, requireRole } from '../middleware/authenticate';
 import { logger } from '../utils/logger';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { FineCalculationService } from '../services/fineCalculationService';
-
-const prisma = new PrismaClient();
 const router = Router();
 
 // GET /api/fines/overdue
@@ -31,9 +28,11 @@ router.get(
   authenticate,
   requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
-    const gradeLevel = parseInt(req.params['gradeLevel'] as string, 10);
+    const gradeLevel = parseInt(req.params['gradeLevel'], 10);
     if (Number.isNaN(gradeLevel)) {
-      res.status(400).json({ success: false, message: 'gradeLevel must be a number' });
+      res
+        .status(400)
+        .json({ success: false, message: 'gradeLevel must be a number' });
       return;
     }
     const rate = await FineCalculationService.getRateForGrade(gradeLevel);
@@ -49,7 +48,8 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { checkoutId } = req.params;
     logger.info('Calculate fine request', { checkoutId });
-    const result = await FineCalculationService.calculateFineForCheckout(checkoutId);
+    const result =
+      await FineCalculationService.calculateFineForCheckout(checkoutId);
     res.json({ success: true, data: result });
   }),
 );

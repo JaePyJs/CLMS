@@ -123,7 +123,7 @@ export function FineCollectionAnalytics({
         ...trend,
         averagePayment:
           trend.transactions > 0 ? trend.amount / trend.transactions : 0,
-        collectionRate: Math.random() * 30 + 70, // Mock 70-100% collection rate
+        collectionRate: 0,
       })) || [];
     setPaymentTrends(trends);
 
@@ -134,11 +134,7 @@ export function FineCollectionAnalytics({
           ...cat,
           percentage: calculatePercentage(cat.amount, analyticsData.totalFines),
           color: FINE_COLORS[index % FINE_COLORS.length],
-          trend: (Math.random() > 0.5
-            ? 'up'
-            : Math.random() > 0.5
-              ? 'down'
-              : 'stable') as 'up' | 'down' | 'stable',
+          trend: 'stable' as 'up' | 'down' | 'stable',
         })
       ) || [];
     setFineCategories(categories);
@@ -173,7 +169,9 @@ export function FineCollectionAnalytics({
         String(t.transactions ?? 0),
         String(t.averagePayment ?? 0),
         String(t.collectionRate ?? 0),
-      ].map((v) => String(v).replace(/,/g, ';')).join(',');
+      ]
+        .map((v) => String(v).replace(/,/g, ';'))
+        .join(',');
       lines.push(row);
     });
     lines.push('');
@@ -185,7 +183,9 @@ export function FineCollectionAnalytics({
         String(c.amount ?? 0),
         String(c.count ?? 0),
         String(c.percentage ?? 0),
-      ].map((v) => String(v).replace(/,/g, ';')).join(',');
+      ]
+        .map((v) => String(v).replace(/,/g, ';'))
+        .join(',');
       lines.push(row);
     });
     const csv = lines.join('\n');
@@ -394,7 +394,15 @@ export function FineCollectionAnalytics({
                       {category.category}
                     </span>
                     {getTrendIcon(category.trend)}
-                    <Badge variant={category.trend === 'up' ? 'default' : category.trend === 'down' ? 'destructive' : 'secondary'}>
+                    <Badge
+                      variant={
+                        category.trend === 'up'
+                          ? 'default'
+                          : category.trend === 'down'
+                            ? 'destructive'
+                            : 'secondary'
+                      }
+                    >
                       {category.trend}
                     </Badge>
                   </div>
@@ -679,8 +687,8 @@ export function FineCollectionAnalytics({
             Comprehensive analysis of fine collection patterns and effectiveness
           </p>
         </div>
-      <div className="flex items-center gap-2">
-        <Badge
+        <div className="flex items-center gap-2">
+          <Badge
             variant={
               data?.collectionRate > 80
                 ? 'default'
@@ -688,15 +696,17 @@ export function FineCollectionAnalytics({
                   ? 'secondary'
                   : 'destructive'
             }
-        >
-          {data?.collectionRate > 80
-            ? 'Excellent'
-            : data?.collectionRate > 60
-              ? 'Good'
-              : 'Needs Attention'}
-        </Badge>
-        <Button size="sm" variant="outline" onClick={exportAnalyticsCsv}>Export CSV</Button>
-      </div>
+          >
+            {data?.collectionRate > 80
+              ? 'Excellent'
+              : data?.collectionRate > 60
+                ? 'Good'
+                : 'Needs Attention'}
+          </Badge>
+          <Button size="sm" variant="outline" onClick={exportAnalyticsCsv}>
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Analytics Tabs */}

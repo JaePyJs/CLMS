@@ -2,7 +2,6 @@ import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
 import { addMinutes } from 'date-fns';
 
-
 interface StudentReminder {
   type: 'overdue_book' | 'book_due_soon' | 'custom' | 'general';
   message: string;
@@ -292,14 +291,14 @@ export class StudentActivityService {
    */
   static async autoLogoutExpiredSessions(): Promise<void> {
     try {
-      // Find all active sessions older than 15 minutes
-      const fifteenMinutesAgo = addMinutes(new Date(), -15);
+      // Find all active sessions older than 2 hours (120 minutes)
+      const twoHoursAgo = addMinutes(new Date(), -120);
 
       const expiredSessions = await prisma.student_activities.findMany({
         where: {
           status: 'ACTIVE',
           end_time: null,
-          start_time: { lt: fifteenMinutesAgo },
+          start_time: { lt: twoHoursAgo },
         },
       });
 
@@ -355,7 +354,7 @@ export class StudentActivityService {
       const sessions = await Promise.all(
         activeSessions.map(async activity => {
           const reminders = await this.getStudentReminders(activity.student_id);
-          const autoLogoutAt = addMinutes(activity.start_time, 15);
+          const autoLogoutAt = addMinutes(activity.start_time, 120);
 
           return {
             activityId: activity.id,
@@ -375,6 +374,39 @@ export class StudentActivityService {
       return sessions;
     } catch (error) {
       logger.error('Failed to get active sessions', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Update student activity section
+   */
+  static async updateActivitySection(
+    activityId: string,
+    section: string,
+  ): Promise<void> {
+    try {
+      await prisma.student_activities.update({
+        where: { id: activityId },
+        data: {
+          activity_type: section, // Using activity_type to store section/area
+          metadata: {
+            updated_at: new Date(),
+            updated_by: 'LIBRARIAN', // Could be dynamic if we pass user context
+          },
+        },
+      });
+
+      logger.info('Updated student activity section', {
+        activityId,
+        section,
+      });
+    } catch (error) {
+      logger.error('Failed to update activity section', {
+        activityId,
+        section,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;

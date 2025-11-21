@@ -29,6 +29,7 @@ interface UsageHeatMapProps {
   description?: string;
   onCellClick?: (data: HeatMapData) => void;
   filterType?: 'all' | 'activity' | 'grade';
+  timeframe?: string;
 }
 
 const ACTIVITY_COLORS = {

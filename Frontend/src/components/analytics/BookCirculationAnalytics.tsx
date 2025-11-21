@@ -136,7 +136,8 @@ export function BookCirculationAnalytics({
 
   const processCirculationData = (analyticsData: CirculationAnalyticsData) => {
     // Process circulation trends
-    const trends: CirculationTrend[] = generateMockTrends(timeframe);
+    // TODO: Connect to real trends data when available in API
+    const trends: CirculationTrend[] = [];
     setCirculationTrends(trends);
 
     // Process category data
@@ -158,34 +159,9 @@ export function BookCirculationAnalytics({
     const books =
       analyticsData.mostBorrowedBooks?.map((book: RawBookData) => ({
         ...book,
-        overdueCount: Math.floor(Math.random() * 5), // Mock overdue count
+        overdueCount: 0, // Default to 0 until real data available
       })) || [];
     setPopularBooks(books);
-  };
-
-  const generateMockTrends = (tf: string): CirculationTrend[] => {
-    const dataPoints = tf === 'day' ? 24 : tf === 'week' ? 7 : 30;
-    const trends: CirculationTrend[] = [];
-
-    for (let i = 0; i < dataPoints; i++) {
-      const baseValue = tf === 'day' ? 15 : tf === 'week' ? 100 : 400;
-      const variation = Math.random() * 0.4 - 0.2; // ±20% variation
-
-      trends.push({
-        date:
-          tf === 'day'
-            ? `${i}:00`
-            : tf === 'week'
-              ? (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i] ??
-                `Day ${i}`)
-              : `Day ${i + 1}`,
-        borrowed: Math.round(baseValue * (1 + variation)),
-        returned: Math.round(baseValue * 0.8 * (1 + variation * 0.5)),
-        overdue: Math.round(baseValue * 0.1 * (1 + variation * 0.3)),
-      });
-    }
-
-    return trends;
   };
 
   const calculatePercentage = (value: number, total: number): number => {

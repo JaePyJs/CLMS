@@ -1,4 +1,4 @@
-import { useState, Suspense, useEffect, lazy } from 'react';
+import { useState, Suspense, useEffect, lazy, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -32,6 +32,7 @@ import {
   RotateCcw,
   Scan,
   History as HistoryIcon,
+  Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorHandling';
@@ -70,9 +71,20 @@ interface Checkout {
   student: Student;
 }
 
+interface RecentScan {
+  id: string;
+  studentName: string;
+  bookTitle: string;
+  timestamp: Date;
+}
+
 export default function BookCheckout() {
   // Tab management (keeping simple useState for UI state)
   const [activeTab, setActiveTab] = useState('checkout');
+  const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
+
+  const studentInputRef = useRef<HTMLInputElement>(null);
+  const bookInputRef = useRef<HTMLInputElement>(null);
 
   // Consolidated loading states for all operations
   const [loadingStates, loadingActions] = useMultipleLoadingStates({
@@ -131,7 +143,10 @@ export default function BookCheckout() {
 
   const computeDueDate = async () => {
     try {
-      const category = checkoutForm.values.policyCategory || checkoutForm.values.selectedBook?.category || 'Fiction';
+      const category =
+        checkoutForm.values.policyCategory ||
+        checkoutForm.values.selectedBook?.category ||
+        'Fiction';
       const resp = await apiClient.post<{ dueDate: string }>(
         '/api/policies/compute-due-date',
         {
@@ -150,10 +165,25 @@ export default function BookCheckout() {
   };
 
   useEffect(() => {
-    if (checkoutForm.values.checkoutStep === 'confirm' && checkoutForm.values.policyCategory) {
+    if (
+      checkoutForm.values.checkoutStep === 'confirm' &&
+      checkoutForm.values.policyCategory
+    ) {
       void computeDueDate();
     }
   }, [checkoutForm.values.checkoutStep, checkoutForm.values.policyCategory]);
+
+  // Auto-focus management
+  useEffect(() => {
+    if (activeTab === 'checkout') {
+      if (checkoutForm.values.checkoutStep === 'student') {
+        // Small timeout to ensure element is mounted and ready
+        setTimeout(() => studentInputRef.current?.focus(), 50);
+      } else if (checkoutForm.values.checkoutStep === 'book') {
+        setTimeout(() => bookInputRef.current?.focus(), 50);
+      }
+    }
+  }, [checkoutForm.values.checkoutStep, activeTab]);
 
   // Scan student
   const handleScanStudent = async () => {
@@ -165,7 +195,11 @@ export default function BookCheckout() {
 
     loadingActions.scanStudent.start();
     try {
-      const resp = await studentsApi.searchStudents(studentBarcode.trim(), 1, 0);
+      const resp = await studentsApi.searchStudents(
+        studentBarcode.trim(),
+        1,
+        0
+      );
       const list = (resp?.data as any[]) || [];
       const s = list[0] || null;
       const student: Student = s
@@ -192,17 +226,9 @@ export default function BookCheckout() {
       checkoutFormActions.setValue('checkoutStep', 'book');
       toast.success(`Student found: ${student.firstName} ${student.lastName}`);
     } catch (error: unknown) {
-      const student: Student = {
-        id: 'S-0001',
-        studentId: 'S-0001',
-        firstName: 'Alice',
-        lastName: 'Example',
-        gradeLevel: 'Grade 5',
-        section: 'A',
-      };
-      checkoutFormActions.setValue('selectedStudent', student as any);
-      checkoutFormActions.setValue('checkoutStep', 'book');
-      toast.info('Using sample student for development');
+      toast.error(getErrorMessage(error, 'Student not found'));
+      // Reset selection on error
+      checkoutFormActions.setValue('selectedStudent', null);
     } finally {
       loadingActions.scanStudent.finish();
     }
@@ -221,25 +247,21 @@ export default function BookCheckout() {
       const search = await enhancedLibraryApi.searchBooks(bookBarcode.trim());
       const arr = Array.isArray(search?.data) ? (search.data as any[]) : [];
       const b = arr[0] || null;
-      const book: Book = b
-        ? {
-            id: b.id || 'BOOK-DEV-1',
-            accessionNo: b.accessionNo || bookBarcode.trim(),
-            title: b.title || 'Sample Book',
-            author: b.author || 'Unknown',
-            category: b.category || 'Fiction',
-            availableCopies: typeof b.availableCopies === 'number' ? b.availableCopies : 1,
-            totalCopies: typeof b.totalCopies === 'number' ? b.totalCopies : 1,
-          }
-        : {
-            id: 'BOOK-DEV-1',
-            accessionNo: bookBarcode.trim(),
-            title: 'Sample Book',
-            author: 'John Doe',
-            category: 'Fiction',
-            availableCopies: 1,
-            totalCopies: 1,
-          };
+
+      if (!b) {
+        throw new Error('Book not found');
+      }
+
+      const book: Book = {
+        id: b.id,
+        accessionNo: b.accessionNo,
+        title: b.title,
+        author: b.author,
+        category: b.category,
+        availableCopies:
+          typeof b.availableCopies === 'number' ? b.availableCopies : 0,
+        totalCopies: typeof b.totalCopies === 'number' ? b.totalCopies : 0,
+      };
 
       if (book.availableCopies <= 0) {
         toast.error('No copies available for checkout');
@@ -247,11 +269,15 @@ export default function BookCheckout() {
       }
 
       checkoutFormActions.setValue('selectedBook', book as any);
-      checkoutFormActions.setValue('policyCategory', book.category || 'Fiction');
+      checkoutFormActions.setValue(
+        'policyCategory',
+        book.category || 'Fiction'
+      );
       checkoutFormActions.setValue('checkoutStep', 'confirm');
       toast.success(`Book found: ${book.title}`);
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, 'Failed to find book'));
+      checkoutFormActions.setValue('selectedBook', null);
     } finally {
       loadingActions.scanBook.finish();
     }
@@ -259,7 +285,8 @@ export default function BookCheckout() {
 
   // Confirm checkout
   const handleConfirmCheckout = async () => {
-    const { selectedStudent, selectedBook, dueDate, policyCategory } = checkoutForm.values;
+    const { selectedStudent, selectedBook, dueDate, policyCategory } =
+      checkoutForm.values;
     if (!selectedStudent || !selectedBook || !dueDate) {
       toast.error('Missing required information');
       return;
@@ -274,6 +301,16 @@ export default function BookCheckout() {
       );
       if (r.success) {
         toast.success('Book checked out successfully!');
+
+        // Add to recent scans
+        const newScan: RecentScan = {
+          id: Date.now().toString(),
+          studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+          bookTitle: selectedBook.title,
+          timestamp: new Date(),
+        };
+        setRecentScans((prev) => [newScan, ...prev].slice(0, 5));
+
         resetCheckout();
       } else {
         toast.error(r.error || 'Failed to checkout book');
@@ -308,7 +345,10 @@ export default function BookCheckout() {
     loadingActions.scanReturn.start();
     try {
       // Try to find active checkout directly by accession barcode
-      const direct = await apiClient.get('/api/enhanced-library/borrowed/by-accession/' + encodeURIComponent(returnBarcode.trim()));
+      const direct = await apiClient.get(
+        '/api/enhanced-library/borrowed/by-accession/' +
+          encodeURIComponent(returnBarcode.trim())
+      );
       const match = (direct?.data as any) || null;
       if (!match) {
         toast.error('No active checkout found for this accession number');
@@ -318,8 +358,12 @@ export default function BookCheckout() {
         id: String(match.id),
         bookId: String(match.book?.id || ''),
         studentId: String(match.student?.id || ''),
-        checkoutDate: String(match.checkout_date || match.borrowedAt || new Date().toISOString()),
-        dueDate: String(match.due_date || match.dueDate || new Date().toISOString()),
+        checkoutDate: String(
+          match.checkout_date || match.borrowedAt || new Date().toISOString()
+        ),
+        dueDate: String(
+          match.due_date || match.dueDate || new Date().toISOString()
+        ),
         status: String(match.status || 'ACTIVE'),
         overdueDays: Number(match.overdueDays || 0),
         fineAmount: String(match.fineAmount || '0'),
@@ -337,7 +381,10 @@ export default function BookCheckout() {
           studentId: String(match.student?.student_id || ''),
           firstName: String(match.student?.first_name || ''),
           lastName: String(match.student?.last_name || ''),
-          gradeLevel: typeof match.student?.grade_level === 'number' ? `Grade ${match.student?.grade_level}` : String(match.student?.grade_level || ''),
+          gradeLevel:
+            typeof match.student?.grade_level === 'number'
+              ? `Grade ${match.student?.grade_level}`
+              : String(match.student?.grade_level || ''),
           section: String(match.student?.section || ''),
         },
       };
@@ -363,7 +410,8 @@ export default function BookCheckout() {
       if (r.success) {
         const items = (r.data as any[]) || [];
         const fine = items[0]?.data?.fineAmount ?? items[0]?.fineAmount ?? 0;
-        const fineNum = typeof fine === 'number' ? fine : parseFloat(String(fine || 0));
+        const fineNum =
+          typeof fine === 'number' ? fine : parseFloat(String(fine || 0));
         if (fineNum > 0) {
           toast.success(`Book returned! Fine: ₱${fineNum.toFixed(2)}`);
         } else {
@@ -470,6 +518,7 @@ export default function BookCheckout() {
                     <div className="flex gap-2">
                       <Input
                         id="studentBarcode"
+                        ref={studentInputRef}
                         placeholder="Enter student ID or scan barcode..."
                         value={checkoutForm.values.studentBarcode}
                         onChange={(e) =>
@@ -529,6 +578,7 @@ export default function BookCheckout() {
                       <div className="flex gap-2">
                         <Input
                           id="bookBarcode"
+                          ref={bookInputRef}
                           placeholder="Enter accession number or scan barcode..."
                           value={checkoutForm.values.bookBarcode}
                           onChange={(e) =>
@@ -659,15 +709,28 @@ export default function BookCheckout() {
                           }
                           min={new Date().toISOString().split('T')[0]}
                         />
-                        <Button variant="outline" size="sm" onClick={computeDueDate}>Compute Due Date</Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={computeDueDate}
+                        >
+                          Compute Due Date
+                        </Button>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="policyCategory">Material Category</Label>
+                        <Label htmlFor="policyCategory">
+                          Material Category
+                        </Label>
                         <select
                           id="policyCategory"
                           className="border rounded h-9 px-2 text-sm"
                           value={checkoutForm.values.policyCategory}
-                          onChange={(e) => checkoutFormActions.setValue('policyCategory', e.target.value)}
+                          onChange={(e) =>
+                            checkoutFormActions.setValue(
+                              'policyCategory',
+                              e.target.value
+                            )
+                          }
                         >
                           <option value="Filipiniana">Filipiniana</option>
                           <option value="General">General</option>
@@ -708,6 +771,41 @@ export default function BookCheckout() {
                 )}
             </CardContent>
           </Card>
+
+          {/* Recent Scans List */}
+          {recentScans.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Recent Scans
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {recentScans.map((scan) => (
+                    <div
+                      key={scan.id}
+                      className="flex items-center justify-between p-2 rounded-lg border bg-muted/50 text-sm"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">{scan.studentName}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {scan.bookTitle}
+                        </span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {scan.timestamp.toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* RETURN TAB */}
@@ -779,87 +877,87 @@ export default function BookCheckout() {
 
       {/* Return Confirmation Dialog */}
       {modalStates.returnConfirm && returnForm.values.activeCheckout && (
-      <Dialog
-        open
-        onOpenChange={(open) => {
-          if (!open) {
-            modalActions.returnConfirm.close();
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Book Return</DialogTitle>
-            <DialogDescription>
-              Review the checkout details below
-            </DialogDescription>
-          </DialogHeader>
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) {
+              modalActions.returnConfirm.close();
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Book Return</DialogTitle>
+              <DialogDescription>
+                Review the checkout details below
+              </DialogDescription>
+            </DialogHeader>
 
-          {returnForm.values.activeCheckout && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div>
-                  <strong>Book:</strong>{' '}
-                  {returnForm.values.activeCheckout.book.title}
-                </div>
-                <div>
-                  <strong>Student:</strong>{' '}
-                  {returnForm.values.activeCheckout.student.firstName}{' '}
-                  {returnForm.values.activeCheckout.student.lastName}
-                </div>
-                <div>
-                  <strong>Checkout Date:</strong>{' '}
-                  {new Date(
-                    returnForm.values.activeCheckout.checkoutDate
-                  ).toLocaleDateString()}
-                </div>
-                <div>
-                  <strong>Due Date:</strong>{' '}
-                  {new Date(
-                    returnForm.values.activeCheckout.dueDate
-                  ).toLocaleDateString()}
-                </div>
+            {returnForm.values.activeCheckout && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div>
+                    <strong>Book:</strong>{' '}
+                    {returnForm.values.activeCheckout.book.title}
+                  </div>
+                  <div>
+                    <strong>Student:</strong>{' '}
+                    {returnForm.values.activeCheckout.student.firstName}{' '}
+                    {returnForm.values.activeCheckout.student.lastName}
+                  </div>
+                  <div>
+                    <strong>Checkout Date:</strong>{' '}
+                    {new Date(
+                      returnForm.values.activeCheckout.checkoutDate
+                    ).toLocaleDateString()}
+                  </div>
+                  <div>
+                    <strong>Due Date:</strong>{' '}
+                    {new Date(
+                      returnForm.values.activeCheckout.dueDate
+                    ).toLocaleDateString()}
+                  </div>
 
-                {returnForm.values.activeCheckout.overdueDays > 0 && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Overdue</AlertTitle>
-                    <AlertDescription>
-                      <div>
-                        {returnForm.values.activeCheckout.overdueDays} day(s)
-                        overdue
-                      </div>
-                      <div className="font-bold">
-                        Fine: ₱
-                        {parseFloat(
-                          returnForm.values.activeCheckout.fineAmount
-                        ).toFixed(2)}
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
+                  {returnForm.values.activeCheckout.overdueDays > 0 && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Overdue</AlertTitle>
+                      <AlertDescription>
+                        <div>
+                          {returnForm.values.activeCheckout.overdueDays} day(s)
+                          overdue
+                        </div>
+                        <div className="font-bold">
+                          Fine: ₱
+                          {parseFloat(
+                            returnForm.values.activeCheckout.fineAmount
+                          ).toFixed(2)}
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => modalActions.returnConfirm.close()}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmReturn}
-              disabled={loadingStates.confirmReturn.isLoading}
-            >
-              {loadingStates.confirmReturn.isLoading
-                ? 'Processing...'
-                : 'Confirm Return'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => modalActions.returnConfirm.close()}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmReturn}
+                disabled={loadingStates.confirmReturn.isLoading}
+              >
+                {loadingStates.confirmReturn.isLoading
+                  ? 'Processing...'
+                  : 'Confirm Return'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

@@ -21,7 +21,6 @@ export { useForm, useMultiStepForm, useFormValidation } from './useFormState';
 // Data refresh and polling hooks
 export {
   useDataRefresh,
-  useBatchRefresh,
   useSmartRefresh,
   useOptimisticRefresh,
 } from './useDataRefresh';

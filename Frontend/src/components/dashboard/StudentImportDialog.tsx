@@ -136,7 +136,9 @@ export function StudentImportDialog({
     failed: number;
     errors: string[];
   }>({ success: 0, failed: 0, errors: [] });
-  const [generatedBarcodes, setGeneratedBarcodes] = useState<Array<{ row: number; barcode: string }>>([]);
+  const [generatedBarcodes, setGeneratedBarcodes] = useState<
+    Array<{ row: number; barcode: string }>
+  >([]);
   const [skipHeaderRow, setSkipHeaderRow] = useState(true);
   // Reset state when dialog closes
   const handleClose = () => {
@@ -432,7 +434,9 @@ export function StudentImportDialog({
         failed: result.errorRecords || 0,
         errors: result.errors || [],
       });
-      setGeneratedBarcodes(Array.isArray(result.generated) ? result.generated : []);
+      setGeneratedBarcodes(
+        Array.isArray(result.generated) ? result.generated : []
+      );
       setCurrentStep('complete');
       queryClient.invalidateQueries({ queryKey: ['students'] });
 
@@ -461,7 +465,7 @@ export function StudentImportDialog({
 
     // Convert field mapping to backend format
     const mappings = Object.entries(fieldMapping)
-      .filter(([_, targetField]) => targetField)
+      .filter(([_, targetField]) => targetField && targetField !== '__ignore__')
       .map(([sourceField, targetField]) => ({
         sourceField,
         targetField,
@@ -492,7 +496,7 @@ export function StudentImportDialog({
 
     // Convert field mapping to backend format
     const mappings = Object.entries(fieldMapping)
-      .filter(([_, targetField]) => targetField)
+      .filter(([_, targetField]) => targetField && targetField !== '__ignore__')
       .map(([sourceField, targetField]) => ({
         sourceField,
         targetField,
@@ -669,22 +673,23 @@ export function StudentImportDialog({
                   <CardHeader>
                     <CardTitle className="text-sm">File Requirements</CardTitle>
                   </CardHeader>
-          <CardContent className="text-sm space-y-2">
-            <p>• File format: CSV (.csv) or Excel (.xlsx, .xls)</p>
-            <p>• Maximum file size: 10MB</p>
-            <p>
-              • Required columns: First Name, Last Name, Grade Level
-            </p>
-            <p>
-              • Optional columns: Section, Email, Phone, Parent Name,
-              Parent Phone, Parent Email, Address, Emergency Contact,
-              Notes
-            </p>
-            <p>
-              • Barcode: If missing, the system generates a unique PN-prefixed barcode
-              (e.g., PN00018). Scanners can read both numeric-only and PN-prefixed codes.
-            </p>
-          </CardContent>
+                  <CardContent className="text-sm space-y-2">
+                    <p>• File format: CSV (.csv) or Excel (.xlsx, .xls)</p>
+                    <p>• Maximum file size: 10MB</p>
+                    <p>
+                      • Required columns: First Name, Last Name, Grade Level
+                    </p>
+                    <p>
+                      • Optional columns: Section, Email, Phone, Parent Name,
+                      Parent Phone, Parent Email, Address, Emergency Contact,
+                      Notes
+                    </p>
+                    <p>
+                      • Barcode: If missing, the system generates a unique
+                      PN-prefixed barcode (e.g., PN00018). Scanners can read
+                      both numeric-only and PN-prefixed codes.
+                    </p>
+                  </CardContent>
                 </Card>
 
                 <div className="flex justify-center">
@@ -736,7 +741,9 @@ export function StudentImportDialog({
                           <SelectValue placeholder="Select field" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Ignore field</SelectItem>
+                          <SelectItem value="__ignore__">
+                            Ignore field
+                          </SelectItem>
                           {AVAILABLE_FIELDS.map((field) => (
                             <SelectItem
                               key={field.targetField}
@@ -972,13 +979,15 @@ export function StudentImportDialog({
                     <AlertDescription>
                       <div className="space-y-1">
                         <p className="font-medium">Import Errors:</p>
-            {importResults.errors
-              .slice(0, 5)
-              .map((error, index) => (
-                <p key={index} className="text-sm text-red-600">
-                  {typeof error === 'string' ? error : String(error)}
-                </p>
-              ))}
+                        {importResults.errors
+                          .slice(0, 5)
+                          .map((error, index) => (
+                            <p key={index} className="text-sm text-red-600">
+                              {typeof error === 'string'
+                                ? error
+                                : String(error)}
+                            </p>
+                          ))}
                         {importResults.errors.length > 5 && (
                           <p className="text-sm text-muted-foreground">
                             ... and {importResults.errors.length - 5} more
@@ -998,7 +1007,9 @@ export function StudentImportDialog({
                         const headers = ['row', 'barcode'];
                         const csv = [headers.join(',')]
                           .concat(
-                            generatedBarcodes.map((g) => `${g.row},${g.barcode}`)
+                            generatedBarcodes.map(
+                              (g) => `${g.row},${g.barcode}`
+                            )
                           )
                           .join('\n');
                         const blob = new Blob([csv], { type: 'text/csv' });

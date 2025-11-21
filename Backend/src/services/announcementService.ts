@@ -2,7 +2,6 @@
 import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
 
-
 export interface CreateAnnouncementData {
   title: string;
   content: string;
@@ -44,7 +43,10 @@ export class AnnouncementService {
     }
   }
 
-  public static async update(id: string, data: UpdateAnnouncementData): Promise<any> {
+  public static async update(
+    id: string,
+    data: UpdateAnnouncementData,
+  ): Promise<any> {
     try {
       const a = await prisma.announcements.update({
         where: { id },
@@ -96,7 +98,9 @@ export class AnnouncementService {
 
   public static async listAll(): Promise<any[]> {
     try {
-      const all = await prisma.announcements.findMany({ orderBy: { created_at: 'desc' } });
+      const all = await prisma.announcements.findMany({
+        orderBy: { created_at: 'desc' },
+      });
       return all;
     } catch (error) {
       logger.error('List announcements failed', {

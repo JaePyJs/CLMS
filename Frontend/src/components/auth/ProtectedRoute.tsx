@@ -32,7 +32,12 @@ export default function ProtectedRoute({
   }
 
   // If role is required and user doesn't have the required role
-  if (!devBypass && requiredRole && user && !hasRequiredRole(user.role, requiredRole)) {
+  if (
+    !devBypass &&
+    requiredRole &&
+    user &&
+    !hasRequiredRole(user.role, requiredRole)
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-background">
         <div className="text-center">

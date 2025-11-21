@@ -39,6 +39,31 @@ router.get(
   }),
 );
 
+// GET /api/v1/books/stats - Get book statistics
+router.get(
+  '/stats',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Get book stats request', {
+      userId: (req as any).user?.id,
+    });
+
+    try {
+      const stats = await BookService.getBookStats();
+
+      res.json({
+        success: true,
+        data: stats,
+      });
+    } catch (error) {
+      logger.error('Error retrieving book stats', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
 // GET /api/v1/books/search
 router.get(
   '/search',
@@ -83,7 +108,142 @@ router.get(
   }),
 );
 
-// GET /api/v1/books/:id
+// GET /api/v1/books/categories - Get all book categories
+router.get(
+  '/categories',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Get book categories request', {
+      userId: (req as any).user?.id,
+    });
+
+    try {
+      const categories = await BookService.getCategories();
+
+      res.json({
+        success: true,
+        data: categories,
+      });
+    } catch (error) {
+      logger.error('Error retrieving categories', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// GET /api/v1/books/quality-check - Get books needing review
+router.get(
+  '/quality-check',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Quality check request', {
+      query: req.query,
+      userId: (req as any).user?.id,
+    });
+
+    try {
+      const { needs_review, temp_barcode } = req.query;
+      const where: any = {};
+
+      if (needs_review === 'true') {
+        where.needs_review = true;
+      }
+
+      if (temp_barcode === 'true') {
+        where.accession_no = {
+          startsWith: 'TEMP-',
+        };
+      }
+
+      const books = await BookService.listBooks({
+        ...where,
+        page: 1,
+        limit: 500,
+      });
+
+      res.json({ success: true, data: books.books });
+    } catch (error) {
+      logger.error('Quality check error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// GET /api/v1/books/quality-stats - Get quality statistics
+router.get(
+  '/quality-stats',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Quality stats request', {
+      userId: (req as any).user?.id,
+    });
+
+    try {
+      const stats = await BookService.getQualityStats();
+      res.json({ success: true, data: stats });
+    } catch (error) {
+      logger.error('Quality stats error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// GET /api/v1/books/export-incomplete - Export incomplete books to CSV
+router.get(
+  '/export-incomplete',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Export incomplete books', {
+      userId: (req as any).user?.id,
+    });
+
+    try {
+      const csvData = await BookService.exportIncomplete();
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="incomplete-books-${new Date().toISOString().split('T')[0]}.csv"`,
+      );
+      res.send(csvData);
+    } catch (error) {
+      logger.error('Export error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// PATCH /api/v1/books/:id/mark-reviewed - Mark book as reviewed
+router.patch(
+  '/:id/mark-reviewed',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Mark book as reviewed', {
+      bookId: req.params['id'],
+      userId: (req as any).user?.id,
+    });
+
+    try {
+      const book = await BookService.markReviewed(req.params['id']);
+      res.json({ success: true, data: book });
+    } catch (error) {
+      logger.error('Mark reviewed error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// GET /api/v1/books/:id - Get a specific book (MUST come after specific routes)
+
 router.get(
   '/:id',
   authenticate,
@@ -325,32 +485,6 @@ router.get(
     } catch (error) {
       logger.error('Error retrieving book history', {
         bookId: req.params['id'],
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
-    }
-  }),
-);
-
-// GET /api/v1/books/search
-// GET /api/v1/books/categories
-router.get(
-  '/categories',
-  authenticate,
-  asyncHandler(async (req: Request, res: Response) => {
-    logger.info('Get book categories request', {
-      userId: (req as any).user?.id,
-    });
-
-    try {
-      const categories = await BookService.getCategories();
-
-      res.json({
-        success: true,
-        data: categories,
-      });
-    } catch (error) {
-      logger.error('Error retrieving categories', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;

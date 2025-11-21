@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
+import { prisma } from '../utils/prisma';
 
 export interface EquipmentUsageStats {
   totalEquipment: number;
@@ -89,9 +87,39 @@ export class EquipmentAutomationService {
    */
   public static async getOverdueEquipment(): Promise<EquipmentOverdueItem[]> {
     try {
-      // Since equipment_sessions doesn't exist in schema, return empty array
-      // In a real implementation, you would track equipment usage sessions
-      const overdueItems: EquipmentOverdueItem[] = [];
+      const overdueSessions = await prisma.equipment_sessions.findMany({
+        where: {
+          status: 'ACTIVE',
+          expected_end: {
+            lt: new Date(),
+          },
+        },
+        include: {
+          equipment: true,
+          student: true,
+        },
+      });
+
+      const overdueItems: EquipmentOverdueItem[] = overdueSessions.map(
+        session => {
+          const now = new Date();
+          const daysOverdue = Math.ceil(
+            (now.getTime() - session.expected_end.getTime()) /
+              (1000 * 60 * 60 * 24),
+          );
+
+          return {
+            id: session.equipment.id,
+            name: session.equipment.name,
+            category: session.equipment.category || 'Uncategorized',
+            student_name: `${session.student.first_name} ${session.student.last_name}`,
+            student_id: session.student.student_id,
+            checkout_date: session.session_start,
+            due_date: session.expected_end,
+            days_overdue: daysOverdue,
+          };
+        },
+      );
 
       logger.info('Retrieved overdue equipment', {
         count: overdueItems.length,
@@ -290,16 +318,46 @@ export class EquipmentAutomationService {
     errors: number;
   }> {
     try {
-      // TODO: Implement auto-return logic once equipment_sessions table is added
-      // const overdueItems = await this.getOverdueEquipment();
+      const overdueSessions = await prisma.equipment_sessions.findMany({
+        where: {
+          status: 'ACTIVE',
+          expected_end: {
+            lt: new Date(),
+          },
+        },
+      });
 
-      const returned = 0;
-      const errors = 0;
+      let returned = 0;
+      let errors = 0;
 
-      // Since equipment_sessions doesn't exist, this is a placeholder
-      logger.info('Auto-return process completed (no sessions to return)', {
-        returned: 0,
-        errors: 0,
+      for (const session of overdueSessions) {
+        try {
+          await prisma.$transaction([
+            prisma.equipment_sessions.update({
+              where: { id: session.id },
+              data: {
+                status: 'COMPLETED',
+                session_end: new Date(),
+                notes: `${session.notes || ''} [Auto-returned by system]`,
+              },
+            }),
+            prisma.equipment.update({
+              where: { id: session.equipment_id },
+              data: { status: 'AVAILABLE' },
+            }),
+          ]);
+          returned++;
+        } catch (err) {
+          errors++;
+          logger.error(`Failed to auto-return session ${session.id}`, {
+            error: err instanceof Error ? err.message : 'Unknown error',
+          });
+        }
+      }
+
+      logger.info('Auto-return process completed', {
+        returned,
+        errors,
       });
 
       return { returned, errors };
@@ -315,8 +373,14 @@ export class EquipmentAutomationService {
    * Get overdue equipment count
    */
   private static async getOverdueEquipmentCount(): Promise<number> {
-    // Since equipment_sessions doesn't exist, return 0
-    return 0;
+    return await prisma.equipment_sessions.count({
+      where: {
+        status: 'ACTIVE',
+        expected_end: {
+          lt: new Date(),
+        },
+      },
+    });
   }
 
   /**

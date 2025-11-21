@@ -79,6 +79,133 @@ router.get(
   }),
 );
 
+// GET /api/settings/system - Get system configuration object
+router.get(
+  '/system',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      logger.info('Get system settings object', {
+        userId: req.user.userId,
+      });
+
+      const settings = await SettingsService.getSettingsByCategory('system');
+
+      // Transform array to object
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const config: Record<string, any> = {};
+
+      // Default values
+      config.libraryName = 'School Library';
+      config.fineRatePerDay = 5.0;
+      config.defaultCheckoutPeriod = 7;
+      config.overdueGracePeriod = 0;
+      config.maxBooksPerStudent = 5;
+      config.sessionTimeout = 30;
+      config.libraryHours = { open: '08:00', close: '18:00' };
+      config.sessionLimits = {
+        PRIMARY: 30,
+        GRADE_SCHOOL: 60,
+        JUNIOR_HIGH: 90,
+        SENIOR_HIGH: 120,
+      };
+
+      settings.forEach(s => {
+        try {
+          if (s.key === 'libraryHours' || s.key === 'sessionLimits') {
+            config[s.key] = JSON.parse(s.value);
+          } else if (
+            [
+              'fineRatePerDay',
+              'defaultCheckoutPeriod',
+              'overdueGracePeriod',
+              'maxBooksPerStudent',
+              'sessionTimeout',
+            ].includes(s.key)
+          ) {
+            config[s.key] = Number(s.value);
+          } else {
+            config[s.key] = s.value;
+          }
+        } catch (e) {
+          logger.warn(`Failed to parse setting ${s.key}`, { error: e });
+        }
+      });
+
+      res.json({
+        success: true,
+        data: config,
+      });
+    } catch (error) {
+      logger.error('Error getting system settings', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve system settings',
+      });
+    }
+  }),
+);
+
+// PUT /api/settings/system - Update system configuration object
+router.put(
+  '/system',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const config = req.body;
+      logger.info('Update system settings object', {
+        userId: req.user.userId,
+        configKeys: Object.keys(config),
+      });
+
+      // Update each setting
+      const updates = [];
+      for (const [key, value] of Object.entries(config)) {
+        let stringValue = String(value);
+        if (typeof value === 'object') {
+          stringValue = JSON.stringify(value);
+        }
+
+        updates.push(
+          SettingsService.updateSetting(
+            key,
+            stringValue,
+            req.user.userId,
+            'system',
+          ),
+        );
+      }
+
+      await Promise.all(updates);
+
+      res.json({
+        success: true,
+        data: config,
+      });
+    } catch (error) {
+      logger.error('Error updating system settings', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update system settings',
+      });
+    }
+  }),
+);
+
 // GET /api/settings/:key - Get a specific setting
 router.get(
   '/:key',

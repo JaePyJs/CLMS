@@ -320,78 +320,13 @@ export function AdvancedReporting() {
     },
   ];
 
-  const mockReports: GeneratedReport[] = [
-    {
-      id: '1',
-      name: 'Weekly Operational Report',
-      type: 'weekly',
-      format: 'html',
-      generated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      status: 'completed',
-      summary:
-        'Library performance shows 15% increase in student engagement this week.',
-      filePath: '/reports/weekly_operational_1.html',
-    },
-    {
-      id: '2',
-      name: 'Monthly Strategic Report',
-      type: 'monthly',
-      format: 'pdf',
-      generated_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      status: 'completed',
-      summary:
-        'ROI analysis shows 23.3% return on investment with positive trends in technology adoption.',
-      filePath: '/reports/monthly_strategic_2.pdf',
-    },
-    {
-      id: '3',
-      name: 'Space Utilization Report',
-      type: 'weekly',
-      format: 'excel',
-      generated_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      status: 'generating',
-      summary: 'Currently generating space utilization analysis...',
-    },
-  ];
+  const mockReports: GeneratedReport[] = [];
 
-  const mockAlerts: AlertConfig[] = [
-    {
-      id: '1',
-      name: 'High Usage Alert',
-      type: 'usage_spike',
-      threshold: 100,
-      operators: 'greater_than',
-      recipients: ['admin@library.edu'],
-      is_active: true,
-      cooldownPeriod: 30,
-      lastTriggered: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '2',
-      name: 'Resource Shortage Alert',
-      type: 'resource_shortage',
-      threshold: 80,
-      operators: 'greater_than',
-      recipients: ['admin@library.edu', 'manager@library.edu'],
-      is_active: true,
-      cooldownPeriod: 15,
-      lastTriggered: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-      id: '3',
-      name: 'System Health Monitor',
-      type: 'system_health',
-      threshold: 85,
-      operators: 'greater_than',
-      recipients: ['admin@library.edu'],
-      is_active: false,
-      cooldownPeriod: 60,
-    },
-  ];
+  const mockAlerts: AlertConfig[] = [];
 
   useEffect(() => {
-    setGeneratedReports(mockReports);
-    setAlertConfigs(mockAlerts);
+    setGeneratedReports([]);
+    setAlertConfigs([]);
   }, []);
 
   const handleGenerateReport = async (

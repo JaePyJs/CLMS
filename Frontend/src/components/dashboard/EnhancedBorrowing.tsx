@@ -19,7 +19,12 @@ interface Book {
   title: string;
   author: string;
   isbn: string;
-  materialType: 'Filipiniana' | 'Fiction' | 'Easy Books' | 'Reference' | 'Textbook';
+  materialType:
+    | 'Filipiniana'
+    | 'Fiction'
+    | 'Easy Books'
+    | 'Reference'
+    | 'Textbook';
   available: boolean;
   location: string;
   dueDate?: string;
@@ -35,20 +40,20 @@ interface Student {
   canBorrow: boolean;
 }
 
-
 const materialPolicies = {
   Filipiniana: { days: 3, description: '3 days loan period' },
   Fiction: { days: 7, description: '7 days loan period' },
   'Easy Books': { days: 1, description: '1 day (overnight) loan period' },
   Reference: { days: 1, description: '1 day (library use only)' },
-  Textbook: { days: 7, description: '7 days loan period' }
+  Textbook: { days: 7, description: '7 days loan period' },
 };
 
 export function EnhancedBorrowing() {
   const [step, setStep] = useState<'student' | 'books' | 'confirm'>('student');
   const [searchTerm, setSearchTerm] = useState('');
   const [bookSearchTerm, setBookSearchTerm] = useState('');
-  const [selectedMaterialType, setSelectedMaterialType] = useState<string>('all');
+  const [selectedMaterialType, setSelectedMaterialType] =
+    useState<string>('all');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedBooks, setSelectedBooks] = useState<Book[]>([]);
   const [notes, setNotes] = useState('');
@@ -64,7 +69,10 @@ export function EnhancedBorrowing() {
         const mapped = (response.data as any[]).map((s: any) => ({
           id: s.id || s.student_id || `S-${Date.now()}`,
           studentId: s.student_id || s.id || 'UNKNOWN',
-          name: `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.name || 'Unknown',
+          name:
+            `${s.first_name || ''} ${s.last_name || ''}`.trim() ||
+            s.name ||
+            'Unknown',
           gradeLevel:
             typeof s.grade_level === 'number'
               ? `Grade ${s.grade_level}`
@@ -91,7 +99,13 @@ export function EnhancedBorrowing() {
         const raw = response.data as any[];
         const toMaterialType = (v: unknown): Book['materialType'] => {
           const s = String(v || '').trim();
-          if (s === 'Filipiniana' || s === 'Fiction' || s === 'Easy Books' || s === 'Reference' || s === 'Textbook') {
+          if (
+            s === 'Filipiniana' ||
+            s === 'Fiction' ||
+            s === 'Easy Books' ||
+            s === 'Reference' ||
+            s === 'Textbook'
+          ) {
             return s as Book['materialType'];
           }
           return 'Fiction';
@@ -102,10 +116,17 @@ export function EnhancedBorrowing() {
           author: String(b.author || ''),
           isbn: String(b.isbn || ''),
           materialType: toMaterialType(b.category || b.materialType),
-          available: Number(b.available_copies ?? 0) > 0 && Boolean(b.is_active ?? true),
+          available:
+            Number(b.available_copies ?? 0) > 0 && Boolean(b.is_active ?? true),
           location: String(b.location || 'General Shelf'),
         }));
-        if ((import.meta.env.DEV || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development')) && (!data || data.length === 0)) {
+        if (
+          (import.meta.env.DEV ||
+            String(import.meta.env.VITE_APP_NAME || '')
+              .toLowerCase()
+              .includes('development')) &&
+          (!data || data.length === 0)
+        ) {
           setBooks([
             {
               id: 'BOOK-1',
@@ -135,8 +156,7 @@ export function EnhancedBorrowing() {
       if (!import.meta.env.DEV) {
         toast.error('Error loading books');
       }
-    }
-    finally {
+    } finally {
       setIsBooksRefreshing(false);
     }
   };
@@ -187,7 +207,10 @@ export function EnhancedBorrowing() {
   }, [students, books]);
 
   const getStudentDisplayName = (s: any) => {
-    const base = typeof s?.name === 'string' && s.name.trim().length > 0 ? s.name : `${s?.firstName ?? ''} ${s?.lastName ?? ''}`.trim();
+    const base =
+      typeof s?.name === 'string' && s.name.trim().length > 0
+        ? s.name
+        : `${s?.firstName ?? ''} ${s?.lastName ?? ''}`.trim();
     return base || '';
   };
 
@@ -203,8 +226,13 @@ export function EnhancedBorrowing() {
     const author = String(book?.author || '').toLowerCase();
     const isbn = String(book?.isbn || '');
     const q = bookSearchTerm.toLowerCase();
-    const matchesSearch = (title && title.includes(q)) || (author && author.includes(q)) || (isbn && isbn.includes(bookSearchTerm));
-    const matchesType = selectedMaterialType === 'all' || book.materialType === selectedMaterialType;
+    const matchesSearch =
+      (title && title.includes(q)) ||
+      (author && author.includes(q)) ||
+      (isbn && isbn.includes(bookSearchTerm));
+    const matchesType =
+      selectedMaterialType === 'all' ||
+      book.materialType === selectedMaterialType;
     return matchesSearch && matchesType && book.available;
   });
 
@@ -221,12 +249,12 @@ export function EnhancedBorrowing() {
   const handleBookToggle = (book: Book) => {
     if (!selectedStudent) return;
 
-    const isSelected = selectedBooks.some(b => b.id === book.id);
+    const isSelected = selectedBooks.some((b) => b.id === book.id);
     const currentCount = selectedBooks.length;
     const maxAllowed = selectedStudent.maxLoans - selectedStudent.currentLoans;
 
     if (isSelected) {
-      setSelectedBooks(selectedBooks.filter(b => b.id !== book.id));
+      setSelectedBooks(selectedBooks.filter((b) => b.id !== book.id));
     } else if (currentCount < maxAllowed) {
       setSelectedBooks([...selectedBooks, book]);
     } else {
@@ -235,7 +263,8 @@ export function EnhancedBorrowing() {
   };
 
   const calculateDueDate = (materialType: string) => {
-    const policy = materialPolicies[materialType as keyof typeof materialPolicies];
+    const policy =
+      materialPolicies[materialType as keyof typeof materialPolicies];
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + (policy?.days || 7));
     return dueDate.toISOString().split('T')[0];
@@ -251,7 +280,7 @@ export function EnhancedBorrowing() {
     try {
       const response = await enhancedLibraryApi.borrowBooks(
         selectedStudent.id,
-        selectedBooks.map(book => book.id),
+        selectedBooks.map((book) => book.id),
         selectedBooks[0].materialType
       );
 
@@ -264,20 +293,33 @@ export function EnhancedBorrowing() {
         fetchBooks();
         fetchStudents();
       } else {
-        if ((import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development')) {
+        if (
+          import.meta.env.DEV ||
+          String(import.meta.env.VITE_APP_NAME || '')
+            .toLowerCase()
+            .includes('development')
+        ) {
           toast.success('Books borrowed in development (sample)');
           setStep('student');
           setSelectedStudent(null);
           setSelectedBooks([]);
           setNotes('');
         } else {
-          const errMsg = typeof (response as any)?.error === 'string' ? (response as any).error : (response as any)?.error?.message || 'Failed to borrow books';
+          const errMsg =
+            typeof (response as any)?.error === 'string'
+              ? (response as any).error
+              : (response as any)?.error?.message || 'Failed to borrow books';
           toast.error(String(errMsg));
         }
       }
     } catch (error) {
       console.error('Error borrowing books:', error);
-      if ((import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development')) {
+      if (
+        import.meta.env.DEV ||
+        String(import.meta.env.VITE_APP_NAME || '')
+          .toLowerCase()
+          .includes('development')
+      ) {
         toast.success('Borrow simulated in development');
         setStep('student');
         setSelectedStudent(null);
@@ -296,9 +338,12 @@ export function EnhancedBorrowing() {
     const colors = {
       Filipiniana: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
       Fiction: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      'Easy Books': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      Reference: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      Textbook: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+      'Easy Books':
+        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      Reference:
+        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      Textbook:
+        'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
     };
     return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
@@ -329,10 +374,12 @@ export function EnhancedBorrowing() {
 
             <div className="space-y-3">
               {filteredStudents.map((student) => (
-                <Card 
-                  key={student.id} 
+                <Card
+                  key={student.id}
                   className={`cursor-pointer transition-all hover:shadow-md ${
-                    student.canBorrow ? 'border-green-200' : 'border-red-200 opacity-60'
+                    student.canBorrow
+                      ? 'border-green-200'
+                      : 'border-red-200 opacity-60'
                   }`}
                   onClick={() => handleStudentSelect(student)}
                 >
@@ -353,11 +400,13 @@ export function EnhancedBorrowing() {
                         <div className="text-sm font-medium">
                           {student.currentLoans}/{student.maxLoans} books
                         </div>
-                        <Badge 
-                          variant={student.canBorrow ? "default" : "destructive"}
+                        <Badge
+                          variant={
+                            student.canBorrow ? 'default' : 'destructive'
+                          }
                           className="text-xs"
                         >
-                          {student.canBorrow ? "Can Borrow" : "Max Reached"}
+                          {student.canBorrow ? 'Can Borrow' : 'Max Reached'}
                         </Badge>
                       </div>
                     </div>
@@ -370,7 +419,9 @@ export function EnhancedBorrowing() {
               <div className="text-center py-8">
                 <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  {searchTerm ? 'No students match your search' : 'No students available'}
+                  {searchTerm
+                    ? 'No students match your search'
+                    : 'No students available'}
                 </p>
               </div>
             )}
@@ -392,13 +443,13 @@ export function EnhancedBorrowing() {
                   Select Books
                 </CardTitle>
                 <CardDescription>
-                  Choose books for {selectedStudent?.name} (max {selectedStudent?.maxLoans - (selectedStudent?.currentLoans || 0)} books)
+                  Choose books for {selectedStudent?.name} (max{' '}
+                  {selectedStudent?.maxLoans -
+                    (selectedStudent?.currentLoans || 0)}{' '}
+                  books)
                 </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                onClick={() => setStep('student')}
-              >
+              <Button variant="outline" onClick={() => setStep('student')}>
                 Change Student
               </Button>
               <Button
@@ -422,13 +473,13 @@ export function EnhancedBorrowing() {
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search books by title, author, or ISBN..."
-                value={bookSearchTerm}
-                onChange={(e) => setBookSearchTerm(e.target.value)}
-                className="pl-10"
-                disabled={isBooksRefreshing}
-              />
+                <Input
+                  placeholder="Search books by title, author, or ISBN..."
+                  value={bookSearchTerm}
+                  onChange={(e) => setBookSearchTerm(e.target.value)}
+                  className="pl-10"
+                  disabled={isBooksRefreshing}
+                />
               </div>
               <select
                 value={selectedMaterialType}
@@ -458,12 +509,14 @@ export function EnhancedBorrowing() {
 
             <div className="grid gap-4">
               {filteredBooks.map((book) => {
-                const isSelected = selectedBooks.some(b => b.id === book.id);
+                const isSelected = selectedBooks.some((b) => b.id === book.id);
                 return (
-                  <Card 
-                    key={book.id} 
+                  <Card
+                    key={book.id}
                     className={`cursor-pointer transition-all ${
-                      isSelected ? 'border-green-500 bg-green-50 dark:bg-green-950' : 'hover:shadow-md'
+                      isSelected
+                        ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                        : 'hover:shadow-md'
                     }`}
                     onClick={() => handleBookToggle(book)}
                   >
@@ -483,7 +536,11 @@ export function EnhancedBorrowing() {
                               by {book.author}
                             </p>
                             <div className="flex items-center gap-2 mt-1">
-                              <Badge className={getMaterialTypeColor(book.materialType)}>
+                              <Badge
+                                className={getMaterialTypeColor(
+                                  book.materialType
+                                )}
+                              >
                                 {book.materialType}
                               </Badge>
                               <span className="text-xs text-muted-foreground">
@@ -514,8 +571,8 @@ export function EnhancedBorrowing() {
               <div className="text-center py-8">
                 <Book className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  {bookSearchTerm || selectedMaterialType !== 'all' 
-                    ? 'No books match your search criteria' 
+                  {bookSearchTerm || selectedMaterialType !== 'all'
+                    ? 'No books match your search criteria'
                     : 'No books available for borrowing'}
                 </p>
               </div>
@@ -534,10 +591,7 @@ export function EnhancedBorrowing() {
             </div>
 
             <div className="flex justify-between mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setStep('student')}
-              >
+              <Button variant="outline" onClick={() => setStep('student')}>
                 Back to Students
               </Button>
               <Button
@@ -562,19 +616,29 @@ export function EnhancedBorrowing() {
               <CheckCircle className="h-5 w-5" />
               Confirm Borrowing
             </CardTitle>
-            <CardDescription>Review and confirm the borrowing details</CardDescription>
+            <CardDescription>
+              Review and confirm the borrowing details
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
               <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                 <h3 className="font-semibold mb-2">Student Information</h3>
-                <p><strong>Name:</strong> {selectedStudent?.name}</p>
-                <p><strong>ID:</strong> {selectedStudent?.studentId}</p>
-                <p><strong>Grade:</strong> {selectedStudent?.gradeLevel}</p>
+                <p>
+                  <strong>Name:</strong> {selectedStudent?.name}
+                </p>
+                <p>
+                  <strong>ID:</strong> {selectedStudent?.studentId}
+                </p>
+                <p>
+                  <strong>Grade:</strong> {selectedStudent?.gradeLevel}
+                </p>
               </div>
 
               <div>
-                <h3 className="font-semibold mb-3">Books to Borrow ({selectedBooks.length})</h3>
+                <h3 className="font-semibold mb-3">
+                  Books to Borrow ({selectedBooks.length})
+                </h3>
                 <div className="space-y-3">
                   {selectedBooks.map((book) => (
                     <Card key={book.id}>
@@ -582,11 +646,15 @@ export function EnhancedBorrowing() {
                         <div className="flex items-center justify-between">
                           <div>
                             <h4 className="font-medium">{book.title}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            by {book.author}
-                          </p>
+                            <p className="text-sm text-muted-foreground">
+                              by {book.author}
+                            </p>
                             <div className="flex items-center gap-2 mt-1">
-                              <Badge className={getMaterialTypeColor(book.materialType)}>
+                              <Badge
+                                className={getMaterialTypeColor(
+                                  book.materialType
+                                )}
+                              >
                                 {book.materialType}
                               </Badge>
                               <span className="text-sm text-muted-foreground">
@@ -610,16 +678,10 @@ export function EnhancedBorrowing() {
               )}
 
               <div className="flex justify-between">
-                <Button
-                  variant="outline"
-                  onClick={() => setStep('books')}
-                >
+                <Button variant="outline" onClick={() => setStep('books')}>
                   Back to Books
                 </Button>
-                <Button
-                  onClick={handleConfirmBorrow}
-                  disabled={isProcessing}
-                >
+                <Button onClick={handleConfirmBorrow} disabled={isProcessing}>
                   {isProcessing ? (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2 animate-spin" />

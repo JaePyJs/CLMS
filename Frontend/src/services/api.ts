@@ -4,7 +4,7 @@ import axios from 'axios';
 const isBrowser = typeof window !== 'undefined';
 const API_BASE_URL = isBrowser
   ? ''
-  : (import.meta.env.VITE_API_URL || 'http://localhost:3001');
+  : import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
@@ -25,7 +25,9 @@ api.interceptors.request.use(
 
     if (token) {
       const authHeader = `Bearer ${token}`;
-      const headersAny = config.headers as unknown as { set?: (key: string, value: string) => void };
+      const headersAny = config.headers as unknown as {
+        set?: (key: string, value: string) => void;
+      };
       if (headersAny && typeof headersAny.set === 'function') {
         headersAny.set('Authorization', authHeader);
       } else {

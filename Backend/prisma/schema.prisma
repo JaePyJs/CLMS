@@ -1,10 +1,14 @@
+// This schema is for Prisma 5.x - the 'url' property is valid for this version
+// IDE warning about Prisma 7 can be safely ignored
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider     = "mysql"
-  url          = env("DATABASE_URL")
+  provider = "mysql"
+  // prisma-ignore: Prisma 5 syntax - url property is valid
+  url      = env("DATABASE_URL")
 }
 
 enum PaperSize {
@@ -19,43 +23,44 @@ enum ColorLevel {
 }
 
 model users {
-  id            String   @id @default(cuid())
-  username      String   @unique
+  id            String    @id @default(cuid())
+  username      String    @unique
   email         String?
   password      String
-  role          String   @default("LIBRARIAN")
+  role          String    @default("LIBRARIAN")
   first_name    String?
   last_name     String?
   full_name     String?
-  is_active     Boolean  @default(true)
+  is_active     Boolean   @default(true)
   last_login_at DateTime?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 }
 
 model students {
-  id            String   @id @default(cuid())
-  student_id    String   @unique
-  first_name    String
-  last_name     String
-  grade_level   Int
+  id             String               @id @default(cuid())
+  student_id     String               @unique
+  first_name     String
+  last_name      String
+  grade_level    Int
   grade_category String?
-  section       String?
-  email         String?
-  phone         String?
-  barcode       String?  @unique
-  photo_url     String?
-  is_active     Boolean  @default(true)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-  checkouts     book_checkouts[]
-  activities    student_activities[]
-  printing_jobs printing_jobs[]
+  section        String?
+  email          String?
+  phone          String?
+  barcode        String?              @unique
+  photo_url      String?
+  is_active      Boolean              @default(true)
+  created_at     DateTime             @default(now())
+  updated_at     DateTime             @updatedAt
+  checkouts      book_checkouts[]
+  activities     student_activities[]
+  printing_jobs  printing_jobs[]
+  equipment_sessions equipment_sessions[]
 }
 
 model books {
-  id                String   @id @default(cuid())
-  isbn              String?  @unique
+  id                String              @id @default(cuid())
+  isbn              String?
   title             String
   author            String
   publisher         String?
@@ -63,147 +68,151 @@ model books {
   category          String?
   subcategory       String?
   location          String?
-  accession_no      String   @unique
-  available_copies  Int      @default(0)
-  total_copies      Int      @default(0)
+  accession_no      String              @unique
+  available_copies  Int                 @default(0)
+  total_copies      Int                 @default(0)
   cost_price        Float?
   edition           String?
   pages             String?
   remarks           String?
   source_of_fund    String?
   volume            String?
-  is_active         Boolean  @default(true)
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  is_active         Boolean             @default(true)
+  needs_review      Boolean             @default(false)
+  import_notes      String?             @db.Text
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
   checkouts         book_checkouts[]
   default_policy_id String?
   default_policy    borrowing_policies? @relation("BookDefaultPolicy", fields: [default_policy_id], references: [id])
 }
 
 model book_checkouts {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   book_id       String
   student_id    String
-  checkout_date DateTime @default(now())
+  checkout_date DateTime  @default(now())
   due_date      DateTime
   return_date   DateTime?
-  status        String   @default("ACTIVE")
-  fine_amount   Float    @default(0)
+  status        String    @default("ACTIVE")
+  fine_amount   Float     @default(0)
   notes         String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 
-  book          books    @relation(fields: [book_id], references: [id])
-  student       students @relation(fields: [student_id], references: [id])
-  policy_id     String?
-  policy        borrowing_policies? @relation(fields: [policy_id], references: [id])
+  book           books               @relation(fields: [book_id], references: [id])
+  student        students            @relation(fields: [student_id], references: [id])
+  policy_id      String?
+  policy         borrowing_policies? @relation(fields: [policy_id], references: [id])
   fine_policy_id String?
-  fine_policy   fine_policies? @relation(fields: [fine_policy_id], references: [id])
-  fine_paid     Boolean  @default(false)
-  fine_paid_at  DateTime?
+  fine_policy    fine_policies?      @relation(fields: [fine_policy_id], references: [id])
+  fine_paid      Boolean             @default(false)
+  fine_paid_at   DateTime?
 }
 
 model equipment {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String
   category      String?
-  serial_number String?  @unique
-  status        String   @default("AVAILABLE")
+  serial_number String?   @unique
+  status        String    @default("AVAILABLE")
   purchase_date DateTime?
-  is_active     Boolean  @default(true)
+  is_active     Boolean   @default(true)
   notes         String?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  sessions      equipment_sessions[]
 }
 
 model student_activities {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   student_id    String
   activity_type String
   description   String?
-  start_time    DateTime @default(now())
+  start_time    DateTime  @default(now())
   end_time      DateTime?
-  status        String   @default("ACTIVE")
+  status        String    @default("ACTIVE")
   metadata      Json?
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 
-  student       students @relation(fields: [student_id], references: [id])
-  session_id    String?
-  sections      student_activities_sections[]
+  student    students                      @relation(fields: [student_id], references: [id])
+  session_id String?
+  sections   student_activities_sections[]
 
   @@unique([session_id])
 }
 
 model library_sections {
-  id          String   @id @default(cuid())
-  code        String   @unique
+  id          String                        @id @default(cuid())
+  code        String                        @unique
   name        String
   description String?
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  is_active   Boolean                       @default(true)
+  created_at  DateTime                      @default(now())
+  updated_at  DateTime                      @updatedAt
   activities  student_activities_sections[]
 
   @@index([code])
 }
 
 model student_activities_sections {
-  id           String   @id @default(cuid())
-  activity_id  String
-  section_id   String
-  created_at   DateTime @default(now())
+  id          String   @id @default(cuid())
+  activity_id String
+  section_id  String
+  created_at  DateTime @default(now())
 
-  activity     student_activities @relation(fields: [activity_id], references: [id])
-  section      library_sections   @relation(fields: [section_id], references: [id])
+  activity student_activities @relation(fields: [activity_id], references: [id])
+  section  library_sections   @relation(fields: [section_id], references: [id])
 
   @@unique([activity_id, section_id])
 }
 
 model borrowing_policies {
-  id          String   @id @default(cuid())
-  name        String?
-  category    String   @unique
-  loan_days   Int
-  overnight   Boolean  @default(false)
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  checkouts   book_checkouts[]
-  default_for_books books[] @relation("BookDefaultPolicy")
+  id                String           @id @default(cuid())
+  name              String?
+  category          String           @unique
+  loan_days         Int
+  overnight         Boolean          @default(false)
+  is_active         Boolean          @default(true)
+  created_at        DateTime         @default(now())
+  updated_at        DateTime         @updatedAt
+  checkouts         book_checkouts[]
+  default_for_books books[]          @relation("BookDefaultPolicy")
 }
 
 model fine_policies {
-  id          String   @id @default(cuid())
-  grade_min   Int
-  grade_max   Int
+  id           String           @id @default(cuid())
+  grade_min    Int
+  grade_max    Int
   rate_per_day Float
-  currency    String   @default("PHP")
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  checkouts   book_checkouts[]
+  currency     String           @default("PHP")
+  is_active    Boolean          @default(true)
+  created_at   DateTime         @default(now())
+  updated_at   DateTime         @updatedAt
+  checkouts    book_checkouts[]
 
   @@index([grade_min, grade_max])
 }
 
 model printing_pricing {
-  id           String     @id @default(cuid())
-  paper_size   PaperSize
-  color_level  ColorLevel
-  price        Float
-  currency     String     @default("PHP")
-  effective_from DateTime @default(now())
-  is_active    Boolean    @default(true)
-  created_at   DateTime   @default(now())
-  updated_at   DateTime   @updatedAt
+  id             String     @id @default(cuid())
+  paper_size     PaperSize
+  color_level    ColorLevel
+  price          Float
+  currency       String     @default("PHP")
+  effective_from DateTime   @default(now())
+  is_active      Boolean    @default(true)
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
 
   @@index([paper_size, color_level])
 }
 
 model printing_jobs {
   id             String     @id @default(cuid())
-  student_id     String
+  student_id     String?
+  guest_name     String?
   paper_size     PaperSize
   color_level    ColorLevel
   pages          Int
@@ -215,68 +224,89 @@ model printing_jobs {
   paid_at        DateTime?
   metadata       Json?
 
-  student        students   @relation(fields: [student_id], references: [id])
+  student students? @relation(fields: [student_id], references: [id])
 
   @@index([student_id])
   @@index([created_at])
 }
 
 model announcements {
-  id          String   @id @default(cuid())
-  title       String
-  content     String
-  start_time  DateTime
-  end_time    DateTime?
-  is_active   Boolean  @default(true)
-  priority    String   @default("NORMAL")
-  created_by_user_id String?
+  id                  String    @id @default(cuid())
+  title               String
+  content             String
+  start_time          DateTime
+  end_time            DateTime?
+  is_active           Boolean   @default(true)
+  priority            String    @default("NORMAL")
+  created_by_user_id  String?
   created_by_username String?
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
 
   @@index([is_active, start_time, end_time])
 }
 
 model system_settings {
-  id                          String   @id @default(cuid())
-  key                         String   @unique
-  value                       String
-  description                 String?
-  category                    String   @default("general")
-  updated_by                  String?
-  created_at                  DateTime @default(now())
-  updated_at                  DateTime @updatedAt
-}
-
-model error_logs {
   id          String   @id @default(cuid())
-  level       String   // ERROR, WARN, INFO
-  message     String
-  stack       String?
-  userId      String?
-  endpoint    String?
-  method      String?
-  userAgent   String?
-  ipAddress   String?
+  key         String   @unique
+  value       String
+  description String?
+  category    String   @default("general")
+  updated_by  String?
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 }
 
+model error_logs {
+  id         String   @id @default(cuid())
+  level      String // ERROR, WARN, INFO
+  message    String
+  stack      String?
+  userId     String?
+  endpoint   String?
+  method     String?
+  userAgent  String?
+  ipAddress  String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
 model app_notifications {
-  id          String   @id @default(cuid())
-  userId      String?
-  type        String   // OVERDUE_BOOK, FINE_ADDED, BOOK_DUE_SOON, etc.
-  title       String
-  message     String
-  priority    String   @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
-  read        Boolean  @default(false)
-  readAt      DateTime?
-  actionUrl   String?
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  expiresAt   DateTime?
+  id        String    @id @default(cuid())
+  userId    String?
+  type      String // OVERDUE_BOOK, FINE_ADDED, BOOK_DUE_SOON, etc.
+  title     String
+  message   String
+  priority  String    @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  read      Boolean   @default(false)
+  readAt    DateTime?
+  actionUrl String?
+  metadata  Json?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
 
   @@index([userId])
   @@index([read])
   @@index([createdAt])
+}
+
+model equipment_sessions {
+  id            String    @id @default(cuid())
+  equipment_id  String
+  student_id    String
+  session_start DateTime  @default(now())
+  session_end   DateTime?
+  expected_end  DateTime
+  status        String    @default("ACTIVE") // ACTIVE, COMPLETED, OVERDUE, CANCELLED
+  notes         String?
+  supervised_by String?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  equipment     equipment @relation(fields: [equipment_id], references: [id])
+  student       students  @relation(fields: [student_id], references: [id])
+
+  @@index([equipment_id])
+  @@index([student_id])
+  @@index([status])
 }

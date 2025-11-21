@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
@@ -43,7 +50,11 @@ export default function LibrarySectionsManager() {
       return;
     }
     try {
-      const res = await apiClient.post<Section>('/api/sections', { code, name, description });
+      const res = await apiClient.post<Section>('/api/sections', {
+        code,
+        name,
+        description,
+      });
       if (res.success && res.data) {
         toast.success('Section created');
         setCode('');
@@ -58,10 +69,14 @@ export default function LibrarySectionsManager() {
 
   const toggleActive = async (id: string, current: boolean) => {
     try {
-      const res = await apiClient.put<Section>(`/api/sections/${id}`, { is_active: !current });
+      const res = await apiClient.put<Section>(`/api/sections/${id}`, {
+        is_active: !current,
+      });
       if (res.success) {
         toast.success('Section updated');
-        setSections((prev) => prev.map((s) => (s.id === id ? { ...s, is_active: !current } : s)));
+        setSections((prev) =>
+          prev.map((s) => (s.id === id ? { ...s, is_active: !current } : s))
+        );
       }
     } catch {
       toast.error('Failed to update section');
@@ -99,11 +114,25 @@ export default function LibrarySectionsManager() {
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 mb-4">
-          <Input placeholder="Code" value={code} onChange={(e) => setCode(e.target.value)} />
-          <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <Input placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <Input
+            placeholder="Code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <Input
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Input
+            placeholder="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
           <Button onClick={createSection}>Add</Button>
-          <Button variant="outline" onClick={seedDefaults}>Seed Defaults</Button>
+          <Button variant="outline" onClick={seedDefaults}>
+            Seed Defaults
+          </Button>
         </div>
         <div className="border rounded-md">
           <Table>
@@ -131,10 +160,19 @@ export default function LibrarySectionsManager() {
                     <TableCell>{s.name}</TableCell>
                     <TableCell>{s.is_active ? 'Active' : 'Inactive'}</TableCell>
                     <TableCell className="flex gap-2">
-                      <Button size="sm" onClick={() => toggleActive(s.id, s.is_active)}>
+                      <Button
+                        size="sm"
+                        onClick={() => toggleActive(s.id, s.is_active)}
+                      >
                         {s.is_active ? 'Disable' : 'Enable'}
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => removeSection(s.id)}>Delete</Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => removeSection(s.id)}
+                      >
+                        Delete
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
