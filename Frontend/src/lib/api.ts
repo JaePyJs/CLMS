@@ -9,6 +9,12 @@ export interface ApiResponse<T = any> {
   error?: string;
   message?: string;
   timestamp?: string;
+  pagination?: {
+    total: number;
+    pages: number;
+    page: number;
+    limit: number;
+  };
 }
 
 // Login response interface
@@ -78,6 +84,12 @@ class ApiClient {
   // Generic PUT request
   async put<T>(url: string, data?: any): Promise<ApiResponse<T>> {
     const response = await this.client.put<ApiResponse<T>>(url, data);
+    return response.data;
+  }
+
+  // Generic PATCH request
+  async patch<T>(url: string, data?: any): Promise<ApiResponse<T>> {
+    const response = await this.client.patch<ApiResponse<T>>(url, data);
     return response.data;
   }
 
@@ -178,8 +190,18 @@ export const automationApi = {
 };
 
 export const studentsApi = {
-  // Get all students
-  getStudents: () => apiClient.get('/api/students'),
+  // Get all students (helper for non-paginated view)
+  getAll: () => apiClient.get('/api/students', { limit: 10000 }),
+
+  // Get all students with pagination
+  getStudents: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    gradeLevel?: string;
+    section?: string;
+    isActive?: boolean;
+  }) => apiClient.get('/api/students', params),
   // Search students
   searchStudents: (q: string, limit: number = 10, offset: number = 0) =>
     apiClient.get('/api/students/search', { q, limit, offset }),
@@ -640,14 +662,13 @@ export const settingsApi = {
   }) => apiClient.get('/api/settings/logs', params),
 
   // User management
-  getUsers: () => apiClient.get('/api/settings/users'),
-  createUser: (userData: any) =>
-    apiClient.post('/api/settings/users', userData),
+  getUsers: () => apiClient.get('/api/users'),
+  createUser: (userData: any) => apiClient.post('/api/users', userData),
   updateUser: (id: string, userData: any) =>
-    apiClient.put(`/api/settings/users/${id}`, userData),
-  deleteUser: (id: string) => apiClient.delete(`/api/settings/users/${id}`),
+    apiClient.put(`/api/users/${id}`, userData),
+  deleteUser: (id: string) => apiClient.delete(`/api/users/${id}`),
   changePassword: (id: string, password: string) =>
-    apiClient.post(`/api/settings/users/${id}/change-password`, {
+    apiClient.post(`/api/users/${id}/change-password`, {
       newPassword: password,
     }),
 };
@@ -710,7 +731,8 @@ export const enhancedLibraryApi = {
   },
 
   // Overdue Management
-  getOverdueLoans: (config?: any) => apiClient.get('/api/enhanced-library/overdue', config),
+  getOverdueLoans: (config?: any) =>
+    apiClient.get('/api/enhanced-library/overdue', config),
 
   getStudentOverdue: (studentId: string) =>
     apiClient.get(`/api/enhanced-library/overdue/${studentId}`),

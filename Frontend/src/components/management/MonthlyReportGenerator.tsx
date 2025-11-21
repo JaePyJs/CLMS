@@ -4,7 +4,14 @@ import { toUserMessage } from '@/utils/error-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { downloadCSV, downloadJSON, printReport } from '@/lib/export-utils';
 import { toast } from 'sonner';
 
@@ -39,7 +46,10 @@ export default function MonthlyReportGenerator() {
         uniqueStudents: (metrics.data as any)?.uniqueStudents || 0,
         booksBorrowed: (metrics.data as any)?.booksBorrowed || 0,
         booksReturned: (metrics.data as any)?.booksReturned || 0,
-        printingTotal: (printRes.data || []).reduce((sum: number, j: any) => sum + (j.total_cost || 0), 0),
+        printingTotal: (printRes.data || []).reduce(
+          (sum: number, j: any) => sum + (j.total_cost || 0),
+          0
+        ),
         finesCollected: 0,
       };
       setSummary(s);
@@ -48,7 +58,14 @@ export default function MonthlyReportGenerator() {
       toast.success('Report ready');
     } catch (e) {
       toast.error(toUserMessage(e));
-      setSummary({ totalVisits: 0, uniqueStudents: 0, booksBorrowed: 0, booksReturned: 0, printingTotal: 0, finesCollected: 0 });
+      setSummary({
+        totalVisits: 0,
+        uniqueStudents: 0,
+        booksBorrowed: 0,
+        booksReturned: 0,
+        printingTotal: 0,
+        finesCollected: 0,
+      });
       setOverdue([]);
       setPrinting([]);
     } finally {
@@ -81,11 +98,23 @@ export default function MonthlyReportGenerator() {
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 mb-4">
-          <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
-          <Button onClick={loadData} disabled={busy}>{busy ? 'Generating...' : 'Generate'}</Button>
-          <Button variant="outline" onClick={exportCSV} disabled={!summary}>Export CSV</Button>
-          <Button variant="outline" onClick={exportJSONAll} disabled={!summary}>Export JSON</Button>
-          <Button variant="secondary" onClick={printReport}>Print</Button>
+          <Input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+          />
+          <Button onClick={loadData} disabled={busy}>
+            {busy ? 'Generating...' : 'Generate'}
+          </Button>
+          <Button variant="outline" onClick={exportCSV} disabled={!summary}>
+            Export CSV
+          </Button>
+          <Button variant="outline" onClick={exportJSONAll} disabled={!summary}>
+            Export JSON
+          </Button>
+          <Button variant="secondary" onClick={printReport}>
+            Print
+          </Button>
         </div>
         {summary && (
           <div className="border rounded-md mb-4">
@@ -97,12 +126,30 @@ export default function MonthlyReportGenerator() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow><TableCell>Total Visits</TableCell><TableCell>{summary.totalVisits}</TableCell></TableRow>
-                <TableRow><TableCell>Unique Students</TableCell><TableCell>{summary.uniqueStudents}</TableCell></TableRow>
-                <TableRow><TableCell>Books Borrowed</TableCell><TableCell>{summary.booksBorrowed}</TableCell></TableRow>
-                <TableRow><TableCell>Books Returned</TableCell><TableCell>{summary.booksReturned}</TableCell></TableRow>
-                <TableRow><TableCell>Printing Total</TableCell><TableCell>{summary.printingTotal}</TableCell></TableRow>
-                <TableRow><TableCell>Fines Collected</TableCell><TableCell>{summary.finesCollected}</TableCell></TableRow>
+                <TableRow>
+                  <TableCell>Total Visits</TableCell>
+                  <TableCell>{summary.totalVisits}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Unique Students</TableCell>
+                  <TableCell>{summary.uniqueStudents}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Books Borrowed</TableCell>
+                  <TableCell>{summary.booksBorrowed}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Books Returned</TableCell>
+                  <TableCell>{summary.booksReturned}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Printing Total</TableCell>
+                  <TableCell>{summary.printingTotal}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Fines Collected</TableCell>
+                  <TableCell>{summary.finesCollected}</TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </div>
@@ -119,7 +166,9 @@ export default function MonthlyReportGenerator() {
               <TableBody>
                 {overdue.map((o: any) => (
                   <TableRow key={o.id}>
-                    <TableCell>{`${o.student?.first_name || ''} ${o.student?.last_name || ''}`.trim()}</TableCell>
+                    <TableCell>
+                      {`${o.student?.first_name || ''} ${o.student?.last_name || ''}`.trim()}
+                    </TableCell>
                     <TableCell>{o.book?.title || ''}</TableCell>
                   </TableRow>
                 ))}

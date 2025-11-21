@@ -4,9 +4,14 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
   type ReactNode,
 } from 'react';
-import { useWebSocket, type WebSocketState, type WebSocketMessage } from '@/hooks/useWebSocket';
+import {
+  useWebSocket,
+  type WebSocketState,
+  type WebSocketMessage,
+} from '@/hooks/useWebSocket';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Define types for WebSocket data structures
@@ -109,8 +114,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       case 'equipment_status_update':
         setEquipmentStatus((prev: EquipmentStatus) => ({
           ...prev,
-          [(message.data as { equipmentId: string }).equipmentId]:
-            message.data,
+          [(message.data as { equipmentId: string }).equipmentId]: message.data,
         }));
         break;
       case 'system_notification':
@@ -119,14 +123,23 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
           ...prev.slice(0, 49),
         ]);
         break;
-      case 'dashboard_data':
+      case 'dashboard_data': {
+        const { dataType, data } = message.data as {
+          dataType: string;
+          data: any;
+        };
         setDashboardData((prev: DashboardData) => ({
           ...prev,
-          [(message.data as { dataType: string }).dataType]: (
-            message.data as { data: unknown }
-          ).data,
+          [dataType]: data,
         }));
+
+        if (dataType === 'activities' && Array.isArray(data)) {
+          setRecentActivities(data);
+        } else if (dataType === 'equipment' && typeof data === 'object') {
+          setEquipmentStatus(data);
+        }
         break;
+      }
     }
   }, []);
 
@@ -142,15 +155,20 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     console.debug('WebSocket connected');
   }, []);
 
+  const wsOptions = useMemo(
+    () => ({
+      autoConnect: true,
+      subscriptions: ['activities', 'equipment', 'notifications', 'dashboard'],
+      onMessage: handleMessage,
+      onError: handleError,
+      onDisconnect: handleDisconnect,
+      onConnect: handleConnect,
+    }),
+    [handleMessage, handleError, handleDisconnect, handleConnect]
+  );
+
   // WebSocket connection
-  const ws = useWebSocket({
-    autoConnect: true,
-    subscriptions: ['activities', 'equipment', 'notifications', 'dashboard'],
-    onMessage: handleMessage,
-    onError: handleError,
-    onDisconnect: handleDisconnect,
-    onConnect: handleConnect,
-  });
+  const ws = useWebSocket(wsOptions);
 
   // Clear notifications
   const clearNotifications = useCallback(() => {
@@ -182,7 +200,9 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
 
   const contextValue: WebSocketContextType = {
     ...ws,
-    isConnected: ws.isConnected || String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true',
+    isConnected:
+      ws.isConnected ||
+      String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true',
     recentActivities,
     equipmentStatus,
     notifications,

@@ -4,7 +4,14 @@ import { toUserMessage } from '@/utils/error-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
@@ -32,7 +39,8 @@ export default function AnnouncementManager() {
         setItems(res.data);
       } else {
         setItems([]);
-        if (!import.meta.env.DEV) toast.error(res.error || 'Failed to load announcements');
+        if (!import.meta.env.DEV)
+          toast.error(res.error || 'Failed to load announcements');
       }
     } catch (e) {
       setItems([]);
@@ -93,10 +101,26 @@ export default function AnnouncementManager() {
       </CardHeader>
       <CardContent>
         <div className="grid md:grid-cols-2 gap-3 mb-4">
-          <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <Input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} />
-          <Textarea placeholder="Content" value={content} onChange={(e) => setContent(e.target.value)} />
-          <Input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} />
+          <Input
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <Input
+            type="datetime-local"
+            value={start}
+            onChange={(e) => setStart(e.target.value)}
+          />
+          <Textarea
+            placeholder="Content"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+          />
+          <Input
+            type="datetime-local"
+            value={end}
+            onChange={(e) => setEnd(e.target.value)}
+          />
           <div className="col-span-2">
             <Button onClick={create}>Add</Button>
           </div>
@@ -115,10 +139,20 @@ export default function AnnouncementManager() {
               {items.map((a) => (
                 <TableRow key={a.id}>
                   <TableCell>{a.title}</TableCell>
-                  <TableCell>{new Date(a.start_time).toLocaleString()}</TableCell>
-                  <TableCell>{a.end_time ? new Date(a.end_time).toLocaleString() : '-'}</TableCell>
                   <TableCell>
-                    <Button size="sm" variant="destructive" onClick={() => remove(a.id)}>Delete</Button>
+                    {new Date(a.start_time).toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    {a.end_time ? new Date(a.end_time).toLocaleString() : '-'}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => remove(a.id)}
+                    >
+                      Delete
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

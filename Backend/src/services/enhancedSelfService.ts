@@ -1,10 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
-import { BarcodeService } from './barcodeService.js';
-
-const prisma = new PrismaClient();
+import { GoogleSheetsService } from './googleSheetsService';
+import { prisma } from '../utils/prisma';
 
 export interface CheckInWithSectionsInput {
   studentId: string;
@@ -26,23 +24,43 @@ export class EnhancedSelfService {
     sectionCodes: string[],
   ): Promise<CheckInWithSectionsResult> {
     try {
-      if (!BarcodeService.validateBarcode(scanData)) {
-        return { success: false, message: 'Invalid barcode' };
-      }
+      // Allow searching by student_id or barcode
       const student = await prisma.students.findFirst({
-        where: { barcode: scanData, is_active: true },
+        where: {
+          OR: [{ barcode: scanData }, { student_id: scanData }],
+          is_active: true,
+        },
       });
+
       if (!student) {
-        return { success: false, message: 'Student not found with this barcode' };
+        return {
+          success: false,
+          message: 'Student not found with this barcode or ID',
+        };
       }
       const active = await prisma.student_activities.findFirst({
         where: { student_id: student.id, status: 'ACTIVE' },
         orderBy: { start_time: 'desc' },
       });
       if (active) {
+        const now = new Date();
+        const startTime = new Date(active.start_time);
+        const durationMinutes =
+          (now.getTime() - startTime.getTime()) / 1000 / 60;
+
+        if (durationMinutes < 15) {
+          return {
+            success: false,
+            message: 'You are already logged in. No need to tap again.',
+          };
+        }
+
         return await this.checkOut(student.id, active.id);
       }
-      return await this.checkInWithSections({ studentId: student.id, sectionCodes });
+      return await this.checkInWithSections({
+        studentId: student.id,
+        sectionCodes,
+      });
     } catch (error) {
       logger.error('Process scan with selection failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -51,9 +69,13 @@ export class EnhancedSelfService {
     }
   }
 
-  public static async checkInWithSections(input: CheckInWithSectionsInput): Promise<CheckInWithSectionsResult> {
+  public static async checkInWithSections(
+    input: CheckInWithSectionsInput,
+  ): Promise<CheckInWithSectionsResult> {
     try {
-      const student = await prisma.students.findUnique({ where: { id: input.studentId } });
+      const student = await prisma.students.findUnique({
+        where: { id: input.studentId },
+      });
       if (!student) {
         return { success: false, message: 'Student not found' };
       }
@@ -63,7 +85,9 @@ export class EnhancedSelfService {
       if (existing) {
         return { success: false, message: 'Student is already checked in' };
       }
-      const cooldownRemaining = await this.getCooldownRemaining(input.studentId);
+      const cooldownRemaining = await this.getCooldownRemaining(
+        input.studentId,
+      );
       if (cooldownRemaining > 0) {
         return {
           success: false,
@@ -91,6 +115,22 @@ export class EnhancedSelfService {
         });
         mappings.push(map);
       }
+
+      // Google Sheets Integration
+      try {
+        const row = [
+          student.student_id,
+          `${student.first_name} ${student.last_name}`,
+          student.grade_level.toString(),
+          'CHECK_IN',
+          new Date().toISOString(),
+          validSections.map(s => s.name).join(', '),
+        ];
+        await GoogleSheetsService.appendRow(row);
+      } catch (e) {
+        logger.error('Google Sheets push failed', e);
+      }
+
       return {
         success: true,
         message: 'Checked in successfully',
@@ -107,17 +147,26 @@ export class EnhancedSelfService {
     }
   }
 
-  public static async checkOut(studentId: string, activityId?: string): Promise<CheckInWithSectionsResult> {
+  public static async checkOut(
+    studentId: string,
+    activityId?: string,
+  ): Promise<CheckInWithSectionsResult> {
     try {
-      const student = await prisma.students.findUnique({ where: { id: studentId } });
-      if (!student) return { success: false, message: 'Student not found' };
+      const student = await prisma.students.findUnique({
+        where: { id: studentId },
+      });
+      if (!student) {
+        return { success: false, message: 'Student not found' };
+      }
       const activity = activityId
-        ? await prisma.student_activities.findUnique({ where: { id: activityId } })
+        ? await prisma.student_activities.findUnique({
+            where: { id: activityId },
+          })
         : await prisma.student_activities.findFirst({
             where: { student_id: studentId, status: 'ACTIVE' },
             orderBy: { start_time: 'desc' },
           });
-      if (!activity || activity.status !== 'ACTIVE') {
+      if (activity?.status !== 'ACTIVE') {
         return { success: false, message: 'No active session found' };
       }
       const updated = await prisma.student_activities.update({
@@ -125,7 +174,25 @@ export class EnhancedSelfService {
         data: { status: 'COMPLETED', end_time: new Date() },
       });
       const endTime = updated.end_time ?? new Date();
-      const timeSpent = Math.floor((endTime.getTime() - updated.start_time.getTime()) / 1000 / 60);
+      const timeSpent = Math.floor(
+        (endTime.getTime() - updated.start_time.getTime()) / 1000 / 60,
+      );
+
+      // Google Sheets Integration
+      try {
+        const row = [
+          student.student_id,
+          `${student.first_name} ${student.last_name}`,
+          student.grade_level.toString(),
+          'CHECK_OUT',
+          endTime.toISOString(),
+          `Duration: ${timeSpent} mins`,
+        ];
+        await GoogleSheetsService.appendRow(row);
+      } catch (e) {
+        logger.error('Google Sheets push failed', e);
+      }
+
       return {
         success: true,
         message: `Checked out successfully. Time spent: ${timeSpent} minutes`,
@@ -152,17 +219,27 @@ export class EnhancedSelfService {
     }
   }
 
-  private static async getCooldownRemaining(studentId: string): Promise<number> {
+  private static async getCooldownRemaining(
+    studentId: string,
+  ): Promise<number> {
     try {
       const minimumInterval = await this.getMinimumCheckInInterval();
       const lastActivity = await prisma.student_activities.findFirst({
-        where: { student_id: studentId, status: 'COMPLETED', end_time: { not: null } },
+        where: {
+          student_id: studentId,
+          status: 'COMPLETED',
+          end_time: { not: null },
+        },
         orderBy: { end_time: 'desc' },
       });
-      if (!lastActivity?.end_time) return 0;
+      if (!lastActivity?.end_time) {
+        return 0;
+      }
       const now = new Date();
       const lastCheckOut = new Date(lastActivity.end_time);
-      const elapsed = Math.floor((now.getTime() - lastCheckOut.getTime()) / 1000);
+      const elapsed = Math.floor(
+        (now.getTime() - lastCheckOut.getTime()) / 1000,
+      );
       return Math.max(0, minimumInterval - elapsed);
     } catch {
       return 0;

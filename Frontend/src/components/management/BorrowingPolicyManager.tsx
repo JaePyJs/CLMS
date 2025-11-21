@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
@@ -41,7 +48,11 @@ export default function BorrowingPolicyManager() {
       return;
     }
     try {
-      const res = await apiClient.post<Policy>('/api/policies', { category, loan_days: loanDays, overnight });
+      const res = await apiClient.post<Policy>('/api/policies', {
+        category,
+        loan_days: loanDays,
+        overnight,
+      });
       if (res.success) {
         toast.success('Policy created');
         setCategory('');
@@ -56,9 +67,13 @@ export default function BorrowingPolicyManager() {
 
   const toggleActive = async (id: string, current: boolean) => {
     try {
-      const res = await apiClient.put(`/api/policies/${id}`, { is_active: !current });
+      const res = await apiClient.put(`/api/policies/${id}`, {
+        is_active: !current,
+      });
       if (res.success) {
-        setPolicies((prev) => prev.map((p) => (p.id === id ? { ...p, is_active: !current } : p)));
+        setPolicies((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, is_active: !current } : p))
+        );
       }
     } catch {
       toast.error('Failed to update policy');
@@ -72,10 +87,22 @@ export default function BorrowingPolicyManager() {
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 mb-4">
-          <Input placeholder="Category" value={category} onChange={(e) => setCategory(e.target.value)} />
-          <Input type="number" placeholder="Loan Days" value={loanDays} onChange={(e) => setLoanDays(parseInt(e.target.value || '0', 10))} />
+          <Input
+            placeholder="Category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          />
+          <Input
+            type="number"
+            placeholder="Loan Days"
+            value={loanDays}
+            onChange={(e) => setLoanDays(parseInt(e.target.value || '0', 10))}
+          />
           <div className="flex items-center gap-2">
-            <Checkbox checked={overnight} onCheckedChange={(v) => setOvernight(Boolean(v))} />
+            <Checkbox
+              checked={overnight}
+              onCheckedChange={(v) => setOvernight(Boolean(v))}
+            />
             <span>Overnight</span>
           </div>
           <Button onClick={createPolicy}>Add</Button>
@@ -104,7 +131,12 @@ export default function BorrowingPolicyManager() {
                     <TableCell>{p.overnight ? 'Yes' : 'No'}</TableCell>
                     <TableCell>{p.is_active ? 'Active' : 'Inactive'}</TableCell>
                     <TableCell>
-                      <Button size="sm" onClick={() => toggleActive(p.id, p.is_active)}>{p.is_active ? 'Disable' : 'Enable'}</Button>
+                      <Button
+                        size="sm"
+                        onClick={() => toggleActive(p.id, p.is_active)}
+                      >
+                        {p.is_active ? 'Disable' : 'Enable'}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))

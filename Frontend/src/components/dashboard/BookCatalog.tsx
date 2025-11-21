@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -50,12 +50,18 @@ import {
   RefreshCw,
   MapPin,
   Award,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import {
   TableSkeleton,
   ButtonLoading,
   EmptyState,
 } from '@/components/LoadingStates';
+import { apiClient } from '@/lib/api';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface Book {
   id: string;
@@ -87,9 +93,14 @@ export function BookCatalog() {
   // Mobile optimization
   const { isMobile } = useMobileOptimization();
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [totalBooks, setTotalBooks] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
   // State management
   const [books, setBooks] = useState<Book[]>([]);
-  const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -101,6 +112,9 @@ export function BookCatalog() {
     overdue: 0,
     categories: 0,
   });
+
+  // Debounced search term for API calls
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   // Dialog states
   const [showAddBook, setShowAddBook] = useState(false);
@@ -144,145 +158,86 @@ export function BookCatalog() {
     'Young Adult',
   ];
 
-  // Calculate book statistics
-  const calculateStats = useCallback((booksList: Book[]) => {
-    const total = booksList.length;
-    const available = booksList.filter((b) => Number(b.availableCopies || 0) > 0).length;
-    const checkedOut = booksList.reduce(
-      (sum, b) => sum + Math.max(0, Number(b.totalCopies || 0) - Number(b.availableCopies || 0)),
-      0
-    );
-    const uniqueCategories = new Set(booksList.map((b) => String(b.category || ''))).size;
-
-    setStats({
-      total,
-      available,
-      checkedOut,
-      overdue: 0,
-      categories: uniqueCategories,
-    });
-  }, []);
-
-  // Fetch books from API
+  // Fetch books from API with pagination
   const fetchBooks = useCallback(async () => {
     setIsLoading(true);
     try {
-      const base = String(import.meta.env.VITE_API_URL || 'http://localhost:3001');
-      const token = localStorage.getItem('clms_token') || localStorage.getItem('token');
-      const response = await fetch(`${base}/api/books`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      // Build query params
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pageSize.toString(),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch books');
+      if (debouncedSearchTerm) {
+        params.append('search', debouncedSearchTerm);
       }
 
-      const data = await response.json();
-      if (data.success) {
-        setBooks(data.data.books || []);
-        calculateStats(data.data.books || []);
-      } else {
-        const isDev = (import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
-        if (isDev) {
-          const sample: Book[] = [
-            {
-              id: 'BOOK-1',
-              title: 'Sample Book',
-              author: 'John Doe',
-              isbn: '9780000000001',
-              materialType: 'Fiction',
-              available: true,
-              location: 'Shelf A1',
-            },
-            {
-              id: 'BOOK-2',
-              title: 'Another Sample',
-              author: 'Jane Roe',
-              isbn: '9780000000002',
-              materialType: 'Filipiniana',
-              available: true,
-              location: 'Shelf B2',
-            },
-          ];
-          setBooks(sample);
-          calculateStats(sample);
-        } else {
-          const errMsg = typeof (data as any)?.error === 'string' ? (data as any).error : (data as any)?.error?.message || 'Failed to load books';
-          toast.error(String(errMsg));
+      if (filterCategory && filterCategory !== 'all') {
+        params.append('category', filterCategory);
+      }
+
+      if (filterStatus === 'available') {
+        params.append('available', 'true');
+      } else if (filterStatus === 'unavailable') {
+        params.append('available', 'false');
+      }
+
+      const response = await apiClient.get<any>(
+        `/api/books?${params.toString()}`
+      );
+
+      if (response.success && response.data) {
+        const booksData = Array.isArray(response.data) ? response.data : [];
+        setBooks(booksData);
+
+        // Update pagination info from response
+        if (response.pagination) {
+          setTotalBooks(response.pagination.total || 0);
+          setTotalPages(response.pagination.pages || 1);
         }
+
+        // Fetch stats separately for accurate totals (not affected by filters)
+        fetchStats();
+      } else {
+        toast.error('Failed to load books');
       }
     } catch (error) {
       console.error('Error fetching books:', error);
-      const isDev = (import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
-      if (isDev) {
-        const sample: Book[] = [
-          {
-            id: 'BOOK-1',
-            title: 'Sample Book',
-            author: 'John Doe',
-            isbn: '9780000000001',
-            materialType: 'Fiction',
-            available: true,
-            location: 'Shelf A1',
-          },
-          {
-            id: 'BOOK-2',
-            title: 'Another Sample',
-            author: 'Jane Roe',
-            isbn: '9780000000002',
-            materialType: 'Filipiniana',
-            available: true,
-            location: 'Shelf B2',
-          },
-        ];
-        setBooks(sample);
-        calculateStats(sample);
-      } else {
-        const msg = (error as any)?.message || 'Failed to load books. Please try again.';
-        toast.error(String(msg));
-      }
+      toast.error('Failed to load books. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [calculateStats]);
+  }, [
+    currentPage,
+    pageSize,
+    debouncedSearchTerm,
+    filterCategory,
+    filterStatus,
+  ]);
 
-  // Fetch books on mount
+  // Fetch book statistics
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await apiClient.get<any>('/api/books/stats');
+      if (response.success && response.data) {
+        setStats(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  }, []);
+
+  // Fetch books when dependencies change
   useEffect(() => {
     fetchBooks();
   }, [fetchBooks]);
 
-  // Filter books
+  // Reset to page 1 when filters change
   useEffect(() => {
-    let filtered = books;
-
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (book) =>
-          book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          book.isbn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          book.accessionNo.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+    if (currentPage !== 1) {
+      setCurrentPage(1);
     }
-
-    if (filterCategory !== 'all') {
-      filtered = filtered.filter((book) => book.category === filterCategory);
-    }
-
-    if (filterStatus !== 'all') {
-      if (filterStatus === 'available') {
-        filtered = filtered.filter((book) => book.availableCopies > 0);
-      } else if (filterStatus === 'checkedOut') {
-        filtered = filtered.filter(
-          (book) => book.availableCopies < book.totalCopies
-        );
-      } else if (filterStatus === 'unavailable') {
-        filtered = filtered.filter((book) => book.availableCopies === 0);
-      }
-    }
-
-    setFilteredBooks(filtered);
-  }, [books, searchTerm, filterCategory, filterStatus]);
+  }, [debouncedSearchTerm, filterCategory, filterStatus]);
 
   const handleAddBook = async () => {
     if (
@@ -297,21 +252,12 @@ export function BookCatalog() {
 
     setIsAddingBook(true);
     try {
-      const response = await fetch('http://localhost:3001/api/books', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          ...newBook,
-          availableCopies: newBook.totalCopies,
-        }),
+      const response = await apiClient.post('/api/books', {
+        ...newBook,
+        availableCopies: newBook.totalCopies,
       });
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         toast.success('Book added successfully!');
         setShowAddBook(false);
         setNewBook({
@@ -327,8 +273,7 @@ export function BookCatalog() {
         });
         fetchBooks();
       } else {
-        const errMsg = typeof (data as any)?.error === 'string' ? (data as any).error : (data as any)?.error?.message || 'Failed to add book';
-        toast.error(String(errMsg));
+        toast.error('Failed to add book');
       }
     } catch (error) {
       console.error('Error adding book:', error);
@@ -345,28 +290,18 @@ export function BookCatalog() {
 
     setIsUpdatingBook(true);
     try {
-      const response = await fetch(
-        `http://localhost:3001/api/books/${selectedBook.id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify(selectedBook),
-        }
+      const response = await apiClient.put(
+        `/api/books/${selectedBook.id}`,
+        selectedBook
       );
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         toast.success('Book updated successfully!');
         setShowEditBook(false);
         setSelectedBook(null);
         fetchBooks();
       } else {
-        const errMsg = typeof (data as any)?.error === 'string' ? (data as any).error : (data as any)?.error?.message || 'Failed to update book';
-        toast.error(String(errMsg));
+        toast.error('Failed to update book');
       }
     } catch (error) {
       console.error('Error updating book:', error);
@@ -383,26 +318,15 @@ export function BookCatalog() {
 
     setIsDeletingBook(true);
     try {
-      const response = await fetch(
-        `http://localhost:3001/api/books/${selectedBook.id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
+      const response = await apiClient.delete(`/api/books/${selectedBook.id}`);
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         toast.success('Book deleted successfully!');
         setShowDeleteConfirm(false);
         setSelectedBook(null);
         fetchBooks();
       } else {
-        const errMsg = typeof (data as any)?.error === 'string' ? (data as any).error : (data as any)?.error?.message || 'Failed to delete book';
-        toast.error(String(errMsg));
+        toast.error('Failed to delete book');
       }
     } catch (error) {
       console.error('Error deleting book:', error);
@@ -417,7 +341,7 @@ export function BookCatalog() {
     try {
       const csvContent = [
         'Accession No,ISBN,Title,Author,Publisher,Category,Location,Total Copies,Available Copies,Status',
-        ...filteredBooks.map(
+        ...books.map(
           (b) =>
             `${b.accessionNo},${b.isbn || ''},${b.title},${b.author},${b.publisher || ''},${b.category},${b.location || ''},${b.totalCopies},${b.availableCopies},${b.isActive ? 'Active' : 'Inactive'}`
         ),
@@ -649,17 +573,17 @@ export function BookCatalog() {
       {/* Books Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Books ({filteredBooks.length})</CardTitle>
+          <CardTitle>Books ({totalBooks})</CardTitle>
           <CardDescription>
             {searchTerm || filterCategory !== 'all' || filterStatus !== 'all'
-              ? `Showing ${filteredBooks.length} of ${books.length} books`
+              ? `Showing ${totalBooks} books (page ${currentPage} of ${totalPages})`
               : `All books in your collection`}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <TableSkeleton rows={10} columns={7} />
-          ) : filteredBooks.length === 0 ? (
+          ) : books.length === 0 ? (
             <EmptyState
               icon={BookOpen}
               title="No books found"
@@ -690,7 +614,7 @@ export function BookCatalog() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredBooks.map((book) => (
+                  {books.map((book) => (
                     <TableRow key={book.id}>
                       <TableCell className="font-mono text-sm">
                         {book.accessionNo}
@@ -752,6 +676,78 @@ export function BookCatalog() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {!isLoading && books.length > 0 && (
+            <div className="flex items-center justify-between px-2 py-4">
+              <div className="flex items-center gap-2">
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={(value) => {
+                    setPageSize(parseInt(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[130px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="25">25 per page</SelectItem>
+                    <SelectItem value="50">50 per page</SelectItem>
+                    <SelectItem value="100">100 per page</SelectItem>
+                    <SelectItem value="200">200 per page</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">
+                  Showing {(currentPage - 1) * pageSize + 1} to{' '}
+                  {Math.min(currentPage * pageSize, totalBooks)} of {totalBooks}{' '}
+                  books
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

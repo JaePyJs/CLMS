@@ -127,8 +127,12 @@ export const AttendanceDisplay: React.FC = () => {
       });
       setTimeout(() => setRecentEvent(null), 5000);
     } else if (latestEvent.type === 'attendance_section_change') {
-      const from = Array.isArray(latestEvent.data?.from) ? latestEvent.data.from.join(', ') : '—';
-      const to = Array.isArray(latestEvent.data?.to) ? latestEvent.data.to.join(', ') : '—';
+      const from = Array.isArray(latestEvent.data?.from)
+        ? latestEvent.data.from.join(', ')
+        : '—';
+      const to = Array.isArray(latestEvent.data?.to)
+        ? latestEvent.data.to.join(', ')
+        : '—';
       setRecentEvent({
         id: String(Date.now()),
         type: 'checkin',
@@ -236,7 +240,12 @@ export const AttendanceDisplay: React.FC = () => {
                   {recentEvent.studentName}
                 </p>
                 <div className="mt-4">
-                  <Badge variant={recentEvent.type === 'checkin' ? 'default' : 'secondary'} className="text-2xl px-4 py-2">
+                  <Badge
+                    variant={
+                      recentEvent.type === 'checkin' ? 'default' : 'secondary'
+                    }
+                    className="text-2xl px-4 py-2"
+                  >
                     {recentEvent.type === 'checkin' ? 'IN' : 'OUT'}
                   </Badge>
                 </div>

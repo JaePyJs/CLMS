@@ -8,8 +8,16 @@ declare module 'jsonwebtoken' {
     issuer?: string;
     audience?: string;
   }
-  function sign(payload: string | object | Buffer, secretOrPrivateKey: string, options?: SignOptions): string;
-  function verify(token: string, secretOrPublicKey: string, callback?: (err: Error, decoded: any) => void): any;
+  function sign(
+    payload: string | object | Buffer,
+    secretOrPrivateKey: string,
+    options?: SignOptions,
+  ): string;
+  function verify(
+    token: string,
+    secretOrPublicKey: string,
+    callback?: (err: Error, decoded: any) => void,
+  ): any;
 }
 declare module 'ws' {
   export class WebSocketServer {
@@ -28,7 +36,7 @@ declare module 'ws' {
   }
   const WebSocket: {
     prototype: WebSocket;
-    new(): WebSocket;
+    new (): WebSocket;
   };
   export default WebSocket;
 }

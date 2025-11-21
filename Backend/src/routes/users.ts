@@ -2,9 +2,8 @@ import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { authenticate } from '../middleware/authenticate';
 import { logger } from '../utils/logger';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../utils/prisma';
+import { AuthService } from '../services/authService';
 const router = Router();
 
 // GET /api/users
@@ -88,6 +87,46 @@ router.get(
       });
     } catch (error) {
       logger.error('Error retrieving users', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// GET /api/users/statistics
+router.get(
+  '/statistics',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Get user statistics request', {
+      requestedBy: req.user?.userId,
+    });
+
+    try {
+      const [total, active, inactive, byRole] = await Promise.all([
+        prisma.users.count(),
+        prisma.users.count({ where: { is_active: true } }),
+        prisma.users.count({ where: { is_active: false } }),
+        prisma.users.groupBy({
+          by: ['role'],
+          _count: {
+            role: true,
+          },
+        }),
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          total,
+          active,
+          inactive,
+          byRole,
+        },
+      });
+    } catch (error) {
+      logger.error('Error getting user statistics', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
@@ -307,6 +346,185 @@ router.patch(
       });
     } catch (error) {
       logger.error('Error updating user', {
+        userId: req.params['id'],
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// PATCH /api/users/:id/activate
+router.patch(
+  '/:id/activate',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Activate user request', {
+      targetUserId: req.params['id'],
+      requestedBy: req.user?.userId,
+    });
+
+    try {
+      await prisma.users.update({
+        where: { id: req.params['id'] },
+        data: {
+          is_active: true,
+          updated_at: new Date(),
+        },
+      });
+
+      res.json({
+        success: true,
+        message: 'User activated successfully',
+      });
+    } catch (error) {
+      logger.error('Error activating user', {
+        userId: req.params['id'],
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// PATCH /api/users/:id/deactivate
+router.patch(
+  '/:id/deactivate',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Deactivate user request', {
+      targetUserId: req.params['id'],
+      requestedBy: req.user?.userId,
+    });
+
+    try {
+      await prisma.users.update({
+        where: { id: req.params['id'] },
+        data: {
+          is_active: false,
+          updated_at: new Date(),
+        },
+      });
+
+      res.json({
+        success: true,
+        message: 'User deactivated successfully',
+      });
+    } catch (error) {
+      logger.error('Error deactivating user', {
+        userId: req.params['id'],
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// POST /api/users/:id/change-password
+router.post(
+  '/:id/change-password',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Change user password request', {
+      targetUserId: req.params['id'],
+      requestedBy: req.user?.userId,
+    });
+
+    try {
+      const { oldPassword, newPassword } = req.body;
+
+      if (!oldPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Old password and new password are required',
+        });
+      }
+
+      // Get current user password
+      const user = await prisma.users.findUnique({
+        where: { id: req.params['id'] },
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found',
+        });
+      }
+
+      // Verify old password
+      const isValid = await AuthService.verifyPassword(
+        oldPassword,
+        user.password,
+      );
+
+      if (!isValid) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid old password',
+        });
+      }
+
+      const hashedPassword = await AuthService.hashPassword(newPassword);
+
+      await prisma.users.update({
+        where: { id: req.params['id'] },
+        data: {
+          password: hashedPassword,
+          updated_at: new Date(),
+        },
+      });
+
+      res.json({
+        success: true,
+        message: 'Password changed successfully',
+      });
+    } catch (error) {
+      logger.error('Error changing password', {
+        userId: req.params['id'],
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// POST /api/users/:id/reset-password
+router.post(
+  '/:id/reset-password',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Reset user password request', {
+      targetUserId: req.params['id'],
+      requestedBy: req.user?.userId,
+    });
+
+    try {
+      const { newPassword } = req.body;
+
+      if (!newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password is required',
+        });
+      }
+
+      const hashedPassword = await AuthService.hashPassword(newPassword);
+
+      await prisma.users.update({
+        where: { id: req.params['id'] },
+        data: {
+          password: hashedPassword,
+          updated_at: new Date(),
+        },
+      });
+
+      res.json({
+        success: true,
+        message: 'Password reset successfully',
+      });
+    } catch (error) {
+      logger.error('Error resetting password', {
         userId: req.params['id'],
         error: error instanceof Error ? error.message : 'Unknown error',
       });

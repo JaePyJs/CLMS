@@ -67,6 +67,15 @@ export function useDataRefresh<T>(
   const mountedRef = useRef(true);
 
   useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     queryFnRef.current = queryFn;
   }, [queryFn]);
 
@@ -84,10 +93,6 @@ export function useDataRefresh<T>(
         }));
 
         const data = await queryFnRef.current();
-
-        if (!mountedRef.current) {
-          return;
-        }
 
         setState((prev) => ({
           ...prev,
@@ -165,7 +170,14 @@ export function useDataRefresh<T>(
   // Initial fetch
   useEffect(() => {
     if (enabled && retryOnMount && !state.data) {
+      console.log('useDataRefresh: Initial fetch triggered');
       fetchData(false);
+    } else {
+      console.log('useDataRefresh: Initial fetch skipped', {
+        enabled,
+        retryOnMount,
+        hasData: !!state.data,
+      });
     }
   }, [enabled, retryOnMount, state.data, fetchData]);
 
@@ -243,145 +255,6 @@ export function useDataRefresh<T>(
  * // Refresh all
  * const refreshAll = () => actions.refreshAll();
  */
-/**
- * @deprecated This function has React Hooks violations and needs refactoring
- * DO NOT USE - Hooks cannot be called in loops
- */
-export function useBatchRefresh(
-  refreshConfigs: Array<{
-    key: string;
-    queryFn: () => Promise<unknown>;
-    options?: RefreshOptions<unknown>;
-  }>
-) {
-  const [states, setStates] = useState<Record<string, RefreshState<unknown>>>(
-    () => {
-      const initialStates = {} as Record<string, RefreshState<unknown>>;
-      refreshConfigs.forEach((config) => {
-        initialStates[config.key] = {
-          isRefreshing: false,
-          lastRefreshTime: null,
-          error: null,
-          refreshCount: 0,
-          data: config.options?.initialData ?? null,
-        };
-      });
-      return initialStates;
-    }
-  );
-
-  const refreshFunctions = useRef(new Map<string, () => Promise<void>>());
-  const mountedRef = useRef(true);
-
-  // FIXME: This violates React Hooks rules - hooks cannot be called in loops
-  refreshConfigs.forEach((config) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const refreshFn = useDataRefresh(config.queryFn, {
-      enabled: true,
-      ...config.options,
-      onSuccess: (data) => {
-        if (!mountedRef.current) {
-          return;
-        }
-
-        setStates((prev) => ({
-          ...prev,
-          [config.key]: {
-            ...prev[config.key],
-            data,
-            lastRefreshTime: new Date(),
-            isRefreshing: false,
-            refreshCount: (prev[config.key]?.refreshCount || 0) + 1,
-            error: null,
-          } as RefreshState,
-        }));
-
-        config.options?.onSuccess?.(data);
-      },
-      onError: (error) => {
-        if (!mountedRef.current) {
-          return;
-        }
-
-        setStates((prev) => ({
-          ...prev,
-          [config.key]: {
-            ...prev[config.key],
-            error,
-            isRefreshing: false,
-            lastRefreshTime: new Date(),
-            refreshCount: (prev[config.key]?.refreshCount || 0) + 1,
-            data: prev[config.key]?.data || null,
-          } as RefreshState,
-        }));
-
-        config.options?.onError?.(error);
-      },
-    })[1].refresh;
-
-    refreshFunctions.current.set(config.key, async () => await refreshFn());
-  });
-
-  const refreshAll = useCallback(async () => {
-    const promises = Array.from(refreshFunctions.current.values()).map((fn) =>
-      fn()
-    );
-    await Promise.allSettled(promises);
-  }, []);
-
-  const refreshByKey = useCallback((key: string) => {
-    const refreshFn = refreshFunctions.current.get(key);
-    if (refreshFn) {
-      refreshFn();
-    }
-  }, []);
-
-  const clearErrorByKey = useCallback((key: string) => {
-    setStates((prev) => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        error: null,
-        isRefreshing: prev[key]?.isRefreshing || false,
-        lastRefreshTime: prev[key]?.lastRefreshTime || null,
-        refreshCount: prev[key]?.refreshCount || 0,
-        data: prev[key]?.data || null,
-      } as RefreshState,
-    }));
-  }, []);
-
-  const clearAllErrors = useCallback(() => {
-    setStates((prev) => {
-      const newStates = { ...prev };
-      Object.keys(newStates).forEach((key) => {
-        newStates[key] = {
-          ...newStates[key],
-          error: null,
-          isRefreshing: newStates[key]?.isRefreshing || false,
-          lastRefreshTime: newStates[key]?.lastRefreshTime || null,
-          refreshCount: newStates[key]?.refreshCount || 0,
-          data: newStates[key]?.data || null,
-        } as RefreshState;
-      });
-      return newStates;
-    });
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  const actions = {
-    refreshAll,
-    refreshByKey,
-    clearErrorByKey,
-    clearAllErrors,
-  };
-
-  return [states, actions] as const;
-}
 
 /**
  * Hook for managing smart refresh based on data staleness

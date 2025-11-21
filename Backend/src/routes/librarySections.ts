@@ -12,7 +12,10 @@ router.get(
   '/',
   authenticate,
   asyncHandler(async (req: Request, res: Response) => {
-    logger.info('List library sections', { query: req.query, userId: (req as any).user?.id });
+    logger.info('List library sections', {
+      query: req.query,
+      userId: (req as any).user?.id,
+    });
     const onlyActive = req.query['active'] === 'true';
     const sections = await LibrarySectionsService.listSections(onlyActive);
     res.json({ success: true, data: sections });
@@ -24,8 +27,13 @@ router.get(
   '/code/:code',
   authenticate,
   asyncHandler(async (req: Request, res: Response) => {
-    logger.info('Get section by code', { code: req.params['code'], userId: (req as any).user?.id });
-    const section = await LibrarySectionsService.getSectionByCode(req.params['code']);
+    logger.info('Get section by code', {
+      code: req.params['code'],
+      userId: (req as any).user?.id,
+    });
+    const section = await LibrarySectionsService.getSectionByCode(
+      req.params['code'],
+    );
     if (!section) {
       res.status(404).json({ success: false, message: 'Section not found' });
       return;
@@ -39,13 +47,23 @@ router.post(
   '/',
   authenticate,
   asyncHandler(async (req: Request, res: Response) => {
-    logger.info('Create library section', { body: req.body, userId: (req as any).user?.id });
+    logger.info('Create library section', {
+      body: req.body,
+      userId: (req as any).user?.id,
+    });
     const { code, name, description, is_active } = req.body;
     if (!code || !name) {
-      res.status(400).json({ success: false, message: 'code and name are required' });
+      res
+        .status(400)
+        .json({ success: false, message: 'code and name are required' });
       return;
     }
-    const created = await LibrarySectionsService.createSection({ code, name, description, is_active });
+    const created = await LibrarySectionsService.createSection({
+      code,
+      name,
+      description,
+      is_active,
+    });
     res.status(201).json({ success: true, data: created });
   }),
 );
@@ -55,8 +73,14 @@ router.put(
   '/:id',
   authenticate,
   asyncHandler(async (req: Request, res: Response) => {
-    logger.info('Update library section', { id: req.params['id'], fields: Object.keys(req.body) });
-    const updated = await LibrarySectionsService.updateSection(req.params['id'], req.body);
+    logger.info('Update library section', {
+      id: req.params['id'],
+      fields: Object.keys(req.body),
+    });
+    const updated = await LibrarySectionsService.updateSection(
+      req.params['id'],
+      req.body,
+    );
     res.json({ success: true, data: updated });
   }),
 );

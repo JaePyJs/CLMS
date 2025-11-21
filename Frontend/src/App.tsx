@@ -66,7 +66,6 @@ import {
   Zap,
   LayoutDashboard,
   Camera,
-  Bot,
   BarChart,
   FileText,
   QrCode,
@@ -74,6 +73,7 @@ import {
   Laptop,
   Upload,
   Library,
+  Sliders,
 } from 'lucide-react';
 
 // Import components (will create these next)
@@ -83,21 +83,11 @@ const DashboardOverview = React.lazy(
 const EquipmentDashboard = React.lazy(
   () => import('@/components/dashboard/EquipmentDashboard')
 );
-const ScanWorkspace = React.lazy(
-  () => import('@/components/dashboard/ScanWorkspace')
-);
-const AutomationDashboard = React.lazy(
-  () => import('@/components/dashboard/AutomationDashboard')
-);
+
 const AnalyticsDashboard = React.lazy(
   () => import('@/components/dashboard/AnalyticsDashboard')
 );
-const QRCodeManager = React.lazy(
-  () => import('@/components/dashboard/QRCodeManager')
-);
-const BarcodeManager = React.lazy(
-  () => import('@/components/dashboard/BarcodeManager')
-);
+
 import StudentManagementSync from '@/components/dashboard/StudentManagement';
 const StudentManagementLazy = React.lazy(
   () => import('@/components/dashboard/StudentManagement')
@@ -113,7 +103,6 @@ const ReportsBuilder = React.lazy(
 const BookCatalog = React.lazy(
   () => import('@/components/dashboard/BookCatalog')
 );
-const ImportData = React.lazy(() => import('@/components/ImportData'));
 const BookCheckout = React.lazy(
   () => import('@/components/dashboard/BookCheckout')
 );
@@ -123,6 +112,12 @@ const SettingsPage = React.lazy(
 const LibraryManagementHub = React.lazy(
   () => import('@/components/management/LibraryManagementHub')
 );
+const DataQualityManager = React.lazy(
+  () => import('@/components/management/DataQualityManager')
+);
+const ImportExportManager = React.lazy(
+  () => import('@/components/management/ImportExportManager')
+);
 
 // Attendance Display for self-monitoring
 const AttendanceDisplay = React.lazy(
@@ -130,16 +125,16 @@ const AttendanceDisplay = React.lazy(
 );
 
 // Kiosk interface for patron tap-in
-const Kiosk = React.lazy(
-  () => import('@/pages/Kiosk')
-);
+const Kiosk = React.lazy(() => import('@/pages/Kiosk'));
 
 // Enhanced Library Management Components (sync in E2E/dev to avoid lazy initializer issues)
 import { UserTracking as UserTrackingSync } from '@/components/dashboard/UserTracking';
-const UserTrackingLazy = React.lazy(
-  () => import('@/components/dashboard/UserTracking').then((m) => ({ default: m.UserTracking }))
+const UserTrackingLazy = React.lazy(() =>
+  import('@/components/dashboard/UserTracking').then((m) => ({
+    default: m.UserTracking,
+  }))
 );
-import { OptimizedLazyLoad } from '@/components/OptimizedLazyLoad';
+
 const UserTracking =
   (typeof navigator !== 'undefined' && (navigator as any).webdriver) ||
   (import.meta as any).env?.VITE_E2E === 'true'
@@ -147,8 +142,10 @@ const UserTracking =
     : UserTrackingLazy;
 
 import { EnhancedBorrowing as EnhancedBorrowingSync } from '@/components/dashboard/EnhancedBorrowing';
-const EnhancedBorrowingLazy = React.lazy(
-  () => import('@/components/dashboard/EnhancedBorrowing').then((m) => ({ default: m.EnhancedBorrowing }))
+const EnhancedBorrowingLazy = React.lazy(() =>
+  import('@/components/dashboard/EnhancedBorrowing').then((m) => ({
+    default: m.EnhancedBorrowing,
+  }))
 );
 const EnhancedBorrowing =
   (typeof navigator !== 'undefined' && (navigator as any).webdriver) ||
@@ -157,8 +154,10 @@ const EnhancedBorrowing =
     : EnhancedBorrowingLazy;
 
 import { OverdueManagement as OverdueManagementSync } from '@/components/dashboard/OverdueManagement';
-const OverdueManagementLazy = React.lazy(
-  () => import('@/components/dashboard/OverdueManagement').then((m) => ({ default: m.OverdueManagement }))
+const OverdueManagementLazy = React.lazy(() =>
+  import('@/components/dashboard/OverdueManagement').then((m) => ({
+    default: m.OverdueManagement,
+  }))
 );
 const OverdueManagement =
   (typeof navigator !== 'undefined' && (navigator as any).webdriver) ||
@@ -166,13 +165,25 @@ const OverdueManagement =
     ? OverdueManagementSync
     : OverdueManagementLazy;
 
+const ScanWorkspace = React.lazy(() =>
+  import('@/components/dashboard/ScanWorkspace').then((module) => ({
+    default: module.ScanWorkspace,
+  }))
+);
+const QRCodeManager = React.lazy(
+  () => import('@/components/dashboard/QRCodeManager')
+);
+const BarcodeManager = React.lazy(
+  () => import('@/components/dashboard/BarcodeManager')
+);
+
 const PrintingTrackerLazy = React.lazy(
   () => import('@/components/management/PrintingTracker')
 );
 
-
 // Reference lazy components to avoid unused variable warnings in some linters
-void AutomationDashboard; void AnalyticsDashboard;
+
+void AnalyticsDashboard;
 
 // Enhanced loading fallbacks with skeleton screens
 const LoadingSpinnerFallback = () => (
@@ -234,6 +245,7 @@ export default function App() {
     const m = (t || '').toLowerCase();
     if (m === 'overdue') return 'overdue-management';
     if (m === 'borrow') return 'checkout';
+    if (m === 'import') return 'import-export';
     return m || 'dashboard';
   };
   const initialTab =
@@ -270,9 +282,6 @@ export default function App() {
     return () => window.removeEventListener('popstate', handler);
   }, []);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showHelpMenu, setShowHelpMenu] = useState(false);
-  const [showSystemMenu, setShowSystemMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -421,18 +430,6 @@ export default function App() {
     [isMobile, isTablet, activeTab, showMobileMenu]
   );
 
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setShowUserMenu(false);
-      setShowHelpMenu(false);
-      setShowSystemMenu(false);
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
-
   // Enhanced keyboard navigation handler
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -487,13 +484,13 @@ export default function App() {
       // Ctrl/Cmd + / for help
       if ((event.ctrlKey || event.metaKey) && event.key === '/') {
         event.preventDefault();
-        setShowHelpMenu(!showHelpMenu);
+        toast.info('Keyboard shortcuts: Alt+1-9 for tabs, Ctrl+K for search');
       }
 
       // F1 for help
       if (event.key === 'F1') {
         event.preventDefault();
-        setShowHelpMenu(!showHelpMenu);
+        toast.info('Press Alt+1-9 to navigate tabs');
       }
 
       // F5 for refresh (prevent default and use our refresh)
@@ -505,7 +502,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showHelpMenu]);
+  }, []);
 
   // Public attendance display kiosk (no authentication required)
   if (
@@ -520,10 +517,7 @@ export default function App() {
   }
 
   // Public kiosk interface (no authentication required)
-  if (
-    typeof window !== 'undefined' &&
-    window.location.pathname === '/kiosk'
-  ) {
+  if (typeof window !== 'undefined' && window.location.pathname === '/kiosk') {
     return (
       <Suspense fallback={<LoadingSpinnerFallback />}>
         <Kiosk />
@@ -532,10 +526,7 @@ export default function App() {
   }
 
   // Explicit login route for E2E tests and direct access
-  if (
-    typeof window !== 'undefined' &&
-    window.location.pathname === '/login'
-  ) {
+  if (typeof window !== 'undefined' && window.location.pathname === '/login') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
         <RouteErrorBoundary>
@@ -582,8 +573,8 @@ export default function App() {
       <WebSocketProvider>
         {/* Session Timeout Warning Modal */}
         <SessionTimeoutWarning
-          warningTime={5 * 60 * 1000} // 5 minutes warning
-          sessionTimeout={60 * 60 * 1000} // 60 minutes total session
+          warningTime={10 * 60 * 1000} // 10 minutes warning
+          sessionTimeout={4 * 60 * 60 * 1000} // 4 hours total session
         />
 
         <div
@@ -656,36 +647,49 @@ export default function App() {
 
                 {/* Desktop Search - Hidden on Mobile */}
                 {!dashboardSearchCentered && (
-                <div className={'hidden lg:flex flex-1 max-w-md w-full lg:w-auto order-last lg:order-none lg:mx-4'}>
-                  <div className={dashboardSearchCentered ? 'relative w-full max-w-2xl' : 'relative'}>
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                    <Input
-                      id="global-search"
-                      type="text"
-                      placeholder="Search students, books, equipment... (Ctrl+K)"
-                      value={searchQuery}
-                      onChange={(e) => handleSearch(e.target.value)}
-                      className={dashboardSearchCentered ? 'pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all w-full' : 'pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all'}
-                      aria-label="Global Search"
-                    />
-                    {searchQuery && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSearchQuery('')}
-                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        aria-label="Clear Search"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    )}
+                  <div
+                    className={
+                      'hidden lg:flex flex-1 max-w-md w-full lg:w-auto order-last lg:order-none lg:mx-4'
+                    }
+                  >
+                    <div
+                      className={
+                        dashboardSearchCentered
+                          ? 'relative w-full max-w-2xl'
+                          : 'relative'
+                      }
+                    >
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                      <Input
+                        id="global-search"
+                        type="text"
+                        placeholder="Search students, books, equipment... (Ctrl+K)"
+                        value={searchQuery}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        className={
+                          dashboardSearchCentered
+                            ? 'pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all w-full'
+                            : 'pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all'
+                        }
+                        aria-label="Global Search"
+                      />
+                      {searchQuery && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSearchQuery('')}
+                          className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          aria-label="Clear Search"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
                 )}
 
                 {/* Desktop Controls - Hidden on Mobile */}
                 <div className="hidden lg:flex items-center gap-2">
-
                   {/* System Refresh */}
                   <Button
                     variant="outline"
@@ -707,195 +711,136 @@ export default function App() {
 
                   {/* System Menu, Help Menu, and User Menu - Desktop */}
                   {/* System Menu */}
-                  <div className="relative">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowSystemMenu(!showSystemMenu)}
-                    >
-                      <Settings className="h-4 w-4" />
-                    </Button>
-
-                    {/* System Menu Dropdown */}
-                    {showSystemMenu && (
-                      <div className="absolute right-0 mt-2 w-60 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-[100] animate-slide-down overflow-hidden">
-                        <div className="p-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleSystemHealth}
-                            className="w-full justify-start hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                          >
-                            <Shield className="h-4 w-4 mr-3 text-green-500" />
-                            System Health
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleBackup}
-                            className="w-full justify-start hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                          >
-                            <Database className="h-4 w-4 mr-3 text-blue-500" />
-                            Backup Now
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleMaintenance}
-                            className="w-full justify-start hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                          >
-                            <Settings className="h-4 w-4 mr-3 text-slate-500" />
-                            Maintenance
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleDatabaseStatus}
-                            className="w-full justify-start hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                          >
-                            <Database className="h-4 w-4 mr-3 text-purple-500" />
-                            Database Status
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleViewLogs}
-                            className="w-full justify-start hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                          >
-                            <FileText className="h-4 w-4 mr-3 text-amber-500" />
-                            View Logs
-                          </Button>
-                          <div className="border-t border-slate-200 dark:border-slate-700 my-2"></div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleEmergencyAlert}
-                            className="w-full justify-start text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                          >
-                            <AlertTriangle className="h-4 w-4 mr-3" />
-                            Emergency Alert
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel>System Controls</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleSystemHealth}>
+                        <Shield className="h-4 w-4 mr-2 text-green-500" />
+                        System Health
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleBackup}>
+                        <Database className="h-4 w-4 mr-2 text-blue-500" />
+                        Backup Now
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleMaintenance}>
+                        <Settings className="h-4 w-4 mr-2 text-slate-500" />
+                        Maintenance
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleDatabaseStatus}>
+                        <Database className="h-4 w-4 mr-2 text-purple-500" />
+                        Database Status
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleViewLogs}>
+                        <FileText className="h-4 w-4 mr-2 text-amber-500" />
+                        View Logs
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={handleEmergencyAlert}
+                        className="text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30"
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        Emergency Alert
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
                   {/* Help Menu */}
-                  <div className="relative">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowHelpMenu(!showHelpMenu)}
-                    >
-                      <HelpCircle className="h-4 w-4" />
-                    </Button>
-
-                    {/* Help Menu Dropdown */}
-                    {showHelpMenu && (
-                      <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-[100] animate-slide-down overflow-hidden">
-                        <div className="p-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              toast.info('Opening keyboard shortcuts guide...')
-                            }
-                            className="w-full justify-start hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                          >
-                            Keyboard Shortcuts
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toast.info('Opening user guide...')}
-                            className="w-full justify-start hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                          >
-                            User Guide
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              toast.info('Opening API documentation...')
-                            }
-                            className="w-full justify-start hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                          >
-                            API Documentation
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toast.info('Opening support...')}
-                            className="w-full justify-start hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                          >
-                            Get Support
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <HelpCircle className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel>Help & Support</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() =>
+                          toast.info('Opening keyboard shortcuts guide...')
+                        }
+                      >
+                        Keyboard Shortcuts
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => toast.info('Opening user guide...')}
+                      >
+                        User Guide
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          toast.info('Opening API documentation...')
+                        }
+                      >
+                        API Documentation
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => toast.info('Opening support...')}
+                      >
+                        Get Support
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
                   {/* User Menu */}
-                  <div className="relative">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowUserMenu(!showUserMenu)}
-                      className="flex items-center gap-1"
-                    >
-                      <User className="h-3 w-3" />
-                      {user?.username}
-                      <ChevronDown className="h-3 w-3" />
-                    </Button>
-
-                    {/* User Menu Dropdown */}
-                    {showUserMenu && (
-                      <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-[100] animate-slide-down overflow-hidden">
-                        <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
-                          <p className="font-semibold text-slate-900 dark:text-slate-100">
-                            Welcome, {user?.username || 'Administrator'}
-                          </p>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                            {user?.role}
-                          </p>
-                        </div>
-                        <div className="p-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              toast.info('Opening profile settings...')
-                            }
-                            className="w-full justify-start hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                          >
-                            <Settings className="h-4 w-4 mr-3 text-slate-500" />
-                            Profile Settings
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              toast.info('Opening activity logs...')
-                            }
-                            className="w-full justify-start hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-                          >
-                            <Activity className="h-4 w-4 mr-3 text-blue-500" />
-                            Activity Logs
-                          </Button>
-                          <div className="border-t border-slate-200 dark:border-slate-700 my-2"></div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={logout}
-                            className="w-full justify-start text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                          >
-                            <LogOut className="h-4 w-4 mr-3" />
-                            Logout
-                          </Button>
-                        </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-1"
+                      >
+                        <User className="h-3 w-3" />
+                        <span className="hidden sm:inline-block max-w-[100px] truncate">
+                          {user?.username}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64">
+                      <div className="p-2 bg-muted/50">
+                        <p className="font-semibold text-sm">
+                          {user?.username || 'Administrator'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {user?.role}
+                        </p>
                       </div>
-                    )}
-                  </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab('settings')}
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Settings
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab('settings')}
+                      >
+                        <Sliders className="h-4 w-4 mr-2" />
+                        Options
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => toast.info('Opening activity logs...')}
+                      >
+                        <Activity className="h-4 w-4 mr-2" />
+                        Activity Logs
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={logout}
+                        className="text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Logout
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 
@@ -956,7 +901,6 @@ export default function App() {
                           label: 'Equipment',
                           icon: Laptop,
                         },
-                        { value: 'automation', label: 'Automation', icon: Bot },
                         {
                           value: 'analytics',
                           label: 'Analytics',
@@ -1023,13 +967,41 @@ export default function App() {
                       </Button>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowHelpMenu(!showHelpMenu)}
-                      >
-                        <HelpCircle className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <HelpCircle className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuLabel>Help & Support</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() =>
+                              toast.info('Opening keyboard shortcuts guide...')
+                            }
+                          >
+                            Keyboard Shortcuts
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => toast.info('Opening user guide...')}
+                          >
+                            User Guide
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              toast.info('Opening API documentation...')
+                            }
+                          >
+                            API Documentation
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => toast.info('Opening support...')}
+                          >
+                            Get Support
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                       <Button
                         variant="outline"
                         size="sm"
@@ -1058,23 +1030,25 @@ export default function App() {
                     label: 'Dashboard',
                     icon: LayoutDashboard,
                   },
-                  { value: 'scan', label: 'Activity', icon: Camera },
                   { value: 'students', label: 'Students', icon: Users },
                   { value: 'books', label: 'Books', icon: BookOpen },
                   { value: 'checkout', label: 'Checkout', icon: Library },
                   { value: 'equipment', label: 'Equipment', icon: Laptop },
-                  { value: 'automation', label: 'Automation', icon: Bot },
                   { value: 'analytics', label: 'Analytics', icon: BarChart },
                   { value: 'reports', label: 'Reports', icon: FileText },
-                  { value: 'import', label: 'Import', icon: Upload },
-                  { value: 'qrcodes', label: 'QR Codes', icon: QrCode },
-                  { value: 'barcodes', label: 'Barcodes', icon: List },
                   { value: 'settings', label: 'Settings', icon: Settings },
                   // Enhanced Library Management Mobile Tabs
                   { value: 'user-tracking', label: 'Users', icon: Users },
-                  { value: 'enhanced-borrowing', label: 'Borrow', icon: BookOpen },
-                  { value: 'overdue-management', label: 'Overdue', icon: AlertTriangle },
-                  { value: 'library-analytics', label: 'Analytics', icon: BarChart },
+                  {
+                    value: 'enhanced-borrowing',
+                    label: 'Borrow',
+                    icon: BookOpen,
+                  },
+                  {
+                    value: 'overdue-management',
+                    label: 'Overdue',
+                    icon: AlertTriangle,
+                  },
                 ].map(({ value, label, icon: Icon }) => (
                   <Button
                     key={value}
@@ -1115,9 +1089,7 @@ export default function App() {
                   <TabsTrigger value="dashboard" id="tab-dashboard">
                     <LayoutDashboard className="w-4 h-4 mr-2" /> Dashboard
                   </TabsTrigger>
-                  <TabsTrigger value="scan" id="tab-scan">
-                    <Camera className="w-4 h-4 mr-2" /> Activity
-                  </TabsTrigger>
+
                   <TabsTrigger
                     value="students"
                     id="tab-students"
@@ -1126,17 +1098,40 @@ export default function App() {
                   >
                     <Users className="w-4 h-4 mr-2" /> Students
                   </TabsTrigger>
-                  <TabsTrigger value="books" id="tab-books" onClick={() => setActiveTab('books')}>
+                  <TabsTrigger
+                    value="books"
+                    id="tab-books"
+                    onClick={() => setActiveTab('books')}
+                  >
                     <BookOpen className="w-4 h-4 mr-2" /> Books
                   </TabsTrigger>
-                  <TabsTrigger value="checkout" id="tab-checkout" onClick={() => setActiveTab('checkout')}>
+                  <TabsTrigger
+                    value="checkout"
+                    id="tab-checkout"
+                    onClick={() => setActiveTab('checkout')}
+                  >
                     <Library className="w-4 h-4 mr-2" /> Checkout
                   </TabsTrigger>
-                  <TabsTrigger value="printing" id="tab-printing" onClick={() => setActiveTab('printing')}>
+                  <TabsTrigger
+                    value="printing"
+                    id="tab-printing"
+                    onClick={() => setActiveTab('printing')}
+                  >
                     <FileText className="w-4 h-4 mr-2" /> Printing
                   </TabsTrigger>
-                  <TabsTrigger value="equipment" id="tab-equipment" onClick={() => setActiveTab('equipment')}>
+                  <TabsTrigger
+                    value="equipment"
+                    id="tab-equipment"
+                    onClick={() => setActiveTab('equipment')}
+                  >
                     <Laptop className="w-4 h-4 mr-2" /> Equipment
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="scan"
+                    id="tab-scan"
+                    onClick={() => setActiveTab('scan')}
+                  >
+                    <Camera className="w-4 h-4 mr-2" /> Scan/Return
                   </TabsTrigger>
 
                   <DropdownMenu>
@@ -1147,15 +1142,21 @@ export default function App() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
                       <DropdownMenuLabel>Management</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => setActiveTab('management')}>
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab('management')}
+                      >
                         <Settings className="h-4 w-4 mr-2" /> Management
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setActiveTab('settings')}>
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab('settings')}
+                      >
                         <Settings className="h-4 w-4 mr-2" /> Settings
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel>Analytics</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => setActiveTab('analytics')}>
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab('analytics')}
+                      >
                         <BarChart className="h-4 w-4 mr-2" /> Analytics
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setActiveTab('reports')}>
@@ -1164,25 +1165,42 @@ export default function App() {
                       {/* Library Analytics consolidated into Analytics tab */}
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel>Data</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => setActiveTab('import')}>
-                        <Upload className="h-4 w-4 mr-2" /> Import
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab('data-quality')}
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-2" /> Data Quality
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab('import-export')}
+                      >
+                        <Upload className="h-4 w-4 mr-2" /> Import/Export
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setActiveTab('qrcodes')}>
                         <QrCode className="h-4 w-4 mr-2" /> QR Codes
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setActiveTab('barcodes')}>
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab('barcodes')}
+                      >
                         <List className="h-4 w-4 mr-2" /> Barcodes
                       </DropdownMenuItem>
+
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel>Users</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => setActiveTab('user-tracking')}>
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab('user-tracking')}
+                      >
                         <Users className="h-4 w-4 mr-2" /> User Tracking
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setActiveTab('enhanced-borrowing')}>
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab('enhanced-borrowing')}
+                      >
                         <BookOpen className="h-4 w-4 mr-2" /> Enhanced Borrowing
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setActiveTab('overdue-management')}>
-                        <AlertTriangle className="h-4 w-4 mr-2" /> Overdue Management
+                      <DropdownMenuItem
+                        onClick={() => setActiveTab('overdue-management')}
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-2" /> Overdue
+                        Management
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -1201,22 +1219,6 @@ export default function App() {
                 <RouteErrorBoundary>
                   <Suspense fallback={<DashboardSkeleton />}>
                     <DashboardOverview onTabChange={setActiveTab} />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Activity Tab */}
-              <TabsContent
-                value="scan"
-                className="space-y-6"
-                id="tabpanel-scan"
-                role="tabpanel"
-                aria-labelledby="tab-scan"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<LoadingSpinnerFallback />}>
-                    <ScanWorkspace />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
@@ -1279,7 +1281,7 @@ export default function App() {
                 tabIndex={0}
               >
                 <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}> 
+                  <Suspense fallback={<CardSkeleton className="h-96" />}>
                     <PrintingTrackerLazy />
                   </Suspense>
                 </RouteErrorBoundary>
@@ -1298,28 +1300,6 @@ export default function App() {
                   <Suspense fallback={<TableSkeletonFallback />}>
                     <EquipmentDashboard />
                   </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Automation Tab */}
-              <TabsContent
-                value="automation"
-                className="space-y-6"
-                id="tabpanel-automation"
-                role="tabpanel"
-                aria-labelledby="tab-automation"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <OptimizedLazyLoad
-                    loader={() =>
-                      import('@/components/dashboard/AutomationDashboard').then(
-                        (m) => ({ default: m.default || m.AutomationDashboard })
-                      )
-                    }
-                    fallback={<DashboardSkeleton />}
-                    error="Failed to load Automation"
-                  />
                 </RouteErrorBoundary>
               </TabsContent>
 
@@ -1355,50 +1335,34 @@ export default function App() {
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* QR Codes Tab */}
+              {/* Data Quality Manager Tab */}
               <TabsContent
-                value="qrcodes"
+                value="data-quality"
                 className="space-y-6"
-                id="tabpanel-qrcodes"
+                id="tabpanel-data-quality"
                 role="tabpanel"
-                aria-labelledby="tab-qrcodes"
+                aria-labelledby="tab-data-quality"
                 tabIndex={0}
               >
                 <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <QRCodeManager />
+                  <Suspense fallback={<TableSkeletonFallback />}>
+                    <DataQualityManager />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Import Tab */}
+              {/* Import/Export Manager Tab */}
               <TabsContent
-                value="import"
+                value="import-export"
                 className="space-y-6"
-                id="tabpanel-import"
+                id="tabpanel-import-export"
                 role="tabpanel"
-                aria-labelledby="tab-import"
+                aria-labelledby="tab-import-export"
                 tabIndex={0}
               >
                 <RouteErrorBoundary>
                   <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <ImportData />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Barcodes Tab */}
-              <TabsContent
-                value="barcodes"
-                className="space-y-6"
-                id="tabpanel-barcodes"
-                role="tabpanel"
-                aria-labelledby="tab-barcodes"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <BarcodeManager />
+                    <ImportExportManager />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
@@ -1426,14 +1390,14 @@ export default function App() {
                 aria-labelledby="tab-management"
                 tabIndex={0}
               >
-                {import.meta.env.DEV ? (
-                  <CardSkeleton className="h-20" />
-                ) : null}
+                {import.meta.env.DEV ? <CardSkeleton className="h-20" /> : null}
                 <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}> 
+                  <Suspense fallback={<CardSkeleton className="h-96" />}>
                     {import.meta.env.DEV ? (
                       <div className="space-y-6">
-                        <div className="text-sm text-muted-foreground">Management (Dev simplified)</div>
+                        <div className="text-sm text-muted-foreground">
+                          Management (Dev simplified)
+                        </div>
                         <PrintingTrackerLazy />
                       </div>
                     ) : (
@@ -1489,17 +1453,57 @@ export default function App() {
                 </RouteErrorBoundary>
               </TabsContent>
 
+              <TabsContent
+                value="scan"
+                className="space-y-6"
+                id="tabpanel-scan"
+                role="tabpanel"
+                aria-labelledby="tab-scan"
+                tabIndex={0}
+              >
+                <RouteErrorBoundary>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <ScanWorkspace />
+                  </Suspense>
+                </RouteErrorBoundary>
+              </TabsContent>
+
+              <TabsContent
+                value="qrcodes"
+                className="space-y-6"
+                id="tabpanel-qrcodes"
+                role="tabpanel"
+                aria-labelledby="tab-qrcodes"
+                tabIndex={0}
+              >
+                <RouteErrorBoundary>
+                  <Suspense fallback={<CardSkeleton className="h-96" />}>
+                    <QRCodeManager />
+                  </Suspense>
+                </RouteErrorBoundary>
+              </TabsContent>
+
+              <TabsContent
+                value="barcodes"
+                className="space-y-6"
+                id="tabpanel-barcodes"
+                role="tabpanel"
+                aria-labelledby="tab-barcodes"
+                tabIndex={0}
+              >
+                <RouteErrorBoundary>
+                  <Suspense fallback={<CardSkeleton className="h-96" />}>
+                    <BarcodeManager />
+                  </Suspense>
+                </RouteErrorBoundary>
+              </TabsContent>
+
               {/* Library Analytics consolidated into Analytics tab */}
             </Tabs>
           </main>
 
           {/* PWA Install Prompt */}
-          <PWAInstallPrompt
-            onInstall={() => {
-            }}
-            onDismiss={() => {
-            }}
-          />
+          <PWAInstallPrompt onInstall={() => {}} onDismiss={() => {}} />
 
           {/* Mobile Bottom Navigation */}
           <MobileBottomNavigation

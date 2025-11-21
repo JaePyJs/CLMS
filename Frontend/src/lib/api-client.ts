@@ -116,7 +116,8 @@ class ApiClient {
     if (typeof window !== 'undefined') {
       // Align with app's storage key for access token
       return (
-        localStorage.getItem('clms_token') || sessionStorage.getItem('clms_token')
+        localStorage.getItem('clms_token') ||
+        sessionStorage.getItem('clms_token')
       );
     }
     return null;

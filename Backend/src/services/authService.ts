@@ -1,10 +1,8 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
+import { prisma } from '../utils/prisma';
 
 export interface LoginCredentials {
   username: string;
@@ -72,11 +70,11 @@ export class AuthService {
     };
   }
 
-  private static async hashPassword(password: string): Promise<string> {
+  public static async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, env.BCRYPT_ROUNDS);
   }
 
-  private static async verifyPassword(
+  public static async verifyPassword(
     password: string,
     hashedPassword: string,
   ): Promise<boolean> {
@@ -111,7 +109,10 @@ export class AuthService {
 
       if (!user) {
         logger.warn('Login failed: user not found', { username });
-        if (String(env.NODE_ENV).toLowerCase() === 'development' || String(env.WS_DEV_BYPASS || '').toLowerCase() === 'true') {
+        if (
+          String(env.NODE_ENV).toLowerCase() === 'development' ||
+          String(env.WS_DEV_BYPASS || '').toLowerCase() === 'true'
+        ) {
           if (username === 'admin' && password === 'admin123') {
             const devUser = {
               id: 'DEV-ADMIN',
@@ -122,6 +123,7 @@ export class AuthService {
               is_active: true,
               last_login_at: new Date(),
               created_at: new Date(),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any;
             const tokenPayload: TokenPayload = {
               userId: devUser.id,
@@ -129,7 +131,9 @@ export class AuthService {
               role: devUser.role,
             };
             const tokens = this.generateTokens(tokenPayload);
-            logger.info('Dev login successful (fallback)', { username: devUser.username });
+            logger.info('Dev login successful (fallback)', {
+              username: devUser.username,
+            });
             return {
               user: devUser,
               accessToken: tokens.accessToken,
@@ -197,8 +201,14 @@ export class AuthService {
         username: credentials.username,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
-      const isDev = String(env.NODE_ENV).toLowerCase() === 'development' || String(env.WS_DEV_BYPASS || '').toLowerCase() === 'true';
-      if (isDev && credentials.username === 'admin' && credentials.password === 'admin123') {
+      const isDev =
+        String(env.NODE_ENV).toLowerCase() === 'development' ||
+        String(env.WS_DEV_BYPASS || '').toLowerCase() === 'true';
+      if (
+        isDev &&
+        credentials.username === 'admin' &&
+        credentials.password === 'admin123'
+      ) {
         const devUser = {
           id: 'DEV-ADMIN',
           username: 'admin',
@@ -208,6 +218,7 @@ export class AuthService {
           is_active: true,
           last_login_at: new Date(),
           created_at: new Date(),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any;
         const tokenPayload: TokenPayload = {
           userId: devUser.id,
@@ -215,7 +226,9 @@ export class AuthService {
           role: devUser.role,
         };
         const tokens = this.generateTokens(tokenPayload);
-        logger.info('Dev login successful (fallback in catch)', { username: devUser.username });
+        logger.info('Dev login successful (fallback in catch)', {
+          username: devUser.username,
+        });
         return {
           user: devUser,
           accessToken: tokens.accessToken,
@@ -371,8 +384,13 @@ export class AuthService {
     }
   }
 
-  public static async createKioskToken(deviceName: string): Promise<AuthResponse> {
-    const base = String(deviceName || 'kiosk').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  public static async createKioskToken(
+    deviceName: string,
+  ): Promise<AuthResponse> {
+    const base = String(deviceName || 'kiosk')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
     const suffix = Math.random().toString(36).slice(2, 8);
     const username = `${base}-${suffix}`;
     const hashedPassword = await this.hashPassword(Math.random().toString(36));

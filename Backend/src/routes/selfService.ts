@@ -37,9 +37,13 @@ router.post(
         ip: req.ip,
       });
 
-      const result = sectionCodes && Array.isArray(sectionCodes) && sectionCodes.length > 0
-        ? await EnhancedSelfService.processScanWithSelection(scanData, sectionCodes)
-        : await SelfService.processScan(scanData);
+      const result =
+        sectionCodes && Array.isArray(sectionCodes) && sectionCodes.length > 0
+          ? await EnhancedSelfService.processScanWithSelection(
+              scanData,
+              sectionCodes,
+            )
+          : await SelfService.processScan(scanData);
 
       if (!result.success) {
         logger.warn('Self-service scan failed', {
@@ -84,7 +88,11 @@ router.post(
 
     const { scanData, sectionCodes } = req.body;
 
-    if (!scanData || !Array.isArray(sectionCodes) || sectionCodes.length === 0) {
+    if (
+      !scanData ||
+      !Array.isArray(sectionCodes) ||
+      sectionCodes.length === 0
+    ) {
       res.status(400).json({
         success: false,
         message: 'scanData and sectionCodes[] are required',
@@ -100,7 +108,10 @@ router.post(
         userId: req.user.userId,
       });
 
-      const result = await EnhancedSelfService.processScanWithSelection(scanData, sectionCodes);
+      const result = await EnhancedSelfService.processScanWithSelection(
+        scanData,
+        sectionCodes,
+      );
       res.json(result);
     } catch (error) {
       logger.error('Self-service check-in-with-sections error', {
@@ -109,7 +120,9 @@ router.post(
         userId: req.user?.userId,
         ip: req.ip,
       });
-      res.status(500).json({ success: false, message: 'Failed to check in with sections' });
+      res
+        .status(500)
+        .json({ success: false, message: 'Failed to check in with sections' });
     }
   }),
 );

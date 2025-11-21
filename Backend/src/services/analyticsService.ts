@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger';
 import { CacheService } from './cacheService';
-
-const prisma = new PrismaClient();
+import { prisma } from '../utils/prisma';
 
 export interface DashboardStats {
   students: {

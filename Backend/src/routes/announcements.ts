@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { authenticate } from '../middleware/authenticate';
@@ -30,9 +29,13 @@ router.post(
   '/',
   authenticate,
   asyncHandler(async (req: Request, res: Response) => {
-    const { title, content, start_time, end_time, is_active, priority } = req.body;
+    const { title, content, start_time, end_time, is_active, priority } =
+      req.body;
     if (!title || !content || !start_time) {
-      res.status(400).json({ success: false, message: 'title, content, start_time are required' });
+      res.status(400).json({
+        success: false,
+        message: 'title, content, start_time are required',
+      });
       return;
     }
     const created = await AnnouncementService.create({
@@ -52,7 +55,10 @@ router.put(
   '/:id',
   authenticate,
   asyncHandler(async (req: Request, res: Response) => {
-    const updated = await AnnouncementService.update(req.params['id'], req.body);
+    const updated = await AnnouncementService.update(
+      req.params['id'],
+      req.body,
+    );
     res.json({ success: true, data: updated });
   }),
 );

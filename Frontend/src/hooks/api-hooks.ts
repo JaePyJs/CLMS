@@ -144,7 +144,7 @@ export const useEquipment = () => {
       setEquipment(equipment);
       return equipment;
     },
-    enabled: false, // Don't fetch automatically until we have the endpoint
+    enabled: true, // Enable fetching
     refetchInterval: 5000, // Refresh every 5 seconds for real-time status
   });
 
@@ -187,6 +187,27 @@ export const useEndSession = () => {
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, 'Failed to end session'));
+    },
+  });
+};
+
+export const useExtendSession = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      sessionId,
+      additionalMinutes,
+    }: {
+      sessionId: string;
+      additionalMinutes: number;
+    }) => equipmentApi.extendSession(sessionId, additionalMinutes),
+    onSuccess: () => {
+      toast.success('Session extended successfully');
+      queryClient.invalidateQueries({ queryKey: ['equipment'] });
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to extend session'));
     },
   });
 };

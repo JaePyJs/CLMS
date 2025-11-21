@@ -18,7 +18,7 @@ import {
   RefreshCw,
   CheckCircle,
   Mail,
-  Download
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { enhancedLibraryApi } from '@/lib/api';
@@ -63,14 +63,16 @@ export function OverdueManagement() {
     primaryFines: 0,
     elementaryFines: 0,
     booksOverdue: 0,
-    studentsWithFines: 0
+    studentsWithFines: 0,
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [gradeFilter, setGradeFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isProcessingPayment, setIsProcessingPayment] = useState<string | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState<string | null>(
+    null
+  );
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
 
@@ -96,14 +98,18 @@ export function OverdueManagement() {
     try {
       setLoading(true);
       const response = await enhancedLibraryApi.getOverdueLoans({ signal });
-      
+
       if (response.success && response.data) {
         const dd: any = response.data || {};
         const rawItems = (dd.items as any[]) || [];
         const items: OverdueLoan[] = rawItems.map((r) => ({
           id: String(r.id),
           studentId: String(r.student?.studentId || r.studentId || ''),
-          studentName: String(r.student ? `${r.student.name || `${r.student.firstName} ${r.student.lastName}`}` : ''),
+          studentName: String(
+            r.student
+              ? `${r.student.name || `${r.student.firstName} ${r.student.lastName}`}`
+              : ''
+          ),
           gradeLevel: String(r.student?.gradeLevel || ''),
           bookTitle: String(r.book?.title || r.bookTitle || ''),
           bookId: String(r.book?.id || r.bookId || ''),
@@ -116,7 +122,11 @@ export function OverdueManagement() {
           status: 'overdue',
           contactInfo: undefined,
         }));
-        const isDevApp = (import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+        const isDevApp =
+          import.meta.env.DEV ||
+          String(import.meta.env.VITE_APP_NAME || '')
+            .toLowerCase()
+            .includes('development');
         const useItems: OverdueLoan[] =
           items.length === 0 && isDevApp ? devSampleItems : items;
         setOverdueLoans(useItems);
@@ -124,7 +134,8 @@ export function OverdueManagement() {
           (sum, i) => sum + Number(i.fineAmount || 0),
           0
         );
-        const uniqueStudents = new Set(useItems.map((i) => String(i.studentId))).size;
+        const uniqueStudents = new Set(useItems.map((i) => String(i.studentId)))
+          .size;
         setStats({
           totalOverdue: useItems.length,
           totalFines,
@@ -135,7 +146,11 @@ export function OverdueManagement() {
         });
         setLastRefreshedAt(Date.now());
       } else {
-        const isDevApp = (import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+        const isDevApp =
+          import.meta.env.DEV ||
+          String(import.meta.env.VITE_APP_NAME || '')
+            .toLowerCase()
+            .includes('development');
         if (!isDevApp) {
           toast.error('Failed to fetch overdue loans');
         }
@@ -143,18 +158,27 @@ export function OverdueManagement() {
           setOverdueLoans(devSampleItems);
           setStats({
             totalOverdue: devSampleItems.length,
-            totalFines: devSampleItems.reduce((s, i) => s + Number(i.fineAmount || 0), 0),
+            totalFines: devSampleItems.reduce(
+              (s, i) => s + Number(i.fineAmount || 0),
+              0
+            ),
             primaryFines: 0,
             elementaryFines: 0,
             booksOverdue: devSampleItems.length,
-            studentsWithFines: new Set(devSampleItems.map((i) => String(i.studentId))).size,
+            studentsWithFines: new Set(
+              devSampleItems.map((i) => String(i.studentId))
+            ).size,
           });
           setLastRefreshedAt(Date.now());
         }
       }
     } catch (error) {
       console.error('Error fetching overdue loans:', error);
-      const isDevApp = (import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+      const isDevApp =
+        import.meta.env.DEV ||
+        String(import.meta.env.VITE_APP_NAME || '')
+          .toLowerCase()
+          .includes('development');
       if (!isDevApp) {
         toast.error('Error loading overdue data');
       }
@@ -162,11 +186,16 @@ export function OverdueManagement() {
         setOverdueLoans(devSampleItems);
         setStats({
           totalOverdue: devSampleItems.length,
-          totalFines: devSampleItems.reduce((s, i) => s + Number(i.fineAmount || 0), 0),
+          totalFines: devSampleItems.reduce(
+            (s, i) => s + Number(i.fineAmount || 0),
+            0
+          ),
           primaryFines: 0,
           elementaryFines: 0,
           booksOverdue: devSampleItems.length,
-          studentsWithFines: new Set(devSampleItems.map((i) => String(i.studentId))).size,
+          studentsWithFines: new Set(
+            devSampleItems.map((i) => String(i.studentId))
+          ).size,
         });
         setLastRefreshedAt(Date.now());
       }
@@ -191,9 +220,13 @@ export function OverdueManagement() {
 
   const handleReturnBook = async (loanId: string) => {
     try {
-      const isDevApp = String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+      const isDevApp = String(import.meta.env.VITE_APP_NAME || '')
+        .toLowerCase()
+        .includes('development');
       if (isDevApp) {
-        setOverdueLoans((prev) => prev.map((l) => (l.id === loanId ? { ...l, status: 'returned' } : l)));
+        setOverdueLoans((prev) =>
+          prev.map((l) => (l.id === loanId ? { ...l, status: 'returned' } : l))
+        );
         toast.success('Book returned successfully');
         return;
       }
@@ -202,7 +235,10 @@ export function OverdueManagement() {
         toast.success('Book returned successfully');
         await fetchOverdueLoans();
       } else {
-        const errMsg = typeof (response as any)?.error === 'string' ? (response as any).error : (response as any)?.error?.message || 'Failed to return book';
+        const errMsg =
+          typeof (response as any)?.error === 'string'
+            ? (response as any).error
+            : (response as any)?.error?.message || 'Failed to return book';
         toast.error(String(errMsg));
       }
     } catch (error) {
@@ -214,9 +250,15 @@ export function OverdueManagement() {
   const handlePayFine = async (loanId: string) => {
     setIsProcessingPayment(loanId);
     try {
-      const isDevApp = String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
+      const isDevApp = String(import.meta.env.VITE_APP_NAME || '')
+        .toLowerCase()
+        .includes('development');
       if (isDevApp) {
-        setOverdueLoans((prev) => prev.map((l) => (l.id === loanId ? { ...l, status: 'paid', fineAmount: 0 } : l)));
+        setOverdueLoans((prev) =>
+          prev.map((l) =>
+            l.id === loanId ? { ...l, status: 'paid', fineAmount: 0 } : l
+          )
+        );
         toast.success('Fine paid successfully');
         return;
       }
@@ -225,7 +267,10 @@ export function OverdueManagement() {
         toast.success('Fine paid successfully');
         await fetchOverdueLoans();
       } else {
-        const errMsg = typeof (response as any)?.error === 'string' ? (response as any).error : (response as any)?.error?.message || 'Failed to process payment';
+        const errMsg =
+          typeof (response as any)?.error === 'string'
+            ? (response as any).error
+            : (response as any)?.error?.message || 'Failed to process payment';
         toast.error(String(errMsg));
       }
     } catch (error) {
@@ -260,9 +305,16 @@ export function OverdueManagement() {
   const handleBatchReturn = async () => {
     if (selectedIds.length === 0) return;
     try {
-      const isDevApp = String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development') || import.meta.env.DEV;
+      const isDevApp =
+        String(import.meta.env.VITE_APP_NAME || '')
+          .toLowerCase()
+          .includes('development') || import.meta.env.DEV;
       if (isDevApp) {
-        setOverdueLoans((prev) => prev.map((l) => (selectedIds.includes(l.id) ? { ...l, status: 'returned' } : l)));
+        setOverdueLoans((prev) =>
+          prev.map((l) =>
+            selectedIds.includes(l.id) ? { ...l, status: 'returned' } : l
+          )
+        );
         toast.success(`Returned ${selectedIds.length} item(s)`);
         setSelected({});
         return;
@@ -283,9 +335,18 @@ export function OverdueManagement() {
   const handleBatchPay = async () => {
     if (selectedIds.length === 0) return;
     try {
-      const isDevApp = String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development') || import.meta.env.DEV;
+      const isDevApp =
+        String(import.meta.env.VITE_APP_NAME || '')
+          .toLowerCase()
+          .includes('development') || import.meta.env.DEV;
       if (isDevApp) {
-        setOverdueLoans((prev) => prev.map((l) => (selectedIds.includes(l.id) ? { ...l, status: 'paid', fineAmount: 0 } : l)));
+        setOverdueLoans((prev) =>
+          prev.map((l) =>
+            selectedIds.includes(l.id)
+              ? { ...l, status: 'paid', fineAmount: 0 }
+              : l
+          )
+        );
         toast.success(`Marked paid ${selectedIds.length} item(s)`);
         setSelected({});
         return;
@@ -304,7 +365,10 @@ export function OverdueManagement() {
   const handleBatchRemind = async () => {
     if (selectedIds.length === 0) return;
     try {
-      const isDevApp = String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development') || import.meta.env.DEV;
+      const isDevApp =
+        String(import.meta.env.VITE_APP_NAME || '')
+          .toLowerCase()
+          .includes('development') || import.meta.env.DEV;
       if (isDevApp) {
         const count = selectedIds.length;
         toast.success(`Reminded ${count} student(s)`);
@@ -330,7 +394,8 @@ export function OverdueManagement() {
 
   const handleSendReminder = async (loanId: string, studentId?: string) => {
     try {
-      const sid = studentId || overdueLoans.find(l => l.id === loanId)?.studentId;
+      const sid =
+        studentId || overdueLoans.find((l) => l.id === loanId)?.studentId;
       if (!sid) {
         toast.error('Student not found for reminder');
         return;
@@ -348,7 +413,9 @@ export function OverdueManagement() {
   };
 
   const buildReminderText = (loan: OverdueLoan) => {
-    const due = loan.dueDate ? new Date(loan.dueDate).toLocaleDateString() : 'N/A';
+    const due = loan.dueDate
+      ? new Date(loan.dueDate).toLocaleDateString()
+      : 'N/A';
     const fine = `₱${Number(loan.fineAmount || 0).toFixed(2)}`;
     const rate = `₱${Number(loan.finePerDay || 0).toFixed(2)}/day`;
     return `Subject: Library Overdue Notice\n\nDear ${loan.studentName || 'Student'},\n\nOur records indicate the book "${loan.bookTitle}" is overdue since ${due}.\nCurrent fine: ${fine} (rate ${rate}). Please return the book as soon as possible to avoid additional charges.\n\nStudent ID: ${loan.studentId}\nGrade: ${loan.gradeLevel}\n\nThank you,\nLibrary`;
@@ -400,14 +467,16 @@ export function OverdueManagement() {
     }
   };
 
-  const filteredLoans = overdueLoans.filter(loan => {
+  const filteredLoans = overdueLoans.filter((loan) => {
     const sName = String(loan.studentName || '');
     const sId = String(loan.studentId || '');
     const bTitle = String(loan.bookTitle || '');
-    const matchesSearch = sName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         sId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         bTitle.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || loan.status === statusFilter;
+    const matchesSearch =
+      sName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      bTitle.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === 'all' || loan.status === statusFilter;
     let matchesGrade = true;
     if (gradeFilter !== 'all') {
       if (gradeFilter.startsWith('G')) {
@@ -415,13 +484,14 @@ export function OverdueManagement() {
         if (gradeFilter === 'G1-3') matchesGrade = num >= 1 && num <= 3;
         else if (gradeFilter === 'G4-6') matchesGrade = num >= 4 && num <= 6;
         else if (gradeFilter === 'G7-10') matchesGrade = num >= 7 && num <= 10;
-        else if (gradeFilter === 'G11-12') matchesGrade = num >= 11 && num <= 12;
+        else if (gradeFilter === 'G11-12')
+          matchesGrade = num >= 11 && num <= 12;
         else matchesGrade = String(loan.gradeLevel) === gradeFilter;
       } else {
         matchesGrade = String(loan.gradeLevel) === gradeFilter;
       }
     }
-    
+
     return matchesSearch && matchesStatus && matchesGrade;
   });
 
@@ -450,13 +520,20 @@ export function OverdueManagement() {
       if (saved) {
         const obj = JSON.parse(saved);
         if (typeof obj.searchTerm === 'string') setSearchTerm(obj.searchTerm);
-        if (typeof obj.statusFilter === 'string') setStatusFilter(obj.statusFilter);
-        if (typeof obj.gradeFilter === 'string') setGradeFilter(obj.gradeFilter);
+        if (typeof obj.statusFilter === 'string')
+          setStatusFilter(obj.statusFilter);
+        if (typeof obj.gradeFilter === 'string')
+          setGradeFilter(obj.gradeFilter);
       }
-    } catch { void 0; }
+    } catch {
+      void 0;
+    }
     const controller = new AbortController();
     fetchOverdueLoans(controller.signal);
-    const interval = setInterval(() => fetchOverdueLoans(controller.signal), 60000);
+    const interval = setInterval(
+      () => fetchOverdueLoans(controller.signal),
+      60000
+    );
     return () => {
       controller.abort();
       clearInterval(interval);
@@ -465,7 +542,11 @@ export function OverdueManagement() {
 
   useEffect(() => {
     const obj = { searchTerm, statusFilter, gradeFilter };
-    try { localStorage.setItem('clms_overdue_filters', JSON.stringify(obj)); } catch { void 0; }
+    try {
+      localStorage.setItem('clms_overdue_filters', JSON.stringify(obj));
+    } catch {
+      void 0;
+    }
   }, [searchTerm, statusFilter, gradeFilter]);
 
   if (loading) {
@@ -477,7 +558,9 @@ export function OverdueManagement() {
               <AlertTriangle className="h-5 w-5" />
               Overdue Management
             </CardTitle>
-            <CardDescription>Grade-based fine management system</CardDescription>
+            <CardDescription>
+              Grade-based fine management system
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center h-64">
@@ -565,7 +648,9 @@ export function OverdueManagement() {
             <DollarSign className="h-5 w-5" />
             Grade-Based Fine Rates
           </CardTitle>
-          <CardDescription>Current fine structure based on grade level</CardDescription>
+          <CardDescription>
+            Current fine structure based on grade level
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -613,16 +698,24 @@ export function OverdueManagement() {
                 onClick={handleRefresh}
                 disabled={isRefreshing}
               >
-                <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`}
+                />
                 Refresh
               </Button>
               {isRefreshing && (
-                <span className="text-xs text-muted-foreground">Refreshing...</span>
+                <span className="text-xs text-muted-foreground">
+                  Refreshing...
+                </span>
               )}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => { setSearchTerm(''); setStatusFilter('all'); setGradeFilter('all'); }}
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('all');
+                  setGradeFilter('all');
+                }}
               >
                 Clear Filters
               </Button>
@@ -727,13 +820,45 @@ export function OverdueManagement() {
           </div>
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs text-muted-foreground">Quick grade:</span>
-            <Button size="sm" variant={gradeFilter === 'G1-3' ? 'default' : 'outline'} onClick={() => setGradeFilter('G1-3')}>G1-3</Button>
-            <Button size="sm" variant={gradeFilter === 'G4-6' ? 'default' : 'outline'} onClick={() => setGradeFilter('G4-6')}>G4-6</Button>
-            <Button size="sm" variant={gradeFilter === 'G7-10' ? 'default' : 'outline'} onClick={() => setGradeFilter('G7-10')}>G7-10</Button>
-            <Button size="sm" variant={gradeFilter === 'G11-12' ? 'default' : 'outline'} onClick={() => setGradeFilter('G11-12')}>G11-12</Button>
-            <Button size="sm" variant={gradeFilter === 'all' ? 'default' : 'outline'} onClick={() => setGradeFilter('all')}>All</Button>
+            <Button
+              size="sm"
+              variant={gradeFilter === 'G1-3' ? 'default' : 'outline'}
+              onClick={() => setGradeFilter('G1-3')}
+            >
+              G1-3
+            </Button>
+            <Button
+              size="sm"
+              variant={gradeFilter === 'G4-6' ? 'default' : 'outline'}
+              onClick={() => setGradeFilter('G4-6')}
+            >
+              G4-6
+            </Button>
+            <Button
+              size="sm"
+              variant={gradeFilter === 'G7-10' ? 'default' : 'outline'}
+              onClick={() => setGradeFilter('G7-10')}
+            >
+              G7-10
+            </Button>
+            <Button
+              size="sm"
+              variant={gradeFilter === 'G11-12' ? 'default' : 'outline'}
+              onClick={() => setGradeFilter('G11-12')}
+            >
+              G11-12
+            </Button>
+            <Button
+              size="sm"
+              variant={gradeFilter === 'all' ? 'default' : 'outline'}
+              onClick={() => setGradeFilter('all')}
+            >
+              All
+            </Button>
             {lastRefreshedAt && (
-              <span className="ml-auto text-xs text-muted-foreground">Updated {new Date(lastRefreshedAt).toLocaleTimeString()}</span>
+              <span className="ml-auto text-xs text-muted-foreground">
+                Updated {new Date(lastRefreshedAt).toLocaleTimeString()}
+              </span>
             )}
           </div>
 
@@ -750,47 +875,67 @@ export function OverdueManagement() {
           ) : (
             <div className="space-y-3">
               {filteredLoans.map((loan) => (
-                <Card key={loan.id} className="hover:shadow-md transition-shadow">
+                <Card
+                  key={loan.id}
+                  className="hover:shadow-md transition-shadow"
+                >
                   <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <Checkbox
-                            checked={Boolean(selected[loan.id])}
-                            onCheckedChange={(c) => handleToggle(loan.id, Boolean(c))}
-                          />
-                          <div className="flex-shrink-0">
-                            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-600 rounded-full flex items-center justify-center">
-                              <Book className="h-5 w-5 text-white" />
-                            </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Checkbox
+                          checked={Boolean(selected[loan.id])}
+                          onCheckedChange={(c) =>
+                            handleToggle(loan.id, Boolean(c))
+                          }
+                        />
+                        <div className="flex-shrink-0">
+                          <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-600 rounded-full flex items-center justify-center">
+                            <Book className="h-5 w-5 text-white" />
                           </div>
+                        </div>
                         <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{loan.studentName || 'Unknown Student'}</h3>
+                          <h3 className="font-semibold text-lg">
+                            {loan.studentName || 'Unknown Student'}
+                          </h3>
                           <p className="text-sm text-muted-foreground">
-                            ID: {loan.studentId || 'N/A'} • {loan.gradeLevel || 'N/A'} • {loan.materialType || 'N/A'}
+                            ID: {loan.studentId || 'N/A'} •{' '}
+                            {loan.gradeLevel || 'N/A'} •{' '}
+                            {loan.materialType || 'N/A'}
                           </p>
-                          <p className="text-sm font-medium">{loan.bookTitle || 'Untitled Material'}</p>
+                          <p className="text-sm font-medium">
+                            {loan.bookTitle || 'Untitled Material'}
+                          </p>
                           <div className="flex items-center gap-3 mt-2">
                             <Badge className={getStatusColor(loan.status)}>
-                              {loan.status.charAt(0).toUpperCase() + loan.status.slice(1)}
+                              {loan.status.charAt(0).toUpperCase() +
+                                loan.status.slice(1)}
                             </Badge>
-                            <div className={`flex items-center text-sm font-medium ${getOverdueSeverity(loan.overdueDays)}`}>
+                            <div
+                              className={`flex items-center text-sm font-medium ${getOverdueSeverity(loan.overdueDays)}`}
+                            >
                               <Clock className="h-3 w-3 mr-1" />
                               {loan.overdueDays} days overdue
                             </div>
                             <div className="flex items-center text-sm font-bold text-red-600">
-                              <DollarSign className="h-3 w-3 mr-1" />
-                              ₱{loan.fineAmount.toLocaleString()}
+                              <DollarSign className="h-3 w-3 mr-1" />₱
+                              {loan.fineAmount.toLocaleString()}
                             </div>
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">
-                            Borrowed: {loan.borrowedDate ? new Date(loan.borrowedDate).toLocaleDateString() : 'N/A'} • 
-                            Due: {loan.dueDate ? new Date(loan.dueDate).toLocaleDateString() : 'N/A'} • 
-                            Rate: ₱{Number(loan.finePerDay || 0)}/day
+                            Borrowed:{' '}
+                            {loan.borrowedDate
+                              ? new Date(loan.borrowedDate).toLocaleDateString()
+                              : 'N/A'}{' '}
+                            • Due:{' '}
+                            {loan.dueDate
+                              ? new Date(loan.dueDate).toLocaleDateString()
+                              : 'N/A'}{' '}
+                            • Rate: ₱{Number(loan.finePerDay || 0)}/day
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                          {loan.status === 'overdue' && (
+                        {loan.status === 'overdue' && (
                           <>
                             <Button
                               variant="outline"
@@ -817,7 +962,9 @@ export function OverdueManagement() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleSendReminder(loan.id, loan.studentId)}
+                                onClick={() =>
+                                  handleSendReminder(loan.id, loan.studentId)
+                                }
                               >
                                 <Mail className="h-3 w-3 mr-1" />
                                 Remind
@@ -826,13 +973,34 @@ export function OverdueManagement() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => { const text = buildReminderText(loan); try { void navigator.clipboard.writeText(text); toast.success('Reminder copied'); } catch { try { const el = document.createElement('textarea'); el.value = text; el.style.position = 'fixed'; el.style.left = '-9999px'; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); toast.success('Reminder copied'); } catch { toast.error('Copy failed'); } } }}
+                              onClick={() => {
+                                const text = buildReminderText(loan);
+                                try {
+                                  void navigator.clipboard.writeText(text);
+                                  toast.success('Reminder copied');
+                                } catch {
+                                  try {
+                                    const el =
+                                      document.createElement('textarea');
+                                    el.value = text;
+                                    el.style.position = 'fixed';
+                                    el.style.left = '-9999px';
+                                    document.body.appendChild(el);
+                                    el.select();
+                                    document.execCommand('copy');
+                                    document.body.removeChild(el);
+                                    toast.success('Reminder copied');
+                                  } catch {
+                                    toast.error('Copy failed');
+                                  }
+                                }
+                              }}
                             >
                               <Mail className="h-3 w-3 mr-1" />
                               Copy Reminder
                             </Button>
                           </>
-                          )}
+                        )}
                       </div>
                     </div>
                   </CardContent>

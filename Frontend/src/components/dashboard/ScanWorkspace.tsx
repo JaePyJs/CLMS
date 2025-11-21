@@ -287,16 +287,9 @@ export function ScanWorkspace() {
 
   // Enhanced Activity Management Handlers
   const handleBulkCheckout = async () => {
-    try {
-      // Mock bulk checkout functionality
-      toast.success(
-        `Bulk checkout initiated for ${selectedSessions.length} sessions`
-      );
-      setSelectedSessions([]);
-      setShowBulkActions(false);
-    } catch (error) {
-      toast.error('Failed to perform bulk checkout');
-    }
+    // Bulk checkout functionality to be implemented
+    toast.info('Bulk checkout feature coming soon');
+    setShowBulkActions(false);
   };
 
   const handleBulkExtendTime = async (additionalMinutes: number) => {
@@ -660,7 +653,13 @@ export function ScanWorkspace() {
             size="sm"
             onClick={async () => {
               try {
-                await fetch('/api/kiosk/broadcast', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Please keep noise to a minimum. Thank you!' }) });
+                await fetch('/api/kiosk/broadcast', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    message: 'Please keep noise to a minimum. Thank you!',
+                  }),
+                });
                 toast.success('Announcement broadcasted');
               } catch {
                 toast.error('Failed to broadcast announcement');
@@ -1229,11 +1228,13 @@ export function ScanWorkspace() {
             <Button
               variant="outline"
               className="h-16 flex-col hover:bg-blue-50 hover:border-blue-300 transition-colors"
-              onClick={() =>
+              onClick={() => {
+                // Navigate to student management or open dialog
+                // For now, just show a toast as we don't have navigation context here easily
                 toast.info(
-                  'Register New Student - would open registration form'
-                )
-              }
+                  'Please go to Student Management tab to register new students'
+                );
+              }}
             >
               <UserPlus className="h-6 w-6 mb-2 text-blue-600" />
               <span className="text-sm">Register Student</span>
@@ -1249,9 +1250,9 @@ export function ScanWorkspace() {
             <Button
               variant="outline"
               className="h-16 flex-col hover:bg-purple-50 hover:border-purple-300 transition-colors"
-              onClick={() =>
-                toast.info('Generate Reports - would open report builder')
-              }
+              onClick={() => {
+                toast.info('Please go to Reports tab');
+              }}
             >
               <BarChart3 className="h-6 w-6 mb-2 text-purple-600" />
               <span className="text-sm">Reports</span>
@@ -1259,82 +1260,17 @@ export function ScanWorkspace() {
             <Button
               variant="outline"
               className="h-16 flex-col hover:bg-orange-50 hover:border-orange-300 transition-colors"
-              onClick={() =>
-                toast.info('Sync Offline Data - would sync queued activities')
-              }
+              onClick={async () => {
+                try {
+                  await offlineActions.sync();
+                  toast.success('Offline data synced successfully');
+                } catch (error) {
+                  toast.error('Failed to sync offline data');
+                }
+              }}
             >
               <RefreshCw className="h-6 w-6 mb-2 text-orange-600" />
               <span className="text-sm">Sync Data</span>
-            </Button>
-          </div>
-
-          {/* Additional Quick Actions Row */}
-          <div className="grid gap-4 md:grid-cols-6 mt-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                toast.info('Emergency Alert - would notify administrators')
-              }
-              className="text-red-600 hover:bg-red-50"
-            >
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              Emergency
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                toast.info('Maintenance Mode - would schedule maintenance')
-              }
-              className="text-gray-600 hover:bg-gray-50"
-            >
-              <Settings className="h-3 w-3 mr-1" />
-              Maintenance
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                toast.info('System Health - would run diagnostics')
-              }
-              className="text-blue-600 hover:bg-blue-50"
-            >
-              <Shield className="h-3 w-3 mr-1" />
-              Health
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                toast.info('Daily Summary - would generate summary')
-              }
-              className="text-green-600 hover:bg-green-50"
-            >
-              <Calendar className="h-3 w-3 mr-1" />
-              Summary
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                toast.info('Export Data - would export current data')
-              }
-              className="text-purple-600 hover:bg-purple-50"
-            >
-              <Download className="h-3 w-3 mr-1" />
-              Export
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                toast.info('Print Reports - would open print dialog')
-              }
-              className="text-orange-600 hover:bg-orange-50"
-            >
-              <Printer className="h-3 w-3 mr-1" />
-              Print
             </Button>
           </div>
         </CardContent>

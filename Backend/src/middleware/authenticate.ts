@@ -114,7 +114,7 @@ export function requireRole(roles: string | string[]) {
           message: 'Insufficient permissions',
           code: 'INSUFFICIENT_PERMISSIONS',
           required: allowedRoles,
-        current: effectiveRole,
+          current: effectiveRole,
         });
         return;
       }

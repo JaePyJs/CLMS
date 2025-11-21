@@ -2,7 +2,6 @@
 import prisma from '../utils/prisma';
 import { logger } from '../utils/logger';
 
-
 export interface CreateBookData {
   isbn?: string;
   title: string;
@@ -243,11 +242,17 @@ export class BookService {
         author,
         isbn,
         available,
-        page = 1,
-        limit = 10,
+        page: rawPage = 1,
+        limit: rawLimit = 10,
         sortBy = 'createdAt',
         sortOrder = 'desc',
       } = filters;
+
+      // Parse page and limit as integers
+      const page =
+        typeof rawPage === 'string' ? parseInt(rawPage, 10) : rawPage;
+      const limit =
+        typeof rawLimit === 'string' ? parseInt(rawLimit, 10) : rawLimit;
 
       const where: any = {};
 
@@ -377,6 +382,64 @@ export class BookService {
     } catch (error) {
       logger.error('Get book availability failed', {
         id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  public static async getBookStats(): Promise<{
+    total: number;
+    available: number;
+    checkedOut: number;
+    overdue: number;
+    categories: number;
+  }> {
+    try {
+      const [totalBooks, availableBooks, categoriesResult, activeCheckouts] =
+        await Promise.all([
+          // Total books
+          prisma.books.count({ where: { is_active: true } }),
+
+          // Available books (with at least 1 copy available)
+          prisma.books.count({
+            where: {
+              is_active: true,
+              available_copies: { gt: 0 },
+            },
+          }),
+
+          // Unique categories
+          prisma.books.findMany({
+            where: { is_active: true },
+            select: { category: true },
+            distinct: ['category'],
+          }),
+
+          // Active checkouts
+          prisma.book_checkouts.count({
+            where: { status: 'ACTIVE' },
+          }),
+        ]);
+
+      // Count overdue checkouts
+      const now = new Date();
+      const overdueCheckouts = await prisma.book_checkouts.count({
+        where: {
+          status: 'ACTIVE',
+          due_date: { lt: now },
+        },
+      });
+
+      return {
+        total: totalBooks,
+        available: availableBooks,
+        checkedOut: activeCheckouts,
+        overdue: overdueCheckouts,
+        categories: categoriesResult.length,
+      };
+    } catch (error) {
+      logger.error('Get book stats failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
@@ -579,6 +642,115 @@ export class BookService {
     } catch (error) {
       logger.error('Get book history failed', {
         id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  // Quality Management Methods
+  public static async getQualityStats(): Promise<{
+    total: number;
+    needsReview: number;
+    tempBarcodes: number;
+    complete: number;
+  }> {
+    try {
+      const [total, needsReview, tempBarcodes] = await Promise.all([
+        prisma.books.count(),
+        prisma.books.count({ where: { needs_review: true } as any }),
+        prisma.books.count({
+          where: { accession_no: { startsWith: 'TEMP-' } },
+        }),
+      ]);
+
+      const complete = total - needsReview;
+
+      return {
+        total,
+        needsReview,
+        tempBarcodes,
+        complete,
+      };
+    } catch (error) {
+      logger.error('Get quality stats failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  public static async markReviewed(id: string): Promise<any> {
+    try {
+      logger.info('Marking book as reviewed', { bookId: id });
+
+      const book = await prisma.books.update({
+        where: { id },
+        data: {
+          needs_review: false,
+          import_notes: null,
+        } as any,
+      });
+
+      logger.info('Book marked as reviewed successfully', { bookId: id });
+      return book;
+    } catch (error) {
+      logger.error('Mark as reviewed failed', {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  public static async exportIncomplete(): Promise<string> {
+    try {
+      logger.info('Exporting incomplete books');
+
+      const books = await prisma.books.findMany({
+        where: { needs_review: true } as any,
+        orderBy: { created_at: 'desc' },
+        select: {
+          accession_no: true,
+          title: true,
+          author: true,
+          publisher: true,
+          isbn: true,
+          category: true,
+          year: true,
+          import_notes: true,
+        },
+      });
+
+      // Generate CSV manually
+      const headers = [
+        'Barcode',
+        'Title',
+        'Author',
+        'Publisher',
+        'ISBN',
+        'Category',
+        'Year',
+        'Issues',
+      ];
+
+      const rows = books.map(book => [
+        book.accession_no,
+        `"${(book.title || '').replace(/"/g, '""')}"`,
+        `"${(book.author || '').replace(/"/g, '""')}"`,
+        `"${(book.publisher || '').replace(/"/g, '""')}"`,
+        book.isbn || '',
+        book.category || '',
+        book.year || '',
+        `"${(book.import_notes || '').replace(/"/g, '""')}"`,
+      ]);
+
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+      logger.info('Export complete', { count: books.length });
+      return csv;
+    } catch (error) {
+      logger.error('Export incomplete books failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;

@@ -5,9 +5,8 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import { env, getAllowedOrigins, isDevelopment } from './config/env';
-import { config as dbConfig } from './config/database';
+import { config as dbConfig, connectDatabase } from './config/database';
 import { cache } from './services/cacheService';
-import { connectDatabase } from './config/database';
 import { logger } from './utils/logger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
@@ -16,7 +15,7 @@ import { apiRoutes } from './routes/index';
 import { websocketServer } from './websocket/websocketServer';
 
 // Create Express application
-// @ts-ignore - Express types issue with Application inference
+// @ts-expect-error - Express types issue with Application inference
 const app = express();
 
 // Initialize database connection
@@ -76,13 +75,15 @@ const limiter = rateLimit({
 app.use('/api', limiter);
 
 // Body parsing middleware
-// @ts-ignore - Express middleware methods exist at runtime
+// @ts-expect-error - Express middleware methods exist at runtime
 app.use(express.json({ limit: '10mb' }));
-// @ts-ignore - Express middleware methods exist at runtime
+// @ts-expect-error - Express middleware methods exist at runtime
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Handle invalid JSON body parse errors
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (err && err instanceof SyntaxError && (req as any).body === undefined) {
     return res.status(400).json({
       error: {
@@ -104,10 +105,15 @@ app.use(compression());
 app.use((req: Request, res: Response, next: express.NextFunction) => {
   try {
     const existing = req.get('x-correlation-id') || req.get('x-request-id');
-    const id = existing || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const id =
+      existing ||
+      `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (req as any).id = id;
     res.setHeader('x-correlation-id', id);
-  } catch {}
+  } catch {
+    // Ignore error
+  }
   next();
 });
 app.use(requestLogger);
@@ -120,17 +126,19 @@ app.use('/api', apiRoutes);
 
 // Health check endpoint
 app.get('/health', async (_req: Request, res: Response) => {
-  let db = { status: 'unknown' as 'healthy' | 'unhealthy' | 'unknown' };
+  const db = { status: 'unknown' as 'healthy' | 'unhealthy' | 'unknown' };
   try {
     const hc = await dbConfig.healthCheck();
     db.status = hc.status === 'healthy' ? 'healthy' : 'unhealthy';
   } catch {
     db.status = 'unhealthy';
   }
-  let redis = { available: false };
+  const redis = { available: false };
   try {
     redis.available = cache.isAvailable();
-  } catch {}
+  } catch {
+    // Ignore error
+  }
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),

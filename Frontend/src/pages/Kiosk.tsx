@@ -98,13 +98,24 @@ export default function Kiosk() {
   const [studentInfo, setStudentInfo] = useState<StudentInfo | null>(null);
   const [cooldownTime, setCooldownTime] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [simulateMode, setSimulateMode] = useState<string | null>(null);
-  const [simulateCooldown, setSimulateCooldown] = useState<number>(0);
   const [lastTapIn, setLastTapIn] = useState<Date | null>(null);
   const scanInputRef = useRef<HTMLInputElement>(null);
   const [usbBuffer, setUsbBuffer] = useState<string>('');
-  const [borrowedDue, setBorrowedDue] = useState<Array<{ title: string; category: string; dueDate: string; daysOverdue?: number }>>([]);
-  const [occupancy, setOccupancy] = useState<{ AVR: number; COMPUTER: number; LIBRARY_SPACE: number; BORROWING: number; RECREATION: number }>({ AVR: 0, COMPUTER: 0, LIBRARY_SPACE: 0, BORROWING: 0, RECREATION: 0 });
+  const [borrowedDue, setBorrowedDue] = useState<
+    Array<{
+      title: string;
+      category: string;
+      dueDate: string;
+      daysOverdue?: number;
+    }>
+  >([]);
+  const [occupancy, setOccupancy] = useState<{
+    AVR: number;
+    COMPUTER: number;
+    LIBRARY_SPACE: number;
+    BORROWING: number;
+    RECREATION: number;
+  }>({ AVR: 0, COMPUTER: 0, LIBRARY_SPACE: 0, BORROWING: 0, RECREATION: 0 });
   const funQuotes = [
     'Reading is dreaming with open eyes.',
     'A book a day keeps boredom away.',
@@ -114,9 +125,10 @@ export default function Kiosk() {
   const [selectedQuote, setSelectedQuote] = useState<string>(funQuotes[0]);
   const [timeInState, setTimeInState] = useState<string>('');
   const [expectedOutState, setExpectedOutState] = useState<string>('');
-  
+
   const [quietMode, setQuietMode] = useState<boolean>(false);
-  const [announcementMessages, setAnnouncementMessages] = useState<string[]>(funQuotes);
+  const [announcementMessages, setAnnouncementMessages] =
+    useState<string[]>(funQuotes);
   const [announcementInterval, setAnnouncementInterval] = useState<number>(60);
 
   // Check for 15-minute idle timeout
@@ -169,14 +181,18 @@ export default function Kiosk() {
 
   // Rotate quotes slowly
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSelectedQuote((prev) => {
-        const list = announcementMessages.length > 0 ? announcementMessages : funQuotes;
-        const idx = list.indexOf(prev);
-        const next = list[(idx + 1) % list.length];
-        return next || list[0];
-      });
-    }, Math.max(10, announcementInterval) * 1000);
+    const interval = setInterval(
+      () => {
+        setSelectedQuote((prev) => {
+          const list =
+            announcementMessages.length > 0 ? announcementMessages : funQuotes;
+          const idx = list.indexOf(prev);
+          const next = list[(idx + 1) % list.length];
+          return next || list[0];
+        });
+      },
+      Math.max(10, announcementInterval) * 1000
+    );
     return () => clearInterval(interval);
   }, [announcementMessages, announcementInterval]);
 
@@ -184,9 +200,18 @@ export default function Kiosk() {
   useEffect(() => {
     if (!events || events.length === 0) return;
     const latest = events[events.length - 1] as any;
-    if (latest?.type === 'attendance_occupancy' && (latest?.data?.counts || latest?.data?.sections)) {
+    if (
+      latest?.type === 'attendance_occupancy' &&
+      (latest?.data?.counts || latest?.data?.sections)
+    ) {
       const src = latest.data.counts || latest.data.sections;
-      const counts = src as { AVR?: number; COMPUTER?: number; LIBRARY_SPACE?: number; BORROWING?: number; RECREATION?: number };
+      const counts = src as {
+        AVR?: number;
+        COMPUTER?: number;
+        LIBRARY_SPACE?: number;
+        BORROWING?: number;
+        RECREATION?: number;
+      };
       setOccupancy({
         AVR: Number(counts.AVR || 0),
         COMPUTER: Number(counts.COMPUTER || 0),
@@ -195,9 +220,14 @@ export default function Kiosk() {
         RECREATION: Number(counts.RECREATION || 0),
       });
     } else if (latest?.type === 'announcement_config' && latest?.data) {
-      const d = latest.data as { quietMode: boolean; intervalSeconds: number; messages: string[] };
+      const d = latest.data as {
+        quietMode: boolean;
+        intervalSeconds: number;
+        messages: string[];
+      };
       if (typeof d.quietMode === 'boolean') setQuietMode(d.quietMode);
-      if (typeof d.intervalSeconds === 'number') setAnnouncementInterval(d.intervalSeconds);
+      if (typeof d.intervalSeconds === 'number')
+        setAnnouncementInterval(d.intervalSeconds);
       if (Array.isArray(d.messages)) setAnnouncementMessages(d.messages);
     }
   }, [events]);
@@ -207,11 +237,19 @@ export default function Kiosk() {
     (async () => {
       try {
         const resp = await apiClient.get('/api/kiosk/announcements/config');
-        const data = (resp?.data ?? {}) as { quietMode?: boolean; intervalSeconds?: number; messages?: string[] };
+        const data = (resp?.data ?? {}) as {
+          quietMode?: boolean;
+          intervalSeconds?: number;
+          messages?: string[];
+        };
         if (typeof data.quietMode === 'boolean') setQuietMode(data.quietMode);
-        if (typeof data.intervalSeconds === 'number') setAnnouncementInterval(data.intervalSeconds);
-        if (Array.isArray(data.messages)) setAnnouncementMessages(data.messages);
-      } catch (_e) { void 0; }
+        if (typeof data.intervalSeconds === 'number')
+          setAnnouncementInterval(data.intervalSeconds);
+        if (Array.isArray(data.messages))
+          setAnnouncementMessages(data.messages);
+      } catch (_e) {
+        void 0;
+      }
     })();
   }, []);
 
@@ -235,14 +273,24 @@ export default function Kiosk() {
           }
         });
       }
-    } catch (_e) { void 0; }
+    } catch (_e) {
+      void 0;
+    }
   }, []);
 
   useEffect(() => {
     (async () => {
       try {
         const resp = await apiClient.get('/api/kiosk/occupancy');
-        const data = (resp?.data ?? {}) as { counts?: { AVR?: number; COMPUTER?: number; LIBRARY_SPACE?: number; BORROWING?: number; RECREATION?: number } };
+        const data = (resp?.data ?? {}) as {
+          counts?: {
+            AVR?: number;
+            COMPUTER?: number;
+            LIBRARY_SPACE?: number;
+            BORROWING?: number;
+            RECREATION?: number;
+          };
+        };
         if (data.counts) {
           setOccupancy({
             AVR: Number(data.counts.AVR || 0),
@@ -252,7 +300,9 @@ export default function Kiosk() {
             RECREATION: Number(data.counts.RECREATION || 0),
           });
         }
-      } catch (_e) { void 0; }
+      } catch (_e) {
+        void 0;
+      }
     })();
   }, []);
 
@@ -273,58 +323,6 @@ export default function Kiosk() {
 
     setLoading(true);
     try {
-      // Dev-only simulation overrides
-      const params = new URLSearchParams(window.location.search);
-      const sim = params.get('simulate') || simulateMode;
-      const simPurpose = params.get('purpose') || 'library';
-      const simCooldown = Number(params.get('cooldown') || simulateCooldown || 0);
-      if (import.meta.env.DEV && sim) {
-        if (sim === 'welcome') {
-          setStudentInfo({
-            id: 'demo-student',
-            studentId: scanData.trim(),
-            name: 'Demo Student',
-            gradeLevel: '10',
-            section: 'A',
-            barcode: scanData.trim(),
-          });
-          setSelectedPurposes([simPurpose]);
-          setCurrentStep('purpose');
-        } else if (sim === 'cooldown') {
-          setCooldownTime(simCooldown > 0 ? simCooldown : 180);
-          setCurrentStep('cooldown');
-        } else if (sim === 'notfound') {
-          setCurrentStep('scan');
-        } else if (sim === 'error') {
-          setCurrentStep('scan');
-        }
-        return;
-      }
-
-      // Development fallback: simulate a successful welcome when backend is unavailable
-      if (import.meta.env.DEV && !sim) {
-        setStudentInfo({
-          id: 'demo-student',
-          studentId: scanData.trim(),
-          name: 'Demo Student',
-          gradeLevel: '10',
-          section: 'A',
-          barcode: scanData.trim(),
-        });
-        setSelectedPurposes([simPurpose]);
-        const now = new Date();
-        setTimeInState(now.toLocaleTimeString());
-        const expected = new Date(now.getTime() + 15 * 60000);
-        setExpectedOutState(expected.toLocaleTimeString());
-        setBorrowedDue([
-          { title: 'Sample Book', category: 'Fiction', dueDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
-          { title: 'Heritage', category: 'Filipiniana', dueDate: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], daysOverdue: 2 },
-        ]);
-        setCurrentStep('purpose');
-        setLoading(false);
-        return;
-      }
-
       const response = await apiClient.post<TapInResponse>(
         '/api/kiosk/tap-in',
         {
@@ -332,8 +330,9 @@ export default function Kiosk() {
         }
       );
 
-      if (response.success && response.data) {
-        const result = response.data;
+      // Fix: The response from apiClient.post IS the data (unwrapped)
+      if (response.success) {
+        const result = response as any;
 
         if (result.cooldownRemaining && result.cooldownRemaining > 0) {
           setCooldownTime(result.cooldownRemaining);
@@ -343,17 +342,63 @@ export default function Kiosk() {
           );
         } else if (result.student) {
           setStudentInfo(result.student);
-          setSelectedPurposes(['library']);
+          // Automatically select 'library' and proceed to check-in
+          const defaultPurpose = 'library';
+          setSelectedPurposes([defaultPurpose]);
+
+          // Auto-confirm check-in
           try {
-            const due = await apiClient.get('/api/students/borrowed-due', { params: { studentId: result.student.id } });
-            const dueData = (due?.data ?? {}) as { items?: Array<{ title: string; category: string; dueDate: string; daysOverdue?: number }> };
-            setBorrowedDue(Array.isArray(dueData.items) ? dueData.items! : []);
-          } catch (_e) { void 0 }
-          const now = new Date();
-          setTimeInState(now.toLocaleTimeString());
-          const expected = new Date(now.getTime() + 15 * 60000);
-          setExpectedOutState(expected.toLocaleTimeString());
-          setCurrentStep('purpose');
+            const sectionMap: Record<string, string> = {
+              library: 'LIBRARY_SPACE',
+              computer: 'COMPUTER',
+              avr: 'AVR',
+              recreation: 'RECREATION',
+              borrowing: 'BORROWING',
+            };
+            const sectionCodes = [sectionMap[defaultPurpose]];
+
+            const confirmResponse = await apiClient.post(
+              '/api/self-service/check-in-with-sections',
+              {
+                scanData: scanData.trim(),
+                sectionCodes,
+              }
+            );
+
+            if (confirmResponse.success) {
+              setCurrentStep('welcome');
+              setLastTapIn(new Date());
+
+              // Fetch borrowed items for display in welcome screen
+              try {
+                const due = await apiClient.get('/api/students/borrowed-due', {
+                  params: { studentId: result.student.id },
+                });
+                const dueData = (due?.data ?? {}) as {
+                  items?: Array<{
+                    title: string;
+                    category: string;
+                    dueDate: string;
+                    daysOverdue?: number;
+                  }>;
+                };
+                setBorrowedDue(
+                  Array.isArray(dueData.items) ? dueData.items! : []
+                );
+              } catch (_e) {
+                void 0;
+              }
+
+              setTimeout(() => {
+                setCurrentStep('idle');
+                resetForm();
+              }, 3000); // Reduced to 3 seconds for faster flow
+            } else {
+              toast.error('Failed to confirm check-in');
+            }
+          } catch (error) {
+            toast.error('Failed to confirm check-in');
+          }
         } else {
           toast.error(result.message || 'Student not found');
         }
@@ -369,21 +414,15 @@ export default function Kiosk() {
     try {
       const params = new URLSearchParams(window.location.search);
       const testScan = params.get('testScan');
-      const sim = params.get('simulate');
-      const simCd = Number(params.get('cooldown') || 0);
-      if (sim) {
-        setSimulateMode(sim);
-      }
-      if (simCd > 0) {
-        setSimulateCooldown(simCd);
-      }
       if (testScan) {
         setScanData(testScan);
         setTimeout(() => {
           handleScanSubmit();
         }, 0);
       }
-    } catch (_e) { void 0 }
+    } catch (_e) {
+      void 0;
+    }
   }, []);
 
   const handlePurposeSelect = (purposeId: string) => {
@@ -414,11 +453,16 @@ export default function Kiosk() {
         recreation: 'RECREATION',
         borrowing: 'BORROWING',
       };
-      const sectionCodes = selectedPurposes.map((p) => sectionMap[p]).filter(Boolean);
-      const response = await apiClient.post('/api/self-service/check-in-with-sections', {
-        scanData: scanData,
-        sectionCodes,
-      });
+      const sectionCodes = selectedPurposes
+        .map((p) => sectionMap[p])
+        .filter(Boolean);
+      const response = await apiClient.post(
+        '/api/self-service/check-in-with-sections',
+        {
+          scanData: scanData,
+          sectionCodes,
+        }
+      );
 
       if (response.success) {
         setCurrentStep('welcome');
@@ -455,17 +499,23 @@ export default function Kiosk() {
             <CardTitle className="text-4xl font-bold text-white mb-2">
               Welcome to the Library
             </CardTitle>
-            <p className="text-lg text-muted-foreground">Ready to scan your ID</p>
+            <p className="text-lg text-muted-foreground">
+              Ready to scan your ID
+            </p>
           </CardHeader>
           <CardContent className="space-y-8">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <div className="flex items-center justify-between bg-slate-800 rounded p-3">
                 <span className="text-slate-200">Library Space</span>
-                <span className="text-white font-mono">{occupancy.LIBRARY_SPACE}</span>
+                <span className="text-white font-mono">
+                  {occupancy.LIBRARY_SPACE}
+                </span>
               </div>
               <div className="flex items-center justify-between bg-slate-800 rounded p-3">
                 <span className="text-slate-200">Computer</span>
-                <span className="text-white font-mono">{occupancy.COMPUTER}</span>
+                <span className="text-white font-mono">
+                  {occupancy.COMPUTER}
+                </span>
               </div>
               <div className="flex items-center justify-between bg-slate-800 rounded p-3">
                 <span className="text-slate-200">AVR</span>
@@ -473,11 +523,15 @@ export default function Kiosk() {
               </div>
               <div className="flex items-center justify-between bg-slate-800 rounded p-3">
                 <span className="text-slate-200">Recreation</span>
-                <span className="text-white font-mono">{occupancy.RECREATION}</span>
+                <span className="text-white font-mono">
+                  {occupancy.RECREATION}
+                </span>
               </div>
               <div className="flex items-center justify-between bg-slate-800 rounded p-3">
                 <span className="text-slate-200">Borrowing</span>
-                <span className="text-white font-mono">{occupancy.BORROWING}</span>
+                <span className="text-white font-mono">
+                  {occupancy.BORROWING}
+                </span>
               </div>
             </div>
 
@@ -504,11 +558,11 @@ export default function Kiosk() {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-amber-100">
-                    {selectedQuote}
-                  </p>
+                  <p className="text-sm text-amber-100">{selectedQuote}</p>
                   {quietMode && (
-                    <p className="text-xs text-amber-200 mt-1">Quiet Area — please keep voices down</p>
+                    <p className="text-xs text-amber-200 mt-1">
+                      Quiet Area — please keep voices down
+                    </p>
                   )}
                 </div>
               </div>
@@ -536,11 +590,15 @@ export default function Kiosk() {
             <div className="grid grid-cols-2 gap-2 mb-2">
               <div className="flex items-center justify-between bg-slate-800 rounded p-2 text-xs">
                 <span className="text-slate-200">Library</span>
-                <span className="text-white font-mono">{occupancy.LIBRARY_SPACE}</span>
+                <span className="text-white font-mono">
+                  {occupancy.LIBRARY_SPACE}
+                </span>
               </div>
               <div className="flex items-center justify-between bg-slate-800 rounded p-2 text-xs">
                 <span className="text-slate-200">Computer</span>
-                <span className="text-white font-mono">{occupancy.COMPUTER}</span>
+                <span className="text-white font-mono">
+                  {occupancy.COMPUTER}
+                </span>
               </div>
               <div className="flex items-center justify-between bg-slate-800 rounded p-2 text-xs">
                 <span className="text-slate-200">AVR</span>
@@ -548,7 +606,9 @@ export default function Kiosk() {
               </div>
               <div className="flex items-center justify-between bg-slate-800 rounded p-2 text-xs">
                 <span className="text-slate-200">Recreation</span>
-                <span className="text-white font-mono">{occupancy.RECREATION}</span>
+                <span className="text-white font-mono">
+                  {occupancy.RECREATION}
+                </span>
               </div>
             </div>
             <div className="relative">
@@ -579,7 +639,9 @@ export default function Kiosk() {
             </Button>
 
             <div className="mt-4">
-              <div className="text-center text-muted-foreground mb-2">Or use camera to scan QR/barcode</div>
+              <div className="text-center text-muted-foreground mb-2">
+                Or use camera to scan QR/barcode
+              </div>
               <QRScannerComponent
                 enabled={true}
                 showSettings={false}
@@ -626,7 +688,11 @@ export default function Kiosk() {
                 return (
                   <Button
                     key={purpose.id}
-                    variant={selectedPurposes.includes(purpose.id) ? 'default' : 'outline'}
+                    variant={
+                      selectedPurposes.includes(purpose.id)
+                        ? 'default'
+                        : 'outline'
+                    }
                     className={`h-32 flex flex-col items-center justify-center space-y-2 p-4 ${
                       selectedPurposes.includes(purpose.id)
                         ? purpose.color
@@ -668,7 +734,9 @@ export default function Kiosk() {
 
   // Confirmation Screen
   if (currentStep === 'confirm' && studentInfo && selectedPurposes.length > 0) {
-    const selectedPurposeData = PURPOSES.find((p) => p.id === selectedPurposes[0]);
+    const selectedPurposeData = PURPOSES.find(
+      (p) => p.id === selectedPurposes[0]
+    );
     const Icon = selectedPurposeData?.icon || Users;
 
     return (
@@ -684,7 +752,9 @@ export default function Kiosk() {
               <div className="flex items-center space-x-3 mb-3">
                 <User className="h-6 w-6 text-blue-400" />
                 <div>
-                  <p className="font-semibold text-slate-100">{studentInfo.name}</p>
+                  <p className="font-semibold text-slate-100">
+                    {studentInfo.name}
+                  </p>
                   <p className="text-sm text-muted-foreground">
                     Grade {studentInfo.gradeLevel} - {studentInfo.section}
                   </p>
@@ -696,7 +766,10 @@ export default function Kiosk() {
                 <div>
                   <p className="font-semibold text-slate-100">Purpose</p>
                   <p className="text-sm text-muted-foreground">
-                    {selectedPurposes.map((pid) => PURPOSES.find((p) => p.id === pid)?.name).filter(Boolean).join(', ')}
+                    {selectedPurposes
+                      .map((pid) => PURPOSES.find((p) => p.id === pid)?.name)
+                      .filter(Boolean)
+                      .join(', ')}
                   </p>
                 </div>
               </div>
@@ -726,68 +799,164 @@ export default function Kiosk() {
 
   // Welcome Screen
   if (currentStep === 'welcome' && studentInfo) {
-
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl bg-slate-900">
-          <CardContent className="space-y-6 py-8">
-            <div className="mx-auto w-16 h-16 bg-green-500 rounded-full flex items-center justify-center">
-              <CheckCircle className="h-8 w-8 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 animate-in fade-in duration-500">
+        <Card className="w-full max-w-3xl bg-slate-900/90 border-slate-800 shadow-2xl backdrop-blur-sm">
+          <CardContent className="p-8 space-y-8">
+            {/* Header Section */}
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center ring-4 ring-green-500/10 animate-bounce-slow">
+                <CheckCircle className="h-10 w-10 text-green-500" />
+              </div>
+              <div className="space-y-1">
+                <h2 className="text-3xl font-bold text-white tracking-tight">
+                  Welcome, {studentInfo.name.split(' ')[0]}!
+                </h2>
+                <p className="text-slate-400 text-lg">You are now checked in</p>
+              </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-white">{studentInfo.name}</h2>
-                <p className="text-muted-foreground">ID: {studentInfo.studentId}</p>
-                <p className="text-muted-foreground">Grade {studentInfo.gradeLevel} • {studentInfo.section}</p>
-                <p className="text-muted-foreground">Status: Checked-in for {(selectedPurposes.map((pid) => PURPOSES.find((p) => p.id === pid)?.name).filter(Boolean).join(', ')) || 'Visit'}</p>
-                <div className="mt-4 p-3 bg-slate-800 rounded">
-                  <p className="text-sm text-slate-200"><strong>Time In:</strong> {timeInState}</p>
-                  <p className="text-sm text-slate-200"><strong>Expected Out:</strong> {expectedOutState}</p>
+            <div className="grid gap-8 md:grid-cols-2">
+              {/* Student Details Card */}
+              <div className="space-y-4 bg-slate-800/50 p-6 rounded-xl border border-slate-700/50">
+                <div className="flex items-center gap-3 mb-4">
+                  <User className="h-5 w-5 text-blue-400" />
+                  <h3 className="text-lg font-semibold text-white">
+                    Student Details
+                  </h3>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center border-b border-slate-700/50 pb-2">
+                    <span className="text-slate-400">Full Name</span>
+                    <span className="text-white font-medium">
+                      {studentInfo.name}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-700/50 pb-2">
+                    <span className="text-slate-400">Student ID</span>
+                    <span className="text-white font-medium">
+                      {studentInfo.studentId}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-700/50 pb-2">
+                    <span className="text-slate-400">Grade & Section</span>
+                    <span className="text-white font-medium">
+                      {studentInfo.gradeLevel} - {studentInfo.section}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-slate-400">Purpose</span>
+                    <div className="flex gap-1 flex-wrap justify-end">
+                      {selectedPurposes.map((pid) => {
+                        const purpose = PURPOSES.find((p) => p.id === pid);
+                        return (
+                          <span
+                            key={pid}
+                            className={`text-xs px-2 py-1 rounded-full text-white ${purpose?.color || 'bg-slate-600'}`}
+                          >
+                            {purpose?.name}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-white">Borrowed Items</h3>
-                {borrowedDue.length === 0 ? (
-                  <p className="text-muted-foreground">No borrowed items due.</p>
-                ) : (
-                  borrowedDue.map((b, i) => (
-                    <div key={i} className="flex justify-between items-center p-3 bg-slate-800 rounded">
-                      <div>
-                        <p className="text-slate-200 font-medium">{b.title}</p>
-                        <p className="text-xs text-slate-400">{b.category}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-sm ${b.daysOverdue ? 'text-red-400' : 'text-slate-200'}`}>{b.daysOverdue ? `${b.daysOverdue} days overdue` : `Due: ${b.dueDate}`}</p>
-                      </div>
+
+              {/* Session Info Card */}
+              <div className="space-y-4 bg-slate-800/50 p-6 rounded-xl border border-slate-700/50">
+                <div className="flex items-center gap-3 mb-4">
+                  <Clock className="h-5 w-5 text-orange-400" />
+                  <h3 className="text-lg font-semibold text-white">
+                    Session Info
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-900/50 p-3 rounded-lg text-center">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">
+                      Time In
+                    </p>
+                    <p className="text-xl font-mono text-white">
+                      {timeInState}
+                    </p>
+                  </div>
+                  <div className="bg-slate-900/50 p-3 rounded-lg text-center">
+                    <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">
+                      Expected Out
+                    </p>
+                    <p className="text-xl font-mono text-white">
+                      {expectedOutState}
+                    </p>
+                  </div>
+                </div>
+
+                {borrowedDue.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-slate-700/50">
+                    <p className="text-sm font-medium text-slate-300 mb-2">
+                      Items Due Soon/Overdue:
+                    </p>
+                    <div className="space-y-2 max-h-[100px] overflow-y-auto pr-1 custom-scrollbar">
+                      {borrowedDue.map((b, i) => (
+                        <div
+                          key={i}
+                          className="flex justify-between items-center text-sm bg-slate-900/30 p-2 rounded"
+                        >
+                          <span className="text-slate-300 truncate max-w-[120px]">
+                            {b.title}
+                          </span>
+                          <span
+                            className={`${b.daysOverdue ? 'text-red-400 font-bold' : 'text-orange-400'}`}
+                          >
+                            {b.daysOverdue
+                              ? `${b.daysOverdue}d late`
+                              : b.dueDate}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))
+                  </div>
                 )}
               </div>
             </div>
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold text-white mb-2">Current Section Occupancy</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+
+            {/* Occupancy Bar */}
+            <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+              <h3 className="text-sm font-medium text-slate-400 mb-3 uppercase tracking-wider text-center">
+                Current Library Occupancy
+              </h3>
+              <div className="flex flex-wrap justify-center gap-4">
                 {[
-                  { label: 'AVR', key: 'AVR' },
-                  { label: 'Computer', key: 'COMPUTER' },
-                  { label: 'Library Space', key: 'LIBRARY_SPACE' },
-                  { label: 'Borrowing', key: 'BORROWING' },
-                  { label: 'Recreation', key: 'RECREATION' },
+                  { label: 'AVR', key: 'AVR', icon: Monitor },
+                  { label: 'Comp Lab', key: 'COMPUTER', icon: Monitor },
+                  { label: 'Reading', key: 'LIBRARY_SPACE', icon: BookOpen },
+                  { label: 'Borrowing', key: 'BORROWING', icon: BookOpen },
+                  { label: 'Recreation', key: 'RECREATION', icon: Gamepad2 },
                 ].map((item) => (
-                  <div key={item.key} className="p-3 bg-slate-800 rounded flex items-center justify-between">
-                    <span className="text-slate-200 text-sm">{item.label}</span>
-                    <span className="text-white font-semibold">{(occupancy as any)[item.key]}</span>
+                  <div
+                    key={item.key}
+                    className="flex items-center gap-2 bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-700/50"
+                  >
+                    <item.icon className="h-3 w-3 text-slate-400" />
+                    <span className="text-xs text-slate-300">{item.label}</span>
+                    <span className="text-sm font-bold text-white ml-1">
+                      {(occupancy as any)[item.key] || 0}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-slate-800 rounded-lg p-4 text-center">
-              <p className="text-sm text-slate-200 italic">{selectedQuote}</p>
+            {/* Quote */}
+            <div className="text-center space-y-2">
+              <p className="text-lg text-slate-300 font-serif italic">
+                "{selectedQuote}"
+              </p>
+              <p className="text-sm text-slate-500">
+                Have a productive session!
+              </p>
             </div>
-
-            <p className="text-sm text-slate-400 text-center">Please proceed. Thank you for visiting!</p>
           </CardContent>
         </Card>
       </div>

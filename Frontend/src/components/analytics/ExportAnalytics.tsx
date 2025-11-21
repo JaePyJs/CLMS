@@ -197,7 +197,12 @@ export function ExportAnalytics({
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="flex items-center gap-2" aria-label="export-analytics" data-testid="export-analytics">
+        <Button
+          variant="outline"
+          className="flex items-center gap-2"
+          aria-label="export-analytics"
+          data-testid="export-analytics"
+        >
           <Download className="h-4 w-4" />
           Export Analytics
         </Button>
@@ -405,10 +410,7 @@ export function ExportAnalytics({
           <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
             Cancel
           </Button>
-          <Button
-            onClick={handleExport}
-            disabled={isExporting}
-          >
+          <Button onClick={handleExport} disabled={isExporting}>
             {isExporting ? (
               <>
                 <Clock className="h-4 w-4 mr-2 animate-spin" />

@@ -12,7 +12,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { studentsApi } from '@/lib/api';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 
 interface AddStudentDialogProps {
@@ -47,10 +53,23 @@ export function AddStudentDialog({
 
   const getGradeCategory = (grade: string): string => {
     const g = grade.toLowerCase();
-    if (g.includes('k') || g.includes('grade 1') || g.includes('grade 2') || g.includes('grade 3')) return 'primary';
-    if (g.includes('grade 4') || g.includes('grade 5') || g.includes('grade 6')) return 'gradeSchool';
-    if (g.includes('grade 7') || g.includes('grade 8') || g.includes('grade 9')) return 'juniorHigh';
-    if (g.includes('grade 10') || g.includes('grade 11') || g.includes('grade 12')) return 'seniorHigh';
+    if (
+      g.includes('k') ||
+      g.includes('grade 1') ||
+      g.includes('grade 2') ||
+      g.includes('grade 3')
+    )
+      return 'primary';
+    if (g.includes('grade 4') || g.includes('grade 5') || g.includes('grade 6'))
+      return 'gradeSchool';
+    if (g.includes('grade 7') || g.includes('grade 8') || g.includes('grade 9'))
+      return 'juniorHigh';
+    if (
+      g.includes('grade 10') ||
+      g.includes('grade 11') ||
+      g.includes('grade 12')
+    )
+      return 'seniorHigh';
     return 'unknown';
   };
 
@@ -67,7 +86,7 @@ export function AddStudentDialog({
         student_id: formData.studentId || `TMP-${Date.now()}`,
         first_name: formData.firstName,
         last_name: formData.lastName,
-        grade_level: Number((formData.grade.match(/\d+/)?.[0]) || 0),
+        grade_level: Number(formData.grade.match(/\d+/)?.[0] || 0),
         grade_category: getGradeCategory(formData.grade),
         section: formData.section || undefined,
       };
@@ -75,7 +94,13 @@ export function AddStudentDialog({
       if (response.success) {
         toast.success('Student added successfully');
         setOpen(false);
-        setFormData({ studentId: '', firstName: '', lastName: '', grade: '', section: '' });
+        setFormData({
+          studentId: '',
+          firstName: '',
+          lastName: '',
+          grade: '',
+          section: '',
+        });
       } else {
         toast.error(response.error || 'Failed to add student');
       }
@@ -144,7 +169,9 @@ export function AddStudentDialog({
               </Label>
               <Select
                 value={formData.grade}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, grade: value }))}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, grade: value }))
+                }
               >
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select grade" />
