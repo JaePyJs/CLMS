@@ -47,7 +47,9 @@ function AutomationFallback({ error }: { error: Error }) {
     <div className="space-y-4 p-4 border rounded">
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error?.message || 'Failed to render automation panel'}</AlertDescription>
+        <AlertDescription>
+          {error?.message || 'Failed to render automation panel'}
+        </AlertDescription>
       </Alert>
     </div>
   );
@@ -57,7 +59,9 @@ export function AutomationDashboard() {
   const [selectedTab, setSelectedTab] = useState('jobs');
 
   const store = useAppStore();
-  const automationJobs: AutomationJob[] = Array.isArray((store as any)?.automationJobs)
+  const automationJobs: AutomationJob[] = Array.isArray(
+    (store as any)?.automationJobs
+  )
     ? ((store as any).automationJobs as AutomationJob[])
     : [];
   const { mutate: triggerJob } = useTriggerJob();
@@ -100,7 +104,8 @@ export function AutomationDashboard() {
     },
   ];
 
-  const jobs = automationJobs && automationJobs.length > 0 ? automationJobs : mockJobs;
+  const jobs =
+    automationJobs && automationJobs.length > 0 ? automationJobs : mockJobs;
 
   const handleTriggerJob = (jobId: string) => {
     triggerJob(jobId);
@@ -369,10 +374,12 @@ export function AutomationDashboard() {
 
                   {/* Error Message */}
                   {job.errorMessage && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{String(job.errorMessage)}</AlertDescription>
-                  </Alert>
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription>
+                        {String(job.errorMessage)}
+                      </AlertDescription>
+                    </Alert>
                   )}
 
                   {/* Action Buttons */}
@@ -504,8 +511,8 @@ export function AutomationDashboard() {
           </div>
         </CardContent>
       </Card>
-      </div>
-    );
+    </div>
+  );
 }
 
 export default AutomationDashboard;

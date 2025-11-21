@@ -83,7 +83,7 @@ services:
     container_name: clms-adminer-dev
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8081:8080"
     environment:
       ADMINER_DEFAULT_SERVER: mysql
       ADMINER_DESIGN: pepa-linha
@@ -174,7 +174,7 @@ services:
       - ./Backend/uploads:/app/uploads
       - ./Backend/generated:/app/generated
       # Google credentials (optional)
-      - ./google-credentials.json:/app/google-credentials.json:ro
+      - ./credentials/google-credentials.json:/app/google-credentials.json:ro
       # Prevent overwriting node_modules
       - backend_node_modules:/app/node_modules
     networks:

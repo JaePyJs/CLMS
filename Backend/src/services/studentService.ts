@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
 
 export interface CreateStudentData {
   student_id: string;
@@ -129,12 +127,76 @@ export class StudentService {
     }
   }
 
-  public static async listStudents(): Promise<any[]> {
+  public static async listStudents(
+    filters: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      gradeLevel?: number;
+      section?: string;
+      isActive?: boolean;
+    } = {},
+  ): Promise<{ students: any[]; total: number; page: number; limit: number }> {
     try {
+      const {
+        page: rawPage = 1,
+        limit: rawLimit = 50,
+        search,
+        gradeLevel,
+        section,
+        isActive,
+      } = filters;
+
+      // Parse page and limit as integers
+      const page =
+        typeof rawPage === 'string' ? parseInt(rawPage, 10) : rawPage;
+      const limit =
+        typeof rawLimit === 'string' ? parseInt(rawLimit, 10) : rawLimit;
+
+      // Build where clause
+      const where: any = {};
+
+      if (search) {
+        where.OR = [
+          { first_name: { contains: search } },
+          { last_name: { contains: search } },
+          { student_id: { contains: search } },
+          { section: { contains: search } },
+        ];
+      }
+
+      if (gradeLevel !== undefined) {
+        where.grade_level = gradeLevel;
+      }
+
+      if (section) {
+        where.section = { contains: section };
+      }
+
+      if (isActive !== undefined) {
+        where.is_active = isActive;
+      }
+
+      // Calculate pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count
+      const total = await prisma.students.count({ where });
+
+      // Get paginated students
       const students = await prisma.students.findMany({
+        where,
         orderBy: { created_at: 'desc' },
+        skip,
+        take: limit,
       });
-      return students;
+
+      return {
+        students,
+        total,
+        page,
+        limit,
+      };
     } catch (error) {
       logger.error('List students failed', {
         error: error instanceof Error ? error.message : 'Unknown error',

@@ -356,10 +356,20 @@ export default function EnhancedImportManager() {
       if (activeTab === 'books') {
         endpoint = '/import/books/enhanced';
         const headers = previewData?.headers || [];
-        const mappings = [] as { sourceField: string; targetField: string; required?: boolean }[];
-        const pick = (label: string) => headers.find((h) => h.trim().toLowerCase() === label.toLowerCase());
-        const pushMap = (src: string | undefined, target: string, required?: boolean) => {
-          if (src) mappings.push({ sourceField: src, targetField: target, required });
+        const mappings = [] as {
+          sourceField: string;
+          targetField: string;
+          required?: boolean;
+        }[];
+        const pick = (label: string) =>
+          headers.find((h) => h.trim().toLowerCase() === label.toLowerCase());
+        const pushMap = (
+          src: string | undefined,
+          target: string,
+          required?: boolean
+        ) => {
+          if (src)
+            mappings.push({ sourceField: src, targetField: target, required });
         };
         pushMap(pick('Barcode'), 'accession_no', true);
         pushMap(pick('Title'), 'title', true);
@@ -375,16 +385,22 @@ export default function EnhancedImportManager() {
         formData.append('mapping', JSON.stringify(fieldMapping));
       }
 
-      const response = await axios.post(`${API_BASE_URL}${endpoint}` as string, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Authorization: `Bearer ${token}`,
-        },
-        onUploadProgress: (progressEvent) => {
-          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total!);
-          setImportProgress(progress);
-        },
-      });
+      const response = await axios.post(
+        `${API_BASE_URL}${endpoint}` as string,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`,
+          },
+          onUploadProgress: (progressEvent) => {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total!
+            );
+            setImportProgress(progress);
+          },
+        }
+      );
 
       setResult(response.data.data);
       setFile(null);

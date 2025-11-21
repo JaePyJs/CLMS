@@ -3,12 +3,10 @@ import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { authenticate, requireRole } from '../middleware/authenticate';
 import { logger } from '../utils/logger';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { BorrowingPolicyService } from '../services/borrowingPolicyService';
 import { FineCalculationService } from '../services/fineCalculationService';
 import websocketServer from '../websocket/websocketServer';
-
-const prisma = new PrismaClient();
 const router = Router();
 
 // GET /api/borrows
@@ -148,18 +146,33 @@ router.get(
       });
 
       const overdueWithDays = await Promise.all(
-        overdueBorrows.map(async (borrow) => {
-          const daysOverdue = Math.ceil((today.getTime() - borrow.due_date.getTime()) / (1000 * 60 * 60 * 24));
+        overdueBorrows.map(async borrow => {
+          const daysOverdue = Math.ceil(
+            (today.getTime() - borrow.due_date.getTime()) /
+              (1000 * 60 * 60 * 24),
+          );
           let rate = 0;
           try {
-            rate = await FineCalculationService.getRateForGrade(borrow.student.grade_level);
-          } catch {}
+            rate = await FineCalculationService.getRateForGrade(
+              borrow.student.grade_level,
+            );
+          } catch {
+            // Ignore error
+          }
           const fineAmount = daysOverdue * rate;
-          return { ...borrow, days_overdue: daysOverdue, fine_amount: fineAmount };
+          return {
+            ...borrow,
+            days_overdue: daysOverdue,
+            fine_amount: fineAmount,
+          };
         }),
       );
 
-      res.json({ success: true, data: overdueWithDays, count: overdueWithDays.length });
+      res.json({
+        success: true,
+        data: overdueWithDays,
+        count: overdueWithDays.length,
+      });
     } catch (error) {
       logger.error('Error retrieving overdue borrows', {
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -176,17 +189,21 @@ router.post(
   requireRole(['LIBRARIAN', 'ADMIN']),
   asyncHandler(async (req: Request, res: Response) => {
     if (process.env.NODE_ENV !== 'development') {
-      return res.status(403).json({ success: false, message: 'Not allowed outside development' });
+      return res
+        .status(403)
+        .json({ success: false, message: 'Not allowed outside development' });
     }
 
     try {
-      const { student_id, book_id, days_overdue = 3 } = req.body as any;
+      const { student_id, book_id, days_overdue = 3 } = req.body;
 
       let student = null as any;
       let book = null as any;
 
       if (student_id) {
-        student = await prisma.students.findUnique({ where: { id: String(student_id) } });
+        student = await prisma.students.findUnique({
+          where: { id: String(student_id) },
+        });
       }
       if (!student) {
         student = await prisma.students.findFirst();
@@ -203,10 +220,14 @@ router.post(
       }
 
       if (book_id) {
-        book = await prisma.books.findUnique({ where: { id: String(book_id) } });
+        book = await prisma.books.findUnique({
+          where: { id: String(book_id) },
+        });
       }
       if (!book) {
-        book = await prisma.books.findFirst({ where: { available_copies: { gt: 0 } } });
+        book = await prisma.books.findFirst({
+          where: { available_copies: { gt: 0 } },
+        });
       }
       if (!book) {
         book = await prisma.books.create({
@@ -222,7 +243,10 @@ router.post(
       }
 
       const checkoutDate = new Date();
-      const dueDate = new Date(checkoutDate.getTime() - Math.max(1, Number(days_overdue)) * 24 * 60 * 60 * 1000);
+      const dueDate = new Date(
+        checkoutDate.getTime() -
+          Math.max(1, Number(days_overdue)) * 24 * 60 * 60 * 1000,
+      );
 
       const existingActive = await prisma.book_checkouts.findFirst({
         where: { student_id: student.id, book_id: book.id, status: 'ACTIVE' },
@@ -241,17 +265,31 @@ router.post(
         },
         include: {
           student: {
-            select: { id: true, student_id: true, first_name: true, last_name: true, grade_level: true },
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+              grade_level: true,
+            },
           },
           book: {
-            select: { id: true, title: true, author: true, accession_no: true, category: true },
+            select: {
+              id: true,
+              title: true,
+              author: true,
+              accession_no: true,
+              category: true,
+            },
           },
         },
       });
 
       await prisma.books.update({
         where: { id: book.id },
-        data: { available_copies: Math.max(0, (book.available_copies ?? 0) - 1) },
+        data: {
+          available_copies: Math.max(0, (book.available_copies ?? 0) - 1),
+        },
       });
 
       websocketServer.emitBorrowReturnUpdate({
@@ -346,7 +384,14 @@ router.post(
     });
 
     try {
-      const { student_id, book_id, due_date, material_name, material_type, accession_no } = req.body;
+      const {
+        student_id,
+        book_id,
+        due_date,
+        material_name,
+        material_type,
+        accession_no,
+      } = req.body;
 
       // Check if student exists
       const student = await prisma.students.findUnique({
@@ -423,13 +468,18 @@ router.post(
         let policy: any = null;
         if (book.default_policy_id) {
           const policies = await BorrowingPolicyService.listPolicies(false);
-          policy = policies.find(p => p.id === book!.default_policy_id);
+          policy = policies.find(p => p.id === book.default_policy_id);
         }
         if (!policy) {
-          policy = await BorrowingPolicyService.getPolicyByCategory(book.category || 'General');
+          policy = await BorrowingPolicyService.getPolicyByCategory(
+            book.category || 'General',
+          );
         }
         if (policy) {
-          computedDueDate = BorrowingPolicyService.computeDueDate(checkoutDate, { loan_days: policy.loan_days, overnight: policy.overnight });
+          computedDueDate = BorrowingPolicyService.computeDueDate(
+            checkoutDate,
+            { loan_days: policy.loan_days, overnight: policy.overnight },
+          );
         }
       }
 
@@ -539,7 +589,10 @@ router.put(
       // Calculate fine via service (grade-based tiers)
       let fineAmount = 0;
       try {
-        const calc = await FineCalculationService.calculateFineForCheckout(req.params['id'], returnDate);
+        const calc = await FineCalculationService.calculateFineForCheckout(
+          req.params['id'],
+          returnDate,
+        );
         fineAmount = calc.fine_amount ?? 0;
       } catch {
         fineAmount = 0;
@@ -665,12 +718,17 @@ router.get(
       const overdueWithDays = await Promise.all(
         overdueBorrows.map(async borrow => {
           const daysOverdue = Math.ceil(
-            (today.getTime() - borrow.due_date.getTime()) / (1000 * 60 * 60 * 24),
+            (today.getTime() - borrow.due_date.getTime()) /
+              (1000 * 60 * 60 * 24),
           );
           let rate = 0;
           try {
-            rate = await FineCalculationService.getRateForGrade(borrow.student.grade_level);
-          } catch {}
+            rate = await FineCalculationService.getRateForGrade(
+              borrow.student.grade_level,
+            );
+          } catch {
+            // Ignore error
+          }
           const fineAmount = daysOverdue * rate;
           return {
             ...borrow,

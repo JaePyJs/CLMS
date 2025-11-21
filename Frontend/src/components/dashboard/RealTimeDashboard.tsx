@@ -17,7 +17,10 @@ import {
   RefreshCw,
   Settings,
   TrendingUp,
+  Users,
+  Book,
 } from 'lucide-react';
+import { ActiveStudentsManager } from './ActiveStudentsManager';
 
 interface RealTimeDashboardProps {
   className?: string;
@@ -39,6 +42,16 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
 
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  // Initial data request when WebSocket connects
+  useEffect(() => {
+    if (isConnected) {
+      console.log(
+        '[RealTimeDashboard] WebSocket connected, requesting initial data'
+      );
+      refreshDashboard('overview');
+    }
+  }, [isConnected, refreshDashboard]);
+
   // Auto-refresh dashboard data
   useEffect(() => {
     if (!isConnected || !autoRefresh) {
@@ -58,8 +71,16 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
   const overview = dashboardData?.overview as
     | Record<string, unknown>
     | undefined;
+
+  // Debug logging
+  console.log('[RealTimeDashboard] dashboardData:', dashboardData);
+  console.log('[RealTimeDashboard] overview:', overview);
+  console.log('[RealTimeDashboard] totalStudents:', overview?.totalStudents);
+
   const stats = {
     totalStudents: Number(overview?.totalStudents) || 0,
+    activeStudents: Number(overview?.activeStudents) || 0,
+    totalBooks: Number(overview?.totalBooks) || 0,
     todayActivities:
       Number(overview?.todayActivities) || recentActivities.length,
     activeEquipment:
@@ -187,6 +208,46 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
 
       {/* Real-time Statistics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-950/20 dark:to-violet-950/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                  Active Students
+                </p>
+                <p className="text-3xl font-bold text-indigo-700 dark:text-indigo-300">
+                  {stats.activeStudents}
+                </p>
+                <div className="flex items-center mt-2 text-xs text-indigo-500">
+                  <Users className="h-3 w-3 mr-1" />
+                  {stats.totalStudents} Registered
+                </div>
+              </div>
+              <Users className="h-8 w-8 text-indigo-500 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                  Total Books
+                </p>
+                <p className="text-3xl font-bold text-amber-700 dark:text-amber-300">
+                  {stats.totalBooks}
+                </p>
+                <div className="flex items-center mt-2 text-xs text-amber-500">
+                  <Book className="h-3 w-3 mr-1" />
+                  In Library
+                </div>
+              </div>
+              <Book className="h-8 w-8 text-amber-500 opacity-50" />
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -309,9 +370,7 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
               ) : (
                 <div className="text-center py-8">
                   <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">
-                    No recent activity
-                  </p>
+                  <p className="text-muted-foreground">No recent activity</p>
                 </div>
               )}
             </div>
@@ -365,7 +424,9 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                           {status.status.replace('_', ' ')}
                         </Badge>
                         {status.userId && (
-                          <p className="text-xs text-muted-foreground mt-1">In use</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            In use
+                          </p>
                         )}
                       </div>
                     </div>
@@ -481,6 +542,9 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Active Students Management */}
+      <ActiveStudentsManager />
     </div>
   );
 }

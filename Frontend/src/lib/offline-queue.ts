@@ -288,6 +288,11 @@ export const offlineActions = {
       data,
     });
   },
+
+  // Sync offline queue
+  sync: () => {
+    return offlineQueue.processQueue();
+  },
 };
 
 export default offlineQueue;

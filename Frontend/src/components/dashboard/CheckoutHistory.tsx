@@ -94,7 +94,7 @@ export default function CheckoutHistory() {
   const calculateStats = useCallback((data: Checkout[]) => {
     const active = (data || []).filter((c) => c?.status === 'ACTIVE').length;
     const overdue = (data || []).filter(
-      (c) => (Number(c?.overdueDays) > 0) && c?.status === 'ACTIVE'
+      (c) => Number(c?.overdueDays) > 0 && c?.status === 'ACTIVE'
     ).length;
     const totalFines = (data || []).reduce(
       (sum, c) => sum + parseFloat(String(c?.fineAmount ?? '0')),
@@ -129,8 +129,21 @@ export default function CheckoutHistory() {
             status: 'ACTIVE',
             overdueDays: 2,
             fineAmount: '10',
-            book: { id: 'BOOK-DEV-1', accessionNo: 'ACC-0001', title: 'Sample Book', author: 'John Doe', category: 'Fiction' },
-            student: { id: 'S-0001', studentId: 'S-0001', firstName: 'Alice', lastName: 'Example', gradeLevel: 'Grade 5', section: 'A' },
+            book: {
+              id: 'BOOK-DEV-1',
+              accessionNo: 'ACC-0001',
+              title: 'Sample Book',
+              author: 'John Doe',
+              category: 'Fiction',
+            },
+            student: {
+              id: 'S-0001',
+              studentId: 'S-0001',
+              firstName: 'Alice',
+              lastName: 'Example',
+              gradeLevel: 'Grade 5',
+              section: 'A',
+            },
           },
           {
             id: 'CHK-DEV-2',
@@ -142,8 +155,21 @@ export default function CheckoutHistory() {
             status: 'RETURNED',
             overdueDays: 0,
             fineAmount: '0',
-            book: { id: 'BOOK-DEV-2', accessionNo: 'ACC-0002', title: 'Another Sample', author: 'Jane Roe', category: 'Filipiniana' },
-            student: { id: 'S-0002', studentId: 'S-0002', firstName: 'Bob', lastName: 'Tester', gradeLevel: 'Grade 6', section: 'B' },
+            book: {
+              id: 'BOOK-DEV-2',
+              accessionNo: 'ACC-0002',
+              title: 'Another Sample',
+              author: 'Jane Roe',
+              category: 'Filipiniana',
+            },
+            student: {
+              id: 'S-0002',
+              studentId: 'S-0002',
+              firstName: 'Bob',
+              lastName: 'Tester',
+              gradeLevel: 'Grade 6',
+              section: 'B',
+            },
           },
         ];
         setCheckouts(data);
@@ -173,8 +199,21 @@ export default function CheckoutHistory() {
           status: 'ACTIVE',
           overdueDays: 2,
           fineAmount: '10',
-          book: { id: 'BOOK-DEV-1', accessionNo: 'ACC-0001', title: 'Sample Book', author: 'John Doe', category: 'Fiction' },
-          student: { id: 'S-0001', studentId: 'S-0001', firstName: 'Alice', lastName: 'Example', gradeLevel: 'Grade 5', section: 'A' },
+          book: {
+            id: 'BOOK-DEV-1',
+            accessionNo: 'ACC-0001',
+            title: 'Sample Book',
+            author: 'John Doe',
+            category: 'Fiction',
+          },
+          student: {
+            id: 'S-0001',
+            studentId: 'S-0001',
+            firstName: 'Alice',
+            lastName: 'Example',
+            gradeLevel: 'Grade 5',
+            section: 'A',
+          },
         },
       ];
       setCheckouts(dev);
@@ -441,7 +480,10 @@ export default function CheckoutHistory() {
                   </div>
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[180px]" disabled={loading}>
+                  <SelectTrigger
+                    className="w-full sm:w-[180px]"
+                    disabled={loading}
+                  >
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
@@ -452,7 +494,10 @@ export default function CheckoutHistory() {
                   </SelectContent>
                 </Select>
                 <Select value={dateFilter} onValueChange={setDateFilter}>
-                  <SelectTrigger className="w-full sm:w-[180px]" disabled={loading}>
+                  <SelectTrigger
+                    className="w-full sm:w-[180px]"
+                    disabled={loading}
+                  >
                     <Filter className="h-4 w-4 mr-2" />
                     <SelectValue placeholder="Filter by date" />
                   </SelectTrigger>
@@ -476,7 +521,9 @@ export default function CheckoutHistory() {
                 </Button>
               </div>
               <div className="flex items-center gap-2 mt-3">
-                <span className="text-xs text-muted-foreground">Quick date:</span>
+                <span className="text-xs text-muted-foreground">
+                  Quick date:
+                </span>
                 <Button
                   size="sm"
                   variant={dateFilter === 'TODAY' ? 'default' : 'outline'}

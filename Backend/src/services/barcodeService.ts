@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
+import { prisma } from '../utils/prisma';
 
 /**
  * Barcode Generation Service
@@ -107,14 +105,19 @@ export class BarcodeService {
     const key = 'barcode.sequence';
     let seq = 0;
     try {
-      const setting = await prisma.system_settings.findUnique({ where: { key } });
+      const setting = await prisma.system_settings.findUnique({
+        where: { key },
+      });
       if (!setting) {
         await prisma.system_settings.create({ data: { key, value: '18' } });
         seq = 18;
       } else {
         seq = parseInt(setting.value || '0');
         seq = isNaN(seq) ? 0 : seq + 1;
-        await prisma.system_settings.update({ where: { key }, data: { value: String(seq) } });
+        await prisma.system_settings.update({
+          where: { key },
+          data: { value: String(seq) },
+        });
       }
     } catch (_e) {
       seq = Math.floor(Date.now() % 100000);
@@ -122,7 +125,9 @@ export class BarcodeService {
     let code = `PN${String(seq).padStart(5, '0')}`;
     let attempts = 0;
     while (attempts < 5) {
-      const exists = await prisma.students.findFirst({ where: { barcode: code } });
+      const exists = await prisma.students.findFirst({
+        where: { barcode: code },
+      });
       if (!exists) {
         return code;
       }

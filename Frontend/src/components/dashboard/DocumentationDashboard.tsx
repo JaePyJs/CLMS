@@ -620,7 +620,9 @@ export function DocumentationDashboard() {
               <CardContent className="p-4 text-center">
                 <Database className="h-8 w-8 mx-auto mb-2 text-blue-600" />
                 <div className="text-2xl font-bold">{totalTables}</div>
-                <div className="text-xs text-muted-foreground">Database Tables</div>
+                <div className="text-xs text-muted-foreground">
+                  Database Tables
+                </div>
               </CardContent>
             </Card>
             <Card>
@@ -629,7 +631,9 @@ export function DocumentationDashboard() {
                 <div className="text-2xl font-bold">
                   {docsInfo.features.backend.tests}
                 </div>
-                <div className="text-xs text-muted-foreground">Backend Tests</div>
+                <div className="text-xs text-muted-foreground">
+                  Backend Tests
+                </div>
               </CardContent>
             </Card>
             <Card>
@@ -643,7 +647,9 @@ export function DocumentationDashboard() {
               <CardContent className="p-4 text-center">
                 <GitBranch className="h-8 w-8 mx-auto mb-2 text-orange-600" />
                 <div className="text-2xl font-bold">{totalEndpoints}</div>
-                <div className="text-xs text-muted-foreground">API Endpoints</div>
+                <div className="text-xs text-muted-foreground">
+                  API Endpoints
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -657,7 +663,9 @@ export function DocumentationDashboard() {
                 <div className="text-2xl font-bold">
                   {docsInfo.features.frontend.tests}
                 </div>
-                <div className="text-xs text-muted-foreground">Frontend Tests</div>
+                <div className="text-xs text-muted-foreground">
+                  Frontend Tests
+                </div>
               </CardContent>
             </Card>
             <Card>

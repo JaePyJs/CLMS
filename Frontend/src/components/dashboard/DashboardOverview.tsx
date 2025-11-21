@@ -10,7 +10,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { useActivityTimeline, useHealthCheck } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -64,7 +70,12 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const lastAnnouncement = (() => {
     for (let i = attendanceEvents.length - 1; i >= 0; i--) {
       const ev: any = attendanceEvents[i];
-      if (ev && ev.type === 'announcement' && ev.data && typeof ev.data.message === 'string') {
+      if (
+        ev &&
+        ev.type === 'announcement' &&
+        ev.data &&
+        typeof ev.data.message === 'string'
+      ) {
         return {
           message: String(ev.data.message),
           at: ev.timestamp ? String(ev.timestamp) : new Date().toISOString(),
@@ -89,21 +100,44 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     return saved === 'true';
   });
   const [attendanceShowCount, setAttendanceShowCount] = useState<number>(() => {
-    const saved = parseInt(localStorage.getItem('clms_attendance_show_count') || '10');
+    const saved = parseInt(
+      localStorage.getItem('clms_attendance_show_count') || '10'
+    );
     return isNaN(saved) ? 10 : saved;
   });
-  const [attendanceAutoScroll, setAttendanceAutoScroll] = useState<boolean>(() => {
-    const saved = localStorage.getItem('clms_attendance_autoscroll');
-    return saved === 'true';
-  });
-  const [attendanceFilter, setAttendanceFilter] = useState<'all'|'in'|'out'|'msg'>(() => {
+  const [attendanceAutoScroll, setAttendanceAutoScroll] = useState<boolean>(
+    () => {
+      const saved = localStorage.getItem('clms_attendance_autoscroll');
+      return saved === 'true';
+    }
+  );
+  const [attendanceFilter, setAttendanceFilter] = useState<
+    'all' | 'in' | 'out' | 'msg'
+  >(() => {
     const saved = localStorage.getItem('clms_attendance_filter') as any;
-    return saved && ['all','in','out','msg'].includes(saved) ? saved : 'all';
+    return saved && ['all', 'in', 'out', 'msg'].includes(saved) ? saved : 'all';
   });
-  useEffect(() => { localStorage.setItem('clms_attendance_expanded', String(attendanceExpanded)); }, [attendanceExpanded]);
-  useEffect(() => { localStorage.setItem('clms_attendance_show_count', String(attendanceShowCount)); }, [attendanceShowCount]);
-  useEffect(() => { localStorage.setItem('clms_attendance_autoscroll', String(attendanceAutoScroll)); }, [attendanceAutoScroll]);
-  useEffect(() => { localStorage.setItem('clms_attendance_filter', String(attendanceFilter)); }, [attendanceFilter]);
+  useEffect(() => {
+    localStorage.setItem(
+      'clms_attendance_expanded',
+      String(attendanceExpanded)
+    );
+  }, [attendanceExpanded]);
+  useEffect(() => {
+    localStorage.setItem(
+      'clms_attendance_show_count',
+      String(attendanceShowCount)
+    );
+  }, [attendanceShowCount]);
+  useEffect(() => {
+    localStorage.setItem(
+      'clms_attendance_autoscroll',
+      String(attendanceAutoScroll)
+    );
+  }, [attendanceAutoScroll]);
+  useEffect(() => {
+    localStorage.setItem('clms_attendance_filter', String(attendanceFilter));
+  }, [attendanceFilter]);
   const [showRealTime, setShowRealTime] = useState(true);
   useEffect(() => {
     if (!attendanceAutoScroll) return;
@@ -112,30 +146,56 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       if (el) {
         el.scrollTop = 0;
       }
-    } catch {}
+    } catch {
+      // Ignore error
+    }
   }, [attendanceAutoScroll, attendanceEvents]);
   const [beginnerMode, setBeginnerMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('clms_beginner_mode');
     return saved === null ? true : saved === 'true';
   });
-  useEffect(() => { localStorage.setItem('clms_beginner_mode', String(beginnerMode)); }, [beginnerMode]);
-  const [changeSectionTarget, setChangeSectionTarget] = useState<{ studentId: string; studentName: string } | null>(null);
-  const [changeSections, setChangeSections] = useState<Record<string, boolean>>({ AVR: false, COMPUTER: false, LIBRARY_SPACE: false, BORROWING: false, RECREATION: false });
+  useEffect(() => {
+    localStorage.setItem('clms_beginner_mode', String(beginnerMode));
+  }, [beginnerMode]);
+  const [changeSectionTarget, setChangeSectionTarget] = useState<{
+    studentId: string;
+    studentName: string;
+  } | null>(null);
+  const [changeSections, setChangeSections] = useState<Record<string, boolean>>(
+    {
+      AVR: false,
+      COMPUTER: false,
+      LIBRARY_SPACE: false,
+      BORROWING: false,
+      RECREATION: false,
+    }
+  );
   const saveSectionChange = async () => {
     if (!changeSectionTarget) return;
-    const toSections = Object.entries(changeSections).filter(([_k, v]) => v).map(([k]) => k);
+    const toSections = Object.entries(changeSections)
+      .filter(([_k, v]) => v)
+      .map(([k]) => k);
     if (toSections.length === 0) {
       toast.error('Select at least one section');
       return;
     }
     try {
-      await api.post('/kiosk/change-section', { studentId: changeSectionTarget.studentId, toSections });
+      await api.post('/kiosk/change-section', {
+        studentId: changeSectionTarget.studentId,
+        toSections,
+      });
       toast.success(`Sections updated for ${changeSectionTarget.studentName}`);
     } catch (e) {
       toast.error('Failed to change section');
     } finally {
       setChangeSectionTarget(null);
-      setChangeSections({ AVR: false, COMPUTER: false, LIBRARY_SPACE: false, BORROWING: false, RECREATION: false });
+      setChangeSections({
+        AVR: false,
+        COMPUTER: false,
+        LIBRARY_SPACE: false,
+        BORROWING: false,
+        RECREATION: false,
+      });
     }
   };
 
@@ -249,7 +309,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   };
 
   // Enhanced functionality handlers
-  
+
   const ConnectionStatusCard = () => (
     <Card className="card-enhanced">
       <CardHeader>
@@ -258,12 +318,16 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
           Connection Status
         </CardTitle>
         <CardDescription className="text-muted-foreground">
-          Backend: {connectedToBackend ? 'Healthy' : 'Unreachable'} • WS: {wsConnected ? 'Connected' : 'Disconnected'} • Time: {currentTime.toLocaleTimeString()}
+          Backend: {connectedToBackend ? 'Healthy' : 'Unreachable'} • WS:{' '}
+          {wsConnected ? 'Connected' : 'Disconnected'} • Time:{' '}
+          {currentTime.toLocaleTimeString()}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex gap-4">
-          <Badge variant="outline">Role: {String(user?.role || 'LIBRARIAN')}</Badge>
+          <Badge variant="outline">
+            Role: {String(user?.role || 'LIBRARIAN')}
+          </Badge>
           <Badge variant="outline">Online: {isOnline ? 'Yes' : 'No'}</Badge>
         </div>
       </CardContent>
@@ -273,7 +337,16 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const [kioskDeviceName, setKioskDeviceName] = useState('Lobby Display');
   const [kioskToken, setKioskToken] = useState<string>('');
   const [kioskGenerating, setKioskGenerating] = useState(false);
-  const [kioskUsers, setKioskUsers] = useState<Array<{ id: string; username: string; full_name?: string; is_active: boolean; created_at?: string; last_login_at?: string }>>([]);
+  const [kioskUsers, setKioskUsers] = useState<
+    Array<{
+      id: string;
+      username: string;
+      full_name?: string;
+      is_active: boolean;
+      created_at?: string;
+      last_login_at?: string;
+    }>
+  >([]);
   const [kioskLoading, setKioskLoading] = useState(false);
 
   useEffect(() => {
@@ -283,8 +356,11 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
         const resp = await apiClient.get('/api/auth/kiosk-users');
         const data = (resp as any)?.data as any[];
         setKioskUsers(Array.isArray(data) ? data : []);
-      } catch {}
-      finally { setKioskLoading(false); }
+      } catch {
+        // Ignore error
+      } finally {
+        setKioskLoading(false);
+      }
     };
     void load();
   }, []);
@@ -311,7 +387,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
             onClick={async () => {
               try {
                 setKioskGenerating(true);
-                const resp = await apiClient.post('/api/auth/kiosk-token', { deviceName: kioskDeviceName });
+                const resp = await apiClient.post('/api/auth/kiosk-token', {
+                  deviceName: kioskDeviceName,
+                });
                 const data = (resp as any)?.data;
                 setKioskToken(String(data?.accessToken || ''));
                 const list = await apiClient.get('/api/auth/kiosk-users');
@@ -342,10 +420,17 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
           ) : (
             <div className="space-y-2">
               {kioskUsers.map((u) => (
-                <div key={u.id} className="flex items-center justify-between p-2 rounded-md border">
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between p-2 rounded-md border"
+                >
                   <div className="text-sm">
-                    <div className="font-medium">{u.full_name || u.username}</div>
-                    <div className="text-muted-foreground">{u.username} • {u.is_active ? 'Active' : 'Revoked'}</div>
+                    <div className="font-medium">
+                      {u.full_name || u.username}
+                    </div>
+                    <div className="text-muted-foreground">
+                      {u.username} • {u.is_active ? 'Active' : 'Revoked'}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -353,8 +438,12 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                       disabled={!u.is_active}
                       onClick={async () => {
                         try {
-                          await apiClient.post('/api/auth/kiosk-revoke', { userId: u.id });
-                          const list = await apiClient.get('/api/auth/kiosk-users');
+                          await apiClient.post('/api/auth/kiosk-revoke', {
+                            userId: u.id,
+                          });
+                          const list = await apiClient.get(
+                            '/api/auth/kiosk-users'
+                          );
                           setKioskUsers(((list as any)?.data as any[]) || []);
                           toast.success('Kiosk user revoked');
                         } catch {
@@ -440,14 +529,31 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   };
 
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [previewRecords, setPreviewRecords] = useState<Array<{ rowNumber?: number; firstName?: string; lastName?: string; gradeLevel?: string; section?: string; email?: string; isValid?: boolean; errors?: string[]; warnings?: string[] }>>([]);
-  const [generatedBarcodes, setGeneratedBarcodes] = useState<Array<{ row: number; barcode: string }>>([]);
+  const [previewRecords, setPreviewRecords] = useState<
+    Array<{
+      rowNumber?: number;
+      firstName?: string;
+      lastName?: string;
+      gradeLevel?: string;
+      section?: string;
+      email?: string;
+      isValid?: boolean;
+      errors?: string[];
+      warnings?: string[];
+    }>
+  >([]);
+  const [generatedBarcodes, setGeneratedBarcodes] = useState<
+    Array<{ row: number; barcode: string }>
+  >([]);
   const [importProgress, setImportProgress] = useState<number>(0);
   const [importBusy, setImportBusy] = useState<boolean>(false);
   const onTemplateDownload = async () => {
     const response = await studentsApi.downloadTemplate();
     const content = (response?.data as any) ?? '';
-    const blob = new Blob([typeof content === 'string' ? content : JSON.stringify(content)], { type: 'text/csv' });
+    const blob = new Blob(
+      [typeof content === 'string' ? content : JSON.stringify(content)],
+      { type: 'text/csv' }
+    );
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -475,9 +581,14 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     }
   };
   const onImportStart = async () => {
-    if (!importFile) { toast.error('No file selected'); return; }
+    if (!importFile) {
+      toast.error('No file selected');
+      return;
+    }
     if (previewRecords.length > 0) {
-      const invalid = previewRecords.filter(r => r.isValid === false || !r.firstName || !r.lastName);
+      const invalid = previewRecords.filter(
+        (r) => r.isValid === false || !r.firstName || !r.lastName
+      );
       if (invalid.length > 0) {
         toast.error(`Fix ${invalid.length} invalid rows before import`);
         return;
@@ -494,7 +605,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       const imported = data?.importedRecords ?? 0;
       const skipped = data?.skippedRecords ?? 0;
       const errors = data?.errorRecords ?? 0;
-      toast.success(`Imported ${imported} • Skipped ${skipped} • Errors ${errors}`);
+      toast.success(
+        `Imported ${imported} • Skipped ${skipped} • Errors ${errors}`
+      );
     } catch {
       toast.error('Import failed');
       setImportProgress(0);
@@ -503,11 +616,21 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     }
   };
   const onPrintGenerated = () => {
-    if (!generatedBarcodes.length) { toast.info('No generated barcodes'); return; }
+    if (!generatedBarcodes.length) {
+      toast.info('No generated barcodes');
+      return;
+    }
     const w = window.open('', 'print', 'width=800,height=600');
     if (!w) return;
-    const rows = generatedBarcodes.map(g => `<tr><td style="padding:8px;border:1px solid #ccc;">${g.row}</td><td style="padding:8px;border:1px solid #ccc;">${g.barcode}</td></tr>`).join('');
-    w.document.write(`<html><head><title>Generated Barcodes</title></head><body><h3>Generated Barcodes</h3><table style="border-collapse:collapse;width:100%"><thead><tr><th style="text-align:left;padding:8px;border:1px solid #ccc;">Row</th><th style="text-align:left;padding:8px;border:1px solid #ccc;">Barcode</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
+    const rows = generatedBarcodes
+      .map(
+        (g) =>
+          `<tr><td style="padding:8px;border:1px solid #ccc;">${g.row}</td><td style="padding:8px;border:1px solid #ccc;">${g.barcode}</td></tr>`
+      )
+      .join('');
+    w.document.write(
+      `<html><head><title>Generated Barcodes</title></head><body><h3>Generated Barcodes</h3><table style="border-collapse:collapse;width:100%"><thead><tr><th style="text-align:left;padding:8px;border:1px solid #ccc;">Row</th><th style="text-align:left;padding:8px;border:1px solid #ccc;">Barcode</th></tr></thead><tbody>${rows}</tbody></table></body></html>`
+    );
     w.document.close();
     w.focus();
     w.print();
@@ -519,7 +642,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     useActivityTimeline(10);
   const { data: healthData } = useHealthCheck();
   const [backendVersion, setBackendVersion] = useState<string | null>(null);
-  const frontendVersion = (import.meta.env.VITE_APP_VERSION as string) || '2.0.0';
+  const frontendVersion =
+    (import.meta.env.VITE_APP_VERSION as string) || '2.0.0';
   const [versionCheckedAt, setVersionCheckedAt] = useState<number | null>(null);
   useEffect(() => {
     let mounted = true;
@@ -527,22 +651,38 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       try {
         const resp = await apiClient.get('/api/version');
         const data = (resp as any)?.data || resp;
-        const ver = String((data?.version ?? ''));
+        const ver = String(data?.version ?? '');
         if (mounted) {
           setBackendVersion(ver || null);
           setVersionCheckedAt(Date.now());
         }
-      } catch {}
+      } catch {
+        // Ignore error
+      }
     };
     void fetchVersion();
     const id = setInterval(fetchVersion, 60000);
-    return () => { mounted = false; clearInterval(id); };
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
   }, []);
   const exportRecentActivityCsv = () => {
     const arr = Array.isArray(timeline) ? timeline : [];
-    if (!arr.length) { toast.info('No recent activities to export'); return; }
+    if (!arr.length) {
+      toast.info('No recent activities to export');
+      return;
+    }
     const rows = [
-      ['ID','Type','Status','User/Student','Description','Start Time','End Time'],
+      [
+        'ID',
+        'Type',
+        'Status',
+        'User/Student',
+        'Description',
+        'Start Time',
+        'End Time',
+      ],
       ...arr.map((activity: any) => [
         String(activity.id ?? ''),
         String(activity.activityType ?? activity.type ?? ''),
@@ -551,14 +691,20 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
         String(activity.description ?? ''),
         String(activity.start_time ?? activity.startTime ?? ''),
         String(activity.end_time ?? activity.endTime ?? ''),
-      ])
+      ]),
     ];
-    const csv = rows.map(r => r.map(v => {
-      const s = String(v ?? '');
-      const needsQuotes = /[",\n]/.test(s);
-      const escaped = s.replace(/"/g, '""');
-      return needsQuotes ? `"${escaped}"` : escaped;
-    }).join(',')).join('\n');
+    const csv = rows
+      .map((r) =>
+        r
+          .map((v) => {
+            const s = String(v ?? '');
+            const needsQuotes = /[",\n]/.test(s);
+            const escaped = s.replace(/"/g, '""');
+            return needsQuotes ? `"${escaped}"` : escaped;
+          })
+          .join(',')
+      )
+      .join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -587,16 +733,48 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     automationJobs?.filter((job) => job.status === 'running').length || 0;
 
   // WS status card data
-  const [wsStats, setWsStats] = useState<{ totalConnections: number; connectionsByRole: Record<string, number>; recentSubscriptionDenials?: Array<{ socketId: string; room: string; userId?: string; role?: string; at: string }>; recentRateLimits?: Array<{ socketId: string; kind: 'subscribe' | 'dashboard'; count: number; userId?: string; role?: string; at: string }> } | null>(null);
+  const [wsStats, setWsStats] = useState<{
+    totalConnections: number;
+    connectionsByRole: Record<string, number>;
+    recentSubscriptionDenials?: Array<{
+      socketId: string;
+      room: string;
+      userId?: string;
+      role?: string;
+      at: string;
+    }>;
+    recentRateLimits?: Array<{
+      socketId: string;
+      kind: 'subscribe' | 'dashboard';
+      count: number;
+      userId?: string;
+      role?: string;
+      at: string;
+    }>;
+  } | null>(null);
   const [wsStatsError, setWsStatsError] = useState<string | null>(null);
   const [wsStatsUpdatedAt, setWsStatsUpdatedAt] = useState<number | null>(null);
-  const [announcementSettingsOpen, setAnnouncementSettingsOpen] = useState(false);
+  const [announcementSettingsOpen, setAnnouncementSettingsOpen] =
+    useState(false);
   const [announcementQuiet, setAnnouncementQuiet] = useState(false);
   const [announcementInterval, setAnnouncementInterval] = useState<number>(60);
   const [announcementText, setAnnouncementText] = useState('');
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   const [announcementLogOpen, setAnnouncementLogOpen] = useState(false);
-  const [announcementLog, setAnnouncementLog] = useState<Array<{ id: string; title: string; content: string; start_time: string; end_time?: string | null; is_active?: boolean; priority: string; created_at?: string; created_by_user_id?: string | null; created_by_username?: string | null }>>([]);
+  const [announcementLog, setAnnouncementLog] = useState<
+    Array<{
+      id: string;
+      title: string;
+      content: string;
+      start_time: string;
+      end_time?: string | null;
+      is_active?: boolean;
+      priority: string;
+      created_at?: string;
+      created_by_user_id?: string | null;
+      created_by_username?: string | null;
+    }>
+  >([]);
   const [announcementLogLoading, setAnnouncementLogLoading] = useState(false);
   const [announcementSearch, setAnnouncementSearch] = useState('');
   const [announcementPriority, setAnnouncementPriority] = useState<string>('');
@@ -607,29 +785,51 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const [announcementLimit, setAnnouncementLimit] = useState<number>(10);
   const [announcementTotal, setAnnouncementTotal] = useState<number>(0);
   const [announcementPages, setAnnouncementPages] = useState<number>(1);
-  const [announcementCooldownUntil, setAnnouncementCooldownUntil] = useState<number | null>(null);
-  const [announcementNowTs, setAnnouncementNowTs] = useState<number>(Date.now());
+  const [announcementCooldownUntil, setAnnouncementCooldownUntil] = useState<
+    number | null
+  >(null);
+  const [announcementNowTs, setAnnouncementNowTs] = useState<number>(
+    Date.now()
+  );
   const exportAnnouncementLogCsv = () => {
-    if (!announcementLog.length) { toast.info('No announcements to export'); return; }
+    if (!announcementLog.length) {
+      toast.info('No announcements to export');
+      return;
+    }
     const rows = [
-      ['Title','Content','Priority','Active','Start Time','End Time','Sender Name','Sender ID'],
-      ...announcementLog.map(a => [
+      [
+        'Title',
+        'Content',
+        'Priority',
+        'Active',
+        'Start Time',
+        'End Time',
+        'Sender Name',
+        'Sender ID',
+      ],
+      ...announcementLog.map((a) => [
         a.title,
         a.content?.replace(/\n/g, ' '),
         a.priority || '',
-        (a.is_active === false ? 'false' : 'true'),
+        a.is_active === false ? 'false' : 'true',
         a.start_time,
         a.end_time || '',
         a.created_by_username || '',
-        a.created_by_user_id || ''
-      ])
+        a.created_by_user_id || '',
+      ]),
     ];
-    const csv = rows.map(r => r.map(v => {
-      const s = String(v ?? '');
-      const needsQuotes = /[",\n]/.test(s);
-      const escaped = s.replace(/"/g, '""');
-      return needsQuotes ? `"${escaped}"` : escaped;
-    }).join(',')).join('\n');
+    const csv = rows
+      .map((r) =>
+        r
+          .map((v) => {
+            const s = String(v ?? '');
+            const needsQuotes = /[",\n]/.test(s);
+            const escaped = s.replace(/"/g, '""');
+            return needsQuotes ? `"${escaped}"` : escaped;
+          })
+          .join(',')
+      )
+      .join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -663,9 +863,13 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
           setAnnouncementInterval(Number(data.intervalSeconds || 60));
           setAnnouncementCooldownUntil(null);
         }
-      } catch {}
+      } catch {
+        // Ignore error
+      }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [user]);
 
   useEffect(() => {
@@ -711,7 +915,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       await api.post('/kiosk/broadcast', { message: announcementText.trim() });
       toast.success('Announcement sent');
       setAnnouncementText('');
-      setAnnouncementCooldownUntil(Date.now() + Math.max(10, announcementInterval) * 1000);
+      setAnnouncementCooldownUntil(
+        Date.now() + Math.max(10, announcementInterval) * 1000
+      );
     } catch (err: any) {
       const waitSeconds = err?.response?.data?.waitSeconds;
       const msg = err?.response?.data?.message || 'Failed to send announcement';
@@ -737,7 +943,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       if (announcementActive) params['is_active'] = announcementActive;
       if (announcementDateFrom) params['dateFrom'] = announcementDateFrom;
       if (announcementDateTo) params['dateTo'] = announcementDateTo;
-      if (announcementSearch.trim()) params['search'] = announcementSearch.trim();
+      if (announcementSearch.trim())
+        params['search'] = announcementSearch.trim();
       const res = await api.get('/kiosk/announcements/recent', { params });
       const data = res.data?.data;
       const pag = res.data?.pagination;
@@ -754,7 +961,15 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   useEffect(() => {
     if (!announcementLogOpen) return;
     void fetchAnnouncementLog();
-  }, [announcementLogOpen, announcementPage, announcementLimit, announcementPriority, announcementActive, announcementDateFrom, announcementDateTo]);
+  }, [
+    announcementLogOpen,
+    announcementPage,
+    announcementLimit,
+    announcementPriority,
+    announcementActive,
+    announcementDateFrom,
+    announcementDateTo,
+  ]);
 
   useEffect(() => {
     try {
@@ -762,13 +977,17 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       if (saved) {
         const obj = JSON.parse(saved);
         if (typeof obj.search === 'string') setAnnouncementSearch(obj.search);
-        if (typeof obj.priority === 'string') setAnnouncementPriority(obj.priority);
+        if (typeof obj.priority === 'string')
+          setAnnouncementPriority(obj.priority);
         if (typeof obj.active === 'string') setAnnouncementActive(obj.active);
-        if (typeof obj.dateFrom === 'string') setAnnouncementDateFrom(obj.dateFrom);
+        if (typeof obj.dateFrom === 'string')
+          setAnnouncementDateFrom(obj.dateFrom);
         if (typeof obj.dateTo === 'string') setAnnouncementDateTo(obj.dateTo);
         if (typeof obj.limit === 'number') setAnnouncementLimit(obj.limit);
       }
-    } catch {}
+    } catch {
+      // Ignore error
+    }
   }, []);
   useEffect(() => {
     const obj = {
@@ -779,8 +998,19 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       dateTo: announcementDateTo,
       limit: announcementLimit,
     };
-    try { localStorage.setItem('clms_announce_filters', JSON.stringify(obj)); } catch {}
-  }, [announcementSearch, announcementPriority, announcementActive, announcementDateFrom, announcementDateTo, announcementLimit]);
+    try {
+      localStorage.setItem('clms_announce_filters', JSON.stringify(obj));
+    } catch {
+      // Ignore error
+    }
+  }, [
+    announcementSearch,
+    announcementPriority,
+    announcementActive,
+    announcementDateFrom,
+    announcementDateTo,
+    announcementLimit,
+  ]);
 
   // Additional real metrics (initialized to 0)
   const equipmentInUse = 0;
@@ -814,37 +1044,37 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                   {notifications.length} notifications
                 </Badge>
               )}
+            </div>
           </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showRealTime ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowRealTime(true)}
+              className="flex items-center gap-2"
+            >
+              <Activity className="h-4 w-4" />
+              Real-time View
+            </Button>
+            <Button
+              variant={!showRealTime ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowRealTime(false)}
+              className="flex items-center gap-2"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Standard View
+            </Button>
+            <Button
+              variant={beginnerMode ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setBeginnerMode((v) => !v)}
+              className="flex items-center gap-2"
+              title="Simplify the dashboard to essential actions"
+            >
+              Beginner Mode: {beginnerMode ? 'On' : 'Off'}
+            </Button>
           </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant={showRealTime ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setShowRealTime(true)}
-            className="flex items-center gap-2"
-          >
-            <Activity className="h-4 w-4" />
-            Real-time View
-          </Button>
-          <Button
-            variant={!showRealTime ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setShowRealTime(false)}
-            className="flex items-center gap-2"
-          >
-            <BarChart3 className="h-4 w-4" />
-            Standard View
-          </Button>
-          <Button
-            variant={beginnerMode ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setBeginnerMode(v => !v)}
-            className="flex items-center gap-2"
-            title="Simplify the dashboard to essential actions"
-          >
-            Beginner Mode: {beginnerMode ? 'On' : 'Off'}
-          </Button>
-        </div>
         </div>
 
         {/* Welcome Header with Integrated Info */}
@@ -904,36 +1134,39 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
             <p className="text-lg text-slate-600 dark:text-slate-300">
               Your library is ready for another wonderful day
             </p>
-          <div className="text-sm text-slate-600 dark:text-slate-400 pt-2">
-            <span className="font-medium">
-              {currentTime.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </span>
-            <span className="mx-2">at</span>
-            <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
-              {currentTime.toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </span>
-          </div>
-          <div className="mt-6 max-w-3xl mx-auto">
-            <div className="relative">
-              <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search students, books, equipment… (Ctrl+K)"
-                className="pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all w-full"
-                aria-label="Dashboard Hero Search"
-              />
+            <div className="text-sm text-slate-600 dark:text-slate-400 pt-2">
+              <span className="font-medium">
+                {currentTime.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </span>
+              <span className="mx-2">at</span>
+              <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">
+                {currentTime.toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Search across students, books, and equipment. Press Ctrl+K for quick actions.</p>
+            <div className="mt-6 max-w-3xl mx-auto">
+              <div className="relative">
+                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search students, books, equipment… (Ctrl+K)"
+                  className="pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all w-full"
+                  aria-label="Dashboard Hero Search"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Search across students, books, and equipment. Press Ctrl+K for
+                quick actions.
+              </p>
+            </div>
           </div>
-        </div>
         </div>
       </div>
 
@@ -942,7 +1175,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           <div className="xl:col-span-7">
             {/* Attendance Live (embedded) */}
-            <Card className={`border-0 shadow-lg bg-white/80 dark:bg-card/80 backdrop-blur-sm ${attendanceExpanded ? 'xl:col-span-7' : ''}`}>
+            <Card
+              className={`border-0 shadow-lg bg-white/80 dark:bg-card/80 backdrop-blur-sm ${attendanceExpanded ? 'xl:col-span-7' : ''}`}
+            >
               <CardHeader className="bg-gradient-to-r from-teal-500 to-green-500 text-white p-6">
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <Users className="h-6 w-6" />
@@ -952,187 +1187,456 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                   Real-time check-ins and check-outs
                 </CardDescription>
                 <div className="mt-1 text-xs text-teal-100/90">
-                  <span>Quiet: {announcementQuiet ? 'On' : 'Off'} • Interval: {announcementInterval}s</span>
+                  <span>
+                    Quiet: {announcementQuiet ? 'On' : 'Off'} • Interval:{' '}
+                    {announcementInterval}s
+                  </span>
                   {lastAnnouncement && (
-                    <span className="ml-2">Last announcement: {lastAnnouncement.message.slice(0, 24)} • {new Date(lastAnnouncement.at).toLocaleTimeString()} {lastAnnouncement.userName ? `• ${lastAnnouncement.userName}` : (lastAnnouncement.userId ? `• ${lastAnnouncement.userId}` : '')}</span>
+                    <span className="ml-2">
+                      Last announcement: {lastAnnouncement.message.slice(0, 24)}{' '}
+                      • {new Date(lastAnnouncement.at).toLocaleTimeString()}{' '}
+                      {lastAnnouncement.userName
+                        ? `• ${lastAnnouncement.userName}`
+                        : lastAnnouncement.userId
+                          ? `• ${lastAnnouncement.userId}`
+                          : ''}
+                    </span>
                   )}
                 </div>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setAttendanceExpanded(v => !v)} aria-label="toggle-expand">{attendanceExpanded ? 'Collapse' : 'Expand'}</Button>
-                    <Button variant="outline" size="sm" onClick={() => setAttendanceAutoScroll(v => !v)} aria-label="toggle-autoscroll">{attendanceAutoScroll ? 'Auto-scroll On' : 'Auto-scroll Off'}</Button>
-                    <select className="text-sm bg-card border rounded px-2 py-1" value={attendanceShowCount} onChange={e => setAttendanceShowCount(parseInt(e.target.value))} aria-label="event-count">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAttendanceExpanded((v) => !v)}
+                      aria-label="toggle-expand"
+                    >
+                      {attendanceExpanded ? 'Collapse' : 'Expand'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAttendanceAutoScroll((v) => !v)}
+                      aria-label="toggle-autoscroll"
+                    >
+                      {attendanceAutoScroll
+                        ? 'Auto-scroll On'
+                        : 'Auto-scroll Off'}
+                    </Button>
+                    <select
+                      className="text-sm bg-card border rounded px-2 py-1"
+                      value={attendanceShowCount}
+                      onChange={(e) =>
+                        setAttendanceShowCount(parseInt(e.target.value))
+                      }
+                      aria-label="event-count"
+                    >
                       <option value={10}>Show 10</option>
                       <option value={25}>Show 25</option>
                       <option value={50}>Show 50</option>
                     </select>
                   </div>
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-muted-foreground" />
-                  <select className="text-sm bg-card border rounded px-2 py-1" value={attendanceFilter} onChange={e => setAttendanceFilter(e.target.value as any)} aria-label="event-filter">
-                    <option value="all">All</option>
-                    <option value="in">IN</option>
-                    <option value="out">OUT</option>
-                    <option value="msg">Messages</option>
-                  </select>
-                  <Button variant="outline" size="sm" onClick={() => setAnnouncementSettingsOpen(v => !v)} aria-label="announcement-settings">
-                    <Settings className="h-4 w-4 mr-1" />
-                    {announcementSettingsOpen ? 'Close' : 'Settings'}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => { setAnnouncementLogOpen(v => !v); if (!announcementLogOpen) void fetchAnnouncementLog(); }} aria-label="announcement-log">
-                    View Log
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-muted-foreground" />
+                    <select
+                      className="text-sm bg-card border rounded px-2 py-1"
+                      value={attendanceFilter}
+                      onChange={(e) =>
+                        setAttendanceFilter(e.target.value as any)
+                      }
+                      aria-label="event-filter"
+                    >
+                      <option value="all">All</option>
+                      <option value="in">IN</option>
+                      <option value="out">OUT</option>
+                      <option value="msg">Messages</option>
+                    </select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAnnouncementSettingsOpen((v) => !v)}
+                      aria-label="announcement-settings"
+                    >
+                      <Settings className="h-4 w-4 mr-1" />
+                      {announcementSettingsOpen ? 'Close' : 'Settings'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setAnnouncementLogOpen((v) => !v);
+                        if (!announcementLogOpen) void fetchAnnouncementLog();
+                      }}
+                      aria-label="announcement-log"
+                    >
+                      View Log
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              {announcementSettingsOpen && (
-                <div className="flex items-center gap-3 mb-3">
-                  <Button variant="outline" size="sm" onClick={() => setAnnouncementQuiet(v => !v)} aria-label="toggle-quiet">
-                    {announcementQuiet ? 'Quiet Mode: On' : 'Quiet Mode: Off'}
+                {announcementSettingsOpen && (
+                  <div className="flex items-center gap-3 mb-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setAnnouncementQuiet((v) => !v)}
+                      aria-label="toggle-quiet"
+                    >
+                      {announcementQuiet ? 'Quiet Mode: On' : 'Quiet Mode: Off'}
+                    </Button>
+                    <select
+                      className="text-sm bg-card border rounded px-2 py-1"
+                      value={announcementInterval}
+                      onChange={(e) =>
+                        setAnnouncementInterval(parseInt(e.target.value))
+                      }
+                      aria-label="announcement-interval"
+                    >
+                      <option value={30}>30s</option>
+                      <option value={45}>45s</option>
+                      <option value={60}>60s</option>
+                      <option value={90}>90s</option>
+                    </select>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={saveAnnouncementConfig}
+                      aria-label="save-announcement-settings"
+                    >
+                      Save
+                    </Button>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 mb-3">
+                  <Input
+                    placeholder="Announcement message"
+                    value={announcementText}
+                    onChange={(e) => setAnnouncementText(e.target.value)}
+                    aria-label="announcement-input"
+                    className="max-w-md"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={sendAnnouncement}
+                    disabled={
+                      sendingAnnouncement ||
+                      announcementQuiet ||
+                      (announcementCooldownUntil
+                        ? Math.max(
+                            0,
+                            Math.ceil(
+                              (announcementCooldownUntil - announcementNowTs) /
+                                1000
+                            )
+                          )
+                        : 0) > 0
+                    }
+                    aria-label="announcement-send"
+                  >
+                    {sendingAnnouncement ? 'Sending…' : 'Send'}
                   </Button>
-                  <select className="text-sm bg-card border rounded px-2 py-1" value={announcementInterval} onChange={e => setAnnouncementInterval(parseInt(e.target.value))} aria-label="announcement-interval">
-                    <option value={30}>30s</option>
-                    <option value={45}>45s</option>
-                    <option value={60}>60s</option>
-                    <option value={90}>90s</option>
-                  </select>
-                  <Button variant="default" size="sm" onClick={saveAnnouncementConfig} aria-label="save-announcement-settings">Save</Button>
+                  <span className="text-xs text-muted-foreground">
+                    {announcementQuiet
+                      ? 'Quiet Mode on'
+                      : `Interval ${announcementInterval}s`}
+                    {(() => {
+                      const rem = announcementCooldownUntil
+                        ? Math.max(
+                            0,
+                            Math.ceil(
+                              (announcementCooldownUntil - announcementNowTs) /
+                                1000
+                            )
+                          )
+                        : 0;
+                      return rem > 0 ? ` • Next in ${rem}s` : '';
+                    })()}
+                  </span>
                 </div>
-              )}
-              <div className="flex items-center gap-2 mb-3">
-                <Input
-                  placeholder="Announcement message"
-                  value={announcementText}
-                  onChange={(e) => setAnnouncementText(e.target.value)}
-                  aria-label="announcement-input"
-                  className="max-w-md"
-                />
-                <Button size="sm" onClick={sendAnnouncement} disabled={sendingAnnouncement || announcementQuiet || ((announcementCooldownUntil ? Math.max(0, Math.ceil((announcementCooldownUntil - announcementNowTs) / 1000)) : 0) > 0)} aria-label="announcement-send">
-                  {sendingAnnouncement ? 'Sending…' : 'Send'}
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  {announcementQuiet ? 'Quiet Mode on' : `Interval ${announcementInterval}s`}
-                  {(() => {
-                    const rem = announcementCooldownUntil ? Math.max(0, Math.ceil((announcementCooldownUntil - announcementNowTs) / 1000)) : 0;
-                    return rem > 0 ? ` • Next in ${rem}s` : '';
-                  })()}
-                </span>
-              </div>
-              {recentAnnouncements.length > 0 && (
-                <div className="mb-3 text-xs text-muted-foreground">
-                  <span className="font-medium">Recent announcements:</span>
-                  <ul className="list-disc ml-4">
-                    {recentAnnouncements.map((m, i) => (
-                      <li key={i}>{m.message.slice(0, 48)} • {new Date(m.at).toLocaleTimeString()} {m.userName ? `• ${m.userName}` : (m.userId ? `• ${m.userId}` : '')}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {announcementLogOpen && (
-                <Dialog open={announcementLogOpen} onOpenChange={(v) => { setAnnouncementLogOpen(Boolean(v)); }}>
-                  <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Announcements Log</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <Input placeholder="Search" value={announcementSearch} onChange={(e) => setAnnouncementSearch(e.target.value)} />
-                        <div className="flex gap-2">
-                          <select className="text-sm bg-card border rounded px-2 py-1" value={announcementPriority} onChange={(e) => setAnnouncementPriority(e.target.value)}>
-                            <option value="">Any Priority</option>
-                            <option value="NORMAL">Normal</option>
-                            <option value="HIGH">High</option>
-                            <option value="LOW">Low</option>
-                          </select>
-                          <select className="text-sm bg-card border rounded px-2 py-1" value={announcementActive} onChange={(e) => setAnnouncementActive(e.target.value)}>
-                            <option value="">Any Status</option>
-                            <option value="true">Active</option>
-                            <option value="false">Inactive</option>
-                          </select>
+                {recentAnnouncements.length > 0 && (
+                  <div className="mb-3 text-xs text-muted-foreground">
+                    <span className="font-medium">Recent announcements:</span>
+                    <ul className="list-disc ml-4">
+                      {recentAnnouncements.map((m, i) => (
+                        <li key={i}>
+                          {m.message.slice(0, 48)} •{' '}
+                          {new Date(m.at).toLocaleTimeString()}{' '}
+                          {m.userName
+                            ? `• ${m.userName}`
+                            : m.userId
+                              ? `• ${m.userId}`
+                              : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {announcementLogOpen && (
+                  <Dialog
+                    open={announcementLogOpen}
+                    onOpenChange={(v) => {
+                      setAnnouncementLogOpen(Boolean(v));
+                    }}
+                  >
+                    <DialogContent className="sm:max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Announcements Log</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <Input
+                            placeholder="Search"
+                            value={announcementSearch}
+                            onChange={(e) =>
+                              setAnnouncementSearch(e.target.value)
+                            }
+                          />
+                          <div className="flex gap-2">
+                            <select
+                              className="text-sm bg-card border rounded px-2 py-1"
+                              value={announcementPriority}
+                              onChange={(e) =>
+                                setAnnouncementPriority(e.target.value)
+                              }
+                            >
+                              <option value="">Any Priority</option>
+                              <option value="NORMAL">Normal</option>
+                              <option value="HIGH">High</option>
+                              <option value="LOW">Low</option>
+                            </select>
+                            <select
+                              className="text-sm bg-card border rounded px-2 py-1"
+                              value={announcementActive}
+                              onChange={(e) =>
+                                setAnnouncementActive(e.target.value)
+                              }
+                            >
+                              <option value="">Any Status</option>
+                              <option value="true">Active</option>
+                              <option value="false">Inactive</option>
+                            </select>
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              type="date"
+                              value={announcementDateFrom}
+                              onChange={(e) =>
+                                setAnnouncementDateFrom(e.target.value)
+                              }
+                            />
+                            <Input
+                              type="date"
+                              value={announcementDateTo}
+                              onChange={(e) =>
+                                setAnnouncementDateTo(e.target.value)
+                              }
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <select
+                              className="text-sm bg-card border rounded px-2 py-1"
+                              value={announcementLimit}
+                              onChange={(e) =>
+                                setAnnouncementLimit(parseInt(e.target.value))
+                              }
+                            >
+                              <option value={10}>10</option>
+                              <option value={20}>20</option>
+                              <option value={50}>50</option>
+                            </select>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setAnnouncementPage(1);
+                                fetchAnnouncementLog();
+                              }}
+                            >
+                              Apply
+                            </Button>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Input type="date" value={announcementDateFrom} onChange={(e) => setAnnouncementDateFrom(e.target.value)} />
-                          <Input type="date" value={announcementDateTo} onChange={(e) => setAnnouncementDateTo(e.target.value)} />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <select className="text-sm bg-card border rounded px-2 py-1" value={announcementLimit} onChange={(e) => setAnnouncementLimit(parseInt(e.target.value))}>
-                            <option value={10}>10</option>
-                            <option value={20}>20</option>
-                            <option value={50}>50</option>
-                          </select>
-                          <Button size="sm" variant="outline" onClick={() => { setAnnouncementPage(1); fetchAnnouncementLog(); }}>Apply</Button>
-                        </div>
-                      </div>
-                      <div className="border rounded p-2 max-h-[360px] overflow-auto">
-                        {announcementLogLoading ? (
-                          <p className="text-muted-foreground">Loading…</p>
-                        ) : announcementLog.length === 0 ? (
-                          <p className="text-muted-foreground">No announcements found</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {announcementLog.map((a) => (
-                              <div key={a.id} className="flex justify-between">
-                                <div>
-                                  <div className="font-medium flex items-center gap-2">
-                                    {a.title}
-                                    <Badge variant={a.priority === 'HIGH' ? 'destructive' : a.priority === 'NORMAL' ? 'default' : 'secondary'}>{(a.priority || 'NORMAL').toLowerCase()}</Badge>
+                        <div className="border rounded p-2 max-h-[360px] overflow-auto">
+                          {announcementLogLoading ? (
+                            <p className="text-muted-foreground">Loading…</p>
+                          ) : announcementLog.length === 0 ? (
+                            <p className="text-muted-foreground">
+                              No announcements found
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {announcementLog.map((a) => (
+                                <div
+                                  key={a.id}
+                                  className="flex justify-between"
+                                >
+                                  <div>
+                                    <div className="font-medium flex items-center gap-2">
+                                      {a.title}
+                                      <Badge
+                                        variant={
+                                          a.priority === 'HIGH'
+                                            ? 'destructive'
+                                            : a.priority === 'NORMAL'
+                                              ? 'default'
+                                              : 'secondary'
+                                        }
+                                      >
+                                        {(a.priority || 'NORMAL').toLowerCase()}
+                                      </Badge>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {a.is_active === false
+                                        ? 'Inactive • '
+                                        : ''}
+                                      {a.created_by_username
+                                        ? a.created_by_username
+                                        : a.created_by_user_id || ''}
+                                    </div>
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {a.is_active === false ? 'Inactive • ' : ''}
-                                    {a.created_by_username ? a.created_by_username : (a.created_by_user_id || '')}
+                                    {new Date(a.start_time).toLocaleString()}
                                   </div>
                                 </div>
-                                <div className="text-xs text-muted-foreground">{new Date(a.start_time).toLocaleString()}</div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-muted-foreground">
+                            Total {announcementTotal}
                           </div>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs text-muted-foreground">Total {announcementTotal}</div>
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" disabled={announcementPage <= 1} onClick={() => { setAnnouncementPage(p => Math.max(1, p - 1)); fetchAnnouncementLog(); }}>Prev</Button>
-                          <span className="text-xs">Page {announcementPage} / {announcementPages}</span>
-                          <Button size="sm" variant="outline" disabled={announcementPage >= announcementPages} onClick={() => { setAnnouncementPage(p => Math.min(announcementPages, p + 1)); fetchAnnouncementLog(); }}>Next</Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={announcementPage <= 1}
+                              onClick={() => {
+                                setAnnouncementPage((p) => Math.max(1, p - 1));
+                                fetchAnnouncementLog();
+                              }}
+                            >
+                              Prev
+                            </Button>
+                            <span className="text-xs">
+                              Page {announcementPage} / {announcementPages}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={announcementPage >= announcementPages}
+                              onClick={() => {
+                                setAnnouncementPage((p) =>
+                                  Math.min(announcementPages, p + 1)
+                                );
+                                fetchAnnouncementLog();
+                              }}
+                            >
+                              Next
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <DialogFooter>
-                      <Button size="sm" onClick={exportAnnouncementLogCsv} className="mr-auto">Export CSV</Button>
-                      <Button size="sm" variant="outline" onClick={() => setAnnouncementLogOpen(false)}>Close</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              )}
-              {attendanceEvents && attendanceEvents.length > 0 ? (
-                <div className="space-y-3 overflow-y-auto max-h-[360px]" id="attendance-scroll">
-                  {attendanceEvents
-                    .filter((ev: any) => attendanceFilter === 'all' ? true : attendanceFilter === 'in' ? ev.type === 'student_checkin' : attendanceFilter === 'out' ? ev.type === 'student_checkout' : ev.type === 'announcement')
-                    .slice(-attendanceShowCount)
-                    .reverse()
-                    .map((ev: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between p-3 rounded bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`${ev.type === 'student_checkin' ? 'text-green-600 border-green-600' : ev.type === 'student_checkout' ? 'text-orange-600 border-orange-600' : 'text-blue-600 border-blue-600'}` }>
-                          {ev.type === 'student_checkin' ? 'IN' : ev.type === 'student_checkout' ? 'OUT' : 'MSG'}
-                        </Badge>
-                        <span className="font-medium" title="Student or message">{ev.data?.studentName || ev.data?.message || 'Announcement'}</span>
-                        {ev.data?.studentId && (
-                          <Button variant="ghost" size="sm" onClick={() => { setChangeSectionTarget({ studentId: ev.data.studentId, studentName: ev.data.studentName || 'Student' }); }} aria-label="change-section" className="h-7 px-2" title="Change section">
-                            Change Section
-                          </Button>
-                        )}
-                      </div>
-                        <span className="text-xs text-muted-foreground" title="Event time">
-                          {new Date(ev.timestamp || ev.data?.checkinTime || ev.data?.checkoutTime || ev.data?.at || Date.now()).toLocaleTimeString()}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">No recent attendance events</div>
-              )}
+                      <DialogFooter>
+                        <Button
+                          size="sm"
+                          onClick={exportAnnouncementLogCsv}
+                          className="mr-auto"
+                        >
+                          Export CSV
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setAnnouncementLogOpen(false)}
+                        >
+                          Close
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+                {attendanceEvents && attendanceEvents.length > 0 ? (
+                  <div
+                    className="space-y-3 overflow-y-auto max-h-[360px]"
+                    id="attendance-scroll"
+                  >
+                    {attendanceEvents
+                      .filter((ev: any) =>
+                        attendanceFilter === 'all'
+                          ? true
+                          : attendanceFilter === 'in'
+                            ? ev.type === 'student_checkin'
+                            : attendanceFilter === 'out'
+                              ? ev.type === 'student_checkout'
+                              : ev.type === 'announcement'
+                      )
+                      .slice(-attendanceShowCount)
+                      .reverse()
+                      .map((ev: any, idx: number) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-3 rounded bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant="outline"
+                              className={`${ev.type === 'student_checkin' ? 'text-green-600 border-green-600' : ev.type === 'student_checkout' ? 'text-orange-600 border-orange-600' : 'text-blue-600 border-blue-600'}`}
+                            >
+                              {ev.type === 'student_checkin'
+                                ? 'IN'
+                                : ev.type === 'student_checkout'
+                                  ? 'OUT'
+                                  : 'MSG'}
+                            </Badge>
+                            <span
+                              className="font-medium"
+                              title="Student or message"
+                            >
+                              {ev.data?.studentName ||
+                                ev.data?.message ||
+                                'Announcement'}
+                            </span>
+                            {ev.data?.studentId && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setChangeSectionTarget({
+                                    studentId: ev.data.studentId,
+                                    studentName:
+                                      ev.data.studentName || 'Student',
+                                  });
+                                }}
+                                aria-label="change-section"
+                                className="h-7 px-2"
+                                title="Change section"
+                              >
+                                Change Section
+                              </Button>
+                            )}
+                          </div>
+                          <span
+                            className="text-xs text-muted-foreground"
+                            title="Event time"
+                          >
+                            {new Date(
+                              ev.timestamp ||
+                                ev.data?.checkinTime ||
+                                ev.data?.checkoutTime ||
+                                ev.data?.at ||
+                                Date.now()
+                            ).toLocaleTimeString()}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No recent attendance events
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1143,7 +1647,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
             <Card className="border-0 shadow-lg bg-white/80 dark:bg-card/80 backdrop-blur-sm">
               <CardHeader className="bg-gradient-to-r from-indigo-500 to-blue-500 text-white p-6">
                 <CardTitle className="text-xl">Import Center</CardTitle>
-                <CardDescription className="text-indigo-100">Templates, preview, import</CardDescription>
+                <CardDescription className="text-indigo-100">
+                  Templates, preview, import
+                </CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
                 <div className="flex gap-2">
@@ -1151,26 +1657,55 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                     <Download className="h-4 w-4 mr-1" />
                     Download Template
                   </Button>
-                  <Input type="file" accept=".csv,.xlsx,.xls" onChange={(e) => onFileSelect(e.target.files?.[0] || undefined)} className="max-w-xs" />
-                  <Button size="sm" onClick={onImportStart} disabled={importBusy || !importFile || (previewRecords.length > 0 && previewRecords.some(r => r.isValid === false || !r.firstName || !r.lastName))}>
+                  <Input
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={(e) =>
+                      onFileSelect(e.target.files?.[0] || undefined)
+                    }
+                    className="max-w-xs"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={onImportStart}
+                    disabled={
+                      importBusy ||
+                      !importFile ||
+                      (previewRecords.length > 0 &&
+                        previewRecords.some(
+                          (r) =>
+                            r.isValid === false || !r.firstName || !r.lastName
+                        ))
+                    }
+                  >
                     {importBusy ? 'Importing…' : 'Import'}
                   </Button>
                 </div>
                 <div className="space-y-2">
                   <Progress value={importProgress} />
-                  <p className="text-xs text-muted-foreground">{importProgress}%</p>
+                  <p className="text-xs text-muted-foreground">
+                    {importProgress}%
+                  </p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="border rounded p-3">
-                    <p className="text-sm font-medium mb-2">Preview (first 10)</p>
+                    <p className="text-sm font-medium mb-2">
+                      Preview (first 10)
+                    </p>
                     {previewRecords.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No preview</p>
+                      <p className="text-xs text-muted-foreground">
+                        No preview
+                      </p>
                     ) : (
                       <div className="space-y-2 max-h-48 overflow-auto">
                         {previewRecords.map((r, i) => (
                           <div key={i} className="text-xs flex justify-between">
-                            <span>{r.firstName} {r.lastName}</span>
-                            <span className="text-muted-foreground">{r.gradeLevel} {r.section}</span>
+                            <span>
+                              {r.firstName} {r.lastName}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {r.gradeLevel} {r.section}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -1179,7 +1714,14 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                   <div className="border rounded p-3">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-medium">Generated Barcodes</p>
-                      <Button size="sm" variant="outline" onClick={onPrintGenerated} disabled={!generatedBarcodes.length}><Printer className="h-4 w-4 mr-1" /> Print</Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={onPrintGenerated}
+                        disabled={!generatedBarcodes.length}
+                      >
+                        <Printer className="h-4 w-4 mr-1" /> Print
+                      </Button>
                     </div>
                     {generatedBarcodes.length === 0 ? (
                       <p className="text-xs text-muted-foreground">None</p>
@@ -1202,7 +1744,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                 <CardTitle className="text-xl flex items-center justify-between">
                   Essential Actions
                 </CardTitle>
-                <CardDescription className="text-orange-100">Beginner-friendly controls</CardDescription>
+                <CardDescription className="text-orange-100">
+                  Beginner-friendly controls
+                </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -1266,7 +1810,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                   <NotificationCalendar />
                 </CardContent>
                 {wsStatsUpdatedAt && (
-                  <div className="px-6 pb-4 text-xs text-muted-foreground">Updated {new Date(wsStatsUpdatedAt).toLocaleTimeString()}</div>
+                  <div className="px-6 pb-4 text-xs text-muted-foreground">
+                    Updated {new Date(wsStatsUpdatedAt).toLocaleTimeString()}
+                  </div>
                 )}
               </Card>
 
@@ -1463,7 +2009,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
 
             {/* Center Content - Recent Activity */}
             <div className="xl:col-span-5 space-y-6">
-              <Card className={`border-0 shadow-lg bg-white/80 dark:bg-card/80 backdrop-blur-sm ${attendanceExpanded ? 'xl:col-span-7' : ''}`}>
+              <Card
+                className={`border-0 shadow-lg bg-white/80 dark:bg-card/80 backdrop-blur-sm ${attendanceExpanded ? 'xl:col-span-7' : ''}`}
+              >
                 <CardHeader className="bg-gradient-to-r from-teal-500 to-green-500 text-white p-6">
                   <CardTitle className="flex items-center gap-2 text-xl">
                     <Users className="h-6 w-6" />
@@ -1476,9 +2024,32 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => setAttendanceExpanded(v => !v)} aria-label="toggle-expand">{attendanceExpanded ? 'Collapse' : 'Expand'}</Button>
-                      <Button variant="outline" size="sm" onClick={() => setAttendanceAutoScroll(v => !v)} aria-label="toggle-autoscroll">{attendanceAutoScroll ? 'Auto-scroll On' : 'Auto-scroll Off'}</Button>
-                      <select className="text-sm bg-card border rounded px-2 py-1" value={attendanceShowCount} onChange={e => setAttendanceShowCount(parseInt(e.target.value))} aria-label="event-count">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAttendanceExpanded((v) => !v)}
+                        aria-label="toggle-expand"
+                      >
+                        {attendanceExpanded ? 'Collapse' : 'Expand'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAttendanceAutoScroll((v) => !v)}
+                        aria-label="toggle-autoscroll"
+                      >
+                        {attendanceAutoScroll
+                          ? 'Auto-scroll On'
+                          : 'Auto-scroll Off'}
+                      </Button>
+                      <select
+                        className="text-sm bg-card border rounded px-2 py-1"
+                        value={attendanceShowCount}
+                        onChange={(e) =>
+                          setAttendanceShowCount(parseInt(e.target.value))
+                        }
+                        aria-label="event-count"
+                      >
                         <option value={10}>Show 10</option>
                         <option value={25}>Show 25</option>
                         <option value={50}>Show 50</option>
@@ -1486,7 +2057,14 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                     </div>
                     <div className="flex items-center gap-2">
                       <Filter className="h-4 w-4 text-muted-foreground" />
-                      <select className="text-sm bg-card border rounded px-2 py-1" value={attendanceFilter} onChange={e => setAttendanceFilter(e.target.value as any)} aria-label="event-filter">
+                      <select
+                        className="text-sm bg-card border rounded px-2 py-1"
+                        value={attendanceFilter}
+                        onChange={(e) =>
+                          setAttendanceFilter(e.target.value as any)
+                        }
+                        aria-label="event-filter"
+                      >
                         <option value="all">All</option>
                         <option value="in">IN</option>
                         <option value="out">OUT</option>
@@ -1495,53 +2073,135 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                     </div>
                   </div>
                   {attendanceEvents && attendanceEvents.length > 0 ? (
-                    <div className="space-y-3 overflow-y-auto max-h-[360px]" id="attendance-scroll">
+                    <div
+                      className="space-y-3 overflow-y-auto max-h-[360px]"
+                      id="attendance-scroll"
+                    >
                       {attendanceEvents
-                        .filter((ev: any) => attendanceFilter === 'all' ? true : attendanceFilter === 'in' ? ev.type === 'student_checkin' : attendanceFilter === 'out' ? ev.type === 'student_checkout' : ev.type === 'announcement')
+                        .filter((ev: any) =>
+                          attendanceFilter === 'all'
+                            ? true
+                            : attendanceFilter === 'in'
+                              ? ev.type === 'student_checkin'
+                              : attendanceFilter === 'out'
+                                ? ev.type === 'student_checkout'
+                                : ev.type === 'announcement'
+                        )
                         .slice(-attendanceShowCount)
                         .reverse()
                         .map((ev: any, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between p-3 rounded bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className={`${ev.type === 'student_checkin' ? 'text-green-600 border-green-600' : ev.type === 'student_checkout' ? 'text-orange-600 border-orange-600' : 'text-blue-600 border-blue-600'}` }>
-                              {ev.type === 'student_checkin' ? 'IN' : ev.type === 'student_checkout' ? 'OUT' : 'MSG'}
-                            </Badge>
-                            <span className="font-medium">{ev.data?.studentName || ev.data?.message || 'Announcement'}</span>
-                            {ev.data?.studentId && (
-                              <Button variant="ghost" size="sm" onClick={() => { setChangeSectionTarget({ studentId: ev.data.studentId, studentName: ev.data.studentName || 'Student' }); }} aria-label="change-section" className="h-7 px-2">
-                                Change Section
-                              </Button>
-                            )}
-                          </div>
+                          <div
+                            key={idx}
+                            className="flex items-center justify-between p-3 rounded bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant="outline"
+                                className={`${ev.type === 'student_checkin' ? 'text-green-600 border-green-600' : ev.type === 'student_checkout' ? 'text-orange-600 border-orange-600' : 'text-blue-600 border-blue-600'}`}
+                              >
+                                {ev.type === 'student_checkin'
+                                  ? 'IN'
+                                  : ev.type === 'student_checkout'
+                                    ? 'OUT'
+                                    : 'MSG'}
+                              </Badge>
+                              <span className="font-medium">
+                                {ev.data?.studentName ||
+                                  ev.data?.message ||
+                                  'Announcement'}
+                              </span>
+                              {ev.data?.studentId && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setChangeSectionTarget({
+                                      studentId: ev.data.studentId,
+                                      studentName:
+                                        ev.data.studentName || 'Student',
+                                    });
+                                  }}
+                                  aria-label="change-section"
+                                  className="h-7 px-2"
+                                >
+                                  Change Section
+                                </Button>
+                              )}
+                            </div>
                             <span className="text-xs text-muted-foreground">
-                              {new Date(ev.data?.checkinTime || ev.data?.checkoutTime || ev.data?.at || Date.now()).toLocaleTimeString()}
+                              {new Date(
+                                ev.data?.checkinTime ||
+                                  ev.data?.checkoutTime ||
+                                  ev.data?.at ||
+                                  Date.now()
+                              ).toLocaleTimeString()}
                             </span>
                           </div>
                         ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground">No recent attendance events</div>
+                    <div className="text-center py-8 text-muted-foreground">
+                      No recent attendance events
+                    </div>
                   )}
                 </CardContent>
               </Card>
               {changeSectionTarget && (
                 <Card className="border border-teal-200 dark:border-teal-800">
                   <CardHeader>
-                    <CardTitle>Change Section for {changeSectionTarget.studentName}</CardTitle>
-                    <CardDescription>Select one or more sections</CardDescription>
+                    <CardTitle>
+                      Change Section for {changeSectionTarget.studentName}
+                    </CardTitle>
+                    <CardDescription>
+                      Select one or more sections
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
                       {Object.keys(changeSections).map((k) => (
-                        <label key={k} className="flex items-center gap-2 text-sm">
-                          <input type="checkbox" checked={!!changeSections[k]} onChange={(e) => setChangeSections((prev) => ({ ...prev, [k]: e.target.checked }))} />
+                        <label
+                          key={k}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!!changeSections[k]}
+                            onChange={(e) =>
+                              setChangeSections((prev) => ({
+                                ...prev,
+                                [k]: e.target.checked,
+                              }))
+                            }
+                          />
                           {k.replace('_', ' ')}
                         </label>
                       ))}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button size="sm" onClick={saveSectionChange} aria-label="save-section-change">Save</Button>
-                      <Button size="sm" variant="outline" onClick={() => { setChangeSectionTarget(null); setChangeSections({ AVR: false, COMPUTER: false, LIBRARY_SPACE: false, BORROWING: false, RECREATION: false }); }} aria-label="cancel-section-change">Cancel</Button>
+                      <Button
+                        size="sm"
+                        onClick={saveSectionChange}
+                        aria-label="save-section-change"
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setChangeSectionTarget(null);
+                          setChangeSections({
+                            AVR: false,
+                            COMPUTER: false,
+                            LIBRARY_SPACE: false,
+                            BORROWING: false,
+                            RECREATION: false,
+                          });
+                        }}
+                        aria-label="cancel-section-change"
+                      >
+                        Cancel
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -1556,7 +2216,14 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                     Latest student activities and system events
                   </CardDescription>
                   <div className="mt-2">
-                    <Button size="sm" variant="ghost" onClick={exportRecentActivityCsv} className="text-white hover:bg-white/20">Export CSV</Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={exportRecentActivityCsv}
+                      className="text-white hover:bg-white/20"
+                    >
+                      Export CSV
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -1584,8 +2251,19 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-foreground dark:text-foreground">
-                              <Badge variant={activity.status === 'active' ? 'default' : activity.status === 'completed' ? 'secondary' : 'outline'} className="mr-2">
-                                {String(activity.status || 'unknown').toUpperCase()}
+                              <Badge
+                                variant={
+                                  activity.status === 'active'
+                                    ? 'default'
+                                    : activity.status === 'completed'
+                                      ? 'secondary'
+                                      : 'outline'
+                                }
+                                className="mr-2"
+                              >
+                                {String(
+                                  activity.status || 'unknown'
+                                ).toUpperCase()}
                               </Badge>
                               {activity.studentName}
                             </p>
@@ -1658,11 +2336,15 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                     </div>
                     <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800">
                       <span className="font-medium">Backend Version</span>
-                      <Badge variant="outline" className="text-xs">{backendVersion || 'Unknown'}</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {backendVersion || 'Unknown'}
+                      </Badge>
                     </div>
                     <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800">
                       <span className="font-medium">Frontend Version</span>
-                      <Badge variant="outline" className="text-xs">{frontendVersion}</Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {frontendVersion}
+                      </Badge>
                     </div>
                   </div>
 
@@ -1671,7 +2353,15 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                     healthData !== null &&
                     'timestamp' in healthData && (
                       <div className="text-xs text-muted-foreground text-center pt-2 border-t">
-                        Last check: {new Date((versionCheckedAt || (typeof (healthData as any).timestamp === 'string' || typeof (healthData as any).timestamp === 'number' ? (healthData as any).timestamp : Date.now())) as number).toLocaleTimeString()}
+                        Last check:{' '}
+                        {new Date(
+                          (versionCheckedAt ||
+                            (typeof (healthData as any).timestamp ===
+                              'string' ||
+                            typeof (healthData as any).timestamp === 'number'
+                              ? (healthData as any).timestamp
+                              : Date.now())) as number
+                        ).toLocaleTimeString()}
                       </div>
                     )}
                 </CardContent>
@@ -1690,45 +2380,82 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
                         <span className="font-medium">Total Connections</span>
-                        <Badge variant="outline" className="text-xs">{wsStats.totalConnections}</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {wsStats.totalConnections}
+                        </Badge>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        {Object.entries(wsStats.connectionsByRole).map(([role, count]) => (
-                          <div key={role} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800">
-                            <span className="text-sm">{role}</span>
-                            <Badge variant="outline" className="text-xs">{count}</Badge>
-                          </div>
-                        ))}
+                        {Object.entries(wsStats.connectionsByRole).map(
+                          ([role, count]) => (
+                            <div
+                              key={role}
+                              className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800"
+                            >
+                              <span className="text-sm">{role}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {count}
+                              </Badge>
+                            </div>
+                          )
+                        )}
                       </div>
                       {(wsStats.recentSubscriptionDenials?.length || 0) > 0 && (
                         <div className="mt-3">
-                          <p className="text-sm font-medium">Recent Subscription Denials</p>
+                          <p className="text-sm font-medium">
+                            Recent Subscription Denials
+                          </p>
                           <div className="space-y-1 max-h-28 overflow-auto">
-                            {wsStats.recentSubscriptionDenials!.slice().reverse().slice(0,5).map((d, i) => (
-                              <div key={i} className="flex items-center justify-between text-xs p-2 rounded bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
-                                <span>{d.role || 'unknown'} → {d.room}</span>
-                                <span className="text-muted-foreground">{new Date(d.at).toLocaleTimeString()}</span>
-                              </div>
-                            ))}
+                            {wsStats
+                              .recentSubscriptionDenials!.slice()
+                              .reverse()
+                              .slice(0, 5)
+                              .map((d, i) => (
+                                <div
+                                  key={i}
+                                  className="flex items-center justify-between text-xs p-2 rounded bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800"
+                                >
+                                  <span>
+                                    {d.role || 'unknown'} → {d.room}
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    {new Date(d.at).toLocaleTimeString()}
+                                  </span>
+                                </div>
+                              ))}
                           </div>
                         </div>
                       )}
                       {(wsStats.recentRateLimits?.length || 0) > 0 && (
                         <div className="mt-2">
-                          <p className="text-sm font-medium">Recent Rate Limits</p>
+                          <p className="text-sm font-medium">
+                            Recent Rate Limits
+                          </p>
                           <div className="space-y-1 max-h-28 overflow-auto">
-                            {wsStats.recentRateLimits!.slice().reverse().slice(0,5).map((d, i) => (
-                              <div key={i} className="flex items-center justify-between text-xs p-2 rounded bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-                                <span>{d.kind} • {d.count}</span>
-                                <span className="text-muted-foreground">{new Date(d.at).toLocaleTimeString()}</span>
-                              </div>
-                            ))}
+                            {wsStats
+                              .recentRateLimits!.slice()
+                              .reverse()
+                              .slice(0, 5)
+                              .map((d, i) => (
+                                <div
+                                  key={i}
+                                  className="flex items-center justify-between text-xs p-2 rounded bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800"
+                                >
+                                  <span>
+                                    {d.kind} • {d.count}
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    {new Date(d.at).toLocaleTimeString()}
+                                  </span>
+                                </div>
+                              ))}
                           </div>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground">{wsStatsError || 'Loading...'}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {wsStatsError || 'Loading...'}
+                    </div>
                   )}
                 </CardContent>
               </Card>

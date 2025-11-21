@@ -109,7 +109,9 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
           >
             {error && (
               <Alert variant="destructive" data-testid="error-message">
-                <AlertDescription>{typeof error === 'string' ? error : String(error)}</AlertDescription>
+                <AlertDescription>
+                  {typeof error === 'string' ? error : String(error)}
+                </AlertDescription>
               </Alert>
             )}
 

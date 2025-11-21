@@ -82,19 +82,11 @@ export function UserTracking() {
 
       if (response.success && response.data) {
         const dd: any = response.data || {};
-        const base = dd.patrons || [];
-        const sample = [
-          {
-            id: 'P-0001',
-            studentId: 'S-0001',
-            studentName: 'Alice Example',
-            gradeLevel: 'Grade 5',
-            purpose: 'Library Space',
-            checkInTime: new Date(Date.now() - 20 * 60000).toISOString(),
-            status: 'active',
-          },
-        ] as PatronActivity[];
-        setPatrons(base.length === 0 && import.meta.env.DEV ? sample : base);
+        const patrons = dd.patrons || [];
+
+        // Use real data only - no mock data
+        setPatrons(patrons);
+
         const ds: any = dd.stats || {};
         setStats({
           totalPatrons: Number(ds.totalPatrons || 0),
@@ -103,57 +95,36 @@ export function UserTracking() {
           topPurpose: String(ds.topPurpose || 'None'),
         });
       } else {
-        const isDev = (import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
-        if (isDev) {
-          const sample: PatronActivity[] = [
-            {
-              id: 'P-0001',
-              studentId: 'S-0001',
-              studentName: 'Alice Example',
-              gradeLevel: 'Grade 5',
-              purpose: 'Library Space',
-              checkInTime: new Date(Date.now() - 20 * 60000).toISOString(),
-              status: 'active',
-            },
-          ];
-          setPatrons(sample);
-          setStats({
-            totalPatrons: sample.length,
-            activePatrons: sample.length,
-            avgDuration: '20 min',
-            topPurpose: 'Library Space',
-          });
-      } else {
-        const errMsg = typeof (response as any)?.error === 'string' ? (response as any).error : (response as any)?.error?.message || 'Failed to fetch patron data';
+        // Show error if API fails
+        const errMsg =
+          typeof (response as any)?.error === 'string'
+            ? (response as any).error
+            : (response as any)?.error?.message ||
+              'Failed to fetch patron data';
         toast.error(String(errMsg));
-      }
+
+        // Set empty data on error
+        setPatrons([]);
+        setStats({
+          totalPatrons: 0,
+          activePatrons: 0,
+          avgDuration: '0 min',
+          topPurpose: 'None',
+        });
       }
     } catch (error) {
       console.error('Error fetching patrons:', error);
-      const isDev = (import.meta.env.DEV) || String(import.meta.env.VITE_APP_NAME || '').toLowerCase().includes('development');
-      if (isDev) {
-        const sample: PatronActivity[] = [
-          {
-            id: 'P-0001',
-            studentId: 'S-0001',
-            studentName: 'Alice Example',
-            gradeLevel: 'Grade 5',
-            purpose: 'Library Space',
-            checkInTime: new Date(Date.now() - 20 * 60000).toISOString(),
-            status: 'active',
-          },
-        ];
-        setPatrons(sample);
-        setStats({
-          totalPatrons: sample.length,
-          activePatrons: sample.length,
-          avgDuration: '20 min',
-          topPurpose: 'Library Space',
-        });
-      } else {
-        const msg = (error as any)?.message || 'Error loading patron data';
-        toast.error(String(msg));
-      }
+      const msg = (error as any)?.message || 'Error loading patron data';
+      toast.error(String(msg));
+
+      // Set empty data on error
+      setPatrons([]);
+      setStats({
+        totalPatrons: 0,
+        activePatrons: 0,
+        avgDuration: '0 min',
+        topPurpose: 'None',
+      });
     } finally {
       setLoading(false);
     }
@@ -173,7 +144,10 @@ export function UserTracking() {
         toast.success('Patron checked out successfully');
         await fetchPatrons();
       } else {
-        const errMsg = typeof (response as any)?.error === 'string' ? (response as any).error : (response as any)?.error?.message || 'Failed to checkout patron';
+        const errMsg =
+          typeof (response as any)?.error === 'string'
+            ? (response as any).error
+            : (response as any)?.error?.message || 'Failed to checkout patron';
         toast.error(String(errMsg));
       }
     } catch (error) {
@@ -200,8 +174,10 @@ export function UserTracking() {
 
   const filteredPatrons = patrons.filter((patron) => {
     const matchesSearch =
-      patron.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patron.studentId.toLowerCase().includes(searchTerm.toLowerCase());
+      (patron.studentName || '')
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (patron.studentId || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesPurpose =
       purposeFilter === 'all' || patron.purpose === purposeFilter;
     const matchesGrade =

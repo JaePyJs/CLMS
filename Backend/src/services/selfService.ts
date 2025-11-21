@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/prisma';
 import { BarcodeService } from './barcodeService.js';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
 
 export interface CheckInResult {
   success: boolean;
@@ -373,13 +371,21 @@ export class SelfService {
       return null;
     }
     // Exact match first
-    let student = await prisma.students.findFirst({ where: { barcode: code, is_active: true } });
-    if (student) return student;
+    let student = await prisma.students.findFirst({
+      where: { barcode: code, is_active: true },
+    });
+    if (student) {
+      return student;
+    }
     // If input is numeric-only, also try PN-prefixed variant
     if (/^\d{5,12}$/.test(code)) {
       const pnCode = `PN${code}`;
-      student = await prisma.students.findFirst({ where: { barcode: pnCode, is_active: true } });
-      if (student) return student;
+      student = await prisma.students.findFirst({
+        where: { barcode: pnCode, is_active: true },
+      });
+      if (student) {
+        return student;
+      }
     }
     return null;
   }

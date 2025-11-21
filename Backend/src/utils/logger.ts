@@ -9,7 +9,10 @@ const dedupeWindowMs = Number(process.env['LOG_DEDUPE_MS'] || 2000);
 const dedupeFormat = winston.format((info: TransformableInfo) => {
   try {
     const level = String(info.level ?? '');
-    const messageStr = typeof info.message === 'string' ? String(info.message) : JSON.stringify(info.message);
+    const messageStr =
+      typeof info.message === 'string'
+        ? String(info.message)
+        : JSON.stringify(info.message);
     const key = `${level}:${messageStr}`;
     const now = Date.now();
     const last = dedupeCache.get(key) || 0;
@@ -91,7 +94,10 @@ const consoleFormat = winston.format.combine(
         const o: Record<string, unknown> = {};
         let i = 0;
         for (const k of Object.keys(input)) {
-          if (i++ >= 20) { o['__truncated'] = true; break; }
+          if (i++ >= 20) {
+            o['__truncated'] = true;
+            break;
+          }
           o[k] = prune(input[k]);
         }
         return o;
@@ -210,7 +216,11 @@ export class Logger {
       userAgent: req.get('User-Agent'),
       ip: req.ip || req.socket?.remoteAddress,
       userId: (req as unknown as { user?: { id?: string } }).user?.id,
-      correlationId: (req.get('x-correlation-id') || req.get('x-request-id') || (req as unknown as { id?: string }).id || undefined),
+      correlationId:
+        req.get('x-correlation-id') ||
+        req.get('x-request-id') ||
+        (req as unknown as { id?: string }).id ||
+        undefined,
     };
 
     if (res.statusCode >= 400) {
@@ -236,7 +246,11 @@ export class Logger {
   }
 
   // Authentication logging
-  public authEvent(event: string, userId?: string, meta?: Record<string, unknown>): void {
+  public authEvent(
+    event: string,
+    userId?: string,
+    meta?: Record<string, unknown>,
+  ): void {
     this.info('Authentication Event', {
       event,
       userId,
@@ -267,7 +281,11 @@ export class Logger {
   }
 
   // Performance logging
-  public performance(operation: string, duration: number, meta?: Record<string, unknown>): void {
+  public performance(
+    operation: string,
+    duration: number,
+    meta?: Record<string, unknown>,
+  ): void {
     const payload = {
       operation,
       duration: `${duration}ms`,
@@ -290,7 +308,11 @@ export class Logger {
   }
 
   // Error with context
-  public errorWithContext(error: Error, context: string, meta?: Record<string, unknown>): void {
+  public errorWithContext(
+    error: Error,
+    context: string,
+    meta?: Record<string, unknown>,
+  ): void {
     this.error(`${context}: ${error.message}`, {
       error: {
         name: error.name,

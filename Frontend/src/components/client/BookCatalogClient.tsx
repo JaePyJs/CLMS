@@ -449,11 +449,13 @@ export function BookCatalogClient({
       </div>
 
       {/* Error state */}
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{typeof error === 'string' ? error : String(error)}</AlertDescription>
-          </Alert>
-        )}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            {typeof error === 'string' ? error : String(error)}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Loading state */}
       {isLoading && (

@@ -27,7 +27,8 @@ export default function EnhancedSelfService() {
         setSections(res.data);
       } else {
         setSections([]);
-        if (!import.meta.env.DEV) toast.error(res.error || 'Failed to load sections');
+        if (!import.meta.env.DEV)
+          toast.error(res.error || 'Failed to load sections');
       }
     } catch (e) {
       setSections([]);
@@ -52,7 +53,10 @@ export default function EnhancedSelfService() {
     }
     setLoading(true);
     try {
-      const res = await apiClient.post('/api/self-service/check-in-with-sections', { scanData, sectionCodes: chosen });
+      const res = await apiClient.post(
+        '/api/self-service/check-in-with-sections',
+        { scanData, sectionCodes: chosen }
+      );
       if ((res as any).success) {
         toast.success('Checked in');
         setScanData('');
@@ -75,13 +79,26 @@ export default function EnhancedSelfService() {
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 mb-4">
-          <Input ref={inputRef} placeholder="Scan ID" value={scanData} onChange={(e) => setScanData(e.target.value)} />
-          <Button onClick={submit} disabled={loading}>{loading ? 'Processing...' : 'Check In'}</Button>
+          <Input
+            ref={inputRef}
+            placeholder="Scan ID"
+            value={scanData}
+            onChange={(e) => setScanData(e.target.value)}
+          />
+          <Button onClick={submit} disabled={loading}>
+            {loading ? 'Processing...' : 'Check In'}
+          </Button>
         </div>
         <div className="grid md:grid-cols-3 gap-2">
           {sections.map((s) => (
-            <div key={s.id} className="flex items-center gap-2 border rounded-md p-2">
-              <Checkbox checked={Boolean(selected[s.code])} onCheckedChange={() => toggle(s.code)} />
+            <div
+              key={s.id}
+              className="flex items-center gap-2 border rounded-md p-2"
+            >
+              <Checkbox
+                checked={Boolean(selected[s.code])}
+                onCheckedChange={() => toggle(s.code)}
+              />
               <span>{s.name}</span>
             </div>
           ))}
