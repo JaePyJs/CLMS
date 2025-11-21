@@ -80,25 +80,82 @@ async function main() {
     // 4. Create Launcher Script (if not exists)
     // Use CRLF for Windows batch file compatibility
     const launcher = `@echo off\r\n
-echo Starting CLMS...\r\n
+echo Starting CLMS (Docker Mode)...\r\n
 docker-compose -f docker-compose.prod.yml up -d --build\r\n
 echo.\r\n
 echo System started! Access at http://localhost\r\n
 pause\r\n
 `;
+    fs.writeFileSync(path.join(APP_DIR, "CLMS_LAUNCHER_DOCKER.bat"), launcher);
+    // Keep original name for backward compatibility/ease of use
     fs.writeFileSync(path.join(APP_DIR, "CLMS_LAUNCHER.bat"), launcher);
+
+    // Create Hybrid Launcher
+    const hybridLauncher = `@echo off\r\n
+echo ==================================================\r\n
+echo    CLMS Hybrid Mode Launcher\r\n
+echo ==================================================\r\n
+echo.\r\n
+echo Checking requirements...\r\n
+where node >nul 2>nul\r\n
+if %errorlevel% neq 0 (\r\n
+    echo Error: Node.js is not installed. Please install Node.js LTS from https://nodejs.org/\r\n
+    pause\r\n
+    exit /b\r\n
+)\r\n
+where docker >nul 2>nul\r\n
+if %errorlevel% neq 0 (\r\n
+    echo Error: Docker is not installed. Please install Docker Desktop.\r\n
+    pause\r\n
+    exit /b\r\n
+)\r\n
+\r\n
+echo [1/3] Starting Database and Redis containers...\r\n
+docker-compose -f docker-compose.infra.yml up -d\r\n
+\r\n
+echo.\r\n
+echo [2/3] Waiting for database to initialize...\r\n
+timeout /t 5 /nobreak >nul\r\n
+\r\n
+echo.\r\n
+echo [3/3] Starting Applications...\r\n
+\r\n
+echo    - Starting Backend Server (New Window)...\r\n
+start "CLMS Backend" cmd /k "cd Backend && npm install && npm run dev"\r\n
+\r\n
+echo    - Starting Frontend Server (New Window)...\r\n
+start "CLMS Frontend" cmd /k "cd Frontend && npm install && npm run dev"\r\n
+\r\n
+echo.\r\n
+echo ==================================================\r\n
+echo    Environment Started!\r\n
+echo    - Database: localhost:3308\r\n
+echo    - Redis:    localhost:6380\r\n
+echo    - Backend:  http://localhost:3001\r\n
+echo    - Frontend: http://localhost:3000\r\n
+echo ==================================================\r\n
+pause\r\n
+`;
+    fs.writeFileSync(path.join(APP_DIR, "CLMS_LAUNCHER_HYBRID.bat"), hybridLauncher);
 
     // 5. Create Instructions
     const instructions = `CLMS Librarian Package\r\n
 ======================\r\n
 \r\n
-Installation:\r\n
-1. Install Docker Desktop for Windows (https://www.docker.com/products/docker-desktop/).\r\n
-2. Copy this folder to your Desktop.\r\n
+This package supports two modes of operation:\r\n
 \r\n
-Usage:\r\n
-1. Double-click 'CLMS_LAUNCHER.bat' to start the system.\r\n
-2. Open your browser to http://localhost.\r\n
+OPTION 1: DOCKER MODE (Recommended for simplicity)\r\n
+------------------------------------------------\r\n
+Requirements: Docker Desktop\r\n
+1. Double-click 'CLMS_LAUNCHER.bat' (or CLMS_LAUNCHER_DOCKER.bat).\r\n
+2. Access at http://localhost\r\n
+\r\n
+OPTION 2: HYBRID MODE (For development/debugging)\r\n
+------------------------------------------------\r\n
+Requirements: Docker Desktop AND Node.js (https://nodejs.org/)\r\n
+1. Double-click 'CLMS_LAUNCHER_HYBRID.bat'.\r\n
+2. This will open two extra windows for Backend and Frontend.\r\n
+3. Access at http://localhost:3000\r\n
 \r\n
 Troubleshooting:\r\n
 - Ensure Docker Desktop is running before starting.\r\n
