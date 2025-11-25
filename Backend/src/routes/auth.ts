@@ -5,12 +5,78 @@ import { authenticate, requireRole } from '../middleware/authenticate';
 import { AuthService } from '../services/authService';
 import { logger } from '../utils/logger';
 import { prisma } from '../config/database';
+import {
+  authRateLimiter,
+  registrationRateLimiter,
+} from '../middleware/rateLimiter';
 
 const router = Router();
 
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: User login
+ *     description: Authenticate user with username and password. Returns JWT access token and refresh token.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: "admin"
+ *               password:
+ *                 type: string
+ *                 example: "password123"
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     token:
+ *                       type: string
+ *                       description: JWT access token
+ *                     refreshToken:
+ *                       type: string
+ *                       description: JWT refresh token
+ *       400:
+ *         description: Missing credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       429:
+ *         description: Too many login attempts (rate limited)
+ */
 // POST /api/v1/auth/login
+// Rate limited to 5 attempts per 15 minutes per IP
 router.post(
   '/login',
+  authRateLimiter,
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { username, password } = req.body;
 
@@ -59,9 +125,73 @@ router.post(
   }),
 );
 
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: User registration
+ *     description: Register a new user account. Password must be at least 6 characters.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: "newuser"
+ *               password:
+ *                 type: string
+ *                 minLength: 6
+ *                 example: "password123"
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "user@example.com"
+ *               full_name:
+ *                 type: string
+ *                 example: "John Doe"
+ *               role:
+ *                 type: string
+ *                 enum: [LIBRARIAN, ADMIN]
+ *                 example: "LIBRARIAN"
+ *     responses:
+ *       201:
+ *         description: Registration successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     token:
+ *                       type: string
+ *                     refreshToken:
+ *                       type: string
+ *       400:
+ *         description: Invalid input (missing fields or password too short)
+ *       409:
+ *         description: Username already exists
+ *       429:
+ *         description: Too many registration attempts (rate limited)
+ */
 // POST /api/v1/auth/register
+// Rate limited to 3 attempts per hour per IP
 router.post(
   '/register',
+  registrationRateLimiter,
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { username, password, email, full_name, role } = req.body;
 

@@ -2,7 +2,7 @@ import express, { type Request, type Response } from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
-
+import swaggerUi from 'swagger-ui-express';
 import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import { env, getAllowedOrigins, isDevelopment } from './config/env';
@@ -13,6 +13,7 @@ import { requestLogger } from './middleware/requestLogger';
 import { performanceMonitor } from './middleware/performanceMonitor';
 import { apiRoutes } from './routes/index';
 import { websocketServer } from './websocket/websocketServer';
+import { swaggerSpec, swaggerUiOptions } from './config/swagger';
 import path from 'path';
 
 // Create Express application
@@ -126,6 +127,14 @@ app.use(requestLogger);
 
 // Performance monitoring middleware
 app.use(performanceMonitor);
+
+// Swagger API Documentation
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, swaggerUiOptions),
+);
+logger.info('📚 Swagger API documentation available at /api-docs');
 
 // API routes
 app.use('/api', apiRoutes);

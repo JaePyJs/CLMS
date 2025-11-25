@@ -57,6 +57,7 @@
     "@types/ws": "^8.18.1",
     "axe-playwright": "^2.0.1",
     "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "socket.io": "^4.8.1"
   },
   "engines": {

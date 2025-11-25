@@ -810,8 +810,8 @@ router.get(
       };
 
       allActivities.forEach((item: any) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const metadata = item.metadata as any;
+         
+        const metadata = item.metadata;
         if (
           metadata?.purpose &&
           Object.prototype.hasOwnProperty.call(purposes, metadata.purpose)

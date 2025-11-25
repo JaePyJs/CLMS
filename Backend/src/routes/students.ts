@@ -21,7 +21,7 @@ import { logger } from '../utils/logger';
 
 // const prisma = new PrismaClient();
 
-const router = Router();
+const router = Router({ caseSensitive: false });
 
 // GET /api/v1/students - List all students with pagination
 router.get(

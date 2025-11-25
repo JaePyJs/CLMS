@@ -23,6 +23,7 @@ import announcementsRoutes from './announcements';
 import { kioskRoutes } from './kiosk';
 import { enhancedLibraryRoutes } from './enhanced-library';
 import { versionRoutes } from './version';
+import healthRoutes from './health';
 
 const router = Router();
 
@@ -50,9 +51,10 @@ router.use('/announcements', announcementsRoutes);
 router.use('/kiosk', kioskRoutes);
 router.use('/enhanced-library', enhancedLibraryRoutes);
 router.use('/version', versionRoutes);
+router.use('/health', healthRoutes);
 
-// Health check endpoint
-router.get('/health', (_req: Request, res: Response) => {
+// Legacy health check endpoint (deprecated - use /health instead)
+router.get('/healthz', (_req: Request, res: Response) => {
   return res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
