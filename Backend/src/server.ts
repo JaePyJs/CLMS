@@ -5,6 +5,8 @@ import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 import rateLimit from 'express-rate-limit';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
+import csrf from 'csurf';
 import { env, getAllowedOrigins, isDevelopment } from './config/env';
 import { connectDatabase } from './config/database';
 import { logger } from './utils/logger';
@@ -60,6 +62,8 @@ app.use(
       'x-correlation-id',
       'X-Request-Id',
       'x-request-id',
+      'X-CSRF-Token',
+      'CSRF-Token',
     ],
   }),
 );
@@ -107,6 +111,13 @@ app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {
 
 // Compression middleware
 app.use(compression());
+
+// Cookie parser (required for CSRF)
+app.use(cookieParser());
+
+// CSRF Protection
+const csrfProtection = csrf({ cookie: true });
+logger.info('🔒 CSRF protection enabled');
 
 // Request logging middleware
 app.use((req: Request, res: Response, next: express.NextFunction) => {

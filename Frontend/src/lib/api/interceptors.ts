@@ -15,6 +15,37 @@ let accessTokenProvider: AccessTokenProvider = () =>
 let unauthorizedHandler: UnauthorizedHandler | null = null;
 let isHandlingUnauthorized = false;
 
+// CSRF token management
+let csrfToken: string | null = null;
+let csrfFetchPromise: Promise<void> | null = null;
+
+async function fetchCsrfToken(): Promise<void> {
+  if (csrfFetchPromise) {
+    return csrfFetchPromise;
+  }
+
+  csrfFetchPromise = (async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/csrf-token`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      csrfToken = data.csrfToken;
+    } catch (error) {
+      console.error('Failed to fetch CSRF token:', error);
+      csrfToken = null;
+    } finally {
+      csrfFetchPromise = null;
+    }
+  })();
+
+  return csrfFetchPromise;
+}
+
+// Fetch CSRF token on module load
+fetchCsrfToken();
+
 export function setAccessTokenProvider(provider: AccessTokenProvider) {
   accessTokenProvider = provider;
 }
@@ -24,35 +55,51 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
 }
 
 export function setupInterceptors(client: AxiosInstance) {
-  client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-    const token = accessTokenProvider?.();
+  client.interceptors.request.use(
+    async (config: InternalAxiosRequestConfig) => {
+      const token = accessTokenProvider?.();
 
-    if (token) {
-      if (!config.headers) {
-        config.headers = {} as any;
+      if (token) {
+        if (!config.headers) {
+          config.headers = {} as any;
+        }
+        if (!config.headers.Authorization) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
       }
-      if (!config.headers.Authorization) {
-        config.headers.Authorization = `Bearer ${token}`;
+
+      // Add CSRF token for state-changing requests
+      const method = config.method?.toUpperCase();
+      if (method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        if (!csrfToken) {
+          await fetchCsrfToken();
+        }
+        if (csrfToken) {
+          if (!config.headers) {
+            config.headers = {} as any;
+          }
+          (config.headers as any)['X-CSRF-Token'] = csrfToken;
+        }
       }
+
+      // Always send credentials for cookie-based flows
+      (config as any).withCredentials = true;
+
+      const existingCid =
+        (config.headers as any)?.['x-correlation-id'] ||
+        (config.headers as any)?.['x-request-id'];
+      if (!existingCid) {
+        const cid =
+          typeof crypto !== 'undefined' &&
+          typeof (crypto as any).randomUUID === 'function'
+            ? (crypto as any).randomUUID()
+            : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        (config.headers as any)['x-correlation-id'] = cid;
+      }
+
+      return config;
     }
-
-    // Always send credentials for cookie-based flows
-    (config as any).withCredentials = true;
-
-    const existingCid =
-      (config.headers as any)?.['x-correlation-id'] ||
-      (config.headers as any)?.['x-request-id'];
-    if (!existingCid) {
-      const cid =
-        typeof crypto !== 'undefined' &&
-        typeof (crypto as any).randomUUID === 'function'
-          ? (crypto as any).randomUUID()
-          : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-      (config.headers as any)['x-correlation-id'] = cid;
-    }
-
-    return config;
-  });
+  );
 
   client.interceptors.response.use(
     (response) => {
@@ -121,7 +168,16 @@ export function setupInterceptors(client: AxiosInstance) {
           normalizedError.message || 'Too many requests. Please wait.'
         );
       } else if (status === 403) {
-        toast.error(normalizedError.message || 'Access denied');
+        // CSRF token might be invalid - refresh it
+        if (
+          normalizedError.message?.includes('CSRF') ||
+          normalizedError.message?.includes('csrf')
+        ) {
+          await fetchCsrfToken();
+          toast.error('Security token expired. Please try again.');
+        } else {
+          toast.error(normalizedError.message || 'Access denied');
+        }
       } else if (status === 404) {
         toast.error(normalizedError.message || 'Resource not found');
       } else if (status >= 500) {

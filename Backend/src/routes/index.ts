@@ -24,8 +24,12 @@ import { kioskRoutes } from './kiosk';
 import { enhancedLibraryRoutes } from './enhanced-library';
 import { versionRoutes } from './version';
 import healthRoutes from './health';
+import { csrfRoutes } from './csrf';
 
 const router = Router();
+
+// CSRF Token endpoint (must be before protected routes)
+router.use('/', csrfRoutes);
 
 // API Routes
 router.use('/auth', authRoutes);
