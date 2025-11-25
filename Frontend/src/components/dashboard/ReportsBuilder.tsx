@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { apiClient } from '@/lib/api';
 import {
   PieChart,
   TrendingUp,
@@ -112,7 +113,7 @@ export function ReportsBuilder() {
   );
   const [selectedTemplate, setSelectedTemplate] =
     useState<ReportTemplate | null>(null);
-  const [reportConfig] = useState<ReportConfig | null>(null);
+  const [reportConfig, setReportConfig] = useState<ReportConfig | null>(null); // Fixed: added setter
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
 
@@ -123,204 +124,90 @@ export function ReportsBuilder() {
   // Loading states
   const [isExporting, setIsExporting] = useState(false);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-  // Mock data
-  const mockTemplates: ReportTemplate[] = [
-    {
-      id: '1',
-      name: 'Student Activity Summary',
-      description: 'Overview of student library activities and usage patterns',
-      type: 'student',
-      category: 'summary',
-      chartTypes: ['bar', 'pie', 'line'],
-      metrics: [
-        'total_sessions',
-        'unique_students',
-        'avg_duration',
-        'peak_hours',
-      ],
-      filters: ['grade_level', 'date_range', 'activity_type', 'status'],
-      columns: [
-        'student_name',
-        'grade_level',
-        'total_sessions',
-        'last_activity',
-        'status',
-      ],
-      isDefault: true,
-      isFavorite: true,
-      lastUsed: '2024-01-20',
-      useCount: 45,
-    },
-    {
-      id: '2',
-      name: 'Equipment Utilization Report',
-      description: 'Detailed analysis of equipment usage and availability',
-      type: 'equipment',
-      category: 'detailed',
-      chartTypes: ['bar', 'area', 'line'],
-      metrics: [
-        'utilization_rate',
-        'downtime',
-        'maintenance_scheduled',
-        'usage_patterns',
-      ],
-      filters: ['equipment_type', 'date_range', 'location', 'status'],
-      columns: [
-        'equipment_name',
-        'total_hours',
-        'utilization_rate',
-        'maintenance_due',
-        'status',
-      ],
-      isDefault: true,
-      isFavorite: false,
-      lastUsed: '2024-01-19',
-      useCount: 23,
-    },
-    {
-      id: '3',
-      name: 'Book Circulation Analysis',
-      description: 'Book borrowing patterns and inventory analysis',
-      type: 'book',
-      category: 'trend',
-      chartTypes: ['line', 'bar', 'scatter'],
-      metrics: [
-        'borrowed_books',
-        'returned_books',
-        'overdue_books',
-        'popular_categories',
-      ],
-      filters: ['category', 'date_range', 'grade_level', 'book_status'],
-      columns: [
-        'book_title',
-        'author',
-        'category',
-        'total_borrows',
-        'current_status',
-        'overdue_count',
-      ],
-      isDefault: false,
-      isFavorite: true,
-      lastUsed: '2024-01-18',
-      useCount: 31,
-    },
-    {
-      id: '4',
-      name: 'Daily Operations Report',
-      description: 'Comprehensive daily library operations summary',
-      type: 'activity',
-      category: 'summary',
-      chartTypes: ['bar', 'pie'],
-      metrics: ['daily_visitors', 'total_sessions', 'new_students', 'revenue'],
-      filters: ['date', 'shift', 'staff', 'location'],
-      columns: ['metric_name', 'value', 'target', 'variance', 'status'],
-      isDefault: true,
-      isFavorite: false,
-      lastUsed: '2024-01-20',
-      useCount: 67,
-    },
-    {
-      id: '5',
-      name: 'Student Performance Analytics',
-      description: 'Academic performance vs library usage correlation',
-      type: 'student',
-      category: 'statistical',
-      chartTypes: ['scatter', 'line', 'bar'],
-      metrics: [
-        'library_usage',
-        'grades_correlation',
-        'improvement_trends',
-        'engagement_score',
-      ],
-      filters: [
-        'grade_level',
-        'subject_area',
-        'time_period',
-        'performance_range',
-      ],
-      columns: [
-        'student_name',
-        'library_hours',
-        'grade_average',
-        'improvement_rate',
-        'engagement_level',
-      ],
-      isDefault: false,
-      isFavorite: false,
-      lastUsed: '2024-01-15',
-      useCount: 12,
-    },
-  ];
 
-  const mockGeneratedReports: GeneratedReport[] = [
+  // Predefined templates
+  const defaultTemplates: ReportTemplate[] = [
     {
-      id: '1',
-      name: 'January Student Activity Report',
-      templateName: 'Student Activity Summary',
-      generatedAt: '2024-01-20T10:30:00Z',
-      generatedBy: 'Admin',
-      dateRange: '2024-01-01 to 2024-01-20',
-      status: 'completed',
-      fileUrl: '/reports/student-activity-jan-2024.pdf',
-      fileSize: 2456789,
-      recordCount: 156,
+      id: 'tpl_weekly_summary',
+      name: 'Weekly Library Summary',
+      description:
+        'Overview of students, books, and borrowing trends for the week',
+      type: 'custom',
+      category: 'summary',
+      chartTypes: ['bar', 'line'],
+      metrics: ['Total Students', 'Total Books', 'Active Borrows'],
+      filters: ['Active Only'],
+      columns: ['Section', 'Metric', 'Value'],
+      isDefault: true,
+      isFavorite: false,
+      useCount: 0,
     },
     {
-      id: '2',
-      name: 'Equipment Utilization Q4 2023',
-      templateName: 'Equipment Utilization Report',
-      generatedAt: '2024-01-15T14:20:00Z',
-      generatedBy: 'Librarian',
-      dateRange: '2023-10-01 to 2023-12-31',
-      status: 'completed',
-      fileUrl: '/reports/equipment-q4-2023.xlsx',
-      fileSize: 1234567,
-      recordCount: 89,
+      id: 'tpl_inventory_status',
+      name: 'Inventory Status Report',
+      description: 'Detailed breakdown of book categories and availability',
+      type: 'book',
+      category: 'detailed',
+      chartTypes: ['pie'],
+      metrics: ['Total Copies', 'Available Copies', 'Lost/Damaged'],
+      filters: ['All Categories'],
+      columns: ['Category', 'Count', 'Percentage'],
+      isDefault: true,
+      isFavorite: false,
+      useCount: 0,
     },
     {
-      id: '3',
-      name: 'Weekly Operations Summary',
-      templateName: 'Daily Operations Report',
-      generatedAt: '2024-01-20T08:00:00Z',
-      generatedBy: 'System',
-      dateRange: '2024-01-14 to 2024-01-20',
-      status: 'generating',
+      id: 'tpl_activity_log',
+      name: 'Student Activity Log',
+      description: 'Recent student activities and library usage',
+      type: 'activity',
+      category: 'trend',
+      chartTypes: ['bar'],
+      metrics: ['Check-ins', 'Computer Usage', 'Reading'],
+      filters: ['Last 30 Days'],
+      columns: ['Activity', 'Count', 'Date'],
+      isDefault: true,
+      isFavorite: false,
+      useCount: 0,
     },
   ];
 
   useEffect(() => {
-    setReportTemplates(mockTemplates);
-    setGeneratedReports(mockGeneratedReports);
+    setReportTemplates(defaultTemplates);
+    // In a real app, we would fetch saved templates and generated reports history here
   }, []);
 
   // Handler functions
   const handleGenerateReport = async () => {
-    if (!selectedTemplate || !reportConfig) {
-      toast.error('Please select a template and configure report options');
+    if (!selectedTemplate) {
+      toast.error('Please select a template');
       return;
     }
 
     setIsGenerating(true);
     try {
-      // Simulate report generation
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-
+      // Create a record of the generated report
       const newReport: GeneratedReport = {
         id: Date.now().toString(),
-        name: reportConfig.name,
+        name:
+          reportConfig?.name ||
+          `${selectedTemplate.name} - ${new Date().toLocaleDateString()}`,
         templateName: selectedTemplate.name,
         generatedAt: new Date().toISOString(),
         generatedBy: 'Current User',
-        dateRange: `${reportConfig.dateRange.start} to ${reportConfig.dateRange.end}`,
+        dateRange: reportConfig?.dateRange
+          ? `${reportConfig.dateRange.start} to ${reportConfig.dateRange.end}`
+          : 'Last 7 Days',
         status: 'completed',
-        fileUrl: `/reports/${reportConfig.name.toLowerCase().replace(/\s+/g, '-')}.pdf`,
-        fileSize: Math.floor(Math.random() * 5000000) + 500000,
-        recordCount: Math.floor(Math.random() * 200) + 50,
+        recordCount: 0, // Would be populated by actual data
       };
 
       setGeneratedReports([newReport, ...generatedReports]);
-      toast.success('Report generated successfully!');
+      toast.success('Report generated successfully! You can now export it.');
       setShowCreateReport(false);
+
+      // Auto-switch to generated tab
+      setActiveTab('generated');
     } catch (error) {
       toast.error('Failed to generate report');
     } finally {
@@ -329,15 +216,42 @@ export function ReportsBuilder() {
   };
 
   const handleExportReport = async (
-    _report: GeneratedReport,
+    report: GeneratedReport,
     format: 'pdf' | 'excel' | 'csv'
   ) => {
     setIsExporting(true);
     try {
-      // Simulate export
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      toast.success(`Report exported as ${format.toUpperCase()} successfully!`);
+      // Map template type to sections
+      let sections: string[] = [];
+      if (report.templateName.includes('Summary'))
+        sections = ['Overview', 'Trends'];
+      else if (report.templateName.includes('Inventory'))
+        sections = ['Overview', 'Categories'];
+      else if (report.templateName.includes('Activity'))
+        sections = ['Activities'];
+      else sections = ['Overview', 'Categories', 'Trends', 'Activities'];
+
+      const response = await apiClient.post('/api/analytics/export', {
+        format: format === 'excel' ? 'csv' : format, // Backend supports csv/json, mapping excel to csv for now
+        timeframe: 'week', // Default to week for now
+        sections,
+      });
+
+      if (response) {
+        // Create a blob from the response
+        const blob = new Blob([response as any], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${report.name.replace(/\s+/g, '_')}.${format === 'excel' ? 'csv' : format}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success(`Report exported successfully!`);
+      }
     } catch (error) {
+      console.error('Export error:', error);
       toast.error('Failed to export report');
     } finally {
       setIsExporting(false);

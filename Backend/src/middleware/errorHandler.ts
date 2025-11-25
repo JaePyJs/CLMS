@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Request, Response, NextFunction } from 'express';
-import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 import { logger } from '../utils/logger';
 import { env } from '../config/env';
@@ -82,10 +81,19 @@ interface ErrorResponse {
   };
 }
 
+// Type guard for Prisma errors
+const isPrismaError = (
+  error: any,
+): error is { code: string; meta?: any; message: string } => {
+  return error && typeof error.code === 'string' && error.code.startsWith('P');
+};
+
 // Handle different types of errors
-const handlePrismaError = (
-  error: Prisma.PrismaClientKnownRequestError,
-): AppError => {
+const handlePrismaError = (error: {
+  code: string;
+  meta?: any;
+  message: string;
+}): AppError => {
   switch (error.code) {
     case 'P2002':
       return new ConflictError(
@@ -145,7 +153,7 @@ export const errorHandler = (
   // Convert known errors to AppError
   if (error instanceof AppError) {
     appError = error;
-  } else if (error instanceof Prisma.PrismaClientKnownRequestError) {
+  } else if (isPrismaError(error)) {
     appError = handlePrismaError(error);
   } else if (error instanceof ZodError) {
     appError = handleZodError(error);
@@ -234,28 +242,5 @@ export const notFoundHandler = (
   const error = new NotFoundError(`Route ${req.originalUrl}`);
   next(error);
 };
-
-// Unhandled promise rejection handler
-process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
-  logger.error('Unhandled Promise Rejection:', {
-    reason: reason?.message || reason,
-    stack: reason?.stack,
-    promise: promise.toString(),
-  });
-
-  // Graceful shutdown
-  process.exit(1);
-});
-
-// Uncaught exception handler
-process.on('uncaughtException', (error: Error) => {
-  logger.error('Uncaught Exception:', {
-    message: error.message,
-    stack: error.stack,
-  });
-
-  // Graceful shutdown
-  process.exit(1);
-});
 
 export default errorHandler;

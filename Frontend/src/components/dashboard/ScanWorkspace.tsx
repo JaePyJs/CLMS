@@ -287,9 +287,49 @@ export function ScanWorkspace() {
 
   // Enhanced Activity Management Handlers
   const handleBulkCheckout = async () => {
-    // Bulk checkout functionality to be implemented
-    toast.info('Bulk checkout feature coming soon');
-    setShowBulkActions(false);
+    if (
+      !confirm(
+        `Are you sure you want to end ${selectedSessions.length} sessions?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      // Process all selected sessions
+      const promises = selectedSessions.map((sessionId) => {
+        // Find session details to log correct activity end
+        const session = mockActiveSessions.find((s) => s.id === sessionId);
+        if (!session) return Promise.resolve();
+
+        const activityData = {
+          studentId: session.studentId || 'unknown',
+          studentName: session.studentName,
+          gradeLevel: session.gradeLevel || 'Unknown',
+          gradeCategory: session.gradeCategory || 'unknown',
+          activityType: session.activity, // Log same activity type
+          equipmentId: session.equipmentId,
+          startTime: session.startTime,
+          endTime: new Date().toISOString(),
+          status: 'completed',
+        };
+
+        if (isOnline) {
+          return logActivity(activityData);
+        } else {
+          return offlineActions.logActivity(activityData);
+        }
+      });
+
+      await Promise.all(promises);
+
+      toast.success(`Successfully ended ${selectedSessions.length} sessions`);
+      setSelectedSessions([]);
+      setShowBulkActions(false);
+    } catch (error) {
+      console.error('Bulk checkout error:', error);
+      toast.error('Failed to end some sessions');
+    }
   };
 
   const handleBulkExtendTime = async (additionalMinutes: number) => {
@@ -388,33 +428,8 @@ export function ScanWorkspace() {
     );
   };
 
-  // Mock active sessions data
-  const mockActiveSessions = [
-    {
-      id: '1',
-      studentName: 'Juan Dela Cruz',
-      activity: 'Computer Session',
-      startTime: '10:30 AM',
-      status: 'active',
-      equipment: 'PC Station 1',
-    },
-    {
-      id: '2',
-      studentName: 'Maria Santos',
-      activity: 'Gaming Session',
-      startTime: '11:15 AM',
-      status: 'active',
-      equipment: 'Recreational Room',
-    },
-    {
-      id: '3',
-      studentName: 'Jose Reyes',
-      activity: 'AVR Room',
-      startTime: '09:45 AM',
-      status: 'overdue',
-      equipment: 'AVR Room',
-    },
-  ];
+  // Mock active sessions data - Empty for now as per requirements
+  const mockActiveSessions: any[] = [];
 
   const filteredSessions =
     filterStatus === 'all'

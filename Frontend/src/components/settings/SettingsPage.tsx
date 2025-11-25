@@ -8,6 +8,7 @@ import {
   FileText,
   Settings,
   Clock,
+  Monitor,
 } from 'lucide-react';
 
 // Import setting tab components
@@ -18,6 +19,9 @@ const AutomationSettings = React.lazy(() => import('./AutomationSettings'));
 const BackupRestore = React.lazy(() => import('./BackupRestore'));
 const SystemLogs = React.lazy(() => import('./SystemLogs'));
 const AttendanceSettings = React.lazy(() => import('./AttendanceSettings'));
+const EquipmentDashboard = React.lazy(
+  () => import('../dashboard/EquipmentDashboard')
+);
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center h-64">
@@ -70,6 +74,10 @@ export default function SettingsPage() {
             <Database className="w-4 h-4" />
             <span className="hidden sm:inline">Backup</span>
           </TabsTrigger>
+          <TabsTrigger value="equipment" className="gap-2">
+            <Monitor className="w-4 h-4" />
+            <span className="hidden sm:inline">Equipment</span>
+          </TabsTrigger>
           <TabsTrigger value="logs" className="gap-2">
             <FileText className="w-4 h-4" />
             <span className="hidden sm:inline">Logs</span>
@@ -109,6 +117,12 @@ export default function SettingsPage() {
         <TabsContent value="backup">
           <React.Suspense fallback={<LoadingFallback />}>
             <BackupRestore />
+          </React.Suspense>
+        </TabsContent>
+
+        <TabsContent value="equipment">
+          <React.Suspense fallback={<LoadingFallback />}>
+            <EquipmentDashboard />
           </React.Suspense>
         </TabsContent>
 

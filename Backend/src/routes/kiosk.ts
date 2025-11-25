@@ -113,6 +113,58 @@ router.post('/tap-in', async (req: Request, res: Response) => {
 });
 
 /**
+ * Get active students for kiosk display (Public)
+ */
+router.get('/active-students', async (_req: Request, res: Response) => {
+  try {
+    const activeActivities = await prisma.student_activities.findMany({
+      where: {
+        activity_type: 'KIOSK_CHECK_IN',
+        status: 'ACTIVE',
+      },
+      include: {
+        student: {
+          select: {
+            first_name: true,
+            last_name: true,
+            student_id: true,
+          },
+        },
+      },
+      orderBy: {
+        start_time: 'desc',
+      },
+    });
+
+    const activeStudents = activeActivities.map((activity: any) => {
+      // Calculate auto-logout time (15 mins after start)
+      const startTime = new Date(activity.start_time);
+      const autoLogoutAt = new Date(startTime.getTime() + 15 * 60000);
+
+      return {
+        id: activity.id,
+        studentId: activity.student_id,
+        name: `${activity.student.first_name} ${activity.student.last_name}`,
+        checkinTime: activity.start_time,
+        autoLogoutAt: autoLogoutAt,
+        reminders: [],
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: activeStudents,
+    });
+  } catch (error) {
+    logger.error('Get active students error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to get active students',
+    });
+  }
+});
+
+/**
  * Confirm check-in with purpose
  * Creates activity record and handles navigation
  */
@@ -234,7 +286,7 @@ router.post(
 
         if (sections.length > 0) {
           await prisma.student_activities_sections.createMany({
-            data: sections.map(section => ({
+            data: sections.map((section: any) => ({
               activity_id: activity.id,
               section_id: section.id,
             })),
@@ -452,14 +504,9 @@ router.post(
   },
 );
 
-router.get(
-  '/announcements/config',
-  authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
-  async (_req: Request, res: Response) => {
-    return res.status(200).json({ success: true, data: announcementConfig });
-  },
-);
+router.get('/announcements/config', async (_req: Request, res: Response) => {
+  return res.status(200).json({ success: true, data: announcementConfig });
+});
 
 router.put(
   '/announcements/config',
@@ -762,7 +809,7 @@ router.get(
         recreation: 0,
       };
 
-      allActivities.forEach(item => {
+      allActivities.forEach((item: any) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const metadata = item.metadata as any;
         if (
@@ -852,7 +899,7 @@ router.get(
   },
 );
 
-export { router as kioskRoutes };
+// Helper functions - must be defined before export
 async function computeSectionOccupancy() {
   const active = await prisma.student_activities.findMany({
     where: { status: 'ACTIVE' },
@@ -865,7 +912,7 @@ async function computeSectionOccupancy() {
     RECREATION: 0,
     BORROWING: 0,
   };
-  const activeIds = active.map(a => a.id);
+  const activeIds = active.map((a: any) => a.id);
   if (activeIds.length === 0) {
     return counts;
   }
@@ -911,22 +958,19 @@ async function broadcastSectionOccupancy() {
   }
 }
 
-router.get(
-  '/occupancy',
-  authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
-  async (_req: Request, res: Response) => {
-    try {
-      const sections = await computeSectionOccupancy();
-      return res.status(200).json({
-        success: true,
-        data: { sections, updatedAt: new Date().toISOString() },
-      });
-    } catch (error) {
-      logger.error('Occupancy error:', error);
-      return res
-        .status(500)
-        .json({ success: false, message: 'Failed to get occupancy' });
-    }
-  },
-);
+router.get('/occupancy', async (_req: Request, res: Response) => {
+  try {
+    const sections = await computeSectionOccupancy();
+    return res.status(200).json({
+      success: true,
+      data: { sections, updatedAt: new Date().toISOString() },
+    });
+  } catch (error) {
+    logger.error('Occupancy error:', error);
+    return res
+      .status(500)
+      .json({ success: false, message: 'Failed to get occupancy' });
+  }
+});
+
+export { router as kioskRoutes };

@@ -1,4 +1,19 @@
-import { prisma } from '../utils/prisma';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+import { PrismaClient } from '@prisma/client';
+
+dotenv.config({
+  path: path.resolve(process.cwd(), 'Backend', '.env'),
+  override: true,
+});
+
+// Force correct URL if it's still wrong
+if (!process.env.DATABASE_URL?.includes('3308')) {
+  process.env.DATABASE_URL =
+    'mysql://clms_user:clms_password@localhost:3308/clms_database';
+}
+
+const prisma = new PrismaClient();
 
 async function seedEquipment() {
   console.log('Seeding equipment...');

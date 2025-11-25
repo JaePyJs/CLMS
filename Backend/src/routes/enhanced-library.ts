@@ -82,7 +82,9 @@ router.get(
         where: {
           activities: {
             some: {
-              activity_type: 'CHECK_IN',
+              activity_type: {
+                in: ['CHECK_IN', 'SELF_SERVICE_CHECK_IN'],
+              },
               created_at: {
                 gte: today,
               },
@@ -115,7 +117,10 @@ router.get(
       // Filter to only show currently active patrons (last activity was check-in)
       const activePatrons = currentPatrons.filter(student => {
         const lastActivity = student.activities[0];
-        return lastActivity?.activity_type === 'CHECK_IN';
+        return (
+          lastActivity?.activity_type === 'CHECK_IN' ||
+          lastActivity?.activity_type === 'SELF_SERVICE_CHECK_IN'
+        );
       });
 
       res.json({
@@ -124,9 +129,9 @@ router.get(
           totalPatrons: activePatrons.length,
           patrons: activePatrons.map(patron => ({
             id: patron.id,
-            student_id: patron.student_id,
-            name: `${patron.first_name} ${patron.last_name}`,
-            grade_level: patron.grade_level,
+            studentId: patron.student_id,
+            studentName: `${patron.first_name} ${patron.last_name}`,
+            gradeLevel: patron.grade_level,
             section: patron.section,
             currentBooks: patron.checkouts.length,
             lastCheckIn: patron.activities[0]?.created_at,

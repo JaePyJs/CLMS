@@ -78,7 +78,7 @@ const PURPOSES: PurposeOption[] = [
   {
     id: 'recreation',
     name: 'Recreation',
-    icon: Gamepad2,
+    icon: BookOpen,
     description: 'Games and Activities',
     color: 'bg-pink-500 hover:bg-pink-600',
   },
@@ -321,26 +321,31 @@ export default function Kiosk() {
       return;
     }
 
+    console.log('handleScanSubmit called with:', scanData);
     setLoading(true);
     try {
+      console.log('Calling /api/kiosk/tap-in...');
       const response = await apiClient.post<TapInResponse>(
         '/api/kiosk/tap-in',
         {
           scanData: scanData.trim(),
         }
       );
+      console.log('Tap-in response:', response);
 
       // Fix: The response from apiClient.post IS the data (unwrapped)
       if (response.success) {
         const result = response as any;
 
         if (result.cooldownRemaining && result.cooldownRemaining > 0) {
+          console.log('Cooldown active');
           setCooldownTime(result.cooldownRemaining);
           setCurrentStep('cooldown');
           toast.info(
             `Please wait ${Math.ceil(result.cooldownRemaining / 60)} minutes before checking in again`
           );
         } else if (result.student) {
+          console.log('Student found:', result.student);
           setStudentInfo(result.student);
           // Automatically select 'library' and proceed to check-in
           const defaultPurpose = 'library';
@@ -348,22 +353,16 @@ export default function Kiosk() {
 
           // Auto-confirm check-in
           try {
-            const sectionMap: Record<string, string> = {
-              library: 'LIBRARY_SPACE',
-              computer: 'COMPUTER',
-              avr: 'AVR',
-              recreation: 'RECREATION',
-              borrowing: 'BORROWING',
-            };
-            const sectionCodes = [sectionMap[defaultPurpose]];
-
+            console.log('Auto-confirming check-in...');
             const confirmResponse = await apiClient.post(
-              '/api/self-service/check-in-with-sections',
+              '/api/kiosk/confirm-check-in',
               {
+                studentId: result.student.id,
+                purposes: [defaultPurpose],
                 scanData: scanData.trim(),
-                sectionCodes,
               }
             );
+            console.log('Confirm response:', confirmResponse);
 
             if (confirmResponse.success) {
               setCurrentStep('welcome');
@@ -394,16 +393,22 @@ export default function Kiosk() {
                 resetForm();
               }, 3000); // Reduced to 3 seconds for faster flow
             } else {
+              console.error('Confirm check-in failed');
               toast.error('Failed to confirm check-in');
             }
           } catch (error) {
+            console.error('Confirm check-in error:', error);
             toast.error('Failed to confirm check-in');
           }
         } else {
+          console.warn('Student not found or other error:', result);
           toast.error(result.message || 'Student not found');
         }
+      } else {
+        console.error('Tap-in response success=false:', response);
       }
     } catch (error) {
+      console.error('handleScanSubmit error:', error);
       // Suppress kiosk notifications
     } finally {
       setLoading(false);
@@ -446,23 +451,11 @@ export default function Kiosk() {
 
     setLoading(true);
     try {
-      const sectionMap: Record<string, string> = {
-        library: 'LIBRARY_SPACE',
-        computer: 'COMPUTER',
-        avr: 'AVR',
-        recreation: 'RECREATION',
-        borrowing: 'BORROWING',
-      };
-      const sectionCodes = selectedPurposes
-        .map((p) => sectionMap[p])
-        .filter(Boolean);
-      const response = await apiClient.post(
-        '/api/self-service/check-in-with-sections',
-        {
-          scanData: scanData,
-          sectionCodes,
-        }
-      );
+      const response = await apiClient.post('/api/kiosk/confirm-check-in', {
+        studentId: studentInfo.id,
+        purposes: selectedPurposes,
+        scanData: scanData,
+      });
 
       if (response.success) {
         setCurrentStep('welcome');
@@ -493,60 +486,73 @@ export default function Kiosk() {
   // Idle Screen with Announcements
   if (currentStep === 'idle') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-        <Card className="w-full max-w-4xl bg-slate-900">
-          <CardHeader className="text-center">
-            <CardTitle className="text-4xl font-bold text-white mb-2">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 animate-in fade-in duration-700">
+        <Card className="w-full max-w-4xl bg-slate-900 border-slate-800 shadow-2xl">
+          <CardHeader className="text-center space-y-4">
+            <div className="mx-auto w-24 h-24 bg-blue-500/10 rounded-full flex items-center justify-center mb-4 animate-pulse-soft">
+              <BookOpen className="h-12 w-12 text-blue-400" />
+            </div>
+            <CardTitle className="text-5xl font-bold text-white mb-2 tracking-tight">
               Welcome to the Library
             </CardTitle>
-            <p className="text-lg text-muted-foreground">
-              Ready to scan your ID
-            </p>
+            <p className="text-xl text-slate-400">Ready to scan your ID</p>
           </CardHeader>
-          <CardContent className="space-y-8">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <div className="flex items-center justify-between bg-slate-800 rounded p-3">
-                <span className="text-slate-200">Library Space</span>
-                <span className="text-white font-mono">
-                  {occupancy.LIBRARY_SPACE}
-                </span>
-              </div>
-              <div className="flex items-center justify-between bg-slate-800 rounded p-3">
-                <span className="text-slate-200">Computer</span>
-                <span className="text-white font-mono">
-                  {occupancy.COMPUTER}
-                </span>
-              </div>
-              <div className="flex items-center justify-between bg-slate-800 rounded p-3">
-                <span className="text-slate-200">AVR</span>
-                <span className="text-white font-mono">{occupancy.AVR}</span>
-              </div>
-              <div className="flex items-center justify-between bg-slate-800 rounded p-3">
-                <span className="text-slate-200">Recreation</span>
-                <span className="text-white font-mono">
-                  {occupancy.RECREATION}
-                </span>
-              </div>
-              <div className="flex items-center justify-between bg-slate-800 rounded p-3">
-                <span className="text-slate-200">Borrowing</span>
-                <span className="text-white font-mono">
-                  {occupancy.BORROWING}
-                </span>
-              </div>
+          <CardContent className="space-y-10">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {[
+                {
+                  label: 'Library Space',
+                  value: occupancy.LIBRARY_SPACE,
+                  color:
+                    'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                },
+                {
+                  label: 'Computer',
+                  value: occupancy.COMPUTER,
+                  color: 'bg-green-500/10 text-green-400 border-green-500/20',
+                },
+                {
+                  label: 'AVR',
+                  value: occupancy.AVR,
+                  color: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                },
+                {
+                  label: 'Recreation',
+                  value: occupancy.RECREATION,
+                  color: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
+                },
+                {
+                  label: 'Borrowing',
+                  value: occupancy.BORROWING,
+                  color:
+                    'bg-orange-500/10 text-orange-400 border-orange-500/20',
+                },
+              ].map((item, i) => (
+                <div
+                  key={item.label}
+                  className={`flex items-center justify-between rounded-xl p-4 border ${item.color} transition-all hover:scale-105 duration-300`}
+                  style={{ animationDelay: `${i * 100}ms` }}
+                >
+                  <span className="font-medium">{item.label}</span>
+                  <span className="text-2xl font-bold font-mono">
+                    {item.value}
+                  </span>
+                </div>
+              ))}
             </div>
 
             <div className="text-center">
-              <div className="inline-flex items-center gap-2 bg-slate-800 text-slate-200 px-6 py-3 rounded-full">
-                <QrCode className="h-6 w-6" />
-                Waiting for scan...
+              <div className="inline-flex items-center gap-3 bg-slate-800/50 text-slate-200 px-8 py-4 rounded-full border border-slate-700 animate-bounce">
+                <QrCode className="h-6 w-6 text-blue-400" />
+                <span className="text-lg font-medium">Waiting for scan...</span>
               </div>
             </div>
 
-            <div className="bg-amber-900/20 border-l-4 border-amber-500 p-4 rounded-r-lg">
-              <div className="flex">
-                <div className="flex-shrink-0">
+            <div className="bg-gradient-to-r from-amber-900/20 to-transparent border-l-4 border-amber-500 p-6 rounded-r-xl animate-in slide-in-from-bottom duration-700 fade-in">
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 mt-1">
                   <svg
-                    className="h-5 w-5 text-amber-300"
+                    className="h-6 w-6 text-amber-400 animate-pulse"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                   >
@@ -557,10 +563,12 @@ export default function Kiosk() {
                     />
                   </svg>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm text-amber-100">{selectedQuote}</p>
+                <div>
+                  <p className="text-xl text-amber-100 font-serif italic leading-relaxed">
+                    "{selectedQuote}"
+                  </p>
                   {quietMode && (
-                    <p className="text-xs text-amber-200 mt-1">
+                    <p className="text-sm text-amber-200/80 mt-2 font-medium uppercase tracking-wide">
                       Quiet Area — please keep voices down
                     </p>
                   )}
@@ -577,85 +585,93 @@ export default function Kiosk() {
   if (currentStep === 'scan') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-slate-900">
+        <Card className="w-full max-w-md bg-slate-900 border-slate-800 shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-10 duration-300">
           <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-white">
+            <CardTitle className="text-3xl font-bold text-white mb-2">
               Scan Your ID
             </CardTitle>
-            <p className="text-slate-300">
+            <p className="text-slate-400">
               Please scan your student ID barcode or QR code
             </p>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <div className="flex items-center justify-between bg-slate-800 rounded p-2 text-xs">
-                <span className="text-slate-200">Library</span>
-                <span className="text-white font-mono">
-                  {occupancy.LIBRARY_SPACE}
-                </span>
-              </div>
-              <div className="flex items-center justify-between bg-slate-800 rounded p-2 text-xs">
-                <span className="text-slate-200">Computer</span>
-                <span className="text-white font-mono">
-                  {occupancy.COMPUTER}
-                </span>
-              </div>
-              <div className="flex items-center justify-between bg-slate-800 rounded p-2 text-xs">
-                <span className="text-slate-200">AVR</span>
-                <span className="text-white font-mono">{occupancy.AVR}</span>
-              </div>
-              <div className="flex items-center justify-between bg-slate-800 rounded p-2 text-xs">
-                <span className="text-slate-200">Recreation</span>
-                <span className="text-white font-mono">
-                  {occupancy.RECREATION}
-                </span>
-              </div>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-2 gap-3 mb-2">
+              {[
+                { label: 'Library', value: occupancy.LIBRARY_SPACE },
+                { label: 'Computer', value: occupancy.COMPUTER },
+                { label: 'AVR', value: occupancy.AVR },
+                { label: 'Recreation', value: occupancy.RECREATION },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3 border border-slate-700/50"
+                >
+                  <span className="text-slate-400 text-xs uppercase tracking-wider">
+                    {item.label}
+                  </span>
+                  <span className="text-white font-mono font-bold">
+                    {item.value}
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="relative">
-              <Input
-                ref={scanInputRef}
-                placeholder="Scan barcode or QR code..."
-                value={scanData}
-                onChange={(e) => setScanData(e.target.value)}
-                onKeyDown={handleKeyPress}
-                className="text-lg py-6 bg-slate-800 text-slate-100 placeholder:text-slate-400"
-                autoFocus
-                aria-label="kiosk-scan-input"
-                data-testid="kiosk-scan-input"
-              />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <Scan className="h-6 w-6 text-slate-400" />
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg blur opacity-30 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
+              <div className="relative">
+                <Input
+                  ref={scanInputRef}
+                  placeholder="Scan barcode or QR code..."
+                  value={scanData}
+                  onChange={(e) => setScanData(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  className="text-lg py-6 bg-slate-900 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  autoFocus
+                  aria-label="kiosk-scan-input"
+                  data-testid="kiosk-scan-input"
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Scan className="h-6 w-6 text-blue-400 animate-pulse" />
+                </div>
               </div>
             </div>
 
             <Button
               onClick={handleScanSubmit}
               disabled={loading || !scanData.trim()}
-              className="w-full py-6 text-lg"
+              className="w-full py-6 text-lg bg-blue-600 hover:bg-blue-500 transition-all duration-300 shadow-lg shadow-blue-900/20"
               aria-label="kiosk-continue"
               data-testid="kiosk-continue"
             >
-              {loading ? 'Processing...' : 'Continue'}
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Processing...
+                </span>
+              ) : (
+                'Continue'
+              )}
             </Button>
 
-            <div className="mt-4">
-              <div className="text-center text-muted-foreground mb-2">
+            <div className="mt-6 pt-6 border-t border-slate-800">
+              <div className="text-center text-slate-500 text-sm mb-4">
                 Or use camera to scan QR/barcode
               </div>
-              <QRScannerComponent
-                enabled={true}
-                showSettings={false}
-                onScanSuccess={(res) => {
-                  setScanData(res.text);
-                  setTimeout(() => handleScanSubmit(), 0);
-                }}
-              />
+              <div className="overflow-hidden rounded-xl border border-slate-800 bg-black/20">
+                <QRScannerComponent
+                  enabled={true}
+                  showSettings={false}
+                  onScanSuccess={(res) => {
+                    setScanData(res.text);
+                    setTimeout(() => handleScanSubmit(), 0);
+                  }}
+                />
+              </div>
             </div>
 
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setCurrentStep('idle')}
-              className="w-full"
+              className="w-full text-slate-400 hover:text-white hover:bg-slate-800"
             >
               Cancel
             </Button>
@@ -669,59 +685,70 @@ export default function Kiosk() {
   if (currentStep === 'purpose' && studentInfo) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-        <Card className="w-full max-w-4xl bg-slate-900">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-white">
+        <Card className="w-full max-w-4xl bg-slate-900 border-slate-800 shadow-2xl animate-in slide-in-from-right-10 duration-500">
+          <CardHeader className="text-center space-y-2">
+            <CardTitle className="text-3xl font-bold text-white">
               Welcome, {studentInfo.name}!
             </CardTitle>
-            <p className="text-muted-foreground">
-              Grade {studentInfo.gradeLevel} - {studentInfo.section}
-            </p>
-            <p className="text-lg text-muted-foreground mt-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-sm">
+              <User className="h-4 w-4" />
+              <span>
+                Grade {studentInfo.gradeLevel} - {studentInfo.section}
+              </span>
+            </div>
+            <p className="text-xl text-slate-400 mt-6">
               What is your purpose of visit today?
             </p>
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-              {PURPOSES.map((purpose) => {
+              {PURPOSES.map((purpose, index) => {
                 const Icon = purpose.icon;
+                const isSelected = selectedPurposes.includes(purpose.id);
                 return (
                   <Button
                     key={purpose.id}
-                    variant={
-                      selectedPurposes.includes(purpose.id)
-                        ? 'default'
-                        : 'outline'
-                    }
-                    className={`h-32 flex flex-col items-center justify-center space-y-2 p-4 ${
-                      selectedPurposes.includes(purpose.id)
-                        ? purpose.color
-                        : 'hover:bg-slate-800'
-                    }`}
+                    variant={isSelected ? 'default' : 'outline'}
+                    className={`h-40 flex flex-col items-center justify-center space-y-3 p-4 transition-all duration-300 ${
+                      isSelected
+                        ? `${purpose.color} scale-105 shadow-lg ring-2 ring-offset-2 ring-offset-slate-900 ring-white/20`
+                        : 'bg-slate-800/50 border-slate-700 hover:bg-slate-800 hover:border-slate-600 hover:scale-105'
+                    } animate-in zoom-in-50 fade-in fill-mode-backwards`}
+                    style={{ animationDelay: `${index * 100}ms` }}
                     onClick={() => handlePurposeSelect(purpose.id)}
                   >
-                    <Icon className="h-8 w-8" />
-                    <span className="font-semibold">{purpose.name}</span>
-                    <span className="text-xs opacity-75">
-                      {purpose.description}
-                    </span>
+                    <div
+                      className={`p-3 rounded-full ${isSelected ? 'bg-white/20' : 'bg-slate-900/50'}`}
+                    >
+                      <Icon className="h-8 w-8" />
+                    </div>
+                    <div className="text-center">
+                      <span className="block text-lg font-bold">
+                        {purpose.name}
+                      </span>
+                      <span
+                        className={`text-xs ${isSelected ? 'text-white/90' : 'text-slate-400'}`}
+                      >
+                        {purpose.description}
+                      </span>
+                    </div>
                   </Button>
                 );
               })}
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex gap-4 pt-4 border-t border-slate-800">
               <Button
                 onClick={handlePurposeContinue}
                 disabled={selectedPurposes.length === 0}
-                className="flex-1 py-6 text-lg"
+                className="flex-1 py-6 text-lg bg-blue-600 hover:bg-blue-500 transition-all shadow-lg shadow-blue-900/20"
               >
                 Continue
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setCurrentStep('scan')}
-                className="px-8"
+                className="px-8 py-6 text-lg border-slate-700 hover:bg-slate-800 text-slate-300"
               >
                 Back
               </Button>
@@ -741,31 +768,37 @@ export default function Kiosk() {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-slate-900">
+        <Card className="w-full max-w-md bg-slate-900 border-slate-800 shadow-2xl animate-in fade-in slide-in-from-bottom-10 duration-500">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-white">
               Confirm Your Check-in
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="bg-slate-800 rounded-lg p-4">
-              <div className="flex items-center space-x-3 mb-3">
-                <User className="h-6 w-6 text-blue-400" />
+            <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50 space-y-4">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-blue-500/10 rounded-full">
+                  <User className="h-6 w-6 text-blue-400" />
+                </div>
                 <div>
-                  <p className="font-semibold text-slate-100">
+                  <p className="font-bold text-lg text-slate-100">
                     {studentInfo.name}
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-slate-400">
                     Grade {studentInfo.gradeLevel} - {studentInfo.section}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3">
-                <Icon className="h-6 w-6 text-green-400" />
+              <div className="h-px bg-slate-700/50" />
+
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-green-500/10 rounded-full">
+                  <Icon className="h-6 w-6 text-green-400" />
+                </div>
                 <div>
-                  <p className="font-semibold text-slate-100">Purpose</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="font-bold text-lg text-slate-100">Purpose</p>
+                  <p className="text-sm text-slate-400">
                     {selectedPurposes
                       .map((pid) => PURPOSES.find((p) => p.id === pid)?.name)
                       .filter(Boolean)
@@ -779,14 +812,21 @@ export default function Kiosk() {
               <Button
                 onClick={handleConfirmCheckIn}
                 disabled={loading}
-                className="flex-1 py-6 text-lg"
+                className="flex-1 py-6 text-lg bg-green-600 hover:bg-green-500 transition-all shadow-lg shadow-green-900/20"
               >
-                {loading ? 'Processing...' : 'Confirm Check-in'}
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Processing...
+                  </span>
+                ) : (
+                  'Confirm Check-in'
+                )}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setCurrentStep('purpose')}
-                className="px-8"
+                className="px-8 py-6 border-slate-700 hover:bg-slate-800 text-slate-300"
               >
                 Back
               </Button>
@@ -801,26 +841,36 @@ export default function Kiosk() {
   if (currentStep === 'welcome' && studentInfo) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 animate-in fade-in duration-500">
-        <Card className="w-full max-w-3xl bg-slate-900/90 border-slate-800 shadow-2xl backdrop-blur-sm">
-          <CardContent className="p-8 space-y-8">
+        <Card className="w-full max-w-3xl bg-slate-900/90 border-slate-800 shadow-2xl backdrop-blur-sm overflow-hidden relative">
+          {/* Decorative background elements */}
+          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-green-400 via-blue-500 to-purple-600"></div>
+          <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse-soft"></div>
+          <div
+            className="absolute -bottom-20 -left-20 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse-soft"
+            style={{ animationDelay: '1s' }}
+          ></div>
+
+          <CardContent className="p-8 space-y-8 relative z-10">
             {/* Header Section */}
             <div className="flex flex-col items-center text-center space-y-4">
-              <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center ring-4 ring-green-500/10 animate-bounce-slow">
-                <CheckCircle className="h-10 w-10 text-green-500" />
+              <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center ring-4 ring-green-500/10 animate-in zoom-in duration-500">
+                <CheckCircle className="h-12 w-12 text-green-500 animate-in scale-in duration-700 delay-200" />
               </div>
-              <div className="space-y-1">
-                <h2 className="text-3xl font-bold text-white tracking-tight">
+              <div className="space-y-2 animate-in slide-in-from-bottom-5 duration-500 delay-100">
+                <h2 className="text-4xl font-bold text-white tracking-tight">
                   Welcome, {studentInfo.name.split(' ')[0]}!
                 </h2>
-                <p className="text-slate-400 text-lg">You are now checked in</p>
+                <p className="text-slate-400 text-xl">You are now checked in</p>
               </div>
             </div>
 
             <div className="grid gap-8 md:grid-cols-2">
               {/* Student Details Card */}
-              <div className="space-y-4 bg-slate-800/50 p-6 rounded-xl border border-slate-700/50">
+              <div className="space-y-4 bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 animate-in slide-in-from-left-5 duration-500 delay-200">
                 <div className="flex items-center gap-3 mb-4">
-                  <User className="h-5 w-5 text-blue-400" />
+                  <div className="p-2 bg-blue-500/10 rounded-lg">
+                    <User className="h-5 w-5 text-blue-400" />
+                  </div>
                   <h3 className="text-lg font-semibold text-white">
                     Student Details
                   </h3>
@@ -865,16 +915,18 @@ export default function Kiosk() {
               </div>
 
               {/* Session Info Card */}
-              <div className="space-y-4 bg-slate-800/50 p-6 rounded-xl border border-slate-700/50">
+              <div className="space-y-4 bg-slate-800/50 p-6 rounded-xl border border-slate-700/50 animate-in slide-in-from-right-5 duration-500 delay-300">
                 <div className="flex items-center gap-3 mb-4">
-                  <Clock className="h-5 w-5 text-orange-400" />
+                  <div className="p-2 bg-orange-500/10 rounded-lg">
+                    <Clock className="h-5 w-5 text-orange-400" />
+                  </div>
                   <h3 className="text-lg font-semibold text-white">
                     Session Info
                   </h3>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-900/50 p-3 rounded-lg text-center">
+                  <div className="bg-slate-900/50 p-3 rounded-lg text-center border border-slate-700/30">
                     <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">
                       Time In
                     </p>
@@ -882,7 +934,7 @@ export default function Kiosk() {
                       {timeInState}
                     </p>
                   </div>
-                  <div className="bg-slate-900/50 p-3 rounded-lg text-center">
+                  <div className="bg-slate-900/50 p-3 rounded-lg text-center border border-slate-700/30">
                     <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">
                       Expected Out
                     </p>
@@ -922,7 +974,7 @@ export default function Kiosk() {
             </div>
 
             {/* Occupancy Bar */}
-            <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30">
+            <div className="bg-slate-800/30 rounded-xl p-4 border border-slate-700/30 animate-in fade-in duration-700 delay-500">
               <h3 className="text-sm font-medium text-slate-400 mb-3 uppercase tracking-wider text-center">
                 Current Library Occupancy
               </h3>
@@ -949,7 +1001,7 @@ export default function Kiosk() {
             </div>
 
             {/* Quote */}
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-2 animate-in fade-in duration-1000 delay-700">
               <p className="text-lg text-slate-300 font-serif italic">
                 "{selectedQuote}"
               </p>
@@ -969,31 +1021,36 @@ export default function Kiosk() {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-white">
+        <Card className="w-full max-w-md bg-white shadow-2xl animate-in zoom-in duration-300">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-red-500">
               Please Wait
             </CardTitle>
           </CardHeader>
           <CardContent className="text-center space-y-6">
-            <div className="mx-auto w-16 h-16 bg-red-500 rounded-full flex items-center justify-center">
-              <Clock className="h-8 w-8 text-white" />
+            <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center animate-pulse">
+              <Clock className="h-10 w-10 text-red-500" />
             </div>
 
-            <div>
-              <p className="text-lg text-muted-foreground mb-2">
+            <div className="space-y-2">
+              <p className="text-lg text-slate-600">
                 You have recently checked out
               </p>
-              <p className="text-3xl font-bold text-red-500">
-                {minutesRemaining} minute{minutesRemaining !== 1 ? 's' : ''}
-              </p>
-              <p className="text-muted-foreground">
+              <div className="py-4">
+                <span className="text-5xl font-bold text-red-500 tracking-tighter">
+                  {minutesRemaining}
+                </span>
+                <span className="text-xl text-red-400 ml-2 font-medium">
+                  minute{minutesRemaining !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <p className="text-slate-500">
                 remaining before you can check in again
               </p>
             </div>
 
-            <Alert>
-              <AlertDescription>
+            <Alert className="bg-red-50 border-red-200">
+              <AlertDescription className="text-red-800">
                 This cooldown period helps ensure fair library usage for all
                 students.
               </AlertDescription>
@@ -1002,7 +1059,7 @@ export default function Kiosk() {
             <Button
               variant="outline"
               onClick={() => setCurrentStep('idle')}
-              className="w-full"
+              className="w-full border-slate-200 hover:bg-slate-50 hover:text-slate-900"
             >
               Return to Welcome Screen
             </Button>

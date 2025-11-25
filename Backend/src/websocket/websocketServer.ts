@@ -75,14 +75,21 @@ class WebSocketServer {
 
     this.io!.on('connection', (socket: AuthenticatedSocket) => {
       logger.info(`WebSocket client connected: ${socket.id}`);
+      logger.info(`DEBUG: Starting auth for ${socket.id}`);
 
       // Authenticate socket
       this.authenticateSocket(socket);
+      logger.info(
+        `DEBUG: Auth finished for ${socket.id}. UserId: ${socket.userId}, Connected: ${socket.connected}`,
+      );
 
       this.connectedClients.set(socket.id, socket);
       if (socket.userId) {
         const prev = this.userConnections.get(socket.userId);
         if (prev && prev !== socket.id) {
+          logger.info(
+            `DEBUG: Disconnecting previous session ${prev} for user ${socket.userId}`,
+          );
           const old = this.connectedClients.get(prev);
           try {
             old?.disconnect();
@@ -99,8 +106,10 @@ class WebSocketServer {
       this.setupEventHandlers(socket);
 
       // Handle disconnection
-      socket.on('disconnect', () => {
-        logger.info(`WebSocket client disconnected: ${socket.id}`);
+      socket.on('disconnect', reason => {
+        logger.info(
+          `WebSocket client disconnected: ${socket.id}, Reason: ${reason}`,
+        );
         this.connectedClients.delete(socket.id);
         const uid = socket.userId;
         if (uid && this.userConnections.get(uid) === socket.id) {
@@ -136,46 +145,53 @@ class WebSocketServer {
 
   private authenticateSocket(socket: AuthenticatedSocket) {
     const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    const isDevBypass = isDevelopment() && process.env.WS_DEV_BYPASS === 'true';
 
-    if (isDevelopment() && process.env.WS_DEV_BYPASS === 'true' && !token) {
-      socket.userId = 'dev-user';
-      socket.userRole = 'developer';
-      logger.warn(`WebSocket dev bypass: ${socket.id} connected without token`);
-      return;
-    }
-
-    if (!token) {
-      logger.warn(
-        `WebSocket authentication failed: No token for socket ${socket.id}`,
-      );
-      socket.emit('error', { message: 'Authentication token required' });
-      socket.disconnect();
-      return;
-    }
-
-    try {
-      const decoded: any = jwt.verify(String(token), env.JWT_SECRET);
-      const uid = decoded?.id || decoded?.userId;
-      const role = decoded?.role;
-      if (uid && role) {
-        socket.userId = String(uid);
-        socket.userRole = String(role);
-      } else {
+    if (token) {
+      try {
+        const decoded: any = jwt.verify(String(token), env.JWT_SECRET);
+        const uid = decoded?.id || decoded?.userId;
+        const role = decoded?.role;
+        if (uid && role) {
+          socket.userId = String(uid);
+          socket.userRole = String(role);
+          logger.info(
+            `WebSocket authenticated: ${socket.id}, User: ${socket.userId}, Role: ${socket.userRole}`,
+          );
+          return;
+        } else {
+          logger.warn(
+            `JWT payload missing id/userId or role for socket ${socket.id}`,
+          );
+        }
+      } catch (error) {
+        if (!isDevBypass) {
+          logger.error(
+            `WebSocket authentication failed for socket ${socket.id}:`,
+            error,
+          );
+          socket.emit('error', { message: 'Invalid authentication token' });
+          socket.disconnect();
+          return;
+        }
         logger.warn(
-          `JWT payload missing id/userId or role for socket ${socket.id}`,
+          `Token verification failed, falling back to dev bypass for ${socket.id}`,
         );
       }
-      logger.info(
-        `WebSocket authenticated: ${socket.id}, User: ${socket.userId}, Role: ${socket.userRole}`,
-      );
-    } catch (error) {
-      logger.error(
-        `WebSocket authentication failed for socket ${socket.id}:`,
-        error,
-      );
-      socket.emit('error', { message: 'Invalid authentication token' });
-      socket.disconnect();
     }
+
+    if (isDevBypass) {
+      socket.userId = `dev-user-${socket.id}`;
+      socket.userRole = 'developer';
+      logger.warn(`WebSocket dev bypass: ${socket.id} connected (fallback)`);
+      return;
+    }
+
+    logger.warn(
+      `WebSocket authentication failed: No token for socket ${socket.id}`,
+    );
+    socket.emit('error', { message: 'Authentication token required' });
+    socket.disconnect();
   }
 
   private setupEventHandlers(socket: AuthenticatedSocket) {
@@ -192,6 +208,9 @@ class WebSocketServer {
       }
       if (!role) {
         return false;
+      }
+      if (role === 'developer') {
+        return true;
       }
       if (room === 'equipment') {
         return role === 'LIBRARIAN' || role === 'ADMIN';

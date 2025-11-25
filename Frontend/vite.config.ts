@@ -243,8 +243,8 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: false, // Disable sourcemaps in production for smaller bundle
-    minify: 'terser',
+    sourcemap: true,
+    minify: false, // Disable minification to debug
     target: 'es2015',
     // Optimize build for production
     cssMinify: true,
@@ -253,104 +253,13 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Advanced code splitting strategy
-        manualChunks: (id) => {
-          // Core React and React DOM
-          if (id.includes('react') || id.includes('react-dom')) {
-            return 'react-vendor';
-          }
-
-          // Radix UI components
-          if (id.includes('@radix-ui')) {
-            return 'radix-ui';
-          }
-
-          // State management and data fetching
-          if (id.includes('@tanstack') || id.includes('zustand')) {
-            return 'state-management';
-          }
-
-          // Charts and visualization
-          if (id.includes('recharts') || id.includes('d3')) {
-            return 'charts';
-          }
-
-          // Utility libraries
-          if (
-            id.includes('axios') ||
-            id.includes('date-fns') ||
-            id.includes('clsx') ||
-            id.includes('tailwind-merge') ||
-            id.includes('lodash')
-          ) {
-            return 'utils';
-          }
-
-          // Icon libraries
-          if (id.includes('lucide-react')) {
-            return 'icons';
-          }
-
-          // Animation libraries
-          if (id.includes('framer-motion')) {
-            return 'animations';
-          }
-
-          // Barcode/QR code libraries
-          if (id.includes('@zxing') || id.includes('qrcode')) {
-            return 'scanning';
-          }
-
-          // PDF generation libraries
-          if (id.includes('pdf-lib') || id.includes('jspdf')) {
-            return 'pdf';
-          }
-
-          // Large vendor chunks
-          if (id.includes('node_modules')) {
-            return 'vendor';
-          }
-        },
-
-        // Optimize chunk file naming for caching
-        chunkFileNames: (chunkInfo) => {
-          const facadeModuleId = chunkInfo.facadeModuleId
-            ? chunkInfo.facadeModuleId.split('/').pop()
-            : 'chunk';
-          return `assets/js/[name]-[hash].js`;
-        },
-        entryFileNames: 'assets/js/[name]-[hash].js',
-        assetFileNames: (assetInfo) => {
-          const info = assetInfo.name?.split('.') || [];
-          const extType = info[info.length - 1];
-
-          // Organize assets by type for better caching
-          if (
-            /\.(mp4|webm|ogg|mp3|wav|flac|aac)(\?.*)?$/i.test(
-              assetInfo.name || ''
-            )
-          ) {
-            return 'assets/media/[name]-[hash].[ext]';
-          }
-          if (
-            /\.(png|jpe?g|gif|svg|webp)(\?.*)?$/i.test(assetInfo.name || '')
-          ) {
-            return 'assets/images/[name]-[hash].[ext]';
-          }
-          if (/\.(woff2?|eot|ttf|otf)(\?.*)?$/i.test(assetInfo.name || '')) {
-            return 'assets/fonts/[name]-[hash].[ext]';
-          }
-          if (extType === 'css') {
-            return 'assets/css/[name]-[hash].[ext]';
-          }
-          return `assets/${extType}/[name]-[hash].[ext]`;
-        },
+        manualChunks: undefined, // Disable manual chunks to simplify
       },
-
       // External dependencies optimization
       external: [],
 
       // Treeshaking optimization
-      treeshake: 'smallest',
+      treeshake: false, // Disable treeshaking to avoid issues
     },
 
     // Performance optimizations

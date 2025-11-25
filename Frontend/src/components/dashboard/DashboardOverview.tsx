@@ -1128,7 +1128,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
           {/* Main Welcome Content */}
           <div className="text-center space-y-2 py-6 px-6">
             <h2 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent">
-              Good Morning, {user?.username || 'Administrator'}!{' '}
+              Good Morning, {user?.username || 'Librarian'}!{' '}
               <span className="opacity-70">🌅</span>
             </h2>
             <p className="text-lg text-slate-600 dark:text-slate-300">

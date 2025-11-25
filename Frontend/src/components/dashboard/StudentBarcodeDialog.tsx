@@ -343,8 +343,27 @@ export function StudentBarcodeDialog({
             </Button>
             <Button
               variant="outline"
-              onClick={() => {
-                toast.info('Share functionality coming soon!');
+              onClick={async () => {
+                const shareData = {
+                  title: `Student ID: ${student.firstName} ${student.lastName}`,
+                  text: `Student ID: ${student.studentId}\nName: ${student.firstName} ${student.lastName}`,
+                  url: window.location.href,
+                };
+
+                try {
+                  if (navigator.share) {
+                    await navigator.share(shareData);
+                    toast.success('Shared successfully');
+                  } else {
+                    await navigator.clipboard.writeText(
+                      `${shareData.title}\n${shareData.text}`
+                    );
+                    toast.success('Copied to clipboard');
+                  }
+                } catch (err) {
+                  console.error('Error sharing:', err);
+                  toast.error('Failed to share');
+                }
               }}
             >
               <Share2 className="h-4 w-4 mr-2" />

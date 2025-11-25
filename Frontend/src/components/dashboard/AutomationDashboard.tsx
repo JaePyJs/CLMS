@@ -67,42 +67,8 @@ export function AutomationDashboard() {
   const { mutate: triggerJob } = useTriggerJob();
   const { data: googleSheetsStatus } = useGoogleSheetsTest();
 
-  // Mock automation jobs for now
-  const mockJobs: AutomationJob[] = [
-    {
-      id: 'daily-backup',
-      name: 'Daily Backup',
-      type: 'backup',
-      status: 'completed',
-      lastRun: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      nextRun: new Date(Date.now() + 22 * 60 * 60 * 1000), // 22 hours from now
-      duration: 45,
-    },
-    {
-      id: 'teacher-notifications',
-      name: 'Teacher Notifications',
-      type: 'notification',
-      status: 'completed',
-      lastRun: new Date(Date.now() - 8 * 60 * 60 * 1000), // 8 hours ago
-      nextRun: new Date(Date.now() + 16 * 60 * 60 * 1000), // 16 hours from now
-      duration: 12,
-    },
-    {
-      id: 'google-sync',
-      name: 'Google Sheets Sync',
-      type: 'sync',
-      status: 'running',
-      progress: 75,
-      lastRun: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
-    },
-    {
-      id: 'system-cleanup',
-      name: 'System Cleanup',
-      type: 'cleanup',
-      status: 'queued',
-      nextRun: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes from now
-    },
-  ];
+  // Mock automation jobs for now - Empty for now as per requirements
+  const mockJobs: AutomationJob[] = [];
 
   const jobs =
     automationJobs && automationJobs.length > 0 ? automationJobs : mockJobs;

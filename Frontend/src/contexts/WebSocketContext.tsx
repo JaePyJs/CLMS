@@ -222,8 +222,10 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   }) => {
     const isDev = String(import.meta.env.DEV).toLowerCase() === 'true';
     if (!isDev) return null;
-    if (isConnected && !error) return null;
-    const text = error ? `WS error: ${error}` : 'WS not connected';
+
+    // Only show if there is an actual error
+    if (!error) return null;
+
     return (
       <div
         style={{
@@ -238,7 +240,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
           fontSize: '12px',
         }}
       >
-        {text} {attempts ? `(attempts: ${attempts})` : ''}
+        WS Error: {error} {attempts ? `(attempts: ${attempts})` : ''}
       </div>
     );
   };

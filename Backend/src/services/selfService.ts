@@ -2,6 +2,7 @@
 import { prisma } from '../utils/prisma';
 import { BarcodeService } from './barcodeService.js';
 import { logger } from '../utils/logger';
+import { websocketServer } from '../websocket/websocketServer';
 
 export interface CheckInResult {
   success: boolean;
@@ -186,6 +187,17 @@ export class SelfService {
         },
       });
 
+      // Emit WebSocket event
+      websocketServer.emitStudentCheckIn({
+        activityId: activity.id,
+        studentId: student.id,
+        studentName: `${student.first_name} ${student.last_name}`,
+        checkinTime: activity.start_time.toISOString(),
+        autoLogoutAt: new Date(
+          activity.start_time.getTime() + 30 * 60000,
+        ).toISOString(),
+      });
+
       return {
         success: true,
         message: 'Checked in successfully',
@@ -259,6 +271,15 @@ export class SelfService {
       const timeSpent = Math.floor(
         (endTime.getTime() - updatedActivity.start_time.getTime()) / 1000 / 60,
       ); // in minutes
+
+      // Emit WebSocket event
+      websocketServer.emitStudentCheckOut({
+        activityId: updatedActivity.id,
+        studentId: student.id,
+        studentName: `${student.first_name} ${student.last_name}`,
+        checkoutTime: endTime.toISOString(),
+        reason: 'manual',
+      });
 
       return {
         success: true,

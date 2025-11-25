@@ -1,17 +1,36 @@
-import { prisma } from '../utils/prisma';
+import { PrismaClient } from '@prisma/client';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 
-dotenv.config({ path: path.resolve(process.cwd(), 'Backend', '.env') });
-if (
-  !process.env.DATABASE_URL ||
-  !/mysql:\/\//.test(String(process.env.DATABASE_URL))
-) {
+dotenv.config({
+  path: path.resolve(process.cwd(), 'Backend', '.env'),
+  override: true,
+});
+
+// Force correct URL if it's still wrong (double safety)
+if (!process.env.DATABASE_URL?.includes('3308')) {
+  console.log('Forcing DATABASE_URL to port 3308');
   process.env.DATABASE_URL =
-    'mysql://clms_user:change-me-app@localhost:3308/clms_database';
+    'mysql://clms_user:clms_password@localhost:3308/clms_database';
 }
-// const prisma = new PrismaClient();
+console.log('DATABASE_URL:', process.env.DATABASE_URL);
+
+const prisma = new PrismaClient();
+
+async function clearDatabase() {
+  // Delete in order to avoid foreign key constraints
+  await prisma.book_checkouts.deleteMany({});
+  await prisma.student_activities_sections.deleteMany({});
+  await prisma.student_activities.deleteMany({});
+  await prisma.printing_jobs.deleteMany({});
+  await prisma.equipment_sessions.deleteMany({});
+  await prisma.books.deleteMany({});
+  await prisma.students.deleteMany({});
+  // Keep users (librarians/admins) and settings/policies if possible, or clear them too if "all mockups" means everything.
+  // Usually we want to keep the admin user to log in.
+  // await prisma.users.deleteMany({});
+}
 
 function parseCSVLine(line: string): string[] {
   const out: string[] = [];
@@ -109,14 +128,15 @@ async function importStudents(csvPath: string) {
         where: { student_id: data.student_id },
       });
       if (existing) {
-        await prisma.students.update({
-          where: { id: existing.id },
-          data,
-        });
+        // await prisma.students.update({
+        //   where: { id: existing.id },
+        //   data,
+        // });
+        // console.log(`Skipping existing student: ${data.student_id}`);
       } else {
         await prisma.students.create({ data });
+        result.imported++;
       }
-      result.imported++;
     } catch (e) {
       result.errors++;
       console.error('Student row error:', (e as Error).message);
@@ -235,14 +255,15 @@ async function importBooks(csvPath: string) {
         where: { accession_no },
       });
       if (existing) {
-        await prisma.books.update({
-          where: { id: existing.id },
-          data,
-        });
+        // await prisma.books.update({
+        //   where: { id: existing.id },
+        //   data,
+        // });
+        // console.log(`Skipping existing book: ${accession_no}`);
       } else {
         await prisma.books.create({ data });
+        result.imported++;
       }
-      result.imported++;
       if (needsReview) {
         result.flagged++;
       }
@@ -255,19 +276,12 @@ async function importBooks(csvPath: string) {
 }
 
 async function main() {
-  console.log('Clearing database...');
-  try {
-    // Delete in order of dependency
-    await prisma.student_activities_sections.deleteMany({});
-    await prisma.student_activities.deleteMany({});
-    await prisma.book_checkouts.deleteMany({});
-    await prisma.printing_jobs.deleteMany({});
-    await prisma.books.deleteMany({});
-    await prisma.students.deleteMany({});
-    console.log('Database cleared.');
-  } catch (error) {
-    console.error('Error clearing database:', error);
-  }
+  // Clear database as requested
+  console.log('Clearing existing data...');
+  await clearDatabase();
+  console.log('Database cleared.');
+
+  console.log('Starting import...');
 
   const root = path.resolve(process.cwd());
   // Check if we are in Backend directory, if so go up one level

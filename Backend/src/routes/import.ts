@@ -6,6 +6,7 @@ import { logger } from '../utils/logger';
 import { prisma } from '../utils/prisma';
 import multer from 'multer';
 import { BarcodeService } from '../services/barcodeService';
+import { websocketServer } from '../websocket/websocketServer';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -54,8 +55,24 @@ router.post(
               }
             });
           } else {
-            // Auto-detect fields if no mapping provided
-            Object.assign(studentData, row);
+            // Auto-detect fields based on SHJCS CSV format
+            // Map User ID -> student_id (which becomes barcode)
+            // Map Surname -> last_name, First Name -> first_name, etc.
+            const autoMapping: Record<string, string> = {
+              'User ID': 'student_id',
+              Surname: 'last_name',
+              'First Name': 'first_name',
+              'Grade Level': 'grade_level',
+              Section: 'section',
+              Designation: 'designation',
+              Sex: 'sex',
+            };
+
+            Object.keys(row).forEach(key => {
+              const mappedKey =
+                autoMapping[key] || key.toLowerCase().replace(/\s+/g, '_');
+              studentData[mappedKey] = row[key];
+            });
           }
 
           // Validate required fields
@@ -96,9 +113,14 @@ router.post(
             continue;
           }
 
-          // Prepare student data
-          let barcode = String(studentData.barcode || '').trim();
-          if (!barcode) {
+          // Prepare student data - handle User ID as barcode
+          // The CSV column "User ID" contains the student's barcode (e.g., 20250055)
+          let barcode = String(
+            studentData.barcode || studentData.student_id || '',
+          ).trim();
+
+          // If no barcode is provided, generate one
+          if (!barcode || barcode === '') {
             barcode = `PN${String(Date.now()).slice(-6)}`;
             const collision = await prisma.students.findFirst({
               where: { barcode },
@@ -115,8 +137,11 @@ router.post(
             grade_level: studentData.grade_level
               ? parseInt(String(studentData.grade_level))
               : 1,
+            section: studentData.section || null,
+            designation: studentData.designation || null,
+            sex: studentData.sex || null,
             email: studentData.email || null,
-            barcode,
+            barcode, // This is now the User ID from CSV
             grade_category: studentData.grade_category || null,
             is_active:
               studentData.is_active !== undefined
@@ -156,6 +181,20 @@ router.post(
         ...result,
         userId: (req as any).user?.id,
       });
+
+      // Broadcast import completion to all connected clients (kiosks, dashboards)
+      // This makes the new student barcodes immediately available for scanning
+      if (result.importedRecords > 0) {
+        websocketServer.broadcastToAll({
+          id: `import_students_${Date.now()}`,
+          type: 'students:imported',
+          data: {
+            count: result.importedRecords,
+            timestamp: new Date().toISOString(),
+          },
+          timestamp: new Date(),
+        });
+      }
 
       res.json({
         success: result.importedRecords > 0,
@@ -215,8 +254,29 @@ router.post(
               }
             });
           } else {
-            // Auto-detect fields if no mapping provided
-            Object.assign(bookData, row);
+            // Auto-detect fields based on SHJCS Bibliography format
+            // Map Barcode -> accession_no (book barcode)
+            const autoMapping: Record<string, string> = {
+              Barcode: 'accession_no',
+              'Call Number': 'location',
+              Title: 'title',
+              Author: 'author',
+              Year: 'year',
+              Edition: 'edition',
+              ISBN: 'isbn',
+              Publisher: 'publisher',
+              Publication: 'publisher',
+              'Collection Code': 'category',
+              'Physical Description': 'pages',
+              'Note Area': 'remarks',
+              Price: 'cost_price',
+            };
+
+            Object.keys(row).forEach(key => {
+              const mappedKey =
+                autoMapping[key] || key.toLowerCase().replace(/\s+/g, '_');
+              bookData[mappedKey] = row[key];
+            });
           }
 
           // Validate required fields
@@ -326,6 +386,20 @@ router.post(
         ...result,
         userId: (req as any).user?.id,
       });
+
+      // Broadcast import completion to all connected clients
+      // This makes the new book barcodes immediately available for scanning
+      if (result.importedRecords > 0) {
+        websocketServer.broadcastToAll({
+          id: `import_books_${Date.now()}`,
+          type: 'books:imported',
+          data: {
+            count: result.importedRecords,
+            timestamp: new Date().toISOString(),
+          },
+          timestamp: new Date(),
+        });
+      }
 
       res.json({
         success: result.importedRecords > 0,

@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAttendanceWebSocket } from '@/hooks/useAttendanceWebSocket';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api';
 
 interface AttendanceReminder {
   type: 'overdue_book' | 'book_due_soon' | 'custom' | 'general';
@@ -63,6 +64,44 @@ export const AttendanceDisplay: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
+  }, []);
+
+  interface ActiveStudentsResponse {
+    success: boolean;
+    data: Array<{
+      id: string;
+      studentId: string;
+      name: string;
+      checkinTime: string;
+      autoLogoutAt: string;
+      reminders: AttendanceReminder[];
+    }>;
+  }
+
+  // Fetch initial active students
+  useEffect(() => {
+    const fetchActiveStudents = async () => {
+      try {
+        const response = await apiClient.get('/api/kiosk/active-students');
+        const data = response as unknown as ActiveStudentsResponse;
+
+        if (data.success && Array.isArray(data.data)) {
+          const students = data.data.map((s) => ({
+            id: s.id,
+            studentId: s.studentId,
+            name: s.name,
+            checkinTime: new Date(s.checkinTime),
+            autoLogoutAt: new Date(s.autoLogoutAt),
+            reminders: s.reminders || [],
+          }));
+          setActiveStudents(students);
+        }
+      } catch (error) {
+        console.error('Failed to fetch active students:', error);
+      }
+    };
+
+    fetchActiveStudents();
   }, []);
 
   // Handle incoming WebSocket events

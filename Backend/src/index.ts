@@ -1,3 +1,21 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+const crashLogPath = path.join(process.cwd(), 'backend_crash.log');
+
+process.on('uncaughtException', error => {
+  const msg = `Uncaught Exception: ${error.message}\n${error.stack}\n`;
+  fs.appendFileSync(crashLogPath, msg);
+  console.error(msg);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  const msg = `Unhandled Rejection at: ${promise}, reason: ${reason}\n`;
+  fs.appendFileSync(crashLogPath, msg);
+  console.error(msg);
+});
+
 import { httpServer } from './server.js';
 import { logger } from './utils/logger';
 import { env } from './config/env';

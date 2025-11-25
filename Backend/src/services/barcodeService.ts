@@ -63,7 +63,11 @@ export class BarcodeService {
    * Validate barcode format
    */
   static validateBarcode(barcode: string): boolean {
-    return /^\d{9,12}$/.test(barcode) || /^PN\d{5,12}$/.test(barcode);
+    return (
+      /^\d{9,12}$/.test(barcode) ||
+      /^PN\d{5,12}$/.test(barcode) ||
+      /^S-\d+$/.test(barcode)
+    );
   }
 
   /**

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { io, type Socket } from 'socket.io-client';
@@ -141,7 +141,9 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
       return;
     }
 
-    if (!token && !import.meta.env.DEV) {
+    const devBypass =
+      String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true';
+    if (!token && !devBypass) {
       setState((prev) => ({
         ...prev,
         error: 'Authentication required for WebSocket connection',
@@ -508,7 +510,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 // Hook for specific subscription types
 export const useWebSocketSubscription = (
   subscription: string,
-  options: Omit<WebSocketOptions, 'subscriptions'> = {}
+  options?: Omit<WebSocketOptions, 'subscriptions'>
 ) => {
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
 
@@ -516,11 +518,16 @@ export const useWebSocketSubscription = (
     setMessages((prev) => [...prev.slice(-99), message]); // Keep last 100 messages
   }, []);
 
-  const ws = useWebSocket({
-    ...options,
-    subscriptions: [subscription],
-    onMessage: handleNewMessage,
-  });
+  const wsOptions = useMemo(
+    () => ({
+      ...(options || {}),
+      subscriptions: [subscription],
+      onMessage: handleNewMessage,
+    }),
+    [subscription, handleNewMessage, options]
+  );
+
+  const ws = useWebSocket(wsOptions);
 
   const clearMessages = useCallback(() => {
     setMessages([]);

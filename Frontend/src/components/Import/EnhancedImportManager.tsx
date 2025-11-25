@@ -209,76 +209,75 @@ export default function EnhancedImportManager() {
     headers: string[],
     type: string
   ): FieldMapping[] => {
-    const availableFields = headers.map((h) => h.toLowerCase().trim());
+    const mapping: FieldMapping[] = [];
 
     if (type === 'students') {
-      const studentFields = [
-        'name',
-        'firstname',
-        'lastname',
-        'studentid',
-        'gradelevel',
-        'gradecategory',
-        'section',
-        'email',
-        'phone',
-      ];
-      const mapping: FieldMapping[] = [];
+      // Map to recognize SHJCS SCANLOGS - SHJCS USERS.csv structure
+      const fieldMap: Record<string, { target: string; required: boolean }> = {
+        'user id': { target: 'student_id', required: true }, // User ID is the barcode!
+        surname: { target: 'last_name', required: true },
+        'first name': { target: 'first_name', required: true },
+        'grade level': { target: 'grade_level', required: false },
+        section: { target: 'section', required: false },
+        designation: { target: 'designation', required: false },
+        sex: { target: 'sex', required: false },
+        email: { target: 'email', required: false },
+        // Also support alternative column names
+        'student id': { target: 'student_id', required: true },
+        studentid: { target: 'student_id', required: true },
+        lastname: { target: 'last_name', required: true },
+        'last name': { target: 'last_name', required: true },
+        firstname: { target: 'first_name', required: true },
+        gradelevel: { target: 'grade_level', required: false },
+        grade: { target: 'grade_level', required: false },
+        barcode: { target: 'barcode', required: false },
+      };
 
-      availableFields.forEach((header) => {
-        if (studentFields.includes(header)) {
-          let target = header;
-          if (header === 'firstname') {
-            target = 'firstName';
-          }
-          if (header === 'lastname') {
-            target = 'lastName';
-          }
-          if (header === 'studentid') {
-            target = 'studentId';
-          }
-          if (header === 'gradelevel') {
-            target = 'gradeLevel';
-          }
-          if (header === 'gradecategory') {
-            target = 'gradeCategory';
-          }
+      headers.forEach((header) => {
+        const normalized = header.toLowerCase().trim();
+        const fieldConfig = fieldMap[normalized];
 
+        if (fieldConfig) {
           mapping.push({
-            source: header,
-            target,
-            required: ['name', 'firstname', 'lastname', 'gradelevel'].includes(
-              header
-            ),
+            source: header, // Keep original header name
+            target: fieldConfig.target,
+            required: fieldConfig.required,
           });
         }
       });
 
       return mapping;
     } else if (type === 'books') {
-      const bookFields = [
-        'accessionno',
-        'title',
-        'author',
-        'isbn',
-        'edition',
-        'category',
-        'publisher',
-        'year',
-      ];
-      const mapping: FieldMapping[] = [];
+      // Map to recognize SHJCS Bibliography - BOOK COLLECTIONS.csv structure
+      const fieldMap: Record<string, { target: string; required: boolean }> = {
+        barcode: { target: 'accession_no', required: true }, // This is the book barcode
+        title: { target: 'title', required: true },
+        author: { target: 'author', required: true },
+        'call number': { target: 'location', required: false },
+        isbn: { target: 'isbn', required: false },
+        year: { target: 'year', required: false },
+        edition: { target: 'edition', required: false },
+        publisher: { target: 'publisher', required: false },
+        publication: { target: 'publisher', required: false },
+        'collection code': { target: 'category', required: false },
+        'physical description': { target: 'pages', required: false },
+        price: { target: 'cost_price', required: false },
+        'note area': { target: 'remarks', required: false },
+        // Also support alternative column names
+        'accession no': { target: 'accession_no', required: true },
+        accessionno: { target: 'accession_no', required: true },
+        category: { target: 'category', required: false },
+      };
 
-      availableFields.forEach((header) => {
-        if (bookFields.includes(header)) {
-          let target = header;
-          if (header === 'accessionno') {
-            target = 'accessionNo';
-          }
+      headers.forEach((header) => {
+        const normalized = header.toLowerCase().trim();
+        const fieldConfig = fieldMap[normalized];
 
+        if (fieldConfig) {
           mapping.push({
-            source: header,
-            target,
-            required: ['accessionno', 'title', 'author'].includes(header),
+            source: header, // Keep original header name
+            target: fieldConfig.target,
+            required: fieldConfig.required,
           });
         }
       });
