@@ -136,7 +136,10 @@ echo    - Frontend: http://localhost:3000\r\n
 echo ==================================================\r\n
 pause\r\n
 `;
-    fs.writeFileSync(path.join(APP_DIR, "CLMS_LAUNCHER_HYBRID.bat"), hybridLauncher);
+    fs.writeFileSync(
+      path.join(APP_DIR, "CLMS_LAUNCHER_HYBRID.bat"),
+      hybridLauncher
+    );
 
     // 5. Create Instructions
     const instructions = `CLMS Librarian Package\r\n

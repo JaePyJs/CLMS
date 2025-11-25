@@ -164,7 +164,7 @@ export {
 // Specific API services
 export const automationApi = {
   // Health check
-  health: () => apiClient.get('/health'),
+  health: () => apiClient.get('/api/health'),
 
   // Get all automation jobs
   getJobs: () => apiClient.get('/api/automation/jobs'),
@@ -556,7 +556,7 @@ export const utilitiesApi = {
   getQuickReport: () => apiClient.get('/api/utilities/quick-report'),
 
   // Quick backup
-  quickBackup: () => apiClient.post('/api/utilities/quick-backup'),
+  quickBackup: () => apiClient.post('/api/settings/backups/create'),
 };
 
 // Reports API

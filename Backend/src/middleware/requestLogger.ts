@@ -26,9 +26,9 @@ export const requestLogger = (
   res.setHeader('X-Request-ID', req.requestId);
 
   // Skip logging for health checks and static assets
-  const skipPaths = ['/health', '/favicon.ico', '/robots.txt'];
+  const skipPaths = ['/health', '/api/health', '/favicon.ico', '/robots.txt'];
   const shouldSkip =
-    skipPaths.some(path => req.path.startsWith(path)) ||
+    skipPaths.some(path => req.originalUrl.includes(path)) ||
     req.path.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg)$/);
 
   if (shouldSkip) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -54,6 +54,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Book,
 } from 'lucide-react';
 import {
   TableSkeleton,
@@ -194,6 +195,8 @@ export function BookCatalog() {
         if (response.pagination) {
           setTotalBooks(response.pagination.total || 0);
           setTotalPages(response.pagination.pages || 1);
+        } else {
+          // No pagination in response
         }
 
         // Fetch stats separately for accurate totals (not affected by filters)
@@ -202,7 +205,6 @@ export function BookCatalog() {
         toast.error('Failed to load books');
       }
     } catch (error) {
-      console.error('Error fetching books:', error);
       toast.error('Failed to load books. Please try again.');
     } finally {
       setIsLoading(false);
@@ -614,66 +616,80 @@ export function BookCatalog() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {books.map((book) => (
-                    <TableRow key={book.id}>
-                      <TableCell className="font-mono text-sm">
-                        {book.accessionNo}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {book.title}
-                        {book.isbn && (
-                          <div className="text-xs text-muted-foreground">
-                            ISBN: {book.isbn}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>{book.author}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{book.category}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin className="h-3 w-3" />
-                          {book.location || 'N/A'}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getAvailabilityBadge(book)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedBook(book);
-                              setShowBookDetails(true);
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedBook(book);
-                              setShowEditBook(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedBook(book);
-                              setShowDeleteConfirm(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                  {books.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-64 text-center">
+                        <div className="flex flex-col items-center justify-center text-muted-foreground">
+                          <Book className="h-12 w-12 mb-4 opacity-20" />
+                          <p className="text-lg font-medium">No books found</p>
+                          <p className="text-sm">
+                            Try adjusting your search or filters
+                          </p>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    books.map((book) => (
+                      <TableRow key={book.id}>
+                        <TableCell className="font-mono text-sm">
+                          {book.accessionNo}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {book.title}
+                          {book.isbn && (
+                            <div className="text-xs text-muted-foreground">
+                              ISBN: {book.isbn}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>{book.author}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{book.category}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <MapPin className="h-3 w-3" />
+                            {book.location || 'N/A'}
+                          </div>
+                        </TableCell>
+                        <TableCell>{getAvailabilityBadge(book)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedBook(book);
+                                setShowBookDetails(true);
+                              }}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedBook(book);
+                                setShowEditBook(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedBook(book);
+                                setShowDeleteConfirm(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>

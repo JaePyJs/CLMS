@@ -191,10 +191,4 @@ process.on('SIGTERM', () => {
   void config.disconnect().then(() => process.exit(0));
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  void config.disconnect().then(() => process.exit(1));
-});
-
 export default config;

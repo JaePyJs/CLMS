@@ -68,12 +68,8 @@ import {
   Camera,
   BarChart,
   FileText,
-  QrCode,
-  List,
-  Laptop,
-  Upload,
-  Library,
   Sliders,
+  Printer,
 } from 'lucide-react';
 
 // Import components (will create these next)
@@ -88,15 +84,9 @@ const AnalyticsDashboard = React.lazy(
   () => import('@/components/dashboard/AnalyticsDashboard')
 );
 
-import StudentManagementSync from '@/components/dashboard/StudentManagement';
-const StudentManagementLazy = React.lazy(
+const StudentManagement = React.lazy(
   () => import('@/components/dashboard/StudentManagement')
 );
-const StudentManagement =
-  (typeof navigator !== 'undefined' && (navigator as any).webdriver) ||
-  (import.meta as any).env?.VITE_E2E === 'true'
-    ? StudentManagementSync
-    : StudentManagementLazy;
 const ReportsBuilder = React.lazy(
   () => import('@/components/dashboard/ReportsBuilder')
 );
@@ -128,42 +118,23 @@ const AttendanceDisplay = React.lazy(
 const Kiosk = React.lazy(() => import('@/pages/Kiosk'));
 
 // Enhanced Library Management Components (sync in E2E/dev to avoid lazy initializer issues)
-import { UserTracking as UserTrackingSync } from '@/components/dashboard/UserTracking';
-const UserTrackingLazy = React.lazy(() =>
+const UserTracking = React.lazy(() =>
   import('@/components/dashboard/UserTracking').then((m) => ({
     default: m.UserTracking,
   }))
 );
 
-const UserTracking =
-  (typeof navigator !== 'undefined' && (navigator as any).webdriver) ||
-  (import.meta as any).env?.VITE_E2E === 'true'
-    ? UserTrackingSync
-    : UserTrackingLazy;
-
-import { EnhancedBorrowing as EnhancedBorrowingSync } from '@/components/dashboard/EnhancedBorrowing';
-const EnhancedBorrowingLazy = React.lazy(() =>
+const EnhancedBorrowing = React.lazy(() =>
   import('@/components/dashboard/EnhancedBorrowing').then((m) => ({
     default: m.EnhancedBorrowing,
   }))
 );
-const EnhancedBorrowing =
-  (typeof navigator !== 'undefined' && (navigator as any).webdriver) ||
-  (import.meta as any).env?.VITE_E2E === 'true'
-    ? EnhancedBorrowingSync
-    : EnhancedBorrowingLazy;
 
-import { OverdueManagement as OverdueManagementSync } from '@/components/dashboard/OverdueManagement';
-const OverdueManagementLazy = React.lazy(() =>
+const OverdueManagement = React.lazy(() =>
   import('@/components/dashboard/OverdueManagement').then((m) => ({
     default: m.OverdueManagement,
   }))
 );
-const OverdueManagement =
-  (typeof navigator !== 'undefined' && (navigator as any).webdriver) ||
-  (import.meta as any).env?.VITE_E2E === 'true'
-    ? OverdueManagementSync
-    : OverdueManagementLazy;
 
 const ScanWorkspace = React.lazy(() =>
   import('@/components/dashboard/ScanWorkspace').then((module) => ({
@@ -233,6 +204,7 @@ const SettingsSkeleton = () => (
 export default function App() {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const devBypass = import.meta.env.DEV;
+  const { activities } = useAppStore();
 
   // Mobile optimization - hooks MUST be called before any conditional returns
   const { isMobile, isTablet } = useMobileOptimization();
@@ -240,12 +212,65 @@ export default function App() {
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
   useOfflineSync();
 
-  // Enhanced navigation state
+  // Check for Kiosk mode
+  const isKioskMode =
+    typeof window !== 'undefined' && window.location.pathname === '/kiosk';
+
+  if (isKioskMode) {
+    return (
+      <Suspense fallback={<LoadingSpinnerFallback />}>
+        <RouteErrorBoundary>
+          <Kiosk />
+        </RouteErrorBoundary>
+      </Suspense>
+    );
+  }
+
+  // Enhanced navigation state - 7-tab structure with backward compatibility
   const normalizeTab = (t: string | null): string => {
     const m = (t || '').toLowerCase();
-    if (m === 'overdue') return 'overdue-management';
-    if (m === 'borrow') return 'checkout';
-    if (m === 'import') return 'import-export';
+
+    // Map old tab names to new 7-tab structure
+    // Scan Station (Tab 2)
+    if (m === 'scan' || m === 'checkout' || m === 'scan-return')
+      return 'scan-station';
+
+    // Students (Tab 3) - unchanged but now includes user tracking
+    if (m === 'students' || m === 'user-tracking') return 'students';
+
+    // Books (Tab 4)
+    if (
+      m === 'books' ||
+      m === 'enhanced-borrowing' ||
+      m === 'overdue' ||
+      m === 'overdue-management' ||
+      m === 'borrow'
+    )
+      return 'books';
+
+    // Reports & Data (Tab 5)
+    if (
+      m === 'analytics' ||
+      m === 'reports' ||
+      m === 'import' ||
+      m === 'import-export' ||
+      m === 'data-quality'
+    )
+      return 'reports-data';
+
+    // Settings & Admin (Tab 6)
+    if (
+      m === 'settings' ||
+      m === 'management' ||
+      m === 'equipment' ||
+      m === 'qrcodes' ||
+      m === 'barcodes'
+    )
+      return 'settings-admin';
+
+    // Printing (Tab 7)
+    if (m === 'printing') return 'printing';
+
     return m || 'dashboard';
   };
   const initialTab =
@@ -384,18 +409,12 @@ export default function App() {
 
       const allTabs = [
         'dashboard',
-        'scan',
+        'scan-station',
         'students',
         'books',
-        'checkout',
-        'equipment',
-        'automation',
-        'analytics',
-        'reports',
-        'import',
-        'qrcodes',
-        'barcodes',
-        'settings',
+        'reports-data',
+        'settings-admin',
+        'printing',
       ];
 
       const currentIndex = allTabs.indexOf(activeTab);
@@ -433,7 +452,7 @@ export default function App() {
   // Enhanced keyboard navigation handler
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Alt + number keys for quick tab navigation
+      // Alt + number keys for quick tab navigation (7-tab structure)
       if (event.altKey) {
         switch (event.key) {
           case '1':
@@ -442,7 +461,7 @@ export default function App() {
             break;
           case '2':
             event.preventDefault();
-            setActiveTab('scan');
+            setActiveTab('scan-station');
             break;
           case '3':
             event.preventDefault();
@@ -450,27 +469,19 @@ export default function App() {
             break;
           case '4':
             event.preventDefault();
-            setActiveTab('equipment');
+            setActiveTab('books');
             break;
           case '5':
             event.preventDefault();
-            setActiveTab('automation');
+            setActiveTab('reports-data');
             break;
           case '6':
             event.preventDefault();
-            setActiveTab('analytics');
+            setActiveTab('settings-admin');
             break;
           case '7':
             event.preventDefault();
-            setActiveTab('reports');
-            break;
-          case '8':
-            event.preventDefault();
-            setActiveTab('qrcodes');
-            break;
-          case '9':
-            event.preventDefault();
-            setActiveTab('barcodes');
+            setActiveTab('printing');
             break;
         }
       }
@@ -484,13 +495,15 @@ export default function App() {
       // Ctrl/Cmd + / for help
       if ((event.ctrlKey || event.metaKey) && event.key === '/') {
         event.preventDefault();
-        toast.info('Keyboard shortcuts: Alt+1-9 for tabs, Ctrl+K for search');
+        toast.info('Keyboard shortcuts: Alt+1-7 for tabs, Ctrl+K for search');
       }
 
       // F1 for help
       if (event.key === 'F1') {
         event.preventDefault();
-        toast.info('Press Alt+1-9 to navigate tabs');
+        toast.info(
+          'Press Alt+1-7 to navigate tabs: Dashboard, Scan, Students, Books, Reports, Settings, Printing'
+        );
       }
 
       // F5 for refresh (prevent default and use our refresh)
@@ -510,9 +523,11 @@ export default function App() {
     window.location.pathname === '/attendance-display'
   ) {
     return (
-      <Suspense fallback={<LoadingSpinnerFallback />}>
-        <AttendanceDisplay />
-      </Suspense>
+      <WebSocketProvider>
+        <Suspense fallback={<LoadingSpinnerFallback />}>
+          <AttendanceDisplay />
+        </Suspense>
+      </WebSocketProvider>
     );
   }
 
@@ -527,13 +542,18 @@ export default function App() {
 
   // Explicit login route for E2E tests and direct access
   if (typeof window !== 'undefined' && window.location.pathname === '/login') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-        <RouteErrorBoundary>
-          <LoginForm onLoginSuccess={() => {}} />
-        </RouteErrorBoundary>
-      </div>
-    );
+    if (isAuthenticated) {
+      window.history.replaceState(null, '', '/');
+      // Fall through to render the app
+    } else {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+          <RouteErrorBoundary>
+            <LoginForm onLoginSuccess={() => {}} />
+          </RouteErrorBoundary>
+        </div>
+      );
+    }
   }
 
   // Show loading spinner while checking authentication
@@ -877,42 +897,32 @@ export default function App() {
                       {[
                         {
                           value: 'dashboard',
-                          label: 'Dashboard Overview',
+                          label: 'Dashboard',
                           icon: LayoutDashboard,
                         },
-                        { value: 'scan', label: 'Activity Hub', icon: Camera },
+                        {
+                          value: 'scan-station',
+                          label: 'Scan Station',
+                          icon: Camera,
+                        },
                         {
                           value: 'students',
-                          label: 'Student Management',
+                          label: 'Students',
                           icon: Users,
                         },
                         {
                           value: 'books',
-                          label: 'Book Catalog',
+                          label: 'Books & Circulation',
                           icon: BookOpen,
                         },
                         {
-                          value: 'checkout',
-                          label: 'Checkout Desk',
-                          icon: Library,
-                        },
-                        {
-                          value: 'equipment',
-                          label: 'Equipment',
-                          icon: Laptop,
-                        },
-                        {
-                          value: 'analytics',
-                          label: 'Analytics',
+                          value: 'reports-data',
+                          label: 'Reports & Data',
                           icon: BarChart,
                         },
-                        { value: 'reports', label: 'Reports', icon: FileText },
-                        { value: 'import', label: 'Data Import', icon: Upload },
-                        { value: 'qrcodes', label: 'QR Codes', icon: QrCode },
-                        { value: 'barcodes', label: 'Barcodes', icon: List },
                         {
-                          value: 'settings',
-                          label: 'Settings',
+                          value: 'settings-admin',
+                          label: 'Settings & Admin',
                           icon: Settings,
                         },
                       ].map(({ value, label, icon: Icon }) => (
@@ -1030,24 +1040,14 @@ export default function App() {
                     label: 'Dashboard',
                     icon: LayoutDashboard,
                   },
+                  { value: 'scan-station', label: 'Scan', icon: Camera },
                   { value: 'students', label: 'Students', icon: Users },
                   { value: 'books', label: 'Books', icon: BookOpen },
-                  { value: 'checkout', label: 'Checkout', icon: Library },
-                  { value: 'equipment', label: 'Equipment', icon: Laptop },
-                  { value: 'analytics', label: 'Analytics', icon: BarChart },
-                  { value: 'reports', label: 'Reports', icon: FileText },
-                  { value: 'settings', label: 'Settings', icon: Settings },
-                  // Enhanced Library Management Mobile Tabs
-                  { value: 'user-tracking', label: 'Users', icon: Users },
+                  { value: 'reports-data', label: 'Reports', icon: BarChart },
                   {
-                    value: 'enhanced-borrowing',
-                    label: 'Borrow',
-                    icon: BookOpen,
-                  },
-                  {
-                    value: 'overdue-management',
-                    label: 'Overdue',
-                    icon: AlertTriangle,
+                    value: 'settings-admin',
+                    label: 'Settings',
+                    icon: Settings,
                   },
                 ].map(({ value, label, icon: Icon }) => (
                   <Button
@@ -1083,127 +1083,61 @@ export default function App() {
               onValueChange={setActiveTab}
               className="space-y-6"
             >
-              {/* Desktop Tabs - Hidden on Mobile */}
+              {/* Desktop Tabs - Hidden on Mobile - New 6-Tab Structure */}
               <div className="hidden lg:block">
-                <TabsList className="w-full lg:w-auto flex-wrap lg:flex-nowrap items-center gap-1">
-                  <TabsTrigger value="dashboard" id="tab-dashboard">
-                    <LayoutDashboard className="w-4 h-4 mr-2" /> Dashboard
+                <TabsList
+                  className="grid w-full grid-cols-3 sm:grid-cols-7 gap-1 p-1 bg-muted/50 rounded-xl"
+                  aria-label="App Navigation"
+                >
+                  <TabsTrigger
+                    value="dashboard"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
+                  >
+                    <LayoutDashboard className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Dashboard</span>
                   </TabsTrigger>
-
+                  <TabsTrigger
+                    value="scan-station"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
+                  >
+                    <Camera className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Scan</span>
+                  </TabsTrigger>
                   <TabsTrigger
                     value="students"
-                    id="tab-students"
-                    data-testid="top-students-tab"
-                    onClick={() => setActiveTab('students')}
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
                   >
-                    <Users className="w-4 h-4 mr-2" /> Students
+                    <Users className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Students</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="books"
-                    id="tab-books"
-                    onClick={() => setActiveTab('books')}
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
                   >
-                    <BookOpen className="w-4 h-4 mr-2" /> Books
+                    <BookOpen className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Books</span>
                   </TabsTrigger>
                   <TabsTrigger
-                    value="checkout"
-                    id="tab-checkout"
-                    onClick={() => setActiveTab('checkout')}
+                    value="reports-data"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
                   >
-                    <Library className="w-4 h-4 mr-2" /> Checkout
+                    <BarChart className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Reports</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="settings-admin"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
+                  >
+                    <Settings className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Settings</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="printing"
-                    id="tab-printing"
-                    onClick={() => setActiveTab('printing')}
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
                   >
-                    <FileText className="w-4 h-4 mr-2" /> Printing
+                    <Printer className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Printing</span>
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="equipment"
-                    id="tab-equipment"
-                    onClick={() => setActiveTab('equipment')}
-                  >
-                    <Laptop className="w-4 h-4 mr-2" /> Equipment
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="scan"
-                    id="tab-scan"
-                    onClick={() => setActiveTab('scan')}
-                  >
-                    <Camera className="w-4 h-4 mr-2" /> Scan/Return
-                  </TabsTrigger>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="ml-1">
-                        More <ChevronDown className="ml-1 h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuLabel>Management</DropdownMenuLabel>
-                      <DropdownMenuItem
-                        onClick={() => setActiveTab('management')}
-                      >
-                        <Settings className="h-4 w-4 mr-2" /> Management
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setActiveTab('settings')}
-                      >
-                        <Settings className="h-4 w-4 mr-2" /> Settings
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel>Analytics</DropdownMenuLabel>
-                      <DropdownMenuItem
-                        onClick={() => setActiveTab('analytics')}
-                      >
-                        <BarChart className="h-4 w-4 mr-2" /> Analytics
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setActiveTab('reports')}>
-                        <FileText className="h-4 w-4 mr-2" /> Reports
-                      </DropdownMenuItem>
-                      {/* Library Analytics consolidated into Analytics tab */}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel>Data</DropdownMenuLabel>
-                      <DropdownMenuItem
-                        onClick={() => setActiveTab('data-quality')}
-                      >
-                        <AlertTriangle className="h-4 w-4 mr-2" /> Data Quality
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setActiveTab('import-export')}
-                      >
-                        <Upload className="h-4 w-4 mr-2" /> Import/Export
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setActiveTab('qrcodes')}>
-                        <QrCode className="h-4 w-4 mr-2" /> QR Codes
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setActiveTab('barcodes')}
-                      >
-                        <List className="h-4 w-4 mr-2" /> Barcodes
-                      </DropdownMenuItem>
-
-                      <DropdownMenuSeparator />
-                      <DropdownMenuLabel>Users</DropdownMenuLabel>
-                      <DropdownMenuItem
-                        onClick={() => setActiveTab('user-tracking')}
-                      >
-                        <Users className="h-4 w-4 mr-2" /> User Tracking
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setActiveTab('enhanced-borrowing')}
-                      >
-                        <BookOpen className="h-4 w-4 mr-2" /> Enhanced Borrowing
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setActiveTab('overdue-management')}
-                      >
-                        <AlertTriangle className="h-4 w-4 mr-2" /> Overdue
-                        Management
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </TabsList>
               </div>
 
@@ -1239,7 +1173,24 @@ export default function App() {
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Books Tab */}
+              {/* Scan Station Tab - Merges Scan + Checkout + Barcode Testing */}
+              <TabsContent
+                value="scan-station"
+                className="space-y-6"
+                id="tabpanel-scan-station"
+                role="tabpanel"
+                aria-labelledby="tab-scan-station"
+                tabIndex={0}
+              >
+                <RouteErrorBoundary>
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    {/* TODO: Create ScanStation component - for now use ScanWorkspace */}
+                    <ScanWorkspace />
+                  </Suspense>
+                </RouteErrorBoundary>
+              </TabsContent>
+
+              {/* Books Tab - Will be enhanced to include Borrowing + Overdue */}
               <TabsContent
                 value="books"
                 className="space-y-6"
@@ -1255,7 +1206,44 @@ export default function App() {
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Checkout Tab */}
+              {/* Reports & Data Tab - Merges Analytics + Reports + Import/Export + Data Quality */}
+              <TabsContent
+                value="reports-data"
+                className="space-y-6"
+                id="tabpanel-reports-data"
+                role="tabpanel"
+                aria-labelledby="tab-reports-data"
+                tabIndex={0}
+              >
+                <RouteErrorBoundary>
+                  <Suspense fallback={<CardSkeleton className="h-96" />}>
+                    {/* TODO: Create ReportsAndData component - for now use ImportExportManager */}
+                    <ImportExportManager />
+                  </Suspense>
+                </RouteErrorBoundary>
+              </TabsContent>
+
+              {/* Settings & Admin Tab - Merges Settings + Management + Equipment + Printing + QR/Barcodes */}
+              <TabsContent
+                value="settings-admin"
+                className="space-y-6"
+                id="tabpanel-settings-admin"
+                role="tabpanel"
+                aria-labelledby="tab-settings-admin"
+                tabIndex={0}
+              >
+                <RouteErrorBoundary>
+                  <Suspense fallback={<SettingsSkeleton />}>
+                    {/* TODO: Create SettingsAndAdmin component - for now use SettingsPage */}
+                    <SettingsPage />
+                  </Suspense>
+                </RouteErrorBoundary>
+              </TabsContent>
+
+              {/* Legacy tabs below - kept for backward compatibility */}
+              {/* These will redirect to new tabs via normalizeTab() */}
+
+              {/* Checkout Tab - Redirects to scan-station */}
               <TabsContent
                 value="checkout"
                 className="space-y-6"
@@ -1537,7 +1525,8 @@ export default function App() {
                 <div className="flex flex-wrap items-center justify-center lg:justify-end gap-4">
                   <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50">
                     <Users className="h-3 w-3 text-purple-500" />
-                    Active: <span className="font-medium">1</span>
+                    Active:{' '}
+                    <span className="font-medium">{activities.length}</span>
                   </span>
                   <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50">
                     <Database className="h-3 w-3 text-blue-500" />

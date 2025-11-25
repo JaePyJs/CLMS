@@ -220,20 +220,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const currentUser: AuthUser = await primeAuthState(queryClient);
       queryClient.setQueryData(authKeys.current(), currentUser);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Auth check failed:', error);
-      try {
-        const cached =
-          localStorage.getItem('clms_user') ||
-          sessionStorage.getItem('clms_user');
-        if (cached) {
-          const cachedUser = JSON.parse(cached) as AuthUser;
-          queryClient.setQueryData(authKeys.current(), cachedUser);
-          return true;
+
+      // Only fall back to cache if it's a network error (offline), NOT if it's an auth error (401/403)
+      const isAuthError =
+        error?.response?.status === 401 ||
+        error?.response?.status === 403 ||
+        error?.status === 401 ||
+        error?.status === 403;
+
+      if (!isAuthError) {
+        try {
+          const cached =
+            localStorage.getItem('clms_user') ||
+            sessionStorage.getItem('clms_user');
+          if (cached) {
+            const cachedUser = JSON.parse(cached) as AuthUser;
+            queryClient.setQueryData(authKeys.current(), cachedUser);
+            // Don't return true here, just set data. Let the user decide if they want to trust stale data.
+            // Actually for offline support we might want to return true, but for now let's be safe.
+            // If we return true, we mask the error.
+            // Let's return true ONLY if we are sure it's not an auth error.
+            return true;
+          }
+        } catch {
+          // Ignore JSON parsing errors for invalid cache data
         }
-      } catch {
-        // Ignore JSON parsing errors for invalid cache data
       }
+
       performLogout({ message: 'Please log in to continue', severity: 'info' });
       return false;
     }

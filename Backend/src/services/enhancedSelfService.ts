@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
 import { GoogleSheetsService } from './googleSheetsService';
 import { prisma } from '../utils/prisma';
+import { websocketServer } from '../websocket/websocketServer';
 
 export interface CheckInWithSectionsInput {
   studentId: string;
@@ -131,6 +132,17 @@ export class EnhancedSelfService {
         logger.error('Google Sheets push failed', e);
       }
 
+      // Emit WebSocket event
+      websocketServer.emitStudentCheckIn({
+        activityId: activity.id,
+        studentId: student.id,
+        studentName: `${student.first_name} ${student.last_name}`,
+        checkinTime: activity.start_time.toISOString(),
+        autoLogoutAt: new Date(
+          activity.start_time.getTime() + 30 * 60000,
+        ).toISOString(),
+      });
+
       return {
         success: true,
         message: 'Checked in successfully',
@@ -192,6 +204,15 @@ export class EnhancedSelfService {
       } catch (e) {
         logger.error('Google Sheets push failed', e);
       }
+
+      // Emit WebSocket event
+      websocketServer.emitStudentCheckOut({
+        activityId: updated.id,
+        studentId: student.id,
+        studentName: `${student.first_name} ${student.last_name}`,
+        checkoutTime: endTime.toISOString(),
+        reason: 'manual',
+      });
 
       return {
         success: true,

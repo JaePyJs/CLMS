@@ -211,16 +211,9 @@ export default function ImportExportManager() {
 
     try {
       if (format === 'google-sheets') {
-        // Trigger Google Sheets export
-        const response = await apiClient.post(
-          `/api/${exportType}/export-google-sheets`
-        );
-        if (response.success) {
-          toast.success('Exported to Google Sheets successfully!');
-          if ((response.data as any)?.url) {
-            window.open((response.data as any).url, '_blank');
-          }
-        }
+        // Export as CSV for Google Sheets
+        toast.info('Downloading CSV for Google Sheets...');
+        window.open(`/api/${exportType}/export?format=csv`, '_blank');
       } else {
         // Download file
         window.open(`/api/${exportType}/export?format=${format}`, '_blank');
@@ -522,9 +515,9 @@ export default function ImportExportManager() {
                   <div className="flex items-start gap-4">
                     <Cloud className="h-8 w-8 text-amber-500" />
                     <div className="text-left">
-                      <p className="font-semibold">Export to Google Sheets</p>
+                      <p className="font-semibold">Export for Google Sheets</p>
                       <p className="text-sm text-muted-foreground">
-                        Create a new Google Sheet with your data
+                        Download as CSV (compatible with Google Sheets)
                       </p>
                     </div>
                   </div>

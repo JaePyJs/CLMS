@@ -832,7 +832,7 @@ export function StudentManagement() {
                   {realStats.active}
                 </div>
                 <p className="text-sm text-green-600 dark:text-green-400">
-                  Active Students
+                  Active Accounts
                 </p>
               </CardContent>
             </Card>
@@ -902,7 +902,9 @@ export function StudentManagement() {
                       <Badge
                         variant={student.isActive ? 'default' : 'secondary'}
                       >
-                        {student.isActive ? 'Active' : 'Inactive'}
+                        {student.isActive
+                          ? 'Account Active'
+                          : 'Account Inactive'}
                       </Badge>
                       <Button
                         variant="ghost"
@@ -1046,12 +1048,24 @@ export function StudentManagement() {
               <div className="space-y-3">
                 {filteredStudents.length === 0 && (
                   <div
-                    className="p-4 rounded-lg border border-gray-200 dark:border-gray-700"
-                    data-testid="student-card"
+                    className="flex flex-col items-center justify-center p-8 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+                    data-testid="student-empty-state"
                   >
-                    <div className="text-sm text-muted-foreground">
+                    <Users className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">
                       No students found
-                    </div>
+                    </h3>
+                    <p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
+                      {searchTerm || filterStatus || filterGrade
+                        ? "Try adjusting your search or filters to find what you're looking for."
+                        : 'Get started by adding your first student to the system.'}
+                    </p>
+                    {!searchTerm && !filterStatus && !filterGrade && (
+                      <Button onClick={() => setShowAddStudent(true)}>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Add Student
+                      </Button>
+                    )}
                   </div>
                 )}
                 {paginatedStudents.map((student: Student) => (

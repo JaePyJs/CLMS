@@ -269,7 +269,7 @@ const OptimizedImage = forwardRef<HTMLImageElement, OptimizedImageProps>(
           loading={priority ? 'eager' : loading}
           decoding={decoding}
           {...(fetchPriority && fetchPriority !== 'auto'
-            ? { fetchPriority }
+            ? { fetchpriority: fetchPriority }
             : {})}
           className={`w-full h-full object-${objectFit} transition-opacity duration-${fadeDuration} ${
             imageState.isLoaded ? 'opacity-100' : 'opacity-0'
@@ -298,14 +298,11 @@ export const withImageOptimization = <P extends object>(
   });
 
   OptimizedComponent.displayName = `withImageOptimization(${Component.displayName || Component.name})`;
-  return OptimizedComponent;
+  return OptimizedComponent as any;
 };
 
 // Utility function to preload images
-export const preloadImage = (
-  src: string,
-  _priority: 'high' | 'low' = 'low'
-): Promise<void> => {
+export const preloadImage = (src: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     const link = document.createElement('link');
     link.rel = 'preload';

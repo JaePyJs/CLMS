@@ -53,6 +53,8 @@ import { getErrorMessage } from '@/utils/errorHandling';
 // Types for import functionality
 interface ImportedStudent {
   rowNumber: number;
+  studentId?: string;
+  barcode?: string;
   firstName: string;
   lastName: string;
   gradeLevel: string;
@@ -88,6 +90,8 @@ interface ImportPreview {
 const AVAILABLE_FIELDS: FieldMapping[] = [
   { sourceField: 'firstName', targetField: 'firstName', required: true },
   { sourceField: 'lastName', targetField: 'lastName', required: true },
+  { sourceField: 'studentId', targetField: 'studentId', required: false },
+  { sourceField: 'barcode', targetField: 'barcode', required: false },
   { sourceField: 'gradeLevel', targetField: 'gradeLevel', required: true },
   { sourceField: 'section', targetField: 'section', required: false },
   { sourceField: 'email', targetField: 'email', required: false },
@@ -333,6 +337,8 @@ export function StudentImportDialog({
     const aliases: Record<string, string[]> = {
       firstName: ['first', 'given name', 'forename', 'fname'],
       lastName: ['last', 'surname', 'family name', 'lname'],
+      studentId: ['student id', 'id', 'user id', 'student_id', 'lrn'],
+      barcode: ['barcode', 'card number', 'library card'],
       gradeLevel: ['grade', 'year', 'level', 'grade level', 'class'],
       section: ['section', 'block', 'group'],
       email: ['email', 'e-mail', 'email address'],

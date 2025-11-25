@@ -83,7 +83,7 @@ EXPOSE 3001
 
 # Health check with proper timeouts for production
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:3001/health || exit 1
+    CMD curl -f http://localhost:3001/api/health || exit 1
 
 # Start the application with compiled JavaScript using dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]

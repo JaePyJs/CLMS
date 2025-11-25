@@ -2,7 +2,7 @@ import { prisma } from '../utils/prisma';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), 'Backend', '.env') });
 // const prisma = new PrismaClient();
 
 async function checkData() {
@@ -17,6 +17,39 @@ async function checkData() {
     console.log(`👥 Students in database: ${studentCount}`);
     console.log('==========================================');
 
+    // Sample Student Check
+    const sampleStudent = await prisma.students.findUnique({
+      where: { student_id: '20250055' },
+    });
+    console.log('\n--- Sample Student Check (20250055) ---');
+    if (sampleStudent) {
+      console.log(
+        '✅ Found:',
+        sampleStudent.first_name,
+        sampleStudent.last_name,
+      );
+      console.log(
+        '   Grade:',
+        sampleStudent.grade_level,
+        'Section:',
+        sampleStudent.section,
+      );
+    } else {
+      console.log('❌ Student 20250055 NOT FOUND');
+    }
+
+    // Sample Book Check
+    const sampleBook = await prisma.books.findUnique({
+      where: { accession_no: 'GS00001' },
+    });
+    console.log('\n--- Sample Book Check (GS00001) ---');
+    if (sampleBook) {
+      console.log('✅ Found:', sampleBook.title);
+      console.log('   Author:', sampleBook.author);
+    } else {
+      console.log('❌ Book GS00001 NOT FOUND');
+    }
+
     if (bookCount === 0 && studentCount === 0) {
       console.log('\n⚠️  DATABASE IS EMPTY!');
       console.log('Your data was wiped by the import script.');
@@ -24,7 +57,7 @@ async function checkData() {
       console.log('  cd Backend');
       console.log('  npx tsx src/scripts/importCsv.ts');
     } else {
-      console.log('\n✅ Data exists in database!');
+      console.log('\n✅ Data verification complete.');
     }
   } catch (error) {
     console.error('Error checking database:', error);
