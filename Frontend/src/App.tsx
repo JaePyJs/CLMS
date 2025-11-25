@@ -72,35 +72,28 @@ import {
   Printer,
 } from 'lucide-react';
 
-// Import components (will create these next)
-const DashboardOverview = React.lazy(
-  () => import('@/components/dashboard/DashboardOverview')
-);
-const EquipmentDashboard = React.lazy(
-  () => import('@/components/dashboard/EquipmentDashboard')
-);
+// Import page components for code splitting
+import {
+  DashboardPage,
+  ScanStationPage,
+  StudentsPage,
+  BooksPage,
+  EquipmentPage,
+  ReportsDataPage,
+  SettingsAdminPage,
+  PrintingPage,
+  Kiosk,
+} from '@/pages';
 
-const AnalyticsDashboard = React.lazy(
-  () => import('@/components/dashboard/AnalyticsDashboard')
-);
-
-const StudentManagement = React.lazy(
-  () => import('@/components/dashboard/StudentManagement')
-);
-const ReportsBuilder = React.lazy(
-  () => import('@/components/dashboard/ReportsBuilder')
-);
-const BookCatalog = React.lazy(
-  () => import('@/components/dashboard/BookCatalog')
-);
+// Keep legacy lazy imports for backward compatibility
 const BookCheckout = React.lazy(
   () => import('@/components/dashboard/BookCheckout')
 );
-const SettingsPage = React.lazy(
-  () => import('@/components/settings/SettingsPage')
+const AnalyticsDashboard = React.lazy(
+  () => import('@/components/dashboard/AnalyticsDashboard')
 );
-const LibraryManagementHub = React.lazy(
-  () => import('@/components/management/LibraryManagementHub')
+const ReportsBuilder = React.lazy(
+  () => import('@/components/dashboard/ReportsBuilder')
 );
 const DataQualityManager = React.lazy(
   () => import('@/components/management/DataQualityManager')
@@ -108,16 +101,13 @@ const DataQualityManager = React.lazy(
 const ImportExportManager = React.lazy(
   () => import('@/components/management/ImportExportManager')
 );
-
-// Attendance Display for self-monitoring
+const LibraryManagementHub = React.lazy(
+  () => import('@/components/management/LibraryManagementHub')
+);
 const AttendanceDisplay = React.lazy(
   () => import('@/components/attendance/AttendanceDisplay')
 );
 
-// Kiosk interface for patron tap-in
-const Kiosk = React.lazy(() => import('@/pages/Kiosk'));
-
-// Enhanced Library Management Components (sync in E2E/dev to avoid lazy initializer issues)
 const UserTracking = React.lazy(() =>
   import('@/components/dashboard/UserTracking').then((m) => ({
     default: m.UserTracking,
@@ -148,12 +138,7 @@ const BarcodeManager = React.lazy(
   () => import('@/components/dashboard/BarcodeManager')
 );
 
-const PrintingTrackerLazy = React.lazy(
-  () => import('@/components/management/PrintingTracker')
-);
-
 // Reference lazy components to avoid unused variable warnings in some linters
-
 void AnalyticsDashboard;
 
 // Enhanced loading fallbacks with skeleton screens
@@ -1152,7 +1137,7 @@ export default function App() {
               >
                 <RouteErrorBoundary>
                   <Suspense fallback={<DashboardSkeleton />}>
-                    <DashboardOverview onTabChange={setActiveTab} />
+                    <DashboardPage onTabChange={setActiveTab} />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
@@ -1168,12 +1153,12 @@ export default function App() {
               >
                 <RouteErrorBoundary>
                   <Suspense fallback={<TableSkeletonFallback />}>
-                    <StudentManagement />
+                    <StudentsPage />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Scan Station Tab - Merges Scan + Checkout + Barcode Testing */}
+              {/* Scan Station Tab */}
               <TabsContent
                 value="scan-station"
                 className="space-y-6"
@@ -1184,13 +1169,12 @@ export default function App() {
               >
                 <RouteErrorBoundary>
                   <Suspense fallback={<DashboardSkeleton />}>
-                    {/* TODO: Create ScanStation component - for now use ScanWorkspace */}
-                    <ScanWorkspace />
+                    <ScanStationPage />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Books Tab - Will be enhanced to include Borrowing + Overdue */}
+              {/* Books Tab */}
               <TabsContent
                 value="books"
                 className="space-y-6"
@@ -1201,76 +1185,7 @@ export default function App() {
               >
                 <RouteErrorBoundary>
                   <Suspense fallback={<TableSkeletonFallback />}>
-                    <BookCatalog />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Reports & Data Tab - Merges Analytics + Reports + Import/Export + Data Quality */}
-              <TabsContent
-                value="reports-data"
-                className="space-y-6"
-                id="tabpanel-reports-data"
-                role="tabpanel"
-                aria-labelledby="tab-reports-data"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    {/* TODO: Create ReportsAndData component - for now use ImportExportManager */}
-                    <ImportExportManager />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Settings & Admin Tab - Merges Settings + Management + Equipment + Printing + QR/Barcodes */}
-              <TabsContent
-                value="settings-admin"
-                className="space-y-6"
-                id="tabpanel-settings-admin"
-                role="tabpanel"
-                aria-labelledby="tab-settings-admin"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<SettingsSkeleton />}>
-                    {/* TODO: Create SettingsAndAdmin component - for now use SettingsPage */}
-                    <SettingsPage />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Legacy tabs below - kept for backward compatibility */}
-              {/* These will redirect to new tabs via normalizeTab() */}
-
-              {/* Checkout Tab - Redirects to scan-station */}
-              <TabsContent
-                value="checkout"
-                className="space-y-6"
-                id="tabpanel-checkout"
-                role="tabpanel"
-                aria-labelledby="tab-checkout"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <BookCheckout />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Printing Tab */}
-              <TabsContent
-                value="printing"
-                className="space-y-6"
-                id="tabpanel-printing"
-                role="tabpanel"
-                aria-labelledby="tab-printing"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <PrintingTrackerLazy />
+                    <BooksPage />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
@@ -1286,207 +1201,60 @@ export default function App() {
               >
                 <RouteErrorBoundary>
                   <Suspense fallback={<TableSkeletonFallback />}>
-                    <EquipmentDashboard />
+                    <EquipmentPage />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Analytics Tab */}
+              {/* Reports & Data Tab */}
               <TabsContent
-                value="analytics"
+                value="reports-data"
                 className="space-y-6"
-                id="tabpanel-analytics"
+                id="tabpanel-reports-data"
                 role="tabpanel"
-                aria-labelledby="tab-analytics"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<DashboardSkeleton />}>
-                    <AnalyticsDashboard />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Reports Tab */}
-              <TabsContent
-                value="reports"
-                className="space-y-6"
-                id="tabpanel-reports"
-                role="tabpanel"
-                aria-labelledby="tab-reports"
+                aria-labelledby="tab-reports-data"
                 tabIndex={0}
               >
                 <RouteErrorBoundary>
                   <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <ReportsBuilder />
+                    <ReportsDataPage />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Data Quality Manager Tab */}
+              {/* Settings & Admin Tab */}
               <TabsContent
-                value="data-quality"
+                value="settings-admin"
                 className="space-y-6"
-                id="tabpanel-data-quality"
+                id="tabpanel-settings-admin"
                 role="tabpanel"
-                aria-labelledby="tab-data-quality"
+                aria-labelledby="tab-settings-admin"
                 tabIndex={0}
               >
                 <RouteErrorBoundary>
-                  <Suspense fallback={<TableSkeletonFallback />}>
-                    <DataQualityManager />
+                  <Suspense fallback={<SettingsSkeleton />}>
+                    <SettingsAdminPage />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Import/Export Manager Tab */}
+              {/* Printing Tab */}
               <TabsContent
-                value="import-export"
+                value="printing"
                 className="space-y-6"
-                id="tabpanel-import-export"
+                id="tabpanel-printing"
                 role="tabpanel"
-                aria-labelledby="tab-import-export"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <ImportExportManager />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Settings Tab */}
-              <TabsContent
-                value="settings"
-                className="space-y-6"
-                id="tabpanel-settings"
-                role="tabpanel"
-                aria-labelledby="tab-settings"
-                tabIndex={0}
-              >
-                <Suspense fallback={<SettingsSkeleton />}>
-                  <SettingsPage />
-                </Suspense>
-              </TabsContent>
-
-              {/* Management Tab */}
-              <TabsContent
-                value="management"
-                className="space-y-6"
-                id="tabpanel-management"
-                role="tabpanel"
-                aria-labelledby="tab-management"
-                tabIndex={0}
-              >
-                {import.meta.env.DEV ? <CardSkeleton className="h-20" /> : null}
-                <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    {import.meta.env.DEV ? (
-                      <div className="space-y-6">
-                        <div className="text-sm text-muted-foreground">
-                          Management (Dev simplified)
-                        </div>
-                        <PrintingTrackerLazy />
-                      </div>
-                    ) : (
-                      <LibraryManagementHub />
-                    )}
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Enhanced Library Management Tabs */}
-              <TabsContent
-                value="user-tracking"
-                className="space-y-6"
-                id="tabpanel-user-tracking"
-                role="tabpanel"
-                aria-labelledby="tab-user-tracking"
+                aria-labelledby="tab-printing"
                 tabIndex={0}
               >
                 <RouteErrorBoundary>
                   <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <UserTracking />
+                    <PrintingPage />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
 
-              <TabsContent
-                value="enhanced-borrowing"
-                className="space-y-6"
-                id="tabpanel-enhanced-borrowing"
-                role="tabpanel"
-                aria-labelledby="tab-enhanced-borrowing"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <EnhancedBorrowing />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              <TabsContent
-                value="overdue-management"
-                className="space-y-6"
-                id="tabpanel-overdue-management"
-                role="tabpanel"
-                aria-labelledby="tab-overdue-management"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <OverdueManagement />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              <TabsContent
-                value="scan"
-                className="space-y-6"
-                id="tabpanel-scan"
-                role="tabpanel"
-                aria-labelledby="tab-scan"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<DashboardSkeleton />}>
-                    <ScanWorkspace />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              <TabsContent
-                value="qrcodes"
-                className="space-y-6"
-                id="tabpanel-qrcodes"
-                role="tabpanel"
-                aria-labelledby="tab-qrcodes"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <QRCodeManager />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              <TabsContent
-                value="barcodes"
-                className="space-y-6"
-                id="tabpanel-barcodes"
-                role="tabpanel"
-                aria-labelledby="tab-barcodes"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <BarcodeManager />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Library Analytics consolidated into Analytics tab */}
+              {/* ========== Legacy tabs below - kept for backward compatibility ========== */}
             </Tabs>
           </main>
 
