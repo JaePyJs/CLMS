@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { settingsApi } from '@/lib/api';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorHandling';
 import {
@@ -45,6 +46,7 @@ export default function DataManagement() {
   const [lastResetResult, setLastResetResult] = useState<ResetResult | null>(
     null
   );
+  const { refreshDashboard } = useWebSocketContext();
 
   // Reset daily data mutation
   const resetDailyMutation = useMutation({
@@ -52,6 +54,13 @@ export default function DataManagement() {
     onSuccess: (response) => {
       const data = (response as any)?.data || {};
       setLastResetResult(data);
+      // Refresh dashboard data so UI updates
+      try {
+        refreshDashboard('overview');
+        refreshDashboard('activities');
+      } catch (err) {
+        // ignore if not available
+      }
       toast.success('Daily data reset successfully!', {
         description: `Ended ${data.activitiesEnded || 0} sessions, reset ${data.equipmentReset || 0} rooms`,
       });
@@ -70,6 +79,13 @@ export default function DataManagement() {
       setLastResetResult(data);
       setShowResetAllDialog(false);
       setConfirmationInput('');
+      // Refresh dashboard data
+      try {
+        refreshDashboard('overview');
+        refreshDashboard('activities');
+      } catch (err) {
+        // ignore
+      }
       toast.success('All data reset successfully!', {
         description: `Deleted ${data.activitiesDeleted || 0} activities, ${data.equipmentSessionsDeleted || 0} sessions, ${data.checkoutsDeleted || 0} checkouts`,
       });
@@ -113,9 +129,9 @@ export default function DataManagement() {
         <CardContent>
           <Alert>
             <Shield className="h-4 w-4" />
-            <AlertTitle>Admin Only</AlertTitle>
+            <AlertTitle>Admin or Librarian Access</AlertTitle>
             <AlertDescription>
-              These actions are only available to administrators and cannot be
+              These actions are only available to administrators and librarians and cannot be
               undone.
             </AlertDescription>
           </Alert>

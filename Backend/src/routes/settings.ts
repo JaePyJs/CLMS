@@ -402,7 +402,7 @@ router.post(
 router.post(
   '/reset-daily-data',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (req.user?.role !== 'ADMIN') {
+    if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'LIBRARIAN')) {
       res.status(403).json({ error: 'Admin access required' });
       return;
     }
@@ -410,6 +410,7 @@ router.post(
     try {
       logger.info('Reset daily data request', {
         userId: req.user.userId,
+        role: req.user.role,
       });
 
       const result = await SettingsService.resetDailyData();
@@ -436,7 +437,7 @@ router.post(
 router.post(
   '/reset-all-data',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (req.user?.role !== 'ADMIN') {
+    if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'LIBRARIAN')) {
       res.status(403).json({ error: 'Admin access required' });
       return;
     }
@@ -456,6 +457,7 @@ router.post(
     try {
       logger.warn('⚠️ RESET ALL DATA request initiated', {
         userId: req.user.userId,
+        role: req.user.role,
         timestamp: new Date().toISOString(),
       });
 
