@@ -653,7 +653,8 @@ export const settingsApi = {
   resetSystemSettings: () => apiClient.post('/api/settings/system/reset'),
 
   // Data Reset (Admin only)
-  resetDailyData: () => apiClient.post('/api/settings/reset-daily-data'),
+  resetDailyData: (deleteTodaysActivities?: boolean) =>
+    apiClient.post('/api/settings/reset-daily-data', { deleteTodaysActivities }),
   resetAllData: (confirmationCode: string) =>
     apiClient.post('/api/settings/reset-all-data', { confirmationCode }),
 

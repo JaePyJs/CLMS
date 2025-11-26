@@ -169,24 +169,37 @@ export class SettingsService {
    * Reset daily data - clears today's check-ins and active sessions
    * Useful for starting fresh each day or after server restarts
    */
-  static async resetDailyData(): Promise<{
-    activitiesEnded: number;
+  static async resetDailyData(deleteTodaysActivities = false): Promise<{
+    activitiesAffected: number;
     equipmentReset: number;
+    equipmentSessionsDeleted: number;
   }> {
     try {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // End all active student activities
-      const endedActivities = await prisma.student_activities.updateMany({
-        where: {
-          status: 'ACTIVE',
-        },
-        data: {
-          status: 'COMPLETED',
-          end_time: new Date(),
-        },
-      });
+      let activitiesAffectedCount = 0;
+      if (deleteTodaysActivities) {
+        // Delete today's activities (start_time >= today)
+        const deletedActivities = await prisma.student_activities.deleteMany({
+          where: {
+            start_time: { gte: today },
+          },
+        });
+        activitiesAffectedCount = deletedActivities.count;
+      } else {
+        // Mark active student activities as completed to preserve history
+        const endedActivities = await prisma.student_activities.updateMany({
+          where: {
+            status: 'ACTIVE',
+          },
+          data: {
+            status: 'COMPLETED',
+            end_time: new Date(),
+          },
+        });
+        activitiesAffectedCount = endedActivities.count;
+      }
 
       // Reset all equipment to AVAILABLE status
       const resetEquipment = await prisma.equipment.updateMany({
@@ -200,25 +213,23 @@ export class SettingsService {
         },
       });
 
-      // End all active equipment sessions
-      await prisma.equipment_sessions.updateMany({
+      // Delete equipment sessions for today (so sessions are cleared) - keep historical activities
+      const deletedEquipmentSessions = await prisma.equipment_sessions.deleteMany({
         where: {
-          status: 'ACTIVE',
-        },
-        data: {
-          status: 'COMPLETED',
-          session_end: new Date(),
+          session_start: { gte: today },
         },
       });
 
       logger.info('Daily data reset completed', {
-        activitiesEnded: endedActivities.count,
+        activitiesAffected: activitiesAffectedCount,
         equipmentReset: resetEquipment.count,
+        equipmentSessionsDeleted: deletedEquipmentSessions.count,
       });
 
       return {
-        activitiesEnded: endedActivities.count,
+        activitiesAffected: activitiesAffectedCount,
         equipmentReset: resetEquipment.count,
+        equipmentSessionsDeleted: deletedEquipmentSessions.count,
       };
     } catch (error) {
       logger.error('Error resetting daily data:', error);

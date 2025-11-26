@@ -3,6 +3,8 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { authenticate } from '../middleware/authenticate';
 import { SettingsService } from '../services/settingsService';
 import { logger } from '../utils/logger';
+import { websocketServer } from '../websocket/websocketServer';
+import { prisma } from '../utils/prisma';
 
 const router = Router();
 
@@ -402,7 +404,10 @@ router.post(
 router.post(
   '/reset-daily-data',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'LIBRARIAN')) {
+    if (
+      !req.user ||
+      (req.user.role !== 'ADMIN' && req.user.role !== 'LIBRARIAN')
+    ) {
       res.status(403).json({ error: 'Admin access required' });
       return;
     }
@@ -413,7 +418,47 @@ router.post(
         role: req.user.role,
       });
 
-      const result = await SettingsService.resetDailyData();
+      const { deleteTodaysActivities } = req.body || {};
+      const result = await SettingsService.resetDailyData(Boolean(deleteTodaysActivities));
+
+      // Compute updated overview data and broadcast it so WS clients update immediately
+      try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const overviewData = {
+          totalStudents: await prisma.students.count(),
+          activeStudents: await prisma.student_activities.count({
+            where: { status: 'ACTIVE' },
+          }),
+          totalBooks: await prisma.books.count(),
+          activeBorrows: await prisma.book_checkouts.count({
+            where: { status: 'ACTIVE' },
+          }),
+          overdueBorrows: await prisma.book_checkouts.count({
+            where: { status: 'ACTIVE', due_date: { lt: new Date() } },
+          }),
+          todayActivities: await prisma.student_activities.count({
+            where: { start_time: { gte: startOfDay } },
+          }),
+          activeEquipment: await prisma.equipment.count({
+            where: { status: 'IN_USE' },
+          }),
+          activeConnections: 0,
+          systemLoad: 0,
+        };
+
+        websocketServer.broadcastToRoom('dashboard', {
+          id: `overview-${Date.now()}`,
+          type: 'dashboard_data',
+          data: overviewData,
+          timestamp: new Date(),
+        });
+      } catch (e) {
+        logger.warn('Failed to broadcast dashboard update after daily reset', {
+          error: e instanceof Error ? e.message : 'Unknown',
+        });
+      }
 
       res.json({
         success: true,
@@ -437,7 +482,10 @@ router.post(
 router.post(
   '/reset-all-data',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (!req.user || (req.user.role !== 'ADMIN' && req.user.role !== 'LIBRARIAN')) {
+    if (
+      !req.user ||
+      (req.user.role !== 'ADMIN' && req.user.role !== 'LIBRARIAN')
+    ) {
       res.status(403).json({ error: 'Admin access required' });
       return;
     }
@@ -462,6 +510,43 @@ router.post(
       });
 
       const result = await SettingsService.resetAllData();
+
+      // Broadcast updated overview to dashboard
+      try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const overviewData = {
+          totalStudents: await prisma.students.count(),
+          activeStudents: await prisma.student_activities.count({
+            where: { status: 'ACTIVE' },
+          }),
+          totalBooks: await prisma.books.count(),
+          activeBorrows: await prisma.book_checkouts.count({
+            where: { status: 'ACTIVE' },
+          }),
+          overdueBorrows: await prisma.book_checkouts.count({
+            where: { status: 'ACTIVE', due_date: { lt: new Date() } },
+          }),
+          todayActivities: await prisma.student_activities.count({
+            where: { start_time: { gte: startOfDay } },
+          }),
+          activeEquipment: await prisma.equipment.count({
+            where: { status: 'IN_USE' },
+          }),
+          activeConnections: 0,
+          systemLoad: 0,
+        };
+        websocketServer.broadcastToRoom('dashboard', {
+          id: `overview-${Date.now()}`,
+          type: 'dashboard_data',
+          data: overviewData,
+          timestamp: new Date(),
+        });
+      } catch (err) {
+        logger.warn('Failed to broadcast dashboard update after full reset', {
+          error: err instanceof Error ? err.message : 'Unknown',
+        });
+      }
 
       res.json({
         success: true,

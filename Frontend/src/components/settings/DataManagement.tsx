@@ -34,6 +34,7 @@ import {
 
 interface ResetResult {
   activitiesEnded?: number;
+  activitiesAffected?: number;
   equipmentReset?: number;
   activitiesDeleted?: number;
   equipmentSessionsDeleted?: number;
@@ -47,10 +48,11 @@ export default function DataManagement() {
     null
   );
   const { refreshDashboard } = useWebSocketContext();
+  const [deleteTodaysActivities, setDeleteTodaysActivities] = useState(false);
 
   // Reset daily data mutation
   const resetDailyMutation = useMutation({
-    mutationFn: () => settingsApi.resetDailyData(),
+    mutationFn: (deleteToday?: boolean) => settingsApi.resetDailyData(deleteToday),
     onSuccess: (response) => {
       const data = (response as any)?.data || {};
       setLastResetResult(data);
@@ -62,7 +64,7 @@ export default function DataManagement() {
         // ignore if not available
       }
       toast.success('Daily data reset successfully!', {
-        description: `Ended ${data.activitiesEnded || 0} sessions, reset ${data.equipmentReset || 0} rooms`,
+        description: `Activities affected: ${data.activitiesAffected || 0}, Rooms reset: ${data.equipmentReset || 0}, Sessions deleted: ${data.equipmentSessionsDeleted || 0}`,
       });
     },
     onError: (error: unknown) => {
@@ -96,12 +98,14 @@ export default function DataManagement() {
   });
 
   const handleResetDaily = () => {
-    if (
-      confirm(
-        'This will end all active sessions and reset all rooms to available. Continue?'
-      )
-    ) {
-      resetDailyMutation.mutate();
+    let confirmMsg = 'This will reset all rooms to available and clear active sessions.';
+    if (deleteTodaysActivities) {
+      confirmMsg += ' It will also delete all activities that started today (history for today will be cleared).';
+    }
+    confirmMsg += ' Continue?';
+
+    if (confirm(confirmMsg)) {
+      resetDailyMutation.mutate(deleteTodaysActivities);
     }
   };
 
@@ -131,8 +135,8 @@ export default function DataManagement() {
             <Shield className="h-4 w-4" />
             <AlertTitle>Admin or Librarian Access</AlertTitle>
             <AlertDescription>
-              These actions are only available to administrators and librarians and cannot be
-              undone.
+              These actions are only available to administrators and librarians
+              and cannot be undone.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -154,7 +158,11 @@ export default function DataManagement() {
           <div className="bg-muted/50 rounded-lg p-4 space-y-2">
             <p className="text-sm font-medium">This will:</p>
             <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-              <li>End all active student check-ins (mark as completed)</li>
+              <li>
+                {deleteTodaysActivities
+                  ? 'Delete all student check-ins today (history cleared for today)'
+                  : 'End all active student check-ins (mark as completed)'}
+              </li>
               <li>Reset all rooms/stations to "Available" status</li>
               <li>End all active equipment/room sessions</li>
             </ul>
@@ -163,17 +171,31 @@ export default function DataManagement() {
             </p>
           </div>
 
-          <Button
-            onClick={handleResetDaily}
-            disabled={resetDailyMutation.isPending}
-            variant="outline"
-            className="w-full sm:w-auto"
-          >
+          <div className="flex items-center gap-3 justify-between">
+            <div className="flex items-center gap-2">
+              <input
+                id="deleteToday"
+                type="checkbox"
+                checked={deleteTodaysActivities}
+                onChange={(e) => setDeleteTodaysActivities(e.target.checked)}
+                className="rounded border"
+              />
+              <label htmlFor="deleteToday" className="text-sm">
+                Delete today's activities as well
+              </label>
+            </div>
+            <Button
+              onClick={handleResetDaily}
+              disabled={resetDailyMutation.isPending}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
             <RefreshCw
               className={`w-4 h-4 mr-2 ${resetDailyMutation.isPending ? 'animate-spin' : ''}`}
             />
             {resetDailyMutation.isPending ? 'Resetting...' : 'Reset Daily Data'}
-          </Button>
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -265,6 +287,16 @@ export default function DataManagement() {
                   </div>
                 </div>
               )}
+              {lastResetResult.activitiesAffected !== undefined && (
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <div className="text-2xl font-bold">
+                    {lastResetResult.activitiesAffected}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Activities Affected
+                  </div>
+                </div>
+              )}
               {lastResetResult.checkoutsDeleted !== undefined && (
                 <div className="text-center p-3 bg-muted/50 rounded-lg">
                   <div className="text-2xl font-bold">
@@ -272,6 +304,16 @@ export default function DataManagement() {
                   </div>
                   <div className="text-xs text-muted-foreground">
                     Checkouts Deleted
+                  </div>
+                </div>
+              )}
+              {lastResetResult.equipmentSessionsDeleted !== undefined && (
+                <div className="text-center p-3 bg-muted/50 rounded-lg">
+                  <div className="text-2xl font-bold">
+                    {lastResetResult.equipmentSessionsDeleted}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Equipment Sessions Deleted
                   </div>
                 </div>
               )}
