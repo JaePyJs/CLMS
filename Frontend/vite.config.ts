@@ -236,7 +236,6 @@ export default defineConfig({
     // T029: Error handling configuration
     hmr: {
       overlay: false,
-      clientErrorOverlay: false,
     },
     // Prevent server crashes on errors
     strictPort: false, // Fallback to next port if busy

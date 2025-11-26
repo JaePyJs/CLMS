@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -383,6 +384,7 @@ export default function GoogleSheetsConfig() {
                 (!localConfig.credentialsUploaded &&
                   !config.credentialsUploaded)
               }
+              className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50"
             >
               {testMutation.isPending ? (
                 <>
@@ -404,6 +406,7 @@ export default function GoogleSheetsConfig() {
                 (localConfig.connectionStatus !== 'connected' &&
                   config.connectionStatus !== 'connected')
               }
+              className="transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               {syncMutation.isPending ? (
                 <>
@@ -443,14 +446,12 @@ export default function GoogleSheetsConfig() {
                 Automatically sync data based on schedule
               </p>
             </div>
-            <input
-              type="checkbox"
+            <Switch
               id="autoSync"
               checked={localConfig.autoSync}
-              onChange={(e) =>
-                setLocalConfig({ ...localConfig, autoSync: e.target.checked })
+              onCheckedChange={(checked) =>
+                setLocalConfig({ ...localConfig, autoSync: checked })
               }
-              className="h-4 w-4"
               disabled={
                 localConfig.connectionStatus !== 'connected' &&
                 config.connectionStatus !== 'connected'
@@ -494,6 +495,7 @@ export default function GoogleSheetsConfig() {
               (localConfig.connectionStatus !== 'connected' &&
                 config.connectionStatus !== 'connected')
             }
+            className="transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
           >
             {scheduleMutation.isPending ? 'Saving...' : 'Save Schedule'}
           </Button>

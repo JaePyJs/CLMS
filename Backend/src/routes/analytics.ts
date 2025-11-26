@@ -951,4 +951,121 @@ router.get(
   }),
 );
 
+// GET /api/analytics/notifications - Calendar notifications
+router.get(
+  '/notifications',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Get notifications request', {
+      userId: (req as any).user?.id,
+    });
+
+    try {
+      const notifications: Array<{
+        id: string;
+        date: Date;
+        type: 'overdue' | 'due-soon' | 'return' | 'reminder';
+        student: string;
+        grade: number;
+        message: string;
+        priority: 'high' | 'medium' | 'low';
+      }> = [];
+
+      // 1. Get Overdue Books
+      const overdueCheckouts = await prisma.book_checkouts.findMany({
+        where: {
+          status: 'ACTIVE',
+          due_date: { lt: new Date() },
+        },
+        include: {
+          student: true,
+          book: true,
+        },
+        take: 20, // Limit to avoid overwhelming the calendar
+      });
+
+      overdueCheckouts.forEach(checkout => {
+        notifications.push({
+          id: `overdue-${checkout.id}`,
+          date: checkout.due_date,
+          type: 'overdue',
+          student: `${checkout.student.first_name} ${checkout.student.last_name}`,
+          grade: checkout.student.grade_level,
+          message: `Overdue: ${checkout.book.title}`,
+          priority: 'high',
+        });
+      });
+
+      // 2. Get Due Soon (next 3 days)
+      const threeDaysFromNow = new Date();
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      const dueSoonCheckouts = await prisma.book_checkouts.findMany({
+        where: {
+          status: 'ACTIVE',
+          due_date: {
+            gte: new Date(),
+            lte: threeDaysFromNow,
+          },
+        },
+        include: {
+          student: true,
+          book: true,
+        },
+        take: 20,
+      });
+
+      dueSoonCheckouts.forEach(checkout => {
+        notifications.push({
+          id: `due-${checkout.id}`,
+          date: checkout.due_date,
+          type: 'due-soon',
+          student: `${checkout.student.first_name} ${checkout.student.last_name}`,
+          grade: checkout.student.grade_level,
+          message: `Due soon: ${checkout.book.title}`,
+          priority: 'medium',
+        });
+      });
+
+      // 3. Get Recent Returns (today)
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const recentReturns = await prisma.book_checkouts.findMany({
+        where: {
+          status: 'RETURNED',
+          return_date: { gte: todayStart },
+        },
+        include: {
+          student: true,
+          book: true,
+        },
+        take: 10,
+      });
+
+      recentReturns.forEach(checkout => {
+        if (checkout.return_date) {
+          notifications.push({
+            id: `return-${checkout.id}`,
+            date: checkout.return_date,
+            type: 'return',
+            student: `${checkout.student.first_name} ${checkout.student.last_name}`,
+            grade: checkout.student.grade_level,
+            message: `Returned: ${checkout.book.title}`,
+            priority: 'low',
+          });
+        }
+      });
+
+      res.json({
+        success: true,
+        data: notifications,
+      });
+    } catch (error) {
+      logger.error('Error retrieving notifications', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
 export default router;

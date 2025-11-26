@@ -30,6 +30,7 @@ type EnvConfig = {
   ENABLE_METRICS: boolean;
   ENABLE_CACHE: boolean;
   WS_DEV_BYPASS: boolean;
+  DEFAULT_LIBRARIAN_PASSWORD?: string;
 };
 
 let cachedEnv: EnvConfig | null = null;
@@ -69,7 +70,8 @@ export function loadEnv(): EnvConfig {
   const ENABLE_METRICS =
     String(process.env.ENABLE_METRICS || 'false') === 'true';
   const ENABLE_CACHE = String(process.env.ENABLE_CACHE || 'false') === 'true';
-  const WS_DEV_BYPASS = String(process.env.WS_DEV_BYPASS || 'false') === 'true';
+  const WS_DEV_BYPASS = String(process.env.WS_DEV_BYPASS || 'true') === 'true';
+  const DEFAULT_LIBRARIAN_PASSWORD = process.env.DEFAULT_LIBRARIAN_PASSWORD;
 
   const config: EnvConfig = {
     NODE_ENV,
@@ -98,6 +100,7 @@ export function loadEnv(): EnvConfig {
     ENABLE_METRICS,
     ENABLE_CACHE,
     WS_DEV_BYPASS,
+    DEFAULT_LIBRARIAN_PASSWORD,
   };
 
   if (!DATABASE_URL || !JWT_SECRET) {
@@ -129,6 +132,9 @@ export function loadEnv(): EnvConfig {
     ENABLE_METRICS: config.ENABLE_METRICS,
     ENABLE_CACHE: config.ENABLE_CACHE,
     WS_DEV_BYPASS: config.WS_DEV_BYPASS,
+    DEFAULT_LIBRARIAN_PASSWORD: config.DEFAULT_LIBRARIAN_PASSWORD
+      ? '[configured]'
+      : '[default lib123]',
   });
 
   cachedEnv = config;

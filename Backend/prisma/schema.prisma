@@ -1,15 +1,5 @@
 // This schema is for Prisma 5.x - the 'url' property is valid for this version
-// IDE warning about Prisma 7 can be safely ignored
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "mysql"
-  // prisma-ignore: Prisma 5 syntax - url property is valid
-  url      = env("DATABASE_URL")
-}
+// IDE warning about Prisma 7 can be safely ignored until we upgrade
 
 enum PaperSize {
   SHORT
@@ -37,24 +27,30 @@ model users {
   updated_at    DateTime  @updatedAt
 }
 
+enum UserType {
+  STUDENT
+  PERSONNEL
+}
+
 model students {
-  id             String               @id @default(cuid())
-  student_id     String               @unique
-  first_name     String
-  last_name      String
-  grade_level    Int
-  grade_category String?
-  section        String?
-  email          String?
-  phone          String?
-  barcode        String?              @unique
-  photo_url      String?
-  is_active      Boolean              @default(true)
-  created_at     DateTime             @default(now())
-  updated_at     DateTime             @updatedAt
-  checkouts      book_checkouts[]
-  activities     student_activities[]
-  printing_jobs  printing_jobs[]
+  id                 String               @id @default(cuid())
+  student_id         String               @unique
+  type               UserType             @default(STUDENT)
+  first_name         String
+  last_name          String
+  grade_level        Int
+  grade_category     String?
+  section            String?
+  email              String?
+  phone              String?
+  barcode            String?              @unique
+  photo_url          String?
+  is_active          Boolean              @default(true)
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @updatedAt
+  checkouts          book_checkouts[]
+  activities         student_activities[]
+  printing_jobs      printing_jobs[]
   equipment_sessions equipment_sessions[]
 }
 
@@ -111,16 +107,16 @@ model book_checkouts {
 }
 
 model equipment {
-  id            String    @id @default(cuid())
+  id            String               @id @default(cuid())
   name          String
   category      String?
-  serial_number String?   @unique
-  status        String    @default("AVAILABLE")
+  serial_number String?              @unique
+  status        String               @default("AVAILABLE")
   purchase_date DateTime?
-  is_active     Boolean   @default(true)
+  is_active     Boolean              @default(true)
   notes         String?
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  created_at    DateTime             @default(now())
+  updated_at    DateTime             @updatedAt
   sessions      equipment_sessions[]
 }
 
@@ -303,8 +299,8 @@ model equipment_sessions {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
-  equipment     equipment @relation(fields: [equipment_id], references: [id])
-  student       students  @relation(fields: [student_id], references: [id])
+  equipment equipment @relation(fields: [equipment_id], references: [id])
+  student   students  @relation(fields: [student_id], references: [id])
 
   @@index([equipment_id])
   @@index([student_id])

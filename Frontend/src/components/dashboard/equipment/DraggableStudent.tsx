@@ -10,7 +10,7 @@ interface DraggableStudentProps {
     id: string;
     studentId: string;
     studentName: string;
-    gradeLevel: string;
+    gradeLevel: string | number;
   };
 }
 

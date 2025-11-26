@@ -1,42 +1,51 @@
-import { prisma } from '../utils/prisma';
-type PaperSize = 'SHORT' | 'LONG';
-type ColorLevel = 'BW' | 'HALF_COLOR' | 'FULL_COLOR';
+import 'dotenv/config';
+import { PrismaClient } from '@prisma/client';
+import * as xlsx from 'xlsx';
+import path from 'path';
+import fs from 'fs';
 import bcrypt from 'bcryptjs';
-import { LibrarySectionsService } from '../services/librarySectionsService';
-import { BorrowingPolicyService } from '../services/borrowingPolicyService';
-import { PrintingService } from '../services/printingService';
-import { AnnouncementService } from '../services/announcementService';
-import { EnhancedSelfService } from '../services/enhancedSelfService';
 
-// const prisma = new PrismaClient()
-type PrismaModels = {
-  fine_policies: {
-    findFirst(args: unknown): Promise<unknown | null>;
-    create(args: unknown): Promise<unknown>;
-  };
-  printing_pricing: {
-    findFirst(args: unknown): Promise<unknown | null>;
-  };
-  announcements: {
-    findFirst(args: unknown): Promise<unknown | null>;
-  };
-  books: {
-    findUnique(args: unknown): Promise<{ id: string } | null>;
-  };
-  borrowing_policies: {
-    findUnique(args: unknown): Promise<{ id: string } | null>;
-  };
-  students: {
-    findUnique(args: unknown): Promise<{ barcode?: string } | null>;
-  };
-};
-const prismaModels = prisma as unknown as PrismaModels;
+// Initialize Prisma Client
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+});
+
 const rounds = Number(process.env.BCRYPT_ROUNDS || 12);
+const CSV_DIR = path.resolve(__dirname, '../../../csv');
+
+interface StudentRow {
+  'User ID': string;
+  Surname: string;
+  'First Name': string;
+  'Grade Level': string;
+  Section: string;
+  Designation: string;
+  Sex: string;
+}
+
+interface BookRow {
+  Barcode: string;
+  Title: string;
+  Author: string;
+  'Call Number': string;
+  Year: string;
+  Publisher: string;
+  ISBN: string;
+  Edition: string;
+  'Collection Code': string;
+  'Physical Description': string;
+  Price: string;
+}
 
 async function seedLibrarian() {
   const username = 'librarian';
   const password = 'lib123';
 
+  console.log('Seeding librarian account...');
   const existing = await prisma.users.findUnique({ where: { username } });
   if (!existing) {
     const hash = await bcrypt.hash(password, rounds);
@@ -49,376 +58,214 @@ async function seedLibrarian() {
         full_name: 'Librarian User',
       },
     });
+    console.log('Librarian account created.');
+  } else {
+    console.log('Librarian account already exists.');
   }
 }
 
 async function seedStudents() {
-  const base = [
-    {
-      student_id: 'S-0001',
-      first_name: 'Alice',
-      last_name: 'Nguyen',
-      grade_level: 5,
-      section: 'A',
-      barcode: 'BAR-0001',
-    },
-    {
-      student_id: 'S-0002',
-      first_name: 'Bob',
-      last_name: 'Martinez',
-      grade_level: 6,
-      section: 'B',
-      barcode: 'BAR-0002',
-    },
-    {
-      student_id: 'S-0003',
-      first_name: 'Charlie',
-      last_name: 'Khan',
-      grade_level: 11,
-      section: 'C',
-      barcode: 'BAR-0003',
-    },
-    {
-      student_id: 'S-0004',
-      first_name: 'Dana',
-      last_name: 'Reyes',
-      grade_level: 2,
-      section: 'A',
-      barcode: 'BAR-0004',
-    },
-    {
-      student_id: 'S-0005',
-      first_name: 'Evan',
-      last_name: 'Garcia',
-      grade_level: 9,
-      section: 'B',
-      barcode: 'BAR-0005',
-    },
-  ];
-  for (const s of base) {
-    await prisma.students.upsert({
-      where: { student_id: s.student_id },
-      update: {},
-      create: {
-        ...s,
-        is_active: true,
-      },
-    });
+  const filePath = path.join(CSV_DIR, 'SHJCS SCANLOGS - SHJCS USERS.csv');
+  if (!fs.existsSync(filePath)) {
+    console.error(`File not found: ${filePath}`);
+    return;
   }
+
+  console.log(`Reading students from ${filePath}...`);
+  const workbook = xlsx.readFile(filePath);
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const data = xlsx.utils.sheet_to_json<StudentRow>(sheet);
+
+  console.log(`Found ${data.length} students/personnel. Seeding...`);
+
+  let successCount = 0;
+  let errorCount = 0;
+
+  for (const row of data) {
+    try {
+      const userId = String(row['User ID'] || '').trim();
+      const surname = String(row['Surname'] || '').trim();
+      const firstName = String(row['First Name'] || '').trim();
+      const gradeLevelStr = String(row['Grade Level'] || '').trim();
+      const section = String(row['Section'] || '').trim();
+      const designation = String(row['Designation'] || '').trim();
+
+      if (!userId) {
+        continue;
+      }
+
+      let gradeLevel = 0;
+      // Handle Personnel
+      if (designation.toUpperCase() === 'PERSONNEL') {
+        gradeLevel = 0;
+      } else {
+        // Parse Grade Level for students
+        const gradeMatch = gradeLevelStr.match(/(?:GRADE|Grade)\s*(\d+)/i);
+        if (gradeMatch) {
+          gradeLevel = parseInt(gradeMatch[1], 10);
+        } else if (/KINDER/i.test(gradeLevelStr)) {
+          gradeLevel = 0;
+        } else if (/NURSERY/i.test(gradeLevelStr)) {
+          gradeLevel = -1;
+        } else if (/PRE\s*NURSERY/i.test(gradeLevelStr)) {
+          gradeLevel = -2;
+        }
+      }
+
+      // User ID is the Barcode
+      const barcode = userId;
+
+      await prisma.students.upsert({
+        where: { student_id: userId },
+        update: {
+          first_name: firstName,
+          last_name: surname,
+          grade_level: gradeLevel,
+          grade_category: designation || 'Student',
+          section: section,
+          barcode: barcode,
+        },
+        create: {
+          student_id: userId,
+          first_name: firstName,
+          last_name: surname,
+          grade_level: gradeLevel,
+          grade_category: designation || 'Student',
+          section: section,
+          barcode: barcode,
+        },
+      });
+      successCount++;
+    } catch (error) {
+      console.error(`Error seeding student ${row['User ID']}:`, error);
+      errorCount++;
+    }
+  }
+
+  console.log(
+    `Students/Personnel seeded: ${successCount}, Errors: ${errorCount}`,
+  );
 }
 
 async function seedBooks() {
-  const base = [
-    {
-      accession_no: 'ACC-0001',
-      title: 'Intro to Algorithms',
-      author: 'Cormen',
-      total_copies: 5,
-      available_copies: 5,
-    },
-    {
-      accession_no: 'ACC-0002',
-      title: 'Clean Code',
-      author: 'Robert C. Martin',
-      total_copies: 3,
-      available_copies: 3,
-    },
-    {
-      accession_no: 'ACC-0003',
-      title: 'Design Patterns',
-      author: 'Gamma et al.',
-      total_copies: 4,
-      available_copies: 4,
-    },
-    {
-      accession_no: 'ACC-0004',
-      title: 'Filipino Heritage',
-      author: 'Various',
-      total_copies: 6,
-      available_copies: 6,
-    },
-    {
-      accession_no: 'ACC-0005',
-      title: 'ABC for Kids',
-      author: 'Marie Cruz',
-      total_copies: 10,
-      available_copies: 10,
-    },
-  ];
-  for (const b of base) {
-    await prisma.books.upsert({
-      where: { accession_no: b.accession_no },
-      update: {},
-      create: {
-        ...b,
-        is_active: true,
-      },
-    });
+  const filePath = path.join(
+    CSV_DIR,
+    'SHJCS Bibliography - BOOK COLLECTIONS.csv',
+  );
+  if (!fs.existsSync(filePath)) {
+    console.error(`File not found: ${filePath}`);
+    return;
   }
-}
 
-async function seedSections() {
-  await LibrarySectionsService.ensureDefaultSections();
-}
+  console.log(`Reading books from ${filePath}...`);
+  const workbook = xlsx.readFile(filePath);
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const data = xlsx.utils.sheet_to_json<BookRow>(sheet);
 
-async function seedPolicies() {
-  const filipiniana =
-    await BorrowingPolicyService.getPolicyByCategory('FILIPINIANA');
-  if (!filipiniana) {
-    await BorrowingPolicyService.createPolicy({
-      name: 'Filipiniana/General',
-      category: 'FILIPINIANA',
-      loan_days: 3,
-    });
-  }
-  const fiction = await BorrowingPolicyService.getPolicyByCategory('FICTION');
-  if (!fiction) {
-    await BorrowingPolicyService.createPolicy({
-      name: 'Fiction',
-      category: 'FICTION',
-      loan_days: 7,
-    });
-  }
-  const easy = await BorrowingPolicyService.getPolicyByCategory('EASY_BOOKS');
-  if (!easy) {
-    await BorrowingPolicyService.createPolicy({
-      name: 'Easy Books',
-      category: 'EASY_BOOKS',
-      loan_days: 0,
-      overnight: true,
-    });
-  }
-}
+  console.log(`Found ${data.length} books. Seeding...`);
 
-async function seedFinePolicies() {
-  const p1 = await prismaModels.fine_policies.findFirst({
-    where: { grade_min: 1, grade_max: 3 },
-  });
-  if (!p1) {
-    await prismaModels.fine_policies.create({
-      data: {
-        grade_min: 1,
-        grade_max: 3,
-        rate_per_day: 2,
-        currency: 'PHP',
-        is_active: true,
-      },
-    });
-  }
-  const p2 = await prismaModels.fine_policies.findFirst({
-    where: { grade_min: 4, grade_max: 12 },
-  });
-  if (!p2) {
-    await prismaModels.fine_policies.create({
-      data: {
-        grade_min: 4,
-        grade_max: 12,
-        rate_per_day: 5,
-        currency: 'PHP',
-        is_active: true,
-      },
-    });
-  }
-}
+  let successCount = 0;
+  let errorCount = 0;
 
-async function seedPrintingPricing() {
-  const matrix: Array<{ size: PaperSize; color: ColorLevel; price: number }> = [
-    { size: 'SHORT', color: 'BW', price: 2 },
-    { size: 'SHORT', color: 'HALF_COLOR', price: 5 },
-    { size: 'SHORT', color: 'FULL_COLOR', price: 10 },
-    { size: 'LONG', color: 'BW', price: 3 },
-    { size: 'LONG', color: 'HALF_COLOR', price: 6 },
-    { size: 'LONG', color: 'FULL_COLOR', price: 11 },
-  ];
-  for (const item of matrix) {
-    const exists = await prismaModels.printing_pricing.findFirst({
-      where: {
-        paper_size: item.size,
-        color_level: item.color,
-        is_active: true,
-      },
-    });
-    if (!exists) {
-      await PrintingService.createPricing({
-        paper_size: item.size,
-        color_level: item.color,
-        price: item.price,
-        currency: 'PHP',
-        is_active: true,
-      });
-    }
-  }
-}
+  for (const row of data) {
+    try {
+      const barcode = String(row['Barcode'] || '').trim();
+      const title = String(row['Title'] || '')
+        .trim()
+        .substring(0, 190);
+      const author = String(row['Author'] || '')
+        .trim()
+        .substring(0, 190);
+      const callNumber = String(row['Call Number'] || '')
+        .trim()
+        .substring(0, 190);
+      const yearStr = String(row['Year'] || '').trim();
+      const publisher = String(row['Publisher'] || '')
+        .trim()
+        .substring(0, 190);
+      const isbn = String(row['ISBN'] || '')
+        .trim()
+        .substring(0, 190);
+      const edition = String(row['Edition'] || '')
+        .trim()
+        .substring(0, 190);
+      const collectionCode = String(row['Collection Code'] || '')
+        .trim()
+        .substring(0, 190);
+      const physicalDesc = String(row['Physical Description'] || '')
+        .trim()
+        .substring(0, 190);
+      const priceStr = String(row['Price'] || '').trim();
 
-async function seedAnnouncements() {
-  const exists = await prismaModels.announcements.findFirst({
-    where: { title: 'Welcome to the Library' },
-  });
-  if (!exists) {
-    await AnnouncementService.create({
-      title: 'Welcome to the Library',
-      content: 'Please observe silence and care for materials. Happy reading!',
-      start_time: new Date(),
-      is_active: true,
-      priority: 'NORMAL',
-    });
-  }
-}
+      if (!barcode) {
+        continue;
+      }
 
-async function assignPoliciesToBooks() {
-  const alg = await prismaModels.books.findUnique({
-    where: { accession_no: 'ACC-0001' },
-  });
-  const clean = await prismaModels.books.findUnique({
-    where: { accession_no: 'ACC-0002' },
-  });
-  const patterns = await prismaModels.books.findUnique({
-    where: { accession_no: 'ACC-0003' },
-  });
-  const filipiniana = await prismaModels.borrowing_policies.findUnique({
-    where: { category: 'FILIPINIANA' },
-  });
-  const fiction = await prismaModels.borrowing_policies.findUnique({
-    where: { category: 'FICTION' },
-  });
-  const easy = await prismaModels.borrowing_policies.findUnique({
-    where: { category: 'EASY_BOOKS' },
-  });
-  if (alg && filipiniana) {
-    await BorrowingPolicyService.assignDefaultPolicyToBook(
-      alg.id,
-      filipiniana.id,
-    );
-  }
-  if (clean && fiction) {
-    await BorrowingPolicyService.assignDefaultPolicyToBook(
-      clean.id,
-      fiction.id,
-    );
-  }
-  if (patterns && easy) {
-    await BorrowingPolicyService.assignDefaultPolicyToBook(
-      patterns.id,
-      easy.id,
-    );
-  }
-}
+      const finalTitle = title || 'Unknown Title';
 
-async function seedSampleActivities() {
-  const alice = await prismaModels.students.findUnique({
-    where: { student_id: 'S-0001' },
-  });
-  const bob = await prismaModels.students.findUnique({
-    where: { student_id: 'S-0002' },
-  });
-  const charlie = await prismaModels.students.findUnique({
-    where: { student_id: 'S-0003' },
-  });
-  const dana = await prismaModels.students.findUnique({
-    where: { student_id: 'S-0004' },
-  });
-  const evan = await prismaModels.students.findUnique({
-    where: { student_id: 'S-0005' },
-  });
-  if (alice?.barcode) {
-    await EnhancedSelfService.processScanWithSelection(alice.barcode, [
-      'LIBRARY_SPACE',
-    ]);
-  }
-  if (bob?.barcode) {
-    await EnhancedSelfService.processScanWithSelection(bob.barcode, [
-      'COMPUTER',
-    ]);
-  }
-  if (charlie?.barcode) {
-    await EnhancedSelfService.processScanWithSelection(charlie.barcode, [
-      'AVR',
-      'BORROWING',
-    ]);
-  }
-  if (dana?.barcode) {
-    await EnhancedSelfService.processScanWithSelection(dana.barcode, ['VR']);
-  }
-  if (evan?.barcode) {
-    await EnhancedSelfService.processScanWithSelection(evan.barcode, [
-      'LIBRARY_SPACE',
-      'COMPUTER',
-    ]);
-  }
-}
+      const year = parseInt(yearStr, 10) || undefined;
+      const price = parseFloat(priceStr) || undefined;
 
-async function seedOverdueScenarios() {
-  const student = await prisma.students.findUnique({
-    where: { student_id: 'S-0001' },
-  });
-  const book = await prisma.books.findUnique({
-    where: { accession_no: 'ACC-0002' },
-  });
-  if (student && book) {
-    const checkoutDate = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000);
-    const dueDate = new Date(checkoutDate.getTime() + 14 * 24 * 60 * 60 * 1000);
-    const existing = await prisma.book_checkouts.findFirst({
-      where: { student_id: student.id, book_id: book.id, status: 'ACTIVE' },
-    });
-    if (!existing) {
-      await prisma.book_checkouts.create({
-        data: {
-          student_id: student.id,
-          book_id: book.id,
-          checkout_date: checkoutDate,
-          due_date: dueDate,
-          status: 'ACTIVE',
+      await prisma.books.upsert({
+        where: { accession_no: barcode },
+        update: {
+          title: finalTitle,
+          author: author || 'Unknown',
+          location: callNumber,
+          year: year,
+          publisher: publisher,
+          isbn: isbn,
+          edition: edition,
+          category: collectionCode,
+          pages: physicalDesc,
+          cost_price: price,
+          total_copies: 1,
+          available_copies: 1,
+        },
+        create: {
+          accession_no: barcode,
+          title: finalTitle,
+          author: author || 'Unknown',
+          location: callNumber,
+          year: year,
+          publisher: publisher,
+          isbn: isbn,
+          edition: edition,
+          category: collectionCode,
+          pages: physicalDesc,
+          cost_price: price,
+          total_copies: 1,
+          available_copies: 1,
         },
       });
+      successCount++;
+    } catch (error) {
+      console.error(`Error seeding book ${row['Barcode']}:`, error);
+      errorCount++;
     }
   }
-}
 
-async function seedLibrarianStudent() {
-  const existing = await prisma.students.findUnique({
-    where: { student_id: 'LIBRARIAN' },
-  });
-  if (!existing) {
-    await prisma.students.create({
-      data: {
-        student_id: 'LIBRARIAN',
-        first_name: 'Claudia Sophia',
-        last_name: 'Agana',
-        grade_level: 0,
-        grade_category: 'PERSONNEL',
-        section: 'PERSONNEL',
-        barcode: 'PN00018',
-        is_active: true,
-      },
-    });
-  } else if (!existing.barcode) {
-    await prisma.students.update({
-      where: { id: existing.id },
-      data: { barcode: 'PN00018' },
-    });
-  }
+  console.log(`Books seeded: ${successCount}, Errors: ${errorCount}`);
 }
 
 async function main() {
-  await seedLibrarian();
-  await seedStudents();
-  await seedBooks();
-  await seedSections();
-  await seedPolicies();
-  await seedFinePolicies();
-  await seedPrintingPricing();
-  await assignPoliciesToBooks();
-  await seedAnnouncements();
-  await seedSampleActivities();
-  await seedOverdueScenarios();
-  await seedLibrarianStudent();
+  try {
+    console.log('Starting seed process (Real Data Only)...');
+    await seedLibrarian();
+    await seedStudents();
+    await seedBooks();
+    console.log('Seeding completed successfully.');
+  } catch (error) {
+    console.error('Seeding failed:', error);
+    process.exit(1);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
-main()
-  .catch(err => {
-    console.error(err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().catch(e => {
+  console.error(e);
+  process.exit(1);
+});

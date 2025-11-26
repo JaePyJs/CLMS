@@ -131,17 +131,28 @@ export default function ErrorDashboard() {
               disabled={isLoading}
               variant="outline"
               size="sm"
+              className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50"
             >
               <RefreshCw
                 className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`}
               />
               Refresh
             </Button>
-            <Button onClick={exportErrors} variant="outline" size="sm">
+            <Button
+              onClick={exportErrors}
+              variant="outline"
+              size="sm"
+              className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50"
+            >
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button onClick={clearErrors} variant="destructive" size="sm">
+            <Button
+              onClick={clearErrors}
+              variant="destructive"
+              size="sm"
+              className="transition-all duration-200 hover:bg-destructive/90"
+            >
               <Trash2 className="h-4 w-4 mr-2" />
               Clear All
             </Button>
@@ -157,6 +168,7 @@ export default function ErrorDashboard() {
                 variant={filter === 'ALL' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setFilter('ALL')}
+                className="transition-all duration-200"
               >
                 All
               </Button>
@@ -164,6 +176,7 @@ export default function ErrorDashboard() {
                 variant={filter === 'ERROR' ? 'destructive' : 'outline'}
                 size="sm"
                 onClick={() => setFilter('ERROR')}
+                className="transition-all duration-200"
               >
                 Errors
               </Button>
@@ -171,6 +184,7 @@ export default function ErrorDashboard() {
                 variant={filter === 'WARN' ? 'secondary' : 'outline'}
                 size="sm"
                 onClick={() => setFilter('WARN')}
+                className="transition-all duration-200"
               >
                 Warnings
               </Button>
@@ -180,7 +194,7 @@ export default function ErrorDashboard() {
               <input
                 type="text"
                 placeholder="_Search errors..."
-                className="w-full px-3 py-2 border rounded-md text-sm"
+                className="w-full px-3 py-2 border rounded-md text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/50"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -198,7 +212,7 @@ export default function ErrorDashboard() {
                 filteredErrors.map((error) => (
                   <div
                     key={error.id}
-                    className="border rounded-lg p-4 space-y-2"
+                    className="border rounded-lg p-4 space-y-2 transition-all duration-200 hover:bg-muted/50 dark:hover:bg-muted/30 hover:shadow-sm"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">

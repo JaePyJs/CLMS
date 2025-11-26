@@ -70,6 +70,9 @@ export class DatabaseConfig {
       await this.client.$connect();
       this.isConnected = true;
       logger.info('✅ Database connected successfully');
+
+      // Clear active sessions on startup for clean slate
+      await clearActiveSessionsOnStartup();
     } catch (error) {
       this.isConnected = false;
       logger.error('❌ Database connection failed:', error);
@@ -179,6 +182,50 @@ export const config = DatabaseConfig.getInstance();
 export const connectDatabase = async (): Promise<void> => {
   await DatabaseConfig.getInstance().connect();
 };
+
+/**
+ * Clear all active sessions on server startup
+ * This ensures a clean slate when the server restarts
+ */
+export async function clearActiveSessionsOnStartup(): Promise<void> {
+  try {
+    // Clear all student activity sessions that are ACTIVE
+    const result = await prisma.student_activities.updateMany({
+      where: {
+        status: 'ACTIVE',
+      },
+      data: {
+        status: 'COMPLETED',
+        end_time: new Date(),
+      },
+    });
+
+    if (result.count > 0) {
+      logger.info(`🧹 Cleared ${result.count} active sessions on startup`);
+    } else {
+      logger.info('✅ No active sessions to clear on startup');
+    }
+
+    // Also clear any equipment that is stuck in IN_USE status
+    const equipmentResult = await prisma.equipment.updateMany({
+      where: {
+        status: 'IN_USE',
+      },
+      data: {
+        status: 'AVAILABLE',
+      },
+    });
+
+    if (equipmentResult.count > 0) {
+      logger.info(
+        `🧹 Reset ${equipmentResult.count} equipment from IN_USE to AVAILABLE on startup`,
+      );
+    }
+  } catch (error) {
+    logger.error('Failed to clear active sessions on startup:', error);
+    // Don't throw - server should continue even if cleanup fails
+  }
+}
 
 // Graceful shutdown handling
 process.on('SIGINT', () => {

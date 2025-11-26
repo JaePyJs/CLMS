@@ -6,7 +6,6 @@ import {
   getResponsiveClasses,
 } from '@/hooks/useMobileOptimization';
 import { useMultipleLoadingStates } from '@/hooks/useLoadingState';
-import { useSearchFilters } from '@/hooks/useSearchFilters';
 import { useMultipleModals } from '@/hooks/useModalState';
 import { useForm } from '@/hooks/useFormState';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
@@ -184,6 +183,11 @@ export function StudentManagement() {
   const students = studentsRefreshState.data?.students || [];
   const [isStudentsRefreshing, setIsStudentsRefreshing] = useState(false);
 
+  // Local search and filter state - declared early so useMemo can use them
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterGrade, setFilterGrade] = useState('all');
+
   // Calculate real stats from students data
   const realStats = useMemo(() => {
     const total = students.length;
@@ -211,19 +215,13 @@ export function StudentManagement() {
     };
   }, [students]);
 
-  // Search and filter state
-  const [searchFilters] = useSearchFilters({
-    defaultSearchTerm: '',
-    defaultFilters: { status: 'all', grade: 'all' },
-  });
-
-  // Manual filtering based on search state
+  // Manual filtering based on local search state
   const filteredStudents = useMemo(() => {
     let filtered = students;
 
-    // Apply search term
-    if (searchFilters.searchTerm) {
-      const term = searchFilters.searchTerm.toLowerCase();
+    // Apply search term (using local searchTerm state)
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (student: Student) =>
           student.firstName.toLowerCase().includes(term) ||
@@ -232,28 +230,22 @@ export function StudentManagement() {
       );
     }
 
-    // Apply status filter
-    if (
-      searchFilters.filters.status &&
-      searchFilters.filters.status !== 'all'
-    ) {
+    // Apply status filter (using local filterStatus state)
+    if (filterStatus && filterStatus !== 'all') {
       filtered = filtered.filter((student: Student) =>
-        searchFilters.filters.status === 'active'
-          ? student.isActive
-          : !student.isActive
+        filterStatus === 'active' ? student.isActive : !student.isActive
       );
     }
 
-    // Apply grade filter
-    if (searchFilters.filters.grade && searchFilters.filters.grade !== 'all') {
+    // Apply grade filter (using local filterGrade state)
+    if (filterGrade && filterGrade !== 'all') {
       filtered = filtered.filter(
-        (student: Student) =>
-          student.gradeCategory === searchFilters.filters.grade
+        (student: Student) => student.gradeCategory === filterGrade
       );
     }
 
     return filtered;
-  }, [students, searchFilters.searchTerm, searchFilters.filters]);
+  }, [students, searchTerm, filterStatus, filterGrade]);
 
   // Modal states
   const [, modalActions] = useMultipleModals({
@@ -312,9 +304,6 @@ export function StudentManagement() {
   const [isGeneratingQRCodes] = useState(false);
   const [isPrintingIDs] = useState(false);
   const [isExporting] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterGrade, setFilterGrade] = useState('');
   const [showEditStudent, setShowEditStudent] = useState(false);
 
   // Pagination state

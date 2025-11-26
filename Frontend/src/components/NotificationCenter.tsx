@@ -298,19 +298,12 @@ const NotificationCenter: React.FC = () => {
           variant="outline"
           size="sm"
           className="relative"
-          title={isConnected ? 'Connected' : 'Disconnected'}
+          title="Notifications"
           data-testid="notification-center"
         >
           <Bell className="h-4 w-4" />
 
-          {/* Connection Status Indicator */}
-          <div
-            className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${
-              isConnected ? 'bg-green-500' : 'bg-red-500'
-            }`}
-          />
-
-          {/* Unread Count Badge */}
+          {/* Unread Count Badge - ONLY shows when there are unread notifications */}
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white transform translate-x-1/4 -translate-y-1/4 bg-red-600 rounded-full">
               {unreadCount > 99 ? '99+' : unreadCount}

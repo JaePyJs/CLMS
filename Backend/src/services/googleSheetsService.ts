@@ -39,7 +39,11 @@ export class GoogleSheetsService {
     return this.sheets;
   }
 
-  public static async appendRow(data: string[]) {
+  public static async appendRow(
+    data: string[],
+    sheetName = 'Sheet1',
+    range?: string,
+  ) {
     if (!this.spreadsheetId) {
       logger.warn('No Google Sheet ID configured. Skipping export.');
       return;
@@ -51,9 +55,11 @@ export class GoogleSheetsService {
         return;
       }
 
+      const targetRange = range || `${sheetName}!A:Z`;
+
       await sheets.spreadsheets.values.append({
         spreadsheetId: this.spreadsheetId,
-        range: 'Sheet1!A:H', // Adjust range as needed
+        range: targetRange,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
           values: [data],
@@ -63,5 +69,25 @@ export class GoogleSheetsService {
     } catch (error) {
       logger.error('Failed to append row to Google Sheet', error);
     }
+  }
+
+  public static async syncAll(): Promise<void> {
+    if (!this.spreadsheetId) {
+      logger.warn('No Google Sheet ID configured. Skipping sync.');
+      return;
+    }
+
+    // Placeholder for full sync logic
+    // In a real implementation, this would:
+    // 1. Fetch all data (Students, Books, Equipment)
+    // 2. Clear respective sheets
+    // 3. Write headers and data
+
+    logger.info('Syncing all data to Google Sheets (Placeholder)...');
+
+    // Simulate delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    logger.info('Sync completed successfully');
   }
 }

@@ -10,162 +10,149 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  User,
+  User as UserIcon,
   Key,
   Clock,
   CheckCircle2,
   AlertCircle,
-  Activity,
   Shield,
   Calendar,
+  Loader2,
+  Save,
+  X,
+  Edit2,
 } from 'lucide-react';
-
-interface UserProfileData {
-  id: string;
-  username: string;
-  role: 'ADMIN' | 'LIBRARIAN' | 'STAFF';
-  isActive: boolean;
-  lastLoginAt: Date | null;
-  createdAt: Date;
-}
-
-interface ActivityLog {
-  id: string;
-  action: string;
-  details: string;
-  timestamp: Date;
-}
+import { useAuth } from '@/contexts/AuthContext';
+import { userApi, type User } from '@/services/userApi';
+import { toast } from 'sonner';
 
 export default function UserProfile() {
-  const [profile, setProfile] = useState<UserProfileData | null>(null);
-  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const { user: authUser, checkAuth } = useAuth();
+  const [profile, setProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Password Change State
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
-  const [message, setMessage] = useState<{
-    type: 'success' | 'error' | null;
-    text: string;
-  }>({ type: null, text: '' });
 
-  const showMessage = useCallback((type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => {
-      setMessage({ type: null, text: '' });
-    }, 5000);
-  }, []);
+  // Username Change State
+  const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [updatingProfile, setUpdatingProfile] = useState(false);
 
   const fetchProfile = useCallback(async () => {
+    if (!authUser?.id) return;
+
     setLoading(true);
     try {
-      const response = await fetch('/api/profile', {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setProfile(data);
+      const response = await userApi.getUserById(authUser.id);
+      if (response.success && response.data) {
+        setProfile(response.data);
+        setNewUsername(response.data.username);
       } else {
-        showMessage('error', 'Failed to load profile');
+        toast.error('Failed to load profile data');
       }
     } catch (error) {
       console.error('Failed to fetch profile:', error);
-      showMessage('error', 'Failed to load profile');
+      toast.error('Failed to load profile data');
     } finally {
       setLoading(false);
     }
-  }, [showMessage]);
-
-  const fetchActivityLogs = useCallback(async () => {
-    try {
-      const response = await fetch('/api/profile/activity', {
-        credentials: 'include',
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setActivityLogs(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch activity logs:', error);
-    }
-  }, []);
+  }, [authUser?.id]);
 
   useEffect(() => {
     fetchProfile();
-    fetchActivityLogs();
-  }, [fetchProfile, fetchActivityLogs]);
+  }, [fetchProfile]);
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!authUser?.id) return;
 
-    // Validation
     if (!passwordForm.currentPassword || !passwordForm.newPassword) {
-      showMessage('error', 'All fields are required');
+      toast.error('All fields are required');
       return;
     }
 
     if (passwordForm.newPassword.length < 6) {
-      showMessage('error', 'New password must be at least 6 characters');
+      toast.error('New password must be at least 6 characters');
       return;
     }
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      showMessage('error', 'Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
     setChangingPassword(true);
     try {
-      const response = await fetch('/api/profile/change-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword,
-        }),
-      });
+      const response = await userApi.changePassword(
+        authUser.id,
+        passwordForm.currentPassword,
+        passwordForm.newPassword
+      );
 
-      if (response.ok) {
-        showMessage('success', 'Password changed successfully');
+      if (response.success) {
+        toast.success('Password changed successfully');
         setPasswordForm({
           currentPassword: '',
           newPassword: '',
           confirmPassword: '',
         });
       } else {
-        const error = await response.json();
-        showMessage('error', error.message || 'Failed to change password');
+        toast.error(response.message || 'Failed to change password');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to change password:', error);
-      showMessage('error', 'Failed to change password');
+      toast.error(error.response?.data?.message || 'Failed to change password');
     } finally {
       setChangingPassword(false);
     }
   };
 
-  const formatDate = (date: Date | null) => {
-    if (!date) {
-      return 'Never';
+  const handleUsernameUpdate = async () => {
+    if (!authUser?.id || !profile) return;
+
+    if (!newUsername.trim()) {
+      toast.error('Username cannot be empty');
+      return;
     }
-    return new Date(date).toLocaleString();
+
+    if (newUsername === profile.username) {
+      setIsEditingUsername(false);
+      return;
+    }
+
+    setUpdatingProfile(true);
+    try {
+      const response = await userApi.updateUser(authUser.id, {
+        username: newUsername,
+      });
+
+      if (response.success) {
+        toast.success('Username updated successfully');
+        setProfile({ ...profile, username: newUsername });
+        setIsEditingUsername(false);
+        // Refresh auth context to update header/sidebar
+        checkAuth();
+      } else {
+        toast.error(response.message || 'Failed to update username');
+      }
+    } catch (error: any) {
+      console.error('Failed to update username:', error);
+      toast.error(error.response?.data?.message || 'Failed to update username');
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'Never';
+    return new Date(dateString).toLocaleString();
   };
 
   const getRoleBadge = (role: string) => {
@@ -190,7 +177,7 @@ export default function UserProfile() {
       <Card>
         <CardContent className="flex items-center justify-center h-64">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <Loader2 className="animate-spin h-8 w-8 text-primary mx-auto mb-4" />
             <p className="text-muted-foreground">Loading profile...</p>
           </div>
         </CardContent>
@@ -211,23 +198,11 @@ export default function UserProfile() {
 
   return (
     <div className="space-y-6">
-      {/* Messages */}
-      {message.type && (
-        <Alert variant={message.type === 'success' ? 'default' : 'destructive'}>
-          {message.type === 'success' ? (
-            <CheckCircle2 className="h-4 w-4" />
-          ) : (
-            <AlertCircle className="h-4 w-4" />
-          )}
-          <AlertDescription>{message.text}</AlertDescription>
-        </Alert>
-      )}
-
       {/* Profile Information */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
+            <UserIcon className="w-5 h-5" />
             Profile Information
           </CardTitle>
           <CardDescription>
@@ -238,7 +213,49 @@ export default function UserProfile() {
           <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-2">
               <Label className="text-muted-foreground">Username</Label>
-              <div className="text-lg font-medium">{profile.username}</div>
+              {isEditingUsername ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    disabled={updatingProfile}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleUsernameUpdate}
+                    disabled={updatingProfile}
+                  >
+                    {updatingProfile ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setIsEditingUsername(false);
+                      setNewUsername(profile.username);
+                    }}
+                    disabled={updatingProfile}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div className="text-lg font-medium">{profile.username}</div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditingUsername(true)}
+                  >
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -351,59 +368,16 @@ export default function UserProfile() {
             </div>
 
             <Button type="submit" disabled={changingPassword}>
-              {changingPassword ? 'Changing Password...' : 'Change Password'}
+              {changingPassword ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Changing Password...
+                </>
+              ) : (
+                'Change Password'
+              )}
             </Button>
           </form>
-        </CardContent>
-      </Card>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="w-5 h-5" />
-            Recent Activity
-          </CardTitle>
-          <CardDescription>Your recent actions in the system</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="border rounded-lg">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Details</TableHead>
-                  <TableHead>Timestamp</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activityLogs.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={3}
-                      className="text-center text-muted-foreground"
-                    >
-                      No recent activity
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  activityLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="font-medium">
-                        {log.action}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {log.details}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(log.timestamp)}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
         </CardContent>
       </Card>
     </div>

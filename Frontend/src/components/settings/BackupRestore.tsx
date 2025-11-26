@@ -95,7 +95,7 @@ export default function BackupRestore() {
   const handleDownload = async (backupId: string, filename: string) => {
     try {
       const response = await fetch(
-        `/api/settings/backups/${backupId}/download`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/backups/${backupId}/download`,
         {
           credentials: 'include',
         }
@@ -217,7 +217,7 @@ export default function BackupRestore() {
             <Button
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending}
-              className="ml-4"
+              className="ml-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
             >
               {createMutation.isPending ? (
                 <>
@@ -271,7 +271,10 @@ export default function BackupRestore() {
                 </TableHeader>
                 <TableBody>
                   {backups.map((backup: Backup) => (
-                    <TableRow key={backup.id}>
+                    <TableRow
+                      key={backup.id}
+                      className="transition-colors duration-200 hover:bg-muted/50 dark:hover:bg-muted/30"
+                    >
                       <TableCell className="font-medium">
                         {backup.filename}
                       </TableCell>
@@ -295,6 +298,7 @@ export default function BackupRestore() {
                               handleDownload(backup.id, backup.filename)
                             }
                             disabled={backup.status !== 'COMPLETED'}
+                            className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50"
                           >
                             <Download className="w-4 h-4" />
                           </Button>
@@ -303,7 +307,7 @@ export default function BackupRestore() {
                             size="sm"
                             onClick={() => handleDelete(backup.id)}
                             disabled={deleteMutation.isPending}
-                            className="text-destructive hover:text-destructive"
+                            className="text-destructive hover:text-destructive transition-all duration-200 hover:bg-destructive/10 dark:hover:bg-destructive/20"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>

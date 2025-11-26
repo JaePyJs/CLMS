@@ -3,6 +3,7 @@ import { prisma } from '../utils/prisma';
 import { authenticate as authenticateToken } from '../middleware/authenticate';
 // import { z } from 'zod';
 import { isDevelopment } from '../config/env';
+import { logger } from '../utils/logger';
 
 const router = Router();
 // const prisma = new PrismaClient();
@@ -75,16 +76,20 @@ router.get(
   async (_req: Request, res: Response) => {
     try {
       // Get all students who checked in today and haven't checked out
+      // Exclude personnel (type = 'PERSONNEL') from the list
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
       const currentPatrons = await prisma.students.findMany({
         where: {
+          // Filter out personnel - only show actual students
+          type: 'STUDENT',
           activities: {
             some: {
               activity_type: {
-                in: ['CHECK_IN', 'SELF_SERVICE_CHECK_IN'],
+                in: ['CHECK_IN', 'SELF_SERVICE_CHECK_IN', 'KIOSK_CHECK_IN'],
               },
+              status: 'ACTIVE',
               created_at: {
                 gte: today,
               },
@@ -119,7 +124,8 @@ router.get(
         const lastActivity = student.activities[0];
         return (
           lastActivity?.activity_type === 'CHECK_IN' ||
-          lastActivity?.activity_type === 'SELF_SERVICE_CHECK_IN'
+          lastActivity?.activity_type === 'SELF_SERVICE_CHECK_IN' ||
+          lastActivity?.activity_type === 'KIOSK_CHECK_IN'
         );
       });
 
@@ -139,7 +145,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('User tracking error:', error);
+      logger.error('User tracking error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to retrieve user tracking data',
@@ -288,7 +294,7 @@ router.post(
           },
         });
       }
-      console.error('Borrowing error:', error);
+      logger.error('Borrowing error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to process borrowing request',
@@ -402,7 +408,7 @@ router.post(
           },
         });
       }
-      console.error('Return error:', error);
+      logger.error('Return error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to process return request',
@@ -471,7 +477,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Overdue management error:', error);
+      logger.error('Overdue management error', { error });
       if (isDevelopment()) {
         const now = new Date();
         const fallbackItems = [
@@ -615,7 +621,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Top users analytics error:', error);
+      logger.error('Top users analytics error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to retrieve analytics data',
@@ -673,7 +679,7 @@ router.get(
       }
       res.json({ success: true, data: books });
     } catch (error) {
-      console.error('Available books error:', error);
+      logger.error('Available books error', { error });
       if (isDevelopment()) {
         const sample = [
           {
@@ -748,7 +754,7 @@ router.get(
         data: books,
       });
     } catch (error) {
-      console.error('Book search error:', error);
+      logger.error('Book search error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to search books',
@@ -783,7 +789,7 @@ router.get(
         data: checkouts,
       });
     } catch (error) {
-      console.error('Borrowed books error:', error);
+      logger.error('Borrowed books error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to retrieve borrowed books',
@@ -826,7 +832,8 @@ router.get(
           .json({ success: false, error: 'No active checkout found' });
       }
       return res.json({ success: true, data: checkout });
-    } catch (_error) {
+    } catch (error) {
+      logger.error('Borrowed checkout lookup error', { error });
       res
         .status(500)
         .json({ success: false, error: 'Failed to find active checkout' });
@@ -890,7 +897,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Fine calculation error:', error);
+      logger.error('Fine calculation error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to calculate fine',
@@ -958,7 +965,7 @@ router.post(
         },
       });
     } catch (error) {
-      console.error('Fine payment error:', error);
+      logger.error('Fine payment error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to process fine payment',
@@ -1036,7 +1043,7 @@ router.post(
         },
       });
     } catch (error) {
-      console.error('Overdue reminder error:', error);
+      logger.error('Overdue reminder error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to send overdue reminder',
@@ -1056,7 +1063,7 @@ router.get(
         data: MATERIAL_POLICIES,
       });
     } catch (error) {
-      console.error('Material policies error:', error);
+      logger.error('Material policies error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to retrieve material policies',
@@ -1076,7 +1083,7 @@ router.get(
         data: GRADE_FINE_RATES,
       });
     } catch (error) {
-      console.error('Grade fines error:', error);
+      logger.error('Grade fines error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to retrieve grade fine rates',
@@ -1198,7 +1205,7 @@ router.get(
         data: report,
       });
     } catch (error) {
-      console.error('Monthly report error:', error);
+      logger.error('Monthly report error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to generate monthly report',
@@ -1229,7 +1236,7 @@ router.get(
         },
       });
     } catch (error) {
-      console.error('Report export error:', error);
+      logger.error('Report export error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to export report',
@@ -1253,7 +1260,7 @@ router.get(
         data: inventory,
       });
     } catch (error) {
-      console.error('Inventory error:', error);
+      logger.error('Inventory error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to retrieve inventory',
@@ -1288,7 +1295,7 @@ router.get(
         data: book,
       });
     } catch (error) {
-      console.error('Barcode scan error:', error);
+      logger.error('Barcode scan error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to scan barcode',
@@ -1316,7 +1323,7 @@ router.get(
         data: printJobs,
       });
     } catch (error) {
-      console.error('Print jobs error:', error);
+      logger.error('Print jobs error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to retrieve print jobs',
@@ -1373,7 +1380,7 @@ router.post(
         },
       });
     } catch (error) {
-      console.error('Print job creation error:', error);
+      logger.error('Print job creation error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to create print job',
@@ -1408,7 +1415,7 @@ router.put(
         },
       });
     } catch (error) {
-      console.error('Print job status update error:', error);
+      logger.error('Print job status update error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to update print job status',
@@ -1436,7 +1443,7 @@ router.get(
         data: pricing,
       });
     } catch (error) {
-      console.error('Print pricing error:', error);
+      logger.error('Print pricing error', { error });
       res.status(500).json({
         success: false,
         error: 'Failed to retrieve print pricing',

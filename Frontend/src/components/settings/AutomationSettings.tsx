@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { apiClient } from '@/lib/api';
 import {
   Card,
   CardContent,
@@ -70,14 +71,9 @@ export default function AutomationSettings() {
     error,
   } = useQuery({
     queryKey: ['automation-jobs'],
-    queryFn: async () => {
-      const response = await fetch('/api/automation/jobs', {
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to load jobs');
-      }
-      return response.json();
+    queryFn: async (): Promise<AutomationJob[]> => {
+      const response = await apiClient.get('/api/automation/jobs');
+      return (response.data as AutomationJob[]) || [];
     },
     staleTime: 30 * 1000, // 30 seconds
     refetchInterval: 30 * 1000, // Auto-refresh every 30s
@@ -86,20 +82,14 @@ export default function AutomationSettings() {
   // Fetch job history for selected job
   const { data: jobHistory = [], isLoading: loadingHistory } = useQuery({
     queryKey: ['job-history', selectedJob],
-    queryFn: async () => {
+    queryFn: async (): Promise<JobHistory[]> => {
       if (!selectedJob) {
         return [];
       }
-      const response = await fetch(
-        `/api/automation/jobs/${selectedJob}/history`,
-        {
-          credentials: 'include',
-        }
+      const response = await apiClient.get(
+        `/api/automation/jobs/${selectedJob}/history`
       );
-      if (!response.ok) {
-        return [];
-      }
-      return response.json();
+      return (response.data as JobHistory[]) || [];
     },
     enabled: !!selectedJob,
     staleTime: 10 * 1000, // 10 seconds
@@ -117,15 +107,8 @@ export default function AutomationSettings() {
       const endpoint = currentStatus
         ? `/api/automation/jobs/${jobId}/disable`
         : `/api/automation/jobs/${jobId}/enable`;
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to update job status');
-      }
-      return response.json();
+      const response = await apiClient.post(endpoint);
+      return response.data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['automation-jobs'] });
@@ -141,15 +124,10 @@ export default function AutomationSettings() {
   // Run job now mutation
   const runMutation = useMutation({
     mutationFn: async (jobId: string) => {
-      const response = await fetch(`/api/automation/jobs/${jobId}/run`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to run job');
-      }
-      return response.json();
+      const response = await apiClient.post(
+        `/api/automation/jobs/${jobId}/run`
+      );
+      return response.data;
     },
     onSuccess: () => {
       toast.success('Job started successfully!');
@@ -301,7 +279,7 @@ export default function AutomationSettings() {
                   {jobs.map((job: AutomationJob) => (
                     <TableRow
                       key={job.id}
-                      className={selectedJob === job.id ? 'bg-muted/50' : ''}
+                      className={`transition-colors duration-200 hover:bg-muted/50 dark:hover:bg-muted/30 ${selectedJob === job.id ? 'bg-muted/50 dark:bg-muted/30' : ''}`}
                       onClick={() => setSelectedJob(job.id)}
                       style={{ cursor: 'pointer' }}
                     >
@@ -336,6 +314,7 @@ export default function AutomationSettings() {
                               });
                             }}
                             disabled={toggleMutation.isPending}
+                            className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50"
                           >
                             {job.isEnabled ? (
                               <Pause className="w-4 h-4" />
@@ -355,6 +334,7 @@ export default function AutomationSettings() {
                               job.status === 'RUNNING' ||
                               !job.isEnabled
                             }
+                            className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50"
                           >
                             <Play className="w-4 h-4" />
                           </Button>

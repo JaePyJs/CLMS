@@ -3,6 +3,7 @@ import { prisma } from '../utils/prisma';
 import { BarcodeService } from './barcodeService.js';
 import { logger } from '../utils/logger';
 import { websocketServer } from '../websocket/websocketServer';
+import { ScanExportService } from './scanExportService';
 
 export interface CheckInResult {
   success: boolean;
@@ -36,7 +37,10 @@ export class SelfService {
   /**
    * Process a scan and determine action (auto check-in or check-out)
    */
-  static async processScan(scanData: string): Promise<CheckInResult> {
+  static async processScan(
+    scanData: string,
+    bypassCooldown: boolean = false,
+  ): Promise<CheckInResult> {
     try {
       // Find student by barcode
       const student = await this.findStudentByBarcode(scanData);
@@ -62,7 +66,7 @@ export class SelfService {
         return await this.checkOut(student.id, activeActivity.id);
       } else {
         // Check in the student
-        return await this.checkIn(student.id);
+        return await this.checkIn(student.id, bypassCooldown);
       }
     } catch (error) {
       logger.error('Process scan error:', error);
@@ -138,7 +142,10 @@ export class SelfService {
   /**
    * Check in a student
    */
-  static async checkIn(studentId: string): Promise<CheckInResult> {
+  static async checkIn(
+    studentId: string,
+    bypassCooldown: boolean = false,
+  ): Promise<CheckInResult> {
     try {
       // Get student
       const student = await prisma.students.findUnique({
@@ -169,7 +176,7 @@ export class SelfService {
 
       // Check cooldown period
       const cooldownRemaining = await this.getCooldownRemaining(studentId);
-      if (cooldownRemaining > 0) {
+      if (cooldownRemaining > 0 && !bypassCooldown) {
         return {
           success: false,
           message: `Please wait ${Math.ceil(cooldownRemaining / 60)} more minute(s) before checking in again`,
@@ -197,6 +204,20 @@ export class SelfService {
           activity.start_time.getTime() + 30 * 60000,
         ).toISOString(),
       });
+
+      ScanExportService.logStudentScan({
+        barcode: student.barcode || student.student_id,
+        studentId: student.student_id,
+        studentName: `${student.first_name} ${student.last_name}`,
+        action: 'CHECK_IN',
+        source: 'Self-Service',
+        status: 'ACTIVE',
+      }).catch(error =>
+        logger.error('Failed to log student check-in export', {
+          studentId: student.student_id,
+          error: error instanceof Error ? error.message : error,
+        }),
+      );
 
       return {
         success: true,
@@ -281,6 +302,21 @@ export class SelfService {
         reason: 'manual',
       });
 
+      ScanExportService.logStudentScan({
+        barcode: student.barcode || student.student_id,
+        studentId: student.student_id,
+        studentName: `${student.first_name} ${student.last_name}`,
+        action: 'CHECK_OUT',
+        source: 'Self-Service',
+        status: 'COMPLETED',
+        notes: `Time spent: ${timeSpent} mins`,
+      }).catch(error =>
+        logger.error('Failed to log student check-out export', {
+          studentId: student.student_id,
+          error: error instanceof Error ? error.message : error,
+        }),
+      );
+
       return {
         success: true,
         message: `Checked out successfully. Time spent: ${timeSpent} minutes`,
@@ -310,7 +346,7 @@ export class SelfService {
       // Build where clause for date range
       const whereClause: any = {
         activity_type: {
-          contains: 'SELF_SERVICE',
+          in: ['SELF_SERVICE_CHECK_IN', 'KIOSK_CHECK_IN'],
         },
       };
 
@@ -383,21 +419,33 @@ export class SelfService {
   }
 
   /**
-   * Find student by barcode
+   * Find student by barcode or student_id
    */
   private static async findStudentByBarcode(barcode: string) {
-    // Accept numeric-only or PN-prefixed codes
     const code = String(barcode).trim();
+
+    // First, try to find by student_id (most common case)
+    let student = await prisma.students.findFirst({
+      where: { student_id: code, is_active: true },
+    });
+    if (student) {
+      return student;
+    }
+
+    // Validate barcode format for barcode-specific searches
     if (!BarcodeService.validateBarcode(code)) {
+      // If not a valid barcode format, we already checked student_id above
       return null;
     }
-    // Exact match first
-    let student = await prisma.students.findFirst({
+
+    // Try exact barcode match
+    student = await prisma.students.findFirst({
       where: { barcode: code, is_active: true },
     });
     if (student) {
       return student;
     }
+
     // If input is numeric-only, also try PN-prefixed variant
     if (/^\d{5,12}$/.test(code)) {
       const pnCode = `PN${code}`;

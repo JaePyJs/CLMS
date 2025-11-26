@@ -398,4 +398,85 @@ router.post(
   }),
 );
 
+// POST /api/settings/reset-daily-data - Reset today's check-ins, sessions, etc.
+router.post(
+  '/reset-daily-data',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (req.user?.role !== 'ADMIN') {
+      res.status(403).json({ error: 'Admin access required' });
+      return;
+    }
+
+    try {
+      logger.info('Reset daily data request', {
+        userId: req.user.userId,
+      });
+
+      const result = await SettingsService.resetDailyData();
+
+      res.json({
+        success: true,
+        message: 'Daily data reset successfully',
+        data: result,
+      });
+    } catch (error) {
+      logger.error('Error resetting daily data', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to reset daily data',
+      });
+    }
+  }),
+);
+
+// POST /api/settings/reset-all-data - Reset ALL data (nuclear option)
+router.post(
+  '/reset-all-data',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (req.user?.role !== 'ADMIN') {
+      res.status(403).json({ error: 'Admin access required' });
+      return;
+    }
+
+    const { confirmationCode } = req.body;
+
+    // Require confirmation code to prevent accidental resets
+    if (confirmationCode !== 'RESET-ALL-DATA-CONFIRM') {
+      res.status(400).json({
+        success: false,
+        message:
+          'Invalid confirmation code. Send { confirmationCode: "RESET-ALL-DATA-CONFIRM" } to proceed.',
+      });
+      return;
+    }
+
+    try {
+      logger.warn('⚠️ RESET ALL DATA request initiated', {
+        userId: req.user.userId,
+        timestamp: new Date().toISOString(),
+      });
+
+      const result = await SettingsService.resetAllData();
+
+      res.json({
+        success: true,
+        message: 'All data reset successfully',
+        data: result,
+      });
+    } catch (error) {
+      logger.error('Error resetting all data', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to reset all data',
+      });
+    }
+  }),
+);
+
 export default router;

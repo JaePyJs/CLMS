@@ -180,6 +180,15 @@ export function setupInterceptors(client: AxiosInstance) {
         }
       } else if (status === 404) {
         toast.error(normalizedError.message || 'Resource not found');
+      } else if (status === 400) {
+        // Bad request - log details for debugging
+        console.error('🔴 400 Bad Request:', {
+          url,
+          status,
+          message: normalizedError.message,
+          data: apiPayload,
+        });
+        // Don't show generic toast here - let the specific error handler in the hook show it
       } else if (status >= 500) {
         // Suppress noisy toasts for auth/me failures; UI will handle via cache
         if (!url.includes('/api/auth/me')) {

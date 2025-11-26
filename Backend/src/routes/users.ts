@@ -4,7 +4,47 @@ import { authenticate } from '../middleware/authenticate';
 import { logger } from '../utils/logger';
 import { prisma } from '../utils/prisma';
 import { AuthService } from '../services/authService';
+import { env } from '../config/env';
 const router = Router();
+
+const DEFAULT_LIBRARIAN_PASSWORD =
+  env.DEFAULT_LIBRARIAN_PASSWORD?.trim() || 'lib123';
+
+async function validateAdminCredentials(username: string, password: string) {
+  if (!username || !password) {
+    throw new Error('ADMIN_CREDENTIALS_REQUIRED');
+  }
+
+  const adminUser = await prisma.users.findUnique({
+    where: { username },
+    select: {
+      id: true,
+      username: true,
+      role: true,
+      password: true,
+      is_active: true,
+    },
+  });
+
+  if (
+    adminUser?.role !== 'ADMIN' ||
+    !adminUser?.is_active ||
+    !adminUser?.password
+  ) {
+    throw new Error('INVALID_ADMIN_CREDENTIALS');
+  }
+
+  const passwordMatches = await AuthService.verifyPassword(
+    password,
+    adminUser.password,
+  );
+
+  if (!passwordMatches) {
+    throw new Error('INVALID_ADMIN_CREDENTIALS');
+  }
+
+  return adminUser;
+}
 
 // GET /api/users
 router.get(
@@ -195,22 +235,39 @@ router.post(
     });
 
     try {
-      const { username, email, password, role, first_name, last_name } =
-        req.body;
+      const {
+        username,
+        email,
+        password,
+        role,
+        first_name,
+        last_name,
+        is_active,
+        isActive,
+      } = req.body;
 
       const full_name =
         first_name && last_name ? `${first_name} ${last_name}` : null;
+
+      const rawPassword = password || 'changeme123';
+      const hashedPassword = await AuthService.hashPassword(rawPassword);
+      const activeFlag =
+        typeof is_active === 'boolean'
+          ? is_active
+          : typeof isActive === 'boolean'
+            ? isActive
+            : true;
 
       const user = await prisma.users.create({
         data: {
           username,
           email: email || null,
-          password: password || 'changeme123',
+          password: hashedPassword,
           role: role || 'LIBRARIAN',
           first_name: first_name || null,
           last_name: last_name || null,
           full_name,
-          is_active: true,
+          is_active: activeFlag,
         },
         select: {
           id: true,
@@ -251,24 +308,67 @@ router.put(
     });
 
     try {
-      const { username, email, role, first_name, last_name, is_active } =
-        req.body;
+      const {
+        username,
+        email,
+        role,
+        first_name,
+        last_name,
+        is_active,
+        isActive,
+        password,
+      } = req.body;
 
-      const full_name =
-        first_name && last_name ? `${first_name} ${last_name}` : undefined;
+      const updateData: Record<string, unknown> = {
+        updated_at: new Date(),
+      };
+
+      if (typeof username !== 'undefined') {
+        updateData.username = username;
+      }
+
+      if (typeof email !== 'undefined') {
+        updateData.email = email;
+      }
+
+      if (typeof role !== 'undefined') {
+        updateData.role = role;
+      }
+
+      if (typeof first_name !== 'undefined') {
+        updateData.first_name = first_name;
+      }
+
+      if (typeof last_name !== 'undefined') {
+        updateData.last_name = last_name;
+      }
+
+      if (
+        typeof first_name !== 'undefined' &&
+        typeof last_name !== 'undefined'
+      ) {
+        updateData.full_name =
+          first_name && last_name ? `${first_name} ${last_name}` : null;
+      }
+
+      const activeFlag =
+        typeof is_active === 'boolean'
+          ? is_active
+          : typeof isActive === 'boolean'
+            ? isActive
+            : undefined;
+
+      if (typeof activeFlag === 'boolean') {
+        updateData.is_active = activeFlag;
+      }
+
+      if (typeof password === 'string' && password.trim().length > 0) {
+        updateData.password = await AuthService.hashPassword(password);
+      }
 
       const user = await prisma.users.update({
         where: { id: req.params['id'] },
-        data: {
-          username,
-          email,
-          role,
-          first_name,
-          last_name,
-          full_name,
-          is_active,
-          updated_at: new Date(),
-        },
+        data: updateData,
         select: {
           id: true,
           username: true,
@@ -310,21 +410,48 @@ router.patch(
     });
 
     try {
-      const { first_name, last_name } = req.body;
-      // email, role, is_active available via req.body spread below
+      const { first_name, last_name, is_active, isActive, password, ...rest } =
+        req.body;
 
-      const full_name =
-        first_name && last_name ? `${first_name} ${last_name}` : undefined;
+      const updateData: Record<string, unknown> = {
+        ...rest,
+        updated_at: new Date(),
+      };
+
+      if (typeof first_name !== 'undefined') {
+        updateData.first_name = first_name;
+      }
+
+      if (typeof last_name !== 'undefined') {
+        updateData.last_name = last_name;
+      }
+
+      if (
+        typeof first_name !== 'undefined' &&
+        typeof last_name !== 'undefined'
+      ) {
+        updateData.full_name =
+          first_name && last_name ? `${first_name} ${last_name}` : null;
+      }
+
+      const activeFlag =
+        typeof is_active === 'boolean'
+          ? is_active
+          : typeof isActive === 'boolean'
+            ? isActive
+            : undefined;
+
+      if (typeof activeFlag === 'boolean') {
+        updateData.is_active = activeFlag;
+      }
+
+      if (typeof password === 'string' && password.trim().length > 0) {
+        updateData.password = await AuthService.hashPassword(password);
+      }
 
       const user = await prisma.users.update({
         where: { id: req.params['id'] },
-        data: {
-          ...req.body,
-          first_name,
-          last_name,
-          full_name,
-          updated_at: new Date(),
-        },
+        data: updateData,
         select: {
           id: true,
           username: true,
@@ -485,6 +612,86 @@ router.post(
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;
+    }
+  }),
+);
+
+// POST /api/users/:id/reset-password/default
+router.post(
+  '/:id/reset-password/default',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Admin-confirmed default password reset request', {
+      targetUserId: req.params['id'],
+      requestedBy: req.user?.userId,
+    });
+
+    try {
+      const { adminUsername, adminPassword } = req.body || {};
+
+      if (!adminUsername || !adminPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Admin username and password are required',
+        });
+      }
+
+      try {
+        await validateAdminCredentials(adminUsername, adminPassword);
+      } catch (_error) {
+        logger.warn('Invalid admin credentials for password reset', {
+          adminUsername,
+          requesterId: req.user?.userId,
+        });
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid admin credentials',
+          code: 'INVALID_ADMIN_CREDENTIALS',
+        });
+      }
+
+      const hashedPassword = await AuthService.hashPassword(
+        DEFAULT_LIBRARIAN_PASSWORD,
+      );
+
+      const user = await prisma.users.update({
+        where: { id: req.params['id'] },
+        data: {
+          password: hashedPassword,
+          updated_at: new Date(),
+        },
+        select: {
+          id: true,
+          username: true,
+          role: true,
+          is_active: true,
+          updated_at: true,
+        },
+      });
+
+      logger.info('Password reset to default completed', {
+        targetUserId: user.id,
+        requestedBy: req.user?.userId,
+      });
+
+      res.json({
+        success: true,
+        message: 'Password reset to default',
+        data: {
+          user,
+          defaultPassword: DEFAULT_LIBRARIAN_PASSWORD,
+        },
+      });
+    } catch (error) {
+      logger.error('Error resetting password to default', {
+        userId: req.params['id'],
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      res.status(500).json({
+        success: false,
+        message: 'Failed to reset password',
+        code: 'RESET_PASSWORD_FAILED',
+      });
     }
   }),
 );

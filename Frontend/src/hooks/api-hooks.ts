@@ -163,14 +163,39 @@ export const useStartSession = () => {
       equipmentId: string;
       studentId: string;
       timeLimitMinutes?: number;
-    }) => equipmentApi.startSession(equipmentId, studentId, timeLimitMinutes),
-    onSuccess: () => {
+    }) => {
+      console.log('📤 Sending startSession request:', {
+        equipmentId,
+        studentId,
+        timeLimitMinutes,
+      });
+      return equipmentApi.startSession(
+        equipmentId,
+        studentId,
+        timeLimitMinutes
+      );
+    },
+    onSuccess: (response) => {
+      console.log('✅ Session started successfully:', response);
       toast.success('Session started successfully');
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['activities'] });
     },
     onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, 'Failed to start session'));
+      console.error('❌ Failed to start session:', error);
+      // Extract detailed error message from response
+      const errorResponse = (error as any)?.response?.data;
+      console.error('📋 Error response:', errorResponse);
+
+      let errorMessage = 'Failed to start session';
+      if (errorResponse?.message) {
+        errorMessage = errorResponse.message;
+      }
+      if (errorResponse?.debug) {
+        console.error('🔍 Debug info:', errorResponse.debug);
+      }
+
+      toast.error(errorMessage);
     },
   });
 };
@@ -298,8 +323,8 @@ export const useNotifications = () => {
         return [];
       }
     },
-    enabled: false, // Disable until endpoint exists
-    refetchInterval: false,
+    enabled: true, // Enable fetching
+    refetchInterval: 60000, // Refresh every minute
     retry: false,
   });
 };

@@ -136,7 +136,7 @@ router.get('/active-students', async (_req: Request, res: Response) => {
       },
     });
 
-    const activeStudents = activeActivities.map((activity: any) => {
+    const activeStudents = activeActivities.map(activity => {
       // Calculate auto-logout time (15 mins after start)
       const startTime = new Date(activity.start_time);
       const autoLogoutAt = new Date(startTime.getTime() + 15 * 60000);
@@ -202,6 +202,8 @@ router.post(
         'library',
         'borrowing',
         'recreation',
+        'reading',
+        'gaming',
       ];
       const invalidPurposes = selectedPurposes.filter(
         (p: string) => !validPurposes.includes(p),
@@ -286,7 +288,7 @@ router.post(
 
         if (sections.length > 0) {
           await prisma.student_activities_sections.createMany({
-            data: sections.map((section: any) => ({
+            data: sections.map(section => ({
               activity_id: activity.id,
               section_id: section.id,
             })),
@@ -752,6 +754,56 @@ router.post(
 );
 
 /**
+ * Get recent scans for search dropdown
+ */
+router.get('/recent-scans', async (_req: Request, res: Response) => {
+  try {
+    const recentActivities = await prisma.student_activities.findMany({
+      where: {
+        activity_type: 'KIOSK_CHECK_IN',
+      },
+      take: 5,
+      orderBy: {
+        created_at: 'desc',
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            student_id: true,
+            first_name: true,
+            last_name: true,
+            grade_level: true,
+            grade_category: true,
+          },
+        },
+      },
+      distinct: ['student_id'],
+    });
+
+    const recentScans = recentActivities.map(activity => ({
+      id: activity.student.id,
+      studentId: activity.student.student_id,
+      name: `${activity.student.first_name} ${activity.student.last_name}`,
+      grade_level: activity.student.grade_level,
+      grade_category: activity.student.grade_category,
+      timestamp: activity.created_at,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: recentScans,
+    });
+  } catch (error) {
+    logger.error('Get recent scans error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to get recent scans',
+    });
+  }
+});
+
+/**
  * Get current kiosk status
  * For monitoring and analytics
  */
@@ -809,9 +861,9 @@ router.get(
         recreation: 0,
       };
 
-      allActivities.forEach((item: any) => {
-         
-        const metadata = item.metadata;
+      allActivities.forEach(item => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const metadata = item.metadata as any;
         if (
           metadata?.purpose &&
           Object.prototype.hasOwnProperty.call(purposes, metadata.purpose)
@@ -912,7 +964,7 @@ async function computeSectionOccupancy() {
     RECREATION: 0,
     BORROWING: 0,
   };
-  const activeIds = active.map((a: any) => a.id);
+  const activeIds = active.map(a => a.id);
   if (activeIds.length === 0) {
     return counts;
   }

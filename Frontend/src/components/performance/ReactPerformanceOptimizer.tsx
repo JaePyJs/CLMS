@@ -75,7 +75,7 @@ export const createMemoizedComponent = <P extends object>(
 
   MemoizedComponent.displayName = `Memoized(${componentName || Component.displayName || Component.name})`;
 
-  return MemoizedComponent;
+  return MemoizedComponent as ComponentType<P>;
 };
 
 // Performance monitoring HOC
@@ -153,7 +153,7 @@ export const withPerformanceMonitoring = <P extends object>(
   });
 
   MonitoredComponent.displayName = `WithPerformanceMonitoring(${name})`;
-  return MonitoredComponent;
+  return MonitoredComponent as ComponentType<P>;
 };
 
 // Virtualized List Component

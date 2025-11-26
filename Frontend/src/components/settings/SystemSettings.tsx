@@ -200,13 +200,12 @@ export default function SystemSettings() {
             <Label htmlFor="libraryName">Library Name</Label>
             <Input
               id="libraryName"
-              type="text"
-              value={settings.libraryName || ''}
+              value={settings.libraryName}
               onChange={(e) => handleInputChange('libraryName', e.target.value)}
-              placeholder="School Library"
+              className="transition-all duration-200 focus:ring-2 focus:ring-primary/50"
             />
             <p className="text-xs text-muted-foreground">
-              Your library's display name shown throughout the system
+              This name will appear on reports and the dashboard
             </p>
           </div>
         </CardContent>
@@ -540,6 +539,7 @@ export default function SystemSettings() {
           variant="outline"
           onClick={resetToDefaults}
           disabled={resetMutation.isPending || updateMutation.isPending}
+          className="transition-all duration-200 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50"
         >
           <RotateCcw className="w-4 h-4 mr-2" />
           {resetMutation.isPending ? 'Resetting...' : 'Reset to Defaults'}
@@ -557,6 +557,7 @@ export default function SystemSettings() {
             disabled={
               updateMutation.isPending || resetMutation.isPending || !hasChanges
             }
+            className="transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
           >
             <Save className="w-4 h-4 mr-2" />
             {updateMutation.isPending ? 'Saving...' : 'Save Changes'}

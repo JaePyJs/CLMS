@@ -96,4 +96,32 @@ export class FineCalculationService {
       throw error;
     }
   }
+
+  public static async calculateAllFines(): Promise<number> {
+    try {
+      const checkouts = await prisma.book_checkouts.findMany({
+        where: { return_date: null },
+      });
+
+      let count = 0;
+      for (const checkout of checkouts) {
+        try {
+          await this.calculateFineForCheckout(checkout.id);
+          count++;
+        } catch (err) {
+          logger.error(`Failed to calculate fine for checkout ${checkout.id}`, {
+            error: err instanceof Error ? err.message : 'Unknown error',
+          });
+        }
+      }
+
+      logger.info('Calculated fines for all active checkouts', { count });
+      return count;
+    } catch (error) {
+      logger.error('Calculate all fines failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
 }

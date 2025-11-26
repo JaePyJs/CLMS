@@ -70,7 +70,7 @@ interface ActivePatron {
   id: string;
   studentId: string;
   studentName: string;
-  gradeLevel: string;
+  gradeLevel: string | number;
   purpose: string;
 }
 
@@ -185,8 +185,8 @@ export function EquipmentDashboard() {
     }
   };
 
-  const getTimeLimitByGrade = (grade: string): number => {
-    const g = (grade || '').toLowerCase();
+  const getTimeLimitByGrade = (grade: string | number): number => {
+    const g = String(grade || '').toLowerCase();
     if (g.includes('grade 1') || g.includes('grade 2') || g.includes('grade 3'))
       return 15;
     if (g.includes('grade 4') || g.includes('grade 5') || g.includes('grade 6'))
@@ -199,6 +199,16 @@ export function EquipmentDashboard() {
       g.includes('grade 12')
     )
       return 60;
+
+    // Handle numeric grades directly if they come as numbers (e.g. 12)
+    const gradeNum = parseInt(g.replace(/\D/g, ''), 10);
+    if (!isNaN(gradeNum)) {
+      if (gradeNum >= 1 && gradeNum <= 3) return 15;
+      if (gradeNum >= 4 && gradeNum <= 6) return 30;
+      if (gradeNum >= 7 && gradeNum <= 10) return 45;
+      if (gradeNum >= 11 && gradeNum <= 12) return 60;
+    }
+
     return 30;
   };
 
@@ -214,6 +224,8 @@ export function EquipmentDashboard() {
     setActiveDragId(null);
     setDraggedStudent(null);
 
+    console.log('🎯 Drag ended:', { activeId: active?.id, overId: over?.id });
+
     if (over && active) {
       const equipmentId = over.id as string;
       const patronId = active.id as string;
@@ -221,20 +233,62 @@ export function EquipmentDashboard() {
       const patron = activePatrons.find((p) => p.id === patronId);
       const targetEquipment = equipment.find((e) => e.id === equipmentId);
 
-      if (patron && targetEquipment && targetEquipment.status === 'available') {
-        // Start session
-        startSession({
-          equipmentId: equipmentId,
-          studentId: patron.studentId,
-          timeLimitMinutes: getTimeLimitByGrade(patron.gradeLevel),
-        });
-        toast.success(
-          `Assigning ${patron.studentName} to ${targetEquipment.name}`
-        );
+      console.log('📋 Drag details:', {
+        equipmentId,
+        patronId,
+        patron: patron
+          ? {
+              id: patron.id,
+              studentId: patron.studentId,
+              studentName: patron.studentName,
+              gradeLevel: patron.gradeLevel,
+            }
+          : 'NOT FOUND',
+        targetEquipment: targetEquipment
+          ? {
+              id: targetEquipment.id,
+              name: targetEquipment.name,
+              status: targetEquipment.status,
+            }
+          : 'NOT FOUND',
+      });
 
-        // Optimistically remove from list
-        setActivePatrons((prev) => prev.filter((p) => p.id !== patronId));
+      if (!patron) {
+        console.error('❌ Patron not found in activePatrons list');
+        toast.error('Student not found');
+        return;
       }
+
+      if (!targetEquipment) {
+        console.error('❌ Equipment not found in equipment list');
+        toast.error('Equipment not found');
+        return;
+      }
+
+      if (targetEquipment.status !== 'available') {
+        console.warn('⚠️ Equipment is not available:', targetEquipment.status);
+        toast.error(`Equipment is ${targetEquipment.status}, not available`);
+        return;
+      }
+
+      const sessionData = {
+        equipmentId: equipmentId,
+        studentId: patron.studentId,
+        timeLimitMinutes: getTimeLimitByGrade(patron.gradeLevel),
+      };
+
+      console.log('🚀 Starting session with data:', sessionData);
+
+      // Start session
+      startSession(sessionData);
+      toast.success(
+        `Assigning ${patron.studentName} to ${targetEquipment.name}`
+      );
+
+      // Optimistically remove from list
+      setActivePatrons((prev) => prev.filter((p) => p.id !== patronId));
+    } else {
+      console.log('ℹ️ Drag cancelled or invalid drop target');
     }
   };
 
@@ -323,10 +377,10 @@ export function EquipmentDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">
-              Equipment Management
+              Room Management
             </h2>
             <p className="text-muted-foreground">
-              Monitor and manage library equipment and computer stations.
+              Monitor and manage library rooms and discussion areas.
             </p>
           </div>
           <div className="flex items-center space-x-2">
@@ -360,13 +414,13 @@ export function EquipmentDashboard() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Total Equipment
+                    Total Rooms
                   </CardTitle>
                   <Monitor className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{equipment.length}</div>
-                  <p className="text-xs text-muted-foreground">All stations</p>
+                  <p className="text-xs text-muted-foreground">All rooms</p>
                 </CardContent>
               </Card>
 
@@ -443,7 +497,7 @@ export function EquipmentDashboard() {
                     onClick={() => setSelectedFilter('all')}
                     disabled={isRefreshing}
                   >
-                    All Equipment
+                    All Rooms
                   </TabsTrigger>
                   <TabsTrigger
                     value="available"

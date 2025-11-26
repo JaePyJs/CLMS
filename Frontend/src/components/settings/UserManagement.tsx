@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
@@ -44,6 +45,7 @@ import {
   AlertCircle,
   UserCheck,
   UserX,
+  KeyRound,
 } from 'lucide-react';
 import { settingsApi } from '@/lib/api';
 import { getErrorMessage } from '@/utils/errorHandling';
@@ -59,7 +61,7 @@ interface User {
 
 interface UserFormData {
   username: string;
-  password?: string; // Make password optional
+  password: string; // Always string, empty if not changing
   role: 'ADMIN' | 'LIBRARIAN' | 'STAFF';
   isActive: boolean;
 }
@@ -77,6 +79,12 @@ export default function UserManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState<UserFormData>(EMPTY_FORM);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [userToReset, setUserToReset] = useState<User | null>(null);
+  const [adminCredentials, setAdminCredentials] = useState({
+    username: 'admin',
+    password: '',
+  });
 
   // Fetch users with TanStack Query
   const {
@@ -130,6 +138,35 @@ export default function UserManagement() {
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, 'Failed to delete user'));
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: ({
+      id,
+      adminUsername,
+      adminPassword,
+    }: {
+      id: string;
+      adminUsername: string;
+      adminPassword: string;
+    }) =>
+      settingsApi.resetUserPasswordToDefault(id, {
+        adminUsername,
+        adminPassword,
+      }),
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      const defaultPassword = response?.data?.defaultPassword || 'lib123';
+      toast.success(
+        `Password reset to default (${defaultPassword}). Share it securely with the librarian.`
+      );
+      setResetDialogOpen(false);
+      setUserToReset(null);
+      setAdminCredentials({ username: 'admin', password: '' });
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to reset password'));
     },
   });
 
@@ -205,6 +242,32 @@ export default function UserManagement() {
         role: user.role,
         isActive: !user.isActive,
       },
+    });
+  };
+
+  const handleResetPasswordClick = (user: User) => {
+    setUserToReset(user);
+    setAdminCredentials({ username: 'admin', password: '' });
+    setResetDialogOpen(true);
+  };
+
+  const handleConfirmResetPassword = () => {
+    if (!userToReset) {
+      return;
+    }
+
+    if (
+      !adminCredentials.username.trim() ||
+      !adminCredentials.password.trim()
+    ) {
+      toast.error('Admin username and password are required');
+      return;
+    }
+
+    resetPasswordMutation.mutate({
+      id: userToReset.id,
+      adminUsername: adminCredentials.username.trim(),
+      adminPassword: adminCredentials.password,
     });
   };
 
@@ -354,6 +417,14 @@ export default function UserManagement() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handleResetPasswordClick(user)}
+                            title="Reset password to default"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleDeleteUser(user.id)}
                             className="text-destructive hover:text-destructive"
                           >
@@ -388,76 +459,73 @@ export default function UserManagement() {
                 : 'Create a new user account'}
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              placeholder="Enter username"
+              value={formData.username}
+              onChange={(e) =>
+                setFormData({ ...formData, username: e.target.value })
+              }
+            />
+          </div>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                placeholder="Enter username"
-                value={formData.username}
-                onChange={(e) =>
-                  setFormData({ ...formData, username: e.target.value })
-                }
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">
+              Password {editingUser && '(leave blank to keep current)'}
+            </Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder={
+                editingUser ? 'Enter new password' : 'Enter password'
+              }
+              value={formData.password}
+              onChange={(e) =>
+                setFormData({ ...formData, password: e.target.value })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Minimum 6 characters
+            </p>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">
-                Password {editingUser && '(leave blank to keep current)'}
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder={
-                  editingUser ? 'Enter new password' : 'Enter password'
-                }
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                Minimum 6 characters
-              </p>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="role">Role</Label>
+            <Select
+              value={formData.role}
+              onValueChange={(value: string) =>
+                setFormData({
+                  ...formData,
+                  role: value as 'ADMIN' | 'LIBRARIAN' | 'STAFF',
+                })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ADMIN">Admin</SelectItem>
+                <SelectItem value="LIBRARIAN">Librarian</SelectItem>
+                <SelectItem value="STAFF">Staff</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value: string) =>
-                  setFormData({
-                    ...formData,
-                    role: value as 'ADMIN' | 'LIBRARIAN' | 'STAFF',
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
-                  <SelectItem value="LIBRARIAN">Librarian</SelectItem>
-                  <SelectItem value="STAFF">Staff</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={formData.isActive}
-                onChange={(e) =>
-                  setFormData({ ...formData, isActive: e.target.checked })
-                }
-                className="h-4 w-4"
-              />
-              <Label htmlFor="isActive" className="cursor-pointer">
-                Active
-              </Label>
-            </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isActive"
+              checked={formData.isActive}
+              onChange={(e) =>
+                setFormData({ ...formData, isActive: e.target.checked })
+              }
+              className="h-4 w-4"
+            />
+            <Label htmlFor="isActive" className="cursor-pointer">
+              Active
+            </Label>
           </div>
 
           <DialogFooter>
@@ -477,6 +545,75 @@ export default function UserManagement() {
                 : editingUser
                   ? 'Update User'
                   : 'Create User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Password to Default</DialogTitle>
+            <DialogDescription>
+              Enter the admin credentials (default admin/admin123) to reset{' '}
+              {userToReset
+                ? `${userToReset.username}'s`
+                : "the selected user's"}{' '}
+              password back to the default value.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="admin-username">Admin Username</Label>
+              <Input
+                id="admin-username"
+                placeholder="admin"
+                value={adminCredentials.username}
+                onChange={(e) =>
+                  setAdminCredentials({
+                    ...adminCredentials,
+                    username: e.target.value,
+                  })
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="admin-password">Admin Password</Label>
+              <Input
+                id="admin-password"
+                type="password"
+                placeholder="admin123"
+                value={adminCredentials.password}
+                onChange={(e) =>
+                  setAdminCredentials({
+                    ...adminCredentials,
+                    password: e.target.value,
+                  })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                This extra confirmation prevents accidental resets.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setResetDialogOpen(false)}
+              disabled={resetPasswordMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmResetPassword}
+              disabled={resetPasswordMutation.isPending}
+            >
+              {resetPasswordMutation.isPending
+                ? 'Resetting...'
+                : 'Reset Password'}
             </Button>
           </DialogFooter>
         </DialogContent>

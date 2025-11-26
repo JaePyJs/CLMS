@@ -317,35 +317,94 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const { equipmentId, studentId, timeLimitMinutes } = req.body;
 
-    if (!equipmentId || !studentId) {
+    logger.info('🎮 Start session request received:', {
+      equipmentId,
+      studentId,
+      timeLimitMinutes,
+      bodyKeys: Object.keys(req.body),
+      bodyRaw: JSON.stringify(req.body),
+    });
+
+    // Validate required fields
+    if (!equipmentId) {
+      logger.warn('❌ Start session failed: Missing equipmentId', {
+        receivedBody: req.body,
+      });
       res.status(400).json({
         success: false,
-        message: 'equipmentId and studentId are required',
+        message: 'equipmentId is required',
+        debug: {
+          receivedEquipmentId: equipmentId,
+          receivedStudentId: studentId,
+        },
+      });
+      return;
+    }
+
+    if (!studentId) {
+      logger.warn('❌ Start session failed: Missing studentId', {
+        receivedBody: req.body,
+      });
+      res.status(400).json({
+        success: false,
+        message: 'studentId is required',
+        debug: {
+          receivedEquipmentId: equipmentId,
+          receivedStudentId: studentId,
+        },
       });
       return;
     }
 
     try {
       // Check if equipment exists and is available
+      logger.info(`🔍 Looking for equipment with id: ${equipmentId}`);
       const equipment = await prisma.equipment.findUnique({
         where: { id: equipmentId },
       });
 
       if (!equipment) {
-        res
-          .status(404)
-          .json({ success: false, message: 'Equipment not found' });
+        logger.warn(`❌ Start session failed: Equipment not found`, {
+          equipmentId,
+          searchedBy: 'id',
+        });
+        res.status(404).json({
+          success: false,
+          message: 'Equipment not found',
+          debug: { searchedEquipmentId: equipmentId },
+        });
         return;
       }
 
-      if (equipment.status !== 'AVAILABLE') {
-        res
-          .status(400)
-          .json({ success: false, message: 'Equipment is not available' });
+      logger.info(
+        `✅ Equipment found: ${equipment.name}, status: ${equipment.status}`,
+      );
+
+      // Normalize status to uppercase for comparison (handles both 'AVAILABLE' and 'available')
+      const normalizedStatus = equipment.status.toUpperCase();
+      if (normalizedStatus !== 'AVAILABLE') {
+        logger.warn(`❌ Start session failed: Equipment not available`, {
+          equipmentId,
+          equipmentName: equipment.name,
+          currentStatus: equipment.status,
+          expectedStatus: 'AVAILABLE',
+        });
+        res.status(400).json({
+          success: false,
+          message: `Equipment is not available (current status: ${equipment.status})`,
+          debug: {
+            equipmentId,
+            equipmentName: equipment.name,
+            currentStatus: equipment.status,
+          },
+        });
         return;
       }
 
-      // Find student
+      // Find student by multiple fields
+      logger.info(
+        `🔍 Looking for student with id/student_id/barcode: ${studentId}`,
+      );
       const student = await prisma.students.findFirst({
         where: {
           OR: [
@@ -357,11 +416,60 @@ router.post(
       });
 
       if (!student) {
-        res.status(404).json({ success: false, message: 'Student not found' });
+        logger.warn(`❌ Start session failed: Student not found`, {
+          studentId,
+          searchedBy: ['id', 'student_id', 'barcode'],
+        });
+        res.status(404).json({
+          success: false,
+          message: 'Student not found',
+          debug: {
+            searchedStudentId: studentId,
+            searchedFields: ['id', 'student_id', 'barcode'],
+          },
+        });
+        return;
+      }
+
+      logger.info(
+        `✅ Student found: ${student.first_name} ${student.last_name}`,
+        {
+          internalId: student.id,
+          studentId: student.student_id,
+          barcode: student.barcode,
+        },
+      );
+
+      // Check if student already has an active equipment session
+      const existingSession = await prisma.student_activities.findFirst({
+        where: {
+          student_id: student.id,
+          activity_type: 'EQUIPMENT_USE',
+          status: 'ACTIVE',
+        },
+      });
+
+      if (existingSession) {
+        logger.warn(
+          `❌ Start session failed: Student already has active equipment session`,
+          {
+            studentId: student.id,
+            existingSessionId: existingSession.id,
+          },
+        );
+        res.status(400).json({
+          success: false,
+          message: 'Student already has an active equipment session',
+          debug: {
+            existingSessionId: existingSession.id,
+            studentName: `${student.first_name} ${student.last_name}`,
+          },
+        });
         return;
       }
 
       // Create session (activity)
+      logger.info('📝 Creating equipment session...');
       const session = await prisma.student_activities.create({
         data: {
           student_id: student.id,
@@ -373,9 +481,12 @@ router.post(
             equipmentName: equipment.name,
             timeLimitMinutes: timeLimitMinutes || 60,
             startTime: new Date().toISOString(),
+            studentName: `${student.first_name} ${student.last_name}`,
           },
         },
       });
+
+      logger.info(`✅ Session created: ${session.id}`);
 
       // Update equipment status
       await prisma.equipment.update({
@@ -383,12 +494,31 @@ router.post(
         data: { status: 'IN_USE' },
       });
 
+      logger.info(`✅ Equipment status updated to IN_USE`);
+
+      logger.info('🎉 Session started successfully', {
+        sessionId: session.id,
+        equipmentId: equipment.id,
+        equipmentName: equipment.name,
+        studentId: student.id,
+        studentName: `${student.first_name} ${student.last_name}`,
+      });
+
       res.status(201).json({ success: true, data: session });
     } catch (error) {
-      logger.error('Error starting session', { error });
-      res
-        .status(500)
-        .json({ success: false, message: 'Failed to start session' });
+      logger.error('💥 Error starting session', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        equipmentId,
+        studentId,
+      });
+      res.status(500).json({
+        success: false,
+        message: 'Failed to start session',
+        debug: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      });
     }
   }),
 );

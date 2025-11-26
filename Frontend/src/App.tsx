@@ -70,6 +70,7 @@ import {
   FileText,
   Sliders,
   Printer,
+  Monitor,
 } from 'lucide-react';
 
 // Import page components for code splitting
@@ -86,28 +87,10 @@ import {
 } from '@/pages';
 
 // Keep legacy lazy imports for backward compatibility
-const BookCheckout = React.lazy(
-  () => import('@/components/dashboard/BookCheckout')
-);
-const AnalyticsDashboard = React.lazy(
-  () => import('@/components/dashboard/AnalyticsDashboard')
-);
-const ReportsBuilder = React.lazy(
-  () => import('@/components/dashboard/ReportsBuilder')
-);
-const DataQualityManager = React.lazy(
-  () => import('@/components/management/DataQualityManager')
-);
-const ImportExportManager = React.lazy(
-  () => import('@/components/management/ImportExportManager')
-);
-const LibraryManagementHub = React.lazy(
-  () => import('@/components/management/LibraryManagementHub')
-);
-const AttendanceDisplay = React.lazy(
-  () => import('@/components/attendance/AttendanceDisplay')
-);
+// Note: Some of these might be unused in the new layout but kept for reference if needed
+// or can be safely removed if we are sure no legacy code uses them.
 
+// Enhanced Library Management Components (sync in E2E/dev to avoid lazy initializer issues)
 const UserTracking = React.lazy(() =>
   import('@/components/dashboard/UserTracking').then((m) => ({
     default: m.UserTracking,
@@ -118,6 +101,10 @@ const EnhancedBorrowing = React.lazy(() =>
   import('@/components/dashboard/EnhancedBorrowing').then((m) => ({
     default: m.EnhancedBorrowing,
   }))
+);
+
+const AttendanceDisplay = React.lazy(
+  () => import('@/components/attendance/AttendanceDisplay')
 );
 
 const OverdueManagement = React.lazy(() =>
@@ -139,7 +126,12 @@ const BarcodeManager = React.lazy(
 );
 
 // Reference lazy components to avoid unused variable warnings in some linters
-void AnalyticsDashboard;
+void UserTracking;
+void EnhancedBorrowing;
+void OverdueManagement;
+void ScanWorkspace;
+void QRCodeManager;
+void BarcodeManager;
 
 // Enhanced loading fallbacks with skeleton screens
 const LoadingSpinnerFallback = () => (
@@ -243,15 +235,17 @@ export default function App() {
     )
       return 'reports-data';
 
-    // Settings & Admin (Tab 6)
+    // Settings & Admin (Tab 7)
     if (
       m === 'settings' ||
       m === 'management' ||
-      m === 'equipment' ||
       m === 'qrcodes' ||
       m === 'barcodes'
     )
       return 'settings-admin';
+
+    // Equipment (Tab 5)
+    if (m === 'equipment') return 'equipment';
 
     // Printing (Tab 7)
     if (m === 'printing') return 'printing';
@@ -295,6 +289,9 @@ export default function App() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [settingsInitialTab, setSettingsInitialTab] = useState<
+    string | undefined
+  >(undefined);
   const appStartTimeRef = useRef(Date.now());
   const dashboardSearchCentered = activeTab === 'dashboard';
 
@@ -458,13 +455,17 @@ export default function App() {
             break;
           case '5':
             event.preventDefault();
-            setActiveTab('reports-data');
+            setActiveTab('equipment');
             break;
           case '6':
             event.preventDefault();
-            setActiveTab('settings-admin');
+            setActiveTab('reports-data');
             break;
           case '7':
+            event.preventDefault();
+            setActiveTab('settings-admin');
+            break;
+          case '8':
             event.preventDefault();
             setActiveTab('printing');
             break;
@@ -480,14 +481,14 @@ export default function App() {
       // Ctrl/Cmd + / for help
       if ((event.ctrlKey || event.metaKey) && event.key === '/') {
         event.preventDefault();
-        toast.info('Keyboard shortcuts: Alt+1-7 for tabs, Ctrl+K for search');
+        toast.info('Keyboard shortcuts: Alt+1-8 for tabs, Ctrl+K for search');
       }
 
       // F1 for help
       if (event.key === 'F1') {
         event.preventDefault();
         toast.info(
-          'Press Alt+1-7 to navigate tabs: Dashboard, Scan, Students, Books, Reports, Settings, Printing'
+          'Press Alt+1-8 to navigate tabs: Dashboard, Scan, Students, Books, Rooms, Reports, Settings, Printing'
         );
       }
 
@@ -668,7 +669,7 @@ export default function App() {
                       <Input
                         id="global-search"
                         type="text"
-                        placeholder="Search students, books, equipment... (Ctrl+K)"
+                        placeholder="Search students, books, rooms... (Ctrl+K)"
                         value={searchQuery}
                         onChange={(e) => handleSearch(e.target.value)}
                         className={
@@ -819,19 +820,28 @@ export default function App() {
                       </div>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={() => setActiveTab('settings')}
+                        onClick={() => {
+                          setSettingsInitialTab('system');
+                          setActiveTab('settings-admin');
+                        }}
                       >
                         <Settings className="h-4 w-4 mr-2" />
                         Settings
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => setActiveTab('settings')}
+                        onClick={() => {
+                          setSettingsInitialTab('automation');
+                          setActiveTab('settings-admin');
+                        }}
                       >
                         <Sliders className="h-4 w-4 mr-2" />
                         Options
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => toast.info('Opening activity logs...')}
+                        onClick={() => {
+                          setSettingsInitialTab('logs');
+                          setActiveTab('settings-admin');
+                        }}
                       >
                         <Activity className="h-4 w-4 mr-2" />
                         Activity Logs
@@ -899,6 +909,11 @@ export default function App() {
                           value: 'books',
                           label: 'Books & Circulation',
                           icon: BookOpen,
+                        },
+                        {
+                          value: 'equipment',
+                          label: 'Rooms & Stations',
+                          icon: Monitor,
                         },
                         {
                           value: 'reports-data',
@@ -1028,6 +1043,7 @@ export default function App() {
                   { value: 'scan-station', label: 'Scan', icon: Camera },
                   { value: 'students', label: 'Students', icon: Users },
                   { value: 'books', label: 'Books', icon: BookOpen },
+                  { value: 'equipment', label: 'Rooms', icon: Monitor },
                   { value: 'reports-data', label: 'Reports', icon: BarChart },
                   {
                     value: 'settings-admin',
@@ -1071,7 +1087,7 @@ export default function App() {
               {/* Desktop Tabs - Hidden on Mobile - New 6-Tab Structure */}
               <div className="hidden lg:block">
                 <TabsList
-                  className="grid w-full grid-cols-3 sm:grid-cols-7 gap-1 p-1 bg-muted/50 rounded-xl"
+                  className="grid w-full grid-cols-3 sm:grid-cols-8 gap-1 p-1 bg-muted/50 rounded-xl"
                   aria-label="App Navigation"
                 >
                   <TabsTrigger
@@ -1101,6 +1117,13 @@ export default function App() {
                   >
                     <BookOpen className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Books</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="equipment"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
+                  >
+                    <Monitor className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Rooms</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="reports-data"
@@ -1190,7 +1213,7 @@ export default function App() {
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Equipment Tab */}
+              {/* Rooms Tab */}
               <TabsContent
                 value="equipment"
                 className="space-y-6"
@@ -1233,7 +1256,7 @@ export default function App() {
               >
                 <RouteErrorBoundary>
                   <Suspense fallback={<SettingsSkeleton />}>
-                    <SettingsAdminPage />
+                    <SettingsAdminPage initialTab={settingsInitialTab} />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>

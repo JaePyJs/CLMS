@@ -21,17 +21,15 @@ import { useActivityTimeline, useHealthCheck } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
-import { NotificationCalendar } from './NotificationCalendar';
+import { CalendarWidget } from './CalendarWidget';
 import { AddStudentDialog } from './AddStudentDialog';
 import { RealTimeDashboard } from './RealTimeDashboard';
-import { utilitiesApi, studentsApi } from '@/lib/api';
+import { utilitiesApi, studentsApi, apiClient } from '@/lib/api';
 import api from '@/services/api';
-import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { useAttendanceWebSocket } from '@/hooks/useAttendanceWebSocket';
-import { Filter } from 'lucide-react';
-// Simplified icon imports - only what this component actually uses
 import {
+  Filter,
   CheckCircle,
   Activity,
   Clock,
@@ -58,7 +56,8 @@ import {
 } from 'lucide-react';
 
 interface DashboardOverviewProps {
-  onTabChange?: (tab: string) => void;
+  // eslint-disable-next-line no-unused-vars
+  onTabChange?: (_tab: string) => void;
 }
 
 export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
@@ -173,7 +172,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const saveSectionChange = async () => {
     if (!changeSectionTarget) return;
     const toSections = Object.entries(changeSections)
-      .filter(([_k, v]) => v)
+      .filter(([, v]) => v)
       .map(([k]) => k);
     if (toSections.length === 0) {
       toast.error('Select at least one section');
@@ -244,7 +243,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       if (response.success) {
         toast.success('Report generated successfully!');
         // Display report data in a more user-friendly way
-        console.debug('Quick Report:', response.data);
+        // console.debug('Quick Report:', response.data);
 
         // Show key metrics in toast
         const report = response.data as {
@@ -1807,7 +1806,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-6">
-                  <NotificationCalendar />
+                  <CalendarWidget />
                 </CardContent>
                 {wsStatsUpdatedAt && (
                   <div className="px-6 pb-4 text-xs text-muted-foreground">
@@ -2239,7 +2238,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                     timeline.length > 0 ? (
                     <div className="space-y-4">
                       {/* @ts-ignore - Activity type is complex */}
-                      {timeline.map((activity: any, _) => (
+                      {timeline.map((activity: any) => (
                         <div
                           key={activity.id}
                           className="flex items-start space-x-4 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50/30 dark:from-gray-800/50 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 shadow-sm"

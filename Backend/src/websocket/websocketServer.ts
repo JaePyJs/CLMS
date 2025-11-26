@@ -60,6 +60,12 @@ class WebSocketServer {
           origin: string,
           callback: (err: Error | null, allow?: boolean) => void,
         ) => {
+          // Always allow in development
+          if (isDevelopment()) {
+            callback(null, true);
+            return;
+          }
+
           if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
           } else {
@@ -619,6 +625,27 @@ class WebSocketServer {
     const message: WebSocketMessage = {
       id: `${data.studentId}-${data.bookId}-${Date.now()}`,
       type: 'borrow_return_update',
+      data,
+      timestamp: new Date(),
+    };
+    this.io.to('attendance').emit('message', message);
+  }
+
+  public emitReadingSession(data: {
+    studentId: string;
+    bookId: string;
+    bookTitle: string;
+    startTime: string;
+  }) {
+    if (!this.io) {
+      logger.warn(
+        'WebSocket server not initialized, cannot emit reading session',
+      );
+      return;
+    }
+    const message: WebSocketMessage = {
+      id: `${data.studentId}-${data.bookId}-${Date.now()}`,
+      type: 'reading_session',
       data,
       timestamp: new Date(),
     };

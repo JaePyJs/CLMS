@@ -36,7 +36,9 @@ import {
   FileText,
   User,
   Users,
+  Briefcase,
 } from 'lucide-react';
+import { StudentSearchDropdown } from './StudentSearchDropdown';
 
 type PaperSize = 'SHORT' | 'LONG';
 type ColorLevel = 'BW' | 'HALF_COLOR' | 'FULL_COLOR';
@@ -76,7 +78,9 @@ export default function PrintingTracker() {
   const [colorLevel, setColorLevel] = useState<ColorLevel>('BW');
   const [pages, setPages] = useState(1);
 
-  const [userType, setUserType] = useState<'STUDENT' | 'GUEST'>('STUDENT');
+  const [userType, setUserType] = useState<'STUDENT' | 'PERSONNEL' | 'GUEST'>(
+    'STUDENT'
+  );
   const [studentId, setStudentId] = useState('');
   const [guestName, setGuestName] = useState('');
 
@@ -154,8 +158,12 @@ export default function PrintingTracker() {
   };
 
   const createJob = async () => {
-    if (userType === 'STUDENT' && !studentId) {
-      toast.warning('Student ID required');
+    if ((userType === 'STUDENT' || userType === 'PERSONNEL') && !studentId) {
+      toast.warning(
+        userType === 'PERSONNEL'
+          ? 'Personnel ID required'
+          : 'Student ID required'
+      );
       return;
     }
     if (userType === 'GUEST' && !guestName) {
@@ -169,7 +177,10 @@ export default function PrintingTracker() {
 
     try {
       const res = await apiClient.post<Job>('/api/printing/jobs', {
-        student_id: userType === 'STUDENT' ? studentId : undefined,
+        student_id:
+          userType === 'STUDENT' || userType === 'PERSONNEL'
+            ? studentId
+            : undefined,
         guest_name: userType === 'GUEST' ? guestName : undefined,
         paper_size: paperSize,
         color_level: colorLevel,
@@ -278,7 +289,6 @@ export default function PrintingTracker() {
                 </Select>
               </div>
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">Pages</label>
               <Input
@@ -288,34 +298,40 @@ export default function PrintingTracker() {
                 onChange={(e) => setPages(parseInt(e.target.value || '0', 10))}
               />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm font-medium">User Type</label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   variant={userType === 'STUDENT' ? 'default' : 'outline'}
                   onClick={() => setUserType('STUDENT')}
-                  className="flex-1"
+                  className="flex-1 transition-all duration-200"
                 >
                   <User className="h-4 w-4 mr-2" /> Student
                 </Button>
                 <Button
+                  variant={userType === 'PERSONNEL' ? 'default' : 'outline'}
+                  onClick={() => setUserType('PERSONNEL')}
+                  className="flex-1 transition-all duration-200"
+                >
+                  <Briefcase className="h-4 w-4 mr-2" /> Personnel
+                </Button>
+                <Button
                   variant={userType === 'GUEST' ? 'default' : 'outline'}
                   onClick={() => setUserType('GUEST')}
-                  className="flex-1"
+                  className="flex-1 transition-all duration-200"
                 >
                   <Users className="h-4 w-4 mr-2" /> Guest
                 </Button>
               </div>
             </div>
-
-            {userType === 'STUDENT' ? (
+            {userType === 'STUDENT' || userType === 'PERSONNEL' ? (
               <div className="space-y-2">
-                <label className="text-sm font-medium">Student ID</label>
-                <Input
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="Enter Student ID"
+                <label className="text-sm font-medium">
+                  {userType === 'PERSONNEL' ? 'Personnel' : 'Student'}
+                </label>
+                <StudentSearchDropdown
+                  onSelect={(s) => setStudentId(s.id)}
+                  selectedStudentId={studentId}
                 />
               </div>
             ) : (
@@ -328,7 +344,6 @@ export default function PrintingTracker() {
                 />
               </div>
             )}
-
             <div className="pt-4 border-t flex items-center justify-between">
               <div className="text-sm">
                 <div className="text-muted-foreground">Estimated Cost</div>

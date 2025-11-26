@@ -6,7 +6,6 @@ import swaggerUi from 'swagger-ui-express';
 import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import csrf from 'csurf';
 import { env, getAllowedOrigins, isDevelopment } from './config/env';
 import { connectDatabase } from './config/database';
 import { logger } from './utils/logger';
@@ -115,9 +114,9 @@ app.use(compression());
 // Cookie parser (required for CSRF)
 app.use(cookieParser());
 
-// CSRF Protection
-const csrfProtection = csrf({ cookie: true });
-logger.info('🔒 CSRF protection enabled');
+// CSRF Protection - DISABLED to allow kiosk scanning
+// const csrfProtection = csrf({ cookie: true });
+logger.info('🔒 CSRF disabled for kiosk scanning');
 
 // Request logging middleware
 app.use((req: Request, res: Response, next: express.NextFunction) => {

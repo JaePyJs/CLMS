@@ -329,6 +329,7 @@ export class StudentActivityService {
       checkinTime: string;
       autoLogoutAt: string;
       reminders: StudentReminder[];
+      section?: string;
     }>
   > {
     try {
@@ -345,6 +346,11 @@ export class StudentActivityService {
               last_name: true,
             },
           },
+          sections: {
+            include: {
+              section: true,
+            },
+          },
         },
         orderBy: {
           start_time: 'desc',
@@ -356,6 +362,23 @@ export class StudentActivityService {
           const reminders = await this.getStudentReminders(activity.student_id);
           const autoLogoutAt = addMinutes(activity.start_time, 120);
 
+          // Determine section
+          let section = 'library'; // Default
+          if (activity.sections && activity.sections.length > 0) {
+            section = activity.sections[0].section.code.toLowerCase();
+          } else if (
+            activity.activity_type &&
+            activity.activity_type !== 'CHECK_IN' &&
+            activity.activity_type !== 'KIOSK_CHECK_IN'
+          ) {
+            section = activity.activity_type.toLowerCase();
+          }
+
+          // Map common codes to frontend values if needed
+          if (section === 'library_space') {
+            section = 'library';
+          }
+
           return {
             activityId: activity.id,
             studentId: activity.student.id,
@@ -363,6 +386,7 @@ export class StudentActivityService {
             checkinTime: activity.start_time.toISOString(),
             autoLogoutAt: autoLogoutAt.toISOString(),
             reminders,
+            section,
           };
         }),
       );
@@ -385,28 +409,74 @@ export class StudentActivityService {
    */
   static async updateActivitySection(
     activityId: string,
-    section: string,
+    sectionCode: string,
   ): Promise<void> {
     try {
-      await prisma.student_activities.update({
-        where: { id: activityId },
-        data: {
-          activity_type: section, // Using activity_type to store section/area
-          metadata: {
-            updated_at: new Date(),
-            updated_by: 'LIBRARIAN', // Could be dynamic if we pass user context
-          },
+      // Map frontend section codes to DB codes if needed
+      let dbCode = sectionCode.toUpperCase();
+      if (dbCode === 'LIBRARY') {
+        dbCode = 'LIBRARY_SPACE';
+      }
+
+      // Find the section ID
+      const section = await prisma.library_sections.findFirst({
+        where: {
+          OR: [{ code: dbCode }, { code: sectionCode }],
         },
+      });
+
+      if (!section) {
+        // Fallback to just updating activity_type if section not found (legacy behavior)
+        await prisma.student_activities.update({
+          where: { id: activityId },
+          data: {
+            activity_type: sectionCode,
+            metadata: {
+              updated_at: new Date(),
+              updated_by: 'LIBRARIAN',
+            },
+          },
+        });
+        return;
+      }
+
+      // Update activity type AND section relation
+      await prisma.$transaction(async tx => {
+        // Update activity type
+        await tx.student_activities.update({
+          where: { id: activityId },
+          data: {
+            activity_type: sectionCode, // Keep simple code in activity_type
+            metadata: {
+              updated_at: new Date(),
+              updated_by: 'LIBRARIAN',
+            },
+          },
+        });
+
+        // Remove existing sections
+        await tx.student_activities_sections.deleteMany({
+          where: { activity_id: activityId },
+        });
+
+        // Add new section
+        await tx.student_activities_sections.create({
+          data: {
+            activity_id: activityId,
+            section_id: section.id,
+          },
+        });
       });
 
       logger.info('Updated student activity section', {
         activityId,
-        section,
+        sectionCode,
+        dbCode,
       });
     } catch (error) {
       logger.error('Failed to update activity section', {
         activityId,
-        section,
+        sectionCode,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;

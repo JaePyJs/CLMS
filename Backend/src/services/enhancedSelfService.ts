@@ -4,6 +4,7 @@ import { logger } from '../utils/logger';
 import { GoogleSheetsService } from './googleSheetsService';
 import { prisma } from '../utils/prisma';
 import { websocketServer } from '../websocket/websocketServer';
+import { ScanExportService } from './scanExportService';
 
 export interface CheckInWithSectionsInput {
   studentId: string;
@@ -143,6 +144,21 @@ export class EnhancedSelfService {
         ).toISOString(),
       });
 
+      ScanExportService.logStudentScan({
+        barcode: student.barcode || student.student_id,
+        studentId: student.student_id,
+        studentName: `${student.first_name} ${student.last_name}`,
+        action: 'CHECK_IN',
+        source: 'Enhanced Self-Service',
+        status: 'ACTIVE',
+        notes: validSections.map(s => s.name).join(', '),
+      }).catch(error =>
+        logger.error('Failed to log enhanced student check-in export', {
+          studentId: student.student_id,
+          error: error instanceof Error ? error.message : error,
+        }),
+      );
+
       return {
         success: true,
         message: 'Checked in successfully',
@@ -213,6 +229,21 @@ export class EnhancedSelfService {
         checkoutTime: endTime.toISOString(),
         reason: 'manual',
       });
+
+      ScanExportService.logStudentScan({
+        barcode: student.barcode || student.student_id,
+        studentId: student.student_id,
+        studentName: `${student.first_name} ${student.last_name}`,
+        action: 'CHECK_OUT',
+        source: 'Enhanced Self-Service',
+        status: 'COMPLETED',
+        notes: `Time spent: ${timeSpent} mins`,
+      }).catch(error =>
+        logger.error('Failed to log enhanced student check-out export', {
+          studentId: student.student_id,
+          error: error instanceof Error ? error.message : error,
+        }),
+      );
 
       return {
         success: true,

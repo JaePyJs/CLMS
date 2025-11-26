@@ -164,4 +164,112 @@ export class SettingsService {
       logger.error('Error initializing default settings:', error);
     }
   }
+
+  /**
+   * Reset daily data - clears today's check-ins and active sessions
+   * Useful for starting fresh each day or after server restarts
+   */
+  static async resetDailyData(): Promise<{
+    activitiesEnded: number;
+    equipmentReset: number;
+  }> {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // End all active student activities
+      const endedActivities = await prisma.student_activities.updateMany({
+        where: {
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'COMPLETED',
+          end_time: new Date(),
+        },
+      });
+
+      // Reset all equipment to AVAILABLE status
+      const resetEquipment = await prisma.equipment.updateMany({
+        where: {
+          status: {
+            not: 'AVAILABLE',
+          },
+        },
+        data: {
+          status: 'AVAILABLE',
+        },
+      });
+
+      // End all active equipment sessions
+      await prisma.equipment_sessions.updateMany({
+        where: {
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'COMPLETED',
+          session_end: new Date(),
+        },
+      });
+
+      logger.info('Daily data reset completed', {
+        activitiesEnded: endedActivities.count,
+        equipmentReset: resetEquipment.count,
+      });
+
+      return {
+        activitiesEnded: endedActivities.count,
+        equipmentReset: resetEquipment.count,
+      };
+    } catch (error) {
+      logger.error('Error resetting daily data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset ALL data - nuclear option for complete system reset
+   * WARNING: This will delete all transactional data!
+   */
+  static async resetAllData(): Promise<{
+    activitiesDeleted: number;
+    equipmentSessionsDeleted: number;
+    checkoutsDeleted: number;
+    equipmentReset: number;
+  }> {
+    try {
+      // Delete all student activities
+      const deletedActivities = await prisma.student_activities.deleteMany({});
+
+      // Delete all equipment sessions
+      const deletedEquipmentSessions =
+        await prisma.equipment_sessions.deleteMany({});
+
+      // Delete all book checkouts (borrowing history)
+      const deletedCheckouts = await prisma.book_checkouts.deleteMany({});
+
+      // Reset all equipment to AVAILABLE status
+      const resetEquipment = await prisma.equipment.updateMany({
+        data: {
+          status: 'AVAILABLE',
+        },
+      });
+
+      logger.warn('⚠️ ALL DATA RESET completed', {
+        activitiesDeleted: deletedActivities.count,
+        equipmentSessionsDeleted: deletedEquipmentSessions.count,
+        checkoutsDeleted: deletedCheckouts.count,
+        equipmentReset: resetEquipment.count,
+      });
+
+      return {
+        activitiesDeleted: deletedActivities.count,
+        equipmentSessionsDeleted: deletedEquipmentSessions.count,
+        checkoutsDeleted: deletedCheckouts.count,
+        equipmentReset: resetEquipment.count,
+      };
+    } catch (error) {
+      logger.error('Error resetting all data:', error);
+      throw error;
+    }
+  }
 }

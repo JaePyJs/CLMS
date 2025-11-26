@@ -3,11 +3,17 @@ import { CardSkeleton } from '@/components/LoadingStates';
 
 const SettingsPage = lazy(() => import('@/components/settings/SettingsPage'));
 
-export default function SettingsAdminPage() {
+interface SettingsAdminPageProps {
+  initialTab?: string;
+}
+
+export default function SettingsAdminPage({
+  initialTab,
+}: SettingsAdminPageProps) {
   return (
     <div className="space-y-6">
       <Suspense fallback={<CardSkeleton className="h-96" />}>
-        <SettingsPage />
+        <SettingsPage initialTab={initialTab} />
       </Suspense>
     </div>
   );

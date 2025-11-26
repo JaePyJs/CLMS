@@ -19,12 +19,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { useUsbScanner, useManualEntry } from '@/lib/scanner';
+import { useUsbScanner, useManualEntry, scannerUtils } from '@/lib/scanner';
 import selfServiceApi from '@/services/selfServiceApi';
-import { useStudentActivity } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { offlineActions } from '@/lib/offline-queue';
 import { toast } from 'sonner';
+import { scanApi, apiClient } from '@/lib/api';
 import {
   Camera,
   Keyboard,
@@ -53,7 +53,10 @@ import {
   Activity,
   Shield,
   Download,
+  Loader2,
 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { StudentSearchDropdown } from '@/components/management/StudentSearchDropdown';
 
 interface Student {
   id: string;
@@ -72,11 +75,45 @@ interface ScanResult {
   timestamp: number;
 }
 
+interface BookPreview {
+  id: string;
+  title: string;
+  accession_no: string;
+  isbn?: string | null;
+  available_copies?: number | null;
+}
+
+const formatDateInput = (date: Date) => date.toISOString().slice(0, 16);
+
+const defaultBorrowDueDate = () => {
+  const due = new Date();
+  due.setDate(due.getDate() + 7);
+  return formatDateInput(due);
+};
+
 export function ScanWorkspace() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [selectedAction, setSelectedAction] = useState<string>('');
   const [timeLimit, setTimeLimit] = useState<number>(30);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [lastStudentContext, setLastStudentContext] = useState<{
+    id: string;
+    display: string;
+  } | null>(null);
+  const [isBookDialogOpen, setIsBookDialogOpen] = useState(false);
+  const [pendingBookBarcode, setPendingBookBarcode] = useState<string | null>(
+    null
+  );
+  const [bookPreview, setBookPreview] = useState<BookPreview | null>(null);
+  const [isBookPreviewLoading, setIsBookPreviewLoading] = useState(false);
+  const [bookIntent, setBookIntent] = useState<'BORROW' | 'READ' | 'RETURN'>(
+    'BORROW'
+  );
+  const [bookActionStudentId, setBookActionStudentId] = useState('');
+  const [bookActionStudentName, setBookActionStudentName] = useState('');
+  const [bookDueDate, setBookDueDate] = useState(defaultBorrowDueDate);
+  const [bookNotes, setBookNotes] = useState('');
+  const [isSubmittingBookAction, setIsSubmittingBookAction] = useState(false);
 
   // Enhanced state for activity management
   const [showActiveSessions, setShowActiveSessions] = useState(false);
@@ -97,7 +134,6 @@ export function ScanWorkspace() {
   const { toggleListening, isListening, currentInput, lastScannedCode } =
     useUsbScanner();
   const { isOpen, input, setIsOpen, setInput, handleSubmit } = useManualEntry();
-  const { mutate: logActivity } = useStudentActivity();
 
   // Sound effects
   const successSound = new Audio('/sounds/success.mp3');
@@ -159,7 +195,104 @@ export function ScanWorkspace() {
     }
   };
 
+  const handleBookBarcode = async (barcode: string) => {
+    setPendingBookBarcode(barcode);
+    setIsBookDialogOpen(true);
+    setBookIntent('BORROW');
+    setBookPreview(null);
+    setBookNotes('');
+    setBookDueDate(defaultBorrowDueDate());
+    setBookActionStudentId(lastStudentContext?.id || '');
+    setBookActionStudentName(lastStudentContext?.display || '');
+    setIsBookPreviewLoading(true);
+
+    try {
+      const previewResponse = await scanApi.detect(barcode);
+      if (previewResponse.success && (previewResponse as any).book) {
+        setBookPreview((previewResponse as any).book as BookPreview);
+      } else {
+        toast.warning(previewResponse.message || 'Book not found for scan');
+      }
+    } catch (error) {
+      console.error('Book preview failed', error);
+      toast.error('Failed to load book details');
+      setIsBookDialogOpen(false);
+    } finally {
+      setIsBookPreviewLoading(false);
+    }
+  };
+
+  const submitBookAction = async () => {
+    if (!pendingBookBarcode) {
+      toast.error('No book scan detected');
+      return;
+    }
+
+    if (bookIntent !== 'RETURN' && !bookActionStudentId) {
+      toast.error('Select a student before continuing');
+      return;
+    }
+
+    setIsSubmittingBookAction(true);
+
+    try {
+      const payload: {
+        barcode: string;
+        intent: 'BORROW' | 'READ' | 'RETURN';
+        studentId?: string;
+        dueDate?: string;
+        notes?: string;
+      } = {
+        barcode: pendingBookBarcode,
+        intent: bookIntent,
+      };
+
+      if (bookIntent !== 'RETURN') {
+        payload.studentId = bookActionStudentId;
+      }
+
+      if (bookIntent === 'BORROW' && bookDueDate) {
+        payload.dueDate = new Date(bookDueDate).toISOString();
+      }
+
+      if (bookNotes.trim().length > 0) {
+        payload.notes = bookNotes.trim();
+      }
+
+      const response = await scanApi.process(payload);
+      if (response.success) {
+        toast.success(response.message || 'Book action processed');
+        handleBookDialogChange(false);
+      } else {
+        toast.error(response.message || 'Failed to process book action');
+      }
+    } catch (error) {
+      console.error('Book action failed', error);
+      toast.error('Failed to process book action');
+    } finally {
+      setIsSubmittingBookAction(false);
+    }
+  };
+
+  const handleBookDialogChange = (open: boolean) => {
+    setIsBookDialogOpen(open);
+    if (!open) {
+      setPendingBookBarcode(null);
+      setBookPreview(null);
+      setBookActionStudentId('');
+      setBookActionStudentName('');
+      setBookNotes('');
+    }
+  };
+
   const processBarcode = async (barcode: string) => {
+    const type = scannerUtils.barcodeValidation.getBarcodeType(barcode);
+
+    if (type === 'book') {
+      await handleBookBarcode(barcode);
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -181,25 +314,37 @@ export function ScanWorkspace() {
             : undefined,
         });
 
+        const normalizedStudent = result.student
+          ? ({
+              id: result.student.id,
+              studentId: result.student.studentId,
+              firstName: result.student.name?.split(' ')[0] || '',
+              lastName:
+                result.student.name?.split(' ').slice(1).join(' ') ||
+                result.student.name ||
+                '',
+              gradeLevel: result.student.gradeLevel,
+              gradeCategory: result.student.gradeLevel || '', // Use gradeLevel as gradeCategory
+              section: result.student.section || '',
+            } as Student)
+          : undefined;
+
         setScanResult({
-          student: result.student
-            ? ({
-                id: result.student.id,
-                studentId: result.student.studentId,
-                firstName: result.student.name?.split(' ')[0] || '',
-                lastName:
-                  result.student.name?.split(' ').slice(1).join(' ') ||
-                  result.student.name ||
-                  '',
-                gradeLevel: result.student.gradeLevel,
-                gradeCategory: result.student.gradeLevel || '', // Use gradeLevel as gradeCategory
-                section: result.student.section || '',
-              } as Student)
-            : undefined,
+          student: normalizedStudent,
           barcode,
           type: 'student' as const,
           timestamp: Date.now(),
         } as ScanResult);
+
+        if (normalizedStudent) {
+          setLastStudentContext({
+            id: normalizedStudent.id,
+            display:
+              `${normalizedStudent.firstName} ${normalizedStudent.lastName}`.trim(),
+          });
+          // Default to library check-in
+          setSelectedAction('library');
+        }
 
         if (result.activity) {
           setTimeLimit(result.activity.timeLimit);
@@ -253,30 +398,34 @@ export function ScanWorkspace() {
       return;
     }
 
-    const activityData = {
-      studentId: scanResult.student?.id || scanResult.barcode,
-      studentName: scanResult.student
-        ? `${scanResult.student.firstName} ${scanResult.student.lastName}`
-        : `Unknown (${scanResult.barcode})`,
-      gradeLevel: scanResult.student?.gradeLevel || 'Unknown',
-      gradeCategory: scanResult.student?.gradeCategory || 'unknown',
-      activityType: selectedAction,
-      timeLimitMinutes: ['computer', 'gaming', 'avr'].includes(selectedAction)
-        ? timeLimit
-        : undefined,
-      equipmentId: ['computer', 'gaming', 'avr'].includes(selectedAction)
-        ? 'auto-assign'
-        : undefined,
-      startTime: new Date().toISOString(),
-      status: 'active',
-    };
+    const studentId = scanResult.student?.id || scanResult.barcode;
+    const purposes = [selectedAction]; // e.g., ['computer', 'reading', 'gaming']
 
-    if (isOnline) {
-      // Online: use API
-      logActivity(activityData);
-    } else {
-      // Offline: queue for later
-      await offlineActions.logActivity(activityData);
+    try {
+      if (isOnline) {
+        // Use kiosk check-in endpoint for real-time WebSocket updates
+        await apiClient.post('/api/kiosk/confirm-check-in', {
+          studentId,
+          purposes,
+          scanData: scanResult.barcode,
+        });
+        toast.success(`Activity started: ${selectedAction}`);
+      } else {
+        // Offline: queue for later
+        await offlineActions.logActivity({
+          studentId,
+          activityType: selectedAction,
+          timeLimitMinutes: ['computer', 'gaming', 'avr'].includes(
+            selectedAction
+          )
+            ? timeLimit
+            : undefined,
+        });
+        toast.info('Queued for sync when online');
+      }
+    } catch (error) {
+      console.error('Failed to log activity:', error);
+      toast.error('Failed to start activity session');
     }
 
     // Reset for next scan
@@ -302,22 +451,19 @@ export function ScanWorkspace() {
         const session = mockActiveSessions.find((s) => s.id === sessionId);
         if (!session) return Promise.resolve();
 
-        const activityData = {
-          studentId: session.studentId || 'unknown',
-          studentName: session.studentName,
-          gradeLevel: session.gradeLevel || 'Unknown',
-          gradeCategory: session.gradeCategory || 'unknown',
-          activityType: session.activity, // Log same activity type
-          equipmentId: session.equipmentId,
-          startTime: session.startTime,
-          endTime: new Date().toISOString(),
-          status: 'completed',
-        };
-
+        // End session via kiosk checkout endpoint
         if (isOnline) {
-          return logActivity(activityData);
+          return apiClient.post('/api/kiosk/checkout', {
+            studentId: session.studentId || 'unknown',
+            scanData: session.studentId || 'unknown',
+          });
         } else {
-          return offlineActions.logActivity(activityData);
+          return offlineActions.logActivity({
+            studentId: session.studentId || 'unknown',
+            activityType: session.activity,
+            endTime: new Date().toISOString(),
+            status: 'completed',
+          });
         }
       });
 
@@ -460,6 +606,155 @@ export function ScanWorkspace() {
 
   return (
     <div className="space-y-6">
+      <Dialog open={isBookDialogOpen} onOpenChange={handleBookDialogChange}>
+        <DialogContent className="sm:max-w-lg space-y-4">
+          <DialogHeader>
+            <DialogTitle>Process Book Scan</DialogTitle>
+            <DialogDescription>
+              Choose how to handle the scanned material
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border bg-muted/40 p-3">
+            <p className="text-xs uppercase text-muted-foreground">Barcode</p>
+            <p className="font-mono text-lg font-semibold">
+              {pendingBookBarcode || '—'}
+            </p>
+            {isBookPreviewLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading book details…
+              </div>
+            ) : bookPreview ? (
+              <div className="mt-2 text-sm">
+                <p className="font-semibold">{bookPreview.title}</p>
+                <p className="text-muted-foreground">
+                  Accession #{bookPreview.accession_no}
+                </p>
+                <p className="text-muted-foreground">
+                  Available copies: {bookPreview.available_copies ?? '—'}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-destructive">
+                Book details unavailable. You can still continue.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Select Action</p>
+            <div className="flex gap-2">
+              {(['BORROW', 'READ', 'RETURN'] as const).map((option) => (
+                <Button
+                  key={option}
+                  type="button"
+                  variant={bookIntent === option ? 'default' : 'outline'}
+                  onClick={() => setBookIntent(option)}
+                >
+                  {option === 'BORROW' && <BookOpen className="h-4 w-4 mr-1" />}
+                  {option === 'READ' && <Eye className="h-4 w-4 mr-1" />}
+                  {option === 'RETURN' && (
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                  )}
+                  {option === 'BORROW'
+                    ? 'Borrow'
+                    : option === 'READ'
+                      ? 'Reading'
+                      : 'Return'}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {bookIntent !== 'RETURN' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Student</label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs"
+                  disabled={!lastStudentContext}
+                  onClick={() => {
+                    if (!lastStudentContext) return;
+                    setBookActionStudentId(lastStudentContext.id);
+                    setBookActionStudentName(lastStudentContext.display);
+                    toast.success(`Using ${lastStudentContext.display}`);
+                  }}
+                >
+                  Use last scan
+                </Button>
+              </div>
+              <StudentSearchDropdown
+                onSelect={(student) => {
+                  setBookActionStudentId(student.id);
+                  setBookActionStudentName(student.name);
+                  setLastStudentContext({
+                    id: student.id,
+                    display: student.name,
+                  });
+                }}
+                selectedStudentId={bookActionStudentId}
+              />
+              <p className="text-xs text-muted-foreground">
+                Selected: {bookActionStudentName || 'None'}
+              </p>
+            </div>
+          )}
+
+          {bookIntent === 'BORROW' && (
+            <div className="space-y-2">
+              <label htmlFor="book-due-date" className="text-sm font-medium">
+                Due Date
+              </label>
+              <Input
+                id="book-due-date"
+                type="datetime-local"
+                value={bookDueDate}
+                onChange={(e) => setBookDueDate(e.target.value)}
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label htmlFor="book-notes" className="text-sm font-medium">
+              Notes (optional)
+            </label>
+            <Textarea
+              id="book-notes"
+              value={bookNotes}
+              onChange={(e) => setBookNotes(e.target.value)}
+              placeholder="Remarks for this transaction"
+              rows={3}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleBookDialogChange(false)}
+              disabled={isSubmittingBookAction}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={submitBookAction}
+              disabled={
+                isSubmittingBookAction ||
+                (bookIntent !== 'RETURN' && !bookActionStudentId)
+              }
+            >
+              {isSubmittingBookAction && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              Confirm
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Enhanced Header with Action Buttons */}
       <div className="relative">
         <div>
@@ -1124,6 +1419,16 @@ export function ScanWorkspace() {
                     <div>
                       <h4 className="font-medium mb-2">Select Action:</h4>
                       <div className="grid gap-2">
+                        <Button
+                          variant={
+                            selectedAction === 'library' ? 'default' : 'outline'
+                          }
+                          onClick={() => setSelectedAction('library')}
+                          className="justify-start"
+                        >
+                          <BookOpen className="h-4 w-4 mr-2" />
+                          Library / Study
+                        </Button>
                         <Button
                           variant={
                             selectedAction === 'computer'

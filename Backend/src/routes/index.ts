@@ -20,11 +20,14 @@ import borrowingPoliciesRoutes from './borrowingPolicies';
 import finesRoutes from './fines';
 import printingRoutes from './printing';
 import announcementsRoutes from './announcements';
+import scanRoutes from './scan';
 import { kioskRoutes } from './kiosk';
 import { enhancedLibraryRoutes } from './enhanced-library';
 import { versionRoutes } from './version';
 import healthRoutes from './health';
 import { csrfRoutes } from './csrf';
+import backupRoutes from './backups';
+import automationRoutes from './automation';
 
 const router = Router();
 
@@ -54,6 +57,9 @@ router.use('/printing', printingRoutes);
 router.use('/announcements', announcementsRoutes);
 router.use('/kiosk', kioskRoutes);
 router.use('/enhanced-library', enhancedLibraryRoutes);
+router.use('/scan', scanRoutes);
+router.use('/backups', backupRoutes);
+router.use('/automation', automationRoutes);
 router.use('/version', versionRoutes);
 router.use('/health', healthRoutes);
 
@@ -91,6 +97,7 @@ router.get('/info', (_req: Request, res: Response) => {
       fines: '/api/fines',
       printing: '/api/printing',
       announcements: '/api/announcements',
+      scan: '/api/scan',
       enhancedLibrary: '/api/enhanced-library',
       settings: '/api/settings',
       attendanceExport: '/api/attendance-export',

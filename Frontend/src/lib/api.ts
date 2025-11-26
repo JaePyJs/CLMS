@@ -189,6 +189,18 @@ export const automationApi = {
   },
 };
 
+export const scanApi = {
+  detect: (barcode: string) =>
+    apiClient.post('/api/scan', { barcode, preview: true }),
+  process: (payload: {
+    barcode: string;
+    intent?: 'BORROW' | 'READ' | 'RETURN';
+    studentId?: string;
+    dueDate?: string;
+    notes?: string;
+  }) => apiClient.post('/api/scan', payload),
+};
+
 export const studentsApi = {
   // Get all students (helper for non-paginated view)
   getAll: () => apiClient.get('/api/students', { limit: 10000 }),
@@ -640,6 +652,11 @@ export const settingsApi = {
     apiClient.put('/api/settings/system', settings),
   resetSystemSettings: () => apiClient.post('/api/settings/system/reset'),
 
+  // Data Reset (Admin only)
+  resetDailyData: () => apiClient.post('/api/settings/reset-daily-data'),
+  resetAllData: (confirmationCode: string) =>
+    apiClient.post('/api/settings/reset-all-data', { confirmationCode }),
+
   // Google Sheets configuration
   getGoogleSheetsConfig: () => apiClient.get('/api/settings/google-sheets'),
   updateGoogleSheetsSchedule: (config: any) =>
@@ -649,9 +666,9 @@ export const settingsApi = {
   syncGoogleSheets: () => apiClient.post('/api/settings/google-sheets/sync'),
 
   // Backups
-  getBackups: () => apiClient.get('/api/settings/backups'),
-  createBackup: () => apiClient.post('/api/settings/backups/create'),
-  deleteBackup: (id: string) => apiClient.delete(`/api/settings/backups/${id}`),
+  getBackups: () => apiClient.get('/api/backups'),
+  createBackup: () => apiClient.post('/api/backups/full'),
+  deleteBackup: (id: string) => apiClient.delete(`/api/backups/${id}`),
 
   // System logs
   getLogs: (params?: {
@@ -671,6 +688,10 @@ export const settingsApi = {
     apiClient.post(`/api/users/${id}/change-password`, {
       newPassword: password,
     }),
+  resetUserPasswordToDefault: (
+    id: string,
+    credentials: { adminUsername: string; adminPassword: string }
+  ) => apiClient.post(`/api/users/${id}/reset-password/default`, credentials),
 };
 
 // Enhanced Library API
