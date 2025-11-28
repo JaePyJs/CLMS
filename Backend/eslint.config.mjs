@@ -2,6 +2,12 @@ import js from '@eslint/js';
 import tseslintModule from '@typescript-eslint/eslint-plugin';
 import tsParserModule from '@typescript-eslint/parser';
 
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const tseslint = tseslintModule.default ?? tseslintModule;
 const tsParser = tsParserModule.default ?? tsParserModule;
 
@@ -20,6 +26,7 @@ const tsRecommended = tseslint.configs['flat/recommended'].map(config => {
       parserOptions: {
         ...config.languageOptions.parserOptions,
         project: './tsconfig.json',
+        tsconfigRootDir: __dirname,
         sourceType: 'module',
       },
     },
