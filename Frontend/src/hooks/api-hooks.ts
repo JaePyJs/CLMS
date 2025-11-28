@@ -164,11 +164,7 @@ export const useStartSession = () => {
       studentId: string;
       timeLimitMinutes?: number;
     }) => {
-      console.log('📤 Sending startSession request:', {
-        equipmentId,
-        studentId,
-        timeLimitMinutes,
-      });
+      // console.log removed
       return equipmentApi.startSession(
         equipmentId,
         studentId,
@@ -176,7 +172,7 @@ export const useStartSession = () => {
       );
     },
     onSuccess: (response) => {
-      console.log('✅ Session started successfully:', response);
+      // console.log removed('✅ Session started successfully:', response);
       toast.success('Session started successfully');
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['activities'] });
@@ -205,12 +201,40 @@ export const useEndSession = () => {
 
   return useMutation({
     mutationFn: (sessionId: string) => equipmentApi.endSession(sessionId),
+    onMutate: async (sessionId: string) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['equipment'] });
+
+      // Snapshot previous value
+      const previousEquipment = queryClient.getQueryData(['equipment']);
+
+      // Optimistically update equipment status
+      queryClient.setQueryData(['equipment'], (old: any) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((item: any) => {
+          if (item.currentSession?.id === sessionId) {
+            return {
+              ...item,
+              status: 'available',
+              currentSession: null,
+            };
+          }
+          return item;
+        });
+      });
+
+      return { previousEquipment };
+    },
     onSuccess: () => {
       toast.success('Session ended successfully');
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['activities'] });
     },
-    onError: (error: unknown) => {
+    onError: (error: unknown, _sessionId, context) => {
+      // Revert optimistic update on error
+      if (context?.previousEquipment) {
+        queryClient.setQueryData(['equipment'], context.previousEquipment);
+      }
       toast.error(getErrorMessage(error, 'Failed to end session'));
     },
   });
@@ -238,6 +262,18 @@ export const useExtendSession = () => {
 };
 
 // Analytics hooks
+export const useEquipmentAnalytics = (period: '30' | '60' | '90' = '30') => {
+  return useQuery({
+    queryKey: ['equipment-analytics', period],
+    queryFn: async () => {
+      const response = await analyticsApi.getEquipmentAnalytics(period);
+      return response.data;
+    },
+    enabled: true,
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+};
+
 export const useDashboardMetrics = () => {
   return useQuery({
     queryKey: ['dashboard-metrics'],

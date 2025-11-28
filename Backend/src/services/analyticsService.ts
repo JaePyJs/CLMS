@@ -174,6 +174,73 @@ export class AnalyticsService {
   }
 
   /**
+   * Get real-time dashboard overview data
+   * Used for WebSocket broadcasts and initial dashboard load
+   */
+  public static async getRealTimeOverview(): Promise<any> {
+    try {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const [
+        totalStudents,
+        activeStudents,
+        totalBooks,
+        activeBorrows,
+        overdueBorrows,
+        todayActivities,
+        activeEquipment,
+        totalUsers,
+        returnedBorrows,
+        totalEquipment,
+      ] = await Promise.all([
+        prisma.students.count(),
+        prisma.student_activities.count({
+          where: { status: 'ACTIVE' },
+        }),
+        prisma.books.count(),
+        prisma.book_checkouts.count({
+          where: { status: 'ACTIVE' },
+        }),
+        prisma.book_checkouts.count({
+          where: { status: 'ACTIVE', due_date: { lt: new Date() } },
+        }),
+        prisma.student_activities.count({
+          where: { start_time: { gte: startOfDay } },
+        }),
+        prisma.equipment.count({
+          where: { status: 'IN_USE' },
+        }),
+        prisma.users.count(),
+        prisma.book_checkouts.count({
+          where: { status: 'RETURNED' },
+        }),
+        prisma.equipment.count(),
+      ]);
+
+      return {
+        totalStudents,
+        activeStudents,
+        totalBooks,
+        activeBorrows,
+        overdueBorrows,
+        todayActivities,
+        activeEquipment,
+        totalUsers,
+        returnedBorrows,
+        totalEquipment,
+        activeConnections: 0, // Placeholder for WS connections
+        systemLoad: 0, // Placeholder for system load
+      };
+    } catch (error) {
+      logger.error('Failed to get real-time overview', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Get checkout trends for a date range
    */
   public static async getCheckoutTrends(

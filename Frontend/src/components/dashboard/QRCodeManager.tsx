@@ -97,7 +97,7 @@ export function QRCodeManager() {
       } else {
         toast.error('No generation report found. Generate QR codes first.');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load report');
     }
   };

@@ -80,6 +80,8 @@ interface Student extends BaseEntity {
   guardianContact?: string;
   barcodeImage?: string;
   notes?: string;
+  gender?: string;
+  designation?: string;
 }
 
 // Grade categories

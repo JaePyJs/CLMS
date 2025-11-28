@@ -327,7 +327,7 @@ export function OverdueManagement() {
       } else {
         toast.error((res as any)?.error || 'Batch return failed');
       }
-    } catch (e) {
+    } catch {
       toast.error('Batch return failed');
     }
   };
@@ -357,7 +357,7 @@ export function OverdueManagement() {
       toast.success(`Marked paid ${selectedIds.length} item(s)`);
       setSelected({});
       await fetchOverdueLoans();
-    } catch (e) {
+    } catch {
       toast.error('Batch pay failed');
     }
   };
@@ -387,7 +387,7 @@ export function OverdueManagement() {
         if (r.success) ok++;
       }
       toast.success(`Reminded ${ok} student(s)`);
-    } catch (e) {
+    } catch {
       toast.error('Batch remind failed');
     }
   };

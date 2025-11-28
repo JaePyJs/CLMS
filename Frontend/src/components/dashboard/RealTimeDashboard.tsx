@@ -45,9 +45,9 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
   // Initial data request when WebSocket connects
   useEffect(() => {
     if (isConnected) {
-      console.log(
-        '[RealTimeDashboard] WebSocket connected, requesting initial data'
-      );
+      // // console.log removed(
+      //   '[RealTimeDashboard] WebSocket connected, requesting initial data'
+      // );
       refreshDashboard('overview');
     }
   }, [isConnected, refreshDashboard]);
@@ -73,20 +73,23 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
     | undefined;
 
   // Debug logging
-  console.log('[RealTimeDashboard] dashboardData:', dashboardData);
-  console.log('[RealTimeDashboard] overview:', overview);
-  console.log('[RealTimeDashboard] totalStudents:', overview?.totalStudents);
+  // Debug logging removed
 
   const stats = {
-    totalStudents: Number(overview?.totalStudents) || 0,
-    activeStudents: Number(overview?.activeStudents) || 0,
-    totalBooks: Number(overview?.totalBooks) || 0,
+    totalStudents:
+      Number(overview?.totalStudents ?? overview?.total_students) || 0,
+    activeStudents:
+      Number(overview?.activeStudents ?? overview?.active_students) || 0,
+    totalBooks: Number(overview?.totalBooks ?? overview?.total_books) || 0,
     todayActivities:
-      Number(overview?.todayActivities) || recentActivities.length,
+      Number(overview?.todayActivities ?? overview?.today_activities) ||
+      recentActivities.length,
     activeEquipment:
-      Number(overview?.activeEquipment) || Object.keys(equipmentStatus).length,
-    activeConnections: Number(overview?.activeConnections) || 0,
-    systemLoad: Number(overview?.systemLoad) || 0,
+      Number(overview?.activeEquipment ?? overview?.total_equipment) ||
+      Object.keys(equipmentStatus).length,
+    activeConnections:
+      Number(overview?.activeConnections ?? overview?.active_connections) || 0,
+    systemLoad: Number(overview?.systemLoad ?? overview?.system_load) || 0,
     recentNotifications: notifications.length,
     criticalAlerts: notifications.filter(
       (n) => (n as { priority?: string }).priority === 'critical'

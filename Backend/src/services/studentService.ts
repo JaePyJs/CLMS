@@ -10,6 +10,7 @@ export interface CreateStudentData {
   grade_category?: string;
   section?: string;
   is_active?: boolean;
+  barcode?: string;
 }
 
 export interface UpdateStudentData {
@@ -19,6 +20,7 @@ export interface UpdateStudentData {
   grade_category?: string;
   section?: string;
   is_active?: boolean;
+  barcode?: string;
 }
 
 export class StudentService {
@@ -38,6 +40,7 @@ export class StudentService {
           grade_category: data.grade_category,
           section: data.section ?? null,
           is_active: data.is_active !== undefined ? data.is_active : true,
+          barcode: data.barcode || data.student_id, // Default to student_id if not provided
         },
       });
 
@@ -183,13 +186,29 @@ export class StudentService {
       // Get total count
       const total = await prisma.students.count({ where });
 
-      // Get paginated students
-      const students = await prisma.students.findMany({
+      // Get paginated students with active loan count
+      const studentsRaw = await prisma.students.findMany({
         where,
         orderBy: { created_at: 'desc' },
         skip,
         take: limit,
+        include: {
+          _count: {
+            select: {
+              checkouts: {
+                where: { status: 'ACTIVE' },
+              },
+            },
+          },
+        },
       });
+
+      const students = studentsRaw.map(s => ({
+        ...s,
+        current_loans: (s as any)._count.checkouts,
+        max_loans: 3, // Hardcoded default for now, could be dynamic later
+        can_borrow: (s as any)._count.checkouts < 3,
+      }));
 
       return {
         students,

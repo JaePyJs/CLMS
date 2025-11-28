@@ -16,11 +16,9 @@ router.post('/', authenticateRequest, async (req: Request, res: Response) => {
     }
 
     // Allow librarians and admins to bypass cooldown
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (
-      (req as any).user &&
-      ['LIBRARIAN', 'ADMIN'].includes((req as any).user.role)
-    ) {
+
+    const user = (req as unknown as { user: { role: string } }).user;
+    if (user && ['LIBRARIAN', 'ADMIN'].includes(user.role)) {
       payload.overrideCooldown = true;
     }
 

@@ -16,7 +16,7 @@ router.get(
     try {
       const jobs = await AutomationService.getJobs();
       res.json(jobs);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({
         message: 'Failed to list automation jobs',
       });
@@ -32,7 +32,7 @@ router.get(
       const { id } = req.params;
       const history = await AutomationService.getJobHistory(id);
       res.json(history);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({
         message: 'Failed to get job history',
       });
@@ -48,7 +48,7 @@ router.post(
       const { id } = req.params;
       const job = await AutomationService.toggleJob(id, true);
       res.json(job);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({
         message: 'Failed to enable job',
       });
@@ -64,7 +64,7 @@ router.post(
       const { id } = req.params;
       const job = await AutomationService.toggleJob(id, false);
       res.json(job);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({
         message: 'Failed to disable job',
       });

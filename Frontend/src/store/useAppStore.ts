@@ -111,6 +111,11 @@ interface AppStore {
   lastScanResult: string;
   scanQueue: any[];
 
+  // Active Student State
+  activeStudent: Student | null;
+  activeStudentExpiry: number | null;
+  recentScannedStudents: Student[];
+
   // Actions
   setOnlineStatus: (isOnline: boolean) => void;
   setBackendConnection: (connected: boolean) => void;
@@ -128,6 +133,8 @@ interface AppStore {
   setLastScanResult: (result: string) => void;
   addToScanQueue: (item: any) => void;
   clearScanQueue: () => void;
+  setActiveStudent: (student: Student | null, durationMs?: number) => void;
+  clearActiveStudent: () => void;
 }
 
 // Create the store
@@ -149,6 +156,9 @@ export const useAppStore = create<AppStore>()(
       isScanning: false,
       lastScanResult: '',
       scanQueue: [],
+      activeStudent: null,
+      activeStudentExpiry: null,
+      recentScannedStudents: [],
 
       // Actions
       setOnlineStatus: (isOnline) => set({ isOnline }),
@@ -171,6 +181,36 @@ export const useAppStore = create<AppStore>()(
           scanQueue: [...state.scanQueue, item],
         })),
       clearScanQueue: () => set({ scanQueue: [] }),
+      setActiveStudent: (student, durationMs = 15 * 60 * 1000) => {
+        if (student) {
+          const expiry = Date.now() + durationMs;
+          set((state) => ({
+            activeStudent: student,
+            activeStudentExpiry: expiry,
+            recentScannedStudents: [
+              student,
+              ...state.recentScannedStudents.filter((s) => s.id !== student.id),
+            ].slice(0, 5),
+          }));
+
+          // Auto-clear after duration
+          setTimeout(() => {
+            set((state) => {
+              if (
+                state.activeStudent?.id === student.id &&
+                state.activeStudentExpiry === expiry
+              ) {
+                return { activeStudent: null, activeStudentExpiry: null };
+              }
+              return {};
+            });
+          }, durationMs);
+        } else {
+          set({ activeStudent: null, activeStudentExpiry: null });
+        }
+      },
+      clearActiveStudent: () =>
+        set({ activeStudent: null, activeStudentExpiry: null }),
     }),
     {
       name: 'clms-store',

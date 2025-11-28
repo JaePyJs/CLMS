@@ -28,28 +28,10 @@ router.get(
 
     try {
       // Get basic counts
-      const [
-        totalStudents,
-        totalBooks,
-        totalEquipment,
-        totalUsers,
-        activeBorrows,
-        overdueBorrows,
-        returnedBorrows,
-      ] = await Promise.all([
-        prisma.students.count({ where: { is_active: true } }),
-        prisma.books.count({ where: { is_active: true } }),
-        prisma.equipment.count({ where: { is_active: true } }),
-        prisma.users.count({ where: { is_active: true } }),
-        prisma.book_checkouts.count({ where: { status: 'ACTIVE' } }),
-        prisma.book_checkouts.count({
-          where: {
-            status: 'ACTIVE',
-            due_date: { lt: new Date() },
-          },
-        }),
-        prisma.book_checkouts.count({ where: { status: 'RETURNED' } }),
-      ]);
+      // Get basic counts from centralized service
+      const overviewStats = await import('../services/analyticsService').then(
+        m => m.AnalyticsService.getRealTimeOverview(),
+      );
 
       // Get recent activities (last 7 days)
       const sevenDaysAgo = new Date();
@@ -57,9 +39,9 @@ router.get(
 
       const recentActivities = await prisma.student_activities.findMany({
         where: {
-          created_at: { gte: sevenDaysAgo },
+          start_time: { gte: sevenDaysAgo },
         },
-        orderBy: { created_at: 'desc' },
+        orderBy: { start_time: 'desc' },
         take: 10,
         include: {
           student: true,
@@ -206,7 +188,7 @@ router.get(
       activitiesStart.setDate(activitiesStart.getDate() - 30);
       const activityDistribution = await prisma.student_activities.groupBy({
         by: ['activity_type'],
-        where: { created_at: { gte: activitiesStart } },
+        where: { start_time: { gte: activitiesStart } },
         _count: { id: true },
         orderBy: { _count: { id: 'desc' } },
       });
@@ -263,13 +245,13 @@ router.get(
       logger.info('Analytics dashboard computed', { durationMs });
       const dataPayload = {
         overview: {
-          total_students: totalStudents,
-          total_books: totalBooks,
-          total_equipment: totalEquipment,
-          total_users: totalUsers,
-          active_borrows: activeBorrows,
-          overdue_borrows: overdueBorrows,
-          returned_borrows: returnedBorrows,
+          total_students: overviewStats.totalStudents,
+          total_books: overviewStats.totalBooks,
+          total_equipment: overviewStats.totalEquipment,
+          total_users: overviewStats.totalUsers,
+          active_borrows: overviewStats.activeBorrows,
+          overdue_borrows: overviewStats.overdueBorrows,
+          returned_borrows: overviewStats.returnedBorrows,
           available_book_copies: availableBooks._sum.available_copies || 0,
           total_book_copies: totalBookCopies._sum.total_copies || 0,
         },
@@ -285,12 +267,16 @@ router.get(
         activity_distribution: activityDistribution,
         statistics: {
           overdue_rate:
-            activeBorrows > 0
-              ? ((overdueBorrows / activeBorrows) * 100).toFixed(2)
+            overviewStats.activeBorrows > 0
+              ? (
+                  (overviewStats.overdueBorrows / overviewStats.activeBorrows) *
+                  100
+                ).toFixed(2)
               : 0,
           return_rate:
             (
-              (returnedBorrows / (activeBorrows + returnedBorrows)) *
+              (overviewStats.returnedBorrows /
+                (overviewStats.activeBorrows + overviewStats.returnedBorrows)) *
               100
             ).toFixed(2) || 0,
         },
@@ -446,7 +432,7 @@ router.post(
         activitiesStart.setDate(activitiesStart.getDate() - 30);
         const activityDistribution = await prisma.student_activities.groupBy({
           by: ['activity_type'],
-          where: { created_at: { gte: activitiesStart } },
+          where: { start_time: { gte: activitiesStart } },
           _count: { id: true },
           orderBy: { _count: { id: 'desc' } },
         });
@@ -831,6 +817,62 @@ router.get(
           equipment_by_category: equipmentByCategory,
           equipment_by_status: equipmentByStatus,
           period_days: days,
+          utilization: {
+            computer:
+              (await prisma.equipment.count({
+                where: { is_active: true, category: 'computer' },
+              })) > 0
+                ? Math.round(
+                    ((await prisma.equipment.count({
+                      where: {
+                        is_active: true,
+                        category: 'computer',
+                        status: 'in-use',
+                      },
+                    })) /
+                      (await prisma.equipment.count({
+                        where: { is_active: true, category: 'computer' },
+                      }))) *
+                      100,
+                  )
+                : 0,
+            gaming:
+              (await prisma.equipment.count({
+                where: { is_active: true, category: 'gaming' },
+              })) > 0
+                ? Math.round(
+                    ((await prisma.equipment.count({
+                      where: {
+                        is_active: true,
+                        category: 'gaming',
+                        status: 'in-use',
+                      },
+                    })) /
+                      (await prisma.equipment.count({
+                        where: { is_active: true, category: 'gaming' },
+                      }))) *
+                      100,
+                  )
+                : 0,
+            avr:
+              (await prisma.equipment.count({
+                where: { is_active: true, category: 'avr' },
+              })) > 0
+                ? Math.round(
+                    ((await prisma.equipment.count({
+                      where: {
+                        is_active: true,
+                        category: 'avr',
+                        status: 'in-use',
+                      },
+                    })) /
+                      (await prisma.equipment.count({
+                        where: { is_active: true, category: 'avr' },
+                      }))) *
+                      100,
+                  )
+                : 0,
+          },
         },
       });
     } catch (error) {

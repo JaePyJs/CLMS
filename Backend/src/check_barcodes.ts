@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { prisma } from './utils/prisma';
 
 async function checkBarcodes() {

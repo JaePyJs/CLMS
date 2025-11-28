@@ -85,7 +85,7 @@ export function ActiveStudentsManager() {
       } else {
         toast.error('Failed to move student');
       }
-    } catch (error) {
+    } catch {
       toast.error('Error moving student');
     }
   };
@@ -100,7 +100,7 @@ export function ActiveStudentsManager() {
         toast.success('Student checked out');
         setSessions((prev) => prev.filter((s) => s.studentId !== studentId));
       }
-    } catch (error) {
+    } catch {
       toast.error('Error checking out student');
     }
   };

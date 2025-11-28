@@ -12,7 +12,6 @@ import { logger } from './utils/logger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/requestLogger';
 import { performanceMonitor } from './middleware/performanceMonitor';
-import { apiRoutes } from './routes/index';
 import { websocketServer } from './websocket/websocketServer';
 import { swaggerSpec, swaggerUiOptions } from './config/swagger';
 import path from 'path';
@@ -145,6 +144,8 @@ app.use(
   swaggerUi.setup(swaggerSpec, swaggerUiOptions),
 );
 logger.info('📚 Swagger API documentation available at /api-docs');
+
+import { apiRoutes } from './routes/index';
 
 // API routes
 app.use('/api', apiRoutes);

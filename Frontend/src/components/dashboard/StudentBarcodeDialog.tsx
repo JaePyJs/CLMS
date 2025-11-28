@@ -55,7 +55,8 @@ interface Student {
 
 interface StudentBarcodeDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  // eslint-disable-next-line no-unused-vars
+  onOpenChange: (isOpen: boolean) => void;
   student: Student | null;
 }
 
@@ -65,7 +66,7 @@ export function StudentBarcodeDialog({
   student,
 }: StudentBarcodeDialogProps) {
   const mobileState = useMobileOptimization();
-  const { isMobile: _isMobile } = mobileState;
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -79,7 +80,7 @@ export function StudentBarcodeDialog({
       // Simulate API call for generating codes
       await new Promise((resolve) => setTimeout(resolve, 1500));
       toast.success('Barcode and QR code generated successfully!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to generate codes');
     } finally {
       setIsGenerating(false);
@@ -92,7 +93,7 @@ export function StudentBarcodeDialog({
       // Simulate printing
       await new Promise((resolve) => setTimeout(resolve, 1000));
       toast.success('ID card sent to printer!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to print ID card');
     } finally {
       setIsPrinting(false);
@@ -360,8 +361,7 @@ export function StudentBarcodeDialog({
                     );
                     toast.success('Copied to clipboard');
                   }
-                } catch (err) {
-                  console.error('Error sharing:', err);
+                } catch {
                   toast.error('Failed to share');
                 }
               }}

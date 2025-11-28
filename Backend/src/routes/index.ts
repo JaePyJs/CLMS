@@ -18,21 +18,20 @@ import notificationsRoutes from './notifications';
 import librarySectionsRoutes from './librarySections';
 import borrowingPoliciesRoutes from './borrowingPolicies';
 import finesRoutes from './fines';
-import printingRoutes from './printing';
+
 import announcementsRoutes from './announcements';
+import { leaderboardRoutes } from './leaderboard';
 import scanRoutes from './scan';
 import { kioskRoutes } from './kiosk';
 import { enhancedLibraryRoutes } from './enhanced-library';
 import { versionRoutes } from './version';
 import healthRoutes from './health';
-import { csrfRoutes } from './csrf';
+
 import backupRoutes from './backups';
 import automationRoutes from './automation';
+import searchRoutes from './search';
 
 const router = Router();
-
-// CSRF Token endpoint (must be before protected routes)
-router.use('/', csrfRoutes);
 
 // API Routes
 router.use('/auth', authRoutes);
@@ -53,13 +52,14 @@ router.use('/notifications', notificationsRoutes);
 router.use('/sections', librarySectionsRoutes);
 router.use('/policies', borrowingPoliciesRoutes);
 router.use('/fines', finesRoutes);
-router.use('/printing', printingRoutes);
+router.use('/leaderboard', leaderboardRoutes);
 router.use('/announcements', announcementsRoutes);
 router.use('/kiosk', kioskRoutes);
 router.use('/enhanced-library', enhancedLibraryRoutes);
 router.use('/scan', scanRoutes);
 router.use('/backups', backupRoutes);
 router.use('/automation', automationRoutes);
+router.use('/search', searchRoutes);
 router.use('/version', versionRoutes);
 router.use('/health', healthRoutes);
 

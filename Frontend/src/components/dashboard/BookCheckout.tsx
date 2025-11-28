@@ -159,7 +159,7 @@ export default function BookCheckout() {
         const dateOnly = iso.split('T')[0];
         checkoutFormActions.setValue('dueDate', dateOnly);
       }
-    } catch (e) {
+    } catch {
       toast.error('Failed to compute due date');
     }
   };

@@ -94,7 +94,7 @@ export function DocumentationDashboard() {
   // Local state for updates and conflicts
   const [updates, setUpdates] = useState<DocumentationUpdate[]>([]);
   const [conflicts, setConflicts] = useState<ConflictInfo[]>([]);
-  const [syncStatus, _setSyncStatus] = useState<{
+  const [syncStatus] = useState<{
     status: string;
     message?: string;
   } | null>(null);
@@ -210,7 +210,7 @@ export function DocumentationDashboard() {
         checks: docsData.health.checks,
         lastChecked: docsData.lastUpdated,
       });
-    } catch (error) {
+    } catch {
       toast.error('Failed to load documentation information');
     }
   };
@@ -227,7 +227,7 @@ export function DocumentationDashboard() {
         lastChecked: docsData.lastUpdated,
       });
       toast.success('Documentation refreshed successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to refresh documentation');
     } finally {
       setRefreshing(false);

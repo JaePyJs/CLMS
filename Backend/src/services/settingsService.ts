@@ -214,11 +214,12 @@ export class SettingsService {
       });
 
       // Delete equipment sessions for today (so sessions are cleared) - keep historical activities
-      const deletedEquipmentSessions = await prisma.equipment_sessions.deleteMany({
-        where: {
-          session_start: { gte: today },
-        },
-      });
+      const deletedEquipmentSessions =
+        await prisma.equipment_sessions.deleteMany({
+          where: {
+            session_start: { gte: today },
+          },
+        });
 
       logger.info('Daily data reset completed', {
         activitiesAffected: activitiesAffectedCount,
@@ -280,6 +281,50 @@ export class SettingsService {
       };
     } catch (error) {
       logger.error('Error resetting all data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * NUCLEAR RESET - Deletes EVERYTHING including students and books
+   * WARNING: This is destructive!
+   */
+  static async resetDatabaseCompletely(): Promise<{
+    studentsDeleted: number;
+    booksDeleted: number;
+    activitiesDeleted: number;
+    checkoutsDeleted: number;
+  }> {
+    try {
+      // 1. Delete all transactions first (foreign key constraints)
+      const deletedActivities = await prisma.student_activities.deleteMany({});
+      await prisma.equipment_sessions.deleteMany({});
+      const deletedCheckouts = await prisma.book_checkouts.deleteMany({});
+
+      // 2. Delete all students
+      const deletedStudents = await prisma.students.deleteMany({});
+
+      // 3. Delete all books
+      const deletedBooks = await prisma.books.deleteMany({});
+
+      // 4. Reset equipment status
+      await prisma.equipment.updateMany({
+        data: { status: 'AVAILABLE' },
+      });
+
+      logger.warn('☢️ NUCLEAR DATABASE RESET COMPLETED', {
+        students: deletedStudents.count,
+        books: deletedBooks.count,
+      });
+
+      return {
+        studentsDeleted: deletedStudents.count,
+        booksDeleted: deletedBooks.count,
+        activitiesDeleted: deletedActivities.count,
+        checkoutsDeleted: deletedCheckouts.count,
+      };
+    } catch (error) {
+      logger.error('Error performing nuclear reset:', error);
       throw error;
     }
   }

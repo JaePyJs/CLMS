@@ -27,7 +27,7 @@ async function main() {
       },
     },
     orderBy: {
-      created_at: 'desc',
+      start_time: 'desc',
     },
   });
 
@@ -38,7 +38,7 @@ async function main() {
     );
     console.log(`    Type: ${activity.student.type}`);
     console.log(`    Activity Type: ${activity.activity_type}`);
-    console.log(`    Created: ${activity.created_at}`);
+    console.log(`    Started: ${activity.start_time}`);
     console.log(`    Status: ${activity.status}`);
     console.log('');
   });

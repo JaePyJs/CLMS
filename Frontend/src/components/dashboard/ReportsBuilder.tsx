@@ -113,7 +113,7 @@ export function ReportsBuilder() {
   );
   const [selectedTemplate, setSelectedTemplate] =
     useState<ReportTemplate | null>(null);
-  const [reportConfig, setReportConfig] = useState<ReportConfig | null>(null); // Fixed: added setter
+  const [reportConfig] = useState<ReportConfig | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
 
@@ -208,7 +208,7 @@ export function ReportsBuilder() {
 
       // Auto-switch to generated tab
       setActiveTab('generated');
-    } catch (error) {
+    } catch {
       toast.error('Failed to generate report');
     } finally {
       setIsGenerating(false);
@@ -250,8 +250,7 @@ export function ReportsBuilder() {
         document.body.removeChild(a);
         toast.success(`Report exported successfully!`);
       }
-    } catch (error) {
-      console.error('Export error:', error);
+    } catch {
       toast.error('Failed to export report');
     } finally {
       setIsExporting(false);
@@ -281,7 +280,7 @@ export function ReportsBuilder() {
       setReportTemplates([...reportTemplates, newTemplate]);
       toast.success('Template saved successfully!');
       setShowEditTemplate(false);
-    } catch (error) {
+    } catch {
       toast.error('Failed to save template');
     } finally {
       setIsSavingTemplate(false);

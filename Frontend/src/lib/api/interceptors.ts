@@ -15,36 +15,36 @@ let accessTokenProvider: AccessTokenProvider = () =>
 let unauthorizedHandler: UnauthorizedHandler | null = null;
 let isHandlingUnauthorized = false;
 
-// CSRF token management
+// CSRF token management - DISABLED
 let csrfToken: string | null = null;
-let csrfFetchPromise: Promise<void> | null = null;
+// let csrfFetchPromise: Promise<void> | null = null;
 
-async function fetchCsrfToken(): Promise<void> {
-  if (csrfFetchPromise) {
-    return csrfFetchPromise;
-  }
+// async function fetchCsrfToken(): Promise<void> {
+//   if (csrfFetchPromise) {
+//     return csrfFetchPromise;
+//   }
 
-  csrfFetchPromise = (async () => {
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/csrf-token`, {
-        credentials: 'include',
-      });
-      const data = await response.json();
-      csrfToken = data.csrfToken;
-    } catch (error) {
-      console.error('Failed to fetch CSRF token:', error);
-      csrfToken = null;
-    } finally {
-      csrfFetchPromise = null;
-    }
-  })();
+//   csrfFetchPromise = (async () => {
+//     try {
+//       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+//       const response = await fetch(`${apiUrl}/api/csrf-token`, {
+//         credentials: 'include',
+//       });
+//       const data = await response.json();
+//       csrfToken = data.csrfToken;
+//     } catch (error) {
+//       console.error('Failed to fetch CSRF token:', error);
+//       csrfToken = null;
+//     } finally {
+//       csrfFetchPromise = null;
+//     }
+//   })();
 
-  return csrfFetchPromise;
-}
+//   return csrfFetchPromise;
+// }
 
 // Fetch CSRF token on module load
-fetchCsrfToken();
+// fetchCsrfToken();
 
 export function setAccessTokenProvider(provider: AccessTokenProvider) {
   accessTokenProvider = provider;
@@ -71,15 +71,15 @@ export function setupInterceptors(client: AxiosInstance) {
       // Add CSRF token for state-changing requests
       const method = config.method?.toUpperCase();
       if (method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-        if (!csrfToken) {
-          await fetchCsrfToken();
-        }
-        if (csrfToken) {
-          if (!config.headers) {
-            config.headers = {} as any;
-          }
-          (config.headers as any)['X-CSRF-Token'] = csrfToken;
-        }
+        // if (!csrfToken) {
+        //   await fetchCsrfToken();
+        // }
+        // if (csrfToken) {
+        //   if (!config.headers) {
+        //     config.headers = {} as any;
+        //   }
+        //   (config.headers as any)['X-CSRF-Token'] = csrfToken;
+        // }
       }
 
       // Always send credentials for cookie-based flows
@@ -173,7 +173,7 @@ export function setupInterceptors(client: AxiosInstance) {
           normalizedError.message?.includes('CSRF') ||
           normalizedError.message?.includes('csrf')
         ) {
-          await fetchCsrfToken();
+          // await fetchCsrfToken();
           toast.error('Security token expired. Please try again.');
         } else {
           toast.error(normalizedError.message || 'Access denied');

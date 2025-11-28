@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useHealthCheck } from '@/hooks/api-hooks';
+import { apiClient } from '@/lib/api';
 import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/contexts/AuthContext';
 // Theme toggle disabled for full dark mode
@@ -71,7 +72,9 @@ import {
   Sliders,
   Printer,
   Monitor,
+  Trophy,
 } from 'lucide-react';
+import { ActiveStudentBanner } from '@/components/ui/ActiveStudentBanner';
 
 // Import page components for code splitting
 import {
@@ -80,58 +83,18 @@ import {
   StudentsPage,
   BooksPage,
   EquipmentPage,
-  ReportsDataPage,
   SettingsAdminPage,
   PrintingPage,
   Kiosk,
 } from '@/pages';
 
-// Keep legacy lazy imports for backward compatibility
-// Note: Some of these might be unused in the new layout but kept for reference if needed
-// or can be safely removed if we are sure no legacy code uses them.
-
-// Enhanced Library Management Components (sync in E2E/dev to avoid lazy initializer issues)
-const UserTracking = React.lazy(() =>
-  import('@/components/dashboard/UserTracking').then((m) => ({
-    default: m.UserTracking,
-  }))
-);
-
-const EnhancedBorrowing = React.lazy(() =>
-  import('@/components/dashboard/EnhancedBorrowing').then((m) => ({
-    default: m.EnhancedBorrowing,
-  }))
+const LeaderboardDashboard = React.lazy(
+  () => import('@/components/dashboard/LeaderboardDashboard')
 );
 
 const AttendanceDisplay = React.lazy(
   () => import('@/components/attendance/AttendanceDisplay')
 );
-
-const OverdueManagement = React.lazy(() =>
-  import('@/components/dashboard/OverdueManagement').then((m) => ({
-    default: m.OverdueManagement,
-  }))
-);
-
-const ScanWorkspace = React.lazy(() =>
-  import('@/components/dashboard/ScanWorkspace').then((module) => ({
-    default: module.ScanWorkspace,
-  }))
-);
-const QRCodeManager = React.lazy(
-  () => import('@/components/dashboard/QRCodeManager')
-);
-const BarcodeManager = React.lazy(
-  () => import('@/components/dashboard/BarcodeManager')
-);
-
-// Reference lazy components to avoid unused variable warnings in some linters
-void UserTracking;
-void EnhancedBorrowing;
-void OverdueManagement;
-void ScanWorkspace;
-void QRCodeManager;
-void BarcodeManager;
 
 // Enhanced loading fallbacks with skeleton screens
 const LoadingSpinnerFallback = () => (
@@ -181,7 +144,7 @@ const SettingsSkeleton = () => (
 export default function App() {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const devBypass = import.meta.env.DEV;
-  const { activities } = useAppStore();
+  const { activities, activeStudent, clearActiveStudent } = useAppStore();
 
   // Mobile optimization - hooks MUST be called before any conditional returns
   const { isMobile, isTablet } = useMobileOptimization();
@@ -250,6 +213,9 @@ export default function App() {
     // Printing (Tab 7)
     if (m === 'printing') return 'printing';
 
+    // Leaderboard (Tab 8)
+    if (m === 'leaderboard') return 'leaderboard';
+
     return m || 'dashboard';
   };
   const initialTab =
@@ -286,6 +252,10 @@ export default function App() {
     return () => window.removeEventListener('popstate', handler);
   }, []);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -333,9 +303,34 @@ export default function App() {
   // Enhanced navigation handlers
   const handleSearch = (query: string) => {
     setSearchQuery(query);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
     if (query.length > 2) {
-      toast.info(`Searching for: ${query}`);
-      // Implement global search functionality
+      setIsSearching(true);
+      searchTimeoutRef.current = setTimeout(async () => {
+        try {
+          const response = await apiClient.get(
+            `/api/search?q=${encodeURIComponent(query)}`
+          );
+          const data = (response as any).data;
+          if (data && data.success) {
+            setSearchResults(data.data);
+          } else {
+            setSearchResults([]);
+          }
+        } catch (error) {
+          console.error('Search failed', error);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 500);
+    } else {
+      setSearchResults([]);
+      setIsSearching(false);
     }
   };
 
@@ -345,7 +340,7 @@ export default function App() {
       // Simulate system refresh
       await new Promise((resolve) => setTimeout(resolve, 2000));
       toast.success('System refreshed successfully!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to refresh system');
     } finally {
       setIsRefreshing(false);
@@ -396,7 +391,9 @@ export default function App() {
         'books',
         'reports-data',
         'settings-admin',
+        'settings-admin',
         'printing',
+        'leaderboard',
       ];
 
       const currentIndex = allTabs.indexOf(activeTab);
@@ -469,6 +466,10 @@ export default function App() {
             event.preventDefault();
             setActiveTab('printing');
             break;
+          case '9':
+            event.preventDefault();
+            setActiveTab('leaderboard');
+            break;
         }
       }
 
@@ -481,14 +482,16 @@ export default function App() {
       // Ctrl/Cmd + / for help
       if ((event.ctrlKey || event.metaKey) && event.key === '/') {
         event.preventDefault();
-        toast.info('Keyboard shortcuts: Alt+1-8 for tabs, Ctrl+K for search');
+        toast.info(
+          'Keyboard shortcuts: Alt+1-9 for tabs, Ctrl+K for search, Ctrl+Shift+C to clear active student'
+        );
       }
 
       // F1 for help
       if (event.key === 'F1') {
         event.preventDefault();
         toast.info(
-          'Press Alt+1-8 to navigate tabs: Dashboard, Scan, Students, Books, Rooms, Reports, Settings, Printing'
+          'Press Alt+1-9 to navigate tabs: Dashboard, Scan, Students, Books, Rooms, Reports, Settings, Printing, Leaderboard'
         );
       }
 
@@ -496,6 +499,15 @@ export default function App() {
       if (event.key === 'F5') {
         event.preventDefault();
         handleRefresh();
+      }
+
+      // Ctrl+Shift+C to clear active student
+      if (event.ctrlKey && event.shiftKey && event.key === 'C') {
+        event.preventDefault();
+        if (activeStudent) {
+          clearActiveStudent();
+          toast.success('Active student cleared');
+        }
       }
     };
 
@@ -524,22 +536,6 @@ export default function App() {
         <Kiosk />
       </Suspense>
     );
-  }
-
-  // Explicit login route for E2E tests and direct access
-  if (typeof window !== 'undefined' && window.location.pathname === '/login') {
-    if (isAuthenticated) {
-      window.history.replaceState(null, '', '/');
-      // Fall through to render the app
-    } else {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-          <RouteErrorBoundary>
-            <LoginForm onLoginSuccess={() => {}} />
-          </RouteErrorBoundary>
-        </div>
-      );
-    }
   }
 
   // Show loading spinner while checking authentication
@@ -683,13 +679,78 @@ export default function App() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setSearchQuery('')}
+                          onClick={() => {
+                            setSearchQuery('');
+                            setSearchResults([]);
+                          }}
                           className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
                           aria-label="Clear Search"
                         >
                           <X className="h-3 w-3" />
                         </Button>
                       )}
+
+                      {/* Search Results Dropdown */}
+                      {(isSearching || searchResults.length > 0) &&
+                        searchQuery.length > 2 && (
+                          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-lg shadow-lg z-50 max-h-[400px] overflow-y-auto">
+                            {isSearching ? (
+                              <div className="p-4 text-center text-muted-foreground">
+                                <LoadingSpinner
+                                  size="sm"
+                                  className="inline-block mr-2"
+                                />
+                                Searching...
+                              </div>
+                            ) : searchResults.length > 0 ? (
+                              <div className="py-2">
+                                {searchResults.map((result: any) => (
+                                  <button
+                                    key={`${result.type}-${result.id}`}
+                                    className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-3"
+                                    onClick={() => {
+                                      if (result.type === 'student')
+                                        setActiveTab('students');
+                                      if (result.type === 'book')
+                                        setActiveTab('books');
+                                      if (result.type === 'equipment')
+                                        setActiveTab('equipment');
+                                      setSearchQuery('');
+                                      setSearchResults([]);
+                                      toast.success(
+                                        `Navigating to ${result.type}: ${result.title}`
+                                      );
+                                    }}
+                                  >
+                                    <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                                      {result.type === 'student' && (
+                                        <User className="h-4 w-4" />
+                                      )}
+                                      {result.type === 'book' && (
+                                        <BookOpen className="h-4 w-4" />
+                                      )}
+                                      {result.type === 'equipment' && (
+                                        <Monitor className="h-4 w-4" />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="font-medium text-sm">
+                                        {result.title}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {result.subtitle} • {result.status}
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="p-4 text-center text-muted-foreground">
+                                No results found
+                              </div>
+                            )}
+                          </div>
+                        )}
                     </div>
                   </div>
                 )}
@@ -906,6 +967,11 @@ export default function App() {
                           icon: Users,
                         },
                         {
+                          value: 'leaderboard',
+                          label: 'Leaderboard',
+                          icon: Trophy,
+                        },
+                        {
                           value: 'books',
                           label: 'Books & Circulation',
                           icon: BookOpen,
@@ -1030,6 +1096,14 @@ export default function App() {
             </div>
           </header>
 
+          {/* Enhanced Active Student Banner */}
+          {activeStudent && (
+            <ActiveStudentBanner
+              student={activeStudent}
+              onClear={clearActiveStudent}
+            />
+          )}
+
           {/* Mobile Tab Navigation */}
           <div className="lg:hidden bg-white dark:bg-card border-b border-slate-200 dark:border-slate-700 sticky top-16 z-40">
             <div className="overflow-x-auto scrollbar-hide">
@@ -1042,6 +1116,7 @@ export default function App() {
                   },
                   { value: 'scan-station', label: 'Scan', icon: Camera },
                   { value: 'students', label: 'Students', icon: Users },
+                  { value: 'leaderboard', label: 'Leaderboard', icon: Trophy },
                   { value: 'books', label: 'Books', icon: BookOpen },
                   { value: 'equipment', label: 'Rooms', icon: Monitor },
                   { value: 'reports-data', label: 'Reports', icon: BarChart },
@@ -1119,6 +1194,13 @@ export default function App() {
                     <span className="hidden sm:inline">Books</span>
                   </TabsTrigger>
                   <TabsTrigger
+                    value="printing"
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
+                  >
+                    <Printer className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Printing</span>
+                  </TabsTrigger>
+                  <TabsTrigger
                     value="equipment"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
                   >
@@ -1126,26 +1208,21 @@ export default function App() {
                     <span className="hidden sm:inline">Rooms</span>
                   </TabsTrigger>
                   <TabsTrigger
-                    value="reports-data"
+                    value="leaderboard"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
                   >
-                    <BarChart className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Reports</span>
+                    <Trophy className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Leaderboard</span>
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="settings-admin"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
-                  >
-                    <Settings className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Settings</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="printing"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
-                  >
-                    <Printer className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Printing</span>
-                  </TabsTrigger>
+                  {user?.role === 'ADMIN' && (
+                    <TabsTrigger
+                      value="settings-admin"
+                      className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
+                    >
+                      <Settings className="h-4 w-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Settings</span>
+                    </TabsTrigger>
+                  )}
                 </TabsList>
               </div>
 
@@ -1161,22 +1238,6 @@ export default function App() {
                 <RouteErrorBoundary>
                   <Suspense fallback={<DashboardSkeleton />}>
                     <DashboardPage onTabChange={setActiveTab} />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Students Tab */}
-              <TabsContent
-                value="students"
-                className="space-y-6"
-                id="tabpanel-students"
-                role="tabpanel"
-                aria-labelledby="tab-students"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<TableSkeletonFallback />}>
-                    <StudentsPage />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
@@ -1197,6 +1258,22 @@ export default function App() {
                 </RouteErrorBoundary>
               </TabsContent>
 
+              {/* Students Tab */}
+              <TabsContent
+                value="students"
+                className="space-y-6"
+                id="tabpanel-students"
+                role="tabpanel"
+                aria-labelledby="tab-students"
+                tabIndex={0}
+              >
+                <RouteErrorBoundary>
+                  <Suspense fallback={<TableSkeletonFallback />}>
+                    <StudentsPage />
+                  </Suspense>
+                </RouteErrorBoundary>
+              </TabsContent>
+
               {/* Books Tab */}
               <TabsContent
                 value="books"
@@ -1209,6 +1286,22 @@ export default function App() {
                 <RouteErrorBoundary>
                   <Suspense fallback={<TableSkeletonFallback />}>
                     <BooksPage />
+                  </Suspense>
+                </RouteErrorBoundary>
+              </TabsContent>
+
+              {/* Printing Tab */}
+              <TabsContent
+                value="printing"
+                className="space-y-6"
+                id="tabpanel-printing"
+                role="tabpanel"
+                aria-labelledby="tab-printing"
+                tabIndex={0}
+              >
+                <RouteErrorBoundary>
+                  <Suspense fallback={<CardSkeleton className="h-96" />}>
+                    <PrintingPage />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
@@ -1229,53 +1322,39 @@ export default function App() {
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Reports & Data Tab */}
+              {/* Leaderboard Tab */}
               <TabsContent
-                value="reports-data"
+                value="leaderboard"
                 className="space-y-6"
-                id="tabpanel-reports-data"
+                id="tabpanel-leaderboard"
                 role="tabpanel"
-                aria-labelledby="tab-reports-data"
+                aria-labelledby="tab-leaderboard"
                 tabIndex={0}
               >
                 <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <ReportsDataPage />
+                  <Suspense fallback={<DashboardSkeleton />}>
+                    <LeaderboardDashboard />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
 
               {/* Settings & Admin Tab */}
-              <TabsContent
-                value="settings-admin"
-                className="space-y-6"
-                id="tabpanel-settings-admin"
-                role="tabpanel"
-                aria-labelledby="tab-settings-admin"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<SettingsSkeleton />}>
-                    <SettingsAdminPage initialTab={settingsInitialTab} />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
-              {/* Printing Tab */}
-              <TabsContent
-                value="printing"
-                className="space-y-6"
-                id="tabpanel-printing"
-                role="tabpanel"
-                aria-labelledby="tab-printing"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<CardSkeleton className="h-96" />}>
-                    <PrintingPage />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
+              {user?.role === 'ADMIN' && (
+                <TabsContent
+                  value="settings-admin"
+                  className="space-y-6"
+                  id="tabpanel-settings-admin"
+                  role="tabpanel"
+                  aria-labelledby="tab-settings-admin"
+                  tabIndex={0}
+                >
+                  <RouteErrorBoundary>
+                    <Suspense fallback={<SettingsSkeleton />}>
+                      <SettingsAdminPage initialTab={settingsInitialTab} />
+                    </Suspense>
+                  </RouteErrorBoundary>
+                </TabsContent>
+              )}
 
               {/* ========== Legacy tabs below - kept for backward compatibility ========== */}
             </Tabs>

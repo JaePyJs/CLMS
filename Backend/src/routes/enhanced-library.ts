@@ -82,15 +82,15 @@ router.get(
 
       const currentPatrons = await prisma.students.findMany({
         where: {
-          // Filter out personnel - only show actual students
-          type: 'STUDENT',
+          // Include both students and personnel
+          type: { in: ['STUDENT', 'PERSONNEL'] },
           activities: {
             some: {
               activity_type: {
                 in: ['CHECK_IN', 'SELF_SERVICE_CHECK_IN', 'KIOSK_CHECK_IN'],
               },
               status: 'ACTIVE',
-              created_at: {
+              start_time: {
                 gte: today,
               },
             },
@@ -99,12 +99,12 @@ router.get(
         include: {
           activities: {
             where: {
-              created_at: {
+              start_time: {
                 gte: today,
               },
             },
             orderBy: {
-              created_at: 'desc',
+              start_time: 'desc',
             },
             take: 1,
           },
@@ -121,7 +121,8 @@ router.get(
 
       // Filter to only show currently active patrons (last activity was check-in)
       const activePatrons = currentPatrons.filter(student => {
-        const lastActivity = student.activities[0];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const lastActivity = (student as any).activities[0];
         return (
           lastActivity?.activity_type === 'CHECK_IN' ||
           lastActivity?.activity_type === 'SELF_SERVICE_CHECK_IN' ||
@@ -133,15 +134,21 @@ router.get(
         success: true,
         data: {
           totalPatrons: activePatrons.length,
-          patrons: activePatrons.map(patron => ({
-            id: patron.id,
-            studentId: patron.student_id,
-            studentName: `${patron.first_name} ${patron.last_name}`,
-            gradeLevel: patron.grade_level,
-            section: patron.section,
-            currentBooks: patron.checkouts.length,
-            lastCheckIn: patron.activities[0]?.created_at,
-          })),
+          patrons: activePatrons.map(patron => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const p = patron as any;
+            return {
+              id: p.id,
+              studentId: p.student_id,
+              studentName: `${p.first_name} ${p.last_name}`,
+              gradeLevel: p.grade_level,
+              section: p.section,
+              currentBooks: p.checkouts.length,
+              lastCheckIn: p.activities[0]?.start_time,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              purpose: (p.activities[0]?.metadata as any)?.purpose || 'library',
+            };
+          }),
         },
       });
     } catch (error) {

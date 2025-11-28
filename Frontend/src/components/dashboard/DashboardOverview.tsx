@@ -44,7 +44,6 @@ import {
   Bell,
   Wifi,
   Key,
-  CalendarDays,
   Eye,
   Users,
   Monitor,
@@ -184,7 +183,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
         toSections,
       });
       toast.success(`Sections updated for ${changeSectionTarget.studentName}`);
-    } catch (e) {
+    } catch {
       toast.error('Failed to change section');
     } finally {
       setChangeSectionTarget(null);
@@ -394,7 +393,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                 const list = await apiClient.get('/api/auth/kiosk-users');
                 setKioskUsers(((list as any)?.data as any[]) || []);
                 toast.success('Kiosk token generated');
-              } catch (e) {
+              } catch {
                 toast.error('Failed to generate kiosk token');
               } finally {
                 setKioskGenerating(false);
@@ -478,7 +477,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       window.URL.revokeObjectURL(url);
 
       toast.success('Dashboard data exported successfully!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to export dashboard data');
     } finally {
       setIsExporting(false);
@@ -490,7 +489,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       setIsPrinting(true);
       window.print();
       toast.success('Print dialog opened');
-    } catch (error) {
+    } catch {
       toast.error('Failed to open print dialog');
     } finally {
       setIsPrinting(false);
@@ -752,6 +751,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     }>;
   } | null>(null);
   const [wsStatsError, setWsStatsError] = useState<string | null>(null);
+  // eslint-disable-next-line no-unused-vars
   const [wsStatsUpdatedAt, setWsStatsUpdatedAt] = useState<number | null>(null);
   const [announcementSettingsOpen, setAnnouncementSettingsOpen] =
     useState(false);
@@ -851,7 +851,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
           setWsStatsError(null);
           setWsStatsUpdatedAt(Date.now());
         }
-      } catch (e) {
+      } catch {
         if (mounted) setWsStatsError('Unavailable');
       }
       try {
@@ -1795,25 +1795,10 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
             {/* Left Sidebar - Calendar & Quick Stats */}
             <div className="xl:col-span-4 space-y-6">
               {/* Enhanced Calendar Card */}
-              <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-blue-50 dark:from-card dark:to-blue-950/20 overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6">
-                  <CardTitle className="flex items-center gap-2 text-xl">
-                    <CalendarDays className="h-6 w-6" />
-                    Library Calendar
-                  </CardTitle>
-                  <CardDescription className="text-blue-100">
-                    Track student activities and notifications
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <CalendarWidget />
-                </CardContent>
-                {wsStatsUpdatedAt && (
-                  <div className="px-6 pb-4 text-xs text-muted-foreground">
-                    Updated {new Date(wsStatsUpdatedAt).toLocaleTimeString()}
-                  </div>
-                )}
-              </Card>
+              {/* Enhanced Calendar Card */}
+              <div className="h-[600px]">
+                <CalendarWidget />
+              </div>
 
               {/* Enhanced Interactive Status Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

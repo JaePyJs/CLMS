@@ -3,7 +3,8 @@ import DashboardOverview from '@/components/dashboard/DashboardOverview';
 import { CardSkeleton } from '@/components/LoadingStates';
 
 interface DashboardPageProps {
-  onTabChange?: (tab: string) => void;
+  // eslint-disable-next-line no-unused-vars
+  onTabChange?: (_tab: string) => void;
 }
 
 export default function DashboardPage({ onTabChange }: DashboardPageProps) {

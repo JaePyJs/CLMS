@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/select';
 import { StudentBarcodeDialog } from './StudentBarcodeDialog';
 import { StudentImportDialog } from './StudentImportDialog';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorHandling';
 import {
@@ -310,6 +311,10 @@ export function StudentManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // Delete confirmation
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -434,8 +439,17 @@ export function StudentManagement() {
   };
 
   const handleDeleteStudent = (studentId: string) => {
-    if (confirm('Are you sure you want to delete this student?')) {
-      deleteStudentMutation.mutate(studentId);
+    const student = students.find((s: Student) => s.id === studentId);
+    if (student) {
+      setStudentToDelete(student);
+      setDeleteConfirmOpen(true);
+    }
+  };
+
+  const confirmDeleteStudent = () => {
+    if (studentToDelete) {
+      deleteStudentMutation.mutate(studentToDelete.id);
+      setStudentToDelete(null);
     }
   };
 
@@ -494,7 +508,7 @@ export function StudentManagement() {
       window.URL.revokeObjectURL(url);
 
       toast.success('Students exported successfully!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to export students');
     } finally {
       loadingActions.exporting.finish();
@@ -2010,6 +2024,17 @@ export function StudentManagement() {
         open={showStudentBarcode}
         onOpenChange={setShowStudentBarcode}
         student={selectedStudent}
+      />
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onConfirm={confirmDeleteStudent}
+        title="Delete Student?"
+        description={`Are you sure you want to delete ${studentToDelete?.firstName} ${studentToDelete?.lastName}?\n\nThis action cannot be undone.`}
+        confirmText="Delete"
+        destructive={true}
       />
     </div>
   );

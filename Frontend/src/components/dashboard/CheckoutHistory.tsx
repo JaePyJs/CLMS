@@ -32,10 +32,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiClient } from '@/lib/api';
 import { getErrorMessage } from '@/utils/errorHandling';
-
-const API_BASE_URL = 'http://localhost:3001/api';
 
 interface Student {
   id: string;
@@ -115,7 +112,8 @@ export default function CheckoutHistory() {
 
   // Fetch checkouts
   const fetchCheckouts = useCallback(
-    async (status?: string) => {
+    async (_status?: string) => {
+      void _status;
       setLoading(true);
       try {
         const data: Checkout[] = [
@@ -346,7 +344,7 @@ export default function CheckoutHistory() {
       a.click();
       window.URL.revokeObjectURL(url);
       toast.success('Export completed!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to export data');
     }
   };

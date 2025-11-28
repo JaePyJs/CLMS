@@ -4,7 +4,6 @@ import { authenticate } from '../middleware/authenticate';
 import { SettingsService } from '../services/settingsService';
 import { logger } from '../utils/logger';
 import { websocketServer } from '../websocket/websocketServer';
-import { prisma } from '../utils/prisma';
 
 const router = Router();
 
@@ -419,34 +418,15 @@ router.post(
       });
 
       const { deleteTodaysActivities } = req.body || {};
-      const result = await SettingsService.resetDailyData(Boolean(deleteTodaysActivities));
+      const result = await SettingsService.resetDailyData(
+        Boolean(deleteTodaysActivities),
+      );
 
       // Compute updated overview data and broadcast it so WS clients update immediately
       try {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-
-        const overviewData = {
-          totalStudents: await prisma.students.count(),
-          activeStudents: await prisma.student_activities.count({
-            where: { status: 'ACTIVE' },
-          }),
-          totalBooks: await prisma.books.count(),
-          activeBorrows: await prisma.book_checkouts.count({
-            where: { status: 'ACTIVE' },
-          }),
-          overdueBorrows: await prisma.book_checkouts.count({
-            where: { status: 'ACTIVE', due_date: { lt: new Date() } },
-          }),
-          todayActivities: await prisma.student_activities.count({
-            where: { start_time: { gte: startOfDay } },
-          }),
-          activeEquipment: await prisma.equipment.count({
-            where: { status: 'IN_USE' },
-          }),
-          activeConnections: 0,
-          systemLoad: 0,
-        };
+        const overviewData = await import('../services/analyticsService').then(
+          m => m.AnalyticsService.getRealTimeOverview(),
+        );
 
         websocketServer.broadcastToRoom('dashboard', {
           id: `overview-${Date.now()}`,
@@ -513,29 +493,9 @@ router.post(
 
       // Broadcast updated overview to dashboard
       try {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        const overviewData = {
-          totalStudents: await prisma.students.count(),
-          activeStudents: await prisma.student_activities.count({
-            where: { status: 'ACTIVE' },
-          }),
-          totalBooks: await prisma.books.count(),
-          activeBorrows: await prisma.book_checkouts.count({
-            where: { status: 'ACTIVE' },
-          }),
-          overdueBorrows: await prisma.book_checkouts.count({
-            where: { status: 'ACTIVE', due_date: { lt: new Date() } },
-          }),
-          todayActivities: await prisma.student_activities.count({
-            where: { start_time: { gte: startOfDay } },
-          }),
-          activeEquipment: await prisma.equipment.count({
-            where: { status: 'IN_USE' },
-          }),
-          activeConnections: 0,
-          systemLoad: 0,
-        };
+        const overviewData = await import('../services/analyticsService').then(
+          m => m.AnalyticsService.getRealTimeOverview(),
+        );
         websocketServer.broadcastToRoom('dashboard', {
           id: `overview-${Date.now()}`,
           type: 'dashboard_data',
@@ -561,6 +521,85 @@ router.post(
       res.status(500).json({
         success: false,
         message: 'Failed to reset all data',
+      });
+    }
+  }),
+);
+
+// POST /api/settings/reset-database-completely - NUCLEAR OPTION
+router.post(
+  '/reset-database-completely',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (
+      !req.user ||
+      (req.user.role !== 'ADMIN' && req.user.role !== 'LIBRARIAN')
+    ) {
+      res.status(403).json({ error: 'Admin access required' });
+      return;
+    }
+
+    const { confirmationCode } = req.body;
+
+    // Require strict confirmation code
+    if (confirmationCode !== 'DELETE-EVERYTHING-PERMANENTLY') {
+      res.status(400).json({
+        success: false,
+        message:
+          'Invalid confirmation code. Send { confirmationCode: "DELETE-EVERYTHING-PERMANENTLY" } to proceed.',
+      });
+      return;
+    }
+
+    try {
+      logger.warn('☢️ NUCLEAR RESET request initiated', {
+        userId: req.user.userId,
+        role: req.user.role,
+        timestamp: new Date().toISOString(),
+      });
+
+      const result = await SettingsService.resetDatabaseCompletely();
+
+      // Broadcast updated overview to dashboard
+      try {
+        const overviewData = {
+          totalStudents: 0,
+          activeStudents: 0,
+          totalBooks: 0,
+          activeBorrows: 0,
+          overdueBorrows: 0,
+          todayActivities: 0,
+          activeEquipment: 0,
+          activeConnections: 0,
+          systemLoad: 0,
+        };
+        websocketServer.broadcastToRoom('dashboard', {
+          id: `overview-${Date.now()}`,
+          type: 'dashboard_data',
+          data: overviewData,
+          timestamp: new Date(),
+        });
+      } catch (err) {
+        logger.warn(
+          'Failed to broadcast dashboard update after nuclear reset',
+          {
+            error: err instanceof Error ? err.message : 'Unknown',
+          },
+        );
+      }
+
+      res.json({
+        success: true,
+        message: 'Database completely reset',
+        data: result,
+      });
+    } catch (error) {
+      logger.error('Error performing nuclear reset', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to reset database',
       });
     }
   }),

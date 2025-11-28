@@ -118,12 +118,6 @@ export function AnalyticsDashboard() {
         ? popularTimesWeek
         : popularTimesMonth;
 
-  const handleRefresh = () => {
-    setIsLoading(true);
-    setLastRefresh(new Date());
-    setIsLoading(false);
-  };
-
   const fetchLiveMetrics = async () => {
     try {
       setIsLoading(true);
@@ -370,7 +364,7 @@ export function AnalyticsDashboard() {
       } catch {
         // Ignore error
       }
-    } catch (e) {
+    } catch {
       if (
         import.meta.env.DEV ||
         String(import.meta.env.VITE_APP_NAME || '')
@@ -420,7 +414,7 @@ export function AnalyticsDashboard() {
         }, 6000);
         await fetchLiveMetrics();
         setLastRefresh(new Date());
-      } catch (e) {
+      } catch {
         setErrorMsg('Failed to refresh analytics');
       } finally {
         cancelRef.current = null;

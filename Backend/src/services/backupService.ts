@@ -34,7 +34,7 @@ export class BackupService {
       const backups: BackupMetadata[] = [];
 
       for (const file of files) {
-        if (!file.endsWith('.json')) continue;
+        if (!file.endsWith('.json')) {continue;}
 
         const filePath = path.join(BACKUP_DIR, file);
         const stats = await stat(filePath);

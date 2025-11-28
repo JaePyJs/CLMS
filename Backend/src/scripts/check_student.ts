@@ -35,12 +35,12 @@ async function main() {
         activity_type: {
           in: ['CHECK_IN', 'SELF_SERVICE_CHECK_IN', 'KIOSK_CHECK_IN'],
         },
-        created_at: {
+        start_time: {
           gte: today,
         },
       },
       orderBy: {
-        created_at: 'desc',
+        start_time: 'desc',
       },
       take: 1,
     });

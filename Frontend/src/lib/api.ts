@@ -259,12 +259,16 @@ export const studentsApi = {
   previewImport: (
     file: File,
     importType: string = 'students',
-    maxPreviewRows: number = 10
+    maxPreviewRows: number = 10,
+    fieldMappings?: any[]
   ) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('importType', importType);
     formData.append('maxPreviewRows', maxPreviewRows.toString());
+    if (fieldMappings) {
+      formData.append('fieldMappings', JSON.stringify(fieldMappings));
+    }
 
     return apiClient.post('/api/import/preview', formData, {
       headers: {
@@ -276,6 +280,53 @@ export const studentsApi = {
   // Download import template
   downloadTemplate: () => {
     return apiClient.get('/api/import/templates/students');
+  },
+};
+
+export const booksApi = {
+  // Get all books
+  getAll: (params?: any) => apiClient.get('/api/books', params),
+
+  // Import books
+  importBooks: (file: File, fieldMappings?: any[], dryRun: boolean = false) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (fieldMappings) {
+      formData.append('fieldMappings', JSON.stringify(fieldMappings));
+    }
+    formData.append('dryRun', dryRun.toString());
+
+    return apiClient.post('/api/import/books', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  // Preview import
+  previewImport: (
+    file: File,
+    maxPreviewRows: number = 10,
+    fieldMappings?: any[]
+  ) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('importType', 'books');
+    formData.append('maxPreviewRows', maxPreviewRows.toString());
+    if (fieldMappings) {
+      formData.append('fieldMappings', JSON.stringify(fieldMappings));
+    }
+
+    return apiClient.post('/api/import/preview', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  // Download template
+  downloadTemplate: () => {
+    return apiClient.get('/api/import/template/books');
   },
 };
 
@@ -316,6 +367,10 @@ export const analyticsApi = {
   // Get usage statistics
   getUsageStats: (period: 'day' | 'week' | 'month' = 'day') =>
     apiClient.get('/api/analytics/usage', { period }),
+
+  // Get equipment analytics
+  getEquipmentAnalytics: (period: '30' | '60' | '90' = '30') =>
+    apiClient.get('/api/analytics/equipment', { period }),
 
   // Get activity timeline
   getTimeline: (limit?: number) =>
@@ -654,9 +709,15 @@ export const settingsApi = {
 
   // Data Reset (Admin only)
   resetDailyData: (deleteTodaysActivities?: boolean) =>
-    apiClient.post('/api/settings/reset-daily-data', { deleteTodaysActivities }),
+    apiClient.post('/api/settings/reset-daily-data', {
+      deleteTodaysActivities,
+    }),
   resetAllData: (confirmationCode: string) =>
     apiClient.post('/api/settings/reset-all-data', { confirmationCode }),
+  resetDatabaseCompletely: (confirmationCode: string) =>
+    apiClient.post('/api/settings/reset-database-completely', {
+      confirmationCode,
+    }),
 
   // Google Sheets configuration
   getGoogleSheetsConfig: () => apiClient.get('/api/settings/google-sheets'),

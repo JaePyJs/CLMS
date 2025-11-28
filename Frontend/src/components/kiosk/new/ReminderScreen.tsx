@@ -35,8 +35,22 @@ const reminders = [
   },
 ];
 
-export function ReminderScreen() {
+interface ReminderScreenProps {
+  // eslint-disable-next-line no-unused-vars
+  onScan: (code: string) => void;
+}
+
+export function ReminderScreen({ onScan }: ReminderScreenProps) {
   const [currentReminderIndex, setCurrentReminderIndex] = useState(0);
+  const [manualInput, setManualInput] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (manualInput.trim()) {
+      onScan(manualInput.trim());
+      setManualInput('');
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -135,6 +149,25 @@ export function ReminderScreen() {
               </p>
             </motion.div>
           </AnimatePresence>
+        </div>
+
+        {/* Manual Input Section */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 w-full max-w-md">
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <input
+              type="text"
+              value={manualInput}
+              onChange={(e) => setManualInput(e.target.value)}
+              placeholder="Enter ID or Barcode manually..."
+              className="flex-1 px-4 py-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            <button
+              type="submit"
+              className="px-6 py-3 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-300 transition-colors"
+            >
+              GO
+            </button>
+          </form>
         </div>
 
         <div className="flex justify-between items-end w-full px-2 pb-1">

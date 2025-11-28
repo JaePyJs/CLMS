@@ -44,7 +44,6 @@ import {
   ChevronRight,
   AlertTriangle,
   CheckCircle,
-  XCircle,
 } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -53,20 +52,22 @@ import { getErrorMessage } from '@/utils/errorHandling';
 // Types for import functionality
 interface ImportedStudent {
   rowNumber: number;
-  studentId?: string;
+  student_id?: string;
   barcode?: string;
-  firstName: string;
-  lastName: string;
-  gradeLevel: string;
+  first_name: string;
+  last_name: string;
+  grade_level: string;
   section?: string;
   email?: string;
   phone?: string;
-  parentName?: string;
-  parentPhone?: string;
-  parentEmail?: string;
+  parent_name?: string;
+  parent_phone?: string;
+  parent_email?: string;
   address?: string;
-  emergencyContact?: string;
+  emergency_contact?: string;
   notes?: string;
+  gender?: string;
+  designation?: string;
   errors: string[];
   warnings: string[];
   isValid: boolean;
@@ -88,29 +89,56 @@ interface ImportPreview {
 
 // Available fields for mapping
 const AVAILABLE_FIELDS: FieldMapping[] = [
-  { sourceField: 'firstName', targetField: 'firstName', required: true },
-  { sourceField: 'lastName', targetField: 'lastName', required: true },
-  { sourceField: 'studentId', targetField: 'studentId', required: false },
+  { sourceField: 'firstName', targetField: 'first_name', required: true },
+  { sourceField: 'lastName', targetField: 'last_name', required: true },
+  { sourceField: 'studentId', targetField: 'student_id', required: false },
   { sourceField: 'barcode', targetField: 'barcode', required: false },
-  { sourceField: 'gradeLevel', targetField: 'gradeLevel', required: true },
+  { sourceField: 'gradeLevel', targetField: 'grade_level', required: true },
   { sourceField: 'section', targetField: 'section', required: false },
   { sourceField: 'email', targetField: 'email', required: false },
   { sourceField: 'phone', targetField: 'phone', required: false },
-  { sourceField: 'parentName', targetField: 'parentName', required: false },
-  { sourceField: 'parentPhone', targetField: 'parentPhone', required: false },
-  { sourceField: 'parentEmail', targetField: 'parentEmail', required: false },
+  { sourceField: 'parentName', targetField: 'parent_name', required: false },
+  { sourceField: 'parentPhone', targetField: 'parent_phone', required: false },
+  { sourceField: 'parentEmail', targetField: 'parent_email', required: false },
   { sourceField: 'address', targetField: 'address', required: false },
   {
     sourceField: 'emergencyContact',
-    targetField: 'emergencyContact',
+    targetField: 'emergency_contact',
     required: false,
   },
   { sourceField: 'notes', targetField: 'notes', required: false },
+  { sourceField: 'gender', targetField: 'gender', required: false },
+  { sourceField: 'designation', targetField: 'designation', required: false },
 ];
+
+// Get common field name aliases
+const getCommonAliases = (field: string): string[] => {
+  const aliases: Record<string, string[]> = {
+    firstName: ['first', 'given name', 'forename', 'fname'],
+    lastName: ['last', 'surname', 'family name', 'lname'],
+    studentId: ['student id', 'id', 'user id', 'student_id', 'lrn'],
+    barcode: ['barcode', 'card number', 'library card'],
+    gradeLevel: ['grade', 'year', 'level', 'grade level', 'class'],
+    section: ['section', 'block', 'group'],
+    email: ['email', 'e-mail', 'email address'],
+    phone: ['phone', 'telephone', 'mobile', 'contact', 'phone number'],
+    parentName: ['parent name', 'parent', 'guardian', 'parent/guardian'],
+    parentPhone: ['parent phone', 'parent mobile', 'parent contact'],
+    parentEmail: ['parent email', 'parent e-mail'],
+    address: ['address', 'home address', 'residence'],
+    emergencyContact: ['emergency contact', 'emergency phone'],
+    notes: ['notes', 'remarks', 'comments', 'observations'],
+    gender: ['sex', 'gender', 'male/female'],
+    designation: ['designation', 'role', 'type'],
+  };
+
+  return aliases[field] || [];
+};
 
 interface StudentImportDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  // eslint-disable-next-line no-unused-vars
+  onOpenChange: (_open: boolean) => void;
 }
 
 export function StudentImportDialog({
@@ -119,6 +147,14 @@ export function StudentImportDialog({
 }: StudentImportDialogProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // VERIFICATION LOG
+  useEffect(() => {
+    console.info(
+      '%c Snake Case Fix Loaded: ready for import',
+      'background: #222; color: #bada55'
+    );
+  }, []);
 
   // State management
   const [currentStep, setCurrentStep] = useState<
@@ -134,7 +170,7 @@ export function StudentImportDialog({
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(
     null
   );
-  const [importProgress, setImportProgress] = useState(0);
+
   const [importResults, setImportResults] = useState<{
     success: number;
     failed: number;
@@ -153,7 +189,7 @@ export function StudentImportDialog({
     setFieldMapping({});
     setImportedStudents([]);
     setImportPreview(null);
-    setImportProgress(0);
+
     setImportResults({ success: 0, failed: 0, errors: [] });
     setSkipHeaderRow(true);
     if (fileInputRef.current) {
@@ -199,9 +235,8 @@ export function StudentImportDialog({
       } else {
         await parseExcel(file);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to parse file. Please check the file format.');
-      console.error('Parse error:', error);
     }
   };
 
@@ -232,7 +267,7 @@ export function StudentImportDialog({
         },
         header: true,
         skipEmptyLines: true,
-        transformHeader: (header) => header.trim(),
+        transformHeader: (header) => header.replace(/^\uFEFF/, '').trim(),
       });
     });
   };
@@ -301,6 +336,7 @@ export function StudentImportDialog({
   // Auto-map fields
   const autoMapFields = useCallback(() => {
     const mapping: Record<string, string> = {};
+    console.info('Auto-mapping fields. Headers:', headers);
 
     headers.forEach((header) => {
       const normalizedHeader = header.toLowerCase().trim();
@@ -313,15 +349,23 @@ export function StudentImportDialog({
             .replace(/([A-Z])/g, ' $1')
             .toLowerCase()
             .trim(),
-          ...getCommonAliases(field.targetField),
+          ...getCommonAliases(field.sourceField),
         ];
 
-        return fieldNames.some(
+        const isMatch = fieldNames.some(
           (name) =>
             normalizedHeader === name ||
             normalizedHeader.includes(name) ||
             name.includes(normalizedHeader)
         );
+
+        if (isMatch) {
+          console.info(
+            `Matched header "${header}" to field "${field.targetField}"`
+          );
+        }
+
+        return isMatch;
       });
 
       if (matchedField) {
@@ -329,30 +373,9 @@ export function StudentImportDialog({
       }
     });
 
+    console.info('Final mapping:', mapping);
     setFieldMapping(mapping);
   }, [headers]);
-
-  // Get common field name aliases
-  const getCommonAliases = (field: string): string[] => {
-    const aliases: Record<string, string[]> = {
-      firstName: ['first', 'given name', 'forename', 'fname'],
-      lastName: ['last', 'surname', 'family name', 'lname'],
-      studentId: ['student id', 'id', 'user id', 'student_id', 'lrn'],
-      barcode: ['barcode', 'card number', 'library card'],
-      gradeLevel: ['grade', 'year', 'level', 'grade level', 'class'],
-      section: ['section', 'block', 'group'],
-      email: ['email', 'e-mail', 'email address'],
-      phone: ['phone', 'telephone', 'mobile', 'contact', 'phone number'],
-      parentName: ['parent name', 'parent', 'guardian', 'parent/guardian'],
-      parentPhone: ['parent phone', 'parent mobile', 'parent contact'],
-      parentEmail: ['parent email', 'parent e-mail'],
-      address: ['address', 'home address', 'residence'],
-      emergencyContact: ['emergency contact', 'emergency phone'],
-      notes: ['notes', 'remarks', 'comments', 'observations'],
-    };
-
-    return aliases[field] || [];
-  };
 
   // Preview import mutation
   const previewImportMutation = useMutation({
@@ -361,7 +384,8 @@ export function StudentImportDialog({
         const result = await studentsApi.previewImport(
           data.file,
           'students',
-          10
+          1000,
+          data.fieldMappings
         );
         return result.data;
       } catch (error: unknown) {
@@ -377,36 +401,44 @@ export function StudentImportDialog({
         const processed: ImportedStudent[] = result.records.map(
           (record, index: number) => ({
             rowNumber: index + 1,
-            firstName: record.firstName || '',
-            lastName: record.lastName || '',
-            gradeLevel: record.gradeLevel || '',
+            student_id: record.student_id || '',
+            barcode: record.barcode || '',
+            first_name: record.first_name || '',
+            last_name: record.last_name || '',
+            grade_level: record.grade_level || '',
             section: record.section || '',
             email: record.email || '',
             phone: record.phone || '',
-            parentName: record.parentName || '',
-            parentPhone: record.parentPhone || '',
-            parentEmail: record.parentEmail || '',
+            parent_name: record.parent_name || '',
+            parent_phone: record.parent_phone || '',
+            parent_email: record.parent_email || '',
             address: record.address || '',
-            emergencyContact: record.emergencyContact || '',
+            emergency_contact: record.emergency_contact || '',
             notes: record.notes || '',
+            gender: record.gender || '',
+            designation: record.designation || '',
             errors: record.errors || [],
             warnings: record.warnings || [],
-            isValid: !(record.errors && record.errors.length > 0),
+            isValid:
+              !record.errors ||
+              (Array.isArray(record.errors) && record.errors.length === 0),
           })
         );
 
-        const validCount = processed.filter((s) => s.isValid).length;
-        const invalidCount = processed.length - validCount;
-
         setImportedStudents(processed);
         setImportPreview({
-          totalRows: processed.length,
-          validRows: validCount,
-          invalidRows: invalidCount,
+          totalRows: (result as any).totalRows || processed.length,
+          validRows:
+            (result as any).validRows ??
+            processed.filter((s) => s.isValid).length,
+          invalidRows:
+            (result as any).invalidRows ??
+            processed.length - processed.filter((s) => s.isValid).length,
           duplicateRows: result.duplicateRecords || 0,
-          samples: processed.slice(0, 5),
+          samples: processed, // Store ALL records
         });
         setCurrentStep('preview');
+        setCurrentPage(1); // Reset to first page
       }
     },
     onError: (error: unknown) => {
@@ -471,7 +503,7 @@ export function StudentImportDialog({
 
     // Convert field mapping to backend format
     const mappings = Object.entries(fieldMapping)
-      .filter(([_, targetField]) => targetField && targetField !== '__ignore__')
+      .filter(([, targetField]) => targetField && targetField !== '__ignore__')
       .map(([sourceField, targetField]) => ({
         sourceField,
         targetField,
@@ -502,7 +534,7 @@ export function StudentImportDialog({
 
     // Convert field mapping to backend format
     const mappings = Object.entries(fieldMapping)
-      .filter(([_, targetField]) => targetField && targetField !== '__ignore__')
+      .filter(([, targetField]) => targetField && targetField !== '__ignore__')
       .map(([sourceField, targetField]) => ({
         sourceField,
         targetField,
@@ -510,6 +542,13 @@ export function StudentImportDialog({
           AVAILABLE_FIELDS.find((f) => f.targetField === targetField)
             ?.required || false,
       }));
+
+    console.info('[Import Debug] Sending Mappings:', mappings);
+    console.info(
+      '[Import Debug] Sending File:',
+      selectedFile.name,
+      selectedFile.size
+    );
 
     setCurrentStep('importing');
     importStudentsMutation.mutate({
@@ -532,7 +571,7 @@ export function StudentImportDialog({
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       toast.success('Template downloaded successfully');
-    } catch (error) {
+    } catch {
       // Fallback to local template generation
       const template = [
         {
@@ -565,45 +604,49 @@ export function StudentImportDialog({
     }
   }, [headers, fieldMapping, autoMapFields]);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
+  // Calculate paginated samples
+  const paginatedSamples = importPreview
+    ? importPreview.samples.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+      )
+    : [];
+
+  const totalPages = importPreview
+    ? Math.ceil(importPreview.samples.length / itemsPerPage)
+    : 0;
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Import Students
-          </DialogTitle>
-          <DialogDescription>
-            Import student data from CSV or Excel files
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 gap-0">
+        <div className="p-6 pb-2">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Import Students
+            </DialogTitle>
+            <DialogDescription>
+              Import student data from CSV or Excel files
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col flex-1 min-h-0">
           {/* Progress indicator */}
-          <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-lg mb-4">
-            <div className="flex items-center gap-2 flex-1">
-              {['upload', 'mapping', 'preview', 'importing', 'complete'].map(
-                (step, index) => (
-                  <Fragment key={step}>
-                    <div
-                      className={`flex items-center gap-2 ${
-                        currentStep === step
-                          ? 'text-primary'
-                          : [
-                                'upload',
-                                'mapping',
-                                'preview',
-                                'importing',
-                                'complete',
-                              ].indexOf(currentStep) > index
-                            ? 'text-green-600'
-                            : 'text-muted-foreground'
-                      }`}
-                    >
+          <div className="px-6 pb-4">
+            <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2 flex-1">
+                {['upload', 'mapping', 'preview', 'importing', 'complete'].map(
+                  (step, index) => (
+                    <Fragment key={step}>
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                        className={`flex items-center gap-2 ${
                           currentStep === step
-                            ? 'bg-primary text-primary-foreground'
+                            ? 'text-primary'
                             : [
                                   'upload',
                                   'mapping',
@@ -611,30 +654,46 @@ export function StudentImportDialog({
                                   'importing',
                                   'complete',
                                 ].indexOf(currentStep) > index
-                              ? 'bg-green-600 text-white'
-                              : 'bg-muted'
+                              ? 'text-green-600'
+                              : 'text-muted-foreground'
                         }`}
                       >
-                        {[
-                          'upload',
-                          'mapping',
-                          'preview',
-                          'importing',
-                          'complete',
-                        ].indexOf(currentStep) > index ? (
-                          <CheckCircle className="h-4 w-4" />
-                        ) : (
-                          index + 1
-                        )}
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                            currentStep === step
+                              ? 'bg-primary text-primary-foreground'
+                              : [
+                                    'upload',
+                                    'mapping',
+                                    'preview',
+                                    'importing',
+                                    'complete',
+                                  ].indexOf(currentStep) > index
+                                ? 'bg-green-600 text-white'
+                                : 'bg-muted'
+                          }`}
+                        >
+                          {[
+                            'upload',
+                            'mapping',
+                            'preview',
+                            'importing',
+                            'complete',
+                          ].indexOf(currentStep) > index ? (
+                            <CheckCircle className="h-4 w-4" />
+                          ) : (
+                            index + 1
+                          )}
+                        </div>
+                        <span className="capitalize text-sm">{step}</span>
                       </div>
-                      <span className="capitalize text-sm">{step}</span>
-                    </div>
-                    {index < 4 && (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </Fragment>
-                )
-              )}
+                      {index < 4 && (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Fragment>
+                  )
+                )}
+              </div>
             </div>
           </div>
 
@@ -766,34 +825,6 @@ export function StudentImportDialog({
                     </div>
                   ))}
                 </div>
-
-                <div className="flex items-center gap-4">
-                  <Checkbox
-                    id="skipHeader"
-                    checked={skipHeaderRow}
-                    onCheckedChange={(checked) =>
-                      setSkipHeaderRow(checked as boolean)
-                    }
-                  />
-                  <Label htmlFor="skipHeader">Skip first row (header)</Label>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentStep('upload')}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    onClick={processImportedData}
-                    disabled={
-                      Object.values(fieldMapping).filter(Boolean).length === 0
-                    }
-                  >
-                    Continue to Preview
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -846,53 +877,126 @@ export function StudentImportDialog({
                 <div>
                   <h4 className="font-semibold mb-3">Sample Data</h4>
                   <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-muted">
-                        <tr>
-                          <th className="text-left p-2 text-sm">Row</th>
-                          <th className="text-left p-2 text-sm">Name</th>
-                          <th className="text-left p-2 text-sm">Grade</th>
-                          <th className="text-left p-2 text-sm">Section</th>
-                          <th className="text-left p-2 text-sm">Email</th>
-                          <th className="text-left p-2 text-sm">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {importPreview.samples.map((student) => (
-                          <tr key={student.rowNumber} className="border-t">
-                            <td className="p-2 text-sm">{student.rowNumber}</td>
-                            <td className="p-2 text-sm">
-                              {student.firstName} {student.lastName}
-                            </td>
-                            <td className="p-2 text-sm">
-                              {student.gradeLevel}
-                            </td>
-                            <td className="p-2 text-sm">
-                              {student.section || '-'}
-                            </td>
-                            <td className="p-2 text-sm">
-                              {student.email || '-'}
-                            </td>
-                            <td className="p-2 text-sm">
-                              {student.isValid ? (
-                                <Badge variant="default" className="text-xs">
-                                  <CheckCircle className="h-3 w-3 mr-1" />
-                                  Valid
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="destructive"
-                                  className="text-xs"
-                                >
-                                  <XCircle className="h-3 w-3 mr-1" />
-                                  Invalid
-                                </Badge>
-                              )}
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Row
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Student ID
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Name
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Barcode
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Grade
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Section
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Email
+                            </th>
+                            <th className="px-4 py-3 text-left font-medium">
+                              Status
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {paginatedSamples.map((student, index) => (
+                            <tr
+                              key={index}
+                              className="border-t hover:bg-muted/50 transition-colors"
+                            >
+                              <td className="px-4 py-3">{student.rowNumber}</td>
+                              <td className="px-4 py-3 text-muted-foreground">
+                                {student.student_id || (
+                                  <span className="italic text-xs">
+                                    Will be generated
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                {student.first_name} {student.last_name}
+                              </td>
+                              <td className="px-4 py-3 text-muted-foreground">
+                                {student.barcode || (
+                                  <span className="italic text-xs">
+                                    Will be generated
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3">
+                                {student.grade_level}
+                              </td>
+                              <td className="px-4 py-3">{student.section}</td>
+                              <td className="px-4 py-3">
+                                {student.email || '-'}
+                              </td>
+                              <td className="px-4 py-3">
+                                {student.isValid ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-green-50 text-green-700 border-green-200"
+                                  >
+                                    Valid
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="destructive"
+                                    className="hover:bg-destructive/90"
+                                  >
+                                    Invalid
+                                  </Badge>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Pagination Controls */}
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
+                      {Math.min(
+                        currentPage * itemsPerPage,
+                        importPreview.samples.length
+                      )}{' '}
+                      of {importPreview.samples.length} entries
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setCurrentPage((p) => Math.max(1, p - 1))
+                        }
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <div className="flex items-center px-2 text-sm font-medium">
+                        Page {currentPage} of {totalPages}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setCurrentPage((p) => Math.min(totalPages, p + 1))
+                        }
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -906,21 +1010,6 @@ export function StudentImportDialog({
                     </AlertDescription>
                   </Alert>
                 )}
-
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setCurrentStep('mapping')}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    onClick={handleImport}
-                    disabled={importPreview.validRows === 0}
-                  >
-                    Import {importPreview.validRows} Students
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -930,13 +1019,14 @@ export function StudentImportDialog({
                 <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
                 <h3 className="text-lg font-semibold">Importing Students</h3>
                 <p className="text-muted-foreground">
-                  Please wait while we import the students...
+                  Processing your file. This may take a moment...
                 </p>
                 <div className="max-w-md mx-auto">
-                  <Progress value={importProgress} className="w-full" />
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {importProgress}% Complete
-                  </p>
+                  {/* Indeterminate progress bar since we don't have real-time progress from backend yet */}
+                  <Progress
+                    value={undefined}
+                    className="w-full animate-pulse"
+                  />
                 </div>
               </div>
             )}
@@ -1004,42 +1094,104 @@ export function StudentImportDialog({
                     </AlertDescription>
                   </Alert>
                 )}
-
-                {generatedBarcodes.length > 0 && (
-                  <div className="flex justify-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        const headers = ['row', 'barcode'];
-                        const csv = [headers.join(',')]
-                          .concat(
-                            generatedBarcodes.map(
-                              (g) => `${g.row},${g.barcode}`
-                            )
-                          )
-                          .join('\n');
-                        const blob = new Blob([csv], { type: 'text/csv' });
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = 'generated-barcodes.csv';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(url);
-                      }}
-                    >
-                      Download Generated Barcodes CSV
-                    </Button>
-                  </div>
-                )}
-
-                <div className="flex justify-end">
-                  <Button onClick={handleClose}>Done</Button>
-                </div>
               </div>
             )}
           </ScrollArea>
+        </div>
+
+        <div className="p-6 border-t bg-background mt-auto">
+          {currentStep === 'upload' && (
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+            </div>
+          )}
+
+          {currentStep === 'mapping' && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="skipHeader"
+                  checked={skipHeaderRow}
+                  onCheckedChange={(checked) =>
+                    setSkipHeaderRow(checked as boolean)
+                  }
+                />
+                <Label htmlFor="skipHeader">Skip first row (header)</Label>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep('upload')}
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={processImportedData}
+                  disabled={
+                    Object.values(fieldMapping).filter(Boolean).length === 0
+                  }
+                >
+                  Continue to Preview
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 'preview' && importPreview && (
+            <div className="flex justify-between w-full items-center">
+              <div className="text-sm text-muted-foreground">
+                {importPreview.validRows} valid students ready to import
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentStep('mapping')}
+                >
+                  Back
+                </Button>
+                <Button
+                  onClick={handleImport}
+                  disabled={importPreview.validRows === 0}
+                >
+                  Import {importPreview.validRows} Students
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 'complete' && (
+            <div className="flex justify-between w-full items-center">
+              <div>
+                {generatedBarcodes.length > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const headers = ['row', 'barcode'];
+                      const csv = [headers.join(',')]
+                        .concat(
+                          generatedBarcodes.map((g) => `${g.row},${g.barcode}`)
+                        )
+                        .join('\n');
+                      const blob = new Blob([csv], { type: 'text/csv' });
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'generated-barcodes.csv';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      window.URL.revokeObjectURL(url);
+                    }}
+                  >
+                    Download Generated Barcodes
+                  </Button>
+                )}
+              </div>
+              <Button onClick={handleClose}>Done</Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

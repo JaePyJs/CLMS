@@ -64,7 +64,7 @@ export default function Kiosk() {
 
   // Scanner input buffer
   const [scanBuffer, setScanBuffer] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
+  // const [isProcessing, setIsProcessing] = useState(false);
 
   // Timeout ref for resetting to reminder screen
   const resetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -97,8 +97,8 @@ export default function Kiosk() {
   };
 
   const handleScan = async (barcode: string) => {
-    if (isProcessing) return;
-    setIsProcessing(true);
+    // if (isProcessing) return; // Allow interruption
+    // setIsProcessing(true);
 
     // Clear timeout while processing
     if (resetTimeoutRef.current) {
@@ -182,7 +182,7 @@ export default function Kiosk() {
       toast.error('Error processing scan');
       resetTimer();
     } finally {
-      setIsProcessing(false);
+      // setIsProcessing(false);
     }
   };
 
@@ -257,7 +257,7 @@ export default function Kiosk() {
             exit={{ opacity: 0 }}
             className="absolute inset-0"
           >
-            <ReminderScreen />
+            <ReminderScreen onScan={handleScan} />
           </motion.div>
         )}
 

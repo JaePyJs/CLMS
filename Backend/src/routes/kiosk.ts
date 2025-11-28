@@ -764,7 +764,7 @@ router.get('/recent-scans', async (_req: Request, res: Response) => {
       },
       take: 5,
       orderBy: {
-        created_at: 'desc',
+        start_time: 'desc',
       },
       include: {
         student: {
@@ -787,7 +787,7 @@ router.get('/recent-scans', async (_req: Request, res: Response) => {
       name: `${activity.student.first_name} ${activity.student.last_name}`,
       grade_level: activity.student.grade_level,
       grade_category: activity.student.grade_category,
-      timestamp: activity.created_at,
+      timestamp: activity.start_time,
     }));
 
     return res.status(200).json({

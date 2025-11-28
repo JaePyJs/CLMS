@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { queryClient } from './lib/query-client';
 import App from './App';
+import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import './index.pcss';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -12,7 +13,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <ThemeProvider>
-          <App />
+          <GlobalErrorBoundary>
+            <App />
+          </GlobalErrorBoundary>
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>

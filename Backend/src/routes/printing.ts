@@ -152,27 +152,16 @@ router.get(
     try {
       const jobs = await PrintingService.listJobs(filters);
       res.json({ success: true, data: jobs });
-    } catch (_e) {
-      if (isDevelopment()) {
-        const devJobs = [
-          {
-            id: 'DEV-PRINT-1',
-            student_id: 'LIBRARIAN',
-            paper_size: 'SHORT',
-            color_level: 'BW',
-            pages: 5,
-            total_cost: 10,
-            currency: 'PHP',
-            paid: false,
-            created_at: new Date(),
-          },
-        ];
-        res.json({ success: true, data: devJobs });
-        return;
-      }
-      res
-        .status(500)
-        .json({ success: false, message: 'Failed to list print jobs' });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to list print jobs',
+        error: isDevelopment()
+          ? error instanceof Error
+            ? error.message
+            : String(error)
+          : undefined,
+      });
     }
   }),
 );
@@ -187,21 +176,16 @@ router.post(
     try {
       const updated = await PrintingService.markJobPaid(id, receipt_no);
       res.json({ success: true, data: updated });
-    } catch (_e) {
-      if (isDevelopment()) {
-        const receipt = receipt_no || `DEV-REC-${Date.now()}`;
-        const devPaid = {
-          id,
-          receipt_no: receipt,
-          paid: true,
-          paid_at: new Date(),
-        };
-        res.json({ success: true, data: devPaid });
-        return;
-      }
-      res
-        .status(500)
-        .json({ success: false, message: 'Failed to mark job paid' });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to mark job paid',
+        error: isDevelopment()
+          ? error instanceof Error
+            ? error.message
+            : String(error)
+          : undefined,
+      });
     }
   }),
 );

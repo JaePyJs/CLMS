@@ -82,12 +82,12 @@ function normalizeGradeLevel(v: string): number {
 async function importStudents(csvPath: string) {
   if (!fs.existsSync(csvPath)) {
     console.error(`File not found: ${csvPath}`);
-    return { imported: 0, errors: 1 };
+    return { imported: 0, errors: 1, personnel: 0, students: 0 };
   }
   const text = fs.readFileSync(csvPath, 'utf-8');
   const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
   if (lines.length <= 1) {
-    return { imported: 0, errors: 0 };
+    return { imported: 0, errors: 0, personnel: 0, students: 0 };
   }
   const headers = parseCSVLine(lines[0]).map(h => h.trim());
   const idx = (name: string) =>
@@ -98,7 +98,9 @@ async function importStudents(csvPath: string) {
   const iGrade = idx('Grade Level');
   const iSection = idx('Section');
   const iDesignation = idx('Designation');
-  const result = { imported: 0, errors: 0 };
+
+  const result = { imported: 0, errors: 0, personnel: 0, students: 0 };
+
   for (let r = 1; r < lines.length; r++) {
     const cols = parseCSVLine(lines[r]);
     const userId = (cols[iUserId] || '').trim();
@@ -107,39 +109,50 @@ async function importStudents(csvPath: string) {
     const grade = (cols[iGrade] || '').trim();
     const section = (cols[iSection] || '').trim();
     const designation = (cols[iDesignation] || '').trim();
+
     if (!userId || !firstName || !lastName) {
       result.errors++;
       continue;
     }
+
+    // Auto-detect personnel by PN prefix
+    const isPersonnel = userId.toUpperCase().startsWith('PN');
+
     const barcode = userId;
     const data = {
       student_id: userId,
       first_name: firstName,
       last_name: lastName,
-      grade_level: normalizeGradeLevel(grade),
+      grade_level: isPersonnel ? 0 : normalizeGradeLevel(grade), // Int field
       section: section || null,
-      grade_category: designation ? designation.toUpperCase() : null,
+      grade_category: isPersonnel
+        ? 'PERSONNEL'
+        : designation
+          ? designation.toUpperCase()
+          : 'STUDENT', // Use this to track type
       email: null as string | null,
       barcode,
       is_active: true,
     };
+
     try {
       const existing = await prisma.students.findUnique({
         where: { student_id: data.student_id },
       });
       if (existing) {
-        // await prisma.students.update({
-        //   where: { id: existing.id },
-        //   data,
-        // });
-        // console.log(`Skipping existing student: ${data.student_id}`);
+        // Skip existing records
       } else {
         await prisma.students.create({ data });
         result.imported++;
+        if (isPersonnel) {
+          result.personnel++;
+        } else {
+          result.students++;
+        }
       }
     } catch (e) {
       result.errors++;
-      console.error('Student row error:', (e as Error).message);
+      console.error('Student/Personnel row error:', (e as Error).message);
     }
   }
   return result;
@@ -300,9 +313,12 @@ async function main() {
     'SHJCS Bibliography - BOOK COLLECTIONS.csv',
   );
 
-  console.log('Importing students from', studentsCsv);
+  console.log('Importing students and personnel from', studentsCsv);
   const s = await importStudents(studentsCsv);
-  console.log('Students:', s);
+  console.log('Import Results:', s);
+  console.log(`  - Students: ${s.students || 0}`);
+  console.log(`  - Personnel: ${s.personnel || 0}`);
+  console.log(`  - Errors: ${s.errors}`);
 
   console.log('Importing books from', booksCsv);
   const b = await importBooks(booksCsv);

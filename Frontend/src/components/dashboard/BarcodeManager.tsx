@@ -93,7 +93,7 @@ function BarcodeManager() {
       } else {
         toast.error('No generation report found. Generate barcodes first.');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load report');
     }
   };
@@ -345,7 +345,7 @@ function BarcodeManager() {
                           );
                           toast.success('Barcode regenerated!');
                           handleLoadReport(); // Refresh report
-                        } catch (error) {
+                        } catch {
                           toast.error('Failed to regenerate barcode');
                         }
                       }}

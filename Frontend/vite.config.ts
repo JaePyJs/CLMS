@@ -214,12 +214,17 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:3001',
+        target: process.env.VITE_API_URL || 'http://127.0.0.1:3001',
         changeOrigin: true,
         rewrite: (path) => path,
       },
+      '/socket.io': {
+        target: process.env.VITE_API_URL || 'http://127.0.0.1:3001',
+        changeOrigin: true,
+        ws: true,
+      },
       '/ws': {
-        target: process.env.VITE_API_URL || 'http://localhost:3001',
+        target: process.env.VITE_API_URL || 'http://127.0.0.1:3001',
         changeOrigin: true,
         ws: true,
         rewrite: (path) => path,

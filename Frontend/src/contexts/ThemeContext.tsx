@@ -13,107 +13,54 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark');
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('dark');
-
-  // Get system theme preference
-  const getSystemTheme = (): ResolvedTheme => {
-    if (typeof window === 'undefined') {
-      return 'light';
-    }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
-  };
-
-  // Resolve the actual theme to apply
-  const resolveTheme = (themeValue: Theme): ResolvedTheme => {
-    if (themeValue === 'system') {
-      return getSystemTheme();
-    }
-    return themeValue;
-  };
+  const [resolvedTheme] = useState<ResolvedTheme>('dark');
 
   // Apply theme to document
-  const applyTheme = (resolved: ResolvedTheme) => {
+  const applyTheme = () => {
     const root = document.documentElement;
-
-    // Add transitioning class for smooth animation
-    root.classList.add('theme-transitioning');
-
-    // Apply the theme
-    if (resolved === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    root.classList.add('dark');
 
     // Update meta theme-color for mobile browsers
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
-      metaThemeColor.setAttribute(
-        'content',
-        resolved === 'dark' ? '#141b2e' : '#f8fafc'
-      );
+      metaThemeColor.setAttribute('content', '#141b2e');
     }
-
-    // Remove transitioning class after animation
-    setTimeout(() => {
-      root.classList.remove('theme-transitioning');
-    }, 300);
-
-    setResolvedTheme(resolved);
   };
 
-  // Set theme and persist
-  const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem('clms_theme', newTheme);
-    applyTheme(resolveTheme(newTheme));
-  };
-
-  // Toggle between light and dark (skip system)
+  // Toggle between light and dark (Disabled - Permanent Dark Mode)
   const toggleTheme = () => {
-    const newTheme = resolvedTheme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
+    // No-op: Dark mode is permanent
+    console.warn('Theme switching is disabled. Permanent dark mode enforced.');
   };
 
   // Initialize theme on mount
   useEffect(() => {
-    const initialTheme: Theme = 'dark';
-    localStorage.setItem('clms_theme', initialTheme);
-    setThemeState(initialTheme);
-    applyTheme('dark');
+    applyTheme();
+    // Ensure it stays dark even if something tries to change it
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (
+          mutation.type === 'attributes' &&
+          mutation.attributeName === 'class'
+        ) {
+          if (!document.documentElement.classList.contains('dark')) {
+            document.documentElement.classList.add('dark');
+          }
+        }
+      });
+    });
 
-    // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      // Full dark mode enforced; ignore system changes
-    };
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
 
-    // Modern browsers
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    }
-    // Legacy browsers
-    else if (mediaQuery.addListener) {
-      mediaQuery.addListener(handleChange);
-      return () => mediaQuery.removeListener(handleChange);
-    }
-
-    // Fallback for unsupported browsers
-    return undefined;
+    return () => observer.disconnect();
   }, []);
-
-  // Update resolved theme when theme changes
-  useEffect(() => {
-    applyTheme('dark');
-  }, [theme]);
 
   return (
     <ThemeContext.Provider
-      value={{ theme, resolvedTheme, setTheme, toggleTheme }}
+      value={{ theme: 'dark', resolvedTheme, setTheme: () => {}, toggleTheme }}
     >
       {children}
     </ThemeContext.Provider>

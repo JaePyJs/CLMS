@@ -99,9 +99,19 @@ export function requireRole(roles: string | string[]) {
 
       const allowedRoles = Array.isArray(roles) ? roles : [roles];
       const userRole = req.user.role;
-      const effectiveRole = userRole === 'ADMIN' ? 'LIBRARIAN' : userRole;
 
-      if (!allowedRoles.includes(effectiveRole)) {
+      // Admin has access to everything
+      if (userRole === 'ADMIN') {
+        logger.debug('Role check successful (Admin override)', {
+          userId: req.user.userId,
+          username: req.user.username,
+          role: userRole,
+          ip: req.ip,
+        });
+        return next();
+      }
+
+      if (!allowedRoles.includes(userRole)) {
         logger.warn('Role check failed: insufficient permissions', {
           userId: req.user.userId,
           username: req.user.username,
@@ -114,7 +124,7 @@ export function requireRole(roles: string | string[]) {
           message: 'Insufficient permissions',
           code: 'INSUFFICIENT_PERMISSIONS',
           required: allowedRoles,
-          current: effectiveRole,
+          current: userRole,
         });
         return;
       }
@@ -122,7 +132,7 @@ export function requireRole(roles: string | string[]) {
       logger.debug('Role check successful', {
         userId: req.user.userId,
         username: req.user.username,
-        role: effectiveRole,
+        role: userRole,
         ip: req.ip,
       });
 

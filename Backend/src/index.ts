@@ -24,6 +24,10 @@ process.on('unhandledRejection', (reason, promise) => {
 
 import { httpServer } from './server.js';
 import { env } from './config/env';
+import { AutomationService } from './services/automationService';
+
+// Initialize automation jobs
+AutomationService.initialize();
 
 // Start the server
 httpServer.listen(env.PORT, env.HOST, () => {

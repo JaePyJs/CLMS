@@ -15,10 +15,10 @@ const Checkbox = React.forwardRef<
       'transition-all duration-200 ease-in-out',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
       'disabled:cursor-not-allowed disabled:opacity-50',
-      'hover:border-primary/80 dark:hover:border-primary/60',
+      'hover:border-primary/60',
       'data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary',
-      'data-[state=unchecked]:bg-background dark:data-[state=unchecked]:bg-background',
-      'data-[state=unchecked]:hover:bg-accent/50 dark:data-[state=unchecked]:hover:bg-accent/30',
+      'data-[state=unchecked]:bg-background',
+      'data-[state=unchecked]:hover:bg-accent/30',
       className
     )}
     {...props}

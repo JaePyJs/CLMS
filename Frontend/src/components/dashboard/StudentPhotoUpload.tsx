@@ -37,7 +37,8 @@ interface StudentPhotoUploadProps {
   studentId: string;
   studentName: string;
   currentPhotoUrl?: string;
-  onUploadComplete?: (photoUrl: string) => void;
+  // eslint-disable-next-line no-unused-vars
+  onUploadComplete?: (_photoUrl: string) => void;
 }
 
 export function StudentPhotoUpload({
@@ -47,7 +48,7 @@ export function StudentPhotoUpload({
   onUploadComplete,
 }: StudentPhotoUploadProps) {
   const mobileState = useMobileOptimization();
-  const { isMobile, isTablet: _isTablet, width: _width } = mobileState;
+  const { isMobile } = mobileState;
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(
     currentPhotoUrl || null

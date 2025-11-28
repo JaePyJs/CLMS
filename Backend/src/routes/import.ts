@@ -5,7 +5,7 @@ import { authenticate, requireRole } from '../middleware/authenticate';
 import { logger } from '../utils/logger';
 import { prisma } from '../utils/prisma';
 import multer from 'multer';
-import { BarcodeService } from '../services/barcodeService';
+
 import { websocketServer } from '../websocket/websocketServer';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -75,29 +75,26 @@ router.post(
             });
           }
 
-          // Validate required fields
+          // Validate required fields - Use placeholders instead of skipping
           if (!studentData.student_id) {
-            result.skippedRecords++;
+            studentData.student_id = `TEMP_${Date.now()}_${i}`;
             result.errors.push(
-              `Row ${i + 1}: Missing required field 'student_id'`,
+              `Row ${i + 1}: Missing student_id - Generated temporary ID: ${studentData.student_id}`,
             );
-            continue;
           }
 
           if (!studentData.first_name) {
-            result.skippedRecords++;
+            studentData.first_name = '(No First Name)';
             result.errors.push(
-              `Row ${i + 1}: Missing required field 'first_name'`,
+              `Row ${i + 1}: Missing first_name - Imported with placeholder`,
             );
-            continue;
           }
 
           if (!studentData.last_name) {
-            result.skippedRecords++;
+            studentData.last_name = '(No Last Name)';
             result.errors.push(
-              `Row ${i + 1}: Missing required field 'last_name'`,
+              `Row ${i + 1}: Missing last_name - Imported with placeholder`,
             );
-            continue;
           }
 
           // Check if student already exists
@@ -114,12 +111,13 @@ router.post(
           }
 
           // Prepare student data - handle User ID as barcode
-          // The CSV column "User ID" contains the student's barcode (e.g., 20250055)
+          // The CSV column "User ID" is mapped to student_id
+          // We want: Barcode = User ID (if User ID exists)
           let barcode = String(
             studentData.barcode || studentData.student_id || '',
           ).trim();
 
-          // If no barcode is provided, generate one
+          // If no barcode/User ID is provided, generate one
           if (!barcode || barcode === '') {
             barcode = `PN${String(Date.now()).slice(-6)}`;
             const collision = await prisma.students.findFirst({
@@ -127,6 +125,15 @@ router.post(
             });
             if (collision) {
               barcode = `PN${String(Date.now() + i).slice(-6)}`;
+            }
+            // If we generated a barcode, and student_id was also missing, use the generated barcode as student_id too
+            if (!studentData.student_id) {
+              studentData.student_id = barcode;
+            }
+          } else {
+            // If we have a barcode (from User ID), ensure student_id matches it if it was missing
+            if (!studentData.student_id) {
+              studentData.student_id = barcode;
             }
           }
 
@@ -141,7 +148,7 @@ router.post(
             designation: studentData.designation || null,
             sex: studentData.sex || null,
             email: studentData.email || null,
-            barcode, // This is now the User ID from CSV
+            barcode, // This is now explicitly the resolved barcode
             grade_category: studentData.grade_category || null,
             is_active:
               studentData.is_active !== undefined
@@ -162,7 +169,12 @@ router.post(
             });
           }
 
-          if (!existingStudent && !studentData.barcode) {
+          if (
+            !existingStudent &&
+            !studentData.barcode &&
+            !studentData.student_id
+          ) {
+            // Only log this if we truly generated everything from scratch
             result.errors.push(
               `Row ${i + 1}: Barcode generated: ${createData.barcode}`,
             );
@@ -280,32 +292,33 @@ router.post(
           }
 
           // Validate required fields
+          // Validate required fields - Use placeholders instead of skipping
           if (!bookData.title) {
-            result.skippedRecords++;
-            result.errors.push(`Row ${i + 1}: Missing required field 'title'`);
-            continue;
+            bookData.title = '(No Title)';
+            result.errors.push(
+              `Row ${i + 1}: Missing title - Imported with placeholder`,
+            );
           }
 
           if (!bookData.author) {
-            result.skippedRecords++;
-            result.errors.push(`Row ${i + 1}: Missing required field 'author'`);
-            continue;
+            bookData.author = '(No Author)';
+            result.errors.push(
+              `Row ${i + 1}: Missing author - Imported with placeholder`,
+            );
           }
 
           if (!bookData.accession_no) {
-            result.skippedRecords++;
+            bookData.accession_no = `TEMP_BOOK_${Date.now()}_${i}`;
             result.errors.push(
-              `Row ${i + 1}: Missing required field 'accession_no'`,
+              `Row ${i + 1}: Missing accession_no - Generated temporary: ${bookData.accession_no}`,
             );
-            continue;
           }
 
           if (!bookData.category) {
-            result.skippedRecords++;
+            bookData.category = '(Uncategorized)';
             result.errors.push(
-              `Row ${i + 1}: Missing required field 'category'`,
+              `Row ${i + 1}: Missing category - Imported with placeholder`,
             );
-            continue;
           }
 
           // Check if book already exists
@@ -730,8 +743,6 @@ router.post(
   }),
 );
 
-export default router;
-
 // Enhanced import: preview
 router.post(
   '/preview',
@@ -743,90 +754,212 @@ router.post(
     const importType = String(req.body?.importType || 'students').toLowerCase();
     const maxPreviewRows = Math.max(
       1,
-      Math.min(100, parseInt(String(req.body?.maxPreviewRows || '10'))),
+      Math.min(1000, parseInt(String(req.body?.maxPreviewRows || '10'))),
     );
     if (!file) {
       return res
         .status(400)
         .json({ success: false, message: 'No file uploaded' });
     }
-    const name = file.originalname.toLowerCase();
-    const isCSV = name.endsWith('.csv') || file.mimetype === 'text/csv';
-    const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls');
+
     let headers: string[] = [];
-    let rows: Array<string | string[]> = [];
-    if (isCSV) {
-      const text = file.buffer.toString('utf-8');
-      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-      if (lines.length === 0) {
+    let rows: Array<string[]> = [];
+    let totalRows = 0;
+
+    try {
+      const xlsx: any = await import('xlsx');
+      const wb = xlsx.read(file.buffer, { type: 'buffer' });
+      const sheetName = wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const json = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      if (!json || json.length === 0) {
         return res.status(400).json({ success: false, message: 'Empty file' });
       }
-      headers = lines[0].split(',').map(h => h.trim());
-      rows = lines.slice(1, 1 + maxPreviewRows);
-    } else if (isExcel) {
-      try {
-        const xlsx: any = await import('xlsx');
-        const wb = xlsx.read(file.buffer, { type: 'buffer' });
-        const sheetName = wb.SheetNames[0];
-        const ws = wb.Sheets[sheetName];
-        const json = xlsx.utils.sheet_to_json(ws, { header: 1 });
-        if (!json || json.length === 0) {
-          return res
-            .status(400)
-            .json({ success: false, message: 'Empty file' });
-        }
-        headers = (json[0] as string[]).map((h: any) => String(h).trim());
-        rows = (json.slice(1, 1 + maxPreviewRows) as any[]).map((arr: any[]) =>
-          arr.map(v => String(v ?? '').trim()),
-        );
-      } catch (_e) {
-        return res.status(415).json({
-          success: false,
-          message: 'Excel parsing not available on server',
+
+      // Filter out empty rows
+      const cleanJson = (json as any[][]).filter(row =>
+        row.some(
+          cell =>
+            cell !== null &&
+            cell !== undefined &&
+            String(cell).trim().length > 0,
+        ),
+      );
+
+      if (cleanJson.length === 0) {
+        return res.status(400).json({ success: false, message: 'Empty file' });
+      }
+
+      headers = cleanJson[0].map((h: any) => String(h).trim());
+      totalRows = cleanJson.length - 1; // Exclude header
+
+      // Process all rows
+      rows = (cleanJson.slice(1) as any[]).map((arr: any[]) =>
+        arr.map(v => String(v ?? '').trim()),
+      );
+    } catch (_error) {
+      return res.status(415).json({
+        success: false,
+        message:
+          'Failed to parse file. Please ensure it is a valid CSV or Excel file.',
+      });
+    }
+    const rawMappings = String(req.body?.fieldMappings || '[]');
+    let fieldMappings: Array<{
+      sourceField: string;
+      targetField: string;
+      required?: boolean;
+    }> = [];
+    try {
+      fieldMappings = JSON.parse(rawMappings) as any[];
+    } catch (_e) {
+      fieldMappings = [];
+    }
+
+    const records: any[] = [];
+    let validCount = 0;
+    let invalidCount = 0;
+
+    // Process all rows for counts, but only store preview records
+    for (let i = 0; i < rows.length; i++) {
+      const rowData = rows[i];
+
+      const obj: Record<string, string> = {};
+
+      // If mappings exist, use them
+      if (fieldMappings.length > 0) {
+        fieldMappings.forEach(mapping => {
+          const headerIndex = headers.indexOf(mapping.sourceField);
+          if (headerIndex !== -1) {
+            obj[mapping.targetField] = (rowData[headerIndex] ?? '').trim();
+          }
+        });
+      } else {
+        // Fallback to direct header matching
+        headers.forEach((h, idx) => {
+          obj[h] = (rowData[idx] ?? '').trim();
         });
       }
-    } else {
-      return res
-        .status(415)
-        .json({ success: false, message: 'Unsupported file type' });
-    }
-    const records: any[] = [];
-    for (let i = 0; i < rows.length; i++) {
-      const rowData = Array.isArray(rows[i])
-        ? (rows[i] as string[])
-        : parseCSVLine(String(rows[i]));
-      const obj: Record<string, string> = {};
-      headers.forEach((h, idx) => {
-        obj[h] = (rowData[idx] ?? '').trim();
-      });
+
       if (importType === 'students') {
-        const requiredMissing = [
-          !obj['student_id'] ? 'student_id' : null,
-          !obj['first_name'] ? 'first_name' : null,
-          !obj['last_name'] ? 'last_name' : null,
-        ].filter(Boolean) as string[];
+        // Relaxed validation: Check if row has ANY data
+        const hasData = Object.values(obj).some(
+          val => val && val.trim().length > 0,
+        );
+
+        // Default barcode to studentId if missing
+        const studentId = obj['studentId'] || obj['student_id'] || '';
+        const barcode = obj['barcode'] || studentId || ''; // Fallback to studentId
+
         const rec: any = {
           rowNumber: i + 1,
-          firstName: obj['first_name'] || '',
-          lastName: obj['last_name'] || '',
-          gradeLevel: obj['grade_level'] || '',
+          studentId: studentId,
+          barcode: barcode,
+          firstName: obj['firstName'] || obj['first_name'] || '(No Name)',
+          lastName: obj['lastName'] || obj['last_name'] || '(No Surname)',
+          gradeLevel: obj['gradeLevel'] || obj['grade_level'] || '',
           section: obj['section'] || '',
           email: obj['email'] || '',
+          phone: obj['phone'] || '',
+          parentName: obj['parentName'] || '',
+          parentPhone: obj['parentPhone'] || '',
+          parentEmail: obj['parentEmail'] || '',
+          address: obj['address'] || '',
+          emergencyContact: obj['emergencyContact'] || '',
+          notes: obj['notes'] || '',
           errors: [] as string[],
           warnings: [] as string[],
         };
-        if (requiredMissing.length > 0) {
-          rec.errors.push(`Missing required: ${requiredMissing.join(', ')}`);
+
+        // Only error if absolutely no data
+        if (!hasData) {
+          rec.errors.push('Row is empty');
+          invalidCount++;
+        } else {
+          validCount++;
         }
-        if (!obj['barcode']) {
+
+        // Generate temporary ID if missing
+        if (!rec.studentId) {
+          rec.warnings.push('Missing Student ID - Will be generated');
+        }
+
+        if (!rec.barcode) {
           rec.warnings.push('Barcode will be generated');
         }
-        records.push(rec);
+
+        // Only add to records if within preview limit
+        if (records.length < maxPreviewRows) {
+          records.push(rec);
+        }
+      } else if (importType === 'books') {
+        // Relaxed validation: Check if row has ANY data
+        const hasData = Object.values(obj).some(
+          val => val && val.trim().length > 0,
+        );
+
+        const rec: any = {
+          rowNumber: i + 1,
+          title: obj['title'] || '(No Title)',
+          author: obj['author'] || '(No Author)',
+          isbn: obj['isbn'] || '',
+          publisher: obj['publisher'] || '',
+          category: obj['category'] || '(Uncategorized)',
+          subcategory: obj['subcategory'] || '',
+          location: obj['location'] || '',
+          accession_no: obj['accession_no'] || obj['accessionNo'] || '',
+          available_copies:
+            obj['available_copies'] || obj['availableCopies'] || '1',
+          total_copies: obj['total_copies'] || obj['totalCopies'] || '1',
+          cost_price: obj['cost_price'] || obj['costPrice'] || '',
+          edition: obj['edition'] || '',
+          pages: obj['pages'] || '',
+          remarks: obj['remarks'] || '',
+          source_of_fund: obj['source_of_fund'] || obj['sourceOfFund'] || '',
+          volume: obj['volume'] || '',
+          year: obj['year'] || '',
+          errors: [] as string[],
+          warnings: [] as string[],
+        };
+
+        // Only error if absolutely no data
+        if (!hasData) {
+          rec.errors.push('Row is empty');
+          invalidCount++;
+        } else {
+          validCount++;
+        }
+
+        // Generate temporary ID if missing
+        if (!rec.accession_no) {
+          rec.warnings.push('Missing Accession No - Will be generated');
+        }
+
+        if (rec.title === '(No Title)') {
+          rec.warnings.push('Missing Title');
+        }
+
+        if (rec.author === '(No Author)') {
+          rec.warnings.push('Missing Author');
+        }
+
+        // Only add to records if within preview limit
+        if (records.length < maxPreviewRows) {
+          records.push(rec);
+        }
       }
     }
-    return res
-      .status(200)
-      .json({ success: true, data: { records, duplicateRecords: 0 } });
+    return res.status(200).json({
+      success: true,
+      data: {
+        records,
+        totalRows,
+        validRows: validCount,
+        invalidRows: invalidCount,
+        duplicateRecords: 0,
+      },
+    });
   }),
 );
 
@@ -856,45 +989,48 @@ router.post(
         .status(400)
         .json({ success: false, message: 'No file uploaded' });
     }
-    const name = file.originalname.toLowerCase();
-    const isCSV = name.endsWith('.csv') || file.mimetype === 'text/csv';
-    const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls');
+
     let headers: string[] = [];
     let dataRows: string[][] = [];
-    if (isCSV) {
-      const text = file.buffer.toString('utf-8');
-      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-      if (lines.length === 0) {
+
+    try {
+      const xlsx: any = await import('xlsx');
+      const wb = xlsx.read(file.buffer, { type: 'buffer' });
+      const sheetName = wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const json = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      if (!json || json.length === 0) {
         return res.status(400).json({ success: false, message: 'Empty file' });
       }
-      headers = lines[0].split(',').map(h => h.trim());
-      dataRows = lines.slice(1).map(line => parseCSVLine(line));
-    } else if (isExcel) {
-      try {
-        const xlsx: any = await import('xlsx');
-        const wb = xlsx.read(file.buffer, { type: 'buffer' });
-        const sheetName = wb.SheetNames[0];
-        const ws = wb.Sheets[sheetName];
-        const json = xlsx.utils.sheet_to_json(ws, { header: 1 });
-        if (!json || json.length === 0) {
-          return res
-            .status(400)
-            .json({ success: false, message: 'Empty file' });
-        }
-        headers = (json[0] as string[]).map((h: any) => String(h).trim());
-        dataRows = (json.slice(1) as any[]).map((arr: any[]) =>
-          arr.map(v => String(v ?? '').trim()),
-        );
-      } catch (_e) {
-        return res.status(415).json({
-          success: false,
-          message: 'Excel parsing not available on server',
-        });
+
+      // Filter out empty rows
+      const cleanJson = (json as any[][]).filter(row =>
+        row.some(
+          cell =>
+            cell !== null &&
+            cell !== undefined &&
+            String(cell).trim().length > 0,
+        ),
+      );
+
+      if (cleanJson.length === 0) {
+        return res.status(400).json({ success: false, message: 'Empty file' });
       }
-    } else {
-      return res
-        .status(415)
-        .json({ success: false, message: 'Unsupported file type' });
+
+      headers = cleanJson[0].map((h: any) => String(h).trim());
+
+      // Process all rows
+      dataRows = (cleanJson.slice(1) as any[]).map((arr: any[]) =>
+        arr.map(v => String(v ?? '').trim()),
+      );
+    } catch (error) {
+      logger.error('File parsing error:', error);
+      return res.status(415).json({
+        success: false,
+        message:
+          'Failed to parse file. Please ensure it is a valid CSV or Excel file.',
+      });
     }
     const result = {
       importedRecords: 0,
@@ -902,14 +1038,22 @@ router.post(
       errors: [] as string[],
       generated: [] as Array<{ row: number; barcode: string }>,
     };
-    for (let i = 0; i < dataRows.length; i++) {
-      try {
-        const cols = dataRows[i];
+
+    // Batch processing configuration
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < dataRows.length; i += BATCH_SIZE) {
+      const batch = dataRows.slice(i, i + BATCH_SIZE);
+
+      // 1. Map fields for the entire batch first
+      const mappedBatch = batch.map((cols, batchIdx) => {
+        const currentRowIdx = i + batchIdx;
         const row: Record<string, string> = {};
         headers.forEach((h, idx) => {
           row[h] = (cols[idx] ?? '').trim();
         });
         const mapped: any = {};
+
         if (fieldMappings && fieldMappings.length > 0) {
           fieldMappings.forEach(m => {
             if (row[m.sourceField]) {
@@ -919,53 +1063,222 @@ router.post(
         } else {
           Object.assign(mapped, row);
         }
-        if (!mapped.student_id || !mapped.first_name || !mapped.last_name) {
-          result.errorRecords++;
-          result.errors.push(`Row ${i + 1}: missing required fields`);
-          continue;
+        return { mapped, currentRowIdx };
+      });
+
+      // 2. Deduplicate by student_id (keep last occurrence in batch)
+      const uniqueBatchMap = new Map<string, (typeof mappedBatch)[0]>();
+      const itemsWithoutId: typeof mappedBatch = [];
+
+      mappedBatch.forEach(item => {
+        if (item.mapped.student_id) {
+          uniqueBatchMap.set(String(item.mapped.student_id), item);
+        } else {
+          itemsWithoutId.push(item);
         }
-        let barcode = String(mapped.barcode || '').trim();
-        if (!barcode) {
-          barcode = await BarcodeService.getNextPNBarcode();
-          result.errors.push(`Row ${i + 1}: Barcode generated ${barcode}`);
-          result.generated.push({ row: i + 1, barcode });
-        }
-        const createData = {
-          student_id: String(mapped.student_id),
-          first_name: String(mapped.first_name),
-          last_name: String(mapped.last_name),
-          grade_level: mapped.grade_level
-            ? parseInt(String(mapped.grade_level))
-            : 1,
-          email: mapped.email || null,
-          barcode,
-          grade_category: mapped.grade_category || null,
-          is_active:
-            mapped.is_active !== undefined
-              ? mapped.is_active === true || mapped.is_active === 'true'
-              : true,
-        };
-        if (!dryRun) {
-          const existing = await prisma.students.findUnique({
-            where: { student_id: createData.student_id },
-          });
-          if (existing) {
-            await prisma.students.update({
-              where: { id: existing.id },
-              data: createData,
-            });
-          } else {
-            await prisma.students.create({ data: createData });
+      });
+
+      // Combine unique items and items without ID
+      const itemsToProcess = [
+        ...itemsWithoutId,
+        ...Array.from(uniqueBatchMap.values()),
+      ];
+
+      // 3. Pre-process batch to identify who needs new barcodes
+      const batchContext = await Promise.all(
+        itemsToProcess.map(async ({ mapped, currentRowIdx }) => {
+          // Apply placeholders for missing fields
+          if (!mapped.student_id) {
+            mapped.student_id = `TEMP_${Date.now()}_${currentRowIdx}`;
           }
+          if (!mapped.first_name) {
+            mapped.first_name = '(No First Name)';
+          }
+          if (!mapped.last_name) {
+            mapped.last_name = '(No Last Name)';
+          }
+
+          // if (!mapped.student_id || !mapped.first_name || !mapped.last_name) {
+          //   return {
+          //     valid: false,
+          //     error: `Row ${currentRowIdx + 1}: missing required fields`,
+          //     rowIdx: currentRowIdx,
+          //   };
+          // }
+
+          let existing = null;
+          if (!dryRun) {
+            existing = await prisma.students.findUnique({
+              where: { student_id: String(mapped.student_id) },
+            });
+          }
+
+          const providedBarcode = String(mapped.barcode || '').trim();
+          const needsNewBarcode = !providedBarcode && !existing?.barcode;
+
+          return {
+            valid: true,
+            mapped,
+            existing,
+            needsNewBarcode,
+            providedBarcode,
+            rowIdx: currentRowIdx,
+            error: undefined,
+          };
+        }),
+      );
+
+      // Calculate how many new barcodes we need
+      const newBarcodeCount = batchContext.filter(
+        ctx => ctx.valid && ctx.needsNewBarcode,
+      ).length;
+      let nextSeq = 0;
+
+      if (newBarcodeCount > 0 && !dryRun) {
+        // Atomically reserve a range of barcodes
+        const key = 'barcode.sequence';
+        try {
+          const result = await prisma.$transaction(async tx => {
+            const setting = await tx.system_settings.findUnique({
+              where: { key },
+            });
+            let currentSeq = 0;
+            if (!setting) {
+              currentSeq = 18; // Default start
+              await tx.system_settings.create({
+                data: { key, value: String(currentSeq + newBarcodeCount) },
+              });
+            } else {
+              currentSeq = parseInt(setting.value || '0');
+              if (isNaN(currentSeq)) {
+                currentSeq = 0;
+              }
+              // Increment by the number of barcodes we need
+              await tx.system_settings.update({
+                where: { key },
+                data: { value: String(currentSeq + newBarcodeCount) },
+              });
+            }
+            return currentSeq;
+          });
+          nextSeq = result;
+        } catch (_e) {
+          nextSeq = Math.floor(Date.now() % 100000);
         }
-        result.importedRecords++;
-      } catch (err) {
-        result.errorRecords++;
-        result.errors.push(
-          `Row ${i}: ${(err as Error)?.message || 'Unknown error'}`,
-        );
       }
+
+      // Process the batch with reserved barcodes
+      let barcodeOffset = 0;
+
+      await Promise.all(
+        batchContext.map(async ctx => {
+          if (!ctx.valid) {
+            result.errorRecords++;
+            result.errors.push(ctx.error || 'Unknown error');
+            return;
+          }
+
+          try {
+            const {
+              mapped,
+              existing,
+              needsNewBarcode,
+              providedBarcode,
+              rowIdx,
+            } = ctx;
+            let barcode = providedBarcode;
+
+            if (!barcode) {
+              if (existing?.barcode) {
+                barcode = existing.barcode;
+              } else if (needsNewBarcode) {
+                const seq = nextSeq + 1 + barcodeOffset;
+                barcodeOffset++;
+                barcode = `PN${String(seq).padStart(5, '0')}`;
+                result.generated.push({ row: rowIdx + 1, barcode });
+              }
+            }
+
+            const createData = {
+              student_id: String(mapped.student_id),
+              first_name: String(mapped.first_name),
+              last_name: String(mapped.last_name),
+              grade_level: (() => {
+                const val = String(mapped.grade_level || '').toUpperCase();
+                if (
+                  val.includes('NURSERY') ||
+                  val.includes('KINDER') ||
+                  val.includes('PRE')
+                ) {
+                  return 0;
+                }
+                const num = parseInt(val.replace(/[^0-9]/g, ''));
+                return isNaN(num) ? 1 : num;
+              })(),
+              email: mapped.email || null,
+              gender: mapped.gender || null,
+              barcode,
+              grade_category: mapped.grade_category || null,
+              is_active:
+                mapped.is_active !== undefined
+                  ? mapped.is_active === true || mapped.is_active === 'true'
+                  : true,
+            };
+
+            if (!dryRun) {
+              if (existing) {
+                await prisma.students.update({
+                  where: { id: existing.id },
+                  data: createData,
+                });
+              } else {
+                await prisma.students.create({ data: createData });
+              }
+            }
+            result.importedRecords++;
+          } catch (err) {
+            // If unique constraint fails (race condition despite deduplication), try update
+            if ((err as any)?.code === 'P2002') {
+              try {
+                await prisma.students.update({
+                  where: { student_id: String(ctx.mapped.student_id) },
+                  data: {
+                    first_name: String(ctx.mapped.first_name),
+                    last_name: String(ctx.mapped.last_name),
+                  },
+                });
+                result.importedRecords++;
+                return;
+              } catch (retryErr) {
+                result.errorRecords++;
+                result.errors.push(
+                  `Row ${ctx.rowIdx + 1}: Failed to update duplicate student - ${(retryErr as Error)?.message}`,
+                );
+                return;
+              }
+            }
+            result.errorRecords++;
+            result.errors.push(
+              `Row ${ctx.rowIdx + 1}: ${(err as Error)?.message || 'Unknown error'}`,
+            );
+          }
+        }),
+      );
     }
+
+    // Broadcast import completion
+    if (result.importedRecords > 0) {
+      websocketServer.broadcastToAll({
+        id: `import_students_${Date.now()}`,
+        type: 'students:imported',
+        data: {
+          count: result.importedRecords,
+          timestamp: new Date().toISOString(),
+        },
+        timestamp: new Date(),
+      });
+    }
+
     return res
       .status(200)
       .json({ success: result.importedRecords > 0, data: result });
@@ -997,45 +1310,47 @@ router.post(
         .status(400)
         .json({ success: false, message: 'No file uploaded' });
     }
-    const name = file.originalname.toLowerCase();
-    const isCSV = name.endsWith('.csv') || file.mimetype === 'text/csv';
-    const isExcel = name.endsWith('.xlsx') || name.endsWith('.xls');
+
     let headers: string[] = [];
     let dataRows: string[][] = [];
-    if (isCSV) {
-      const text = file.buffer.toString('utf-8');
-      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-      if (lines.length === 0) {
+
+    try {
+      const xlsx: any = await import('xlsx');
+      const wb = xlsx.read(file.buffer, { type: 'buffer' });
+      const sheetName = wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const json = xlsx.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      if (!json || json.length === 0) {
         return res.status(400).json({ success: false, message: 'Empty file' });
       }
-      headers = lines[0].split(',').map(h => h.trim());
-      dataRows = lines.slice(1).map(line => parseCSVLine(line));
-    } else if (isExcel) {
-      try {
-        const xlsx: any = await import('xlsx');
-        const wb = xlsx.read(file.buffer, { type: 'buffer' });
-        const sheetName = wb.SheetNames[0];
-        const ws = wb.Sheets[sheetName];
-        const json = xlsx.utils.sheet_to_json(ws, { header: 1 });
-        if (!json || json.length === 0) {
-          return res
-            .status(400)
-            .json({ success: false, message: 'Empty file' });
-        }
-        headers = (json[0] as string[]).map((h: any) => String(h).trim());
-        dataRows = (json.slice(1) as any[]).map((arr: any[]) =>
-          arr.map(v => String(v ?? '').trim()),
-        );
-      } catch (_e) {
-        return res.status(415).json({
-          success: false,
-          message: 'Excel parsing not available on server',
-        });
+
+      // Filter out empty rows
+      const cleanJson = (json as any[][]).filter(row =>
+        row.some(
+          cell =>
+            cell !== null &&
+            cell !== undefined &&
+            String(cell).trim().length > 0,
+        ),
+      );
+
+      if (cleanJson.length === 0) {
+        return res.status(400).json({ success: false, message: 'Empty file' });
       }
-    } else {
-      return res
-        .status(415)
-        .json({ success: false, message: 'Unsupported file type' });
+
+      headers = cleanJson[0].map((h: any) => String(h).trim());
+
+      // Process all rows
+      dataRows = (cleanJson.slice(1) as any[]).map((arr: any[]) =>
+        arr.map(v => String(v ?? '').trim()),
+      );
+    } catch (_error) {
+      return res.status(415).json({
+        success: false,
+        message:
+          'Failed to parse file. Please ensure it is a valid CSV or Excel file.',
+      });
     }
     const result = {
       importedRecords: 0,
@@ -1126,6 +1441,20 @@ router.post(
         );
       }
     }
+
+    // Broadcast import completion
+    if (result.importedRecords > 0) {
+      websocketServer.broadcastToAll({
+        id: `import_books_${Date.now()}`,
+        type: 'books:imported',
+        data: {
+          count: result.importedRecords,
+          timestamp: new Date().toISOString(),
+        },
+        timestamp: new Date(),
+      });
+    }
+
     return res
       .status(200)
       .json({ success: result.importedRecords > 0, data: result });
@@ -1142,26 +1471,4 @@ router.get(
   }),
 );
 
-function parseCSVLine(line: string): string[] {
-  const out: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === ',' && !inQuotes) {
-      out.push(current);
-      current = '';
-    } else {
-      current += ch;
-    }
-  }
-  out.push(current);
-  return out;
-}
+export default router;

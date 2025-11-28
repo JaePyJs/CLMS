@@ -42,16 +42,13 @@ import {
   Timer,
   UserPlus,
   FileText,
-  Settings,
   Eye,
   AlertTriangle,
   Filter,
   Printer,
   ExternalLink,
-  Calendar,
   BarChart3,
   Activity,
-  Shield,
   Download,
   Loader2,
 } from 'lucide-react';
@@ -130,7 +127,7 @@ export function ScanWorkspace() {
   } | null>(null);
   const [statistics, setStatistics] = useState<any>(null);
 
-  const { isOnline, lastScanResult } = useAppStore();
+  const { isOnline, lastScanResult, setActiveStudent } = useAppStore();
   const { toggleListening, isListening, currentInput, lastScannedCode } =
     useUsbScanner();
   const { isOpen, input, setIsOpen, setInput, handleSubmit } = useManualEntry();
@@ -301,11 +298,9 @@ export function ScanWorkspace() {
       if (result.success) {
         // Play success sound
         try {
-          successSound
-            .play()
-            .catch((e) => console.debug('Audio play failed:', e));
-        } catch (e) {
-          console.debug('Audio not available:', e);
+          successSound.play().catch(() => {});
+        } catch {
+          // Audio not available
         }
 
         toast.success(result.message, {
@@ -324,7 +319,7 @@ export function ScanWorkspace() {
                 result.student.name ||
                 '',
               gradeLevel: result.student.gradeLevel,
-              gradeCategory: result.student.gradeLevel || '', // Use gradeLevel as gradeCategory
+              gradeCategory: result.student.gradeCategory || 'STUDENT', // Use correct field
               section: result.student.section || '',
             } as Student)
           : undefined;
@@ -342,6 +337,16 @@ export function ScanWorkspace() {
             display:
               `${normalizedStudent.firstName} ${normalizedStudent.lastName}`.trim(),
           });
+
+          // Set as global active student for cross-component workflow
+          setActiveStudent({
+            id: normalizedStudent.id,
+            name: `${normalizedStudent.firstName} ${normalizedStudent.lastName}`.trim(),
+            gradeLevel: normalizedStudent.gradeLevel,
+            gradeCategory: normalizedStudent.gradeCategory as any,
+            barcode: result.student?.studentId,
+          });
+
           // Default to library check-in
           setSelectedAction('library');
         }
@@ -353,11 +358,9 @@ export function ScanWorkspace() {
         if (result.cooldownRemaining && result.cooldownRemaining > 0) {
           // Play cooldown warning sound
           try {
-            cooldownSound
-              .play()
-              .catch((e) => console.debug('Audio play failed:', e));
-          } catch (e) {
-            console.debug('Audio not available:', e);
+            cooldownSound.play().catch(() => {});
+          } catch {
+            // Audio not available
           }
 
           const minutes = Math.ceil(result.cooldownRemaining / 60);
@@ -374,11 +377,9 @@ export function ScanWorkspace() {
         } else {
           // Play error sound
           try {
-            errorSound
-              .play()
-              .catch((e) => console.debug('Audio play failed:', e));
-          } catch (e) {
-            console.debug('Audio not available:', e);
+            errorSound.play().catch(() => {});
+          } catch {
+            // Audio not available
           }
 
           toast.error(result.message);
@@ -486,7 +487,7 @@ export function ScanWorkspace() {
       );
       setSelectedSessions([]);
       setShowBulkActions(false);
-    } catch (error) {
+    } catch {
       toast.error('Failed to extend session times');
     }
   };
@@ -499,7 +500,7 @@ export function ScanWorkspace() {
       );
       setSelectedSessions([]);
       setShowBulkActions(false);
-    } catch (error) {
+    } catch {
       toast.error('Failed to send notifications');
     }
   };
@@ -525,7 +526,7 @@ export function ScanWorkspace() {
       window.URL.revokeObjectURL(url);
 
       toast.success('Sessions exported successfully!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to export sessions');
     } finally {
       setIsExporting(false);
@@ -537,7 +538,7 @@ export function ScanWorkspace() {
       setIsPrintingSessions(true);
       window.print();
       toast.success('Print dialog opened for sessions');
-    } catch (error) {
+    } catch {
       toast.error('Failed to open print dialog');
     } finally {
       setIsPrintingSessions(false);
@@ -758,10 +759,10 @@ export function ScanWorkspace() {
       {/* Enhanced Header with Action Buttons */}
       <div className="relative">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-black dark:text-foreground">
+          <h3 className="text-xl font-semibold tracking-tight text-foreground">
             Activity Management
-          </h2>
-          <p className="text-black dark:text-muted-foreground">
+          </h3>
+          <p className="text-sm text-muted-foreground">
             Scan student IDs, books, or equipment for library activities.
           </p>
         </div>
@@ -1584,7 +1585,7 @@ export function ScanWorkspace() {
                 try {
                   await offlineActions.sync();
                   toast.success('Offline data synced successfully');
-                } catch (error) {
+                } catch {
                   toast.error('Failed to sync offline data');
                 }
               }}

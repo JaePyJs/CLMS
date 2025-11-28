@@ -3,6 +3,7 @@ import { BackupService } from './backupService';
 import { EquipmentAutomationService } from './equipmentAutomationService';
 import { FineCalculationService } from './fineCalculationService';
 import { GoogleSheetsService } from './googleSheetsService';
+import cron from 'node-cron';
 
 export interface AutomationJob {
   id: string;
@@ -87,6 +88,46 @@ const jobs: AutomationJob[] = [
 const history: JobHistory[] = [];
 
 export class AutomationService {
+  // Using any for task type to avoid type issues with node-cron imports
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private static tasks: Map<string, any> = new Map();
+
+  static initialize() {
+    logger.info('Initializing automation jobs...');
+    jobs.forEach(job => {
+      if (job.isEnabled) {
+        this.scheduleJob(job);
+      }
+    });
+  }
+
+  private static scheduleJob(job: AutomationJob) {
+    // Stop existing if any
+    if (this.tasks.has(job.id)) {
+      this.tasks.get(job.id)?.stop();
+      this.tasks.delete(job.id);
+    }
+
+    if (!cron.validate(job.schedule)) {
+      logger.error(
+        `Invalid cron schedule for job ${job.name}: ${job.schedule}`,
+      );
+      return;
+    }
+
+    const task = cron.schedule(job.schedule, async () => {
+      logger.info(`Executing scheduled job: ${job.name}`);
+      try {
+        await this.runJob(job.id);
+      } catch (error) {
+        logger.error(`Scheduled job ${job.name} failed`, { error });
+      }
+    });
+
+    this.tasks.set(job.id, task);
+    logger.info(`Scheduled job: ${job.name} (${job.schedule})`);
+  }
+
   static async getJobs(): Promise<AutomationJob[]> {
     return jobs;
   }
@@ -102,15 +143,31 @@ export class AutomationService {
     enabled: boolean,
   ): Promise<AutomationJob> {
     const job = jobs.find(j => j.id === jobId);
-    if (!job) throw new Error('Job not found');
+    if (!job) {
+      throw new Error('Job not found');
+    }
 
     job.isEnabled = enabled;
+
+    if (enabled) {
+      this.scheduleJob(job);
+    } else {
+      const task = this.tasks.get(jobId);
+      if (task) {
+        task.stop();
+        this.tasks.delete(jobId);
+        logger.info(`Stopped job: ${job.name}`);
+      }
+    }
+
     return job;
   }
 
   static async runJob(jobId: string): Promise<void> {
     const job = jobs.find(j => j.id === jobId);
-    if (!job) throw new Error('Job not found');
+    if (!job) {
+      throw new Error('Job not found');
+    }
 
     if (job.status === 'RUNNING') {
       throw new Error('Job is already running');
@@ -135,25 +192,19 @@ export class AutomationService {
       let result = '';
 
       switch (job.type) {
-        case 'DAILY_BACKUP':
+        case 'DAILY_BACKUP': {
           const backup = await BackupService.createBackup(
             'Automated Daily Backup',
           );
           result = `Backup created: ${backup.filename}`;
           break;
+        }
 
         case 'GOOGLE_SHEETS_SYNC':
-          // Assuming GoogleSheetsService has a syncAll method or similar
-          // If not, we might need to call specific sync methods
-          // For now, let's try to find a generic sync or just log
-          // Checking file list, I saw googleSheetsService.ts.
-          // I'll assume it has a sync method or I'll check it later.
-          // For safety, I'll wrap in try-catch and if method missing, I'll mock it.
           if (typeof GoogleSheetsService.syncAll === 'function') {
             await GoogleSheetsService.syncAll();
             result = 'Synced all sheets';
           } else {
-            // Fallback or mock
             logger.warn(
               'GoogleSheetsService.syncAll not found, skipping actual sync',
             );
@@ -161,14 +212,14 @@ export class AutomationService {
           }
           break;
 
-        case 'OVERDUE_NOTIFICATIONS':
+        case 'OVERDUE_NOTIFICATIONS': {
           const notifResult =
             await EquipmentAutomationService.sendOverdueNotifications();
           result = `Sent ${notifResult.sent} notifications`;
           break;
+        }
 
         case 'FINE_CALCULATION':
-          // Assuming FineCalculationService has calculateFines
           if (typeof FineCalculationService.calculateAllFines === 'function') {
             await FineCalculationService.calculateAllFines();
             result = 'Fines calculated';

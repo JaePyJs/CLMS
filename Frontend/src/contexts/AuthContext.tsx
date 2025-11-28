@@ -124,7 +124,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = useCallback(
     async (username: string, password: string, rememberMe: boolean = false) => {
       try {
-        console.log('🚀 Starting login attempt for:', username);
+        // console.log removed('🚀 Starting login attempt for:', username);
 
         const response = await apiClient.post<LoginResponse>(
           '/api/auth/login',
@@ -135,16 +135,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
         );
 
-        console.log('📡 Login response:', response);
+        // console.log removed('📡 Login response:', response);
 
         if (response.success && response.data) {
           const { accessToken, refreshToken, user } = response.data;
 
-          console.log(
-            '✅ Login successful, token:',
-            accessToken.substring(0, 10) + '...'
-          );
-          console.log('👤 User:', user);
+          // console.log removed
+          // console.log removed('👤 User:', user);
 
           // Store token in localStorage or sessionStorage based on rememberMe
           if (rememberMe) {
@@ -165,11 +162,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Update the access token provider immediately so interceptors can use it
           setAccessTokenProvider(() => accessToken);
 
-          console.log('🔄 Calling primeAuthState...');
+          // console.log removed('🔄 Calling primeAuthState...');
 
           try {
             await primeAuthState(queryClient);
-            console.log('✅ primeAuthState completed successfully');
+            // console.log removed('✅ primeAuthState completed successfully');
           } catch (primeError) {
             console.error(
               '❌ Failed to prime auth state after login:',
@@ -181,7 +178,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return true;
         }
 
-        console.log('❌ Login failed - response.success is false or no data');
+        // console.log removed('❌ Login failed - response.success is false or no data');
         const errorData = response as unknown as Record<string, unknown>;
         const error = errorData.error;
         toast.error(

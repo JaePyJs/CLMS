@@ -224,8 +224,6 @@ export function EquipmentDashboard() {
     setActiveDragId(null);
     setDraggedStudent(null);
 
-    console.log('🎯 Drag ended:', { activeId: active?.id, overId: over?.id });
-
     if (over && active) {
       const equipmentId = over.id as string;
       const patronId = active.id as string;
@@ -233,40 +231,17 @@ export function EquipmentDashboard() {
       const patron = activePatrons.find((p) => p.id === patronId);
       const targetEquipment = equipment.find((e) => e.id === equipmentId);
 
-      console.log('📋 Drag details:', {
-        equipmentId,
-        patronId,
-        patron: patron
-          ? {
-              id: patron.id,
-              studentId: patron.studentId,
-              studentName: patron.studentName,
-              gradeLevel: patron.gradeLevel,
-            }
-          : 'NOT FOUND',
-        targetEquipment: targetEquipment
-          ? {
-              id: targetEquipment.id,
-              name: targetEquipment.name,
-              status: targetEquipment.status,
-            }
-          : 'NOT FOUND',
-      });
-
       if (!patron) {
-        console.error('❌ Patron not found in activePatrons list');
         toast.error('Student not found');
         return;
       }
 
       if (!targetEquipment) {
-        console.error('❌ Equipment not found in equipment list');
         toast.error('Equipment not found');
         return;
       }
 
       if (targetEquipment.status !== 'available') {
-        console.warn('⚠️ Equipment is not available:', targetEquipment.status);
         toast.error(`Equipment is ${targetEquipment.status}, not available`);
         return;
       }
@@ -277,8 +252,6 @@ export function EquipmentDashboard() {
         timeLimitMinutes: getTimeLimitByGrade(patron.gradeLevel),
       };
 
-      console.log('🚀 Starting session with data:', sessionData);
-
       // Start session
       startSession(sessionData);
       toast.success(
@@ -287,8 +260,6 @@ export function EquipmentDashboard() {
 
       // Optimistically remove from list
       setActivePatrons((prev) => prev.filter((p) => p.id !== patronId));
-    } else {
-      console.log('ℹ️ Drag cancelled or invalid drop target');
     }
   };
 

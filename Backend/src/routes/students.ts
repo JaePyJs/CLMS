@@ -246,6 +246,7 @@ router.post(
       'grade_level',
       'grade_category',
     ];
+    // barcode is optional, defaults to student_id in service
     const missingFields = requiredFields.filter(
       field => !studentData[field as keyof CreateStudentData],
     );

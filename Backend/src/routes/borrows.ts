@@ -406,19 +406,20 @@ router.post(
       }
 
       // Resolve book: either by provided book_id or manual material fields
-      let book = book_id
-        ? await prisma.books.findUnique({ where: { id: book_id } })
-        : null;
+      let bookIdToUse = book_id;
 
-      if (!book && !book_id && (material_name || accession_no)) {
+      if (!bookIdToUse && (material_name || accession_no)) {
         const categoryFromType = (material_type || 'General').trim();
         const existingByAccession = accession_no
           ? await prisma.books.findFirst({ where: { accession_no } })
           : null;
+
         if (existingByAccession) {
-          book = existingByAccession;
+          bookIdToUse = existingByAccession.id;
         } else {
-          book = await prisma.books.create({
+          // Create new book if it doesn't exist (outside transaction for simplicity, or could be inside)
+          // For now, we'll create it here.
+          const newBook = await prisma.books.create({
             data: {
               title: material_name || 'Untitled Material',
               author: 'Unknown',
@@ -428,126 +429,172 @@ router.post(
               available_copies: 1,
             },
           });
+          bookIdToUse = newBook.id;
         }
       }
 
-      if (!book) {
+      if (!bookIdToUse) {
         return res.status(404).json({
           success: false,
           message: 'Book not found',
         });
       }
 
-      if (book.available_copies <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Book is not available',
+      // Use transaction for the actual checkout
+      const result = await prisma.$transaction(async tx => {
+        const book = await tx.books.findUnique({ where: { id: bookIdToUse } });
+
+        if (!book) {
+          throw new Error('Book not found');
+        }
+
+        if (book.available_copies <= 0) {
+          throw new Error('Book is not available');
+        }
+
+        // Check if student already has this book checked out
+        const existingBorrow = await tx.book_checkouts.findFirst({
+          where: {
+            student_id,
+            book_id: bookIdToUse,
+            status: 'ACTIVE',
+          },
         });
-      }
 
-      // Check if student already has this book checked out
-      const existingBorrow = await prisma.book_checkouts.findFirst({
-        where: {
-          student_id,
-          book_id,
-          status: 'ACTIVE',
-        },
-      });
+        if (existingBorrow) {
+          throw new Error('Student already has this book checked out');
+        }
 
-      if (existingBorrow) {
-        return res.status(400).json({
-          success: false,
-          message: 'Student already has this book checked out',
+        // Check loan limits
+        const activeLoansCount = await tx.book_checkouts.count({
+          where: { student_id, status: 'ACTIVE' },
         });
-      }
 
-      // Calculate due date if not provided using borrowing policy
-      const checkoutDate = new Date();
-      let computedDueDate = new Date(checkoutDate);
-      if (!due_date) {
-        let policy: any = null;
-        if (book.default_policy_id) {
-          const policies = await BorrowingPolicyService.listPolicies(false);
-          policy = policies.find(p => p.id === book.default_policy_id);
+        if (activeLoansCount >= 3) {
+          throw new Error('Student has reached maximum loan limit (3)');
         }
-        if (!policy) {
-          policy = await BorrowingPolicyService.getPolicyByCategory(
-            book.category || 'General',
-          );
-        }
-        if (policy) {
-          computedDueDate = BorrowingPolicyService.computeDueDate(
-            checkoutDate,
-            { loan_days: policy.loan_days, overnight: policy.overnight },
-          );
-        }
-      }
 
-      const borrow = await prisma.book_checkouts.create({
-        data: {
-          student_id,
-          book_id: book.id,
-          checkout_date: checkoutDate,
-          due_date: due_date ? new Date(due_date) : computedDueDate,
-          status: 'ACTIVE',
-        },
-        include: {
-          student: {
-            select: {
-              id: true,
-              student_id: true,
-              first_name: true,
-              last_name: true,
-              grade_level: true,
+        // Check for overdue books
+        const overdueBooks = await tx.book_checkouts.findFirst({
+          where: {
+            student_id,
+            status: 'ACTIVE',
+            due_date: { lt: new Date() },
+          },
+        });
+
+        if (overdueBooks) {
+          throw new Error('Cannot borrow: Student has overdue books');
+        }
+
+        // Calculate due date
+        const checkoutDate = new Date();
+        let computedDueDate = new Date(checkoutDate);
+        if (!due_date) {
+          let policy: any = null;
+          if (book.default_policy_id) {
+            const policies = await BorrowingPolicyService.listPolicies(false);
+            policy = policies.find(p => p.id === book.default_policy_id);
+          }
+          if (!policy) {
+            policy = await BorrowingPolicyService.getPolicyByCategory(
+              book.category || 'General',
+            );
+          }
+          if (policy) {
+            computedDueDate = BorrowingPolicyService.computeDueDate(
+              checkoutDate,
+              { loan_days: policy.loan_days, overnight: policy.overnight },
+            );
+          }
+        }
+
+        const borrow = await tx.book_checkouts.create({
+          data: {
+            student_id,
+            book_id: book.id,
+            checkout_date: checkoutDate,
+            due_date: due_date ? new Date(due_date) : computedDueDate,
+            status: 'ACTIVE',
+          },
+          include: {
+            student: {
+              select: {
+                id: true,
+                student_id: true,
+                first_name: true,
+                last_name: true,
+                grade_level: true,
+              },
+            },
+            book: {
+              select: {
+                id: true,
+                title: true,
+                author: true,
+                accession_no: true,
+                category: true,
+              },
             },
           },
-          book: {
-            select: {
-              id: true,
-              title: true,
-              author: true,
-              accession_no: true,
-              category: true,
-            },
+        });
+
+        // Update book availability
+        await tx.books.update({
+          where: { id: book.id },
+          data: {
+            available_copies: { decrement: 1 },
           },
-        },
+        });
+
+        // Log activity
+        await tx.student_activities.create({
+          data: {
+            student_id,
+            activity_type: 'BOOK_CHECKOUT',
+            description: `Checked out book: ${book.title}`,
+          },
+        });
+
+        return borrow;
       });
 
-      // Update book availability
-      await prisma.books.update({
-        where: { id: book.id },
-        data: {
-          available_copies: Math.max(0, (book.available_copies ?? 0) - 1),
-        },
-      });
-
-      // Log activity
-      await prisma.student_activities.create({
-        data: {
-          student_id,
-          activity_type: 'BOOK_CHECKOUT',
-          description: `Checked out book: ${book.title}`,
-        },
-      });
-
-      // Emit real-time update
+      // Emit real-time update (outside transaction)
       websocketServer.emitBorrowReturnUpdate({
         type: 'checkout',
-        studentId: borrow.student_id,
-        bookId: borrow.book_id,
-        dueDate: borrow.due_date.toISOString(),
+        studentId: result.student.student_id,
+        bookId: result.book.id,
+        dueDate: result.due_date.toISOString(),
         fineAmount: 0,
         status: 'ACTIVE',
       });
 
       res.status(201).json({
         success: true,
-        data: borrow,
+        data: result,
       });
     } catch (error) {
       logger.error('Error creating borrow', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+
+      if (error instanceof Error) {
+        if (
+          error.message === 'Book is not available' ||
+          error.message === 'Student already has this book checked out' ||
+          error.message === 'Student has reached maximum loan limit (3)' ||
+          error.message === 'Cannot borrow: Student has overdue books'
+        ) {
+          return res
+            .status(400)
+            .json({ success: false, message: error.message });
+        }
+        if (error.message === 'Book not found') {
+          return res
+            .status(404)
+            .json({ success: false, message: error.message });
+        }
+      }
       throw error;
     }
   }),
@@ -565,28 +612,9 @@ router.put(
     });
 
     try {
-      const borrow = await prisma.book_checkouts.findUnique({
-        where: { id: req.params['id'] },
-        include: { book: true },
-      });
-
-      if (!borrow) {
-        return res.status(404).json({
-          success: false,
-          message: 'Borrow record not found',
-        });
-      }
-
-      if (borrow.status !== 'ACTIVE') {
-        return res.status(400).json({
-          success: false,
-          message: 'Book is already returned',
-        });
-      }
-
       const returnDate = new Date();
 
-      // Calculate fine via service (grade-based tiers)
+      // Calculate fine outside transaction (read-only mostly)
       let fineAmount = 0;
       try {
         const calc = await FineCalculationService.calculateFineForCheckout(
@@ -598,71 +626,101 @@ router.put(
         fineAmount = 0;
       }
 
-      const updatedBorrow = await prisma.book_checkouts.update({
-        where: { id: req.params['id'] },
-        data: {
-          status: 'RETURNED',
-          return_date: returnDate,
-          fine_amount: fineAmount,
-        },
-        include: {
-          student: {
-            select: {
-              id: true,
-              student_id: true,
-              first_name: true,
-              last_name: true,
-              grade_level: true,
+      const result = await prisma.$transaction(async tx => {
+        const borrow = await tx.book_checkouts.findUnique({
+          where: { id: req.params['id'] },
+          include: { book: true },
+        });
+
+        if (!borrow) {
+          throw new Error('Borrow record not found');
+        }
+
+        if (borrow.status !== 'ACTIVE') {
+          throw new Error('Book is already returned');
+        }
+
+        const updatedBorrow = await tx.book_checkouts.update({
+          where: { id: req.params['id'] },
+          data: {
+            status: 'RETURNED',
+            return_date: returnDate,
+            fine_amount: fineAmount,
+          },
+          include: {
+            student: {
+              select: {
+                id: true,
+                student_id: true,
+                first_name: true,
+                last_name: true,
+                grade_level: true,
+              },
+            },
+            book: {
+              select: {
+                id: true,
+                title: true,
+                author: true,
+                accession_no: true,
+                category: true,
+              },
             },
           },
-          book: {
-            select: {
-              id: true,
-              title: true,
-              author: true,
-              accession_no: true,
-              category: true,
-            },
+        });
+
+        // Update book availability
+        await tx.books.update({
+          where: { id: borrow.book_id },
+          data: {
+            available_copies: { increment: 1 },
           },
-        },
-      });
+        });
 
-      // Update book availability
-      await prisma.books.update({
-        where: { id: borrow.book_id },
-        data: {
-          available_copies: borrow.book.available_copies + 1,
-        },
-      });
+        // Log activity
+        await tx.student_activities.create({
+          data: {
+            student_id: borrow.student_id,
+            activity_type: 'BOOK_RETURN',
+            description: `Returned book: ${borrow.book.title}${fineAmount > 0 ? ` (Fine: ₱${fineAmount.toFixed(2)})` : ''}`,
+          },
+        });
 
-      // Log activity
-      await prisma.student_activities.create({
-        data: {
-          student_id: borrow.student_id,
-          activity_type: 'BOOK_RETURN',
-          description: `Returned book: ${borrow.book.title}${fineAmount > 0 ? ` (Fine: ₱${fineAmount.toFixed(2)})` : ''}`,
-        },
+        return updatedBorrow;
       });
 
       // Emit real-time update
       websocketServer.emitBorrowReturnUpdate({
         type: 'return',
-        studentId: updatedBorrow.student.id,
-        bookId: updatedBorrow.book.id,
-        dueDate: updatedBorrow.due_date.toISOString(),
+        studentId: result.student.id,
+        bookId: result.book.id,
+        dueDate: result.due_date.toISOString(),
         fineAmount,
-        status: updatedBorrow.status as 'ACTIVE' | 'RETURNED',
+        status: result.status as 'ACTIVE' | 'RETURNED',
       });
 
       res.json({
         success: true,
-        data: updatedBorrow,
+        data: result,
       });
     } catch (error) {
       logger.error('Error returning book', {
         borrowId: req.params['id'],
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+
+      if (error instanceof Error) {
+        if (error.message === 'Borrow record not found') {
+          return res
+            .status(404)
+            .json({ success: false, message: error.message });
+        }
+        if (error.message === 'Book is already returned') {
+          return res
+            .status(400)
+            .json({ success: false, message: error.message });
+        }
+      }
       throw error;
     }
   }),

@@ -61,13 +61,20 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
   const getWebSocketUrl = useCallback(() => {
     const explicit = import.meta.env.VITE_WS_URL as string | undefined;
     if (explicit) return explicit;
+
+    // Use relative path to leverage Vite proxy in development
+    // In production, this will need to be the actual backend URL
+    if (import.meta.env.DEV) {
+      return ''; // Socket.io will use window.location.host
+    }
+
     const secure =
       typeof window !== 'undefined' && window.location.protocol === 'https:';
     const scheme = secure ? 'https' : 'http';
     const host =
       typeof window !== 'undefined' ? window.location.hostname : 'localhost';
     const url = `${scheme}://${host}:3001`;
-    console.log('[useWebSocket] Connecting to:', url);
+    // console.log removed('[useWebSocket] Connecting to:', url);
     return url;
   }, []);
 

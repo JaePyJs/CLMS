@@ -4,6 +4,7 @@ import { BarcodeService } from './barcodeService.js';
 import { logger } from '../utils/logger';
 import { websocketServer } from '../websocket/websocketServer';
 import { ScanExportService } from './scanExportService';
+import { LeaderboardService } from './LeaderboardService';
 
 export interface CheckInResult {
   success: boolean;
@@ -27,6 +28,20 @@ export interface Statistics {
   totalCheckIns: number;
   averageTimeSpent: number;
   uniqueStudents: number;
+}
+
+/**
+ * Format student for API response (convert snake_case to camelCase)
+ */
+function formatStudentForAPI(student: any) {
+  return {
+    id: student.id,
+    studentId: student.student_id,
+    name: `${student.first_name} ${student.last_name}`,
+    gradeLevel: String(student.grade_level),
+    section: student.section || '',
+    gradeCategory: student.grade_category || 'STUDENT',
+  };
 }
 
 /**
@@ -219,10 +234,16 @@ export class SelfService {
         }),
       );
 
+      // Record scan for leaderboard
+      // We don't await this to avoid slowing down the check-in process
+      LeaderboardService.recordScan(student.id).catch(err =>
+        logger.error('Failed to record leaderboard scan:', err),
+      );
+
       return {
         success: true,
         message: 'Checked in successfully',
-        student,
+        student: formatStudentForAPI(student),
         activity: {
           ...activity,
           timeLimit: 30, // Default 30 minutes
@@ -317,10 +338,15 @@ export class SelfService {
         }),
       );
 
+      // Also record time spent for leaderboard on checkout
+      LeaderboardService.recordScan(student.id, timeSpent).catch(err =>
+        logger.error('Failed to record leaderboard stats on checkout:', err),
+      );
+
       return {
         success: true,
         message: `Checked out successfully. Time spent: ${timeSpent} minutes`,
-        student,
+        student: formatStudentForAPI(student),
         activity: {
           ...updatedActivity,
           timeSpent,

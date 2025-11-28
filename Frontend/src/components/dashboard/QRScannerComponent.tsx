@@ -47,9 +47,14 @@ interface ScanStatistics {
   lastScanTime: Date | null;
 }
 
+// eslint-disable-next-line no-unused-vars
+type ScanSuccessCallback = (_result: QRScanResult) => void;
+// eslint-disable-next-line no-unused-vars
+type ScanErrorCallback = (_error: string) => void;
+
 interface QRScannerProps {
-  onScanSuccess?: (result: QRScanResult) => void;
-  onScanError?: (error: string) => void;
+  onScanSuccess?: ScanSuccessCallback;
+  onScanError?: ScanErrorCallback;
   enabled?: boolean;
   showSettings?: boolean;
   className?: string;
@@ -117,8 +122,7 @@ export default function QRScannerComponent({
       // Configure reader - ZXing library type definitions don't match actual API
       // These features are library-specific and handled internally
       // The reader will automatically process results through decode methods
-    } catch (error) {
-      console.error('Failed to initialize QR reader:', error);
+    } catch {
       toast.error('Failed to initialize QR scanner');
     }
   };
@@ -136,8 +140,7 @@ export default function QRScannerComponent({
       if (videoDevices.length > 0 && !selectedCamera) {
         setSelectedCamera(videoDevices[0]?.deviceId || '');
       }
-    } catch (error) {
-      console.error('Failed to check camera availability:', error);
+    } catch {
       setHasCamera(false);
     }
   };
@@ -183,7 +186,6 @@ export default function QRScannerComponent({
 
       toast.success('Camera started successfully');
     } catch (error) {
-      console.error('Failed to start scanning:', error);
       handleQRScanError(error);
     }
   };
@@ -210,8 +212,8 @@ export default function QRScannerComponent({
       }
 
       toast.info('Camera stopped');
-    } catch (error) {
-      console.error('Failed to stop scanning:', error);
+    } catch {
+      // Ignore stop scanning errors
     }
   };
 
@@ -242,7 +244,7 @@ export default function QRScannerComponent({
             handleQRResult(result);
           }
         }
-      } catch (error) {
+      } catch {
         // Ignore scan errors in continuous mode
       }
 
@@ -301,7 +303,6 @@ export default function QRScannerComponent({
         stopScanning();
       }
     } catch (error) {
-      console.error('Error handling QR result:', error);
       handleQRScanError(error);
     }
   };
@@ -349,8 +350,8 @@ export default function QRScannerComponent({
 
       oscillator.start(audioContext.currentTime);
       oscillator.stop(audioContext.currentTime + 0.1);
-    } catch (error) {
-      console.error('Failed to play beep:', error);
+    } catch {
+      // Ignore audio errors
     }
   };
 
@@ -378,8 +379,7 @@ export default function QRScannerComponent({
           }
         }
       }
-    } catch (error) {
-      console.error('Failed to toggle torch:', error);
+    } catch {
       toast.error('Failed to toggle flashlight');
     }
   };

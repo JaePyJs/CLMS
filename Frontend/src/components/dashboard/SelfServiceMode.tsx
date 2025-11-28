@@ -16,8 +16,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { kioskApi } from '@/services/kioskApi';
-import type { KioskStudent } from '@/services/kioskApi';
+import { kioskApi, type KioskStudent } from '@/services/kioskApi';
 import { getErrorMessage } from '@/utils/errorHandling';
 
 // Idle timeout in milliseconds (15 minutes)
@@ -117,7 +116,7 @@ export default function SelfServiceMode() {
           },
         ]);
       }
-    } catch (error) {
+    } catch {
       // Silent fail - use fallback announcements
     }
   };
@@ -136,7 +135,7 @@ export default function SelfServiceMode() {
       success ? '/sounds/success.mp3' : '/sounds/error.mp3'
     );
     audio.volume = 0.5;
-    audio.play().catch(() => console.debug('Sound play failed'));
+    audio.play().catch(() => {});
   };
 
   const handleScan = async (scannedValue: string) => {
@@ -231,7 +230,7 @@ export default function SelfServiceMode() {
         playSound(false);
         setTimeout(() => resetState(), 3000);
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to confirm check-in');
     } finally {
       setLoading(false);

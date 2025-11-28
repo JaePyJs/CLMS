@@ -168,16 +168,20 @@ export function useDataRefresh<T>(
   }, [enabled, interval, state.isRefreshing, fetchData]);
 
   // Initial fetch
+  const initialFetchDone = useRef(false);
+
   useEffect(() => {
-    if (enabled && retryOnMount && !state.data) {
-      console.log('useDataRefresh: Initial fetch triggered');
+    if (enabled && retryOnMount && !state.data && !initialFetchDone.current) {
+      // console.log removed('useDataRefresh: Initial fetch triggered');
+      initialFetchDone.current = true;
       fetchData(false);
     } else {
-      console.log('useDataRefresh: Initial fetch skipped', {
+      /* // console.log removed('useDataRefresh: Initial fetch skipped', {
         enabled,
         retryOnMount,
         hasData: !!state.data,
-      });
+        alreadyFetched: initialFetchDone.current
+      }); */
     }
   }, [enabled, retryOnMount, state.data, fetchData]);
 

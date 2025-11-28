@@ -101,11 +101,17 @@ export class PrintingService {
       let studentUuid: string | undefined;
 
       if (data.student_id) {
-        const student = await prisma.students.findUnique({
-          where: { student_id: data.student_id },
+        // Try to find by student_id OR barcode to be robust
+        const student = await prisma.students.findFirst({
+          where: {
+            OR: [{ student_id: data.student_id }, { barcode: data.student_id }],
+          },
         });
+
         if (!student) {
-          throw new Error(`Student with ID ${data.student_id} not found`);
+          throw new Error(
+            `User (Student/Personnel) with ID/Barcode ${data.student_id} not found`,
+          );
         }
         studentUuid = student.id;
       }

@@ -6,6 +6,7 @@ export interface SelfServiceStudent {
   name: string;
   gradeLevel: string;
   section: string;
+  gradeCategory: string;
 }
 
 export interface SelfServiceActivity {

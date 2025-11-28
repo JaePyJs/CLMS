@@ -19,7 +19,7 @@ router.get(
         success: true,
         data: backups,
       });
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({
         success: false,
         message: 'Failed to list backups',
@@ -52,7 +52,7 @@ router.get(
         success: true,
         data: stats,
       });
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({
         success: false,
         message: 'Failed to get backup statistics',
@@ -74,7 +74,7 @@ router.post(
         data: backup,
         message: 'Backup created successfully',
       });
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({
         success: false,
         message: 'Failed to create backup',
@@ -97,7 +97,7 @@ router.post(
         data: backup,
         message: 'Backup created successfully',
       });
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({
         success: false,
         message: 'Failed to create backup',
@@ -118,7 +118,7 @@ router.post(
         success: true,
         message: 'Backup restored successfully',
       });
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({
         success: false,
         message: 'Failed to restore backup',
@@ -139,7 +139,7 @@ router.delete(
         success: true,
         message: 'Backup deleted successfully',
       });
-    } catch (error) {
+    } catch (_error) {
       res.status(500).json({
         success: false,
         message: 'Failed to delete backup',

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { SelfService } from './services/selfService';
 import { prisma } from './utils/prisma';
 

@@ -59,7 +59,6 @@ router.get(
         take: parseInt(limit),
       });
 
-      // Fetch active sessions for these equipment
       const activeSessions = await prisma.student_activities.findMany({
         where: {
           activity_type: 'EQUIPMENT_USE',
@@ -73,7 +72,7 @@ router.get(
       // Map sessions to equipment
       const equipmentWithSessions = equipment.map(eq => {
         const session = activeSessions.find(s => {
-          const meta = s.metadata as any;
+          const meta = (s as any).metadata;
           return meta && meta.equipmentId === eq.id;
         });
 
@@ -84,7 +83,7 @@ router.get(
         };
 
         if (session) {
-          const meta = session.metadata as any;
+          const meta = (session as any).metadata;
           const startTime = new Date(session.start_time);
           const timeLimit = meta.timeLimitMinutes || 60;
           const elapsedMinutes = Math.floor(
@@ -357,154 +356,105 @@ router.post(
     }
 
     try {
-      // Check if equipment exists and is available
-      logger.info(`🔍 Looking for equipment with id: ${equipmentId}`);
-      const equipment = await prisma.equipment.findUnique({
-        where: { id: equipmentId },
-      });
-
-      if (!equipment) {
-        logger.warn(`❌ Start session failed: Equipment not found`, {
-          equipmentId,
-          searchedBy: 'id',
+      const result = await prisma.$transaction(async tx => {
+        // Check if equipment exists and is available
+        logger.info(`🔍 Looking for equipment with id: ${equipmentId}`);
+        const equipment = await tx.equipment.findUnique({
+          where: { id: equipmentId },
         });
-        res.status(404).json({
-          success: false,
-          message: 'Equipment not found',
-          debug: { searchedEquipmentId: equipmentId },
-        });
-        return;
-      }
 
-      logger.info(
-        `✅ Equipment found: ${equipment.name}, status: ${equipment.status}`,
-      );
+        if (!equipment) {
+          throw new Error('Equipment not found');
+        }
 
-      // Normalize status to uppercase for comparison (handles both 'AVAILABLE' and 'available')
-      const normalizedStatus = equipment.status.toUpperCase();
-      if (normalizedStatus !== 'AVAILABLE') {
-        logger.warn(`❌ Start session failed: Equipment not available`, {
-          equipmentId,
-          equipmentName: equipment.name,
-          currentStatus: equipment.status,
-          expectedStatus: 'AVAILABLE',
-        });
-        res.status(400).json({
-          success: false,
-          message: `Equipment is not available (current status: ${equipment.status})`,
-          debug: {
-            equipmentId,
-            equipmentName: equipment.name,
-            currentStatus: equipment.status,
+        logger.info(
+          `✅ Equipment found: ${equipment.name}, status: ${equipment.status}`,
+        );
+
+        // Normalize status to uppercase for comparison (handles both 'AVAILABLE' and 'available')
+        const normalizedStatus = equipment.status.toUpperCase();
+        if (normalizedStatus !== 'AVAILABLE') {
+          throw new Error(
+            `Equipment is not available (current status: ${equipment.status})`,
+          );
+        }
+
+        // Find student by multiple fields
+        logger.info(
+          `🔍 Looking for student with id/student_id/barcode: ${studentId}`,
+        );
+        const student = await tx.students.findFirst({
+          where: {
+            OR: [
+              { id: studentId },
+              { student_id: studentId },
+              { barcode: studentId },
+            ],
           },
         });
-        return;
-      }
 
-      // Find student by multiple fields
-      logger.info(
-        `🔍 Looking for student with id/student_id/barcode: ${studentId}`,
-      );
-      const student = await prisma.students.findFirst({
-        where: {
-          OR: [
-            { id: studentId },
-            { student_id: studentId },
-            { barcode: studentId },
-          ],
-        },
-      });
+        if (!student) {
+          throw new Error('Student not found');
+        }
 
-      if (!student) {
-        logger.warn(`❌ Start session failed: Student not found`, {
-          studentId,
-          searchedBy: ['id', 'student_id', 'barcode'],
-        });
-        res.status(404).json({
-          success: false,
-          message: 'Student not found',
-          debug: {
-            searchedStudentId: studentId,
-            searchedFields: ['id', 'student_id', 'barcode'],
-          },
-        });
-        return;
-      }
-
-      logger.info(
-        `✅ Student found: ${student.first_name} ${student.last_name}`,
-        {
-          internalId: student.id,
-          studentId: student.student_id,
-          barcode: student.barcode,
-        },
-      );
-
-      // Check if student already has an active equipment session
-      const existingSession = await prisma.student_activities.findFirst({
-        where: {
-          student_id: student.id,
-          activity_type: 'EQUIPMENT_USE',
-          status: 'ACTIVE',
-        },
-      });
-
-      if (existingSession) {
-        logger.warn(
-          `❌ Start session failed: Student already has active equipment session`,
+        logger.info(
+          `✅ Student found: ${student.first_name} ${student.last_name}`,
           {
-            studentId: student.id,
-            existingSessionId: existingSession.id,
+            internalId: student.id,
+            studentId: student.student_id,
+            barcode: student.barcode,
           },
         );
-        res.status(400).json({
-          success: false,
-          message: 'Student already has an active equipment session',
-          debug: {
-            existingSessionId: existingSession.id,
-            studentName: `${student.first_name} ${student.last_name}`,
+
+        // Check if student already has an active equipment session
+        const existingSession = await tx.student_activities.findFirst({
+          where: {
+            student_id: student.id,
+            activity_type: 'EQUIPMENT_USE',
+            status: 'ACTIVE',
           },
         });
-        return;
-      }
 
-      // Create session (activity)
-      logger.info('📝 Creating equipment session...');
-      const session = await prisma.student_activities.create({
-        data: {
-          student_id: student.id,
-          activity_type: 'EQUIPMENT_USE',
-          description: `Using equipment: ${equipment.name}`,
-          status: 'ACTIVE',
-          metadata: {
-            equipmentId: equipment.id,
-            equipmentName: equipment.name,
-            timeLimitMinutes: timeLimitMinutes || 60,
-            startTime: new Date().toISOString(),
-            studentName: `${student.first_name} ${student.last_name}`,
-          },
-        },
+        if (existingSession) {
+          throw new Error('Student already has an active equipment session');
+        }
+
+        // Create session (activity)
+        logger.info('📝 Creating equipment session...');
+        const session = await tx.student_activities.create({
+          data: {
+            student_id: student.id,
+            activity_type: 'EQUIPMENT_USE',
+            description: `Using equipment: ${equipment.name}`,
+            status: 'ACTIVE',
+            metadata: {
+              equipmentId: equipment.id,
+              equipmentName: equipment.name,
+              timeLimitMinutes: timeLimitMinutes || 60,
+              startTime: new Date().toISOString(),
+              studentName: `${student.first_name} ${student.last_name}`,
+            },
+          } as any,
+        });
+
+        logger.info(`✅ Session created: ${session.id}`);
+
+        // Update equipment status
+        await tx.equipment.update({
+          where: { id: equipmentId },
+          data: { status: 'IN_USE' },
+        });
+
+        logger.info(`✅ Equipment status updated to IN_USE`);
+
+        return session;
       });
-
-      logger.info(`✅ Session created: ${session.id}`);
-
-      // Update equipment status
-      await prisma.equipment.update({
-        where: { id: equipmentId },
-        data: { status: 'IN_USE' },
-      });
-
-      logger.info(`✅ Equipment status updated to IN_USE`);
 
       logger.info('🎉 Session started successfully', {
-        sessionId: session.id,
-        equipmentId: equipment.id,
-        equipmentName: equipment.name,
-        studentId: student.id,
-        studentName: `${student.first_name} ${student.last_name}`,
+        sessionId: result.id,
       });
 
-      res.status(201).json({ success: true, data: session });
+      res.status(201).json({ success: true, data: result });
     } catch (error) {
       logger.error('💥 Error starting session', {
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -512,6 +462,26 @@ router.post(
         equipmentId,
         studentId,
       });
+
+      if (error instanceof Error) {
+        if (
+          error.message === 'Equipment not found' ||
+          error.message === 'Student not found'
+        ) {
+          return res
+            .status(404)
+            .json({ success: false, message: error.message });
+        }
+        if (
+          error.message.includes('not available') ||
+          error.message.includes('active equipment session')
+        ) {
+          return res
+            .status(400)
+            .json({ success: false, message: error.message });
+        }
+      }
+
       res.status(500).json({
         success: false,
         message: 'Failed to start session',
@@ -519,6 +489,44 @@ router.post(
           error: error instanceof Error ? error.message : 'Unknown error',
         },
       });
+    }
+  }),
+);
+
+// GET /api/equipment/:id/sessions
+router.get(
+  '/:id/sessions',
+  authenticate,
+  requireRole(['LIBRARIAN', 'ADMIN']),
+  asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const sessions = await prisma.student_activities.findMany({
+        where: {
+          activity_type: 'EQUIPMENT_USE',
+          metadata: {
+            path: ['equipmentId'],
+            equals: req.params['id'],
+          },
+        } as any,
+        include: {
+          student: true,
+        },
+        orderBy: {
+          start_time: 'desc',
+        },
+        take: 50, // Limit to last 50 sessions
+      });
+
+      res.json({
+        success: true,
+        data: sessions,
+      });
+    } catch (error) {
+      logger.error('Error retrieving equipment sessions', {
+        equipmentId: req.params['id'],
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
     }
   }),
 );
@@ -531,47 +539,58 @@ router.post(
     const sessionId = req.params['id'];
 
     try {
-      // Find session
-      const session = await prisma.student_activities.findUnique({
-        where: { id: sessionId },
-      });
-
-      if (!session) {
-        // Try to find by equipment ID if sessionId is actually equipmentId (frontend might send equipmentId sometimes?)
-        // But the route says :id is sessionId.
-        // Let's assume it's sessionId.
-        res.status(404).json({ success: false, message: 'Session not found' });
-        return;
-      }
-
-      if (session.status !== 'ACTIVE') {
-        res
-          .status(400)
-          .json({ success: false, message: 'Session is not active' });
-        return;
-      }
-
-      // Update session
-      const updatedSession = await prisma.student_activities.update({
-        where: { id: sessionId },
-        data: {
-          status: 'COMPLETED',
-          end_time: new Date(),
-        },
-      });
-
-      // Update equipment status
-      const metadata = session.metadata as any;
-      if (metadata?.equipmentId) {
-        await prisma.equipment.update({
-          where: { id: metadata.equipmentId },
-          data: { status: 'AVAILABLE' },
+      const result = await prisma.$transaction(async tx => {
+        // Find session
+        const session = await tx.student_activities.findUnique({
+          where: { id: sessionId },
         });
-      }
 
-      res.json({ success: true, data: updatedSession });
+        if (!session) {
+          throw new Error('Session not found');
+        }
+
+        if (session.status !== 'ACTIVE') {
+          throw new Error('Session is not active');
+        }
+
+        // Update session
+        const updatedSession = await tx.student_activities.update({
+          where: { id: sessionId },
+          data: {
+            status: 'COMPLETED',
+            end_time: new Date(),
+          },
+        });
+
+        // Update equipment status
+        const metadata = (session as any).metadata;
+        if (metadata?.equipmentId) {
+          await tx.equipment.update({
+            where: { id: metadata.equipmentId },
+            data: { status: 'AVAILABLE' },
+          });
+        }
+
+        return updatedSession;
+      });
+
+      res.json({ success: true, data: result });
     } catch (error) {
       logger.error('Error ending session', { error });
+
+      if (error instanceof Error) {
+        if (error.message === 'Session not found') {
+          return res
+            .status(404)
+            .json({ success: false, message: error.message });
+        }
+        if (error.message === 'Session is not active') {
+          return res
+            .status(400)
+            .json({ success: false, message: error.message });
+        }
+      }
+
       res
         .status(500)
         .json({ success: false, message: 'Failed to end session' });
@@ -599,7 +618,7 @@ router.post(
         return;
       }
 
-      const metadata = (session.metadata as any) || {};
+      const metadata = (session as any).metadata || {};
       const currentLimit = metadata.timeLimitMinutes || 60;
       const newLimit = currentLimit + (additionalMinutes || 15);
 
@@ -610,7 +629,7 @@ router.post(
             ...metadata,
             timeLimitMinutes: newLimit,
           },
-        },
+        } as any,
       });
 
       res.json({ success: true, data: updatedSession });

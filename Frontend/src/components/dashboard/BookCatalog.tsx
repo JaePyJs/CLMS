@@ -63,6 +63,7 @@ import {
 } from '@/components/LoadingStates';
 import { apiClient } from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
+import { BookImportDialog } from '@/components/books/BookImportDialog';
 
 interface Book {
   id: string;
@@ -122,6 +123,7 @@ export function BookCatalog() {
   const [showEditBook, setShowEditBook] = useState(false);
   const [showBookDetails, setShowBookDetails] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
@@ -204,7 +206,7 @@ export function BookCatalog() {
       } else {
         toast.error('Failed to load books');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to load books. Please try again.');
     } finally {
       setIsLoading(false);
@@ -360,7 +362,7 @@ export function BookCatalog() {
       window.URL.revokeObjectURL(url);
 
       toast.success('Books exported successfully!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to export books');
     } finally {
       setIsExporting(false);
@@ -436,6 +438,10 @@ export function BookCatalog() {
               </>
             )}
           </Button>
+          <Button onClick={() => setShowImportDialog(true)} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Import Books
+          </Button>
           <Button
             onClick={() => setShowAddBook(true)}
             className={isMobile ? 'col-span-2' : ''}
@@ -445,6 +451,11 @@ export function BookCatalog() {
           </Button>
         </div>
       </div>
+
+      <BookImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+      />
 
       {/* Stats Cards */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
