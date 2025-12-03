@@ -36,6 +36,7 @@ interface AuthContextType {
   ) => Promise<boolean>;
   logout: () => void;
   checkAuth: () => Promise<boolean>;
+  refreshSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -218,8 +219,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       queryClient.setQueryData(authKeys.current(), currentUser);
       return true;
     } catch (error: any) {
-      console.error('Auth check failed:', error);
-
       // Only fall back to cache if it's a network error (offline), NOT if it's an auth error (401/403)
       const isAuthError =
         error?.response?.status === 401 ||
@@ -227,7 +226,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         error?.status === 401 ||
         error?.status === 403;
 
+      // Don't log 401/403 errors - they're expected when not logged in
       if (!isAuthError) {
+        console.error('Auth check failed:', error);
         try {
           const cached =
             localStorage.getItem('clms_user') ||
@@ -250,6 +251,38 @@ export function AuthProvider({ children }: AuthProviderProps) {
       return false;
     }
   }, [performLogout, queryClient]);
+
+  // Manually refresh the session token
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    try {
+      const storedRefreshToken =
+        localStorage.getItem('clms_refresh_token') ||
+        sessionStorage.getItem('clms_refresh_token');
+
+      if (!storedRefreshToken) {
+        return false;
+      }
+
+      const response = await apiClient.post<LoginResponse>(
+        '/api/auth/refresh',
+        { refreshToken: storedRefreshToken }
+      );
+
+      if (response.data?.accessToken) {
+        const newToken = response.data.accessToken;
+        const storage = localStorage.getItem('clms_token')
+          ? localStorage
+          : sessionStorage;
+        storage.setItem('clms_token', newToken);
+        setToken(newToken);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Manual refresh failed:', error);
+      return false;
+    }
+  }, []);
 
   // Call checkAuth only once on mount
   useEffect(() => {
@@ -317,8 +350,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
       login,
       logout,
       checkAuth,
+      refreshSession,
     }),
-    [checkAuth, isAuthenticated, isLoading, login, logout, token, user]
+    [
+      checkAuth,
+      isAuthenticated,
+      isLoading,
+      login,
+      logout,
+      refreshSession,
+      token,
+      user,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

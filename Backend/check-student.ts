@@ -1,13 +1,19 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import { BarcodeService } from './src/services/barcodeService';
 
 const prisma = new PrismaClient();
+
+// Simple barcode validation function
+function validateBarcode(barcode: string): boolean {
+  if (!barcode || typeof barcode !== 'string') return false;
+  return barcode.length >= 3 && barcode.length <= 50;
+}
 
 async function main() {
   const barcode = 'S-1763957502933';
   console.log(`Checking for student with barcode: ${barcode}`);
 
-  const isValid = BarcodeService.validateBarcode(barcode);
+  const isValid = validateBarcode(barcode);
   console.log(`Barcode validation result: ${isValid}`);
 
   const student = await prisma.students.findFirst({

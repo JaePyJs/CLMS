@@ -5,9 +5,9 @@ import { AutomationService } from '../services/automationService';
 
 const router = Router();
 
-// All automation routes require authentication and admin role
+// All automation routes require authentication (single-user system)
 router.use(authenticate);
-router.use(requireRole('ADMIN'));
+router.use(requireRole('LIBRARIAN'));
 
 // GET /api/automation/jobs - List all jobs
 router.get(

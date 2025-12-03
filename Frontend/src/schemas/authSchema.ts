@@ -52,7 +52,7 @@ export const registerSchema = z
 
     confirmPassword: z.string().min(1, 'Please confirm your password'),
 
-    role: z.enum(['ADMIN', 'LIBRARIAN', 'USER']).optional().default('USER'),
+    role: z.enum(['LIBRARIAN']).optional().default('LIBRARIAN'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
@@ -134,7 +134,7 @@ export const userSessionSchema = z.object({
   id: z.number().positive(),
   username: z.string().min(1),
   email: z.string().email().optional(),
-  role: z.enum(['ADMIN', 'LIBRARIAN', 'USER']),
+  role: z.enum(['LIBRARIAN']),
   createdAt: z.string().or(z.date()).optional(),
 });
 

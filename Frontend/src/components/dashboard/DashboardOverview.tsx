@@ -148,13 +148,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       // Ignore error
     }
   }, [attendanceAutoScroll, attendanceEvents]);
-  const [beginnerMode, setBeginnerMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('clms_beginner_mode');
-    return saved === null ? true : saved === 'true';
-  });
-  useEffect(() => {
-    localStorage.setItem('clms_beginner_mode', String(beginnerMode));
-  }, [beginnerMode]);
+  // Beginner mode removed - unified dashboard view
+  const beginnerMode = false;
   const [changeSectionTarget, setChangeSectionTarget] = useState<{
     studentId: string;
     studentName: string;
@@ -639,6 +634,49 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const { data: timeline, isLoading: timelineLoading } =
     useActivityTimeline(10);
   const { data: healthData } = useHealthCheck();
+
+  // Fetch active sessions with polling and WebSocket-triggered refresh
+  const [activeSessionsData, setActiveSessionsData] = useState<{
+    count: number;
+    sessions: any[];
+    lastFetch: number;
+  }>({ count: 0, sessions: [], lastFetch: 0 });
+
+  const fetchActiveSessions = async () => {
+    try {
+      const response = await studentsApi.getActiveSessions();
+      const data = (response as any)?.data || response;
+      const sessions = Array.isArray(data?.data) ? data.data : [];
+      setActiveSessionsData({
+        count: data?.count || sessions.length,
+        sessions,
+        lastFetch: Date.now(),
+      });
+    } catch (error) {
+      console.error('Failed to fetch active sessions:', error);
+    }
+  };
+
+  // Initial fetch and polling every 30 seconds
+  useEffect(() => {
+    fetchActiveSessions();
+    const intervalId = setInterval(fetchActiveSessions, 30000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Refetch when WebSocket check-in/check-out events occur
+  useEffect(() => {
+    if (!attendanceEvents || attendanceEvents.length === 0) return;
+    const latestEvent = attendanceEvents[attendanceEvents.length - 1];
+    if (
+      latestEvent?.type === 'student_checkin' ||
+      latestEvent?.type === 'student_checkout'
+    ) {
+      // Small delay to ensure backend has processed
+      setTimeout(fetchActiveSessions, 500);
+    }
+  }, [attendanceEvents]);
+
   const [backendVersion, setBackendVersion] = useState<string | null>(null);
   const frontendVersion =
     (import.meta.env.VITE_APP_VERSION as string) || '2.0.0';
@@ -715,10 +753,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     toast.success('Exported recent activity CSV');
   };
 
-  // Calculate real-time metrics from store (initialized to 0)
-  const activeSessions = Array.isArray(activities)
-    ? activities.filter((a) => a.status === 'active').length
-    : 0;
+  // Calculate real-time metrics - use fetched active sessions data
+  const activeSessions = activeSessionsData.count;
   const totalToday = Array.isArray(activities)
     ? activities.filter((a) => {
         const today = new Date();
@@ -1022,17 +1058,17 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     >
       {/* Enhanced Welcome Header - Clean & Professional */}
       <div className="space-y-4">
-        {/* Real-time Dashboard Toggle */}
+        {/* Real-time Dashboard Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold">Dashboard View</h3>
+            <h3 className="text-lg font-semibold">Library Dashboard</h3>
             <div className="flex items-center gap-2">
               <Badge
                 variant={wsConnected ? 'default' : 'secondary'}
                 className="bg-green-500"
               >
                 <Wifi className="h-3 w-3 mr-1" />
-                Real-time {wsConnected ? 'Active' : 'Inactive'}
+                {wsConnected ? 'Online • Live updates active' : 'Connecting...'}
               </Badge>
               {notifications.length > 0 && (
                 <Badge
@@ -1044,35 +1080,6 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                 </Badge>
               )}
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={showRealTime ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setShowRealTime(true)}
-              className="flex items-center gap-2"
-            >
-              <Activity className="h-4 w-4" />
-              Real-time View
-            </Button>
-            <Button
-              variant={!showRealTime ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setShowRealTime(false)}
-              className="flex items-center gap-2"
-            >
-              <BarChart3 className="h-4 w-4" />
-              Standard View
-            </Button>
-            <Button
-              variant={beginnerMode ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setBeginnerMode((v) => !v)}
-              className="flex items-center gap-2"
-              title="Simplify the dashboard to essential actions"
-            >
-              Beginner Mode: {beginnerMode ? 'On' : 'Off'}
-            </Button>
           </div>
         </div>
 
@@ -1787,7 +1794,18 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
           </div>
         </div>
       ) : showRealTime ? (
-        <RealTimeDashboard />
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          {/* Left Sidebar - Calendar */}
+          <div className="xl:col-span-4 space-y-6">
+            <div className="h-[600px]">
+              <CalendarWidget />
+            </div>
+          </div>
+          {/* Right Side - Real-time Dashboard */}
+          <div className="xl:col-span-8">
+            <RealTimeDashboard />
+          </div>
+        </div>
       ) : (
         <>
           {/* Main Cozy Layout with Calendar as Focal Point */}
@@ -2211,7 +2229,47 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                   </div>
                 </CardHeader>
                 <CardContent className="p-6">
-                  {timelineLoading ? (
+                  {activeSessionsData.sessions.length > 0 ? (
+                    <div className="space-y-4">
+                      {activeSessionsData.sessions.map((session: any) => (
+                        <div
+                          key={session.id || session.activity_id}
+                          className="flex items-start space-x-4 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50/30 dark:from-gray-800/50 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 shadow-sm"
+                        >
+                          <div className="flex-shrink-0 mt-1">
+                            <div className="h-3 w-3 rounded-full shadow-sm bg-green-500 shadow-green-500/50"></div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground dark:text-foreground">
+                              <Badge
+                                variant="default"
+                                className="mr-2 bg-green-600"
+                              >
+                                Active
+                              </Badge>
+                              {session.student_name ||
+                                `${session.first_name || ''} ${session.last_name || ''}`.trim() ||
+                                'Unknown Student'}
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1 truncate">
+                              {session.grade_level
+                                ? `Grade ${session.grade_level}`
+                                : ''}
+                              {session.section ? ` - ${session.section}` : ''}
+                              {' • Library visit'}
+                            </p>
+                          </div>
+                          <div className="flex-shrink-0 text-xs text-muted-foreground bg-white dark:bg-gray-800 px-2 py-1 rounded-full">
+                            {session.start_time
+                              ? new Date(
+                                  session.start_time
+                                ).toLocaleTimeString()
+                              : 'Now'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : timelineLoading ? (
                     <div className="text-center py-12">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
                       <p className="text-muted-foreground">
@@ -2269,7 +2327,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                         No recent activity
                       </p>
                       <p className="text-muted-foreground/60 text-sm mt-2">
-                        Your library is quiet today
+                        No active sessions - students will appear here when they
+                        check in
                       </p>
                     </div>
                   )}

@@ -72,9 +72,13 @@ interface Book {
   title: string;
   author: string;
   publisher?: string;
+  year?: number;
   category: string;
   subcategory?: string;
   location?: string;
+  edition?: string;
+  pages?: string;
+  costPrice?: number;
   totalCopies: number;
   availableCopies: number;
   isActive: boolean;
@@ -190,7 +194,29 @@ export function BookCatalog() {
       );
 
       if (response.success && response.data) {
-        const booksData = Array.isArray(response.data) ? response.data : [];
+        const rawBooks = Array.isArray(response.data) ? response.data : [];
+        // Transform snake_case to camelCase
+        const booksData = rawBooks.map((book: any) => ({
+          id: book.id,
+          isbn: book.isbn,
+          accessionNo: book.accession_no || '',
+          title: book.title,
+          author: book.author,
+          publisher: book.publisher,
+          year: book.year,
+          category: book.category,
+          subcategory: book.subcategory,
+          location: book.location,
+          edition: book.edition,
+          pages: book.pages,
+          costPrice: book.cost_price,
+          totalCopies: book.total_copies ?? 1,
+          availableCopies: book.available_copies ?? 1,
+          isActive: book.is_active ?? true,
+          barcodeImage: book.barcode_image,
+          createdAt: book.created_at,
+          updatedAt: book.updated_at,
+        }));
         setBooks(booksData);
 
         // Update pagination info from response
@@ -455,6 +481,7 @@ export function BookCatalog() {
       <BookImportDialog
         open={showImportDialog}
         onOpenChange={setShowImportDialog}
+        onSuccess={fetchBooks}
       />
 
       {/* Stats Cards */}
@@ -523,10 +550,10 @@ export function BookCatalog() {
         </Card>
       </div>
 
-      {/* _Search and Filters */}
+      {/* Search and Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>_Search & Filter</CardTitle>
+          <CardTitle>Search & Filter</CardTitle>
         </CardHeader>
         <CardContent>
           <div
@@ -613,15 +640,25 @@ export function BookCatalog() {
               }
             />
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Accession No</TableHead>
                     <TableHead>Title</TableHead>
-                    <TableHead>Author</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Location</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Author
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Publisher
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell">Year</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Category
+                    </TableHead>
+                    <TableHead className="hidden xl:table-cell">
+                      Location
+                    </TableHead>
                     <TableHead>Availability</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -629,7 +666,7 @@ export function BookCatalog() {
                 <TableBody>
                   {books.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="h-64 text-center">
+                      <TableCell colSpan={9} className="h-64 text-center">
                         <div className="flex flex-col items-center justify-center text-muted-foreground">
                           <Book className="h-12 w-12 mb-4 opacity-20" />
                           <p className="text-lg font-medium">No books found</p>
@@ -642,30 +679,55 @@ export function BookCatalog() {
                   ) : (
                     books.map((book) => (
                       <TableRow key={book.id}>
-                        <TableCell className="font-mono text-sm">
+                        <TableCell className="font-mono text-sm whitespace-nowrap">
                           {book.accessionNo}
                         </TableCell>
-                        <TableCell className="font-medium">
-                          {book.title}
+                        <TableCell className="font-medium max-w-[200px] truncate">
+                          <div className="truncate" title={book.title}>
+                            {book.title}
+                          </div>
                           {book.isbn && (
                             <div className="text-xs text-muted-foreground">
                               ISBN: {book.isbn}
                             </div>
                           )}
+                          {/* Show author on mobile since column is hidden */}
+                          <div className="text-xs text-muted-foreground sm:hidden">
+                            {book.author}
+                          </div>
                         </TableCell>
-                        <TableCell>{book.author}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{book.category}</Badge>
+                        <TableCell
+                          className="hidden sm:table-cell max-w-[150px] truncate"
+                          title={book.author}
+                        >
+                          {book.author}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <TableCell
+                          className="hidden md:table-cell max-w-[120px] truncate"
+                          title={book.publisher || 'N/A'}
+                        >
+                          {book.publisher || 'N/A'}
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          {book.year || 'N/A'}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge
+                            variant="outline"
+                            className="whitespace-nowrap"
+                          >
+                            {book.category || 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell">
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground whitespace-nowrap">
                             <MapPin className="h-3 w-3" />
                             {book.location || 'N/A'}
                           </div>
                         </TableCell>
                         <TableCell>{getAvailabilityBadge(book)}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -673,6 +735,7 @@ export function BookCatalog() {
                                 setSelectedBook(book);
                                 setShowBookDetails(true);
                               }}
+                              title="View Details"
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -683,6 +746,7 @@ export function BookCatalog() {
                                 setSelectedBook(book);
                                 setShowEditBook(true);
                               }}
+                              title="Edit"
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -693,6 +757,7 @@ export function BookCatalog() {
                                 setSelectedBook(book);
                                 setShowDeleteConfirm(true);
                               }}
+                              title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -782,7 +847,7 @@ export function BookCatalog() {
 
       {/* Add Book Dialog */}
       <Dialog open={showAddBook} onOpenChange={setShowAddBook}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Book</DialogTitle>
             <DialogDescription>
@@ -792,14 +857,19 @@ export function BookCatalog() {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">Accession No *</label>
+                <label className="text-sm font-medium">
+                  Accession No / Barcode *
+                </label>
                 <Input
                   value={newBook.accessionNo}
                   onChange={(e) =>
                     setNewBook({ ...newBook, accessionNo: e.target.value })
                   }
-                  placeholder="e.g., ACC001"
+                  placeholder="e.g., ACC001 or scan barcode"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  This is used as the book's barcode for scanning.
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium">ISBN</label>
@@ -908,7 +978,7 @@ export function BookCatalog() {
 
       {/* Edit Book Dialog */}
       <Dialog open={showEditBook} onOpenChange={setShowEditBook}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Book</DialogTitle>
             <DialogDescription>Update the book details</DialogDescription>
@@ -1091,7 +1161,7 @@ export function BookCatalog() {
 
       {/* Book Details Dialog */}
       <Dialog open={showBookDetails} onOpenChange={setShowBookDetails}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Book Details</DialogTitle>
           </DialogHeader>

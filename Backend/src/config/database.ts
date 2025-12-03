@@ -114,13 +114,18 @@ export class DatabaseConfig {
     uptime: number;
   }> {
     try {
-      const result = await this.client.$queryRaw<Array<{ version: string }>>`
-        SELECT version() as version
+      // SQLite version query (not MySQL's SELECT version())
+      const result = await this.client.$queryRaw<
+        Array<{ sqlite_version: string }>
+      >`
+        SELECT sqlite_version() as sqlite_version
       `;
 
       return {
         isConnected: this.isConnected,
-        version: result[0]?.version || null,
+        version: result[0]?.sqlite_version
+          ? `SQLite ${result[0].sqlite_version}`
+          : null,
         uptime: process.uptime(),
       };
     } catch (error) {
@@ -221,9 +226,49 @@ export async function clearActiveSessionsOnStartup(): Promise<void> {
         `🧹 Reset ${equipmentResult.count} equipment from IN_USE to AVAILABLE on startup`,
       );
     }
+
+    // Ensure default library sections exist
+    await ensureDefaultLibrarySections();
   } catch (error) {
     logger.error('Failed to clear active sessions on startup:', error);
     // Don't throw - server should continue even if cleanup fails
+  }
+}
+
+/**
+ * Ensure default library sections exist
+ * Creates LIBRARY, COMPUTER, and STUDY sections if they don't exist
+ */
+async function ensureDefaultLibrarySections(): Promise<void> {
+  const defaults = [
+    { code: 'LIBRARY', name: 'Library', description: 'Main library area' },
+    {
+      code: 'COMPUTER',
+      name: 'Computer Area',
+      description: 'Computer lab section',
+    },
+    { code: 'STUDY', name: 'Study Area', description: 'Quiet study section' },
+  ];
+
+  for (const section of defaults) {
+    try {
+      const existing = await prisma.library_sections.findUnique({
+        where: { code: section.code },
+      });
+      if (!existing) {
+        await prisma.library_sections.create({
+          data: {
+            code: section.code,
+            name: section.name,
+            description: section.description,
+            is_active: true,
+          },
+        });
+        logger.info(`📚 Created default library section: ${section.name}`);
+      }
+    } catch (error) {
+      logger.error(`Failed to ensure section ${section.code}:`, error);
+    }
   }
 }
 

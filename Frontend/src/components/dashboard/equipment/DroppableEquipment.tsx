@@ -17,8 +17,11 @@ export function DroppableEquipment({
     disabled: disabled,
   });
 
+  // Only reduce opacity for the drag overlay hint, not the entire card
+  // The card should always be fully visible and interactive
   const style = {
-    opacity: disabled ? 0.5 : 1,
+    // Keep full opacity - the disabled only affects drag-drop, not visibility
+    opacity: 1,
   };
 
   return (

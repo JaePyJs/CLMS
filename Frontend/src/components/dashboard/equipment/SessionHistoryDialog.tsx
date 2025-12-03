@@ -50,8 +50,12 @@ export function SessionHistoryDialog({
     setIsLoading(true);
     try {
       const response = await equipmentApi.getSessionHistory(equipmentId);
-      if (response.data && response.data.success) {
-        setHistory(response.data.data);
+      const responseData = response.data as {
+        success?: boolean;
+        data?: Session[];
+      };
+      if (responseData && responseData.success && responseData.data) {
+        setHistory(responseData.data);
       }
     } catch (error) {
       console.error('Failed to fetch session history', error);

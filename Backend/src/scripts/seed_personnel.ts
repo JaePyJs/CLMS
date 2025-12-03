@@ -5,7 +5,7 @@
  * Run with: npx ts-node src/scripts/seed_personnel.ts
  */
 
-import { PrismaClient, UserType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -344,7 +344,7 @@ async function main() {
         await prisma.students.update({
           where: { student_id: person.id },
           data: {
-            type: UserType.PERSONNEL,
+            type: 'PERSONNEL',
             first_name: person.firstName,
             last_name: person.lastName,
             grade_level: 0, // Personnel don't have grade levels
@@ -362,7 +362,7 @@ async function main() {
         await prisma.students.create({
           data: {
             student_id: person.id,
-            type: UserType.PERSONNEL,
+            type: 'PERSONNEL',
             first_name: person.firstName,
             last_name: person.lastName,
             grade_level: 0, // Personnel don't have grade levels

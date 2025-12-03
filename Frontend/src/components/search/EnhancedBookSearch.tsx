@@ -470,7 +470,7 @@ export default function EnhancedBookSearch({
                 <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
-                  placeholder="_Search by title, author, ISBN, or keyword..."
+                  placeholder="Search by title, author, ISBN, or keyword..."
                   value={query}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => query.length >= 2 && setShowSuggestions(true)}

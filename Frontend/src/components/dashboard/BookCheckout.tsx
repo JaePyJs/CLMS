@@ -1,4 +1,11 @@
-import { useState, Suspense, useEffect, lazy, useRef } from 'react';
+import {
+  useState,
+  Suspense,
+  useEffect,
+  lazy,
+  useRef,
+  useCallback,
+} from 'react';
 import {
   Card,
   CardContent,
@@ -13,6 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMultipleLoadingStates, useMultipleModals, useForm } from '@/hooks';
+import { useAppStore } from '@/store/useAppStore';
+import { useDebounce } from '@/hooks/useDebounce';
 
 // Lazy load CheckoutHistory component
 const CheckoutHistory = lazy(() => import('./CheckoutHistory'));
@@ -33,6 +42,10 @@ import {
   Scan,
   History as HistoryIcon,
   Clock,
+  UserCheck,
+  Search,
+  Loader2,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorHandling';
@@ -43,6 +56,14 @@ interface Student {
   studentId: string;
   firstName: string;
   lastName: string;
+  gradeLevel: string;
+  section?: string;
+}
+
+interface SearchStudent {
+  id: string;
+  studentId: string;
+  name: string;
   gradeLevel: string;
   section?: string;
 }
@@ -82,6 +103,19 @@ export default function BookCheckout() {
   // Tab management (keeping simple useState for UI state)
   const [activeTab, setActiveTab] = useState('checkout');
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
+
+  // Get active student from global store (set when student scans in at Scan Station)
+  const { activeStudent, clearActiveStudent } = useAppStore();
+
+  // Live search state for student
+  const [studentSearchInput, setStudentSearchInput] = useState('');
+  const [studentSearchResults, setStudentSearchResults] = useState<
+    SearchStudent[]
+  >([]);
+  const [isSearchingStudent, setIsSearchingStudent] = useState(false);
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
+  const studentDropdownRef = useRef<HTMLDivElement>(null);
+  const debouncedStudentSearch = useDebounce(studentSearchInput, 300);
 
   const studentInputRef = useRef<HTMLInputElement>(null);
   const bookInputRef = useRef<HTMLInputElement>(null);
@@ -141,6 +175,63 @@ export default function BookCheckout() {
     checkoutFormActions.setValue('dueDate', getDefaultDueDate());
   }, []);
 
+  // Auto-fill active student from Scan Station when available
+  useEffect(() => {
+    if (
+      activeStudent &&
+      checkoutForm.values.checkoutStep === 'student' &&
+      !checkoutForm.values.selectedStudent
+    ) {
+      // Parse name into first/last
+      const nameParts = activeStudent.name.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const student: Student = {
+        id: activeStudent.id,
+        studentId: activeStudent.barcode || activeStudent.id,
+        firstName,
+        lastName,
+        gradeLevel: activeStudent.gradeLevel || '',
+        section: '',
+      };
+
+      checkoutFormActions.setValue('selectedStudent', student as any);
+      checkoutFormActions.setValue('checkoutStep', 'book');
+      toast.success(`Active student loaded: ${activeStudent.name}`, {
+        description: 'Student was scanned at Scan Station',
+        icon: <UserCheck className="h-4 w-4" />,
+      });
+    }
+  }, [activeStudent, checkoutForm.values.checkoutStep]);
+
+  // Use active student button handler
+  const handleUseActiveStudent = () => {
+    if (!activeStudent) {
+      toast.error(
+        'No active student. Please scan a student at the Scan Station first.'
+      );
+      return;
+    }
+
+    const nameParts = activeStudent.name.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    const student: Student = {
+      id: activeStudent.id,
+      studentId: activeStudent.barcode || activeStudent.id,
+      firstName,
+      lastName,
+      gradeLevel: activeStudent.gradeLevel || '',
+      section: '',
+    };
+
+    checkoutFormActions.setValue('selectedStudent', student as any);
+    checkoutFormActions.setValue('checkoutStep', 'book');
+    toast.success(`Using active student: ${activeStudent.name}`);
+  };
+
   const computeDueDate = async () => {
     try {
       const category =
@@ -172,6 +263,65 @@ export default function BookCheckout() {
       void computeDueDate();
     }
   }, [checkoutForm.values.checkoutStep, checkoutForm.values.policyCategory]);
+
+  // Live search effect for student input
+  useEffect(() => {
+    if (debouncedStudentSearch.length >= 2) {
+      setIsSearchingStudent(true);
+      apiClient
+        .get(
+          `/api/manual-lookup/search?q=${encodeURIComponent(debouncedStudentSearch)}`
+        )
+        .then((response) => {
+          if (response.success && Array.isArray(response.data)) {
+            setStudentSearchResults(response.data as SearchStudent[]);
+          } else {
+            setStudentSearchResults([]);
+          }
+        })
+        .catch(() => setStudentSearchResults([]))
+        .finally(() => setIsSearchingStudent(false));
+    } else {
+      setStudentSearchResults([]);
+    }
+  }, [debouncedStudentSearch]);
+
+  // Click outside handler for student dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        studentDropdownRef.current &&
+        !studentDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowStudentDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Handle selecting a student from dropdown
+  const handleSelectSearchStudent = (student: SearchStudent) => {
+    const nameParts = student.name.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    const selectedStudent: Student = {
+      id: student.id,
+      studentId: student.studentId,
+      firstName,
+      lastName,
+      gradeLevel: student.gradeLevel,
+      section: student.section,
+    };
+
+    checkoutFormActions.setValue('selectedStudent', selectedStudent as any);
+    checkoutFormActions.setValue('checkoutStep', 'book');
+    setStudentSearchInput('');
+    setStudentSearchResults([]);
+    setShowStudentDropdown(false);
+    toast.success(`Student selected: ${student.name}`);
+  };
 
   // Auto-focus management
   useEffect(() => {
@@ -252,15 +402,25 @@ export default function BookCheckout() {
         throw new Error('Book not found');
       }
 
+      // Handle both snake_case (from DB) and camelCase field names
       const book: Book = {
         id: b.id,
-        accessionNo: b.accessionNo,
+        accessionNo: b.accessionNo || b.accession_no || '',
         title: b.title,
         author: b.author,
         category: b.category,
         availableCopies:
-          typeof b.availableCopies === 'number' ? b.availableCopies : 0,
-        totalCopies: typeof b.totalCopies === 'number' ? b.totalCopies : 0,
+          typeof b.availableCopies === 'number'
+            ? b.availableCopies
+            : typeof b.available_copies === 'number'
+              ? b.available_copies
+              : 0,
+        totalCopies:
+          typeof b.totalCopies === 'number'
+            ? b.totalCopies
+            : typeof b.total_copies === 'number'
+              ? b.total_copies
+              : 0,
       };
 
       if (book.availableCopies <= 0) {
@@ -287,18 +447,50 @@ export default function BookCheckout() {
   const handleConfirmCheckout = async () => {
     const { selectedStudent, selectedBook, dueDate, policyCategory } =
       checkoutForm.values;
+
+    // Debug logging
+    console.log('[BookCheckout] Confirming checkout:', {
+      selectedStudent,
+      selectedBook,
+      dueDate,
+      policyCategory,
+    });
+
     if (!selectedStudent || !selectedBook || !dueDate) {
       toast.error('Missing required information');
+      console.error('[BookCheckout] Missing required info:', {
+        hasStudent: !!selectedStudent,
+        hasBook: !!selectedBook,
+        hasDueDate: !!dueDate,
+      });
       return;
     }
+
+    // Validate IDs are not empty
+    if (!selectedStudent.id || !selectedBook.id) {
+      toast.error('Invalid student or book selection');
+      console.error('[BookCheckout] Invalid IDs:', {
+        studentId: selectedStudent.id,
+        bookId: selectedBook.id,
+      });
+      return;
+    }
+
+    const materialType = policyCategory || selectedBook.category || 'Fiction';
+    console.log('[BookCheckout] Calling borrowBooks with:', {
+      studentId: selectedStudent.id,
+      bookIds: [selectedBook.id],
+      materialType,
+    });
 
     loadingActions.confirmCheckout.start();
     try {
       const r = await enhancedLibraryApi.borrowBooks(
         selectedStudent.id,
         [selectedBook.id],
-        policyCategory || selectedBook.category || 'Fiction'
+        materialType
       );
+      console.log('[BookCheckout] borrowBooks response:', r);
       if (r.success) {
         toast.success('Book checked out successfully!');
 
@@ -513,35 +705,125 @@ export default function BookCheckout() {
                     </AlertDescription>
                   </Alert>
 
+                  {/* Show active student quick-select if available */}
+                  {activeStudent && (
+                    <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                      <UserCheck className="h-4 w-4 text-green-600" />
+                      <AlertTitle className="text-green-800 dark:text-green-200">
+                        Active Student Available
+                      </AlertTitle>
+                      <AlertDescription className="flex items-center justify-between">
+                        <span className="text-green-700 dark:text-green-300">
+                          {activeStudent.name} ({activeStudent.gradeLevel})
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="ml-2 border-green-300 hover:bg-green-100 dark:hover:bg-green-900"
+                          onClick={handleUseActiveStudent}
+                        >
+                          <UserCheck className="h-4 w-4 mr-1" />
+                          Use This Student
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   <div className="space-y-2">
-                    <Label htmlFor="studentBarcode">Student ID / Barcode</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="studentBarcode"
-                        ref={studentInputRef}
-                        placeholder="Enter student ID or scan barcode..."
-                        value={checkoutForm.values.studentBarcode}
-                        onChange={(e) =>
-                          checkoutFormActions.setValue(
-                            'studentBarcode',
-                            e.target.value
-                          )
-                        }
-                        onKeyDown={(e) =>
-                          e.key === 'Enter' && handleScanStudent()
-                        }
-                        autoFocus
-                      />
+                    <Label htmlFor="studentBarcode">
+                      Search Student (by name, ID, or scan barcode)
+                    </Label>
+                    <div ref={studentDropdownRef} className="relative">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="studentBarcode"
+                          ref={studentInputRef}
+                          placeholder="Type name or scan barcode..."
+                          value={
+                            studentSearchInput ||
+                            checkoutForm.values.studentBarcode
+                          }
+                          onChange={(e) => {
+                            setStudentSearchInput(e.target.value);
+                            checkoutFormActions.setValue(
+                              'studentBarcode',
+                              e.target.value
+                            );
+                            setShowStudentDropdown(true);
+                          }}
+                          onFocus={() => setShowStudentDropdown(true)}
+                          onKeyDown={(e) => {
+                            if (
+                              e.key === 'Enter' &&
+                              studentSearchResults.length === 0
+                            ) {
+                              handleScanStudent();
+                            }
+                          }}
+                          className="pl-9 pr-8"
+                          autoFocus
+                        />
+                        {isSearchingStudent && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
+
+                      {/* Dropdown results */}
+                      {showStudentDropdown &&
+                        (
+                          studentSearchInput ||
+                          checkoutForm.values.studentBarcode
+                        ).length >= 2 && (
+                          <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                            {isSearchingStudent ? (
+                              <div className="p-3 text-center text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                                Searching...
+                              </div>
+                            ) : studentSearchResults.length > 0 ? (
+                              studentSearchResults.map((student) => (
+                                <button
+                                  key={student.id}
+                                  type="button"
+                                  className="w-full px-3 py-2 text-left hover:bg-accent flex items-center gap-2 border-b last:border-b-0"
+                                  onClick={() =>
+                                    handleSelectSearchStudent(student)
+                                  }
+                                >
+                                  <User className="h-4 w-4 text-muted-foreground" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">
+                                      {student.name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {student.studentId} • {student.gradeLevel}
+                                    </p>
+                                  </div>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="p-3 text-center text-sm text-muted-foreground">
+                                No students found. Press Enter to search by
+                                barcode.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                    </div>
+                    <div className="flex gap-2 mt-2">
                       <Button
                         onClick={handleScanStudent}
                         disabled={loadingStates.scanStudent.isLoading}
+                        variant="outline"
+                        size="sm"
                       >
                         {loadingStates.scanStudent.isLoading ? (
                           'Searching...'
                         ) : (
                           <>
                             <Scan className="h-4 w-4 mr-2" />
-                            Find
+                            Search by Barcode
                           </>
                         )}
                       </Button>

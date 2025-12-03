@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { settingsApi } from '@/lib/api';
+import { LeaderboardService } from '@/services/leaderboardService';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorHandling';
@@ -30,6 +31,8 @@ import {
   CheckCircle,
   Database,
   Shield,
+  Skull,
+  Trophy,
 } from 'lucide-react';
 
 interface ResetResult {
@@ -39,11 +42,17 @@ interface ResetResult {
   activitiesDeleted?: number;
   equipmentSessionsDeleted?: number;
   checkoutsDeleted?: number;
+  studentsDeleted?: number;
+  booksDeleted?: number;
+  equipmentDeleted?: number;
+  usersDeleted?: number;
 }
 
 export default function DataManagement() {
   const [showResetAllDialog, setShowResetAllDialog] = useState(false);
+  const [showNuclearDialog, setShowNuclearDialog] = useState(false);
   const [confirmationInput, setConfirmationInput] = useState('');
+  const [nuclearConfirmationInput, setNuclearConfirmationInput] = useState('');
   const [lastResetResult, setLastResetResult] = useState<ResetResult | null>(
     null
   );
@@ -98,17 +107,14 @@ export default function DataManagement() {
     },
   });
 
-  const [showNuclearResetDialog, setShowNuclearResetDialog] = useState(false);
-  const [nuclearConfirmationInput, setNuclearConfirmationInput] = useState('');
-
-  // Nuclear reset mutation
+  // Nuclear reset mutation - complete database wipe
   const nuclearResetMutation = useMutation({
     mutationFn: (confirmationCode: string) =>
-      settingsApi.resetDatabaseCompletely(confirmationCode),
+      settingsApi.nuclearReset(confirmationCode),
     onSuccess: (response) => {
       const data = (response as any)?.data || {};
       setLastResetResult(data);
-      setShowNuclearResetDialog(false);
+      setShowNuclearDialog(false);
       setNuclearConfirmationInput('');
       // Refresh dashboard data
       try {
@@ -117,14 +123,37 @@ export default function DataManagement() {
       } catch (err) {
         // ignore
       }
-      toast.success('Database completely reset!', {
-        description: `Deleted ${data.studentsDeleted || 0} students, ${data.booksDeleted || 0} books, and all activity records.`,
+      toast.success('☢️ Nuclear reset completed!', {
+        description: `Deleted ${data.studentsDeleted || 0} students, ${data.booksDeleted || 0} books, ${data.equipmentDeleted || 0} equipment, ${data.usersDeleted || 0} users`,
       });
     },
     onError: (error: unknown) => {
-      toast.error(getErrorMessage(error, 'Failed to reset database'));
+      toast.error(getErrorMessage(error, 'Failed to perform nuclear reset'));
     },
   });
+
+  // Reset leaderboard mutation
+  const resetLeaderboardMutation = useMutation({
+    mutationFn: () => LeaderboardService.resetLeaderboard(),
+    onSuccess: (result) => {
+      toast.success('Leaderboard reset successfully!', {
+        description: `${result.recordsDeleted || 0} leaderboard records deleted`,
+      });
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Failed to reset leaderboard'));
+    },
+  });
+
+  const handleResetLeaderboard = () => {
+    if (
+      confirm(
+        'This will reset ALL leaderboard statistics for all time. This action cannot be undone. Continue?'
+      )
+    ) {
+      resetLeaderboardMutation.mutate();
+    }
+  };
 
   const handleResetDaily = () => {
     let confirmMsg =
@@ -149,8 +178,10 @@ export default function DataManagement() {
   };
 
   const handleNuclearReset = () => {
-    if (nuclearConfirmationInput === 'DELETE-EVERYTHING-PERMANENTLY') {
-      nuclearResetMutation.mutate('DELETE-EVERYTHING-PERMANENTLY');
+    if (
+      nuclearConfirmationInput === 'NUCLEAR-RESET-CONFIRM-DELETE-EVERYTHING'
+    ) {
+      nuclearResetMutation.mutate('NUCLEAR-RESET-CONFIRM-DELETE-EVERYTHING');
     } else {
       toast.error('Please enter the correct confirmation code');
     }
@@ -240,12 +271,54 @@ export default function DataManagement() {
         </CardContent>
       </Card>
 
+      {/* Reset Leaderboard */}
+      <Card className="border-amber-500/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg text-amber-600 dark:text-amber-500">
+            <Trophy className="w-5 h-5" />
+            Reset Leaderboard
+          </CardTitle>
+          <CardDescription>
+            Clear all student leaderboard statistics and scan counts.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="bg-amber-500/10 rounded-lg p-4 space-y-2">
+            <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+              This will delete:
+            </p>
+            <ul className="text-sm text-amber-600/80 dark:text-amber-400/80 list-disc list-inside space-y-1">
+              <li>All student scan statistics (monthly and yearly)</li>
+              <li>All leaderboard rankings</li>
+              <li>All generated rewards records</li>
+            </ul>
+            <p className="text-sm text-muted-foreground mt-2">
+              Note: Student records and activity history will NOT be affected.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleResetLeaderboard}
+            disabled={resetLeaderboardMutation.isPending}
+            variant="outline"
+            className="w-full sm:w-auto border-amber-500 text-amber-600 hover:bg-amber-500/10"
+          >
+            <Trophy
+              className={`w-4 h-4 mr-2 ${resetLeaderboardMutation.isPending ? 'animate-pulse' : ''}`}
+            />
+            {resetLeaderboardMutation.isPending
+              ? 'Resetting...'
+              : 'Reset Leaderboard'}
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Reset All Data */}
       <Card className="border-destructive/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg text-destructive">
             <Trash2 className="w-5 h-5" />
-            Reset All Data (Keep Students/Books)
+            Reset All Data
           </CardTitle>
           <CardDescription>
             <span className="text-destructive font-medium">Danger Zone:</span>{' '}
@@ -287,43 +360,50 @@ export default function DataManagement() {
         </CardContent>
       </Card>
 
-      {/* NUCLEAR RESET */}
-      <Card className="border-red-600 bg-red-50 dark:bg-red-950/20">
+      {/* Nuclear Reset - Complete Database Wipe */}
+      <Card className="border-2 border-red-600 bg-red-950/20">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg text-red-600 dark:text-red-500">
-            <Trash2 className="w-5 h-5" />
-            NUCLEAR RESET (Delete Everything)
+          <CardTitle className="flex items-center gap-2 text-lg text-red-500">
+            <Skull className="w-5 h-5" />
+            ☢️ Nuclear Reset (Testing Only)
           </CardTitle>
-          <CardDescription className="text-red-600/80 dark:text-red-400/80">
-            <span className="font-bold">EXTREME DANGER:</span> Permanently
-            delete EVERYTHING including students and books.
+          <CardDescription>
+            <span className="text-red-500 font-bold">EXTREME DANGER:</span>{' '}
+            Complete database wipe - deletes EVERYTHING.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="bg-red-100 dark:bg-red-900/30 rounded-lg p-4 space-y-2 border border-red-200 dark:border-red-800">
-            <p className="text-sm font-bold text-red-700 dark:text-red-400">
-              This will delete:
+          <Alert className="border-red-600 bg-red-950/50">
+            <Skull className="h-4 w-4 text-red-500" />
+            <AlertTitle className="text-red-500">☢️ NUCLEAR OPTION</AlertTitle>
+            <AlertDescription className="text-red-400">
+              This will permanently delete ALL data including students, books,
+              equipment, and users. Only use for testing purposes!
+            </AlertDescription>
+          </Alert>
+
+          <div className="bg-red-950/30 rounded-lg p-4 space-y-2 border border-red-600">
+            <p className="text-sm font-bold text-red-500">
+              This will DELETE EVERYTHING:
             </p>
-            <ul className="text-sm text-red-600 dark:text-red-400 list-disc list-inside space-y-1">
-              <li>❌ All Students</li>
-              <li>❌ All Books</li>
-              <li>❌ All Activity Records</li>
-              <li>❌ All Checkouts</li>
-              <li>❌ All Sessions</li>
+            <ul className="text-sm text-red-400 list-disc list-inside space-y-1">
+              <li>All students</li>
+              <li>All books</li>
+              <li>All equipment</li>
+              <li>All users (except the current librarian)</li>
+              <li>All activities, sessions, checkouts</li>
             </ul>
-            <p className="text-sm font-medium text-red-700 dark:text-red-400 mt-2">
-              Use this only if you want to start completely fresh (e.g. before
-              re-importing CSVs).
+            <p className="text-sm text-red-300 mt-2 font-bold">
+              ⚠️ This is for TESTING ONLY. Use when you need a fresh start.
             </p>
           </div>
 
           <Button
-            onClick={() => setShowNuclearResetDialog(true)}
-            variant="destructive"
-            className="w-full sm:w-auto bg-red-700 hover:bg-red-800"
+            onClick={() => setShowNuclearDialog(true)}
+            className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white"
           >
-            <Trash2 className="w-4 h-4 mr-2" />
-            NUCLEAR RESET...
+            <Skull className="w-4 h-4 mr-2" />
+            ☢️ Nuclear Reset...
           </Button>
         </CardContent>
       </Card>
@@ -397,6 +477,38 @@ export default function DataManagement() {
                   <div className="text-xs text-muted-foreground">
                     Equipment Sessions Deleted
                   </div>
+                </div>
+              )}
+              {lastResetResult.studentsDeleted !== undefined && (
+                <div className="text-center p-3 bg-red-500/20 rounded-lg">
+                  <div className="text-2xl font-bold text-red-500">
+                    {lastResetResult.studentsDeleted}
+                  </div>
+                  <div className="text-xs text-red-400">Students Deleted</div>
+                </div>
+              )}
+              {lastResetResult.booksDeleted !== undefined && (
+                <div className="text-center p-3 bg-red-500/20 rounded-lg">
+                  <div className="text-2xl font-bold text-red-500">
+                    {lastResetResult.booksDeleted}
+                  </div>
+                  <div className="text-xs text-red-400">Books Deleted</div>
+                </div>
+              )}
+              {lastResetResult.equipmentDeleted !== undefined && (
+                <div className="text-center p-3 bg-red-500/20 rounded-lg">
+                  <div className="text-2xl font-bold text-red-500">
+                    {lastResetResult.equipmentDeleted}
+                  </div>
+                  <div className="text-xs text-red-400">Equipment Deleted</div>
+                </div>
+              )}
+              {lastResetResult.usersDeleted !== undefined && (
+                <div className="text-center p-3 bg-red-500/20 rounded-lg">
+                  <div className="text-2xl font-bold text-red-500">
+                    {lastResetResult.usersDeleted}
+                  </div>
+                  <div className="text-xs text-red-400">Users Deleted</div>
                 </div>
               )}
             </div>
@@ -476,46 +588,42 @@ export default function DataManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Nuclear Confirmation Dialog */}
-      <Dialog
-        open={showNuclearResetDialog}
-        onOpenChange={setShowNuclearResetDialog}
-      >
-        <DialogContent className="border-red-600">
+      {/* Nuclear Reset Confirmation Dialog */}
+      <Dialog open={showNuclearDialog} onOpenChange={setShowNuclearDialog}>
+        <DialogContent className="border-red-600 bg-background">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="w-5 h-5" />
-              Confirm NUCLEAR RESET
+            <DialogTitle className="flex items-center gap-2 text-red-500">
+              <Skull className="w-5 h-5" />
+              ☢️ Confirm Nuclear Reset
             </DialogTitle>
-            <DialogDescription className="text-red-600 font-medium">
-              This action will permanently delete EVERYTHING including Students
-              and Books. This cannot be undone.
+            <DialogDescription>
+              This action will permanently delete ALL data from the database.
+              This is for TESTING ONLY.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <Alert
-              variant="destructive"
-              className="bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
-            >
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-600">
+            <Alert className="border-red-600 bg-red-950/50">
+              <Skull className="h-4 w-4 text-red-500" />
+              <AlertDescription className="text-red-400">
                 Type{' '}
-                <code className="bg-red-200 dark:bg-red-900 px-1 rounded font-bold">
-                  DELETE-EVERYTHING-PERMANENTLY
+                <code className="bg-red-950 px-1 rounded text-red-300">
+                  NUCLEAR-RESET-CONFIRM-DELETE-EVERYTHING
                 </code>{' '}
                 to confirm.
               </AlertDescription>
             </Alert>
 
             <div className="space-y-2">
-              <Label htmlFor="nuclearConfirmation">Confirmation Code</Label>
+              <Label htmlFor="nuclear-confirmation" className="text-red-400">
+                Confirmation Code
+              </Label>
               <Input
-                id="nuclearConfirmation"
+                id="nuclear-confirmation"
                 value={nuclearConfirmationInput}
                 onChange={(e) => setNuclearConfirmationInput(e.target.value)}
                 placeholder="Enter confirmation code"
-                className="font-mono border-red-300 focus:ring-red-500"
+                className="font-mono border-red-600"
               />
             </div>
           </div>
@@ -524,30 +632,30 @@ export default function DataManagement() {
             <Button
               variant="outline"
               onClick={() => {
-                setShowNuclearResetDialog(false);
+                setShowNuclearDialog(false);
                 setNuclearConfirmationInput('');
               }}
             >
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              className="bg-red-600 hover:bg-red-700 text-white"
               onClick={handleNuclearReset}
               disabled={
                 nuclearResetMutation.isPending ||
-                nuclearConfirmationInput !== 'DELETE-EVERYTHING-PERMANENTLY'
+                nuclearConfirmationInput !==
+                  'NUCLEAR-RESET-CONFIRM-DELETE-EVERYTHING'
               }
-              className="bg-red-700 hover:bg-red-800"
             >
               {nuclearResetMutation.isPending ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  NUKE IT...
+                  Wiping Database...
                 </>
               ) : (
                 <>
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  NUCLEAR RESET
+                  <Skull className="w-4 h-4 mr-2" />
+                  ☢️ Nuclear Reset
                 </>
               )}
             </Button>

@@ -153,11 +153,12 @@ const AccessRequestManager: React.FC = () => {
   // Mock user data - in real app, this would come from auth context
   const currentUser = {
     id: 'user_123',
-    name: 'John Teacher',
-    role: 'TEACHER',
+    name: 'Librarian',
+    role: 'LIBRARIAN',
   };
 
-  const isApprover = ['SUPER_ADMIN', 'ADMIN'].includes(currentUser.role);
+  // Single-user system: LIBRARIAN can approve all requests
+  const isApprover = currentUser.role === 'LIBRARIAN';
 
   // Fetch access requests
   const fetchAccessRequests = useCallback(async () => {

@@ -3,7 +3,15 @@ import {
   LeaderboardService,
   type LeaderboardEntry,
 } from '../../services/leaderboardService';
-import { Trophy, Medal, Calendar, Clock, BarChart2, Award } from 'lucide-react';
+import {
+  Trophy,
+  Medal,
+  Calendar,
+  Clock,
+  BarChart2,
+  Award,
+  RotateCcw,
+} from 'lucide-react';
 
 const LeaderboardDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'monthly' | 'yearly'>('monthly');
@@ -13,6 +21,8 @@ const LeaderboardDashboard: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth() + 1);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const fetchLeaderboard = async () => {
     setLoading(true);
@@ -35,28 +45,61 @@ const LeaderboardDashboard: React.FC = () => {
     fetchLeaderboard();
   }, [activeTab, year, month]);
 
+  const handleResetLeaderboard = async () => {
+    setResetting(true);
+    try {
+      const yearToReset = activeTab === 'monthly' ? year : year;
+      const monthToReset = activeTab === 'monthly' ? month : undefined;
+
+      await LeaderboardService.resetLeaderboard(yearToReset, monthToReset);
+      setShowResetConfirm(false);
+      fetchLeaderboard();
+    } catch (error) {
+      console.error('Failed to reset leaderboard:', error);
+      alert('Failed to reset leaderboard. Please try again.');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
-        return <Trophy className="w-6 h-6 text-yellow-500" />;
+        return (
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 shadow-lg">
+            <Trophy className="w-5 h-5 text-white" />
+          </div>
+        );
       case 2:
-        return <Medal className="w-6 h-6 text-gray-400" />;
+        return (
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 shadow-md">
+            <Medal className="w-5 h-5 text-white" />
+          </div>
+        );
       case 3:
-        return <Medal className="w-6 h-6 text-amber-600" />;
+        return (
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 shadow-md">
+            <Medal className="w-5 h-5 text-white" />
+          </div>
+        );
       default:
         return (
-          <span className="text-gray-500 font-bold w-6 text-center">
-            {rank}
-          </span>
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 dark:bg-slate-700">
+            <span className="text-gray-600 dark:text-gray-300 font-bold text-lg">
+              {rank}
+            </span>
+          </div>
         );
     }
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6">
+    <div className="bg-gradient-to-br from-white to-indigo-50/30 dark:from-slate-800 dark:to-indigo-950/20 rounded-xl shadow-lg border border-indigo-100 dark:border-indigo-900/30 p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-          <Award className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+        <h2 className="text-2xl font-bold flex items-center gap-3 text-gray-900 dark:text-white">
+          <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-md">
+            <Award className="w-6 h-6 text-white" />
+          </div>
           Student Leaderboard
         </h2>
 
@@ -121,7 +164,62 @@ const LeaderboardDashboard: React.FC = () => {
             </select>
           </div>
         )}
+
+        <button
+          onClick={() => setShowResetConfirm(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+          title="Reset leaderboard"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Reset
+        </button>
       </div>
+
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md mx-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+              Reset Leaderboard?
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              {activeTab === 'monthly'
+                ? `This will reset all scan statistics for ${new Date(0, month - 1).toLocaleString('default', { month: 'long' })} ${year}.`
+                : `This will reset all scan statistics for the year ${year}.`}
+              <br />
+              <strong className="text-red-600 dark:text-red-400">
+                This action cannot be undone.
+              </strong>
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                disabled={resetting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetLeaderboard}
+                disabled={resetting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {resetting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Resetting...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4" />
+                    Reset
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
@@ -163,7 +261,15 @@ const LeaderboardDashboard: React.FC = () => {
               {leaderboardData.map((entry) => (
                 <tr
                   key={entry.studentId}
-                  className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
+                  className={`transition-all duration-200 ${
+                    entry.rank === 1
+                      ? 'bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-950/20 dark:to-amber-950/20 hover:from-yellow-100 hover:to-amber-100'
+                      : entry.rank === 2
+                        ? 'bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 hover:from-gray-100 hover:to-slate-100'
+                        : entry.rank === 3
+                          ? 'bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 hover:from-orange-100 hover:to-amber-100'
+                          : 'hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                  }`}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -172,11 +278,23 @@ const LeaderboardDashboard: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-bold mr-3">
+                      <div
+                        className={`h-12 w-12 rounded-full flex items-center justify-center font-bold mr-3 shadow-md ${
+                          entry.rank === 1
+                            ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-white text-lg'
+                            : entry.rank === 2
+                              ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-white text-lg'
+                              : entry.rank === 3
+                                ? 'bg-gradient-to-br from-amber-500 to-orange-500 text-white text-lg'
+                                : 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
+                        }`}
+                      >
                         {entry.name.charAt(0)}
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <div
+                          className={`font-medium ${entry.rank <= 3 ? 'text-base' : 'text-sm'} text-gray-900 dark:text-gray-100`}
+                        >
                           {entry.name}
                         </div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -186,15 +304,26 @@ const LeaderboardDashboard: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-gray-100">
-                      {entry.gradeLevel}
+                    <div className="inline-flex items-center px-2.5 py-1 rounded-full text-sm bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
+                      {entry.gradeLevel === '0'
+                        ? 'Pre-School'
+                        : entry.gradeLevel && entry.gradeLevel !== ''
+                          ? `Grade ${entry.gradeLevel}`
+                          : 'N/A'}
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {entry.section}
-                    </div>
+                    {entry.section && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {entry.section}
+                      </div>
+                    )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {entry.scanCount}
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <div
+                      className={`font-bold ${entry.rank <= 3 ? 'text-lg' : 'text-sm'} text-gray-900 dark:text-gray-100`}
+                    >
+                      {entry.scanCount}
+                    </div>
+                    <div className="text-xs text-gray-500">visits</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500 dark:text-gray-400">
                     {Math.floor(entry.totalMinutes / 60)}h{' '}

@@ -1,9 +1,13 @@
-import { prisma } from './src/utils/prisma.js';
+import 'dotenv/config';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
 
 async function createLibrarian() {
   const username = 'librarian';
   const password = 'lib123';
+  const rounds = parseInt(process.env.BCRYPT_ROUNDS || '12');
 
   const existing = await prisma.users.findUnique({ where: { username } });
 
@@ -14,7 +18,7 @@ async function createLibrarian() {
     return existing;
   }
 
-  const hash = await bcrypt.hash(password, 12);
+  const hash = await bcrypt.hash(password, rounds);
   const user = await prisma.users.create({
     data: {
       username,

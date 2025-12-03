@@ -58,7 +58,7 @@ router.get(
 router.post(
   '/apply',
   authenticate,
-  requireRole(['admin']), // Only admins can apply updates
+  requireRole(['LIBRARIAN']), // Only authenticated librarians can apply updates
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Update apply request', {
       userId: req.user?.userId,
@@ -115,7 +115,7 @@ router.post(
 router.post(
   '/force',
   authenticate,
-  requireRole(['admin']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Force update request', {
       userId: req.user?.userId,
@@ -167,7 +167,7 @@ router.post(
 router.post(
   '/quick',
   authenticate,
-  requireRole(['admin']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Quick update request', {
       userId: req.user?.userId,
@@ -250,7 +250,7 @@ router.get(
 router.post(
   '/rollback',
   authenticate,
-  requireRole(['admin']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Rollback request', {
       userId: req.user?.userId,
@@ -322,7 +322,7 @@ router.get(
 router.post(
   '/cleanup',
   authenticate,
-  requireRole(['admin']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Backup cleanup request', {
       userId: req.user?.userId,

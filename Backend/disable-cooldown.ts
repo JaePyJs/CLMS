@@ -1,4 +1,7 @@
-import { prisma } from './src/utils/prisma';
+import 'dotenv/config';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 async function disableCooldown() {
   const key = 'attendance.min_check_in_interval_minutes';
@@ -12,7 +15,7 @@ async function disableCooldown() {
       key,
       value: '0',
       description: 'Minimum interval between check-ins in minutes',
-      is_public: true,
+      category: 'attendance',
     },
   });
 

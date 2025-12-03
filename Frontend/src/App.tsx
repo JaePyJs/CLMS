@@ -73,8 +73,9 @@ import {
   Printer,
   Monitor,
   Trophy,
+  ClipboardList,
+  History,
 } from 'lucide-react';
-import { ActiveStudentBanner } from '@/components/ui/ActiveStudentBanner';
 
 // Import page components for code splitting
 import {
@@ -86,10 +87,15 @@ import {
   SettingsAdminPage,
   PrintingPage,
   Kiosk,
+  AttendancePage,
 } from '@/pages';
 
 const LeaderboardDashboard = React.lazy(
   () => import('@/components/dashboard/LeaderboardDashboard')
+);
+
+const ActivityHistory = React.lazy(
+  () => import('@/components/dashboard/ActivityHistory')
 );
 
 const AttendanceDisplay = React.lazy(
@@ -152,17 +158,19 @@ export default function App() {
   const { handleTouchStart, handleTouchEnd } = useTouchOptimization();
   useOfflineSync();
 
-  // Check for Kiosk mode
+  // Check for Kiosk mode - wrap with WebSocketProvider for real-time updates
   const isKioskMode =
     typeof window !== 'undefined' && window.location.pathname === '/kiosk';
 
   if (isKioskMode) {
     return (
-      <Suspense fallback={<LoadingSpinnerFallback />}>
-        <RouteErrorBoundary>
-          <Kiosk />
-        </RouteErrorBoundary>
-      </Suspense>
+      <WebSocketProvider>
+        <Suspense fallback={<LoadingSpinnerFallback />}>
+          <RouteErrorBoundary>
+            <Kiosk />
+          </RouteErrorBoundary>
+        </Suspense>
+      </WebSocketProvider>
     );
   }
 
@@ -188,22 +196,17 @@ export default function App() {
     )
       return 'books';
 
-    // Reports & Data (Tab 5)
-    if (
-      m === 'analytics' ||
-      m === 'reports' ||
-      m === 'import' ||
-      m === 'import-export' ||
-      m === 'data-quality'
-    )
-      return 'reports-data';
-
     // Settings & Admin (Tab 7)
     if (
       m === 'settings' ||
       m === 'management' ||
       m === 'qrcodes' ||
-      m === 'barcodes'
+      m === 'barcodes' ||
+      m === 'analytics' ||
+      m === 'reports' ||
+      m === 'import' ||
+      m === 'import-export' ||
+      m === 'data-quality'
     )
       return 'settings-admin';
 
@@ -215,6 +218,9 @@ export default function App() {
 
     // Leaderboard (Tab 8)
     if (m === 'leaderboard') return 'leaderboard';
+
+    // Activity History (Tab 9)
+    if (m === 'activity-history' || m === 'history') return 'activity-history';
 
     return m || 'dashboard';
   };
@@ -262,8 +268,36 @@ export default function App() {
   const [settingsInitialTab, setSettingsInitialTab] = useState<
     string | undefined
   >(undefined);
+  const [activeSessionCount, setActiveSessionCount] = useState(0);
   const appStartTimeRef = useRef(Date.now());
   const dashboardSearchCentered = activeTab === 'dashboard';
+
+  // Fetch active session count for footer (only when authenticated)
+  useEffect(() => {
+    // Skip if not authenticated - API requires authentication token
+    if (!isAuthenticated) {
+      return;
+    }
+
+    const fetchActiveCount = async () => {
+      try {
+        const response = await apiClient.get('/api/students/active-sessions');
+        const data = (response as any)?.data || response;
+        const count =
+          data?.count || (Array.isArray(data?.data) ? data.data.length : 0);
+        setActiveSessionCount(count);
+      } catch {
+        // Ignore errors silently
+      }
+    };
+
+    // Initial fetch
+    fetchActiveCount();
+
+    // Poll every 30 seconds
+    const interval = setInterval(fetchActiveCount, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
 
   // Health check to test backend connection
   useHealthCheck();
@@ -389,10 +423,9 @@ export default function App() {
         'scan-station',
         'students',
         'books',
-        'reports-data',
-        'settings-admin',
-        'settings-admin',
+        'equipment',
         'printing',
+        'settings-admin',
         'leaderboard',
       ];
 
@@ -456,17 +489,13 @@ export default function App() {
             break;
           case '6':
             event.preventDefault();
-            setActiveTab('reports-data');
+            setActiveTab('printing');
             break;
           case '7':
             event.preventDefault();
             setActiveTab('settings-admin');
             break;
           case '8':
-            event.preventDefault();
-            setActiveTab('printing');
-            break;
-          case '9':
             event.preventDefault();
             setActiveTab('leaderboard');
             break;
@@ -532,9 +561,11 @@ export default function App() {
   // Public kiosk interface (no authentication required)
   if (typeof window !== 'undefined' && window.location.pathname === '/kiosk') {
     return (
-      <Suspense fallback={<LoadingSpinnerFallback />}>
-        <Kiosk />
-      </Suspense>
+      <WebSocketProvider>
+        <Suspense fallback={<LoadingSpinnerFallback />}>
+          <Kiosk />
+        </Suspense>
+      </WebSocketProvider>
     );
   }
 
@@ -615,7 +646,7 @@ export default function App() {
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                   <div className="flex-shrink-0">
                     <PerformanceImage
-                      src="/src/assets/School_logo.png"
+                      src="/School_logo.png"
                       alt="Educational Library Management System Logo"
                       useCase="AVATAR"
                       size="large"
@@ -982,9 +1013,9 @@ export default function App() {
                           icon: Monitor,
                         },
                         {
-                          value: 'reports-data',
-                          label: 'Reports & Data',
-                          icon: BarChart,
+                          value: 'printing',
+                          label: 'Printing',
+                          icon: Printer,
                         },
                         {
                           value: 'settings-admin',
@@ -1096,14 +1127,6 @@ export default function App() {
             </div>
           </header>
 
-          {/* Enhanced Active Student Banner */}
-          {activeStudent && (
-            <ActiveStudentBanner
-              student={activeStudent}
-              onClear={clearActiveStudent}
-            />
-          )}
-
           {/* Mobile Tab Navigation */}
           <div className="lg:hidden bg-white dark:bg-card border-b border-slate-200 dark:border-slate-700 sticky top-16 z-40">
             <div className="overflow-x-auto scrollbar-hide">
@@ -1119,7 +1142,7 @@ export default function App() {
                   { value: 'leaderboard', label: 'Leaderboard', icon: Trophy },
                   { value: 'books', label: 'Books', icon: BookOpen },
                   { value: 'equipment', label: 'Rooms', icon: Monitor },
-                  { value: 'reports-data', label: 'Reports', icon: BarChart },
+                  { value: 'printing', label: 'Printing', icon: Printer },
                   {
                     value: 'settings-admin',
                     label: 'Settings',
@@ -1159,71 +1182,85 @@ export default function App() {
               onValueChange={setActiveTab}
               className="space-y-6"
             >
-              {/* Desktop Tabs - Hidden on Mobile - New 6-Tab Structure */}
+              {/* Desktop Tabs - Scrollable horizontal nav for better responsiveness */}
               <div className="hidden lg:block">
-                <TabsList
-                  className="grid w-full grid-cols-3 sm:grid-cols-8 gap-1 p-1 bg-muted/50 rounded-xl"
-                  aria-label="App Navigation"
-                >
-                  <TabsTrigger
-                    value="dashboard"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
+                <div className="overflow-x-auto scrollbar-hide">
+                  <TabsList
+                    className="inline-flex w-fit gap-1 p-1 bg-muted/50 rounded-xl"
+                    aria-label="App Navigation"
                   >
-                    <LayoutDashboard className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Dashboard</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="scan-station"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
-                  >
-                    <Camera className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Scan</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="students"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
-                  >
-                    <Users className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Students</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="books"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
-                  >
-                    <BookOpen className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Books</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="printing"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
-                  >
-                    <Printer className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Printing</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="equipment"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
-                  >
-                    <Monitor className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Rooms</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="leaderboard"
-                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
-                  >
-                    <Trophy className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Leaderboard</span>
-                  </TabsTrigger>
-                  {user?.role === 'ADMIN' && (
+                    <TabsTrigger
+                      value="dashboard"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                    >
+                      <LayoutDashboard className="h-4 w-4 mr-1.5" />
+                      <span>Dashboard</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="scan-station"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                    >
+                      <Camera className="h-4 w-4 mr-1.5" />
+                      <span>Scan</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="students"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                    >
+                      <Users className="h-4 w-4 mr-1.5" />
+                      <span>Students</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="attendance"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                    >
+                      <ClipboardList className="h-4 w-4 mr-1.5" />
+                      <span>Attendance</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="books"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                    >
+                      <BookOpen className="h-4 w-4 mr-1.5" />
+                      <span>Books</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="printing"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                    >
+                      <Printer className="h-4 w-4 mr-1.5" />
+                      <span>Printing</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="equipment"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                    >
+                      <Monitor className="h-4 w-4 mr-1.5" />
+                      <span>Rooms</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="leaderboard"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                    >
+                      <Trophy className="h-4 w-4 mr-1.5" />
+                      <span>Leaderboard</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="activity-history"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                    >
+                      <History className="h-4 w-4 mr-1.5" />
+                      <span>History</span>
+                    </TabsTrigger>
                     <TabsTrigger
                       value="settings-admin"
-                      className="data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
                     >
-                      <Settings className="h-4 w-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Settings</span>
+                      <Settings className="h-4 w-4 mr-1.5" />
+                      <span>Settings</span>
                     </TabsTrigger>
-                  )}
-                </TabsList>
+                  </TabsList>
+                </div>
               </div>
 
               {/* Dashboard Tab */}
@@ -1270,6 +1307,22 @@ export default function App() {
                 <RouteErrorBoundary>
                   <Suspense fallback={<TableSkeletonFallback />}>
                     <StudentsPage />
+                  </Suspense>
+                </RouteErrorBoundary>
+              </TabsContent>
+
+              {/* Attendance Tab */}
+              <TabsContent
+                value="attendance"
+                className="space-y-6"
+                id="tabpanel-attendance"
+                role="tabpanel"
+                aria-labelledby="tab-attendance"
+                tabIndex={0}
+              >
+                <RouteErrorBoundary>
+                  <Suspense fallback={<TableSkeletonFallback />}>
+                    <AttendancePage />
                   </Suspense>
                 </RouteErrorBoundary>
               </TabsContent>
@@ -1338,23 +1391,37 @@ export default function App() {
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Settings & Admin Tab */}
-              {user?.role === 'ADMIN' && (
-                <TabsContent
-                  value="settings-admin"
-                  className="space-y-6"
-                  id="tabpanel-settings-admin"
-                  role="tabpanel"
-                  aria-labelledby="tab-settings-admin"
-                  tabIndex={0}
-                >
-                  <RouteErrorBoundary>
-                    <Suspense fallback={<SettingsSkeleton />}>
-                      <SettingsAdminPage initialTab={settingsInitialTab} />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                </TabsContent>
-              )}
+              {/* Activity History Tab */}
+              <TabsContent
+                value="activity-history"
+                className="space-y-6"
+                id="tabpanel-activity-history"
+                role="tabpanel"
+                aria-labelledby="tab-activity-history"
+                tabIndex={0}
+              >
+                <RouteErrorBoundary>
+                  <Suspense fallback={<TableSkeletonFallback />}>
+                    <ActivityHistory />
+                  </Suspense>
+                </RouteErrorBoundary>
+              </TabsContent>
+
+              {/* Settings Tab - available to all authenticated users */}
+              <TabsContent
+                value="settings-admin"
+                className="space-y-6"
+                id="tabpanel-settings-admin"
+                role="tabpanel"
+                aria-labelledby="tab-settings-admin"
+                tabIndex={0}
+              >
+                <RouteErrorBoundary>
+                  <Suspense fallback={<SettingsSkeleton />}>
+                    <SettingsAdminPage initialTab={settingsInitialTab} />
+                  </Suspense>
+                </RouteErrorBoundary>
+              </TabsContent>
 
               {/* ========== Legacy tabs below - kept for backward compatibility ========== */}
             </Tabs>
@@ -1396,7 +1463,7 @@ export default function App() {
                   <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50">
                     <Users className="h-3 w-3 text-purple-500" />
                     Active:{' '}
-                    <span className="font-medium">{activities.length}</span>
+                    <span className="font-medium">{activeSessionCount}</span>
                   </span>
                   <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50">
                     <Database className="h-3 w-3 text-blue-500" />

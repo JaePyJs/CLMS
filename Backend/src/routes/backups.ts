@@ -7,7 +7,7 @@ const router = Router();
 
 // All backup routes require authentication and admin/librarian role
 router.use(authenticate);
-router.use(requireRole(['LIBRARIAN', 'ADMIN']));
+router.use(requireRole(['LIBRARIAN']));
 
 // GET /api/backups - List all backups
 router.get(

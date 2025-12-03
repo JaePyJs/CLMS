@@ -3,10 +3,12 @@ import { apiClient } from '@/lib/api';
 export interface KioskStudent {
   id: string;
   studentId: string;
-  firstName: string;
-  lastName: string;
+  name: string; // Combined name from backend
+  firstName?: string;
+  lastName?: string;
   gradeLevel: string;
   section?: string;
+  barcode?: string;
 }
 
 export interface TapInResponse {

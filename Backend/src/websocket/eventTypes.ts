@@ -981,7 +981,7 @@ EventTypeRegistry.register({
   description: 'Create a new student',
   category: 'student',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -990,7 +990,7 @@ EventTypeRegistry.register({
   description: 'Update student information',
   category: 'student',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -999,7 +999,7 @@ EventTypeRegistry.register({
   description: 'Delete a student',
   category: 'student',
   requiresAuth: true,
-  allowedRoles: ['admin'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1008,7 +1008,7 @@ EventTypeRegistry.register({
   description: 'Checkout books or equipment to a student',
   category: 'student',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1017,7 +1017,7 @@ EventTypeRegistry.register({
   description: 'Return books or equipment from a student',
   category: 'student',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1026,7 +1026,7 @@ EventTypeRegistry.register({
   description: 'Create a new book',
   category: 'book',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1035,7 +1035,7 @@ EventTypeRegistry.register({
   description: 'Update book information',
   category: 'book',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1044,7 +1044,7 @@ EventTypeRegistry.register({
   description: 'Delete a book',
   category: 'book',
   requiresAuth: true,
-  allowedRoles: ['admin'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1053,7 +1053,7 @@ EventTypeRegistry.register({
   description: 'Checkout a book to a student',
   category: 'book',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1062,7 +1062,7 @@ EventTypeRegistry.register({
   description: 'Return a book from a student',
   category: 'book',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1071,7 +1071,7 @@ EventTypeRegistry.register({
   description: 'Reserve a book for a student',
   category: 'book',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1080,7 +1080,7 @@ EventTypeRegistry.register({
   description: 'Create new equipment',
   category: 'equipment',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1089,7 +1089,7 @@ EventTypeRegistry.register({
   description: 'Update equipment information',
   category: 'equipment',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1098,7 +1098,7 @@ EventTypeRegistry.register({
   description: 'Delete equipment',
   category: 'equipment',
   requiresAuth: true,
-  allowedRoles: ['admin'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1107,7 +1107,7 @@ EventTypeRegistry.register({
   description: 'Checkout equipment to a student',
   category: 'equipment',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1116,7 +1116,7 @@ EventTypeRegistry.register({
   description: 'Return equipment from a student',
   category: 'equipment',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1125,7 +1125,7 @@ EventTypeRegistry.register({
   description: 'Reserve equipment for a student',
   category: 'equipment',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1134,7 +1134,7 @@ EventTypeRegistry.register({
   description: 'Send system notification',
   category: 'system',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1143,7 +1143,7 @@ EventTypeRegistry.register({
   description: 'Send system alert',
   category: 'system',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1152,7 +1152,7 @@ EventTypeRegistry.register({
   description: 'Update system status',
   category: 'system',
   requiresAuth: true,
-  allowedRoles: ['admin'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1161,7 +1161,7 @@ EventTypeRegistry.register({
   description: 'Start data import',
   category: 'import',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1170,7 +1170,7 @@ EventTypeRegistry.register({
   description: 'Update import progress',
   category: 'import',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1179,7 +1179,7 @@ EventTypeRegistry.register({
   description: 'Complete data import',
   category: 'import',
   requiresAuth: true,
-  allowedRoles: ['admin', 'librarian'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({
@@ -1204,7 +1204,7 @@ EventTypeRegistry.register({
   description: 'Update user permissions',
   category: 'user',
   requiresAuth: true,
-  allowedRoles: ['admin'],
+  allowedRoles: ['librarian'],
 });
 
 EventTypeRegistry.register({

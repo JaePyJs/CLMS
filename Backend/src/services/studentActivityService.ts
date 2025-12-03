@@ -431,10 +431,10 @@ export class StudentActivityService {
           where: { id: activityId },
           data: {
             activity_type: sectionCode,
-            metadata: {
+            metadata: JSON.stringify({
               updated_at: new Date(),
               updated_by: 'LIBRARIAN',
-            },
+            }),
           },
         });
         return;
@@ -447,10 +447,10 @@ export class StudentActivityService {
           where: { id: activityId },
           data: {
             activity_type: sectionCode, // Keep simple code in activity_type
-            metadata: {
+            metadata: JSON.stringify({
               updated_at: new Date(),
               updated_by: 'LIBRARIAN',
-            },
+            }),
           },
         });
 

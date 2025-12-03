@@ -1,6 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { authenticate } from '../middleware/authenticate';
+import {
+  scanRateLimiter,
+  checkStudentScanRate,
+} from '../middleware/rateLimiter';
 import { SelfService } from '../services/selfService';
 import { logger } from '../utils/logger';
 import { EnhancedSelfService } from '../services/enhancedSelfService';
@@ -11,8 +15,10 @@ const router = Router();
 router.use(authenticate);
 
 // POST /api/v1/self-service/scan - Process a student scan (auto check-in or check-out)
+// Rate limited to prevent barcode scanner spam
 router.post(
   '/scan',
+  scanRateLimiter,
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -26,6 +32,22 @@ router.post(
         success: false,
         message: 'Scan data is required',
         code: 'MISSING_SCAN_DATA',
+      });
+      return;
+    }
+
+    // Check per-barcode rate limit to prevent spam scanning same student
+    const barcodeRateCheck = checkStudentScanRate(scanData);
+    if (!barcodeRateCheck.allowed) {
+      logger.warn('Self-service barcode scan rate limit exceeded', {
+        scanData: `${scanData.substring(0, 10)}...`,
+        waitSeconds: barcodeRateCheck.waitSeconds,
+        userId: req.user.userId,
+      });
+      res.status(429).json({
+        success: false,
+        message: `Same barcode scanned too quickly. Please wait ${barcodeRateCheck.waitSeconds} second(s).`,
+        cooldownRemaining: barcodeRateCheck.waitSeconds,
       });
       return;
     }

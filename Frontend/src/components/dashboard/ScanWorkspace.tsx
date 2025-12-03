@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -17,14 +17,14 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { useUsbScanner, useManualEntry, scannerUtils } from '@/lib/scanner';
 import selfServiceApi from '@/services/selfServiceApi';
 import { useAppStore } from '@/store/useAppStore';
 import { offlineActions } from '@/lib/offline-queue';
 import { toast } from 'sonner';
-import { scanApi, apiClient } from '@/lib/api';
+import { scanApi, apiClient, studentsApi } from '@/lib/api';
+import { useAttendanceWebSocket } from '@/hooks/useAttendanceWebSocket';
 import {
   Camera,
   Keyboard,
@@ -51,6 +51,8 @@ import {
   Activity,
   Download,
   Loader2,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { StudentSearchDropdown } from '@/components/management/StudentSearchDropdown';
@@ -126,16 +128,99 @@ export function ScanWorkspace() {
     remainingSeconds: number;
   } | null>(null);
   const [statistics, setStatistics] = useState<any>(null);
+  const [activeSessions, setActiveSessions] = useState<any[]>([]);
+  const [isLoadingActiveSessions, setIsLoadingActiveSessions] = useState(false);
+
+  // Real-time WebSocket for scan events from all stations
+  const { events: wsEvents, isConnected: wsConnected } =
+    useAttendanceWebSocket();
+  const [realtimeFeed, setRealtimeFeed] = useState<
+    Array<{
+      id: string;
+      type: 'checkin' | 'checkout';
+      studentName: string;
+      timestamp: Date;
+    }>
+  >([]);
+  const lastProcessedEventRef = useRef<string | null>(null);
 
   const { isOnline, lastScanResult, setActiveStudent } = useAppStore();
   const { toggleListening, isListening, currentInput, lastScannedCode } =
     useUsbScanner();
-  const { isOpen, input, setIsOpen, setInput, handleSubmit } = useManualEntry();
+  const { input, setInput, handleSubmit } = useManualEntry();
 
-  // Sound effects
-  const successSound = new Audio('/sounds/success.mp3');
-  const errorSound = new Audio('/sounds/error.mp3');
-  const cooldownSound = new Audio('/sounds/warning.mp3');
+  // Sound effects - create safely to handle missing files
+  const createSafeAudio = (src: string) => {
+    try {
+      const audio = new Audio(src);
+      audio.preload = 'none'; // Don't preload until needed
+      return audio;
+    } catch {
+      return null;
+    }
+  };
+
+  const successSound = createSafeAudio('/sounds/success.mp3');
+  const errorSound = createSafeAudio('/sounds/error.mp3');
+  const cooldownSound = createSafeAudio('/sounds/warning.mp3');
+
+  // Safe sound play function
+  const playSound = (audio: HTMLAudioElement | null) => {
+    if (audio) {
+      audio.play().catch(() => {});
+    }
+  };
+
+  // Handle WebSocket events - update real-time feed
+  useEffect(() => {
+    if (!wsEvents || wsEvents.length === 0) return;
+
+    const latestEvent = wsEvents[wsEvents.length - 1];
+
+    // Only process check-in and check-out events
+    if (
+      latestEvent.type !== 'student_checkin' &&
+      latestEvent.type !== 'student_checkout'
+    )
+      return;
+
+    const eventData = latestEvent.data as {
+      activityId: string;
+      studentName: string;
+    };
+    const eventId = eventData.activityId;
+
+    // Skip if we already processed this event
+    if (!eventId || lastProcessedEventRef.current === eventId) return;
+    lastProcessedEventRef.current = eventId;
+
+    const newEvent = {
+      id: `${eventId}-${Date.now()}`, // Unique key combining event ID with timestamp
+      type:
+        latestEvent.type === 'student_checkin'
+          ? ('checkin' as const)
+          : ('checkout' as const),
+      studentName: eventData.studentName,
+      timestamp: new Date(),
+    };
+
+    // Deduplicate by checking if event with same base ID already exists
+    setRealtimeFeed((prev) => {
+      const baseEventId = eventId;
+      const alreadyExists = prev.some((e) => e.id.startsWith(baseEventId));
+      if (alreadyExists) return prev;
+      return [newEvent, ...prev.slice(0, 9)];
+    }); // Keep last 10
+
+    // Play sound for events from other stations
+    try {
+      if (latestEvent.type === 'student_checkin') {
+        playSound(successSound);
+      }
+    } catch (e) {
+      // Ignore sound errors
+    }
+  }, [wsEvents]);
 
   // Process scanned barcode
   useEffect(() => {
@@ -168,7 +253,11 @@ export function ScanWorkspace() {
   // Load statistics on mount
   useEffect(() => {
     loadStatistics();
-    const interval = setInterval(loadStatistics, 60000); // Refresh every minute
+    loadActiveSessions();
+    const interval = setInterval(() => {
+      loadStatistics();
+      loadActiveSessions();
+    }, 60000); // Refresh every minute
     return () => clearInterval(interval);
   }, []);
 
@@ -189,6 +278,43 @@ export function ScanWorkspace() {
       setStatistics(null);
       const msg = (error as any)?.message || 'Failed to load statistics';
       toast.error(String(msg));
+    }
+  };
+
+  const loadActiveSessions = async () => {
+    setIsLoadingActiveSessions(true);
+    try {
+      const result = await studentsApi.getActiveSessions();
+      if (result && result.success && result.data) {
+        // Transform the data to match expected format
+        const dataArray = Array.isArray(result.data) ? result.data : [];
+        const sessions = dataArray.map((session: any) => ({
+          id: session.activityId || session.id, // Backend returns activityId
+          studentId: session.studentId,
+          studentName:
+            session.studentName ||
+            `${session.firstName || ''} ${session.lastName || ''}`.trim(),
+          gradeLevel: session.gradeLevel,
+          checkInTime: new Date(
+            session.checkinTime || session.checkInTime || session.startTime
+          ),
+          status: session.isOverdue ? 'overdue' : 'active',
+          duration: session.duration || 0,
+        }));
+        // Deduplicate sessions by id to prevent duplicate key errors
+        const uniqueSessions = sessions.filter(
+          (session: any, index: number, self: any[]) =>
+            index === self.findIndex((s) => s.id === session.id)
+        );
+        setActiveSessions(uniqueSessions);
+      } else {
+        setActiveSessions([]);
+      }
+    } catch (error) {
+      console.error('Failed to load active sessions:', error);
+      setActiveSessions([]);
+    } finally {
+      setIsLoadingActiveSessions(false);
     }
   };
 
@@ -297,11 +423,7 @@ export function ScanWorkspace() {
 
       if (result.success) {
         // Play success sound
-        try {
-          successSound.play().catch(() => {});
-        } catch {
-          // Audio not available
-        }
+        playSound(successSound);
 
         toast.success(result.message, {
           description: result.student
@@ -357,11 +479,7 @@ export function ScanWorkspace() {
       } else {
         if (result.cooldownRemaining && result.cooldownRemaining > 0) {
           // Play cooldown warning sound
-          try {
-            cooldownSound.play().catch(() => {});
-          } catch {
-            // Audio not available
-          }
+          playSound(cooldownSound);
 
           const minutes = Math.ceil(result.cooldownRemaining / 60);
           toast.warning(result.message, {
@@ -376,11 +494,7 @@ export function ScanWorkspace() {
           });
         } else {
           // Play error sound
-          try {
-            errorSound.play().catch(() => {});
-          } catch {
-            // Audio not available
-          }
+          playSound(errorSound);
 
           toast.error(result.message);
         }
@@ -449,7 +563,7 @@ export function ScanWorkspace() {
       // Process all selected sessions
       const promises = selectedSessions.map((sessionId) => {
         // Find session details to log correct activity end
-        const session = mockActiveSessions.find((s) => s.id === sessionId);
+        const session = activeSessions.find((s) => s.id === sessionId);
         if (!session) return Promise.resolve();
 
         // End session via kiosk checkout endpoint
@@ -575,13 +689,11 @@ export function ScanWorkspace() {
     );
   };
 
-  // Mock active sessions data - Empty for now as per requirements
-  const mockActiveSessions: any[] = [];
-
+  // Filter active sessions based on status
   const filteredSessions =
     filterStatus === 'all'
-      ? mockActiveSessions
-      : mockActiveSessions.filter((session) => session.status === filterStatus);
+      ? activeSessions
+      : activeSessions.filter((session) => session.status === filterStatus);
 
   // Get time limit based on grade category
   const getDefaultTimeLimit = (gradeCategory?: string) => {
@@ -760,64 +872,44 @@ export function ScanWorkspace() {
       <div className="relative">
         <div>
           <h3 className="text-xl font-semibold tracking-tight text-foreground">
-            Activity Management
+            Scan Station
           </h3>
           <p className="text-sm text-muted-foreground">
-            Scan student IDs, books, or equipment for library activities.
+            Scan student IDs or book barcodes to process check-ins and
+            borrowing.
           </p>
         </div>
 
-        {/* Header Action Buttons */}
+        {/* Simplified Header Action Buttons */}
         <div className="absolute top-0 right-0 flex gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowActiveSessions(!showActiveSessions)}
-            className="bg-white/90 hover:bg-white shadow-sm"
+            className="bg-white/90 hover:bg-white shadow-sm dark:bg-gray-800/90"
           >
             <Eye className="h-4 w-4 mr-1" />
-            {showActiveSessions ? 'Hide' : 'Show'} Sessions
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowBulkActions(!showBulkActions)}
-            disabled={selectedSessions.length === 0}
-            className="bg-white/90 hover:bg-white shadow-sm"
-          >
-            <Users className="h-4 w-4 mr-1" />
-            Bulk Actions ({selectedSessions.length})
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportSessions}
-            disabled={isExporting || selectedSessions.length === 0}
-            className="bg-white/90 hover:bg-white shadow-sm"
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Export
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePrintSessions}
-            disabled={isPrintingSessions}
-            className="bg-white/90 hover:bg-white shadow-sm"
-          >
-            <Printer className="h-4 w-4 mr-1" />
-            Print
+            {showActiveSessions ? 'Hide' : 'Show'} Sessions (
+            {activeSessions.length})
           </Button>
         </div>
       </div>
 
-      {/* Connection Status */}
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
+      {/* Simplified Connection Status - Single compact alert */}
+      <Alert
+        className={`${isOnline ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20' : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20'}`}
+      >
+        {isOnline ? (
+          <Wifi className="h-4 w-4 text-green-600" />
+        ) : (
+          <WifiOff className="h-4 w-4 text-red-600" />
+        )}
+        <AlertDescription
+          className={isOnline ? 'text-green-700' : 'text-red-700'}
+        >
           {isOnline
-            ? 'Online mode - All activities will be synced to the server immediately.'
-            : 'Offline mode - Activities will be queued and synced when connection is restored.'}
+            ? `Online • ${wsConnected ? 'Live updates active' : 'Connecting...'}`
+            : 'Offline - Activities will sync when connection is restored'}
         </AlertDescription>
       </Alert>
 
@@ -849,141 +941,6 @@ export function ScanWorkspace() {
           </AlertDescription>
         </Alert>
       )}
-
-      {/* Self-Service Statistics Dashboard */}
-      {statistics && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                    Check-ins Today
-                  </p>
-                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-                    {statistics.totalCheckIns}
-                  </p>
-                </div>
-                <Users className="h-8 w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-600 dark:text-green-400">
-                    Unique Students
-                  </p>
-                  <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-                    {statistics.uniqueStudents}
-                  </p>
-                </div>
-                <Activity className="h-8 w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">
-                    Avg Time
-                  </p>
-                  <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
-                    {statistics.averageTimeSpent} min
-                  </p>
-                </div>
-                <Clock className="h-8 w-8 text-purple-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Enhanced Filter Buttons */}
-      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-        <div className="flex items-center gap-2">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Filter Sessions:</span>
-          <div className="flex gap-1">
-            <Button
-              variant={filterStatus === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterStatus('all')}
-            >
-              All ({mockActiveSessions.length})
-            </Button>
-            <Button
-              variant={filterStatus === 'active' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterStatus('active')}
-            >
-              Active (
-              {mockActiveSessions.filter((s) => s.status === 'active').length})
-            </Button>
-            <Button
-              variant={filterStatus === 'overdue' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterStatus('overdue')}
-            >
-              Overdue (
-              {mockActiveSessions.filter((s) => s.status === 'overdue').length})
-            </Button>
-          </div>
-        </div>
-        <div className="flex gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              toast.info('Manual session entry - would open entry form')
-            }
-            aria-label="manual-entry"
-            data-testid="manual-entry"
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            Manual Entry
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              toast.info('End all active sessions - would confirm action')
-            }
-            aria-label="end-all-sessions"
-            data-testid="end-all-sessions"
-          >
-            <Square className="h-3 w-3 mr-1" />
-            End All
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              try {
-                await fetch('/api/kiosk/broadcast', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    message: 'Please keep noise to a minimum. Thank you!',
-                  }),
-                });
-                toast.success('Announcement broadcasted');
-              } catch {
-                toast.error('Failed to broadcast announcement');
-              }
-            }}
-            aria-label="broadcast-announcement"
-            data-testid="broadcast-announcement"
-          >
-            <AlertTriangle className="h-3 w-3 mr-1" />
-            Broadcast
-          </Button>
-        </div>
-      </div>
 
       {/* Bulk Actions Panel */}
       {showBulkActions && selectedSessions.length > 0 && (
@@ -1313,33 +1270,42 @@ export function ScanWorkspace() {
 
               {/* Manual Entry */}
               <TabsContent value="manual" className="space-y-4">
-                <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="w-full">
-                      <Edit3 className="h-4 w-4 mr-2" />
-                      Manual Entry
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Manual Barcode Entry</DialogTitle>
-                      <DialogDescription>
-                        Enter barcode manually when scanning is not available.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
+                <div className="space-y-4">
+                  <div className="p-6 rounded-lg border-2 border-blue-300 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-700">
+                    <Edit3 className="h-12 w-12 mx-auto mb-4 text-blue-600 dark:text-blue-400" />
+                    <p className="text-center text-lg font-semibold text-blue-700 dark:text-blue-300 mb-4">
+                      Manual Barcode Entry
+                    </p>
+                    <p className="text-center text-sm text-muted-foreground mb-4">
+                      Type or paste a student ID or barcode below
+                    </p>
+                    <div className="flex gap-2">
                       <Input
-                        placeholder="Enter barcode..."
+                        placeholder="Enter student ID or barcode..."
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && input.trim()) {
+                            handleSubmit();
+                          }
+                        }}
+                        className="flex-1"
+                        autoFocus
                       />
-                      <Button onClick={handleSubmit} className="w-full">
+                      <Button onClick={handleSubmit} disabled={!input.trim()}>
                         Submit
                       </Button>
                     </div>
-                  </DialogContent>
-                </Dialog>
+                  </div>
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Tip:</strong> Enter the student ID (e.g.,
+                      20240191) or scan barcode value directly. Press Enter or
+                      click Submit to process.
+                    </AlertDescription>
+                  </Alert>
+                </div>
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -1362,42 +1328,71 @@ export function ScanWorkspace() {
             ) : scanResult ? (
               <div className="space-y-4">
                 {/* Scan Result Display */}
-                <div className="p-4 bg-muted rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
+                <div
+                  className={`p-5 rounded-xl border-2 transition-all duration-300 ${
+                    scanResult.type === 'student'
+                      ? 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-green-300 dark:border-green-700'
+                      : scanResult.type === 'book'
+                        ? 'bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-300 dark:border-blue-700'
+                        : 'bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/30 dark:to-slate-900/30 border-gray-300 dark:border-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
                     <Badge
-                      variant={
+                      className={`px-3 py-1 text-sm font-semibold ${
                         scanResult.type === 'student'
-                          ? 'default'
+                          ? 'bg-green-500 hover:bg-green-600 text-white'
                           : scanResult.type === 'book'
-                            ? 'secondary'
+                            ? 'bg-blue-500 hover:bg-blue-600 text-white'
                             : scanResult.type === 'equipment'
-                              ? 'outline'
-                              : 'destructive'
-                      }
+                              ? 'bg-purple-500 hover:bg-purple-600 text-white'
+                              : 'bg-red-500 hover:bg-red-600 text-white'
+                      }`}
                     >
-                      {scanResult.type.toUpperCase()}
+                      ✓ {scanResult.type.toUpperCase()} FOUND
                     </Badge>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground bg-white dark:bg-slate-800 px-2 py-1 rounded-md">
                       {new Date(scanResult.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
 
                   {scanResult.student ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Users className="h-4 w-4" />
-                        <span className="font-medium">
-                          {scanResult.student.firstName}{' '}
-                          {scanResult.student.lastName}
-                        </span>
-                      </div>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        <div>ID: {scanResult.student.studentId}</div>
-                        <div>
-                          Grade: {scanResult.student.gradeLevel} -{' '}
-                          {scanResult.student.section}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-4">
+                        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+                          {scanResult.student.firstName.charAt(0)}
                         </div>
-                        <div>Category: {scanResult.student.gradeCategory}</div>
+                        <div>
+                          <div className="text-xl font-bold text-gray-900 dark:text-white">
+                            {scanResult.student.firstName}{' '}
+                            {scanResult.student.lastName}
+                          </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-300">
+                            ID: {scanResult.student.studentId}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <Badge
+                          variant="outline"
+                          className="bg-white dark:bg-slate-800 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300"
+                        >
+                          Grade {scanResult.student.gradeLevel}
+                        </Badge>
+                        {scanResult.student.section && (
+                          <Badge
+                            variant="outline"
+                            className="bg-white dark:bg-slate-800 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                          >
+                            {scanResult.student.section}
+                          </Badge>
+                        )}
+                        <Badge
+                          variant="outline"
+                          className="bg-white dark:bg-slate-800 border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300"
+                        >
+                          {scanResult.student.gradeCategory}
+                        </Badge>
                       </div>
                     </div>
                   ) : (
@@ -1418,17 +1413,31 @@ export function ScanWorkspace() {
                 {scanResult.student && (
                   <div className="space-y-4">
                     <div>
-                      <h4 className="font-medium mb-2">Select Action:</h4>
-                      <div className="grid gap-2">
+                      <h4 className="font-semibold mb-3 text-gray-900 dark:text-white">
+                        Select Action:
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3">
                         <Button
                           variant={
                             selectedAction === 'library' ? 'default' : 'outline'
                           }
                           onClick={() => setSelectedAction('library')}
-                          className="justify-start"
+                          className={`justify-start h-14 ${
+                            selectedAction === 'library'
+                              ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 border-0 shadow-lg'
+                              : 'hover:bg-green-50 hover:border-green-300 dark:hover:bg-green-950/30'
+                          }`}
                         >
-                          <BookOpen className="h-4 w-4 mr-2" />
-                          Library / Study
+                          <BookOpen
+                            className={`h-5 w-5 mr-2 ${selectedAction === 'library' ? 'text-white' : 'text-green-600'}`}
+                          />
+                          <span
+                            className={
+                              selectedAction === 'library' ? 'text-white' : ''
+                            }
+                          >
+                            Library / Study
+                          </span>
                         </Button>
                         <Button
                           variant={
@@ -1437,20 +1446,44 @@ export function ScanWorkspace() {
                               : 'outline'
                           }
                           onClick={() => setSelectedAction('computer')}
-                          className="justify-start"
+                          className={`justify-start h-14 ${
+                            selectedAction === 'computer'
+                              ? 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 border-0 shadow-lg'
+                              : 'hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-950/30'
+                          }`}
                         >
-                          <Monitor className="h-4 w-4 mr-2" />
-                          Computer Session
+                          <Monitor
+                            className={`h-5 w-5 mr-2 ${selectedAction === 'computer' ? 'text-white' : 'text-blue-600'}`}
+                          />
+                          <span
+                            className={
+                              selectedAction === 'computer' ? 'text-white' : ''
+                            }
+                          >
+                            Computer
+                          </span>
                         </Button>
                         <Button
                           variant={
                             selectedAction === 'gaming' ? 'default' : 'outline'
                           }
                           onClick={() => setSelectedAction('gaming')}
-                          className="justify-start"
+                          className={`justify-start h-14 ${
+                            selectedAction === 'gaming'
+                              ? 'bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 border-0 shadow-lg'
+                              : 'hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-950/30'
+                          }`}
                         >
-                          <Gamepad2 className="h-4 w-4 mr-2" />
-                          Gaming Session
+                          <Gamepad2
+                            className={`h-5 w-5 mr-2 ${selectedAction === 'gaming' ? 'text-white' : 'text-purple-600'}`}
+                          />
+                          <span
+                            className={
+                              selectedAction === 'gaming' ? 'text-white' : ''
+                            }
+                          >
+                            Gaming
+                          </span>
                         </Button>
                         <Button
                           variant={
@@ -1459,10 +1492,22 @@ export function ScanWorkspace() {
                               : 'outline'
                           }
                           onClick={() => setSelectedAction('borrowing')}
-                          className="justify-start"
+                          className={`justify-start h-14 ${
+                            selectedAction === 'borrowing'
+                              ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 border-0 shadow-lg'
+                              : 'hover:bg-amber-50 hover:border-amber-300 dark:hover:bg-amber-950/30'
+                          }`}
                         >
-                          <BookOpen className="h-4 w-4 mr-2" />
-                          Book Borrowing
+                          <BookOpen
+                            className={`h-5 w-5 mr-2 ${selectedAction === 'borrowing' ? 'text-white' : 'text-amber-600'}`}
+                          />
+                          <span
+                            className={
+                              selectedAction === 'borrowing' ? 'text-white' : ''
+                            }
+                          >
+                            Borrow Book
+                          </span>
                         </Button>
                         <Button
                           variant={
@@ -1471,10 +1516,22 @@ export function ScanWorkspace() {
                               : 'outline'
                           }
                           onClick={() => setSelectedAction('returning')}
-                          className="justify-start"
+                          className={`justify-start h-14 col-span-2 ${
+                            selectedAction === 'returning'
+                              ? 'bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 border-0 shadow-lg'
+                              : 'hover:bg-teal-50 hover:border-teal-300 dark:hover:bg-teal-950/30'
+                          }`}
                         >
-                          <BookOpen className="h-4 w-4 mr-2" />
-                          Book Return
+                          <BookOpen
+                            className={`h-5 w-5 mr-2 ${selectedAction === 'returning' ? 'text-white' : 'text-teal-600'}`}
+                          />
+                          <span
+                            className={
+                              selectedAction === 'returning' ? 'text-white' : ''
+                            }
+                          >
+                            Return Book
+                          </span>
                         </Button>
                       </div>
                     </div>
@@ -1511,24 +1568,34 @@ export function ScanWorkspace() {
                     <Button
                       onClick={executeAction}
                       disabled={!selectedAction}
-                      className="w-full"
+                      size="lg"
+                      className={`w-full h-14 text-lg font-semibold transition-all duration-300 ${
+                        selectedAction
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
+                          : 'bg-gray-300 dark:bg-gray-700'
+                      }`}
                     >
-                      <Play className="h-4 w-4 mr-2" />
-                      Execute {selectedAction || 'Action'}
+                      <Play className="h-5 w-5 mr-2" />
+                      {selectedAction
+                        ? `Execute ${selectedAction.charAt(0).toUpperCase() + selectedAction.slice(1)}`
+                        : 'Select an Action'}
                     </Button>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <div className="h-12 w-12 mx-auto mb-4 text-muted-foreground">
-                  <Camera />
+              <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-slate-100 dark:from-gray-900 dark:to-slate-900 rounded-xl">
+                <div className="h-20 w-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/50 dark:to-purple-900/50 flex items-center justify-center">
+                  <Camera className="h-10 w-10 text-indigo-500" />
                 </div>
+                <p className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Ready to Scan
+                </p>
                 <p className="text-muted-foreground">
-                  Scan a barcode to see results and available actions
+                  Scan a student ID or book barcode to begin
                 </p>
                 {lastScanResult && (
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <p className="text-sm text-muted-foreground mt-3 bg-white dark:bg-slate-800 inline-block px-3 py-1 rounded-full">
                     Last scan: {lastScanResult}
                   </p>
                 )}
@@ -1539,9 +1606,12 @@ export function ScanWorkspace() {
       </div>
 
       {/* Enhanced Quick Actions */}
-      <Card>
+      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-indigo-50/30 dark:from-slate-800 dark:to-indigo-950/10">
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5 text-indigo-500" />
+            Quick Actions
+          </CardTitle>
           <CardDescription>Common tasks without scanning</CardDescription>
         </CardHeader>
         <CardContent>

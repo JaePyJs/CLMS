@@ -1,15 +1,18 @@
 import 'dotenv/config';
-import { AuthService } from './src/services/authService';
-import { prisma } from './src/utils/prisma';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
 
 async function resetPassword() {
-  const username = 'librarian';
-  const password = 'lib123';
+  const username = process.argv[2] || 'librarian';
+  const password = process.argv[3] || 'librarian123';
+  const rounds = parseInt(process.env.BCRYPT_ROUNDS || '12');
 
   console.log(`Resetting password for ${username}...`);
 
   try {
-    const hashedPassword = await AuthService.hashPassword(password);
+    const hashedPassword = await bcrypt.hash(password, rounds);
 
     const user = await prisma.users.update({
       where: { username },
@@ -24,7 +27,7 @@ async function resetPassword() {
     console.log('New Hash:', user.password);
 
     // Verify immediately
-    const isValid = await AuthService.verifyPassword(password, user.password);
+    const isValid = await bcrypt.compare(password, user.password);
     console.log('✅ Verification check:', isValid);
   } catch (error) {
     console.error('❌ Error:', error);

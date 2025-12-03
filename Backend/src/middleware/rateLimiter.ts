@@ -38,3 +38,70 @@ export const registrationRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+/**
+ * Scan rate limiter - detects USB barcode scanner spam
+ * Allows 30 scans per minute per IP (reasonable for batch scanning)
+ * but blocks rapid-fire spam attacks
+ */
+export const scanRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // 30 scans per minute (1 every 2 seconds average)
+  message: {
+    success: false,
+    message:
+      'Too many scans detected. Please wait a moment before scanning again.',
+    cooldownRemaining: 60,
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: req => {
+    // Use a combination of IP and user ID if available
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userId = (req as any).user?.id;
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    return userId ? `${ip}:${userId}` : ip;
+  },
+});
+
+/**
+ * Per-student scan rate limiter - prevents same student from being scanned too fast
+ * This is a helper to track per-barcode rates
+ */
+const studentScanTracker = new Map<
+  string,
+  { count: number; resetAt: number }
+>();
+
+export const checkStudentScanRate = (
+  barcode: string,
+): { allowed: boolean; waitSeconds?: number } => {
+  const now = Date.now();
+  const windowMs = 5000; // 5 second window
+  const maxScans = 2; // Max 2 scans per 5 seconds for same barcode
+
+  const tracker = studentScanTracker.get(barcode);
+
+  // Clean up old entries periodically
+  if (studentScanTracker.size > 1000) {
+    for (const [key, value] of studentScanTracker.entries()) {
+      if (value.resetAt < now) {
+        studentScanTracker.delete(key);
+      }
+    }
+  }
+
+  if (!tracker || tracker.resetAt < now) {
+    // New window
+    studentScanTracker.set(barcode, { count: 1, resetAt: now + windowMs });
+    return { allowed: true };
+  }
+
+  if (tracker.count >= maxScans) {
+    const waitSeconds = Math.ceil((tracker.resetAt - now) / 1000);
+    return { allowed: false, waitSeconds };
+  }
+
+  tracker.count++;
+  return { allowed: true };
+};

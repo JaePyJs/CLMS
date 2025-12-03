@@ -40,11 +40,17 @@ export function useAsyncData<T>(
 
   const retryAttemptRef = useRef(0);
   const mountedRef = useRef(true);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       mountedRef.current = false;
+      // Clear any pending retry timeout
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+      }
     };
   }, []);
 
@@ -82,7 +88,11 @@ export function useAsyncData<T>(
       // Retry logic
       if (retryAttemptRef.current < retryCount) {
         retryAttemptRef.current++;
-        setTimeout(() => {
+        // Clear any existing retry timeout before setting a new one
+        if (retryTimeoutRef.current) {
+          clearTimeout(retryTimeoutRef.current);
+        }
+        retryTimeoutRef.current = setTimeout(() => {
           if (mountedRef.current) {
             execute();
           }

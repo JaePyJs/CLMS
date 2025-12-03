@@ -358,7 +358,7 @@ export default function SavedSearches() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="_Search your saved searches..."
+                placeholder="Search your saved searches..."
                 value={searchFilters.values.searchQuery}
                 onChange={(e) =>
                   searchFilterActions.setFieldValue(

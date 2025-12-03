@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/authenticate';
 import { SettingsService } from '../services/settingsService';
 import { logger } from '../utils/logger';
 import { websocketServer } from '../websocket/websocketServer';
+import { prisma } from '../utils/prisma';
 
 const router = Router();
 
@@ -207,6 +208,213 @@ router.put(
   }),
 );
 
+// POST /api/settings/system/reset - Reset system settings to defaults
+router.post(
+  '/system/reset',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    // Single-user system: any authenticated user can reset settings
+    try {
+      logger.info('Reset system settings to defaults', {
+        userId: req.user.userId,
+        role: req.user.role,
+      });
+
+      // Default system settings
+      const defaultSettings = {
+        libraryName: 'SHJCS Library',
+        libraryTagline: 'Where Knowledge Meets Excellence',
+        maxBorrowDays: '14',
+        maxBooksPerStudent: '3',
+        overdueGracePeriod: '0',
+        cooldownMinutes: '0',
+        defaultCheckInDuration: '30',
+        operatingHoursStart: '07:00',
+        operatingHoursEnd: '17:00',
+        theme: 'system',
+        dateFormat: 'MMM d, yyyy',
+        timeFormat: 'h:mm a',
+      };
+
+      // Update each setting to defaults
+      const updates = [];
+      for (const [key, value] of Object.entries(defaultSettings)) {
+        updates.push(
+          SettingsService.updateSetting(key, value, req.user.userId, 'system'),
+        );
+      }
+
+      await Promise.all(updates);
+
+      res.json({
+        success: true,
+        message: 'System settings reset to defaults',
+        data: defaultSettings,
+      });
+    } catch (error) {
+      logger.error('Error resetting system settings', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to reset system settings',
+      });
+    }
+  }),
+);
+
+// ============================================
+// Google Sheets Configuration Routes
+// IMPORTANT: These must be defined BEFORE dynamic /:key routes
+// ============================================
+
+// GET /api/settings/google-sheets - Get Google Sheets configuration
+router.get(
+  '/google-sheets',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      // Return current Google Sheets configuration
+      const settings =
+        await SettingsService.getSettingsByCategory('google-sheets');
+
+      res.json({
+        success: true,
+        data: {
+          enabled: false,
+          spreadsheetId:
+            settings.find(s => s.key === 'spreadsheet_id')?.value || '',
+          syncSchedule:
+            settings.find(s => s.key === 'sync_schedule')?.value || 'manual',
+          lastSync: null,
+          status: 'not_configured',
+        },
+      });
+    } catch (error) {
+      logger.error('Error getting Google Sheets config', { error });
+      res.status(500).json({
+        success: false,
+        message: 'Failed to get Google Sheets configuration',
+      });
+    }
+  }),
+);
+
+// PUT /api/settings/google-sheets/schedule - Update sync schedule
+router.put(
+  '/google-sheets/schedule',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const { schedule, spreadsheetId } = req.body;
+
+      // Store settings
+      if (spreadsheetId) {
+        await SettingsService.updateSetting(
+          'spreadsheet_id',
+          spreadsheetId,
+          'google-sheets',
+        );
+      }
+      if (schedule) {
+        await SettingsService.updateSetting(
+          'sync_schedule',
+          schedule,
+          'google-sheets',
+        );
+      }
+
+      res.json({
+        success: true,
+        message: 'Google Sheets schedule updated',
+      });
+    } catch (error) {
+      logger.error('Error updating Google Sheets schedule', { error });
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update schedule',
+      });
+    }
+  }),
+);
+
+// POST /api/settings/google-sheets/test - Test connection
+router.post(
+  '/google-sheets/test',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const { spreadsheetId } = req.body;
+
+      // For now, return a placeholder response
+      // Full implementation would test actual Google Sheets API connection
+      res.json({
+        success: true,
+        message: 'Connection test feature not fully implemented',
+        data: {
+          connected: false,
+          spreadsheetId,
+        },
+      });
+    } catch (error) {
+      logger.error('Error testing Google Sheets connection', { error });
+      res.status(500).json({
+        success: false,
+        message: 'Connection test failed',
+      });
+    }
+  }),
+);
+
+// POST /api/settings/google-sheets/sync - Trigger manual sync
+router.post(
+  '/google-sheets/sync',
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      // Placeholder for sync functionality
+      res.json({
+        success: true,
+        message: 'Google Sheets sync feature not fully implemented',
+        data: {
+          synced: false,
+        },
+      });
+    } catch (error) {
+      logger.error('Error syncing Google Sheets', { error });
+      res.status(500).json({
+        success: false,
+        message: 'Sync failed',
+      });
+    }
+  }),
+);
+
+// ============================================
+// Dynamic Key Routes - MUST BE LAST
+// ============================================
+
 // GET /api/settings/:key - Get a specific setting
 router.get(
   '/:key',
@@ -403,11 +611,9 @@ router.post(
 router.post(
   '/reset-daily-data',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (
-      !req.user ||
-      (req.user.role !== 'ADMIN' && req.user.role !== 'LIBRARIAN')
-    ) {
-      res.status(403).json({ error: 'Admin access required' });
+    // Single-user system: any authenticated user can reset daily data
+    if (!req.user) {
+      res.status(403).json({ error: 'Authentication required' });
       return;
     }
 
@@ -424,9 +630,30 @@ router.post(
 
       // Compute updated overview data and broadcast it so WS clients update immediately
       try {
-        const overviewData = await import('../services/analyticsService').then(
-          m => m.AnalyticsService.getRealTimeOverview(),
-        );
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const overviewData = {
+          totalStudents: await prisma.students.count(),
+          activeStudents: await prisma.student_activities.count({
+            where: { status: 'ACTIVE' },
+          }),
+          totalBooks: await prisma.books.count(),
+          activeBorrows: await prisma.book_checkouts.count({
+            where: { status: 'ACTIVE' },
+          }),
+          overdueBorrows: await prisma.book_checkouts.count({
+            where: { status: 'ACTIVE', due_date: { lt: new Date() } },
+          }),
+          todayActivities: await prisma.student_activities.count({
+            where: { start_time: { gte: startOfDay } },
+          }),
+          activeEquipment: await prisma.equipment.count({
+            where: { status: 'IN_USE' },
+          }),
+          activeConnections: 0,
+          systemLoad: 0,
+        };
 
         websocketServer.broadcastToRoom('dashboard', {
           id: `overview-${Date.now()}`,
@@ -462,11 +689,9 @@ router.post(
 router.post(
   '/reset-all-data',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (
-      !req.user ||
-      (req.user.role !== 'ADMIN' && req.user.role !== 'LIBRARIAN')
-    ) {
-      res.status(403).json({ error: 'Admin access required' });
+    // Single-user system: any authenticated user can reset data
+    if (!req.user) {
+      res.status(403).json({ error: 'Authentication required' });
       return;
     }
 
@@ -493,9 +718,29 @@ router.post(
 
       // Broadcast updated overview to dashboard
       try {
-        const overviewData = await import('../services/analyticsService').then(
-          m => m.AnalyticsService.getRealTimeOverview(),
-        );
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const overviewData = {
+          totalStudents: await prisma.students.count(),
+          activeStudents: await prisma.student_activities.count({
+            where: { status: 'ACTIVE' },
+          }),
+          totalBooks: await prisma.books.count(),
+          activeBorrows: await prisma.book_checkouts.count({
+            where: { status: 'ACTIVE' },
+          }),
+          overdueBorrows: await prisma.book_checkouts.count({
+            where: { status: 'ACTIVE', due_date: { lt: new Date() } },
+          }),
+          todayActivities: await prisma.student_activities.count({
+            where: { start_time: { gte: startOfDay } },
+          }),
+          activeEquipment: await prisma.equipment.count({
+            where: { status: 'IN_USE' },
+          }),
+          activeConnections: 0,
+          systemLoad: 0,
+        };
         websocketServer.broadcastToRoom('dashboard', {
           id: `overview-${Date.now()}`,
           type: 'dashboard_data',
@@ -526,26 +771,24 @@ router.post(
   }),
 );
 
-// POST /api/settings/reset-database-completely - NUCLEAR OPTION
+// POST /api/settings/nuclear-reset - COMPLETE database wipe (for testing)
 router.post(
-  '/reset-database-completely',
+  '/nuclear-reset',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (
-      !req.user ||
-      (req.user.role !== 'ADMIN' && req.user.role !== 'LIBRARIAN')
-    ) {
-      res.status(403).json({ error: 'Admin access required' });
+    // Allow any authenticated librarian to perform nuclear reset
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
       return;
     }
 
     const { confirmationCode } = req.body;
 
-    // Require strict confirmation code
-    if (confirmationCode !== 'DELETE-EVERYTHING-PERMANENTLY') {
+    // Require very specific confirmation code
+    if (confirmationCode !== 'NUCLEAR-RESET-CONFIRM-DELETE-EVERYTHING') {
       res.status(400).json({
         success: false,
         message:
-          'Invalid confirmation code. Send { confirmationCode: "DELETE-EVERYTHING-PERMANENTLY" } to proceed.',
+          'Invalid confirmation code. Send { confirmationCode: "NUCLEAR-RESET-CONFIRM-DELETE-EVERYTHING" } to proceed.',
       });
       return;
     }
@@ -557,7 +800,7 @@ router.post(
         timestamp: new Date().toISOString(),
       });
 
-      const result = await SettingsService.resetDatabaseCompletely();
+      const result = await SettingsService.nuclearReset();
 
       // Broadcast updated overview to dashboard
       try {
@@ -589,17 +832,17 @@ router.post(
 
       res.json({
         success: true,
-        message: 'Database completely reset',
+        message: 'Nuclear reset completed - all data wiped',
         data: result,
       });
     } catch (error) {
-      logger.error('Error performing nuclear reset', {
+      logger.error('Error in nuclear reset', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
 
       res.status(500).json({
         success: false,
-        message: 'Failed to reset database',
+        message: 'Failed to perform nuclear reset',
       });
     }
   }),

@@ -8,9 +8,21 @@ import { Sparkles } from 'lucide-react';
 
 interface WelcomeScreenProps {
   studentName?: string;
+  gender?: string;
 }
 
-export function WelcomeScreen({ studentName }: WelcomeScreenProps) {
+export function WelcomeScreen({ studentName, gender }: WelcomeScreenProps) {
+  // Determine honorific based on gender
+  const getHonorific = () => {
+    if (!gender) return '';
+    const g = gender.toLowerCase();
+    if (g === 'male' || g === 'm') return 'Mr. ';
+    if (g === 'female' || g === 'f') return 'Ms. ';
+    return '';
+  };
+
+  const displayName = studentName ? `${getHonorific()}${studentName}` : null;
+
   return (
     <div className="relative w-full h-screen overflow-hidden">
       <CheckeredBackground />
@@ -29,32 +41,38 @@ export function WelcomeScreen({ studentName }: WelcomeScreenProps) {
             className="relative mb-6 text-center"
           >
             <h1
-              className="text-8xl leading-tight tracking-wider text-white"
+              className="text-7xl md:text-8xl leading-tight tracking-wider text-white"
               style={{
                 fontWeight: 900,
-                WebkitTextStroke: '6px black',
+                WebkitTextStroke: '4px black',
                 paintOrder: 'stroke fill',
-                textShadow: '4px 4px 0px rgba(0,0,0,0.5)',
+                textShadow:
+                  '4px 4px 0px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.5)',
               }}
             >
               WELCOME, CRUSADER
             </h1>
 
-            {studentName && (
+            {displayName && (
               <motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.3 }}
-                className="mt-4"
+                className="mt-6 px-8 py-4 rounded-2xl"
+                style={{
+                  background: 'rgba(0,0,0,0.4)',
+                  backdropFilter: 'blur(4px)',
+                }}
               >
                 <h2
-                  className="text-6xl text-yellow-400 font-bold tracking-wide"
+                  className="text-5xl md:text-6xl text-yellow-400 font-bold tracking-wide"
                   style={{
                     textShadow:
-                      '3px 3px 0px rgba(0,0,0,0.8), 0 0 20px rgba(250, 204, 21, 0.5)',
+                      '3px 3px 0px rgba(0,0,0,1), 0 0 20px rgba(250, 204, 21, 0.6)',
+                    WebkitTextStroke: '1px rgba(0,0,0,0.5)',
                   }}
                 >
-                  {studentName}
+                  {displayName}
                 </h2>
               </motion.div>
             )}
@@ -84,19 +102,36 @@ export function WelcomeScreen({ studentName }: WelcomeScreenProps) {
           <CharacterWithBooks type="boy" />
         </div>
 
-        {/* Animated sparkles - LEFT */}
+        {/* Animated sparkles - TOP LEFT (moved away from center text) */}
         <motion.div
           animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 180, 360],
           }}
           transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-          className="absolute top-1/2 left-32 text-yellow-200"
+          className="absolute top-24 left-8 text-yellow-200 opacity-80"
         >
-          <Sparkles size={56} fill="currentColor" />
+          <Sparkles size={48} fill="currentColor" />
         </motion.div>
 
-        {/* Animated sparkles - RIGHT */}
+        {/* Animated sparkles - BOTTOM LEFT */}
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            rotate: [0, -180, -360],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: 'linear',
+            delay: 1,
+          }}
+          className="absolute bottom-48 left-16 text-yellow-200 opacity-70"
+        >
+          <Sparkles size={40} fill="currentColor" />
+        </motion.div>
+
+        {/* Animated sparkles - TOP RIGHT */}
         <motion.div
           animate={{
             scale: [1, 1.2, 1],
@@ -108,9 +143,26 @@ export function WelcomeScreen({ studentName }: WelcomeScreenProps) {
             ease: 'linear',
             delay: 0.5,
           }}
-          className="absolute top-1/2 right-32 text-yellow-200"
+          className="absolute top-48 right-48 text-yellow-200 opacity-80"
         >
-          <Sparkles size={56} fill="currentColor" />
+          <Sparkles size={48} fill="currentColor" />
+        </motion.div>
+
+        {/* Animated sparkles - BOTTOM RIGHT */}
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            rotate: [0, 180, 360],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: 'linear',
+            delay: 1.5,
+          }}
+          className="absolute bottom-48 right-16 text-yellow-200 opacity-70"
+        >
+          <Sparkles size={40} fill="currentColor" />
         </motion.div>
       </div>
     </div>

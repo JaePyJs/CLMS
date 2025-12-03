@@ -307,10 +307,8 @@ router.post(
 router.post(
   '/refresh',
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (!req.user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    // Note: This endpoint does NOT require authentication since the access token may be expired
+    // We validate the refresh token directly instead
 
     const { refreshToken } = req.body;
 
@@ -402,7 +400,7 @@ router.get(
 router.post(
   '/kiosk-token',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { deviceName } = req.body;
     try {
@@ -426,7 +424,7 @@ router.post(
 router.get(
   '/kiosk-users',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (_req: Request, res: Response): Promise<void> => {
     try {
       const users = await prisma.users.findMany({
@@ -453,7 +451,7 @@ router.get(
 router.post(
   '/kiosk-revoke',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { userId } = req.body as { userId: string };
     if (!userId) {

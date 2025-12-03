@@ -21,50 +21,77 @@ router.get(
     }
 
     try {
-      // Perform parallel searches
+      // For case-insensitive search in SQLite, we need to use raw SQL with LOWER()
+      // or search for both the lowercase and original case versions
+      const searchLower = query.toLowerCase();
+      const searchOriginal = query;
+
+      // Perform parallel searches with both case variants for SQLite compatibility
       const [students, books, equipment] = await Promise.all([
-        // Search Students
+        // Search Students - use OR to match either lowercase or original
         prisma.students.findMany({
           where: {
             OR: [
-              { first_name: { contains: query } }, // Case insensitive by default in SQLite/Postgres usually, but explicit mode might be needed depending on DB
-              { last_name: { contains: query } },
-              { student_id: { contains: query } },
-              { barcode: { contains: query } },
+              { first_name: { contains: searchLower } },
+              { first_name: { contains: searchOriginal } },
+              { last_name: { contains: searchLower } },
+              { last_name: { contains: searchOriginal } },
+              { student_id: { contains: searchLower } },
+              { student_id: { contains: searchOriginal } },
+              { barcode: { contains: searchLower } },
+              { barcode: { contains: searchOriginal } },
             ],
           },
-          take: 5,
+          take: 10,
         }),
 
         // Search Books
         prisma.books.findMany({
           where: {
             OR: [
-              { title: { contains: query } },
-              { author: { contains: query } },
-              { isbn: { contains: query } },
-              { accession_no: { contains: query } },
+              { title: { contains: searchLower } },
+              { title: { contains: searchOriginal } },
+              { author: { contains: searchLower } },
+              { author: { contains: searchOriginal } },
+              { isbn: { contains: searchLower } },
+              { isbn: { contains: searchOriginal } },
+              { accession_no: { contains: searchLower } },
+              { accession_no: { contains: searchOriginal } },
             ],
           },
-          take: 5,
+          take: 10,
         }),
 
         // Search Equipment
         prisma.equipment.findMany({
           where: {
             OR: [
-              { name: { contains: query } },
-              { serial_number: { contains: query } },
-              { category: { contains: query } },
+              { name: { contains: searchLower } },
+              { name: { contains: searchOriginal } },
+              { serial_number: { contains: searchLower } },
+              { serial_number: { contains: searchOriginal } },
+              { category: { contains: searchLower } },
+              { category: { contains: searchOriginal } },
             ],
           },
-          take: 5,
+          take: 10,
         }),
       ]);
 
-      // Transform results into a unified format
+      // Deduplicate results (in case both lowercase and original matched the same record)
+      const uniqueStudents = students
+        .filter((s, idx, arr) => arr.findIndex(x => x.id === s.id) === idx)
+        .slice(0, 5);
+      const uniqueBooks = books
+        .filter((b, idx, arr) => arr.findIndex(x => x.id === b.id) === idx)
+        .slice(0, 5);
+      const uniqueEquipment = equipment
+        .filter((e, idx, arr) => arr.findIndex(x => x.id === e.id) === idx)
+        .slice(0, 5);
+
+      // Transform results into a unified format (using deduplicated arrays)
       const results = [
-        ...students.map(s => ({
+        ...uniqueStudents.map(s => ({
           type: 'student',
           id: s.id,
           title: `${s.first_name} ${s.last_name}`,
@@ -75,7 +102,7 @@ router.get(
             section: s.section,
           },
         })),
-        ...books.map(b => ({
+        ...uniqueBooks.map(b => ({
           type: 'book',
           id: b.id,
           title: b.title,
@@ -86,7 +113,7 @@ router.get(
             location: b.location,
           },
         })),
-        ...equipment.map(e => ({
+        ...uniqueEquipment.map(e => ({
           type: 'equipment',
           id: e.id,
           title: e.name,

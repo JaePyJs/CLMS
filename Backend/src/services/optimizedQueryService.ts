@@ -287,11 +287,13 @@ export class OptimizedQueryService {
     }
 
     if (query) {
+      // SQLite case-insensitive search: use lowercase contains
+      const queryLower = query.toLowerCase();
       where.OR = [
-        { first_name: { contains: query } },
-        { last_name: { contains: query } },
-        { student_id: { contains: query } },
-        { barcode: { contains: query } },
+        { first_name: { contains: queryLower } },
+        { last_name: { contains: queryLower } },
+        { student_id: { contains: queryLower } },
+        { barcode: { contains: queryLower } },
       ];
     }
 

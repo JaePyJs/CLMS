@@ -28,7 +28,7 @@ export const SessionTimeoutWarning: React.FC<SessionTimeoutWarningProps> = ({
   warningTime = 5 * 60 * 1000, // 5 minutes warning by default
   sessionTimeout = 60 * 60 * 1000, // 60 minutes total session
 }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshSession } = useAuth();
   const [showWarning, setShowWarning] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
@@ -70,14 +70,21 @@ export const SessionTimeoutWarning: React.FC<SessionTimeoutWarningProps> = ({
     return () => clearInterval(countdownInterval);
   }, [showWarning, countdown]);
 
-  const handleExtendSession = () => {
+  const handleExtendSession = async () => {
     // Close the warning dialog
     setShowWarning(false);
     setCountdown(0);
 
-    // The auto-refresh mechanism in AuthContext will handle the actual refresh
-    // We just need to close the modal and reset the warning timer
-    // No need to reload the page
+    // Actively refresh the token to extend the session
+    try {
+      const success = await refreshSession();
+      if (!success) {
+        // If refresh fails, the session may have already expired
+        console.warn('Session refresh failed');
+      }
+    } catch (error) {
+      console.error('Failed to extend session:', error);
+    }
   };
 
   const handleLogout = () => {

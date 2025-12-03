@@ -36,6 +36,7 @@ const tsRecommended = tseslint.configs['flat/recommended'].map(config => {
 const baseIgnores = [
   'dist/**/*',
   'src/tests/**/*',
+  'scripts/**/*',
   'eslint.config.js',
   'eslint.config.mjs',
   // Disabled services (missing dependencies)

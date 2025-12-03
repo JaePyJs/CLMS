@@ -146,11 +146,13 @@ interface BookImportDialogProps {
   open: boolean;
   // eslint-disable-next-line no-unused-vars
   onOpenChange: (_open: boolean) => void;
+  onSuccess?: () => void;
 }
 
 export function BookImportDialog({
   open,
   onOpenChange,
+  onSuccess,
 }: BookImportDialogProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -173,6 +175,7 @@ export function BookImportDialog({
     errors: string[];
   }>({ success: 0, failed: 0, errors: [] });
   const [skipHeaderRow, setSkipHeaderRow] = useState(true);
+  const [isProcessingPreview, setIsProcessingPreview] = useState(false);
 
   // Reset state when dialog closes
   const handleClose = () => {
@@ -185,6 +188,7 @@ export function BookImportDialog({
     setImportPreview(null);
     setImportResults({ success: 0, failed: 0, errors: [] });
     setSkipHeaderRow(true);
+    setIsProcessingPreview(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -372,27 +376,38 @@ export function BookImportDialog({
 
   // Preview import mutation
   const previewImportMutation = useMutation({
-    mutationFn: async (data: { file: File; fieldMappings: FieldMapping[] }) => {
+    mutationFn: async (data: {
+      file: File;
+      fieldMappings: FieldMapping[];
+      skipHeaderRow: boolean;
+    }): Promise<any> => {
       try {
         const result = await booksApi.previewImport(
           data.file,
           1000,
-          data.fieldMappings
+          data.fieldMappings,
+          data.skipHeaderRow
         );
-        return result.data;
+        // The API returns { success, records, totalRows, ... } directly
+        // Return the full result, not result.data (which doesn't exist)
+        console.log('API preview result:', result);
+        return result;
       } catch (error: unknown) {
         const message = getErrorMessage(error, 'Preview failed');
         throw new Error(message);
       }
     },
-    onSuccess: (result: {
-      records: Array<Partial<ImportedBook>>;
-      duplicateRecords?: number;
-    }) => {
-      if (result.records && Array.isArray(result.records)) {
-        const processed: ImportedBook[] = result.records.map(
+    onSuccess: (result: any) => {
+      console.log('Preview result:', result);
+
+      // Handle the records array - check both result.records and result directly if it's an array
+      const records =
+        result?.records || (Array.isArray(result) ? result : null);
+
+      if (records && Array.isArray(records) && records.length > 0) {
+        const processed: ImportedBook[] = records.map(
           (record, index: number) => ({
-            rowNumber: index + 1,
+            rowNumber: record.rowNumber || index + 1,
             title: record.title || '',
             author: record.author || '',
             isbn: record.isbn || '',
@@ -420,22 +435,32 @@ export function BookImportDialog({
 
         setImportedBooks(processed);
         setImportPreview({
-          totalRows: (result as any).totalRows || processed.length,
+          totalRows: result?.totalRows || processed.length,
           validRows:
-            (result as any).validRows ??
-            processed.filter((s) => s.isValid).length,
+            result?.validRows ?? processed.filter((s) => s.isValid).length,
           invalidRows:
-            (result as any).invalidRows ??
+            result?.invalidRows ??
             processed.length - processed.filter((s) => s.isValid).length,
-          duplicateRows: result.duplicateRecords || 0,
+          duplicateRows: result?.duplicateRecords || 0,
           samples: processed, // Store ALL records
         });
         setCurrentStep('preview');
         setCurrentPage(1); // Reset to first page
+        setIsProcessingPreview(false);
+      } else {
+        // No records found - show error and go back to mapping
+        console.error('No records in preview result:', result);
+        toast.error(
+          'No valid records found in the file. Please check your field mappings.'
+        );
+        setIsProcessingPreview(false);
+        setCurrentStep('mapping');
       }
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, 'Preview failed'));
+      setIsProcessingPreview(false);
+      setCurrentStep('mapping'); // Go back to mapping on error
     },
   });
 
@@ -466,6 +491,11 @@ export function BookImportDialog({
       });
       setCurrentStep('complete');
       queryClient.invalidateQueries({ queryKey: ['books'] });
+
+      // Call onSuccess callback to refresh the book list
+      if (onSuccess) {
+        onSuccess();
+      }
 
       if (result.importedRecords > 0) {
         toast.success(`Successfully imported ${result.importedRecords} books`);
@@ -499,12 +529,16 @@ export function BookImportDialog({
             ?.required || false,
       }));
 
-    setCurrentStep('importing');
+    setIsProcessingPreview(true);
+    // Don't change step to 'importing' during preview processing
+    // The 'importing' step should only be shown when actually importing books
+    // Stay on 'mapping' with a loading state until preview is ready
     previewImportMutation.mutate({
       file: selectedFile,
       fieldMappings: mappings,
+      skipHeaderRow,
     });
-  }, [selectedFile, fieldMapping, previewImportMutation]);
+  }, [selectedFile, fieldMapping, previewImportMutation, skipHeaderRow]);
 
   // Start import
   const handleImport = () => {
@@ -616,57 +650,56 @@ export function BookImportDialog({
             <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-lg">
               <div className="flex items-center gap-2 flex-1">
                 {['upload', 'mapping', 'preview', 'importing', 'complete'].map(
-                  (step, index) => (
-                    <Fragment key={step}>
-                      <div
-                        className={`flex items-center gap-2 ${
-                          currentStep === step
-                            ? 'text-primary'
-                            : [
-                                  'upload',
-                                  'mapping',
-                                  'preview',
-                                  'importing',
-                                  'complete',
-                                ].indexOf(currentStep) > index
-                              ? 'text-green-600'
-                              : 'text-muted-foreground'
-                        }`}
-                      >
+                  (step, index) => {
+                    const stepIndex = [
+                      'upload',
+                      'mapping',
+                      'preview',
+                      'importing',
+                      'complete',
+                    ].indexOf(currentStep);
+                    const isActive = currentStep === step;
+                    const isPast = stepIndex > index;
+                    const isComplete = step === 'complete' && isActive;
+
+                    return (
+                      <Fragment key={step}>
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                            currentStep === step
-                              ? 'bg-primary text-primary-foreground'
-                              : [
-                                    'upload',
-                                    'mapping',
-                                    'preview',
-                                    'importing',
-                                    'complete',
-                                  ].indexOf(currentStep) > index
-                                ? 'bg-green-600 text-white'
-                                : 'bg-muted'
+                          className={`flex items-center gap-2 ${
+                            isComplete
+                              ? 'text-green-600'
+                              : isActive
+                                ? 'text-primary'
+                                : isPast
+                                  ? 'text-green-600'
+                                  : 'text-muted-foreground'
                           }`}
                         >
-                          {[
-                            'upload',
-                            'mapping',
-                            'preview',
-                            'importing',
-                            'complete',
-                          ].indexOf(currentStep) > index ? (
-                            <CheckCircle className="h-4 w-4" />
-                          ) : (
-                            index + 1
-                          )}
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                              isComplete
+                                ? 'bg-green-600 text-white'
+                                : isActive
+                                  ? 'bg-primary text-primary-foreground'
+                                  : isPast
+                                    ? 'bg-green-600 text-white'
+                                    : 'bg-muted'
+                            }`}
+                          >
+                            {isPast || isComplete ? (
+                              <CheckCircle className="h-4 w-4" />
+                            ) : (
+                              index + 1
+                            )}
+                          </div>
+                          <span className="capitalize text-sm">{step}</span>
                         </div>
-                        <span className="capitalize text-sm">{step}</span>
-                      </div>
-                      {index < 4 && (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Fragment>
-                  )
+                        {index < 4 && (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Fragment>
+                    );
+                  }
                 )}
               </div>
             </div>
@@ -739,10 +772,27 @@ export function BookImportDialog({
 
             {/* Step 2: Field Mapping */}
             {currentStep === 'mapping' && (
-              <div className="space-y-6 p-6">
+              <div className="space-y-6 p-6 relative">
+                {isProcessingPreview && (
+                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-sm font-medium">
+                        Processing your data...
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        This may take a moment
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold">Map Fields</h3>
-                  <Button variant="outline" onClick={autoMapFields}>
+                  <Button
+                    variant="outline"
+                    onClick={autoMapFields}
+                    disabled={isProcessingPreview}
+                  >
                     <Settings className="h-4 w-4 mr-2" />
                     Auto Map
                   </Button>
@@ -972,13 +1022,19 @@ export function BookImportDialog({
               </div>
             )}
 
-            {/* Step 4: Importing */}
+            {/* Step 4: Importing/Processing */}
             {currentStep === 'importing' && (
               <div className="space-y-6 p-6 text-center">
                 <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
-                <h3 className="text-lg font-semibold">Importing Books</h3>
+                <h3 className="text-lg font-semibold">
+                  {isProcessingPreview
+                    ? 'Processing Preview'
+                    : 'Importing Books'}
+                </h3>
                 <p className="text-muted-foreground">
-                  Processing your file. This may take a moment...
+                  {isProcessingPreview
+                    ? 'Analyzing your file and validating data...'
+                    : 'Importing books into the database...'}
                 </p>
                 <div className="max-w-md mx-auto">
                   {/* Indeterminate progress bar */}
@@ -1083,16 +1139,25 @@ export function BookImportDialog({
                 <Button
                   variant="outline"
                   onClick={() => setCurrentStep('upload')}
+                  disabled={isProcessingPreview}
                 >
                   Back
                 </Button>
                 <Button
                   onClick={processImportedData}
                   disabled={
-                    Object.values(fieldMapping).filter(Boolean).length === 0
+                    Object.values(fieldMapping).filter(Boolean).length === 0 ||
+                    isProcessingPreview
                   }
                 >
-                  Continue to Preview
+                  {isProcessingPreview ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Continue to Preview'
+                  )}
                 </Button>
               </div>
             </div>

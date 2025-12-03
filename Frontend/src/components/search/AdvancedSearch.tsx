@@ -285,7 +285,7 @@ export default function AdvancedSearch() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="_Search for books, students, or activities..."
+                placeholder="Search for books, students, or activities..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && performSearch()}

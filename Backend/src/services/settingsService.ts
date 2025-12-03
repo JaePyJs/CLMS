@@ -1,5 +1,6 @@
 import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
+import { websocketServer } from '../websocket/websocketServer';
 
 export interface Setting {
   key: string;
@@ -286,45 +287,126 @@ export class SettingsService {
   }
 
   /**
-   * NUCLEAR RESET - Deletes EVERYTHING including students and books
-   * WARNING: This is destructive!
+   * NUCLEAR RESET - Complete database wipe for testing
+   * WARNING: This will delete EVERYTHING including students, books, equipment, users!
    */
-  static async resetDatabaseCompletely(): Promise<{
+  static async nuclearReset(): Promise<{
+    activitiesDeleted: number;
+    equipmentSessionsDeleted: number;
+    checkoutsDeleted: number;
     studentsDeleted: number;
     booksDeleted: number;
-    activitiesDeleted: number;
-    checkoutsDeleted: number;
+    equipmentDeleted: number;
+    usersDeleted: number;
   }> {
     try {
-      // 1. Delete all transactions first (foreign key constraints)
+      // Delete in order to respect foreign key constraints
+      // 1. Delete junction tables first
+      await prisma.student_activities_sections.deleteMany({});
+      await prisma.archived_activities_sections.deleteMany({});
+
+      // 2. Delete all student activities
       const deletedActivities = await prisma.student_activities.deleteMany({});
-      await prisma.equipment_sessions.deleteMany({});
+
+      // 3. Delete archived activities
+      await prisma.student_activities_archive.deleteMany({});
+
+      // 4. Delete all equipment sessions
+      const deletedEquipmentSessions =
+        await prisma.equipment_sessions.deleteMany({});
+
+      // 5. Delete all book checkouts
       const deletedCheckouts = await prisma.book_checkouts.deleteMany({});
 
-      // 2. Delete all students
+      // 6. Delete student scan stats and rewards
+      await prisma.student_scan_stats.deleteMany({});
+      await prisma.monthly_rewards.deleteMany({});
+
+      // 7. Delete printing jobs
+      await prisma.printing_jobs.deleteMany({});
+
+      // 8. Delete all students
       const deletedStudents = await prisma.students.deleteMany({});
 
-      // 3. Delete all books
+      // 9. Delete all books
       const deletedBooks = await prisma.books.deleteMany({});
 
-      // 4. Reset equipment status
-      await prisma.equipment.updateMany({
-        data: { status: 'AVAILABLE' },
+      // 10. Delete all equipment
+      const deletedEquipment = await prisma.equipment.deleteMany({});
+
+      // 11. Delete library sections BUT recreate default sections
+      await prisma.library_sections.deleteMany({});
+      
+      // Create default library sections that the system expects
+      await prisma.library_sections.createMany({
+        data: [
+          {
+            code: 'LIBRARY',
+            name: 'Main Library',
+            description: 'Main library reading area',
+            is_active: true,
+          },
+          {
+            code: 'COMPUTER',
+            name: 'Computer Section',
+            description: 'Computer and internet access area',
+            is_active: true,
+          },
+          {
+            code: 'STUDY',
+            name: 'Study Area',
+            description: 'Quiet study section',
+            is_active: true,
+          },
+        ],
       });
 
-      logger.warn('☢️ NUCLEAR DATABASE RESET COMPLETED', {
-        students: deletedStudents.count,
-        books: deletedBooks.count,
+      // 12. Delete announcements
+      await prisma.announcements.deleteMany({});
+
+      // 13. Delete all users EXCEPT the first librarian (keep at least one user)
+      const firstUser = await prisma.users.findFirst({
+        orderBy: { created_at: 'asc' },
+      });
+
+      const deletedUsers = await prisma.users.deleteMany({
+        where: {
+          id: { not: firstUser?.id || '' },
+        },
+      });
+
+      logger.warn('☢️ NUCLEAR RESET completed - ALL DATA WIPED', {
+        activitiesDeleted: deletedActivities.count,
+        equipmentSessionsDeleted: deletedEquipmentSessions.count,
+        checkoutsDeleted: deletedCheckouts.count,
+        studentsDeleted: deletedStudents.count,
+        booksDeleted: deletedBooks.count,
+        equipmentDeleted: deletedEquipment.count,
+        usersDeleted: deletedUsers.count,
+      });
+
+      // Broadcast nuclear reset to all connected clients to refresh their data
+      websocketServer.broadcastToAll({
+        id: `nuclear_reset_${Date.now()}`,
+        type: 'system:nuclear_reset',
+        data: {
+          message: 'System has been reset. Please refresh your data.',
+          timestamp: new Date().toISOString(),
+        },
+        timestamp: new Date(),
       });
 
       return {
+        activitiesDeleted: deletedActivities.count,
+        equipmentSessionsDeleted: deletedEquipmentSessions.count,
+        checkoutsDeleted: deletedCheckouts.count,
         studentsDeleted: deletedStudents.count,
         booksDeleted: deletedBooks.count,
-        activitiesDeleted: deletedActivities.count,
-        checkoutsDeleted: deletedCheckouts.count,
+        equipmentDeleted: deletedEquipment.count,
+        usersDeleted: deletedUsers.count,
       };
     } catch (error) {
-      logger.error('Error performing nuclear reset:', error);
+      logger.error('Error in nuclear reset:', error);
       throw error;
     }
   }

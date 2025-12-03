@@ -37,6 +37,7 @@ import {
   User,
   Users,
   Briefcase,
+  RotateCcw,
 } from 'lucide-react';
 import { StudentSearchDropdown } from './StudentSearchDropdown';
 
@@ -216,6 +217,27 @@ export default function PrintingTracker() {
     }
   };
 
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  const resetJobs = async () => {
+    setResetting(true);
+    try {
+      const res = await apiClient.delete('/api/printing/jobs/reset');
+      if (res.success) {
+        toast.success('Print job history cleared');
+        setJobs([]);
+        setShowResetConfirm(false);
+      } else {
+        toast.error(res.error || 'Failed to reset jobs');
+      }
+    } catch (e) {
+      toast.error(toUserMessage(e));
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const downloadReport = async () => {
     try {
       const response = await fetch(
@@ -327,11 +349,13 @@ export default function PrintingTracker() {
             {userType === 'STUDENT' || userType === 'PERSONNEL' ? (
               <div className="space-y-2">
                 <label className="text-sm font-medium">
-                  {userType === 'PERSONNEL' ? 'Personnel' : 'Student'}
+                  {userType === 'PERSONNEL' ? 'Personnel' : 'Student'} (Active
+                  Only)
                 </label>
                 <StudentSearchDropdown
                   onSelect={(s) => setStudentId(s.id)}
                   selectedStudentId={studentId}
+                  activeOnly={true}
                 />
               </div>
             ) : (
@@ -414,6 +438,50 @@ export default function PrintingTracker() {
         </Card>
       </div>
 
+      {/* Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md mx-4 shadow-2xl">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+              Reset Print Job History?
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              This will permanently delete all print job records.
+              <br />
+              <strong className="text-red-600 dark:text-red-400">
+                This action cannot be undone.
+              </strong>
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowResetConfirm(false)}
+                disabled={resetting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={resetJobs}
+                disabled={resetting}
+              >
+                {resetting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                    Resetting...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Reset
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Jobs History */}
       <Card className="shadow-md border-slate-200 dark:border-slate-800">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -424,9 +492,19 @@ export default function PrintingTracker() {
             </CardTitle>
             <CardDescription>Recent printing transactions</CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={downloadReport}>
-            <Download className="h-4 w-4 mr-2" /> Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowResetConfirm(true)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" /> Reset
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadReport}>
+              <Download className="h-4 w-4 mr-2" /> Export CSV
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="border rounded-md overflow-hidden">

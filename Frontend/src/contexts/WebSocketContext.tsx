@@ -105,11 +105,75 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   // Memoized event handlers to prevent infinite re-renders
   const handleMessage = useCallback((message: WebSocketMessage) => {
     switch (message.type) {
+      // Handle student check-in events (from attendance channel)
+      case 'student_checkin':
+      case 'attendance:checkin':
+        setRecentActivities((prev: RecentActivity[]) => {
+          const activityId =
+            (message.data as any).activityId || `checkin-${Date.now()}`;
+          // Deduplicate: check if activity with same ID or same student+type within 5 seconds already exists
+          const isDuplicate = prev.some((a) => {
+            if (a.id === activityId) return true;
+            const timeDiff = Math.abs(Date.now() - (a.timestamp || 0));
+            return (
+              a.studentId === (message.data as any).studentId &&
+              a.type === 'CHECK_IN' &&
+              timeDiff < 5000
+            );
+          });
+          if (isDuplicate) return prev;
+
+          const activity: RecentActivity = {
+            id: activityId,
+            type: 'CHECK_IN',
+            studentId: (message.data as any).studentId,
+            studentName: (message.data as any).studentName,
+            timestamp: Date.now(),
+            activityType: 'CHECK_IN',
+            ...message.data,
+          };
+          return [activity, ...prev.slice(0, 49)];
+        });
+        break;
+
+      // Handle student check-out events (from attendance channel)
+      case 'student_checkout':
+      case 'attendance:checkout':
+        setRecentActivities((prev: RecentActivity[]) => {
+          const activityId =
+            (message.data as any).activityId || `checkout-${Date.now()}`;
+          // Deduplicate: check if activity with same ID or same student+type within 5 seconds already exists
+          const isDuplicate = prev.some((a) => {
+            if (a.id === activityId) return true;
+            const timeDiff = Math.abs(Date.now() - (a.timestamp || 0));
+            return (
+              a.studentId === (message.data as any).studentId &&
+              a.type === 'CHECK_OUT' &&
+              timeDiff < 5000
+            );
+          });
+          if (isDuplicate) return prev;
+
+          const activity: RecentActivity = {
+            id: activityId,
+            type: 'CHECK_OUT',
+            studentId: (message.data as any).studentId,
+            studentName: (message.data as any).studentName,
+            timestamp: Date.now(),
+            activityType: 'CHECK_OUT',
+            ...message.data,
+          };
+          return [activity, ...prev.slice(0, 49)];
+        });
+        break;
+
       case 'student_activity_update':
-        setRecentActivities((prev: RecentActivity[]) => [
-          message.data as RecentActivity,
-          ...prev.slice(0, 49),
-        ]);
+        setRecentActivities((prev: RecentActivity[]) => {
+          const newActivity = message.data as RecentActivity;
+          // Deduplicate by ID
+          if (prev.some((a) => a.id === newActivity.id)) return prev;
+          return [newActivity, ...prev.slice(0, 49)];
+        });
         break;
       case 'equipment_status_update':
         setEquipmentStatus((prev: EquipmentStatus) => ({
@@ -158,7 +222,14 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   const wsOptions = useMemo(
     () => ({
       autoConnect: true,
-      subscriptions: ['activities', 'equipment', 'notifications', 'dashboard'],
+      // Subscribe to 'attendance' channel to receive student check-in/check-out events
+      subscriptions: [
+        'attendance',
+        'activities',
+        'equipment',
+        'notifications',
+        'dashboard',
+      ],
       onMessage: handleMessage,
       onError: handleError,
       onDisconnect: handleDisconnect,
@@ -257,14 +328,49 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   );
 }
 
+// Default/fallback context for when used outside provider (avoids throwing)
+const defaultContext: WebSocketContextType = {
+  isConnected: false,
+  isConnecting: false,
+  lastMessage: null,
+  connectionAttempts: 0,
+  error: null,
+  connect: () => {},
+  disconnect: () => {},
+  sendMessage: () => false,
+  subscribe: () => false,
+  unsubscribe: () => false,
+  requestDashboardData: () => false,
+  sendChatMessage: () => false,
+  triggerEmergencyAlert: () => false,
+  recentActivities: [],
+  equipmentStatus: {},
+  notifications: [],
+  dashboardData: {},
+  clearNotifications: () => {},
+  refreshDashboard: () => {},
+};
+
 export const useWebSocketContext = (): WebSocketContextType => {
   const context = useContext(WebSocketContext);
   if (context === undefined) {
+    // In development, warn but don't throw to handle HMR/StrictMode edge cases
+    if (import.meta.env.DEV) {
+      console.warn(
+        'useWebSocketContext called outside WebSocketProvider - returning default context'
+      );
+      return defaultContext;
+    }
     throw new Error(
       'useWebSocketContext must be used within a WebSocketProvider'
     );
   }
   return context;
+};
+
+// Optional version that never throws
+export const useWebSocketContextOptional = (): WebSocketContextType | null => {
+  return useContext(WebSocketContext) ?? null;
 };
 
 export default WebSocketProvider;

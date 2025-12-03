@@ -16,6 +16,12 @@ export interface RewardsGenerationResult {
   rewards: any[];
 }
 
+export interface LeaderboardResetResult {
+  success: boolean;
+  message: string;
+  recordsDeleted: number;
+}
+
 export const LeaderboardService = {
   getMonthlyLeaderboard: async (
     year: number,
@@ -37,6 +43,17 @@ export const LeaderboardService = {
     month: number
   ): Promise<RewardsGenerationResult> => {
     const response = await api.post('/leaderboard/rewards/generate', {
+      year,
+      month,
+    });
+    return response.data;
+  },
+
+  resetLeaderboard: async (
+    year?: number,
+    month?: number
+  ): Promise<LeaderboardResetResult> => {
+    const response = await api.post('/leaderboard/reset', {
       year,
       month,
     });

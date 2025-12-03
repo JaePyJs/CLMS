@@ -195,18 +195,25 @@ export const useUsbScanner = () => {
         return;
       }
 
-      // Ignore if user is typing in an input field (except our scanner input)
+      // Ignore if user is interacting with form elements or buttons
       const target = event.target as HTMLElement;
       const isInputField =
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
         target.isContentEditable;
 
+      // Don't intercept keyboard events on buttons, tabs, or other interactive elements
+      const isInteractiveElement =
+        target.tagName === 'BUTTON' ||
+        target.getAttribute('role') === 'tab' ||
+        target.getAttribute('role') === 'button' ||
+        target.closest('[role="tablist"]') !== null;
+
       // Allow scanning even in input fields if it's our dedicated scanner input
       const isScannerInput = target.id === 'usb-scanner-input';
 
-      if (isInputField && !isScannerInput) {
-        return; // Don't intercept typing in other input fields
+      if ((isInputField || isInteractiveElement) && !isScannerInput) {
+        return; // Don't intercept typing in form fields or clicks on interactive elements
       }
 
       // Clear existing timeout

@@ -6,20 +6,13 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
-enum PaperSize {
-  SHORT
-  LONG
-}
-
-enum ColorLevel {
-  BW
-  HALF_COLOR
-  FULL_COLOR
-}
+// SQLite doesn't support ENUMs - using String with comments for valid values
+// PaperSize: "SHORT" | "LONG"
+// ColorLevel: "BW" | "HALF_COLOR" | "FULL_COLOR"
 
 model users {
   id            String    @id @default(cuid())
@@ -36,15 +29,12 @@ model users {
   updated_at    DateTime  @updatedAt
 }
 
-enum UserType {
-  STUDENT
-  PERSONNEL
-}
+// UserType: "STUDENT" | "PERSONNEL" (SQLite doesn't support ENUMs)
 
 model students {
   id                 String               @id @default(cuid())
   student_id         String               @unique
-  type               UserType             @default(STUDENT)
+  type               String               @default("STUDENT") // "STUDENT" | "PERSONNEL"
   first_name         String
   last_name          String
   grade_level        Int
@@ -142,7 +132,7 @@ model student_activities {
   status        String                        @default("ACTIVE")
   student       students                      @relation(fields: [student_id], references: [id])
   session_id    String?
-  metadata      Json?
+  metadata      String? // JSON stored as text in SQLite
   sections      student_activities_sections[]
 
   @@unique([session_id])
@@ -183,7 +173,7 @@ model student_activities_archive {
   start_time      DateTime
   end_time        DateTime?
   status          String
-  metadata        Json?
+  metadata        String? // JSON stored as text in SQLite
   session_id      String?
   archived_at     DateTime  @default(now())
   archived_reason String    @default("DAILY_RESET") // DAILY_RESET, MANUAL_ARCHIVE, etc.
@@ -239,8 +229,8 @@ model fine_policies {
 
 model printing_pricing {
   id             String     @id @default(cuid())
-  paper_size     PaperSize
-  color_level    ColorLevel
+  paper_size     String // "SHORT" | "LONG"
+  color_level    String // "BW" | "HALF_COLOR" | "FULL_COLOR"
   price          Float
   currency       String     @default("PHP")
   effective_from DateTime   @default(now())
@@ -255,8 +245,8 @@ model printing_jobs {
   id             String     @id @default(cuid())
   student_id     String?
   guest_name     String?
-  paper_size     PaperSize
-  color_level    ColorLevel
+  paper_size     String // "SHORT" | "LONG"
+  color_level    String // "BW" | "HALF_COLOR" | "FULL_COLOR"
   pages          Int
   price_per_page Float
   total_cost     Float
@@ -264,7 +254,7 @@ model printing_jobs {
   receipt_no     String?
   created_at     DateTime   @default(now())
   paid_at        DateTime?
-  metadata       Json?
+  metadata       String? // JSON stored as text in SQLite
 
   student students? @relation(fields: [student_id], references: [id])
 
@@ -323,7 +313,7 @@ model app_notifications {
   read      Boolean   @default(false)
   readAt    DateTime?
   actionUrl String?
-  metadata  Json?
+  metadata  String? // JSON stored as text in SQLite
   createdAt DateTime  @default(now())
   expiresAt DateTime?
 

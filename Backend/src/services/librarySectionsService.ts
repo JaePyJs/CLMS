@@ -115,11 +115,13 @@ export class LibrarySectionsService {
 
   public static async ensureDefaultSections(): Promise<void> {
     const defaults: CreateSectionData[] = [
-      { code: 'AVR', name: 'Use of AVR' },
-      { code: 'COMPUTER', name: 'Use of Computer' },
-      { code: 'LIBRARY_SPACE', name: 'Use of Library Space' },
-      { code: 'BORROWING', name: 'Borrow Materials' },
-      { code: 'RECREATION', name: 'Use of Recreational Materials' },
+      { code: 'LIBRARY', name: 'Library', description: 'Main library area' },
+      {
+        code: 'COMPUTER',
+        name: 'Computer Area',
+        description: 'Computer lab section',
+      },
+      { code: 'STUDY', name: 'Study Area', description: 'Quiet study section' },
     ];
     for (const s of defaults) {
       try {

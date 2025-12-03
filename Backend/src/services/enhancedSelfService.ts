@@ -27,10 +27,10 @@ export class EnhancedSelfService {
   ): Promise<CheckInWithSectionsResult> {
     try {
       // Allow searching by student_id or barcode
-      const student = await prisma.students.findFirst({
+      // Note: We don't filter by is_active - student becomes active on first scan
+      let student = await prisma.students.findFirst({
         where: {
           OR: [{ barcode: scanData }, { student_id: scanData }],
-          is_active: true,
         },
       });
 
@@ -40,6 +40,18 @@ export class EnhancedSelfService {
           message: 'Student not found with this barcode or ID',
         };
       }
+
+      // Activate student on first scan if not already active
+      if (!student.is_active) {
+        student = await prisma.students.update({
+          where: { id: student.id },
+          data: { is_active: true },
+        });
+        logger.info('Student activated on first scan', {
+          studentId: student.student_id,
+        });
+      }
+
       const active = await prisma.student_activities.findFirst({
         where: { student_id: student.id, status: 'ACTIVE' },
         orderBy: { start_time: 'desc' },
@@ -138,6 +150,7 @@ export class EnhancedSelfService {
         activityId: activity.id,
         studentId: student.id,
         studentName: `${student.first_name} ${student.last_name}`,
+        gender: student.gender || undefined,
         checkinTime: activity.start_time.toISOString(),
         autoLogoutAt: new Date(
           activity.start_time.getTime() + 30 * 60000,
@@ -226,6 +239,7 @@ export class EnhancedSelfService {
         activityId: updated.id,
         studentId: student.id,
         studentName: `${student.first_name} ${student.last_name}`,
+        gender: student.gender || undefined,
         checkoutTime: endTime.toISOString(),
         reason: 'manual',
       });

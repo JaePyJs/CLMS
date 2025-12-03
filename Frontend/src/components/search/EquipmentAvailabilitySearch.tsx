@@ -478,7 +478,7 @@ export default function EquipmentAvailabilitySearch() {
                 <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
-                  placeholder="_Search by name, equipment ID, type, or location..."
+                  placeholder="Search by name, equipment ID, type, or location..."
                   value={query}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => query.length >= 2 && setShowSuggestions(true)}

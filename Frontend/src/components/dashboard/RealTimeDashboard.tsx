@@ -2,7 +2,14 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
+import { apiClient } from '@/lib/api';
 import {
   Monitor,
   Activity,
@@ -19,6 +26,7 @@ import {
   TrendingUp,
   Users,
   Book,
+  HelpCircle,
 } from 'lucide-react';
 import { ActiveStudentsManager } from './ActiveStudentsManager';
 
@@ -41,52 +49,138 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
   } = useWebSocketContext();
 
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [localActivities, setLocalActivities] = useState<any[]>([]);
+  const [localEquipment, setLocalEquipment] = useState<Record<string, any>>({});
+  const [localOverview, setLocalOverview] = useState<Record<
+    string,
+    any
+  > | null>(null);
+
+  // Fetch data via HTTP API as fallback
+  const fetchDataViaApi = async () => {
+    try {
+      // Fetch dashboard data including recent activities
+      const dashboardResp = await apiClient.get('/api/analytics/dashboard');
+      if (dashboardResp.success && dashboardResp.data) {
+        const data = dashboardResp.data as any;
+
+        // Store overview stats from API
+        if (data.overview || data.stats) {
+          setLocalOverview(data.overview || data.stats || data);
+        } else {
+          // If the API returns the stats directly
+          setLocalOverview({
+            totalStudents: data.totalStudents,
+            activeStudents: data.activeStudents,
+            totalBooks: data.totalBooks,
+            todayActivities: data.todayActivities,
+            activeEquipment: data.activeEquipment,
+          });
+        }
+
+        if (Array.isArray(data.recentActivities)) {
+          setLocalActivities(
+            data.recentActivities.map((a: any) => ({
+              id: a.id,
+              studentName: a.student
+                ? `${a.student.first_name} ${a.student.last_name}`
+                : 'Unknown',
+              activityType: a.activity_type,
+              timestamp: a.start_time,
+              studentId: a.student_id,
+            }))
+          );
+        }
+      }
+
+      // Fetch equipment status
+      const equipmentResp = await apiClient.get('/api/equipment');
+      if (equipmentResp.success && Array.isArray(equipmentResp.data)) {
+        const equipmentMap = (equipmentResp.data as any[]).reduce(
+          (acc: any, eq: any) => {
+            acc[eq.id] = {
+              equipmentName: eq.name,
+              equipmentType: eq.type,
+              status: eq.status,
+              userId: eq.current_user_id,
+            };
+            return acc;
+          },
+          {}
+        );
+        setLocalEquipment(equipmentMap);
+      }
+    } catch (error) {
+      console.error('[RealTimeDashboard] Failed to fetch via API:', error);
+    }
+  };
 
   // Initial data request when WebSocket connects
   useEffect(() => {
+    // Always fetch via API first for initial data
+    fetchDataViaApi();
+
+    // Also request via WebSocket if connected (for real-time updates)
     if (isConnected) {
-      // // console.log removed(
-      //   '[RealTimeDashboard] WebSocket connected, requesting initial data'
-      // );
       refreshDashboard('overview');
+      refreshDashboard('activities');
+      refreshDashboard('equipment');
     }
   }, [isConnected, refreshDashboard]);
 
   // Auto-refresh dashboard data
   useEffect(() => {
-    if (!isConnected || !autoRefresh) {
+    if (!autoRefresh) {
       return;
     }
 
     const interval = setInterval(() => {
-      refreshDashboard('overview');
-      refreshDashboard('activities');
-      refreshDashboard('equipment');
+      if (isConnected) {
+        refreshDashboard('overview');
+        refreshDashboard('activities');
+        refreshDashboard('equipment');
+      } else {
+        fetchDataViaApi();
+      }
     }, 30000); // Refresh every 30 seconds
 
     return () => clearInterval(interval);
   }, [isConnected, autoRefresh, refreshDashboard]);
 
-  // Calculate statistics from real-time data
-  const overview = dashboardData?.overview as
-    | Record<string, unknown>
-    | undefined;
-
-  // Debug logging
-  // Debug logging removed
+  // Calculate statistics from real-time data (prefer WebSocket, fallback to API)
+  const overview =
+    (dashboardData?.overview as Record<string, unknown> | undefined) ||
+    localOverview;
 
   const stats = {
     totalStudents:
-      Number(overview?.totalStudents ?? overview?.total_students) || 0,
+      Number(
+        overview?.totalStudents ??
+          overview?.total_students ??
+          overview?.students?.total
+      ) || 0,
     activeStudents:
-      Number(overview?.activeStudents ?? overview?.active_students) || 0,
-    totalBooks: Number(overview?.totalBooks ?? overview?.total_books) || 0,
+      Number(
+        overview?.activeStudents ??
+          overview?.active_students ??
+          overview?.students?.active
+      ) || 0,
+    totalBooks:
+      Number(
+        overview?.totalBooks ?? overview?.total_books ?? overview?.books?.total
+      ) || 0,
     todayActivities:
       Number(overview?.todayActivities ?? overview?.today_activities) ||
-      recentActivities.length,
+      recentActivities.length ||
+      localActivities.length,
     activeEquipment:
-      Number(overview?.activeEquipment ?? overview?.total_equipment) ||
-      Object.keys(equipmentStatus).length,
+      Number(
+        overview?.activeEquipment ??
+          overview?.total_equipment ??
+          overview?.equipment?.total
+      ) ||
+      Object.keys(equipmentStatus).length ||
+      Object.keys(localEquipment).length,
     activeConnections:
       Number(overview?.activeConnections ?? overview?.active_connections) || 0,
     systemLoad: Number(overview?.systemLoad ?? overview?.system_load) || 0,
@@ -215,9 +309,23 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
-                  Active Students
-                </p>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1 cursor-help">
+                        In Library
+                        <HelpCircle className="h-3 w-3" />
+                      </p>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs">
+                        Students currently checked into the library (not yet
+                        checked out). This is different from students who have
+                        borrowed books.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <p className="text-3xl font-bold text-indigo-700 dark:text-indigo-300">
                   {stats.activeStudents}
                 </p>
@@ -348,28 +456,39 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {recentActivities.length > 0 ? (
-                recentActivities.slice(0, 10).map((activity, index) => (
-                  <div
-                    key={`${activity.studentId}-${index}`}
-                    className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
-                  >
-                    {getActivityIcon(activity)}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">
-                        {String(activity.studentName)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {String(activity.activityType)}
-                        {activity.equipmentName &&
-                          ` • ${String(activity.equipmentName)}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(activity.timestamp).toLocaleTimeString()}
-                      </p>
+              {(recentActivities.length > 0
+                ? recentActivities
+                : localActivities
+              ).length > 0 ? (
+                (recentActivities.length > 0
+                  ? recentActivities
+                  : localActivities
+                )
+                  .slice(0, 10)
+                  .map((activity, index) => (
+                    <div
+                      key={
+                        activity.id ||
+                        `activity-${activity.studentId}-${activity.timestamp}-${index}`
+                      }
+                      className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+                    >
+                      {getActivityIcon(activity)}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">
+                          {String(activity.studentName)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {String(activity.activityType)}
+                          {activity.equipmentName &&
+                            ` • ${String(activity.equipmentName)}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {new Date(activity.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))
               ) : (
                 <div className="text-center py-8">
                   <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
@@ -395,54 +514,60 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {Object.keys(equipmentStatus).length > 0 ? (
-                Object.entries(equipmentStatus).map(
-                  ([equipmentId, status]: [string, any]) => (
-                    <div
-                      key={equipmentId}
-                      className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Monitor
-                          className={`h-4 w-4 ${getEquipmentStatusColor(status.status)}`}
-                        />
-                        <div>
-                          <p className="font-medium text-sm">
-                            {status.equipmentName || equipmentId}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {status.equipmentType}
-                          </p>
+              {(() => {
+                const combinedEquipment =
+                  Object.keys(equipmentStatus).length > 0
+                    ? equipmentStatus
+                    : localEquipment;
+                return Object.keys(combinedEquipment).length > 0 ? (
+                  Object.entries(combinedEquipment).map(
+                    ([equipmentId, status]: [string, any]) => (
+                      <div
+                        key={equipmentId}
+                        className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Monitor
+                            className={`h-4 w-4 ${getEquipmentStatusColor(status.status)}`}
+                          />
+                          <div>
+                            <p className="font-medium text-sm">
+                              {status.equipmentName || equipmentId}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {status.equipmentType}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge
+                            variant={
+                              status.status === 'AVAILABLE'
+                                ? 'default'
+                                : 'secondary'
+                            }
+                            className="text-xs"
+                          >
+                            {status.status?.replace('_', ' ') || 'Unknown'}
+                          </Badge>
+                          {status.userId && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              In use
+                            </p>
+                          )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Badge
-                          variant={
-                            status.status === 'AVAILABLE'
-                              ? 'default'
-                              : 'secondary'
-                          }
-                          className="text-xs"
-                        >
-                          {status.status.replace('_', ' ')}
-                        </Badge>
-                        {status.userId && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            In use
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                    )
                   )
-                )
-              ) : (
-                <div className="text-center py-8">
-                  <Monitor className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">
-                    No equipment data available
-                  </p>
-                </div>
-              )}
+                ) : (
+                  <div className="text-center py-8">
+                    <Monitor className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">
+                      No equipment data available
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>

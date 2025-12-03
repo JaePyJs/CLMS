@@ -10,7 +10,7 @@ const router = Router();
 router.get(
   '/',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get equipment request', {
       query: req.query,
@@ -31,7 +31,8 @@ router.get(
       const where: any = {};
 
       if (category) {
-        where.category = { contains: category, mode: 'insensitive' };
+        // SQLite case-insensitive search: use lowercase contains
+        where.category = { contains: category.toLowerCase() };
       }
 
       if (status) {
@@ -39,10 +40,12 @@ router.get(
       }
 
       if (search) {
+        // SQLite case-insensitive search: use lowercase contains
+        const searchLower = search.toLowerCase();
         where.OR = [
-          { name: { contains: search, mode: 'insensitive' } },
-          { serial_number: { contains: search, mode: 'insensitive' } },
-          { category: { contains: search, mode: 'insensitive' } },
+          { name: { contains: searchLower } },
+          { serial_number: { contains: searchLower } },
+          { category: { contains: searchLower } },
         ];
       }
 
@@ -72,18 +75,25 @@ router.get(
       // Map sessions to equipment
       const equipmentWithSessions = equipment.map(eq => {
         const session = activeSessions.find(s => {
-          const meta = (s as any).metadata;
+          if (!s.metadata) {
+            return false;
+          }
+          const meta = JSON.parse(s.metadata as string);
           return meta && meta.equipmentId === eq.id;
         });
 
+        // Transform status: lowercase and replace underscores with hyphens for frontend compatibility
+        const normalizedStatus = eq.status.toLowerCase().replace(/_/g, '-');
         const transformedEq = {
           ...eq,
-          status: eq.status.toLowerCase(),
+          status: normalizedStatus,
           type: eq.category?.toLowerCase() || 'computer',
         };
 
         if (session) {
-          const meta = (session as any).metadata;
+          const meta = session.metadata
+            ? JSON.parse(session.metadata as string)
+            : {};
           const startTime = new Date(session.start_time);
           const timeLimit = meta.timeLimitMinutes || 60;
           const elapsedMinutes = Math.floor(
@@ -97,6 +107,7 @@ router.get(
               id: session.id,
               studentId: session.student.student_id,
               studentName: `${session.student.first_name} ${session.student.last_name}`,
+              gradeLevel: session.student.grade_level || '',
               startTime: session.start_time,
               timeLimitMinutes: timeLimit,
               remainingMinutes: remainingMinutes,
@@ -129,7 +140,7 @@ router.get(
 router.get(
   '/:id',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get equipment by ID request', {
       equipmentId: req.params['id'],
@@ -166,7 +177,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Create equipment request', {
       name: req.body.name,
@@ -207,7 +218,7 @@ router.post(
 router.put(
   '/:id',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Update equipment request', {
       equipmentId: req.params['id'],
@@ -245,7 +256,7 @@ router.put(
 router.patch(
   '/:id',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Partial update equipment request', {
       equipmentId: req.params['id'],
@@ -283,7 +294,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Delete equipment request', {
       equipmentId: req.params['id'],
@@ -427,14 +438,14 @@ router.post(
             activity_type: 'EQUIPMENT_USE',
             description: `Using equipment: ${equipment.name}`,
             status: 'ACTIVE',
-            metadata: {
+            metadata: JSON.stringify({
               equipmentId: equipment.id,
               equipmentName: equipment.name,
               timeLimitMinutes: timeLimitMinutes || 60,
               startTime: new Date().toISOString(),
               studentName: `${student.first_name} ${student.last_name}`,
-            },
-          } as any,
+            }),
+          },
         });
 
         logger.info(`✅ Session created: ${session.id}`);
@@ -497,25 +508,42 @@ router.post(
 router.get(
   '/:id/sessions',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     try {
-      const sessions = await prisma.student_activities.findMany({
+      const equipmentId = req.params['id'];
+
+      // SQLite doesn't support JSON path queries, so we fetch and filter in JS
+      const allSessions = await prisma.student_activities.findMany({
         where: {
           activity_type: 'EQUIPMENT_USE',
-          metadata: {
-            path: ['equipmentId'],
-            equals: req.params['id'],
-          },
-        } as any,
+        },
         include: {
           student: true,
         },
         orderBy: {
           start_time: 'desc',
         },
-        take: 50, // Limit to last 50 sessions
+        take: 200, // Fetch more to filter
       });
+
+      // Filter sessions that have matching equipmentId in metadata
+      const sessions = allSessions
+        .filter(session => {
+          if (!session.metadata) {
+            return false;
+          }
+          try {
+            const metadata =
+              typeof session.metadata === 'string'
+                ? JSON.parse(session.metadata)
+                : session.metadata;
+            return metadata?.equipmentId === equipmentId;
+          } catch {
+            return false;
+          }
+        })
+        .slice(0, 50); // Limit to 50 after filtering
 
       res.json({
         success: true,
@@ -563,7 +591,10 @@ router.post(
         });
 
         // Update equipment status
-        const metadata = (session as any).metadata;
+        // Parse metadata from string
+        const metadata = session.metadata
+          ? JSON.parse(session.metadata as string)
+          : {};
         if (metadata?.equipmentId) {
           await tx.equipment.update({
             where: { id: metadata.equipmentId },
@@ -618,18 +649,20 @@ router.post(
         return;
       }
 
-      const metadata = (session as any).metadata || {};
-      const currentLimit = metadata.timeLimitMinutes || 60;
+      const existingMeta = session.metadata
+        ? JSON.parse(session.metadata as string)
+        : {};
+      const currentLimit = existingMeta.timeLimitMinutes || 60;
       const newLimit = currentLimit + (additionalMinutes || 15);
 
       const updatedSession = await prisma.student_activities.update({
         where: { id: sessionId },
         data: {
-          metadata: {
-            ...metadata,
+          metadata: JSON.stringify({
+            ...existingMeta,
             timeLimitMinutes: newLimit,
-          },
-        } as any,
+          }),
+        },
       });
 
       res.json({ success: true, data: updatedSession });

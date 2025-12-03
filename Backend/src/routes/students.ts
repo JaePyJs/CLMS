@@ -27,7 +27,7 @@ const router = Router({ caseSensitive: false });
 router.get(
   '/',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -140,22 +140,101 @@ router.get(
   }),
 );
 
+// GET /api/v1/students/search - Search students (query parameter format)
+// NOTE: This route MUST be defined BEFORE /:id to prevent route conflicts
+router.get(
+  '/search',
+  authenticate,
+  requireRole(['LIBRARIAN']),
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const query = req.query.q as string;
+    const { limit = 50, offset = 0 } = req.query;
+
+    if (!query) {
+      res.status(400).json({
+        success: false,
+        message: 'Query parameter "q" is required',
+      });
+      return;
+    }
+
+    try {
+      logger.info('Search students request (query format)', {
+        query,
+        limit,
+        offset,
+        userId: req.user?.userId,
+        ip: req.ip,
+      });
+
+      // For case-insensitive search in SQLite, search both lowercase and original
+      const searchQuery = query.toLowerCase();
+      const searchOriginal = query;
+      const students = await prisma.students.findMany({
+        where: {
+          OR: [
+            { first_name: { contains: searchQuery } },
+            { first_name: { contains: searchOriginal } },
+            { last_name: { contains: searchQuery } },
+            { last_name: { contains: searchOriginal } },
+            { student_id: { contains: searchQuery } },
+            { student_id: { contains: searchOriginal } },
+            { email: { contains: searchQuery } },
+            { email: { contains: searchOriginal } },
+          ],
+        },
+        take: Number(limit) * 2, // Fetch more to account for potential duplicates
+        skip: Number(offset),
+        orderBy: { last_name: 'asc' },
+      });
+
+      // Deduplicate results
+      const uniqueStudents = students
+        .filter((s, idx, arr) => arr.findIndex(x => x.id === s.id) === idx)
+        .slice(0, Number(limit));
+
+      logger.info('Students search completed (query format)', {
+        query,
+        count: uniqueStudents.length,
+      });
+
+      res.json({
+        success: true,
+        data: uniqueStudents,
+        count: uniqueStudents.length,
+      });
+    } catch (error) {
+      logger.error('Search students failed', {
+        query,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to search students',
+        code: 'SEARCH_STUDENTS_FAILED',
+      });
+    }
+  }),
+);
+
 // GET /api/v1/students/:id - Get student by ID
 router.get(
   '/:id',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
-  asyncHandler(async (req: Request, res: Response, next): Promise<void> => {
+  requireRole(['LIBRARIAN']),
+  asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
     const { id } = req.params;
-    if (id.toLowerCase() === 'search') {
-      next();
-      return;
-    }
 
     // Validate ID parameter
     if (!id) {
@@ -229,7 +308,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -324,7 +403,7 @@ router.post(
 router.put(
   '/:id',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -362,6 +441,15 @@ router.put(
       'equipment_ban_reason',
       'equipment_ban_until',
       'fine_balance',
+      'notes',
+      'student_id',
+      'barcode',
+      'email',
+      'phone',
+      'address',
+      'guardian_name',
+      'guardian_phone',
+      'guardian_email',
     ];
     const updateFields = Object.keys(updateData).filter(field =>
       allowedFields.includes(field),
@@ -512,77 +600,6 @@ router.delete(
         success: false,
         message: 'Failed to delete student',
         code: 'DELETE_STUDENT_FAILED',
-      });
-    }
-  }),
-);
-
-// GET /api/v1/students/search - Search students (query parameter format)
-router.get(
-  '/search',
-  authenticate,
-  requireRole(['LIBRARIAN']),
-  asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    if (!req.user) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
-    const query = req.query.q as string;
-    const { limit = 50, offset = 0 } = req.query;
-
-    if (!query) {
-      res.status(400).json({
-        success: false,
-        message: 'Query parameter "q" is required',
-      });
-      return;
-    }
-
-    try {
-      logger.info('Search students request (query format)', {
-        query,
-        limit,
-        offset,
-        userId: req.user?.userId,
-        ip: req.ip,
-      });
-
-      const searchQuery = query.toLowerCase();
-      const students = await prisma.students.findMany({
-        where: {
-          OR: [
-            { first_name: { contains: searchQuery } },
-            { last_name: { contains: searchQuery } },
-            { student_id: { contains: searchQuery } },
-            { email: { contains: searchQuery } },
-          ],
-        },
-        take: Number(limit),
-        skip: Number(offset),
-        orderBy: { last_name: 'asc' },
-      });
-
-      logger.info('Students search completed (query format)', {
-        query,
-        count: students.length,
-      });
-
-      res.json({
-        success: true,
-        data: students,
-        count: students.length,
-      });
-    } catch (error) {
-      logger.error('Search students failed', {
-        query,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-
-      res.status(500).json({
-        success: false,
-        message: 'Failed to search students',
-        code: 'SEARCH_STUDENTS_FAILED',
       });
     }
   }),

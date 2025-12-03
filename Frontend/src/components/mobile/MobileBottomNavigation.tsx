@@ -20,6 +20,7 @@ import {
   Laptop,
   BarChart,
   Settings,
+  ClipboardList,
 } from 'lucide-react';
 import type { AppNotification } from '@/services/notificationApi';
 
@@ -73,24 +74,31 @@ const mobileNavigationItems: NavigationItem[] = [
 
 const moreNavigationItems: NavigationItem[] = [
   {
+    id: 'attendance',
+    label: 'Attendance',
+    icon: ClipboardList,
+    shortcut: '6',
+    color: 'text-emerald-500',
+  },
+  {
     id: 'equipment',
     label: 'Equipment',
     icon: Laptop,
-    shortcut: '6',
+    shortcut: '7',
     color: 'text-teal-500',
   },
   {
     id: 'analytics',
     label: 'Analytics',
     icon: BarChart,
-    shortcut: '7',
+    shortcut: '8',
     color: 'text-pink-500',
   },
   {
     id: 'settings',
     label: 'Settings',
     icon: Settings,
-    shortcut: '8',
+    shortcut: '9',
     color: 'text-gray-500',
   },
 ];

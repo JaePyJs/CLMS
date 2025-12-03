@@ -90,6 +90,16 @@ interface UseAttendanceWebSocketReturn {
  */
 export const useAttendanceWebSocket = (): UseAttendanceWebSocketReturn => {
   const ws = useWebSocketSubscription('attendance');
+
+  // Debug: log all messages
+  if (ws.messages.length > 0) {
+    console.info(
+      '[useAttendanceWebSocket] All messages:',
+      ws.messages.length,
+      ws.messages.map((m) => m.type)
+    );
+  }
+
   const filtered = ws.messages.filter(
     (m) =>
       m.type === 'student_checkin' ||
@@ -104,6 +114,16 @@ export const useAttendanceWebSocket = (): UseAttendanceWebSocketReturn => {
       m.type === 'attendance:occupancy' ||
       m.type === 'announcement:config'
   ) as unknown as AttendanceWebSocketEvent[];
+
+  // Debug: log filtered events
+  if (filtered.length > 0) {
+    console.info(
+      '[useAttendanceWebSocket] Filtered events:',
+      filtered.length,
+      filtered.map((e) => e.type)
+    );
+  }
+
   const reconnect = useCallback(() => {
     ws.disconnect();
     ws.connect();

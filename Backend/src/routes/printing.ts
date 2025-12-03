@@ -190,4 +190,26 @@ router.post(
   }),
 );
 
+// DELETE /api/printing/jobs/reset - Reset/clear all print job history
+router.delete(
+  '/jobs/reset',
+  authenticate,
+  asyncHandler(async (_req: Request, res: Response) => {
+    try {
+      await PrintingService.resetAllJobs();
+      res.json({ success: true, message: 'Print job history cleared' });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to reset print jobs',
+        error: isDevelopment()
+          ? error instanceof Error
+            ? error.message
+            : String(error)
+          : undefined,
+      });
+    }
+  }),
+);
+
 export default router;

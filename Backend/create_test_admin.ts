@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -6,7 +7,8 @@ const prisma = new PrismaClient();
 async function main() {
   try {
     const password = 'password123';
-    const hash = await bcrypt.hash(password, 12);
+    const rounds = parseInt(process.env.BCRYPT_ROUNDS || '12');
+    const hash = await bcrypt.hash(password, rounds);
 
     const user = await prisma.users.upsert({
       where: { username: 'admin_test' },

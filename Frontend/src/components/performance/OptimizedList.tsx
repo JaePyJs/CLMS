@@ -719,7 +719,7 @@ export const StudentList = (
         ],
       },
     ]}
-    searchPlaceholder="_Search students by name, LRN, or grade..."
+    searchPlaceholder="Search students by name, LRN, or grade..."
   />
 );
 
@@ -759,7 +759,7 @@ export const BookList = (
         ],
       },
     ]}
-    searchPlaceholder="_Search books by title, author, or accession number..."
+    searchPlaceholder="Search books by title, author, or accession number..."
   />
 );
 
@@ -799,7 +799,7 @@ export const EquipmentList = (
         ],
       },
     ]}
-    searchPlaceholder="_Search equipment by name, category, or serial number..."
+    searchPlaceholder="Search equipment by name, category, or serial number..."
   />
 );
 

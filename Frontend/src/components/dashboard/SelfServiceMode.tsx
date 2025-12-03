@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -14,10 +14,16 @@ import {
   Users,
   Gamepad2,
   ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { kioskApi, type KioskStudent } from '@/services/kioskApi';
 import { getErrorMessage } from '@/utils/errorHandling';
+import {
+  KioskCheckeredBackground,
+  KioskCharacter,
+  KioskSchoolHeader,
+} from '@/components/kiosk';
 
 // Idle timeout in milliseconds (15 minutes)
 const IDLE_TIMEOUT = 15 * 60 * 1000;
@@ -38,6 +44,11 @@ const PURPOSES = [
   { id: 'borrowing', label: 'Borrow Materials', icon: BookOpen },
   { id: 'recreation', label: 'Use of Recreational Materials', icon: Gamepad2 },
 ];
+
+// Helper to get first name from combined name
+const getFirstName = (fullName: string): string => {
+  return fullName?.split(' ')[0] || 'Student';
+};
 
 export default function SelfServiceMode() {
   const [state, setState] = useState<KioskState>('IDLE');
@@ -131,11 +142,15 @@ export default function SelfServiceMode() {
   }, [isIdle, announcements]);
 
   const playSound = (success: boolean) => {
-    const audio = new Audio(
-      success ? '/sounds/success.mp3' : '/sounds/error.mp3'
-    );
-    audio.volume = 0.5;
-    audio.play().catch(() => {});
+    try {
+      const audio = new Audio(
+        success ? '/sounds/success.mp3' : '/sounds/error.mp3'
+      );
+      audio.volume = 0.5;
+      audio.play().catch(() => {});
+    } catch {
+      // Audio not available - silently ignore
+    }
   };
 
   const handleScan = async (scannedValue: string) => {
@@ -248,50 +263,134 @@ export default function SelfServiceMode() {
     }
   };
 
-  // Render Idle Screen
+  // Render Idle Screen with beautiful design
   if (isIdle) {
     const currentAnnouncement = announcements[currentAnnouncementIndex];
     return (
-      <div className="fixed inset-0 z-50 bg-black text-white flex flex-col items-center justify-center p-8 cursor-none">
-        <div className="absolute top-8 left-8">
-          <h1 className="text-4xl font-bold text-primary">Library Kiosk</h1>
-        </div>
-        <div className="max-w-4xl text-center space-y-8 animate-in fade-in duration-1000">
-          <h2 className="text-6xl font-bold">{currentAnnouncement?.title}</h2>
-          <p className="text-3xl text-gray-300">
-            {currentAnnouncement?.content}
-          </p>
-        </div>
-        <div className="absolute bottom-8 animate-bounce">
-          <p className="text-xl text-gray-400">
-            Tap screen or scan ID to start
-          </p>
+      <div className="fixed inset-0 z-50 overflow-hidden cursor-none">
+        <KioskCheckeredBackground />
+
+        {/* Characters */}
+        <KioskCharacter
+          gender="girl"
+          side="left"
+          showBooks
+          animationType="float"
+        />
+        <KioskCharacter
+          gender="boy"
+          side="right"
+          showBooks
+          animationType="bounce"
+        />
+
+        {/* Content */}
+        <div className="relative z-10 h-full flex flex-col items-center justify-center p-8">
+          <KioskSchoolHeader
+            title="SHJCS Library"
+            subtitle="Sacred Heart of Jesus Catholic School"
+          />
+
+          <motion.div
+            className="mt-12 max-w-4xl text-center space-y-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            key={currentAnnouncementIndex}
+          >
+            <h2
+              className="text-5xl sm:text-6xl lg:text-7xl font-black text-white tracking-wide"
+              style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.5)' }}
+            >
+              {currentAnnouncement?.title || 'Welcome'}
+            </h2>
+            <p
+              className="text-2xl sm:text-3xl text-white/90"
+              style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.4)' }}
+            >
+              {currentAnnouncement?.content || 'Please scan your ID to enter'}
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="absolute bottom-12 flex items-center gap-3"
+            animate={{ y: [0, -10, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <Scan className="w-8 h-8 text-white" />
+            <p className="text-xl text-white/80">
+              Tap screen or scan ID to start
+            </p>
+          </motion.div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 p-4">
-      <Card className="w-full max-w-3xl shadow-2xl min-h-[600px] flex flex-col">
-        <CardHeader className="text-center border-b">
-          <CardTitle className="text-3xl font-bold">
-            Library Kiosk System
-          </CardTitle>
-        </CardHeader>
+    <div className="fixed inset-0 overflow-hidden">
+      <KioskCheckeredBackground />
 
-        <CardContent className="flex-1 flex flex-col items-center justify-center p-8 space-y-8">
+      {/* Characters on sides */}
+      <KioskCharacter
+        gender="girl"
+        side="left"
+        showBooks={
+          state === 'IDLE' || state === 'WELCOME' || state === 'CHECKED_OUT'
+        }
+      />
+      <KioskCharacter
+        gender="boy"
+        side="right"
+        showBooks={
+          state === 'IDLE' || state === 'WELCOME' || state === 'CHECKED_OUT'
+        }
+      />
+
+      {/* Main Content Area */}
+      <div className="relative z-10 h-full flex flex-col items-center justify-center p-4 sm:p-8">
+        {/* Header */}
+        <div className="absolute top-4 sm:top-8">
+          <KioskSchoolHeader title="SHJCS Library" showLogo />
+        </div>
+
+        {/* Content */}
+        <AnimatePresence mode="wait">
           {state === 'IDLE' && (
-            <div className="w-full max-w-md space-y-8 text-center">
-              <div className="w-32 h-32 bg-primary/10 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                <Scan className="w-16 h-16 text-primary" />
-              </div>
+            <motion.div
+              key="idle"
+              className="w-full max-w-lg space-y-8 text-center"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+            >
+              {/* Scan Icon */}
+              <motion.div
+                className="w-32 h-32 sm:w-40 sm:h-40 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto border-4 border-white/30"
+                animate={{
+                  scale: [1, 1.05, 1],
+                  boxShadow: [
+                    '0 0 30px rgba(255,255,255,0.3)',
+                    '0 0 60px rgba(255,255,255,0.5)',
+                    '0 0 30px rgba(255,255,255,0.3)',
+                  ],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <Scan className="w-16 h-16 sm:w-20 sm:h-20 text-white" />
+              </motion.div>
+
               <div>
-                <h2 className="text-2xl font-semibold mb-2">Tap Your ID</h2>
-                <p className="text-muted-foreground">
+                <h2
+                  className="text-3xl sm:text-4xl font-bold text-white mb-3"
+                  style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}
+                >
+                  TAP YOUR ID
+                </h2>
+                <p className="text-lg sm:text-xl text-white/80">
                   Please scan your student ID to proceed
                 </p>
               </div>
+
               <Input
                 ref={inputRef}
                 value={studentId}
@@ -301,196 +400,345 @@ export default function SelfServiceMode() {
                     handleScan(studentId);
                   }
                 }}
-                className="text-center text-2xl py-6"
+                className="text-center text-2xl py-6 bg-white/90 backdrop-blur-sm border-0 shadow-2xl max-w-md mx-auto"
                 placeholder="Scanning..."
                 autoFocus
               />
-            </div>
+            </motion.div>
           )}
 
           {state === 'IDENTIFIED' && student && (
-            <div className="w-full max-w-2xl space-y-8 animate-in fade-in slide-in-from-right">
-              <div className="text-center space-y-4">
-                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                  <UserCheck className="w-12 h-12 text-green-600" />
-                </div>
-                <h2 className="text-3xl font-bold">
-                  Hello, {student.firstName}!
+            <motion.div
+              key="identified"
+              className="w-full max-w-2xl space-y-8 text-center"
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -100 }}
+            >
+              <motion.div
+                className="w-28 h-28 sm:w-32 sm:h-32 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-2xl"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', bounce: 0.5 }}
+              >
+                <UserCheck className="w-14 h-14 sm:w-16 sm:h-16 text-white" />
+              </motion.div>
+
+              <div>
+                <h2
+                  className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-wider"
+                  style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.5)' }}
+                >
+                  HELLO, {getFirstName(student.name).toUpperCase()}!
                 </h2>
-                <div className="flex justify-center gap-4">
-                  <Badge variant="secondary" className="text-lg px-4 py-1">
+                <div className="flex justify-center gap-4 mt-4">
+                  <Badge className="text-lg px-6 py-2 bg-white/20 text-white border-white/30">
                     {student.gradeLevel}
                   </Badge>
-                  <Badge variant="outline" className="text-lg px-4 py-1">
+                  <Badge className="text-lg px-6 py-2 bg-white/20 text-white border-white/30">
                     {student.section || 'No Section'}
                   </Badge>
                 </div>
               </div>
-              <div className="flex justify-center">
-                <Button
-                  size="lg"
-                  className="text-xl px-12 py-6"
-                  onClick={() => setState('PURPOSE')}
-                >
-                  Proceed <ArrowRight className="ml-2 h-6 w-6" />
-                </Button>
-              </div>
-            </div>
+
+              <Button
+                size="lg"
+                className="text-xl px-12 py-8 bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xl"
+                onClick={() => setState('PURPOSE')}
+              >
+                Proceed <ArrowRight className="ml-3 h-6 w-6" />
+              </Button>
+            </motion.div>
           )}
 
           {state === 'PURPOSE' && (
-            <div className="w-full space-y-6 animate-in fade-in slide-in-from-right">
+            <motion.div
+              key="purpose"
+              className="w-full max-w-4xl space-y-6"
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -100 }}
+            >
               <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold">Select Purpose of Visit</h2>
-                <p className="text-muted-foreground">
+                <h2
+                  className="text-3xl sm:text-4xl font-bold text-white"
+                  style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}
+                >
+                  SELECT PURPOSE OF VISIT
+                </h2>
+                <p className="text-lg text-white/80 mt-2">
                   You can select multiple activities
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {PURPOSES.map((purpose) => {
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {PURPOSES.map((purpose, index) => {
                   const Icon = purpose.icon;
                   const isSelected = selectedPurposes.includes(purpose.id);
                   return (
-                    <div
+                    <motion.div
                       key={purpose.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
                       onClick={() => handlePurposeSelect(purpose.id)}
                       className={`
-                        cursor-pointer p-6 rounded-xl border-2 transition-all duration-200 flex items-center gap-4
+                        cursor-pointer p-6 rounded-2xl border-4 transition-all duration-300 flex items-center gap-4
+                        backdrop-blur-sm shadow-xl
                         ${
                           isSelected
-                            ? 'border-primary bg-primary/5 shadow-lg scale-105'
-                            : 'border-transparent bg-secondary hover:bg-secondary/80'
+                            ? 'border-emerald-400 bg-emerald-500/30 scale-105'
+                            : 'border-white/30 bg-white/10 hover:bg-white/20'
                         }
                       `}
                     >
                       <div
-                        className={`p-3 rounded-full ${isSelected ? 'bg-primary text-white' : 'bg-background'}`}
+                        className={`p-3 rounded-full ${isSelected ? 'bg-emerald-500' : 'bg-white/20'}`}
                       >
-                        <Icon className="w-6 h-6" />
+                        <Icon className="w-6 h-6 text-white" />
                       </div>
-                      <span className="font-semibold text-lg">
+                      <span className="font-semibold text-lg text-white">
                         {purpose.label}
                       </span>
                       {isSelected && (
-                        <CheckCircle className="w-6 h-6 text-primary ml-auto" />
+                        <CheckCircle className="w-6 h-6 text-emerald-400 ml-auto" />
                       )}
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
-              <div className="flex justify-between pt-8">
+
+              <div className="flex justify-between pt-6">
                 <Button
                   variant="ghost"
                   size="lg"
+                  className="text-white hover:bg-white/10"
                   onClick={() => setState('IDLE')}
                 >
                   Cancel
                 </Button>
                 <Button
                   size="lg"
-                  className="text-xl px-12"
+                  className="text-xl px-12 bg-emerald-600 hover:bg-emerald-700"
                   disabled={selectedPurposes.length === 0}
                   onClick={() => setState('CONFIRM')}
                 >
                   Confirm Selection
                 </Button>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {state === 'CONFIRM' && (
-            <div className="w-full max-w-md space-y-8 text-center animate-in fade-in zoom-in">
-              <h2 className="text-2xl font-bold">Confirm Your Visit</h2>
-              <div className="bg-secondary/50 p-6 rounded-xl space-y-4">
-                <p className="text-muted-foreground">Selected Activities:</p>
+            <motion.div
+              key="confirm"
+              className="w-full max-w-md space-y-8 text-center"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+            >
+              <h2
+                className="text-3xl sm:text-4xl font-bold text-white"
+                style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}
+              >
+                CONFIRM YOUR VISIT
+              </h2>
+
+              <div className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl space-y-4 border border-white/20">
+                <p className="text-white/70">Selected Activities:</p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {selectedPurposes.map((id) => {
                     const p = PURPOSES.find((p) => p.id === id);
                     return (
-                      <Badge key={id} className="text-lg px-3 py-1">
+                      <Badge
+                        key={id}
+                        className="text-lg px-4 py-2 bg-emerald-500/50 text-white"
+                      >
                         {p?.label}
                       </Badge>
                     );
                   })}
                 </div>
               </div>
+
               <div className="flex gap-4 justify-center">
                 <Button
                   variant="outline"
                   size="lg"
-                  className="w-32"
+                  className="w-32 bg-white/10 border-white/30 text-white hover:bg-white/20"
                   onClick={() => setState('PURPOSE')}
                 >
                   Back
                 </Button>
                 <Button
                   size="lg"
-                  className="w-32"
+                  className="w-32 bg-emerald-600 hover:bg-emerald-700"
                   onClick={handleConfirmCheckIn}
                   disabled={loading}
                 >
                   {loading ? 'Processing...' : 'Confirm'}
                 </Button>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {state === 'WELCOME' && student && (
-            <div className="text-center space-y-6 animate-in fade-in zoom-in duration-500">
-              <div className="w-32 h-32 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle className="w-20 h-20 text-green-600" />
-              </div>
+            <motion.div
+              key="welcome"
+              className="text-center space-y-6"
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: 'spring', bounce: 0.4 }}
+            >
+              {/* Success icon with glow */}
+              <motion.div
+                className="w-36 h-36 sm:w-44 sm:h-44 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-2xl"
+                animate={{
+                  boxShadow: [
+                    '0 0 40px rgba(16, 185, 129, 0.5)',
+                    '0 0 80px rgba(16, 185, 129, 0.8)',
+                    '0 0 40px rgba(16, 185, 129, 0.5)',
+                  ],
+                }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                <CheckCircle className="w-20 h-20 sm:w-24 sm:h-24 text-white" />
+              </motion.div>
+
               <div>
-                <h2 className="text-4xl font-bold text-green-700">
-                  Welcome, {student.firstName}!
-                </h2>
-                <p className="text-xl text-muted-foreground mt-2">
-                  You are now logged in.
-                </p>
+                <motion.h2
+                  className="text-5xl sm:text-6xl lg:text-7xl font-black text-white tracking-wider"
+                  style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.5)' }}
+                  initial={{ y: 20 }}
+                  animate={{ y: 0 }}
+                >
+                  WELCOME, {getFirstName(student.name).toUpperCase()}!
+                </motion.h2>
+                <motion.p
+                  className="text-2xl sm:text-3xl text-white/90 mt-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  Happy Reading! 📚
+                </motion.p>
               </div>
-              <div className="pt-8">
-                <p className="text-sm text-muted-foreground">
-                  Returning to home screen...
-                </p>
+
+              {/* Sparkles animation */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                {[...Array(8)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute"
+                    style={{
+                      left: `${15 + Math.random() * 70}%`,
+                      top: `${20 + Math.random() * 60}%`,
+                    }}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{
+                      scale: [0, 1, 0],
+                      opacity: [0, 1, 0],
+                      y: [0, -40],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      delay: i * 0.2,
+                    }}
+                  >
+                    <Sparkles className="w-6 h-6 text-yellow-300" />
+                  </motion.div>
+                ))}
               </div>
-            </div>
+
+              <p className="text-white/60 mt-8">Returning to home screen...</p>
+            </motion.div>
           )}
 
           {state === 'CHECKED_OUT' && student && (
-            <div className="text-center space-y-6 animate-in fade-in zoom-in duration-500">
-              <div className="w-32 h-32 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
-                <LogOut className="w-20 h-20 text-blue-600" />
-              </div>
+            <motion.div
+              key="checkout"
+              className="text-center space-y-6"
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: 'spring', bounce: 0.4 }}
+            >
+              <motion.div
+                className="w-36 h-36 sm:w-44 sm:h-44 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto shadow-2xl"
+                animate={{
+                  boxShadow: [
+                    '0 0 40px rgba(59, 130, 246, 0.5)',
+                    '0 0 80px rgba(59, 130, 246, 0.8)',
+                    '0 0 40px rgba(59, 130, 246, 0.5)',
+                  ],
+                }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                <LogOut className="w-20 h-20 sm:w-24 sm:h-24 text-white" />
+              </motion.div>
+
               <div>
-                <h2 className="text-4xl font-bold text-blue-700">
-                  Goodbye, {student.firstName}!
+                <h2
+                  className="text-5xl sm:text-6xl lg:text-7xl font-black text-white tracking-wider"
+                  style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.5)' }}
+                >
+                  GOODBYE, {getFirstName(student.name).toUpperCase()}!
                 </h2>
-                <p className="text-xl text-muted-foreground mt-2">
-                  You have been checked out.
+                <p
+                  className="text-2xl sm:text-3xl text-white/90 mt-4"
+                  style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.4)' }}
+                >
+                  See you again soon! 👋
                 </p>
                 {message && (
-                  <p className="text-md text-blue-600 mt-2">{message}</p>
+                  <p className="text-lg text-blue-300 mt-3">{message}</p>
                 )}
               </div>
-            </div>
+            </motion.div>
           )}
 
           {state === 'ALREADY_LOGGED_IN' && (
-            <div className="text-center space-y-6 animate-in fade-in zoom-in">
-              <div className="w-32 h-32 bg-yellow-100 rounded-full flex items-center justify-center mx-auto">
-                <AlertCircle className="w-20 h-20 text-yellow-600" />
-              </div>
+            <motion.div
+              key="error"
+              className="text-center space-y-6"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <motion.div
+                className="w-32 h-32 sm:w-40 sm:h-40 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center mx-auto shadow-2xl"
+                animate={{ rotate: [0, -5, 5, -5, 0] }}
+                transition={{ duration: 0.5 }}
+              >
+                <AlertCircle className="w-16 h-16 sm:w-20 sm:h-20 text-white" />
+              </motion.div>
+
               <div>
-                <h2 className="text-3xl font-bold text-yellow-700">Notice</h2>
-                <p className="text-xl text-muted-foreground mt-4">{message}</p>
+                <h2
+                  className="text-4xl sm:text-5xl font-bold text-white"
+                  style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}
+                >
+                  NOTICE
+                </h2>
+                <p
+                  className="text-xl sm:text-2xl text-white/90 mt-4 max-w-md mx-auto"
+                  style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.4)' }}
+                >
+                  {message}
+                </p>
               </div>
-              <Button onClick={resetState} variant="outline" className="mt-8">
+
+              <Button
+                onClick={resetState}
+                variant="outline"
+                size="lg"
+                className="mt-8 bg-white/10 border-white/30 text-white hover:bg-white/20"
+              >
                 Close
               </Button>
-            </div>
+            </motion.div>
           )}
-        </CardContent>
-      </Card>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

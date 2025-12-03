@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -27,6 +27,7 @@ import {
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
 import { Users, Clock, LogOut, Search, MapPin } from 'lucide-react';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
 
 interface ActiveSession {
   activityId: string;
@@ -41,8 +42,9 @@ export function ActiveStudentsManager() {
   const [sessions, setSessions] = useState<ActiveSession[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { recentActivities } = useWebSocketContext();
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     setLoading(true);
     try {
       const res = await apiClient.get<ActiveSession[]>(
@@ -56,14 +58,28 @@ export function ActiveStudentsManager() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSessions();
     // Poll every minute
     const interval = setInterval(fetchSessions, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchSessions]);
+
+  // Refresh sessions immediately when a check-in/check-out happens via WebSocket
+  useEffect(() => {
+    if (recentActivities.length > 0) {
+      const latestActivity = recentActivities[0];
+      // If there's a new check-in or check-out, refresh the list
+      if (
+        latestActivity.type === 'CHECK_IN' ||
+        latestActivity.type === 'CHECK_OUT'
+      ) {
+        fetchSessions();
+      }
+    }
+  }, [recentActivities, fetchSessions]);
 
   const handleMoveStudent = async (activityId: string, newSection: string) => {
     try {
@@ -139,15 +155,17 @@ export function ActiveStudentsManager() {
   }, [sessions, searchQuery]);
 
   return (
-    <Card className="mt-6 shadow-md border-slate-200 dark:border-slate-800">
-      <CardHeader className="pb-3">
+    <Card className="mt-6 shadow-lg border-0 bg-gradient-to-br from-white to-green-50/30 dark:from-slate-800 dark:to-green-950/10">
+      <CardHeader className="pb-3 border-b border-green-100 dark:border-green-900/30">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Users className="h-5 w-5 text-primary" />
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg shadow-md">
+                <Users className="h-5 w-5 text-white" />
+              </div>
               Active Students
-              <Badge variant="secondary" className="ml-2 px-2.5 py-0.5">
-                {sessions.length}
+              <Badge className="ml-2 px-3 py-1 bg-green-500 hover:bg-green-600 text-white font-bold">
+                {sessions.length} online
               </Badge>
             </CardTitle>
             <CardDescription className="mt-1">
@@ -158,38 +176,60 @@ export function ActiveStudentsManager() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search student..."
-              className="pl-9"
+              className="pl-9 border-green-200 dark:border-green-800 focus:ring-green-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="rounded-md border">
+      <CardContent className="pt-4">
+        <div className="rounded-lg border border-green-100 dark:border-green-900/30 overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-[250px]">Student</TableHead>
-                <TableHead>Check-in Time</TableHead>
-                <TableHead>Time Remaining</TableHead>
-                <TableHead className="w-[200px]">Location</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+              <TableRow className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30">
+                <TableHead className="w-[250px] font-semibold text-green-800 dark:text-green-200">
+                  Student
+                </TableHead>
+                <TableHead className="font-semibold text-green-800 dark:text-green-200">
+                  Check-in Time
+                </TableHead>
+                <TableHead className="font-semibold text-green-800 dark:text-green-200">
+                  Time Remaining
+                </TableHead>
+                <TableHead className="w-[200px] font-semibold text-green-800 dark:text-green-200">
+                  Location
+                </TableHead>
+                <TableHead className="text-right font-semibold text-green-800 dark:text-green-200">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredSessions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell
+                    colSpan={5}
+                    className="h-32 text-center bg-white dark:bg-slate-800"
+                  >
                     {loading ? (
-                      <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                        Loading active sessions...
+                      <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-green-500 border-t-transparent"></div>
+                        <span className="font-medium">
+                          Loading active sessions...
+                        </span>
                       </div>
                     ) : sessions.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground">
-                        <Users className="h-8 w-8 opacity-20" />
-                        <p>No active students currently checked in.</p>
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground py-4">
+                        <div className="p-4 rounded-full bg-gray-100 dark:bg-gray-800">
+                          <Users className="h-10 w-10 opacity-30" />
+                        </div>
+                        <p className="font-medium text-lg">
+                          No active students
+                        </p>
+                        <p className="text-sm">
+                          Students will appear here when they check in
+                        </p>
                       </div>
                     ) : (
                       <div className="text-muted-foreground">

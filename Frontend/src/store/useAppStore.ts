@@ -1,5 +1,52 @@
 import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
+import { devtools, persist } from 'zustand/middleware';
+
+// Storage keys
+const ACTIVE_STUDENT_KEY = 'clms-active-student';
+const ACTIVE_STUDENT_EXPIRY_KEY = 'clms-active-student-expiry';
+
+// Helper to get stored active student
+const getStoredActiveStudent = (): {
+  student: any | null;
+  expiry: number | null;
+} => {
+  try {
+    const studentStr = localStorage.getItem(ACTIVE_STUDENT_KEY);
+    const expiryStr = localStorage.getItem(ACTIVE_STUDENT_EXPIRY_KEY);
+
+    if (!studentStr || !expiryStr) {
+      return { student: null, expiry: null };
+    }
+
+    const expiry = parseInt(expiryStr, 10);
+
+    // Check if expired
+    if (Date.now() > expiry) {
+      localStorage.removeItem(ACTIVE_STUDENT_KEY);
+      localStorage.removeItem(ACTIVE_STUDENT_EXPIRY_KEY);
+      return { student: null, expiry: null };
+    }
+
+    return { student: JSON.parse(studentStr), expiry };
+  } catch {
+    return { student: null, expiry: null };
+  }
+};
+
+// Helper to store active student
+const storeActiveStudent = (student: any | null, expiry: number | null) => {
+  try {
+    if (student && expiry) {
+      localStorage.setItem(ACTIVE_STUDENT_KEY, JSON.stringify(student));
+      localStorage.setItem(ACTIVE_STUDENT_EXPIRY_KEY, String(expiry));
+    } else {
+      localStorage.removeItem(ACTIVE_STUDENT_KEY);
+      localStorage.removeItem(ACTIVE_STUDENT_EXPIRY_KEY);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+};
 
 // Types for our application state
 export interface Student {
@@ -21,9 +68,12 @@ export interface Equipment {
 export interface EquipmentSession {
   id: string;
   studentId: string;
+  studentName?: string;
+  gradeLevel?: string;
   startTime: Date;
   endTime?: Date;
   timeLimitMinutes: number;
+  remainingMinutes?: number;
   status: 'active' | 'completed' | 'expired';
 }
 
@@ -135,13 +185,17 @@ interface AppStore {
   clearScanQueue: () => void;
   setActiveStudent: (student: Student | null, durationMs?: number) => void;
   clearActiveStudent: () => void;
+  initializeActiveStudent: () => void;
 }
+
+// Get initial active student from storage
+const storedData = getStoredActiveStudent();
 
 // Create the store
 export const useAppStore = create<AppStore>()(
   devtools(
     (set) => ({
-      // Initial state
+      // Initial state - restore active student from localStorage
       isOnline: navigator.onLine,
       connectedToBackend: false,
       isDarkMode: false,
@@ -156,8 +210,8 @@ export const useAppStore = create<AppStore>()(
       isScanning: false,
       lastScanResult: '',
       scanQueue: [],
-      activeStudent: null,
-      activeStudentExpiry: null,
+      activeStudent: storedData.student,
+      activeStudentExpiry: storedData.expiry,
       recentScannedStudents: [],
 
       // Actions
@@ -184,6 +238,10 @@ export const useAppStore = create<AppStore>()(
       setActiveStudent: (student, durationMs = 15 * 60 * 1000) => {
         if (student) {
           const expiry = Date.now() + durationMs;
+
+          // Persist to localStorage
+          storeActiveStudent(student, expiry);
+
           set((state) => ({
             activeStudent: student,
             activeStudentExpiry: expiry,
@@ -200,20 +258,59 @@ export const useAppStore = create<AppStore>()(
                 state.activeStudent?.id === student.id &&
                 state.activeStudentExpiry === expiry
               ) {
+                // Clear from localStorage too
+                storeActiveStudent(null, null);
                 return { activeStudent: null, activeStudentExpiry: null };
               }
               return {};
             });
           }, durationMs);
         } else {
+          storeActiveStudent(null, null);
           set({ activeStudent: null, activeStudentExpiry: null });
         }
       },
-      clearActiveStudent: () =>
-        set({ activeStudent: null, activeStudentExpiry: null }),
+      clearActiveStudent: () => {
+        storeActiveStudent(null, null);
+        set({ activeStudent: null, activeStudentExpiry: null });
+      },
+
+      // Initialize active student from storage (call on app mount to set up auto-clear timer)
+      initializeActiveStudent: () => {
+        set((state) => {
+          if (state.activeStudent && state.activeStudentExpiry) {
+            const remainingTime = state.activeStudentExpiry - Date.now();
+            if (remainingTime > 0) {
+              // Set up auto-clear timer for remaining time
+              const student = state.activeStudent;
+              const expiry = state.activeStudentExpiry;
+              setTimeout(() => {
+                set((s) => {
+                  if (
+                    s.activeStudent?.id === student.id &&
+                    s.activeStudentExpiry === expiry
+                  ) {
+                    storeActiveStudent(null, null);
+                    return { activeStudent: null, activeStudentExpiry: null };
+                  }
+                  return {};
+                });
+              }, remainingTime);
+            } else {
+              // Already expired, clear it
+              storeActiveStudent(null, null);
+              return { activeStudent: null, activeStudentExpiry: null };
+            }
+          }
+          return {};
+        });
+      },
     }),
     {
       name: 'clms-store',
     }
   )
 );
+
+// Auto-initialize on store creation
+useAppStore.getState().initializeActiveStudent();

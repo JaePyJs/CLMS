@@ -1,5 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, requireRole } from '../middleware/authenticate';
+import {
+  scanRateLimiter,
+  checkStudentScanRate,
+} from '../middleware/rateLimiter';
 import { logger } from '../utils/logger';
 import prisma from '../utils/prisma';
 import { webSocketManager } from '../websocket/websocketServer';
@@ -34,8 +38,9 @@ const announcementConfig: {
 /**
  * Handle initial tap-in/scan
  * Checks if student exists and cooldown status
+ * Rate limited to prevent barcode scanner spam
  */
-router.post('/tap-in', async (req: Request, res: Response) => {
+router.post('/tap-in', scanRateLimiter, async (req: Request, res: Response) => {
   try {
     const { scanData } = req.body;
     if (!scanData) {
@@ -44,8 +49,23 @@ router.post('/tap-in', async (req: Request, res: Response) => {
         .json({ success: false, message: 'Scan data required' });
     }
 
+    // Check per-barcode rate limit
+    const barcodeRateCheck = checkStudentScanRate(scanData);
+    if (!barcodeRateCheck.allowed) {
+      logger.warn('Kiosk tap-in rate limit exceeded', {
+        scanData,
+        waitSeconds: barcodeRateCheck.waitSeconds,
+      });
+      return res.status(429).json({
+        success: false,
+        message: `Scanning too fast! Please wait ${barcodeRateCheck.waitSeconds} second(s).`,
+        cooldownRemaining: barcodeRateCheck.waitSeconds,
+        canCheckIn: false,
+      });
+    }
+
     // Find student
-    const student = await prisma.students.findFirst({
+    let student = await prisma.students.findFirst({
       where: {
         OR: [{ barcode: scanData }, { student_id: scanData }],
       },
@@ -55,6 +75,17 @@ router.post('/tap-in', async (req: Request, res: Response) => {
       return res
         .status(200)
         .json({ success: false, message: 'Student not found' });
+    }
+
+    // Activate student on first scan if not already active
+    if (!student.is_active) {
+      student = await prisma.students.update({
+        where: { id: student.id },
+        data: { is_active: true },
+      });
+      logger.info('Student activated on first kiosk tap', {
+        studentId: student.student_id,
+      });
     }
 
     // Check active session
@@ -98,7 +129,12 @@ router.post('/tap-in', async (req: Request, res: Response) => {
         id: student.id,
         studentId: student.student_id,
         name: `${student.first_name} ${student.last_name}`,
-        gradeLevel: String(student.grade_level),
+        gradeLevel:
+          student.grade_level !== null && student.grade_level !== undefined
+            ? student.grade_level === 0
+              ? 'Kindergarten'
+              : `Grade ${student.grade_level}`
+            : '',
         section: student.section || '',
         barcode: student.barcode || '',
       },
@@ -117,9 +153,18 @@ router.post('/tap-in', async (req: Request, res: Response) => {
  */
 router.get('/active-students', async (_req: Request, res: Response) => {
   try {
+    // Include ALL active check-in types for comprehensive display
     const activeActivities = await prisma.student_activities.findMany({
       where: {
-        activity_type: 'KIOSK_CHECK_IN',
+        activity_type: {
+          in: [
+            'KIOSK_CHECK_IN',
+            'CHECK_IN',
+            'LIBRARY_VISIT',
+            'SELF_SERVICE_CHECK_IN',
+            'SELF_SERVICE',
+          ],
+        },
         status: 'ACTIVE',
       },
       include: {
@@ -240,27 +285,27 @@ router.post(
           activity_type: 'KIOSK_CHECK_IN',
           description: `Kiosk check-in: ${purposeStr}`,
           status: 'ACTIVE',
-          metadata: {
+          metadata: JSON.stringify({
             purposes: selectedPurposes,
             purpose: selectedPurposes[0], // Primary purpose for backward compat
             scanData,
             kioskCheckIn: true,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } as any,
+          }),
         },
       });
 
-      // Log the check-in for analytics
+      // Log the check-in for analytics (separate from the active session)
       await prisma.student_activities.create({
         data: {
           student_id: studentId,
-          activity_type: 'KIOSK_CHECK_IN',
+          activity_type: 'CHECK_IN_LOG',
           description: `Student checked in for ${purposeStr}`,
-          metadata: {
+          status: 'COMPLETED',
+          end_time: new Date(),
+          metadata: JSON.stringify({
             purposes: selectedPurposes,
             activityId: activity.id,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } as any,
+          }),
         },
       });
 
@@ -269,31 +314,73 @@ router.post(
       );
 
       // Map purposes to section codes and create section mappings
-      const purposeToSectionCode: Record<string, string> = {
-        library: 'LIBRARY_SPACE',
-        computer: 'COMPUTER',
-        avr: 'AVR',
-        recreation: 'RECREATION',
-        borrowing: 'BORROWING',
+      const purposeToSectionCode: Record<string, string[]> = {
+        library: ['LIBRARY', 'LIBRARY_SPACE'],
+        reading: ['LIBRARY', 'LIBRARY_SPACE'],
+        computer: ['COMPUTER'],
+        gaming: ['COMPUTER'],
+        avr: ['AVR'],
+        recreation: ['RECREATION'],
+        study: ['STUDY'],
+        borrowing: ['BORROWING', 'LIBRARY', 'LIBRARY_SPACE'],
       };
 
-      const sectionCodes = selectedPurposes
-        .map((p: string) => purposeToSectionCode[p])
-        .filter(Boolean);
+      // Collect all possible section codes for the selected purposes
+      const allSectionCodes = selectedPurposes
+        .flatMap((p: string) => purposeToSectionCode[p] || [])
+        .filter((v, i, arr) => arr.indexOf(v) === i); // unique
 
-      if (sectionCodes.length > 0) {
+      let assignedSection = false;
+      if (allSectionCodes.length > 0) {
         const sections = await prisma.library_sections.findMany({
-          where: { code: { in: sectionCodes } },
+          where: {
+            code: { in: allSectionCodes },
+            is_active: true,
+          },
         });
 
         if (sections.length > 0) {
-          await prisma.student_activities_sections.createMany({
-            data: sections.map(section => ({
-              activity_id: activity.id,
-              section_id: section.id,
-            })),
-            skipDuplicates: true,
-          });
+          // SQLite doesn't support skipDuplicates, so we use individual creates with try/catch
+          for (const section of sections) {
+            try {
+              await prisma.student_activities_sections.create({
+                data: {
+                  activity_id: activity.id,
+                  section_id: section.id,
+                },
+              });
+              assignedSection = true;
+            } catch {
+              // Ignore duplicate entries
+            }
+          }
+        }
+      }
+
+      // If no section was assigned, fallback to default Library Space
+      if (!assignedSection) {
+        const defaultSection = await prisma.library_sections.findFirst({
+          where: {
+            OR: [
+              { code: 'LIBRARY' },
+              { code: 'LIBRARY_SPACE' },
+              { name: { contains: 'Library' } },
+            ],
+            is_active: true,
+          },
+        });
+
+        if (defaultSection) {
+          try {
+            await prisma.student_activities_sections.create({
+              data: {
+                activity_id: activity.id,
+                section_id: defaultSection.id,
+              },
+            });
+          } catch {
+            // Ignore duplicate entries
+          }
         }
       }
 
@@ -301,7 +388,12 @@ router.post(
       try {
         const student = await prisma.students.findUnique({
           where: { id: studentId },
-          select: { first_name: true, last_name: true, student_id: true },
+          select: {
+            first_name: true,
+            last_name: true,
+            student_id: true,
+            gender: true,
+          },
         });
         const autoLogoutAt = new Date(Date.now() + 15 * 60000).toISOString();
         // Build reminders: overdue and due soon
@@ -350,6 +442,7 @@ router.post(
           studentName:
             `${student?.first_name || ''} ${student?.last_name || ''}`.trim() ||
             'Student',
+          gender: student?.gender || undefined,
           checkinTime: new Date(
             activity.start_time || new Date(),
           ).toISOString(),
@@ -383,12 +476,18 @@ router.post(
 
 /**
  * Confirm check-out for active session
+ * Enforces 15-minute minimum session time (unless force=true for librarian use)
  */
 router.post('/checkout', async (req: Request, res: Response) => {
   try {
-    const { studentId, reason = 'manual' } = req.body as {
+    const {
+      studentId,
+      reason = 'manual',
+      force = false,
+    } = req.body as {
       studentId: string;
       reason?: 'manual' | 'auto';
+      force?: boolean; // Librarian can force checkout before 15 mins
     };
     if (!studentId) {
       return res
@@ -403,13 +502,32 @@ router.post('/checkout', async (req: Request, res: Response) => {
         .status(404)
         .json({ success: false, message: 'No active session' });
     }
+
+    // Check 15-minute minimum session time (unless forced by librarian)
+    if (!force && reason !== 'auto') {
+      const now = new Date();
+      const startTime = new Date(active.start_time);
+      const minutesSinceCheckIn = (now.getTime() - startTime.getTime()) / 60000;
+
+      if (minutesSinceCheckIn < 15) {
+        const remainingMinutes = Math.ceil(15 - minutesSinceCheckIn);
+        const remainingSeconds = Math.ceil((15 - minutesSinceCheckIn) * 60);
+        return res.status(400).json({
+          success: false,
+          message: `Must stay checked in for at least 15 minutes. Please wait ${remainingMinutes} more minute(s).`,
+          cooldownRemaining: remainingSeconds,
+          canCheckOut: false,
+        });
+      }
+    }
+
     await prisma.student_activities.update({
       where: { id: active.id },
       data: { status: 'COMPLETED', end_time: new Date() },
     });
     const student = await prisma.students.findUnique({
       where: { id: studentId },
-      select: { first_name: true, last_name: true },
+      select: { first_name: true, last_name: true, gender: true },
     });
     webSocketManager.emitStudentCheckOut({
       activityId: String(active.id),
@@ -417,6 +535,7 @@ router.post('/checkout', async (req: Request, res: Response) => {
       studentName:
         `${student?.first_name || ''} ${student?.last_name || ''}`.trim() ||
         'Student',
+      gender: student?.gender || undefined,
       checkoutTime: new Date().toISOString(),
       reason,
     });
@@ -440,7 +559,7 @@ router.post('/checkout', async (req: Request, res: Response) => {
 router.post(
   '/broadcast',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   async (req: Request, res: Response) => {
     try {
       const { message } = req.body as { message: string };
@@ -513,7 +632,7 @@ router.get('/announcements/config', async (_req: Request, res: Response) => {
 router.put(
   '/announcements/config',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   async (req: Request, res: Response) => {
     try {
       const { quietMode, intervalSeconds, messages } = req.body as {
@@ -566,11 +685,11 @@ router.put(
             type: 'SYSTEM_ALERT',
             title: 'Announcement config updated',
             message: `Quiet: ${announcementConfig.quietMode} • Interval: ${announcementConfig.intervalSeconds}s • Messages: ${announcementConfig.messages.length}`,
-            metadata: {
+            metadata: JSON.stringify({
               quietMode: announcementConfig.quietMode,
               intervalSeconds: announcementConfig.intervalSeconds,
               messages: announcementConfig.messages,
-            },
+            }),
           },
         });
       } catch {
@@ -589,7 +708,7 @@ router.put(
 router.get(
   '/announcements/recent',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   async (req: Request, res: Response) => {
     try {
       const limit = Math.min(
@@ -624,9 +743,11 @@ router.get(
         };
       }
       if (search) {
+        // SQLite case-insensitive search: use lowercase contains
+        const searchLower = search.toLowerCase();
         where['OR'] = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { content: { contains: search, mode: 'insensitive' } },
+          { title: { contains: searchLower } },
+          { content: { contains: searchLower } },
         ];
       }
 
@@ -682,7 +803,7 @@ router.get(
 router.post(
   '/change-section',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   async (req: Request, res: Response) => {
     try {
       const { studentId, toSections } = req.body as {
@@ -703,14 +824,15 @@ router.post(
           .status(404)
           .json({ success: false, message: 'No active session' });
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const fromSections = (active.metadata as any)?.sections || [];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const meta = { ...(active.metadata as any), sections: toSections };
+      // Parse existing metadata from string
+      const existingMeta = active.metadata
+        ? JSON.parse(active.metadata as string)
+        : {};
+      const fromSections = existingMeta?.sections || [];
+      const meta = { ...existingMeta, sections: toSections };
       await prisma.student_activities.update({
         where: { id: active.id },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data: { metadata: meta } as any,
+        data: { metadata: JSON.stringify(meta) },
       });
       const student = await prisma.students.findUnique({
         where: { id: studentId },
@@ -731,12 +853,11 @@ router.post(
             student_id: studentId,
             activity_type: 'SECTION_CHANGE',
             description: 'Change student section',
-            metadata: {
+            metadata: JSON.stringify({
               studentId,
               from: Array.isArray(fromSections) ? fromSections : [],
               to: toSections,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            } as any,
+            }),
           },
         });
       } catch {
@@ -755,14 +876,18 @@ router.post(
 
 /**
  * Get recent scans for search dropdown
+ * Shows students who have recently used the kiosk (check-in OR check-out)
  */
 router.get('/recent-scans', async (_req: Request, res: Response) => {
   try {
+    // Get most recent activities (regardless of check-in or check-out)
     const recentActivities = await prisma.student_activities.findMany({
       where: {
-        activity_type: 'KIOSK_CHECK_IN',
+        activity_type: {
+          in: ['KIOSK_CHECK_IN', 'KIOSK_CHECK_OUT', 'LIBRARY_VISIT'],
+        },
       },
-      take: 5,
+      take: 10,
       orderBy: {
         start_time: 'desc',
       },
@@ -781,14 +906,25 @@ router.get('/recent-scans', async (_req: Request, res: Response) => {
       distinct: ['student_id'],
     });
 
-    const recentScans = recentActivities.map(activity => ({
-      id: activity.student.id,
-      studentId: activity.student.student_id,
-      name: `${activity.student.first_name} ${activity.student.last_name}`,
-      grade_level: activity.student.grade_level,
-      grade_category: activity.student.grade_category,
-      timestamp: activity.start_time,
-    }));
+    // Deduplicate by student id and take top 5
+    const seenStudents = new Set<string>();
+    const recentScans = recentActivities
+      .filter(activity => {
+        if (seenStudents.has(activity.student.id)) {
+          return false;
+        }
+        seenStudents.add(activity.student.id);
+        return true;
+      })
+      .slice(0, 5)
+      .map(activity => ({
+        id: activity.student.id,
+        studentId: activity.student.student_id,
+        name: `${activity.student.first_name} ${activity.student.last_name}`,
+        grade_level: activity.student.grade_level,
+        grade_category: activity.student.grade_category,
+        timestamp: activity.start_time,
+      }));
 
     return res.status(200).json({
       success: true,
@@ -810,7 +946,7 @@ router.get('/recent-scans', async (_req: Request, res: Response) => {
 router.get(
   '/status',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   async (_req: Request, res: Response) => {
     try {
       const now = new Date();
@@ -897,7 +1033,7 @@ router.get(
 router.get(
   '/recent',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   async (req: Request, res: Response) => {
     try {
       const limit = parseInt(req.query.limit as string) || 20;

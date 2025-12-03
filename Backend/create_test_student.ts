@@ -1,24 +1,25 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
   try {
-    const student = await prisma.student.upsert({
-      where: { studentId: 'TEST_STUDENT_001' },
+    const student = await prisma.students.upsert({
+      where: { student_id: 'TEST_STUDENT_001' },
       update: {},
       create: {
-        studentId: 'TEST_STUDENT_001',
-        firstName: 'Test',
-        lastName: 'Student',
+        student_id: 'TEST_STUDENT_001',
+        first_name: 'Test',
+        last_name: 'Student',
         email: 'test.student@example.com',
-        course: 'BSCS',
-        yearLevel: '4',
+        grade_level: '12',
         section: 'A',
-        status: 'ACTIVE',
+        barcode: 'TEST_STUDENT_001',
+        is_active: true,
       },
     });
-    console.log('Created/Found Student:', student.studentId);
+    console.log('Created/Found Student:', student.student_id);
   } catch (error) {
     console.error('Error:', error);
   } finally {

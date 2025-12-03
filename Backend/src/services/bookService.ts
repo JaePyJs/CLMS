@@ -256,22 +256,23 @@ export class BookService {
 
       const where: any = {};
 
-      // Build search conditions
+      // Build search conditions - SQLite case-insensitive search
       if (search) {
+        const searchLower = search.toLowerCase();
         where.OR = [
-          { title: { contains: search } },
-          { author: { contains: search } },
-          { isbn: { contains: search } },
-          { accession_no: { contains: search } },
+          { title: { contains: searchLower } },
+          { author: { contains: searchLower } },
+          { isbn: { contains: searchLower } },
+          { accession_no: { contains: searchLower } },
         ];
       }
 
       if (category) {
-        where.category = { contains: category };
+        where.category = { contains: category.toLowerCase() };
       }
 
       if (author) {
-        where.author = { contains: author };
+        where.author = { contains: author.toLowerCase() };
       }
 
       if (isbn) {
@@ -577,6 +578,173 @@ export class BookService {
       };
     } catch (error) {
       logger.error('Get categories failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Look up book titles with duplicate detection
+   * Returns titles matching the search query along with copy count info
+   */
+  public static async lookupTitles(
+    searchTitle: string,
+    limit: number = 20,
+  ): Promise<{
+    titles: Array<{
+      title: string;
+      totalCopies: number;
+      books: Array<{
+        id: string;
+        accession_no: string;
+        author: string;
+        category: string | null;
+        location: string | null;
+        available_copies: number;
+        total_copies: number;
+      }>;
+    }>;
+  }> {
+    try {
+      const searchLower = searchTitle.toLowerCase();
+
+      // Find books matching the title
+      const books = await prisma.books.findMany({
+        where: {
+          is_active: true,
+          title: {
+            contains: searchLower,
+          },
+        },
+        select: {
+          id: true,
+          title: true,
+          accession_no: true,
+          author: true,
+          category: true,
+          location: true,
+          available_copies: true,
+          total_copies: true,
+        },
+        orderBy: {
+          title: 'asc',
+        },
+        take: limit * 5, // Get more to group by title
+      });
+
+      // Group by title (case insensitive)
+      const titleGroups = new Map<string, typeof books>();
+      for (const book of books) {
+        const normalizedTitle = book.title.toLowerCase().trim();
+        if (!titleGroups.has(normalizedTitle)) {
+          titleGroups.set(normalizedTitle, []);
+        }
+        titleGroups.get(normalizedTitle)!.push(book);
+      }
+
+      // Convert to result format
+      const result = Array.from(titleGroups.entries())
+        .slice(0, limit)
+        .map(([, groupBooks]) => ({
+          title: groupBooks[0].title, // Use original case from first book
+          totalCopies: groupBooks.length,
+          books: groupBooks.map(b => ({
+            id: b.id,
+            accession_no: b.accession_no,
+            author: b.author,
+            category: b.category,
+            location: b.location,
+            available_copies: b.available_copies,
+            total_copies: b.total_copies,
+          })),
+        }));
+
+      logger.info('Title lookup completed', {
+        searchTitle,
+        titlesFound: result.length,
+      });
+
+      return { titles: result };
+    } catch (error) {
+      logger.error('Title lookup failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        searchTitle,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get all duplicate titles (titles that appear more than once)
+   */
+  public static async getDuplicateTitles(): Promise<{
+    duplicates: Array<{
+      title: string;
+      count: number;
+      books: Array<{
+        id: string;
+        accession_no: string;
+        author: string;
+        category: string | null;
+        location: string | null;
+      }>;
+    }>;
+    totalDuplicateTitles: number;
+  }> {
+    try {
+      // First, find titles that appear more than once
+      const allBooks = await prisma.books.findMany({
+        where: { is_active: true },
+        select: {
+          id: true,
+          title: true,
+          accession_no: true,
+          author: true,
+          category: true,
+          location: true,
+        },
+        orderBy: {
+          title: 'asc',
+        },
+      });
+
+      // Group by normalized title
+      const titleGroups = new Map<string, typeof allBooks>();
+      for (const book of allBooks) {
+        const normalizedTitle = book.title.toLowerCase().trim();
+        if (!titleGroups.has(normalizedTitle)) {
+          titleGroups.set(normalizedTitle, []);
+        }
+        titleGroups.get(normalizedTitle)!.push(book);
+      }
+
+      // Filter to only duplicates (more than 1 copy)
+      const duplicates = Array.from(titleGroups.entries())
+        .filter(([, books]) => books.length > 1)
+        .map(([, groupBooks]) => ({
+          title: groupBooks[0].title, // Use original case
+          count: groupBooks.length,
+          books: groupBooks.map(b => ({
+            id: b.id,
+            accession_no: b.accession_no,
+            author: b.author,
+            category: b.category,
+            location: b.location,
+          })),
+        }))
+        .sort((a, b) => b.count - a.count); // Sort by count descending
+
+      logger.info('Duplicate titles retrieved', {
+        totalDuplicateTitles: duplicates.length,
+      });
+
+      return {
+        duplicates,
+        totalDuplicateTitles: duplicates.length,
+      };
+    } catch (error) {
+      logger.error('Get duplicate titles failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;

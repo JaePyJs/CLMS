@@ -246,17 +246,36 @@ router.get(
       const dataPayload = {
         overview: {
           total_students: overviewStats.totalStudents,
+          totalStudents: overviewStats.totalStudents,
           total_books: overviewStats.totalBooks,
+          totalBooks: overviewStats.totalBooks,
           total_equipment: overviewStats.totalEquipment,
+          totalEquipment: overviewStats.totalEquipment,
           total_users: overviewStats.totalUsers,
           active_borrows: overviewStats.activeBorrows,
+          activeBorrows: overviewStats.activeBorrows,
           overdue_borrows: overviewStats.overdueBorrows,
+          overdueBorrows: overviewStats.overdueBorrows,
           returned_borrows: overviewStats.returnedBorrows,
           available_book_copies: availableBooks._sum.available_copies || 0,
           total_book_copies: totalBookCopies._sum.total_copies || 0,
+          // Add missing fields for dashboard stats
+          activeStudents: overviewStats.activeStudents,
+          active_students: overviewStats.activeStudents,
+          todayActivities: overviewStats.todayActivities,
+          today_activities: overviewStats.todayActivities,
+          activeEquipment: overviewStats.activeEquipment,
+          active_equipment: overviewStats.activeEquipment,
         },
+        // Also include at top level for frontend compatibility
+        totalStudents: overviewStats.totalStudents,
+        activeStudents: overviewStats.activeStudents,
+        totalBooks: overviewStats.totalBooks,
+        todayActivities: overviewStats.todayActivities,
+        activeEquipment: overviewStats.activeEquipment,
         popular_books: popularBooksDetails,
         recent_activities: recentActivities,
+        recentActivities: recentActivities,
         recent_borrows: recentBorrows,
         top_users: topUsers,
         students_by_grade: studentsByGrade,
@@ -303,6 +322,125 @@ router.get(
           statistics: {},
         },
       });
+    }
+  }),
+);
+
+// GET /api/analytics/metrics - Quick metrics (alias for frontend compatibility)
+router.get(
+  '/metrics',
+  authenticate,
+  asyncHandler(async (_req: Request, res: Response) => {
+    try {
+      // Get quick counts for metrics
+      const [
+        totalStudents,
+        activeStudents,
+        totalBooks,
+        availableBooks,
+        activeBorrows,
+        overdueBorrows,
+      ] = await Promise.all([
+        prisma.students.count({ where: { is_active: true } }),
+        prisma.student_activities.count({ where: { status: 'ACTIVE' } }),
+        prisma.books.count({ where: { is_active: true } }),
+        prisma.books.aggregate({
+          where: { is_active: true },
+          _sum: { available_copies: true },
+        }),
+        prisma.book_checkouts.count({ where: { return_date: null } }),
+        prisma.book_checkouts.count({
+          where: {
+            return_date: null,
+            due_date: { lt: new Date() },
+          },
+        }),
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          totalStudents,
+          activeStudents,
+          totalBooks,
+          availableBooks: availableBooks._sum.available_copies || 0,
+          activeBorrows,
+          overdueBorrows,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      logger.error('Error retrieving metrics', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// GET /api/analytics/usage - Usage statistics by period
+router.get(
+  '/usage',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { period = 'day' } = req.query as {
+      period?: 'day' | 'week' | 'month';
+    };
+
+    const startDate = new Date();
+    switch (period) {
+      case 'week':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setDate(startDate.getDate() - 30);
+        break;
+      default: // day
+        startDate.setHours(0, 0, 0, 0);
+    }
+
+    try {
+      const [checkIns, checkOuts, borrows, returns] = await Promise.all([
+        prisma.student_activities.count({
+          where: {
+            start_time: { gte: startDate },
+            activity_type: 'CHECK_IN',
+          },
+        }),
+        prisma.student_activities.count({
+          where: {
+            end_time: { gte: startDate },
+          },
+        }),
+        prisma.book_checkouts.count({
+          where: {
+            checkout_date: { gte: startDate },
+          },
+        }),
+        prisma.book_checkouts.count({
+          where: {
+            return_date: { gte: startDate },
+          },
+        }),
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          period,
+          checkIns,
+          checkOuts,
+          borrows,
+          returns,
+          startDate: startDate.toISOString(),
+          endDate: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      logger.error('Error retrieving usage stats', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
     }
   }),
 );
@@ -1103,6 +1241,415 @@ router.get(
       });
     } catch (error) {
       logger.error('Error retrieving notifications', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// GET /api/analytics/timeline - Activity timeline for dashboard
+router.get(
+  '/timeline',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    logger.info('Get activity timeline request', {
+      userId: (req as any).user?.id,
+      limit,
+    });
+
+    try {
+      // Get recent student activities
+      const recentActivities = await prisma.student_activities.findMany({
+        orderBy: { start_time: 'desc' },
+        take: limit,
+        include: {
+          student: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+              grade_level: true,
+            },
+          },
+        },
+      });
+
+      // Get recent book checkouts
+      const recentCheckouts = await prisma.book_checkouts.findMany({
+        orderBy: { checkout_date: 'desc' },
+        take: limit,
+        include: {
+          student: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+              grade_level: true,
+            },
+          },
+          book: {
+            select: {
+              id: true,
+              title: true,
+              author: true,
+              accession_no: true,
+            },
+          },
+        },
+      });
+
+      // Combine and sort by time
+      const timeline: any[] = [];
+
+      // Add activities to timeline
+      recentActivities.forEach(activity => {
+        // Calculate duration if end_time exists
+        const duration = activity.end_time
+          ? Math.round(
+              (new Date(activity.end_time).getTime() -
+                new Date(activity.start_time).getTime()) /
+                60000,
+            )
+          : null;
+
+        timeline.push({
+          id: activity.id,
+          type: 'activity',
+          activityType: activity.activity_type,
+          timestamp: activity.start_time,
+          student: activity.student
+            ? {
+                id: activity.student.id,
+                studentId: activity.student.student_id,
+                name: `${activity.student.first_name} ${activity.student.last_name}`,
+                gradeLevel: activity.student.grade_level,
+              }
+            : null,
+          description: `${activity.activity_type} session`,
+          endTime: activity.end_time,
+          duration: duration,
+        });
+      });
+
+      // Add checkouts to timeline
+      recentCheckouts.forEach(checkout => {
+        timeline.push({
+          id: checkout.id,
+          type: checkout.return_date ? 'return' : 'checkout',
+          timestamp: checkout.return_date || checkout.checkout_date,
+          student: checkout.student
+            ? {
+                id: checkout.student.id,
+                studentId: checkout.student.student_id,
+                name: `${checkout.student.first_name} ${checkout.student.last_name}`,
+                gradeLevel: checkout.student.grade_level,
+              }
+            : null,
+          book: checkout.book
+            ? {
+                id: checkout.book.id,
+                title: checkout.book.title,
+                author: checkout.book.author,
+                accessionNo: checkout.book.accession_no,
+              }
+            : null,
+          description: checkout.return_date
+            ? `Returned: ${checkout.book?.title}`
+            : `Borrowed: ${checkout.book?.title}`,
+          dueDate: checkout.due_date,
+        });
+      });
+
+      // Sort by timestamp descending
+      timeline.sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      );
+
+      // Limit results
+      const limitedTimeline = timeline.slice(0, limit);
+
+      res.json({
+        success: true,
+        data: {
+          timeline: limitedTimeline,
+          total: timeline.length,
+        },
+      });
+    } catch (error) {
+      logger.error('Error retrieving activity timeline', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// GET /api/analytics/activities - Centralized activity history
+router.get(
+  '/activities',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Get activities request', {
+      userId: (req as any).user?.id,
+      query: req.query,
+    });
+
+    try {
+      const dateFilter = (req.query.date as string) || 'today';
+
+      // Calculate date range
+      let startDate = new Date();
+      startDate.setHours(0, 0, 0, 0);
+
+      if (dateFilter === 'week') {
+        startDate.setDate(startDate.getDate() - 7);
+      } else if (dateFilter === 'month') {
+        startDate.setMonth(startDate.getMonth() - 1);
+      } else if (dateFilter === 'all') {
+        startDate = new Date('2020-01-01'); // Far back date
+      }
+
+      // Fetch student activities
+      const studentActivities = await prisma.student_activities.findMany({
+        where: {
+          start_time: { gte: startDate },
+        },
+        orderBy: { start_time: 'desc' },
+        take: 500,
+        include: {
+          student: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+            },
+          },
+        },
+      });
+
+      // Fetch book checkouts
+      const bookCheckouts = await prisma.book_checkouts.findMany({
+        where: {
+          checkout_date: { gte: startDate },
+        },
+        orderBy: { checkout_date: 'desc' },
+        take: 200,
+        include: {
+          student: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+            },
+          },
+          book: {
+            select: {
+              title: true,
+            },
+          },
+        },
+      });
+
+      // Fetch print jobs
+      const printJobs = await prisma.printing_jobs.findMany({
+        where: {
+          created_at: { gte: startDate },
+        },
+        orderBy: { created_at: 'desc' },
+        take: 200,
+        include: {
+          student: {
+            select: {
+              id: true,
+              student_id: true,
+              first_name: true,
+              last_name: true,
+            },
+          },
+        },
+      });
+
+      // Transform and combine activities
+      const activities: Array<{
+        id: string;
+        type: string;
+        studentId: string;
+        studentName: string;
+        description: string;
+        timestamp: string;
+        status: string;
+      }> = [];
+
+      // Add student activities
+      studentActivities.forEach(activity => {
+        activities.push({
+          id: activity.id,
+          type: activity.activity_type,
+          studentId: activity.student?.student_id || 'Unknown',
+          studentName: activity.student
+            ? `${activity.student.first_name} ${activity.student.last_name}`
+            : 'Unknown',
+          description: activity.description || activity.activity_type,
+          timestamp: activity.start_time.toISOString(),
+          status: activity.status,
+        });
+      });
+
+      // Add book checkouts
+      bookCheckouts.forEach(checkout => {
+        activities.push({
+          id: `checkout-${checkout.id}`,
+          type: checkout.return_date ? 'BOOK_RETURN' : 'BOOK_CHECKOUT',
+          studentId: checkout.student?.student_id || 'Unknown',
+          studentName: checkout.student
+            ? `${checkout.student.first_name} ${checkout.student.last_name}`
+            : 'Unknown',
+          description: checkout.return_date
+            ? `Returned: ${checkout.book?.title || 'Unknown book'}`
+            : `Borrowed: ${checkout.book?.title || 'Unknown book'}`,
+          timestamp: (
+            checkout.return_date || checkout.checkout_date
+          ).toISOString(),
+          status: checkout.status,
+        });
+      });
+
+      // Add print jobs
+      printJobs.forEach(job => {
+        activities.push({
+          id: `print-${job.id}`,
+          type: 'PRINTING',
+          studentId: job.student?.student_id || 'Unknown',
+          studentName: job.student
+            ? `${job.student.first_name} ${job.student.last_name}`
+            : 'Unknown',
+          description: `Print job: ${job.pages} pages (${job.paper_size}, ${job.color_level})`,
+          timestamp: job.created_at.toISOString(),
+          status: job.paid ? 'PAID' : 'UNPAID',
+        });
+      });
+
+      // Sort by timestamp descending
+      activities.sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      );
+
+      // Calculate stats
+      const stats = {
+        totalActivities: activities.length,
+        checkIns: activities.filter(a =>
+          [
+            'CHECK_IN',
+            'LIBRARY_VISIT',
+            'KIOSK_CHECK_IN',
+            'SELF_SERVICE_CHECK_IN',
+          ].includes(a.type),
+        ).length,
+        checkOuts: activities.filter(a => a.type === 'CHECK_OUT').length,
+        bookCheckouts: activities.filter(a => a.type === 'BOOK_CHECKOUT')
+          .length,
+        equipmentSessions: activities.filter(a => a.type === 'EQUIPMENT_USE')
+          .length,
+        printJobs: activities.filter(a => a.type === 'PRINTING').length,
+      };
+
+      res.json({
+        success: true,
+        data: {
+          activities,
+          stats,
+        },
+      });
+    } catch (error) {
+      logger.error('Error retrieving activities', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// DELETE /api/analytics/activities/reset - Reset activity history
+router.delete(
+  '/activities/reset',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Reset activities request', {
+      userId: (req as any).user?.id,
+    });
+
+    try {
+      // Use transaction to safely delete related data in correct order
+      // IMPORTANT: Delete child records FIRST to avoid foreign key constraint violations
+      const result = await prisma.$transaction(async tx => {
+        // First, get IDs of activities that will be deleted (non-ACTIVE ones)
+        const activitiesToDelete = await tx.student_activities.findMany({
+          where: {
+            status: { not: 'ACTIVE' },
+          },
+          select: { id: true },
+        });
+        const activityIds = activitiesToDelete.map(a => a.id);
+
+        // Delete student_activities_sections FIRST (child table with FK constraint)
+        const deletedSections = await tx.student_activities_sections.deleteMany(
+          {
+            where: {
+              activity_id: { in: activityIds },
+            },
+          },
+        );
+
+        // Now delete student activities (except ACTIVE ones for safety)
+        const deletedActivities = await tx.student_activities.deleteMany({
+          where: {
+            status: { not: 'ACTIVE' },
+          },
+        });
+
+        // Delete completed print jobs (keep pending ones)
+        const deletedPrintJobs = await tx.printing_jobs.deleteMany({
+          where: {
+            paid: true,
+          },
+        });
+
+        // Delete returned book checkouts (keep active ones)
+        const deletedCheckouts = await tx.book_checkouts.deleteMany({
+          where: {
+            status: 'RETURNED',
+          },
+        });
+
+        return {
+          activities: deletedActivities.count,
+          sections: deletedSections.count,
+          printJobs: deletedPrintJobs.count,
+          checkouts: deletedCheckouts.count,
+        };
+      });
+
+      logger.info('Activities reset completed', {
+        deletedCounts: result,
+      });
+
+      res.json({
+        success: true,
+        message: 'Activity history has been reset',
+        deletedCount: result.activities + result.printJobs + result.checkouts,
+        details: result,
+      });
+    } catch (error) {
+      logger.error('Error resetting activities', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;

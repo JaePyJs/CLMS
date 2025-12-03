@@ -4,8 +4,27 @@ import { logger } from '../utils/logger';
 export class LeaderboardService {
   /**
    * Record a scan for a student
+   * @param studentId - The student's database ID
+   * @param duration - Duration in minutes (for checkout)
+   * @param excludeFromLeaderboard - If true, don't count this scan (e.g., manual lookup, quick service)
    */
-  static async recordScan(studentId: string, duration: number = 0) {
+  static async recordScan(
+    studentId: string,
+    duration: number = 0,
+    excludeFromLeaderboard: boolean = false,
+  ) {
+    // Skip recording if excluded (manual lookup, quick service, etc.)
+    if (excludeFromLeaderboard) {
+      logger.info(
+        'Skipping leaderboard recording (excludeFromLeaderboard=true)',
+        {
+          studentId,
+          duration,
+        },
+      );
+      return;
+    }
+
     try {
       const now = new Date();
       const year = now.getFullYear();
@@ -66,9 +85,13 @@ export class LeaderboardService {
         rank: index + 1,
         studentId: stat.student.student_id,
         name: `${stat.student.first_name} ${stat.student.last_name}`,
-        grade: stat.student.grade_level,
-        section: stat.student.section,
-        totalScans: stat.total_scans,
+        gradeLevel:
+          stat.student.grade_level !== null &&
+          stat.student.grade_level !== undefined
+            ? String(stat.student.grade_level)
+            : '',
+        section: stat.student.section || '',
+        scanCount: stat.total_scans,
         totalMinutes: stat.total_minutes,
         photoUrl: stat.student.photo_url,
       }));
@@ -127,9 +150,12 @@ export class LeaderboardService {
           name: student
             ? `${student.first_name} ${student.last_name}`
             : 'Unknown Student',
-          grade: student?.grade_level || 0,
+          gradeLevel:
+            student?.grade_level !== null && student?.grade_level !== undefined
+              ? String(student.grade_level)
+              : '',
           section: student?.section || '',
-          totalScans: stat._sum.total_scans || 0,
+          scanCount: stat._sum.total_scans || 0,
           totalMinutes: stat._sum.total_minutes || 0,
           photoUrl: student?.photo_url,
         };
@@ -191,6 +217,48 @@ export class LeaderboardService {
       return { success: true, count: rewards.length, rewards };
     } catch (error) {
       logger.error('Failed to generate monthly rewards:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset leaderboard stats for a specific month/year or all time
+   * @param year - Optional year to reset
+   * @param month - Optional month to reset (requires year)
+   * @returns Number of records deleted
+   */
+  static async resetLeaderboard(year?: number, month?: number) {
+    try {
+      let whereClause = {};
+
+      if (year && month) {
+        whereClause = { year, month };
+        logger.info(`Resetting leaderboard for ${month}/${year}`);
+      } else if (year) {
+        whereClause = { year };
+        logger.info(`Resetting leaderboard for year ${year}`);
+      } else {
+        logger.info('Resetting entire leaderboard');
+      }
+
+      // Delete scan stats
+      // eslint-disable-next-line
+      const deleteResult = await (prisma as any).student_scan_stats.deleteMany({
+        where: whereClause,
+      });
+
+      // Also delete rewards if resetting
+      if (Object.keys(whereClause).length > 0) {
+        // eslint-disable-next-line
+        await (prisma as any).monthly_rewards.deleteMany({
+          where: whereClause,
+        });
+      }
+
+      logger.info(`Leaderboard reset: ${deleteResult.count} records deleted`);
+      return { success: true, count: deleteResult.count };
+    } catch (error) {
+      logger.error('Failed to reset leaderboard:', error);
       throw error;
     }
   }

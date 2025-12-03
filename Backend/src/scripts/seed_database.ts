@@ -90,7 +90,8 @@ async function importStudents(): Promise<number> {
 
   const result = await prisma.students.createMany({
     data,
-    skipDuplicates: true,
+    // Note: skipDuplicates not supported in SQLite. If duplicates exist, this will fail.
+    // For fresh imports, this is fine. For updates, use upsert logic.
   });
   return result.count;
 }
@@ -122,7 +123,7 @@ async function importPersonnel(): Promise<number> {
 
   const result = await prisma.students.createMany({
     data,
-    skipDuplicates: true,
+    // Note: skipDuplicates not supported in SQLite
   });
   return result.count;
 }
@@ -182,7 +183,7 @@ async function importBooks(): Promise<number> {
     const batch = booksData.slice(i, i + batchSize);
     const result = await prisma.books.createMany({
       data: batch,
-      skipDuplicates: true,
+      // Note: skipDuplicates not supported in SQLite
     });
     total += result.count;
     console.log(`  Imported ${total}/${booksData.length} books...`);

@@ -201,6 +201,42 @@ export const scanApi = {
   }) => apiClient.post('/api/scan', payload),
 };
 
+// Attendance Export API
+export const attendanceApi = {
+  // Get attendance data for a date range
+  getData: (startDate: string, endDate: string) =>
+    apiClient.get('/api/attendance-export/data', { startDate, endDate }),
+
+  // Get attendance summary statistics
+  getSummary: (startDate: string, endDate: string) =>
+    apiClient.get('/api/attendance-export/summary', { startDate, endDate }),
+
+  // Export attendance to CSV - returns blob
+  exportCSV: async (startDate: string, endDate: string) => {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL || ''}/api/attendance-export/export/csv?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+      }
+    );
+    if (!response.ok) throw new Error('Export failed');
+    return response.blob();
+  },
+
+  // Get today's attendance
+  getToday: () => {
+    const today = new Date();
+    const startDate = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+    const endDate = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+    return apiClient.get('/api/attendance-export/data', { startDate, endDate });
+  },
+
+  // Get active check-ins (students currently in library)
+  getActiveSessions: () => apiClient.get('/api/students/active-sessions'),
+};
+
 export const studentsApi = {
   // Get all students (helper for non-paginated view)
   getAll: () => apiClient.get('/api/students', { limit: 10000 }),
@@ -214,6 +250,10 @@ export const studentsApi = {
     section?: string;
     isActive?: boolean;
   }) => apiClient.get('/api/students', params),
+
+  // Get active sessions (currently checked-in students)
+  getActiveSessions: () => apiClient.get('/api/students/active-sessions'),
+
   // Search students
   searchStudents: (q: string, limit: number = 10, offset: number = 0) =>
     apiClient.get('/api/students/search', { q, limit, offset }),
@@ -252,6 +292,7 @@ export const studentsApi = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 300000, // 5 minute timeout for large imports
     });
   },
 
@@ -260,12 +301,14 @@ export const studentsApi = {
     file: File,
     importType: string = 'students',
     maxPreviewRows: number = 10,
-    fieldMappings?: any[]
+    fieldMappings?: any[],
+    skipHeaderRow: boolean = true
   ) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('importType', importType);
     formData.append('maxPreviewRows', maxPreviewRows.toString());
+    formData.append('skipHeaderRow', skipHeaderRow.toString());
     if (fieldMappings) {
       formData.append('fieldMappings', JSON.stringify(fieldMappings));
     }
@@ -274,6 +317,7 @@ export const studentsApi = {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 60000, // 1 minute timeout for preview
     });
   },
 
@@ -281,52 +325,18 @@ export const studentsApi = {
   downloadTemplate: () => {
     return apiClient.get('/api/import/templates/students');
   },
-};
 
-export const booksApi = {
-  // Get all books
-  getAll: (params?: any) => apiClient.get('/api/books', params),
-
-  // Import books
-  importBooks: (file: File, fieldMappings?: any[], dryRun: boolean = false) => {
+  // Fix student names from CSV (updates last_name for existing records)
+  fixStudentNames: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    if (fieldMappings) {
-      formData.append('fieldMappings', JSON.stringify(fieldMappings));
-    }
-    formData.append('dryRun', dryRun.toString());
 
-    return apiClient.post('/api/import/books', formData, {
+    return apiClient.post('/api/import/fix-students', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 300000, // 5 minute timeout
     });
-  },
-
-  // Preview import
-  previewImport: (
-    file: File,
-    maxPreviewRows: number = 10,
-    fieldMappings?: any[]
-  ) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('importType', 'books');
-    formData.append('maxPreviewRows', maxPreviewRows.toString());
-    if (fieldMappings) {
-      formData.append('fieldMappings', JSON.stringify(fieldMappings));
-    }
-
-    return apiClient.post('/api/import/preview', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-  },
-
-  // Download template
-  downloadTemplate: () => {
-    return apiClient.get('/api/import/template/books');
   },
 };
 
@@ -336,6 +346,34 @@ export const equipmentApi = {
 
   // Get equipment by ID
   getEquipmentById: (id: string) => apiClient.get(`/api/equipment/${id}`),
+
+  // Create new equipment/room
+  create: (data: {
+    name: string;
+    category?: string;
+    serial_number?: string;
+    status?: string;
+    notes?: string;
+  }) => apiClient.post('/api/equipment', data),
+
+  // Update equipment
+  update: (
+    id: string,
+    data: {
+      name?: string;
+      category?: string;
+      serial_number?: string;
+      status?: string;
+      notes?: string;
+    }
+  ) => apiClient.put(`/api/equipment/${id}`, data),
+
+  // Delete equipment
+  delete: (id: string) => apiClient.delete(`/api/equipment/${id}`),
+
+  // Get session history for equipment
+  getSessionHistory: (equipmentId: string) =>
+    apiClient.get(`/api/equipment/${equipmentId}/sessions`),
 
   // Start session
   startSession: (
@@ -384,12 +422,12 @@ export const analyticsApi = {
     format: 'csv' | 'json' = 'csv',
     dateRange?: { start: Date; end: Date }
   ) => {
-    const params: Record<string, unknown> = { format };
+    const data: Record<string, unknown> = { format };
     if (dateRange) {
-      params.startDate = dateRange.start.toISOString();
-      params.endDate = dateRange.end.toISOString();
+      data.startDate = dateRange.start.toISOString();
+      data.endDate = dateRange.end.toISOString();
     }
-    return apiClient.get('/api/analytics/export', params);
+    return apiClient.post('/api/analytics/export', data);
   },
 };
 
@@ -626,6 +664,114 @@ export const utilitiesApi = {
   quickBackup: () => apiClient.post('/api/settings/backups/create'),
 };
 
+// Books API
+export const booksApi = {
+  // Get all books with pagination
+  getBooks: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    category?: string;
+    author?: string;
+    available?: boolean;
+  }) => apiClient.get('/api/books', params),
+
+  // Get book by ID
+  getBook: (id: string) => apiClient.get(`/api/books/${id}`),
+
+  // Search books
+  searchBooks: (query: string, filters?: any) =>
+    apiClient.get('/api/books/search', { q: query, ...filters }),
+
+  // Get book stats
+  getStats: () => apiClient.get('/api/books/stats'),
+
+  // Get categories
+  getCategories: () => apiClient.get('/api/books/categories'),
+
+  // Title lookup with duplicate detection
+  lookupTitles: (query: string, limit?: number) =>
+    apiClient.get('/api/books/titles/lookup', { q: query, limit }),
+
+  // Get duplicate titles
+  getDuplicateTitles: () => apiClient.get('/api/books/titles/duplicates'),
+
+  // Create book
+  createBook: (data: any) => apiClient.post('/api/books', data),
+
+  // Update book
+  updateBook: (id: string, data: any) =>
+    apiClient.put(`/api/books/${id}`, data),
+
+  // Delete book
+  deleteBook: (id: string) => apiClient.delete(`/api/books/${id}`),
+
+  // Preview import (dry run) - accepts File or parsed data array
+  previewImport: (
+    fileOrData: File | any[],
+    maxRows?: number,
+    fieldMapping?: any[],
+    skipHeaderRow: boolean = true
+  ) => {
+    if (fileOrData instanceof File) {
+      const formData = new FormData();
+      formData.append('file', fileOrData);
+      formData.append('skipHeaderRow', skipHeaderRow.toString());
+      if (maxRows) formData.append('maxPreviewRows', maxRows.toString());
+      if (fieldMapping)
+        formData.append('fieldMappings', JSON.stringify(fieldMapping));
+      return apiClient.post('/api/import/books/preview', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000, // 2 minute timeout for preview
+      });
+    }
+    return apiClient.post(
+      '/api/import/books/preview',
+      {
+        data: fileOrData,
+        fieldMapping,
+        skipHeaderRow,
+      },
+      {
+        timeout: 120000, // 2 minute timeout for preview
+      }
+    );
+  },
+
+  // Import books - accepts File or parsed data array
+  importBooks: (
+    fileOrData: File | any[],
+    fieldMapping?: any[],
+    options?: any
+  ) => {
+    if (fileOrData instanceof File) {
+      const formData = new FormData();
+      formData.append('file', fileOrData);
+      if (fieldMapping)
+        formData.append('fieldMappings', JSON.stringify(fieldMapping));
+      if (options) formData.append('options', JSON.stringify(options));
+      return apiClient.post('/api/import/books', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000, // 5 minute timeout for large book imports
+      });
+    }
+    return apiClient.post(
+      '/api/import/books',
+      {
+        data: fileOrData,
+        fieldMapping,
+        options,
+      },
+      {
+        timeout: 300000, // 5 minute timeout for large book imports
+      }
+    );
+  },
+
+  // Download import template
+  downloadTemplate: () => apiClient.get('/api/import/templates/books'),
+};
+
 // Reports API
 export const reportsApi = {
   // Get daily report
@@ -714,10 +860,10 @@ export const settingsApi = {
     }),
   resetAllData: (confirmationCode: string) =>
     apiClient.post('/api/settings/reset-all-data', { confirmationCode }),
-  resetDatabaseCompletely: (confirmationCode: string) =>
-    apiClient.post('/api/settings/reset-database-completely', {
-      confirmationCode,
-    }),
+
+  // Nuclear Reset - Complete database wipe (Admin only)
+  nuclearReset: (confirmationCode: string) =>
+    apiClient.post('/api/settings/nuclear-reset', { confirmationCode }),
 
   // Google Sheets configuration
   getGoogleSheetsConfig: () => apiClient.get('/api/settings/google-sheets'),
@@ -786,13 +932,37 @@ export const enhancedLibraryApi = {
     bookIds: string[],
     materialType: string
   ) => {
+    console.log('[enhancedLibraryApi.borrowBooks] Called with:', {
+      studentId,
+      bookIds,
+      materialType,
+    });
+
+    if (!studentId || !bookIds.length || !materialType) {
+      console.error(
+        '[enhancedLibraryApi.borrowBooks] Missing required params:',
+        {
+          studentId,
+          bookIds,
+          materialType,
+        }
+      );
+      return {
+        success: false,
+        error: 'Missing required parameters',
+      } as ApiResponse<any>;
+    }
+
     const results = [] as any[];
     for (const bookId of bookIds) {
-      const r = await apiClient.post('/api/enhanced-library/borrow', {
+      const payload = {
         studentId,
         bookId,
         materialType,
-      });
+      };
+      console.log('[enhancedLibraryApi.borrowBooks] Sending request:', payload);
+      const r = await apiClient.post('/api/enhanced-library/borrow', payload);
+      console.log('[enhancedLibraryApi.borrowBooks] Response:', r);
       results.push(r);
     }
     return { success: true, data: results } as ApiResponse<any>;

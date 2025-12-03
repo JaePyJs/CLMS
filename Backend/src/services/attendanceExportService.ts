@@ -2,9 +2,11 @@ import { logger } from '../utils/logger';
 import { prisma } from '../utils/prisma';
 
 export interface AttendanceExportData {
+  id?: string;
   studentId: string;
   studentName: string;
   gradeLevel: string;
+  section?: string;
   checkInTime: Date;
   checkOutTime?: Date;
   duration?: number; // in minutes
@@ -31,17 +33,27 @@ export class AttendanceExportService {
             gte: startDate,
             lte: endDate,
           },
+          // Include all check-in related activity types
           activity_type: {
-            contains: 'SELF_SERVICE',
+            in: [
+              'LIBRARY_VISIT',
+              'KIOSK_CHECK_IN',
+              'CHECK_IN',
+              'SELF_SERVICE_CHECK_IN',
+              'KIOSK_CHECK_OUT',
+              'CHECK_OUT',
+            ],
           },
         },
         include: {
           student: {
             select: {
+              id: true,
               student_id: true,
               first_name: true,
               last_name: true,
               grade_level: true,
+              section: true,
             },
           },
         },
@@ -50,22 +62,38 @@ export class AttendanceExportService {
         },
       });
 
-      return activities.map(activity => ({
-        studentId: activity.student.student_id,
-        studentName: `${activity.student.first_name} ${activity.student.last_name}`,
-        gradeLevel: `Grade ${activity.student.grade_level}`,
-        checkInTime: activity.start_time,
-        checkOutTime: activity.end_time || undefined,
-        duration: activity.end_time
-          ? Math.floor(
-              (activity.end_time.getTime() - activity.start_time.getTime()) /
-                1000 /
-                60,
-            )
-          : undefined,
-        status: activity.status,
-        activityType: activity.activity_type,
-      }));
+      return activities.map(activity => {
+        // Format grade level properly
+        let gradeLevel = 'Unknown';
+        if (
+          activity.student.grade_level !== null &&
+          activity.student.grade_level !== undefined
+        ) {
+          gradeLevel =
+            activity.student.grade_level === 0
+              ? 'Pre-School'
+              : `Grade ${activity.student.grade_level}`;
+        }
+
+        return {
+          id: activity.id,
+          studentId: activity.student.student_id,
+          studentName: `${activity.student.first_name} ${activity.student.last_name}`,
+          gradeLevel,
+          section: activity.student.section || undefined,
+          checkInTime: activity.start_time,
+          checkOutTime: activity.end_time || undefined,
+          duration: activity.end_time
+            ? Math.floor(
+                (activity.end_time.getTime() - activity.start_time.getTime()) /
+                  1000 /
+                  60,
+              )
+            : undefined,
+          status: activity.status,
+          activityType: activity.activity_type,
+        };
+      });
     } catch (error) {
       logger.error('Error getting attendance data:', error);
       return [];

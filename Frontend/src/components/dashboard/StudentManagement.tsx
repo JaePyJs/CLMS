@@ -71,11 +71,13 @@ import {
 interface Student {
   id: string;
   studentId: string;
+  barcode?: string;
   firstName: string;
   lastName: string;
   gradeLevel: string;
   gradeCategory: string;
   section?: string;
+  gender?: string;
   isActive: boolean;
   email?: string;
   phone?: string;
@@ -93,6 +95,7 @@ interface Student {
   qrCodeGenerated: boolean;
   barcodeGenerated: boolean;
   libraryCardPrinted: boolean;
+  type: 'STUDENT' | 'PERSONNEL'; // Add type field
 }
 
 // Define the API response type
@@ -115,7 +118,9 @@ interface BackendStudent {
   grade_level: number;
   grade_category: string;
   section?: string;
+  gender?: string;
   is_active: boolean;
+  type?: 'STUDENT' | 'PERSONNEL'; // Add type field
   email?: string;
   phone?: string;
   address?: string;
@@ -143,32 +148,52 @@ export function StudentManagement() {
       const response = await studentsApi.getAll();
       const studentsData = (response?.data || []) as BackendStudent[];
       const transformedData: StudentsApiResponse = {
-        students: studentsData.map((student) => ({
-          id: student.id,
-          studentId: student.student_id,
-          firstName: student.first_name,
-          lastName: student.last_name,
-          gradeLevel: `Grade ${student.grade_level}`,
-          gradeCategory: student.grade_category,
-          section: student.section,
-          isActive: student.is_active,
-          email: student.email,
-          phone: student.phone,
-          address: student.address,
-          parentName: student.parent_name,
-          parentPhone: student.parent_phone,
-          parentEmail: student.parent_email,
-          emergencyContact: student.emergency_contact,
-          notes: student.notes,
-          joinDate: student.created_at,
-          lastActivity: student.updated_at,
-          totalSessions: 0,
-          specialPrivileges: [],
-          disciplinaryFlags: 0,
-          qrCodeGenerated: !!student.barcode,
-          barcodeGenerated: !!student.barcode,
-          libraryCardPrinted: false,
-        })),
+        students: studentsData.map((student) => {
+          // Determine type - check if type field exists, or infer from student_id prefix
+          const isPersonnel =
+            student.type === 'PERSONNEL' ||
+            student.student_id?.startsWith('PN');
+
+          // Format grade level - show "Staff" for personnel, handle grade 0 for kindergarten
+          let gradeDisplay = '';
+          if (isPersonnel) {
+            gradeDisplay = 'Staff';
+          } else if (student.grade_level === 0) {
+            gradeDisplay = 'Pre-School';
+          } else {
+            gradeDisplay = `Grade ${student.grade_level}`;
+          }
+
+          return {
+            id: student.id,
+            studentId: student.student_id,
+            barcode: student.barcode,
+            firstName: student.first_name,
+            lastName: student.last_name,
+            gradeLevel: gradeDisplay,
+            gradeCategory: student.grade_category,
+            section: student.section,
+            gender: student.gender,
+            isActive: student.is_active,
+            type: isPersonnel ? 'PERSONNEL' : 'STUDENT',
+            email: student.email,
+            phone: student.phone,
+            address: student.address,
+            parentName: student.parent_name,
+            parentPhone: student.parent_phone,
+            parentEmail: student.parent_email,
+            emergencyContact: student.emergency_contact,
+            notes: student.notes,
+            joinDate: student.created_at,
+            lastActivity: student.updated_at,
+            totalSessions: 0,
+            specialPrivileges: [],
+            disciplinaryFlags: 0,
+            qrCodeGenerated: !!student.barcode,
+            barcodeGenerated: !!student.barcode,
+            libraryCardPrinted: false,
+          };
+        }),
         total:
           (response?.data as unknown as { count?: number })?.count ||
           studentsData.length,
@@ -188,6 +213,7 @@ export function StudentManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterGrade, setFilterGrade] = useState('all');
+  const [filterType, setFilterType] = useState('all');
 
   // Calculate real stats from students data
   const realStats = useMemo(() => {
@@ -245,8 +271,17 @@ export function StudentManagement() {
       );
     }
 
+    // Apply type filter (Students vs Personnel)
+    if (filterType && filterType !== 'all') {
+      filtered = filtered.filter((student: Student) =>
+        filterType === 'students'
+          ? student.type === 'STUDENT'
+          : student.type === 'PERSONNEL'
+      );
+    }
+
     return filtered;
-  }, [students, searchTerm, filterStatus, filterGrade]);
+  }, [students, searchTerm, filterStatus, filterGrade, filterType]);
 
   // Modal states
   const [, modalActions] = useMultipleModals({
@@ -260,10 +295,13 @@ export function StudentManagement() {
   // Form state for new student
   const [formState, formActions] = useForm({
     initialValues: {
+      studentId: '',
+      barcode: '',
       firstName: '',
       lastName: '',
       gradeLevel: '',
       section: '',
+      gender: '',
       email: '',
       phone: '',
       parentName: '',
@@ -274,6 +312,7 @@ export function StudentManagement() {
       notes: '',
     },
     validationSchema: {
+      studentId: { required: true, minLength: 1 },
       firstName: { required: true, minLength: 1 },
       lastName: { required: true, minLength: 1 },
       gradeLevel: { required: true },
@@ -399,21 +438,26 @@ export function StudentManagement() {
   // Handler functions
   const handleAddStudent = async () => {
     if (
+      !newStudent.studentId ||
       !newStudent.firstName ||
       !newStudent.lastName ||
       !newStudent.gradeLevel
     ) {
-      toast.error('Please fill in required fields');
+      toast.error(
+        'Please fill in required fields (Student ID, First Name, Last Name, Grade)'
+      );
       return;
     }
 
     const apiPayload: any = {
-      student_id: `S-${Date.now()}`,
+      student_id: newStudent.studentId,
+      barcode: newStudent.barcode || newStudent.studentId, // Use barcode if provided, otherwise use student ID
       first_name: newStudent.firstName,
       last_name: newStudent.lastName,
       grade_level: Number(newStudent.gradeLevel.match(/\d+/)?.[0] || 0),
       grade_category: getGradeCategory(newStudent.gradeLevel),
       section: newStudent.section || undefined,
+      gender: newStudent.gender || undefined,
       email: newStudent.email || undefined,
       phone: newStudent.phone || undefined,
       parent_name: newStudent.parentName || undefined,
@@ -546,15 +590,13 @@ export function StudentManagement() {
           })
         )
       );
-      toast.success(`Updated ${selectedStudents.length} students`);
+      toast.success(`Grade updated for ${selectedStudents.length} students!`);
       setSelectedStudents([]);
       setShowBulkActions(false);
     } catch (error) {
       // Error handled by mutation
+      toast.error('Failed to update some students');
     }
-    toast.success(`Grade updated for ${selectedStudents.length} students!`);
-    setSelectedStudents([]);
-    setShowBulkActions(false);
   };
 
   const handleBulkStatusUpdate = async (status: 'active' | 'inactive') => {
@@ -585,8 +627,13 @@ export function StudentManagement() {
   };
 
   const getGradeCategory = (grade: string): string => {
+    const gradeLower = grade.toLowerCase();
+    if (gradeLower.includes('pre-school') || gradeLower.includes('preschool')) {
+      return 'preschool';
+    }
     if (
-      grade.includes('K') ||
+      gradeLower.includes('kindergarten') ||
+      gradeLower.includes('k') ||
       grade.includes('1') ||
       grade.includes('2') ||
       grade.includes('3')
@@ -618,15 +665,62 @@ export function StudentManagement() {
   };
 
   const handleSendParentMessage = (student: Student) => {
-    toast.info(
-      `Opening message composer for ${student.parentName || 'parent'}`
-    );
+    // Open email or phone contact based on available info
+    if (student.parentEmail) {
+      const subject = encodeURIComponent(
+        `Regarding ${student.firstName} ${student.lastName}`
+      );
+      const body = encodeURIComponent(
+        `Dear ${student.parentName || 'Parent/Guardian'},\n\nThis is a message from the school library regarding your child, ${student.firstName} ${student.lastName}.\n\n`
+      );
+      window.open(
+        `mailto:${student.parentEmail}?subject=${subject}&body=${body}`,
+        '_blank'
+      );
+      toast.success('Opening email composer...');
+    } else if (student.parentPhone) {
+      // Copy phone to clipboard for easy calling
+      navigator.clipboard.writeText(student.parentPhone);
+      toast.success(`Phone number copied: ${student.parentPhone}`);
+    } else {
+      toast.error("No contact information available for this student's parent");
+    }
   };
 
   const handleAwardStudent = (student: Student) => {
-    toast.info(
-      `Opening awards interface for ${student.firstName} ${student.lastName}`
+    // Simple award system - add recognition note
+    const awardTypes = [
+      'Top Reader of the Month',
+      'Most Books Read',
+      'Perfect Attendance',
+      'Library Helper',
+      'Reading Champion',
+    ];
+
+    const selectedAward = prompt(
+      `Select award for ${student.firstName} ${student.lastName}:\n\n` +
+        awardTypes.map((a, i) => `${i + 1}. ${a}`).join('\n') +
+        '\n\nEnter number (1-5) or custom award text:'
     );
+
+    if (selectedAward) {
+      const awardText = /^[1-5]$/.test(selectedAward.trim())
+        ? awardTypes[parseInt(selectedAward.trim()) - 1]
+        : selectedAward;
+
+      const currentNotes = student.notes || '';
+      const timestamp = new Date().toLocaleDateString();
+      const newNotes =
+        `${currentNotes}\n[AWARD ${timestamp}] ${awardText}`.trim();
+
+      updateStudentMutation.mutate({
+        id: student.id,
+        data: { notes: newNotes },
+      });
+      toast.success(
+        `Award "${awardText}" added to ${student.firstName}'s record!`
+      );
+    }
   };
 
   const handleAddNotes = async (student: Student) => {
@@ -1004,6 +1098,29 @@ export function StudentManagement() {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger
+                      className="w-[130px]"
+                      data-testid="type-filter"
+                      disabled={isStudentsRefreshing}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" data-testid="type-all">
+                        All Types
+                      </SelectItem>
+                      <SelectItem value="students" data-testid="type-students">
+                        Students Only
+                      </SelectItem>
+                      <SelectItem
+                        value="personnel"
+                        data-testid="type-personnel"
+                      >
+                        Personnel Only
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>
@@ -1099,14 +1216,32 @@ export function StudentManagement() {
                             data-testid="student-name"
                           >
                             {student.firstName} {student.lastName}
+                            {student.gender && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                ({student.gender})
+                              </span>
+                            )}
                             {student.disciplinaryFlags > 0 && (
                               <AlertTriangle className="inline h-3 w-3 ml-2 text-red-500" />
                             )}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            <span data-testid="student-id">
+                            <span
+                              data-testid="student-id"
+                              className="font-mono"
+                            >
                               {student.studentId}
-                            </span>{' '}
+                            </span>
+                            {student.barcode &&
+                              student.barcode !== student.studentId && (
+                                <span className="hidden sm:inline">
+                                  {' '}
+                                  • Barcode:{' '}
+                                  <span className="font-mono">
+                                    {student.barcode}
+                                  </span>
+                                </span>
+                              )}{' '}
                             • {student.gradeLevel}{' '}
                             {student.section
                               ? `• Section ${student.section}`
@@ -1142,6 +1277,7 @@ export function StudentManagement() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="hidden sm:inline-flex"
                           onClick={() => handleDeleteStudent(student.id)}
                           data-testid="delete-student-button"
                         >
@@ -1150,8 +1286,8 @@ export function StudentManagement() {
                       </div>
                     </div>
 
-                    {/* Student Info Badges */}
-                    <div className="flex items-center gap-2 mb-3 text-xs">
+                    {/* Student Info Badges - Responsive */}
+                    <div className="flex items-center gap-2 mb-3 text-xs flex-wrap">
                       {student.email && (
                         <Badge variant="outline" className="text-blue-600">
                           <Mail className="h-3 w-3 mr-1" />
@@ -1535,7 +1671,7 @@ export function StudentManagement() {
 
       {/* Add Student Dialog */}
       <Dialog open={showAddStudent} onOpenChange={setShowAddStudent}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Student</DialogTitle>
             <DialogDescription>
@@ -1543,6 +1679,35 @@ export function StudentManagement() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">
+                  Student ID / Enrollment Number *
+                </label>
+                <Input
+                  value={newStudent.studentId}
+                  onChange={(e) =>
+                    formActions.setValue('studentId', e.target.value)
+                  }
+                  placeholder="e.g., 20141203"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">
+                  Barcode / Library Card No.
+                </label>
+                <Input
+                  value={newStudent.barcode}
+                  onChange={(e) =>
+                    formActions.setValue('barcode', e.target.value)
+                  }
+                  placeholder="Leave empty to use Student ID"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Optional. If empty, Student ID will be used as barcode.
+                </p>
+              </div>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">First Name *</label>
@@ -1578,6 +1743,8 @@ export function StudentManagement() {
                     <SelectValue placeholder="Select grade" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="Pre-School">Pre-School</SelectItem>
+                    <SelectItem value="Kindergarten">Kindergarten</SelectItem>
                     <SelectItem value="Grade 1">Grade 1</SelectItem>
                     <SelectItem value="Grade 2">Grade 2</SelectItem>
                     <SelectItem value="Grade 3">Grade 3</SelectItem>
@@ -1602,6 +1769,23 @@ export function StudentManagement() {
                   }
                   placeholder="Section"
                 />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Gender</label>
+                <Select
+                  value={newStudent.gender}
+                  onValueChange={(value) =>
+                    formActions.setValue('gender', value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Male">Male</SelectItem>
+                    <SelectItem value="Female">Female</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -1679,7 +1863,7 @@ export function StudentManagement() {
 
       {/* Edit Student Dialog */}
       <Dialog open={showEditStudent} onOpenChange={setShowEditStudent}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Student</DialogTitle>
             <DialogDescription>
@@ -1817,7 +2001,7 @@ export function StudentManagement() {
 
       {/* Student Details Dialog */}
       <Dialog open={showStudentDetails} onOpenChange={setShowStudentDetails}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Student Details</DialogTitle>
             <DialogDescription>

@@ -100,9 +100,9 @@ export function requireRole(roles: string | string[]) {
       const allowedRoles = Array.isArray(roles) ? roles : [roles];
       const userRole = req.user.role;
 
-      // Admin has access to everything
-      if (userRole === 'ADMIN') {
-        logger.debug('Role check successful (Admin override)', {
+      // Single-user system: LIBRARIAN has access to everything
+      if (userRole === 'LIBRARIAN') {
+        logger.debug('Role check successful (LIBRARIAN - Full access)', {
           userId: req.user.userId,
           username: req.user.username,
           role: userRole,

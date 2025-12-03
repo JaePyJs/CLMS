@@ -30,6 +30,9 @@ import healthRoutes from './health';
 import backupRoutes from './backups';
 import automationRoutes from './automation';
 import searchRoutes from './search';
+import printingRoutes from './printing';
+import reportsRoutes from './reports';
+import { quickServiceRoutes } from './quickService';
 
 const router = Router();
 
@@ -60,6 +63,10 @@ router.use('/scan', scanRoutes);
 router.use('/backups', backupRoutes);
 router.use('/automation', automationRoutes);
 router.use('/search', searchRoutes);
+router.use('/printing', printingRoutes);
+router.use('/reports', reportsRoutes);
+router.use('/quick-service', quickServiceRoutes);
+router.use('/manual-lookup', quickServiceRoutes); // Same routes, different prefix
 router.use('/version', versionRoutes);
 router.use('/health', healthRoutes);
 

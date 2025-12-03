@@ -133,6 +133,62 @@ router.get(
   }),
 );
 
+// GET /api/v1/books/titles/lookup - Title lookup with duplicate detection
+router.get(
+  '/titles/lookup',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Title lookup request', {
+      query: req.query,
+      userId: (req as any).user?.id,
+    });
+
+    try {
+      const searchTitle = (req.query.q as string) || '';
+      const limit = req.query.limit
+        ? parseInt(req.query.limit as string, 10)
+        : 20;
+
+      const result = await BookService.lookupTitles(searchTitle, limit);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error('Error looking up titles', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
+// GET /api/v1/books/titles/duplicates - Get duplicate titles
+router.get(
+  '/titles/duplicates',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    logger.info('Get duplicate titles request', {
+      userId: (req as any).user?.id,
+    });
+
+    try {
+      const result = await BookService.getDuplicateTitles();
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error('Error getting duplicate titles', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }),
+);
+
 // GET /api/v1/books/quality-check - Get books needing review
 router.get(
   '/quality-check',

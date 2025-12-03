@@ -9,6 +9,7 @@ export interface CreateStudentData {
   grade_level: number;
   grade_category?: string;
   section?: string;
+  gender?: string;
   is_active?: boolean;
   barcode?: string;
 }
@@ -19,6 +20,7 @@ export interface UpdateStudentData {
   grade_level?: number;
   grade_category?: string;
   section?: string;
+  gender?: string;
   is_active?: boolean;
   barcode?: string;
 }
@@ -39,6 +41,7 @@ export class StudentService {
           grade_level: data.grade_level,
           grade_category: data.grade_category,
           section: data.section ?? null,
+          gender: data.gender ?? null,
           is_active: data.is_active !== undefined ? data.is_active : true,
           barcode: data.barcode || data.student_id, // Default to student_id if not provided
         },
@@ -160,11 +163,13 @@ export class StudentService {
       const where: any = {};
 
       if (search) {
+        // SQLite case-insensitive search: use lowercase contains
+        const searchLower = search.toLowerCase();
         where.OR = [
-          { first_name: { contains: search } },
-          { last_name: { contains: search } },
-          { student_id: { contains: search } },
-          { section: { contains: search } },
+          { first_name: { contains: searchLower } },
+          { last_name: { contains: searchLower } },
+          { student_id: { contains: searchLower } },
+          { section: { contains: searchLower } },
         ];
       }
 
@@ -173,7 +178,8 @@ export class StudentService {
       }
 
       if (section) {
-        where.section = { contains: section };
+        // SQLite case-insensitive search
+        where.section = { contains: section.toLowerCase() };
       }
 
       if (isActive !== undefined) {

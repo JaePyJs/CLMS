@@ -83,6 +83,26 @@ class WebSocketServer {
       path: '/socket.io',
     });
 
+    // Debug: Log engine events
+    this.io.engine.on('connection_error', (err: any) => {
+      logger.error('[WebSocket] Engine connection_error:', {
+        message: err.message,
+        code: err.code,
+        context: err.context,
+      });
+    });
+
+    this.io.engine.on('initial_headers', (_headers: any, req: any) => {
+      logger.debug('[WebSocket] Engine initial_headers:', { url: req.url });
+    });
+
+    this.io.engine.on('connection', (rawSocket: any) => {
+      logger.info(
+        '[WebSocket] Engine-level connection established:',
+        rawSocket.id,
+      );
+    });
+
     this.io!.on('connection', (socket: AuthenticatedSocket) => {
       logger.info(`WebSocket client connected: ${socket.id}`);
       logger.info(`DEBUG: Starting auth for ${socket.id}`);
@@ -155,7 +175,13 @@ class WebSocketServer {
 
   private authenticateSocket(socket: AuthenticatedSocket) {
     const token = socket.handshake.auth?.token || socket.handshake.query?.token;
-    const isDevBypass = isDevelopment() && process.env.WS_DEV_BYPASS === 'true';
+    const clientDevBypass = socket.handshake.auth?.devBypass === true;
+    const isDevBypass =
+      isDevelopment() && (env.WS_DEV_BYPASS || clientDevBypass);
+
+    logger.debug(
+      `[WebSocket Auth] Socket ${socket.id}: token=${!!token}, clientDevBypass=${clientDevBypass}, isDevBypass=${isDevBypass}`,
+    );
 
     if (token) {
       try {
@@ -216,21 +242,22 @@ class WebSocketServer {
       if (!allowedRooms.has(room)) {
         return false;
       }
+      // Allow 'attendance' for all connections (including kiosk displays)
+      if (room === 'attendance') {
+        return true;
+      }
       if (!role) {
         return false;
       }
-      if (role === 'developer') {
+      // Single-user system: all authenticated users can access all rooms
+      if (role === 'developer' || role === 'LIBRARIAN' || role === 'ADMIN') {
         return true;
       }
-      if (room === 'equipment') {
-        return role === 'LIBRARIAN' || role === 'ADMIN';
+      // Allow KIOSK_DISPLAY for attendance only
+      if (room === 'attendance' && role === 'KIOSK_DISPLAY') {
+        return true;
       }
-      if (room === 'attendance') {
-        return (
-          role === 'LIBRARIAN' || role === 'ADMIN' || role === 'KIOSK_DISPLAY'
-        );
-      }
-      return role === 'LIBRARIAN' || role === 'ADMIN';
+      return role === 'LIBRARIAN';
     };
     socket.on('subscribe', (data: { subscription: string }) => {
       const now = Date.now();
@@ -458,6 +485,7 @@ class WebSocketServer {
     activityId: string;
     studentId: string;
     studentName: string;
+    gender?: string;
     checkinTime: string;
     autoLogoutAt: string;
     reminders?: any[];
@@ -483,6 +511,17 @@ class WebSocketServer {
       data,
       timestamp: now,
     };
+
+    // Debug: log room info before emitting
+    const roomSockets = this.io?.sockets?.adapter?.rooms?.get('attendance');
+    logger.info('DEBUG: About to emit to attendance room', {
+      activityId: data.activityId,
+      roomSubscribersFromMap:
+        this.roomSubscriptions.get('attendance')?.size || 0,
+      actualRoomSize: roomSockets?.size || 0,
+      roomSocketIds: roomSockets ? Array.from(roomSockets) : [],
+    });
+
     this.io.to('attendance').emit('message', legacy);
     this.io.to('attendance').emit('message', modern);
 
@@ -500,6 +539,7 @@ class WebSocketServer {
     activityId: string;
     studentId: string;
     studentName: string;
+    gender?: string;
     checkoutTime: string;
     reason: 'manual' | 'auto';
     customMessage?: string;

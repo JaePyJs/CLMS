@@ -71,15 +71,24 @@ A full-stack library management system built with TypeScript, React, and Express
 ### Prerequisites
 
 - Node.js 20+
-- Docker Desktop
 - Git
 
-```
-Username: admin
-Password: admin123
+### Starting the Application
+
+1. Double-click `START_CLMS.bat` (Windows)
+2. Wait for Backend (port 3001) and Frontend (port 3000) to start
+3. Browser will open automatically to http://localhost:3000
+
+### First-Time Setup
+
+Create your admin account using the setup script:
+
+```bash
+cd Backend
+npx tsx src/scripts/create_test_admin.ts
 ```
 
-⚠️ **Change these immediately in production!**
+⚠️ **Security Note:** Create your own secure credentials. Never use default passwords in production!\*\*
 
 ## 📁 Project Structure
 

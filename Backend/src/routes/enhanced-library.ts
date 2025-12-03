@@ -87,7 +87,12 @@ router.get(
           activities: {
             some: {
               activity_type: {
-                in: ['CHECK_IN', 'SELF_SERVICE_CHECK_IN', 'KIOSK_CHECK_IN'],
+                in: [
+                  'CHECK_IN',
+                  'SELF_SERVICE_CHECK_IN',
+                  'KIOSK_CHECK_IN',
+                  'LIBRARY_VISIT',
+                ],
               },
               status: 'ACTIVE',
               start_time: {
@@ -126,7 +131,8 @@ router.get(
         return (
           lastActivity?.activity_type === 'CHECK_IN' ||
           lastActivity?.activity_type === 'SELF_SERVICE_CHECK_IN' ||
-          lastActivity?.activity_type === 'KIOSK_CHECK_IN'
+          lastActivity?.activity_type === 'KIOSK_CHECK_IN' ||
+          lastActivity?.activity_type === 'LIBRARY_VISIT'
         );
       });
 
@@ -137,6 +143,19 @@ router.get(
           patrons: activePatrons.map(patron => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const p = patron as any;
+            // Parse metadata if it's a string
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let activityMetadata: any = null;
+            try {
+              const rawMetadata = p.activities[0]?.metadata;
+              if (typeof rawMetadata === 'string') {
+                activityMetadata = JSON.parse(rawMetadata);
+              } else {
+                activityMetadata = rawMetadata;
+              }
+            } catch {
+              activityMetadata = null;
+            }
             return {
               id: p.id,
               studentId: p.student_id,
@@ -145,8 +164,10 @@ router.get(
               section: p.section,
               currentBooks: p.checkouts.length,
               lastCheckIn: p.activities[0]?.start_time,
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              purpose: (p.activities[0]?.metadata as any)?.purpose || 'library',
+              purpose:
+                activityMetadata?.purpose ||
+                activityMetadata?.purposes?.[0] ||
+                'library',
             };
           }),
         },
@@ -167,12 +188,31 @@ router.post(
   authenticateToken,
   async (req: Request, res: Response) => {
     try {
-      const { student_id, bookId, material_type } = req.body;
+      // Log the raw request body for debugging
+      logger.info('Borrow request received', { body: req.body });
+
+      // Accept both camelCase (frontend) and snake_case (legacy) parameter names
+      const student_id = req.body.student_id || req.body.studentId;
+      const bookId = req.body.bookId || req.body.book_id;
+      const material_type = req.body.material_type || req.body.materialType;
+
+      logger.info('Parsed borrow params', {
+        student_id,
+        bookId,
+        material_type,
+      });
 
       if (!student_id || !bookId || !material_type) {
+        logger.warn('Missing required borrow params', {
+          student_id,
+          bookId,
+          material_type,
+          rawBody: req.body,
+        });
         return res.status(400).json({
           success: false,
           error: 'Student ID, Book ID, and Material Type are required',
+          received: { student_id, bookId, material_type },
         });
       }
 
@@ -737,15 +777,17 @@ router.get(
           error: 'Search query is required',
         });
       }
+      // Convert to lowercase for case-insensitive search (SQLite compatible)
+      const searchLower = (query as string).toLowerCase();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const whereClause: any = {
         is_active: true,
         available_copies: { gt: 0 },
         OR: [
-          { title: { contains: query as string } },
-          { author: { contains: query as string } },
-          { accession_no: { contains: query as string } },
-          { isbn: { contains: query as string } },
+          { title: { contains: searchLower } },
+          { author: { contains: searchLower } },
+          { accession_no: { contains: searchLower } },
+          { isbn: { contains: searchLower } },
         ],
       };
       if (material_type) {
@@ -1370,11 +1412,11 @@ router.post(
           price_per_page: basePrice,
           total_cost: totalCost,
           paid: false,
-          metadata: {
+          metadata: JSON.stringify({
             documentName,
             copies,
             doubleSided,
-          },
+          }),
         },
       });
 

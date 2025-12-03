@@ -86,7 +86,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img
-              src="/src/assets/School_logo.png"
+              src="/School_logo.png"
               alt="Sacred Heart of Jesus Catholic School Logo"
               className="w-16 h-16 object-contain"
             />

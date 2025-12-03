@@ -43,10 +43,10 @@ async function main() {
       activity_type: 'CHECK_IN',
       description: 'Test check-in for drag-and-drop',
       status: 'ACTIVE',
-      metadata: {
+      metadata: JSON.stringify({
         purpose: 'library',
         testCheckIn: true,
-      },
+      }),
     },
   });
 

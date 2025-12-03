@@ -340,8 +340,8 @@ export const useActivityTimeline = (limit?: number) => {
         return fallbackActivities;
       }
     },
-    enabled: false, // Disable until endpoint exists
-    refetchInterval: false,
+    enabled: true, // Enable timeline fetching
+    refetchInterval: 60000, // Refresh every minute
     retry: false,
   });
 };

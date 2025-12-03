@@ -27,13 +27,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -53,7 +46,7 @@ import { getErrorMessage } from '@/utils/errorHandling';
 interface User {
   id: string;
   username: string;
-  role: 'ADMIN' | 'LIBRARIAN' | 'STAFF';
+  role: 'LIBRARIAN';
   isActive: boolean;
   lastLoginAt: Date | null;
   createdAt: Date;
@@ -62,7 +55,7 @@ interface User {
 interface UserFormData {
   username: string;
   password: string; // Always string, empty if not changing
-  role: 'ADMIN' | 'LIBRARIAN' | 'STAFF';
+  role: 'LIBRARIAN';
   isActive: boolean;
 }
 
@@ -334,7 +327,7 @@ export default function UserManagement() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="_Search users..."
+                placeholder="Search users..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -491,27 +484,8 @@ export default function UserManagement() {
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Select
-              value={formData.role}
-              onValueChange={(value: string) =>
-                setFormData({
-                  ...formData,
-                  role: value as 'ADMIN' | 'LIBRARIAN' | 'STAFF',
-                })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ADMIN">Admin</SelectItem>
-                <SelectItem value="LIBRARIAN">Librarian</SelectItem>
-                <SelectItem value="STAFF">Staff</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Role is always LIBRARIAN - single-user system */}
+          <input type="hidden" value="LIBRARIAN" />
 
           <div className="flex items-center space-x-2">
             <input

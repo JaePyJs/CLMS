@@ -40,6 +40,19 @@ export class PrintingService {
         paper_size: data.paper_size,
         color_level: data.color_level,
       });
+
+      // Deactivate existing prices for the same paper_size/color_level
+      await prisma.printing_pricing.updateMany({
+        where: {
+          paper_size: data.paper_size,
+          color_level: data.color_level,
+          is_active: true,
+        },
+        data: {
+          is_active: false,
+        },
+      });
+
       const pricing = await prisma.printing_pricing.create({
         data: {
           paper_size: data.paper_size,
@@ -64,8 +77,25 @@ export class PrintingService {
     try {
       const pricing = await prismaModels.printing_pricing.findMany({
         where: activeOnly ? { is_active: true } : {},
-        orderBy: [{ paper_size: 'asc' }, { color_level: 'asc' }],
+        orderBy: [
+          { paper_size: 'asc' },
+          { color_level: 'asc' },
+          { effective_from: 'desc' },
+        ],
       });
+
+      // If activeOnly, deduplicate by paper_size+color_level (keep only newest)
+      if (activeOnly) {
+        const seen = new Map<string, any>();
+        for (const p of pricing as any[]) {
+          const key = `${p.paper_size}_${p.color_level}`;
+          if (!seen.has(key)) {
+            seen.set(key, p);
+          }
+        }
+        return Array.from(seen.values());
+      }
+
       return pricing;
     } catch (error) {
       logger.error('List pricing failed', {
@@ -101,10 +131,14 @@ export class PrintingService {
       let studentUuid: string | undefined;
 
       if (data.student_id) {
-        // Try to find by student_id OR barcode to be robust
+        // Try to find by UUID, student_id OR barcode to be robust
         const student = await prisma.students.findFirst({
           where: {
-            OR: [{ student_id: data.student_id }, { barcode: data.student_id }],
+            OR: [
+              { id: data.student_id },
+              { student_id: data.student_id },
+              { barcode: data.student_id },
+            ],
           },
         });
 
@@ -209,6 +243,22 @@ export class PrintingService {
       return jobs;
     } catch (error) {
       logger.error('List printing jobs failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Reset/delete all print job records
+   */
+  public static async resetAllJobs(): Promise<void> {
+    try {
+      logger.info('Resetting all print jobs');
+      await prisma.printing_jobs.deleteMany({});
+      logger.info('All print jobs deleted successfully');
+    } catch (error) {
+      logger.error('Reset print jobs failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
       throw error;

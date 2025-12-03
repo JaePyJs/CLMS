@@ -88,39 +88,44 @@ export class BookScanService {
       ? new Date(payload.dueDate)
       : this.defaultDueDate();
 
-    const checkout = await prisma.book_checkouts.create({
-      data: {
-        student_id: student.id,
-        book_id: book.id,
-        due_date: dueDate,
-        status: 'ACTIVE',
-        notes: payload.notes,
-      },
-      include: {
-        student: true,
-        book: true,
-      },
-    });
-
-    await prisma.books.update({
-      where: { id: book.id },
-      data: {
-        available_copies: { decrement: 1 },
-      },
-    });
-
-    await prisma.student_activities.create({
-      data: {
-        student_id: student.id,
-        activity_type: 'BOOK_BORROWED',
-        description: `Borrowed "${book.title}"`,
-        status: 'COMPLETED',
-        metadata: {
-          checkoutId: checkout.id,
-          barcode,
-          dueDate: dueDate.toISOString(),
+    // Use transaction to ensure data consistency
+    const checkout = await prisma.$transaction(async tx => {
+      const newCheckout = await tx.book_checkouts.create({
+        data: {
+          student_id: student.id,
+          book_id: book.id,
+          due_date: dueDate,
+          status: 'ACTIVE',
+          notes: payload.notes,
         },
-      },
+        include: {
+          student: true,
+          book: true,
+        },
+      });
+
+      await tx.books.update({
+        where: { id: book.id },
+        data: {
+          available_copies: { decrement: 1 },
+        },
+      });
+
+      await tx.student_activities.create({
+        data: {
+          student_id: student.id,
+          activity_type: 'BOOK_BORROWED',
+          description: `Borrowed "${book.title}"`,
+          status: 'COMPLETED',
+          metadata: JSON.stringify({
+            checkoutId: newCheckout.id,
+            barcode,
+            dueDate: dueDate.toISOString(),
+          }),
+        },
+      });
+
+      return newCheckout;
     });
 
     websocketServer.emitBorrowReturnUpdate({
@@ -184,11 +189,11 @@ export class BookScanService {
         activity_type: 'BOOK_READING_SESSION',
         description: `Reading "${book.title}" inside library`,
         status: 'COMPLETED',
-        metadata: {
+        metadata: JSON.stringify({
           bookId: book.id,
           barcode,
           notes: payload.notes,
-        },
+        }),
       },
     });
 
@@ -272,11 +277,11 @@ export class BookScanService {
         activity_type: 'BOOK_RETURNED',
         description: `Returned "${book.title}"`,
         status: 'COMPLETED',
-        metadata: {
+        metadata: JSON.stringify({
           checkoutId: checkout.id,
           barcode,
           notes: payload.notes,
-        },
+        }),
       },
     });
 

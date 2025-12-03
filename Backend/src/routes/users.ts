@@ -10,12 +10,16 @@ const router = Router();
 const DEFAULT_LIBRARIAN_PASSWORD =
   env.DEFAULT_LIBRARIAN_PASSWORD?.trim() || 'lib123';
 
-async function validateAdminCredentials(username: string, password: string) {
+// Validate librarian credentials for sensitive operations
+async function validateLibrarianCredentials(
+  username: string,
+  password: string,
+) {
   if (!username || !password) {
-    throw new Error('ADMIN_CREDENTIALS_REQUIRED');
+    throw new Error('LIBRARIAN_CREDENTIALS_REQUIRED');
   }
 
-  const adminUser = await prisma.users.findUnique({
+  const librarianUser = await prisma.users.findUnique({
     where: { username },
     select: {
       id: true,
@@ -26,24 +30,21 @@ async function validateAdminCredentials(username: string, password: string) {
     },
   });
 
-  if (
-    adminUser?.role !== 'ADMIN' ||
-    !adminUser?.is_active ||
-    !adminUser?.password
-  ) {
-    throw new Error('INVALID_ADMIN_CREDENTIALS');
+  // Accept LIBRARIAN role (single-user system)
+  if (!librarianUser?.is_active || !librarianUser?.password) {
+    throw new Error('INVALID_LIBRARIAN_CREDENTIALS');
   }
 
   const passwordMatches = await AuthService.verifyPassword(
     password,
-    adminUser.password,
+    librarianUser.password,
   );
 
   if (!passwordMatches) {
-    throw new Error('INVALID_ADMIN_CREDENTIALS');
+    throw new Error('INVALID_LIBRARIAN_CREDENTIALS');
   }
 
-  return adminUser;
+  return librarianUser;
 }
 
 // GET /api/users
@@ -73,11 +74,13 @@ router.get(
       const where: Record<string, unknown> = {};
 
       if (search) {
+        // SQLite case-insensitive search: use lowercase contains
+        const searchLower = search.toLowerCase();
         where.OR = [
-          { username: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { first_name: { contains: search, mode: 'insensitive' } },
-          { last_name: { contains: search, mode: 'insensitive' } },
+          { username: { contains: searchLower } },
+          { email: { contains: searchLower } },
+          { first_name: { contains: searchLower } },
+          { last_name: { contains: searchLower } },
         ];
       }
 
@@ -621,7 +624,7 @@ router.post(
   '/:id/reset-password/default',
   authenticate,
   asyncHandler(async (req: Request, res: Response) => {
-    logger.info('Admin-confirmed default password reset request', {
+    logger.info('Librarian-confirmed default password reset request', {
       targetUserId: req.params['id'],
       requestedBy: req.user?.userId,
     });
@@ -632,21 +635,21 @@ router.post(
       if (!adminUsername || !adminPassword) {
         return res.status(400).json({
           success: false,
-          message: 'Admin username and password are required',
+          message: 'Librarian username and password are required',
         });
       }
 
       try {
-        await validateAdminCredentials(adminUsername, adminPassword);
+        await validateLibrarianCredentials(adminUsername, adminPassword);
       } catch (_error) {
-        logger.warn('Invalid admin credentials for password reset', {
-          adminUsername,
+        logger.warn('Invalid librarian credentials for password reset', {
+          librarianUsername: adminUsername,
           requesterId: req.user?.userId,
         });
         return res.status(401).json({
           success: false,
-          message: 'Invalid admin credentials',
-          code: 'INVALID_ADMIN_CREDENTIALS',
+          message: 'Invalid librarian credentials',
+          code: 'INVALID_LIBRARIAN_CREDENTIALS',
         });
       }
 

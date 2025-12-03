@@ -193,7 +193,7 @@ export default function ErrorDashboard() {
             <div className="flex-1">
               <input
                 type="text"
-                placeholder="_Search errors..."
+                placeholder="Search errors..."
                 className="w-full px-3 py-2 border rounded-md text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/50"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

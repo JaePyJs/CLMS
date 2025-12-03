@@ -20,7 +20,13 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "db:seed": "tsx src/scripts/seed_database.ts"
+    "db:seed": "tsx src/scripts/seed_database.ts",
+    "db:reset": "tsx src/scripts/reset_database.ts",
+    "reset:password": "tsx reset-password.ts",
+    "reset:librarian": "tsx reset-librarian.ts",
+    "create:librarian": "tsx create-librarian.ts",
+    "create:admin": "tsx create_test_admin.ts",
+    "disable:cooldown": "tsx disable-cooldown.ts"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",

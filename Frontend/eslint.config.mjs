@@ -88,7 +88,10 @@ export default [
       ...js.configs.recommended.rules,
       'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
       'no-debugger': 'error',
-      'no-unused-vars': 'warn',
+      'no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
       'prefer-const': 'warn',
       'no-duplicate-imports': 'warn',
       'no-redeclare': 'off', // TypeScript handles redeclaration properly

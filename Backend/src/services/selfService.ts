@@ -34,11 +34,33 @@ export interface Statistics {
  * Format student for API response (convert snake_case to camelCase)
  */
 function formatStudentForAPI(student: any) {
+  // Format grade level properly - convert integer to readable string
+  const gradeLevel = student.grade_level;
+  let formattedGradeLevel = '';
+  if (gradeLevel !== null && gradeLevel !== undefined) {
+    const gradeNum = Number(gradeLevel);
+    if (!isNaN(gradeNum)) {
+      if (gradeNum >= 1 && gradeNum <= 6) {
+        formattedGradeLevel = `Grade ${gradeNum}`;
+      } else if (gradeNum >= 7 && gradeNum <= 10) {
+        formattedGradeLevel = `Grade ${gradeNum}`;
+      } else if (gradeNum === 11 || gradeNum === 12) {
+        formattedGradeLevel = `Grade ${gradeNum}`;
+      } else if (gradeNum === 0) {
+        formattedGradeLevel = 'Kindergarten';
+      } else {
+        formattedGradeLevel = String(gradeNum);
+      }
+    } else {
+      formattedGradeLevel = String(gradeLevel);
+    }
+  }
+
   return {
     id: student.id,
     studentId: student.student_id,
     name: `${student.first_name} ${student.last_name}`,
-    gradeLevel: String(student.grade_level),
+    gradeLevel: formattedGradeLevel,
     section: student.section || '',
     gradeCategory: student.grade_category || 'STUDENT',
   };
@@ -51,6 +73,7 @@ function formatStudentForAPI(student: any) {
 export class SelfService {
   /**
    * Process a scan and determine action (auto check-in or check-out)
+   * Enforces 15-minute minimum session before allowing checkout
    */
   static async processScan(
     scanData: string,
@@ -77,7 +100,24 @@ export class SelfService {
       });
 
       if (activeActivity) {
-        // Check out the student
+        // Check if 15-minute minimum session has passed
+        const now = new Date();
+        const startTime = new Date(activeActivity.start_time);
+        const minutesSinceCheckIn =
+          (now.getTime() - startTime.getTime()) / 60000;
+
+        if (minutesSinceCheckIn < 15 && !bypassCooldown) {
+          const remainingMinutes = Math.ceil(15 - minutesSinceCheckIn);
+          const remainingSeconds = Math.ceil((15 - minutesSinceCheckIn) * 60);
+          return {
+            success: false,
+            message: `You must stay checked in for at least 15 minutes. Please wait ${remainingMinutes} more minute(s) before checking out.`,
+            cooldownRemaining: remainingSeconds,
+            student: formatStudentForAPI(student),
+          };
+        }
+
+        // Check out the student (15+ minutes passed or bypass)
         return await this.checkOut(student.id, activeActivity.id);
       } else {
         // Check in the student
@@ -203,17 +243,39 @@ export class SelfService {
       const activity = await prisma.student_activities.create({
         data: {
           student_id: studentId,
-          activity_type: 'SELF_SERVICE_CHECK_IN',
-          description: 'Self-service check-in',
+          activity_type: 'LIBRARY_VISIT',
+          description: 'Library check-in',
           status: 'ACTIVE',
         },
       });
+
+      // Auto-assign to Library Space section
+      const librarySection = await prisma.library_sections.findFirst({
+        where: {
+          OR: [
+            { code: 'LIBRARY' },
+            { code: 'LIBRARY_SPACE' },
+            { name: { contains: 'Library' } },
+          ],
+          is_active: true,
+        },
+      });
+
+      if (librarySection) {
+        await prisma.student_activities_sections.create({
+          data: {
+            activity_id: activity.id,
+            section_id: librarySection.id,
+          },
+        });
+      }
 
       // Emit WebSocket event
       websocketServer.emitStudentCheckIn({
         activityId: activity.id,
         studentId: student.id,
         studentName: `${student.first_name} ${student.last_name}`,
+        gender: student.gender || undefined,
         checkinTime: activity.start_time.toISOString(),
         autoLogoutAt: new Date(
           activity.start_time.getTime() + 30 * 60000,
@@ -319,6 +381,7 @@ export class SelfService {
         activityId: updatedActivity.id,
         studentId: student.id,
         studentName: `${student.first_name} ${student.last_name}`,
+        gender: student.gender || undefined,
         checkoutTime: endTime.toISOString(),
         reason: 'manual',
       });
@@ -338,8 +401,25 @@ export class SelfService {
         }),
       );
 
-      // Also record time spent for leaderboard on checkout
-      LeaderboardService.recordScan(student.id, timeSpent).catch(err =>
+      // Check if this was a manual lookup session (excluded from leaderboard)
+      let excludeFromLeaderboard = false;
+      try {
+        const activityMetadata = activity.metadata
+          ? JSON.parse(activity.metadata)
+          : {};
+        excludeFromLeaderboard =
+          activityMetadata.excludeFromLeaderboard === true ||
+          activityMetadata.manualLookup === true;
+      } catch {
+        // If metadata parsing fails, don't exclude
+      }
+
+      // Record time spent for leaderboard on checkout (unless excluded)
+      LeaderboardService.recordScan(
+        student.id,
+        timeSpent,
+        excludeFromLeaderboard,
+      ).catch(err =>
         logger.error('Failed to record leaderboard stats on checkout:', err),
       );
 
@@ -370,9 +450,16 @@ export class SelfService {
   ): Promise<Statistics> {
     try {
       // Build where clause for date range
+      // Include all check-in activity types: LIBRARY_VISIT (used by selfService.checkIn),
+      // SELF_SERVICE_CHECK_IN, KIOSK_CHECK_IN, and CHECK_IN
       const whereClause: any = {
         activity_type: {
-          in: ['SELF_SERVICE_CHECK_IN', 'KIOSK_CHECK_IN'],
+          in: [
+            'LIBRARY_VISIT',
+            'SELF_SERVICE_CHECK_IN',
+            'KIOSK_CHECK_IN',
+            'CHECK_IN',
+          ],
         },
       };
 
@@ -451,10 +538,21 @@ export class SelfService {
     const code = String(barcode).trim();
 
     // First, try to find by student_id (most common case)
+    // Note: We don't filter by is_active - student becomes active on first scan
     let student = await prisma.students.findFirst({
-      where: { student_id: code, is_active: true },
+      where: { student_id: code },
     });
     if (student) {
+      // Activate student on first scan if not already active
+      if (!student.is_active) {
+        student = await prisma.students.update({
+          where: { id: student.id },
+          data: { is_active: true },
+        });
+        logger.info('Student activated on first scan', {
+          studentId: student.student_id,
+        });
+      }
       return student;
     }
 
@@ -466,9 +564,19 @@ export class SelfService {
 
     // Try exact barcode match
     student = await prisma.students.findFirst({
-      where: { barcode: code, is_active: true },
+      where: { barcode: code },
     });
     if (student) {
+      // Activate student on first scan if not already active
+      if (!student.is_active) {
+        student = await prisma.students.update({
+          where: { id: student.id },
+          data: { is_active: true },
+        });
+        logger.info('Student activated on first scan', {
+          studentId: student.student_id,
+        });
+      }
       return student;
     }
 
@@ -476,9 +584,19 @@ export class SelfService {
     if (/^\d{5,12}$/.test(code)) {
       const pnCode = `PN${code}`;
       student = await prisma.students.findFirst({
-        where: { barcode: pnCode, is_active: true },
+        where: { barcode: pnCode },
       });
       if (student) {
+        // Activate student on first scan if not already active
+        if (!student.is_active) {
+          student = await prisma.students.update({
+            where: { id: student.id },
+            data: { is_active: true },
+          });
+          logger.info('Student activated on first scan', {
+            studentId: student.student_id,
+          });
+        }
         return student;
       }
     }

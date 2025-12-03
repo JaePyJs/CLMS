@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useRef,
-  useCallback,
-  useEffect,
-  Fragment,
-} from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -41,9 +35,9 @@ import {
   File as FileIcon,
   Users,
   Loader2,
-  ChevronRight,
   AlertTriangle,
   CheckCircle,
+  FileEdit,
 } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -76,6 +70,7 @@ interface ImportedStudent {
 interface FieldMapping {
   sourceField: string;
   targetField: string;
+  label: string;
   required: boolean;
 }
 
@@ -89,35 +84,134 @@ interface ImportPreview {
 
 // Available fields for mapping
 const AVAILABLE_FIELDS: FieldMapping[] = [
-  { sourceField: 'firstName', targetField: 'first_name', required: true },
-  { sourceField: 'lastName', targetField: 'last_name', required: true },
-  { sourceField: 'studentId', targetField: 'student_id', required: false },
-  { sourceField: 'barcode', targetField: 'barcode', required: false },
-  { sourceField: 'gradeLevel', targetField: 'grade_level', required: true },
-  { sourceField: 'section', targetField: 'section', required: false },
-  { sourceField: 'email', targetField: 'email', required: false },
-  { sourceField: 'phone', targetField: 'phone', required: false },
-  { sourceField: 'parentName', targetField: 'parent_name', required: false },
-  { sourceField: 'parentPhone', targetField: 'parent_phone', required: false },
-  { sourceField: 'parentEmail', targetField: 'parent_email', required: false },
-  { sourceField: 'address', targetField: 'address', required: false },
+  {
+    sourceField: 'fullName',
+    targetField: 'full_name',
+    label: 'Full Name',
+    required: false,
+  },
+  {
+    sourceField: 'firstName',
+    targetField: 'first_name',
+    label: 'First Name',
+    required: true,
+  },
+  {
+    sourceField: 'lastName',
+    targetField: 'last_name',
+    label: 'Last Name / Surname',
+    required: true,
+  },
+  {
+    sourceField: 'studentId',
+    targetField: 'student_id',
+    label: 'Student ID',
+    required: false,
+  },
+  {
+    sourceField: 'barcode',
+    targetField: 'barcode',
+    label: 'Barcode',
+    required: false,
+  },
+  {
+    sourceField: 'gradeLevel',
+    targetField: 'grade_level',
+    label: 'Grade Level',
+    required: true,
+  },
+  {
+    sourceField: 'section',
+    targetField: 'section',
+    label: 'Section',
+    required: false,
+  },
+  {
+    sourceField: 'email',
+    targetField: 'email',
+    label: 'Email',
+    required: false,
+  },
+  {
+    sourceField: 'phone',
+    targetField: 'phone',
+    label: 'Phone',
+    required: false,
+  },
+  {
+    sourceField: 'parentName',
+    targetField: 'parent_name',
+    label: 'Parent Name',
+    required: false,
+  },
+  {
+    sourceField: 'parentPhone',
+    targetField: 'parent_phone',
+    label: 'Parent Phone',
+    required: false,
+  },
+  {
+    sourceField: 'parentEmail',
+    targetField: 'parent_email',
+    label: 'Parent Email',
+    required: false,
+  },
+  {
+    sourceField: 'address',
+    targetField: 'address',
+    label: 'Address',
+    required: false,
+  },
   {
     sourceField: 'emergencyContact',
     targetField: 'emergency_contact',
+    label: 'Emergency Contact',
     required: false,
   },
-  { sourceField: 'notes', targetField: 'notes', required: false },
-  { sourceField: 'gender', targetField: 'gender', required: false },
-  { sourceField: 'designation', targetField: 'designation', required: false },
+  {
+    sourceField: 'notes',
+    targetField: 'notes',
+    label: 'Notes',
+    required: false,
+  },
+  {
+    sourceField: 'gender',
+    targetField: 'gender',
+    label: 'Gender',
+    required: false,
+  },
+  {
+    sourceField: 'designation',
+    targetField: 'designation',
+    label: 'Designation',
+    required: false,
+  },
 ];
 
 // Get common field name aliases
 const getCommonAliases = (field: string): string[] => {
   const aliases: Record<string, string[]> = {
-    firstName: ['first', 'given name', 'forename', 'fname'],
-    lastName: ['last', 'surname', 'family name', 'lname'],
-    studentId: ['student id', 'id', 'user id', 'student_id', 'lrn'],
-    barcode: ['barcode', 'card number', 'library card'],
+    fullName: ['name', 'full name', 'student name', 'fullname'],
+    firstName: ['first', 'first name', 'given name', 'forename', 'fname'],
+    lastName: [
+      'last',
+      'last name',
+      'surname',
+      'family name',
+      'lname',
+      'sur name',
+    ],
+    studentId: ['student id', 'id', 'user id', 'student_id', 'lrn', 'userid'],
+    // User ID should also be treated as barcode if no separate barcode column
+    barcode: [
+      'barcode',
+      'card number',
+      'library card',
+      'barcode no',
+      'barcode no.',
+      'user id',
+      'userid',
+    ],
     gradeLevel: ['grade', 'year', 'level', 'grade level', 'class'],
     section: ['section', 'block', 'group'],
     email: ['email', 'e-mail', 'email address'],
@@ -147,14 +241,7 @@ export function StudentImportDialog({
 }: StudentImportDialogProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // VERIFICATION LOG
-  useEffect(() => {
-    console.info(
-      '%c Snake Case Fix Loaded: ready for import',
-      'background: #222; color: #bada55'
-    );
-  }, []);
+  const fixFileInputRef = useRef<HTMLInputElement>(null);
 
   // State management
   const [currentStep, setCurrentStep] = useState<
@@ -174,12 +261,21 @@ export function StudentImportDialog({
   const [importResults, setImportResults] = useState<{
     success: number;
     failed: number;
+    importedStudents: number;
+    importedPersonnel: number;
     errors: string[];
-  }>({ success: 0, failed: 0, errors: [] });
+  }>({
+    success: 0,
+    failed: 0,
+    importedStudents: 0,
+    importedPersonnel: 0,
+    errors: [],
+  });
   const [generatedBarcodes, setGeneratedBarcodes] = useState<
     Array<{ row: number; barcode: string }>
   >([]);
   const [skipHeaderRow, setSkipHeaderRow] = useState(true);
+  const [isProcessingPreview, setIsProcessingPreview] = useState(false);
   // Reset state when dialog closes
   const handleClose = () => {
     setCurrentStep('upload');
@@ -189,8 +285,15 @@ export function StudentImportDialog({
     setFieldMapping({});
     setImportedStudents([]);
     setImportPreview(null);
+    setIsProcessingPreview(false);
 
-    setImportResults({ success: 0, failed: 0, errors: [] });
+    setImportResults({
+      success: 0,
+      failed: 0,
+      importedStudents: 0,
+      importedPersonnel: 0,
+      errors: [],
+    });
     setSkipHeaderRow(true);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -379,13 +482,18 @@ export function StudentImportDialog({
 
   // Preview import mutation
   const previewImportMutation = useMutation({
-    mutationFn: async (data: { file: File; fieldMappings: FieldMapping[] }) => {
+    mutationFn: async (data: {
+      file: File;
+      fieldMappings: FieldMapping[];
+      skipHeaderRow: boolean;
+    }) => {
       try {
         const result = await studentsApi.previewImport(
           data.file,
           'students',
           1000,
-          data.fieldMappings
+          data.fieldMappings,
+          data.skipHeaderRow
         );
         return result.data;
       } catch (error: unknown) {
@@ -439,10 +547,12 @@ export function StudentImportDialog({
         });
         setCurrentStep('preview');
         setCurrentPage(1); // Reset to first page
+        setIsProcessingPreview(false);
       }
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, 'Preview failed'));
+      setIsProcessingPreview(false);
     },
   });
 
@@ -463,6 +573,8 @@ export function StudentImportDialog({
     },
     onSuccess: (result: {
       importedRecords?: number;
+      importedStudents?: number;
+      importedPersonnel?: number;
       errorRecords?: number;
       errors?: string[];
       generated?: Array<{ row: number; barcode: string }>;
@@ -470,6 +582,8 @@ export function StudentImportDialog({
       setImportResults({
         success: result.importedRecords || 0,
         failed: result.errorRecords || 0,
+        importedStudents: result.importedStudents || 0,
+        importedPersonnel: result.importedPersonnel || 0,
         errors: result.errors || [],
       });
       setGeneratedBarcodes(
@@ -479,13 +593,21 @@ export function StudentImportDialog({
       queryClient.invalidateQueries({ queryKey: ['students'] });
 
       if (result.importedRecords > 0) {
+        const duplicateNote =
+          importPreview && importPreview.duplicateRows > 0
+            ? ` (${importPreview.duplicateRows} duplicates updated)`
+            : '';
+        const breakdown =
+          result.importedStudents && result.importedPersonnel
+            ? ` (${result.importedStudents} students, ${result.importedPersonnel} personnel)`
+            : '';
         toast.success(
-          `Successfully imported ${result.importedRecords} students`
+          `Successfully imported ${result.importedRecords} records${duplicateNote}${breakdown}`
         );
       }
 
       if (result.errorRecords > 0) {
-        toast.error(`Failed to import ${result.errorRecords} students`);
+        toast.error(`Failed to import ${result.errorRecords} records`);
       }
     },
     onError: (error: unknown) => {
@@ -493,6 +615,40 @@ export function StudentImportDialog({
       setCurrentStep('preview');
     },
   });
+
+  // Fix names mutation - updates last_name from CSV for existing records
+  const fixNamesMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const result = await studentsApi.fixStudentNames(file);
+      return result.data;
+    },
+    onSuccess: (result: {
+      updated?: number;
+      notFound?: number;
+      errors?: string[];
+    }) => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      toast.success(
+        `Fixed ${result.updated || 0} student names. ${result.notFound || 0} not found.`
+      );
+      if (result.errors && result.errors.length > 0) {
+        toast.warning(`${result.errors.length} errors occurred during fix`);
+      }
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Fix names failed'));
+    },
+  });
+
+  // Handle fix file selection
+  const handleFixFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      fixNamesMutation.mutate(file);
+    }
+    // Reset the input so the same file can be selected again
+    event.target.value = '';
+  };
 
   // Process imported data using backend preview
   const processImportedData = useCallback(() => {
@@ -507,17 +663,24 @@ export function StudentImportDialog({
       .map(([sourceField, targetField]) => ({
         sourceField,
         targetField,
+        label:
+          AVAILABLE_FIELDS.find((f) => f.targetField === targetField)?.label ||
+          targetField,
         required:
           AVAILABLE_FIELDS.find((f) => f.targetField === targetField)
             ?.required || false,
       }));
 
-    setCurrentStep('importing');
+    // Don't change step to 'importing' during preview processing
+    // The 'importing' step should only be shown when actually importing students
+    // Stay on 'mapping' with a loading state until preview is ready
+    setIsProcessingPreview(true);
     previewImportMutation.mutate({
       file: selectedFile,
       fieldMappings: mappings,
+      skipHeaderRow,
     });
-  }, [selectedFile, fieldMapping, previewImportMutation]);
+  }, [selectedFile, fieldMapping, previewImportMutation, skipHeaderRow]);
 
   // Start import
   const handleImport = () => {
@@ -538,6 +701,9 @@ export function StudentImportDialog({
       .map(([sourceField, targetField]) => ({
         sourceField,
         targetField,
+        label:
+          AVAILABLE_FIELDS.find((f) => f.targetField === targetField)?.label ||
+          targetField,
         required:
           AVAILABLE_FIELDS.find((f) => f.targetField === targetField)
             ?.required || false,
@@ -637,63 +803,75 @@ export function StudentImportDialog({
 
         <div className="flex flex-col flex-1 min-h-0">
           {/* Progress indicator */}
-          <div className="px-6 pb-4">
-            <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-2 flex-1">
-                {['upload', 'mapping', 'preview', 'importing', 'complete'].map(
-                  (step, index) => (
-                    <Fragment key={step}>
-                      <div
-                        className={`flex items-center gap-2 ${
-                          currentStep === step
-                            ? 'text-primary'
-                            : [
-                                  'upload',
-                                  'mapping',
-                                  'preview',
-                                  'importing',
-                                  'complete',
-                                ].indexOf(currentStep) > index
-                              ? 'text-green-600'
-                              : 'text-muted-foreground'
-                        }`}
-                      >
-                        <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                            currentStep === step
-                              ? 'bg-primary text-primary-foreground'
-                              : [
-                                    'upload',
-                                    'mapping',
-                                    'preview',
-                                    'importing',
-                                    'complete',
-                                  ].indexOf(currentStep) > index
-                                ? 'bg-green-600 text-white'
-                                : 'bg-muted'
-                          }`}
-                        >
-                          {[
-                            'upload',
-                            'mapping',
-                            'preview',
-                            'importing',
-                            'complete',
-                          ].indexOf(currentStep) > index ? (
-                            <CheckCircle className="h-4 w-4" />
-                          ) : (
-                            index + 1
-                          )}
-                        </div>
-                        <span className="capitalize text-sm">{step}</span>
-                      </div>
-                      {index < 4 && (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <div className="px-6 pb-6 pt-2">
+            <div className="relative flex items-center justify-between w-full max-w-3xl mx-auto">
+              {/* Connecting Line */}
+              <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-full h-1 bg-muted -z-10 rounded-full" />
+              <div
+                className="absolute left-0 top-1/2 transform -translate-y-1/2 h-1 bg-primary transition-all duration-500 ease-in-out -z-10 rounded-full"
+                style={{
+                  width: `${
+                    ([
+                      'upload',
+                      'mapping',
+                      'preview',
+                      'importing',
+                      'complete',
+                    ].indexOf(currentStep) /
+                      4) *
+                    100
+                  }%`,
+                }}
+              />
+
+              {[
+                { id: 'upload', label: 'Upload' },
+                { id: 'mapping', label: 'Map Fields' },
+                { id: 'preview', label: 'Preview' },
+                { id: 'importing', label: 'Import' },
+                { id: 'complete', label: 'Done' },
+              ].map((step, index) => {
+                const steps = [
+                  'upload',
+                  'mapping',
+                  'preview',
+                  'importing',
+                  'complete',
+                ];
+                const currentIndex = steps.indexOf(currentStep);
+                const isCompleted = currentIndex > index;
+                const isCurrent = currentStep === step.id;
+
+                return (
+                  <div
+                    key={step.id}
+                    className="flex flex-col items-center gap-2 bg-background px-2 z-10"
+                  >
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all duration-300 ${
+                        isCompleted
+                          ? 'bg-primary border-primary text-primary-foreground scale-105'
+                          : isCurrent
+                            ? 'bg-background border-primary text-primary scale-110 shadow-lg ring-4 ring-primary/10'
+                            : 'bg-muted border-muted-foreground/30 text-muted-foreground'
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle className="h-5 w-5" />
+                      ) : (
+                        index + 1
                       )}
-                    </Fragment>
-                  )
-                )}
-              </div>
+                    </div>
+                    <span
+                      className={`text-xs font-semibold uppercase tracking-wider transition-colors duration-300 ${
+                        isCurrent ? 'text-primary' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {step.label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -763,15 +941,74 @@ export function StudentImportDialog({
                     Download Template
                   </Button>
                 </div>
+
+                {/* Fix Names Section */}
+                <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                      Fix Existing Names
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-2">
+                    <p className="text-muted-foreground">
+                      If student names appear duplicated (e.g., "REENA REENA"
+                      instead of "REENA DELA CRUZ"), upload the original CSV
+                      file to fix the last names.
+                    </p>
+                    <input
+                      ref={fixFileInputRef}
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleFixFileSelect}
+                      className="hidden"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fixFileInputRef.current?.click()}
+                      disabled={fixNamesMutation.isPending}
+                    >
+                      {fixNamesMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Fixing Names...
+                        </>
+                      ) : (
+                        <>
+                          <FileEdit className="h-4 w-4 mr-2" />
+                          Fix Names from CSV
+                        </>
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
               </div>
             )}
 
             {/* Step 2: Field Mapping */}
             {currentStep === 'mapping' && (
-              <div className="space-y-6 p-6">
+              <div className="space-y-6 p-6 relative">
+                {isProcessingPreview && (
+                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+                    <div className="flex flex-col items-center gap-3">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      <p className="text-sm font-medium">
+                        Processing your data...
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        This may take a moment
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold">Map Fields</h3>
-                  <Button variant="outline" onClick={autoMapFields}>
+                  <Button
+                    variant="outline"
+                    onClick={autoMapFields}
+                    disabled={isProcessingPreview}
+                  >
                     <Settings className="h-4 w-4 mr-2" />
                     Auto Map
                   </Button>
@@ -814,7 +1051,7 @@ export function StudentImportDialog({
                               key={field.targetField}
                               value={field.targetField}
                             >
-                              {field.targetField}{' '}
+                              {field.label}{' '}
                               {field.required && (
                                 <span className="text-red-500">*</span>
                               )}
@@ -911,14 +1148,17 @@ export function StudentImportDialog({
                           {paginatedSamples.map((student, index) => (
                             <tr
                               key={index}
-                              className="border-t hover:bg-muted/50 transition-colors"
+                              className="border-t hover:bg-muted/50 transition-colors even:bg-muted/30"
                             >
                               <td className="px-4 py-3">{student.rowNumber}</td>
                               <td className="px-4 py-3 text-muted-foreground">
                                 {student.student_id || (
-                                  <span className="italic text-xs">
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs font-normal bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
+                                  >
                                     Will be generated
-                                  </span>
+                                  </Badge>
                                 )}
                               </td>
                               <td className="px-4 py-3">
@@ -926,9 +1166,12 @@ export function StudentImportDialog({
                               </td>
                               <td className="px-4 py-3 text-muted-foreground">
                                 {student.barcode || (
-                                  <span className="italic text-xs">
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs font-normal bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200"
+                                  >
                                     Will be generated
-                                  </span>
+                                  </Badge>
                                 )}
                               </td>
                               <td className="px-4 py-3">
@@ -1019,14 +1262,20 @@ export function StudentImportDialog({
                 <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
                 <h3 className="text-lg font-semibold">Importing Students</h3>
                 <p className="text-muted-foreground">
-                  Processing your file. This may take a moment...
+                  {importedStudents.filter((s) => s.isValid).length > 0
+                    ? `Processing ${importedStudents.filter((s) => s.isValid).length} students. This may take a few minutes for large imports...`
+                    : 'Processing your file. This may take a moment...'}
                 </p>
-                <div className="max-w-md mx-auto">
+                <div className="max-w-md mx-auto space-y-2">
                   {/* Indeterminate progress bar since we don't have real-time progress from backend yet */}
                   <Progress
                     value={undefined}
                     className="w-full animate-pulse"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Please keep this window open. Large imports may take up to 5
+                    minutes.
+                  </p>
                 </div>
               </div>
             )}
@@ -1046,15 +1295,31 @@ export function StudentImportDialog({
                   </p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   <Card>
                     <CardContent className="p-4 text-center">
                       <div className="text-2xl font-bold text-green-600">
                         {importResults.success}
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Successfully Imported
+                        Total Imported
                       </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {importResults.importedStudents}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Students</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {importResults.importedPersonnel}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Personnel</p>
                     </CardContent>
                   </Card>
                   <Card>
@@ -1062,9 +1327,7 @@ export function StudentImportDialog({
                       <div className="text-2xl font-bold text-red-600">
                         {importResults.failed}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Failed to Import
-                      </p>
+                      <p className="text-sm text-muted-foreground">Failed</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -1124,16 +1387,25 @@ export function StudentImportDialog({
                 <Button
                   variant="outline"
                   onClick={() => setCurrentStep('upload')}
+                  disabled={isProcessingPreview}
                 >
                   Back
                 </Button>
                 <Button
                   onClick={processImportedData}
                   disabled={
-                    Object.values(fieldMapping).filter(Boolean).length === 0
+                    Object.values(fieldMapping).filter(Boolean).length === 0 ||
+                    isProcessingPreview
                   }
                 >
-                  Continue to Preview
+                  {isProcessingPreview ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Continue to Preview'
+                  )}
                 </Button>
               </div>
             </div>

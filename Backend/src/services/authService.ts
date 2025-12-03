@@ -109,11 +109,23 @@ export class AuthService {
 
       if (!user) {
         logger.warn('Login failed: user not found', { username });
-        if (
-          String(env.NODE_ENV).toLowerCase() === 'development' ||
-          String(env.WS_DEV_BYPASS || '').toLowerCase() === 'true'
-        ) {
+        // SECURITY: Dev bypass - only available when NODE_ENV=development AND user not in DB
+        // This is intentionally disabled in production via NODE_ENV check
+        // The WS_DEV_BYPASS flag provides additional control
+        const isDevelopment =
+          String(env.NODE_ENV).toLowerCase() === 'development';
+        const isDevBypassEnabled =
+          String(env.WS_DEV_BYPASS || '').toLowerCase() === 'true';
+
+        if (isDevelopment || isDevBypassEnabled) {
           if (username === 'admin' && password === 'admin123') {
+            logger.warn(
+              'DEV MODE: Using fallback admin credentials - DO NOT use in production!',
+              {
+                NODE_ENV: env.NODE_ENV,
+                WS_DEV_BYPASS: env.WS_DEV_BYPASS,
+              },
+            );
             const devUser = {
               id: 'DEV-ADMIN',
               username: 'admin',

@@ -90,24 +90,24 @@ export function CharacterWithBooks({ type }: CharacterWithBooksProps) {
   );
 }
 
-// Floating Book Component for top right corner
+// Floating Book Component for top right corner (positioned to avoid header overlap)
 export function FloatingBook() {
   return (
     <motion.div
       initial={{ x: 100, opacity: 0, rotate: 15 }}
       animate={{ x: 0, opacity: 1, rotate: 15 }}
       transition={{ duration: 0.8, delay: 0.3 }}
-      className="absolute top-20 right-16 z-20"
+      className="absolute top-4 right-4 z-20 opacity-90"
     >
       <motion.img
         animate={{
-          y: [0, -12, 0],
-          rotate: [15, 20, 15],
+          y: [0, -10, 0],
+          rotate: [15, 18, 15],
         }}
         transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
         src={openBook1}
         alt="Floating Book"
-        className="h-24 w-auto object-contain"
+        className="h-20 w-auto object-contain drop-shadow-lg"
       />
     </motion.div>
   );

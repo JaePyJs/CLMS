@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckeredBackground } from './CheckeredBackground';
 import { SchoolHeader } from './SchoolHeader';
@@ -36,21 +36,11 @@ const reminders = [
 ];
 
 interface ReminderScreenProps {
-  // eslint-disable-next-line no-unused-vars
-  onScan: (code: string) => void;
+  // No props needed - kiosk is display-only
 }
 
-export function ReminderScreen({ onScan }: ReminderScreenProps) {
+export function ReminderScreen({}: ReminderScreenProps) {
   const [currentReminderIndex, setCurrentReminderIndex] = useState(0);
-  const [manualInput, setManualInput] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manualInput.trim()) {
-      onScan(manualInput.trim());
-      setManualInput('');
-    }
-  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -77,15 +67,16 @@ export function ReminderScreen({ onScan }: ReminderScreenProps) {
             initial={{ scale: 0.8, opacity: 0, y: -30 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: 'easeOut' }}
-            className="relative mb-3"
+            className="relative mb-4"
           >
             <h1
-              className="text-7xl leading-tight tracking-wider text-white"
+              className="text-6xl md:text-7xl leading-tight tracking-wider text-white"
               style={{
                 fontWeight: 900,
-                WebkitTextStroke: '5px black',
+                WebkitTextStroke: '4px black',
                 paintOrder: 'stroke fill',
-                textShadow: '4px 4px 0px rgba(0,0,0,0.5)',
+                textShadow:
+                  '4px 4px 0px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.5)',
               }}
             >
               REMINDER
@@ -117,15 +108,16 @@ export function ReminderScreen({ onScan }: ReminderScreenProps) {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: -50, opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.5 }}
-              className="relative px-16 py-6 text-white text-center"
+              className="relative px-12 md:px-16 py-6 text-white text-center"
               style={{
                 background: 'linear-gradient(90deg, #3B4BA8 0%, #8B3A62 100%)',
                 boxShadow:
-                  '0 8px 0 rgba(0,0,0,0.3), 0 12px 20px rgba(0,0,0,0.4)',
-                borderRadius: '150px',
-                minWidth: '600px',
-                maxWidth: '750px',
-                minHeight: '150px',
+                  '0 8px 0 rgba(0,0,0,0.4), 0 12px 20px rgba(0,0,0,0.5), inset 0 2px 10px rgba(255,255,255,0.1)',
+                borderRadius: '80px',
+                minWidth: '550px',
+                maxWidth: '700px',
+                minHeight: '140px',
+                border: '3px solid rgba(255,255,255,0.2)',
               }}
             >
               <motion.div
@@ -135,14 +127,15 @@ export function ReminderScreen({ onScan }: ReminderScreenProps) {
                   repeat: Infinity,
                   ease: 'easeInOut',
                 }}
-                className="text-4xl mb-2"
+                className="text-4xl mb-3"
               >
                 {currentReminder.icon}
               </motion.div>
               <p
-                className={`${currentReminder.fontSize} tracking-wide whitespace-pre-line leading-snug`}
+                className={`${currentReminder.fontSize} tracking-wide whitespace-pre-line leading-relaxed`}
                 style={{
                   fontWeight: 700,
+                  textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
                 }}
               >
                 {currentReminder.title}
@@ -151,43 +144,41 @@ export function ReminderScreen({ onScan }: ReminderScreenProps) {
           </AnimatePresence>
         </div>
 
-        {/* Manual Input Section */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 w-full max-w-md">
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={manualInput}
-              onChange={(e) => setManualInput(e.target.value)}
-              placeholder="Enter ID or Barcode manually..."
-              className="flex-1 px-4 py-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            />
-            <button
-              type="submit"
-              className="px-6 py-3 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-300 transition-colors"
-            >
-              GO
-            </button>
-          </form>
-        </div>
-
         <div className="flex justify-between items-end w-full px-2 pb-1">
           <CharacterWithBooks type="girl" />
           <CharacterWithBooks type="boy" />
         </div>
 
-        {/* Animated sparkles - LEFT */}
+        {/* Animated sparkles - TOP LEFT (moved away from center content) */}
         <motion.div
           animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 180, 360],
           }}
           transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-          className="absolute top-1/2 left-32 text-yellow-200"
+          className="absolute top-24 left-8 text-yellow-200 opacity-80"
         >
-          <Sparkles size={56} fill="currentColor" />
+          <Sparkles size={48} fill="currentColor" />
         </motion.div>
 
-        {/* Animated sparkles - RIGHT */}
+        {/* Animated sparkles - BOTTOM LEFT */}
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            rotate: [0, -180, -360],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: 'linear',
+            delay: 1,
+          }}
+          className="absolute bottom-48 left-16 text-yellow-200 opacity-70"
+        >
+          <Sparkles size={40} fill="currentColor" />
+        </motion.div>
+
+        {/* Animated sparkles - TOP RIGHT */}
         <motion.div
           animate={{
             scale: [1, 1.2, 1],
@@ -199,9 +190,26 @@ export function ReminderScreen({ onScan }: ReminderScreenProps) {
             ease: 'linear',
             delay: 0.5,
           }}
-          className="absolute top-1/2 right-32 text-yellow-200"
+          className="absolute top-48 right-48 text-yellow-200 opacity-80"
         >
-          <Sparkles size={56} fill="currentColor" />
+          <Sparkles size={48} fill="currentColor" />
+        </motion.div>
+
+        {/* Animated sparkles - BOTTOM RIGHT */}
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            rotate: [0, 180, 360],
+          }}
+          transition={{
+            duration: 4,
+            repeat: Infinity,
+            ease: 'linear',
+            delay: 1.5,
+          }}
+          className="absolute bottom-48 right-16 text-yellow-200 opacity-70"
+        >
+          <Sparkles size={40} fill="currentColor" />
         </motion.div>
       </div>
     </div>

@@ -13,7 +13,7 @@ const router = Router();
 router.get(
   '/',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get borrows request', {
       query: req.query,
@@ -37,17 +37,19 @@ router.get(
       }
 
       if (search) {
+        // SQLite case-insensitive search: use lowercase contains
+        const searchLower = search.toLowerCase();
         where.OR = [
           {
-            student: { student_id: { contains: search, mode: 'insensitive' } },
+            student: { student_id: { contains: searchLower } },
           },
           {
-            student: { first_name: { contains: search, mode: 'insensitive' } },
+            student: { first_name: { contains: searchLower } },
           },
-          { student: { last_name: { contains: search, mode: 'insensitive' } } },
-          { book: { title: { contains: search, mode: 'insensitive' } } },
-          { book: { author: { contains: search, mode: 'insensitive' } } },
-          { book: { accession_no: { contains: search, mode: 'insensitive' } } },
+          { student: { last_name: { contains: searchLower } } },
+          { book: { title: { contains: searchLower } } },
+          { book: { author: { contains: searchLower } } },
+          { book: { accession_no: { contains: searchLower } } },
         ];
       }
 
@@ -107,7 +109,7 @@ router.get(
 router.get(
   '/list/overdue',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get overdue borrows request', {
       userId: (req as any).user?.id,
@@ -186,7 +188,7 @@ router.get(
 router.post(
   '/dev/seed/overdue',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     if (process.env.NODE_ENV !== 'development') {
       return res
@@ -315,7 +317,7 @@ router.post(
 router.get(
   '/:id',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get borrow by ID request', {
       borrowId: req.params['id'],
@@ -375,7 +377,7 @@ router.get(
 router.post(
   '/',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Create borrow request', {
       studentId: req.body.student_id,
@@ -604,7 +606,7 @@ router.post(
 router.put(
   '/:id/return',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Return book request', {
       borrowId: req.params['id'],
@@ -730,7 +732,7 @@ router.put(
 router.get(
   '/overdue',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get overdue borrows request', {
       userId: (req as any).user?.id,
@@ -814,7 +816,7 @@ router.get(
 router.put(
   '/:id/fine',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Update fine request', {
       borrowId: req.params['id'],
@@ -881,7 +883,7 @@ router.put(
 router.get(
   '/student/:studentId',
   authenticate,
-  requireRole(['LIBRARIAN', 'ADMIN']),
+  requireRole(['LIBRARIAN']),
   asyncHandler(async (req: Request, res: Response) => {
     logger.info('Get student borrows request', {
       studentId: req.params['studentId'],

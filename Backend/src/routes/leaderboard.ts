@@ -77,4 +77,56 @@ router.post('/rewards/generate', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * @swagger
+ * /leaderboard/reset:
+ *   post:
+ *     summary: Reset leaderboard statistics (Admin only)
+ *     tags: [Leaderboard]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               year:
+ *                 type: integer
+ *               month:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Leaderboard reset successfully
+ */
+router.post('/reset', async (req: Request, res: Response) => {
+  try {
+    const { year, month } = req.body;
+
+    // Validate: if month is provided, year must also be provided
+    if (month && !year) {
+      return res
+        .status(400)
+        .json({ error: 'Year is required when specifying month' });
+    }
+
+    const result = await LeaderboardService.resetLeaderboard(
+      year ? Number(year) : undefined,
+      month ? Number(month) : undefined,
+    );
+
+    res.json({
+      success: true,
+      message:
+        year && month
+          ? `Leaderboard reset for ${month}/${year}`
+          : year
+            ? `Leaderboard reset for year ${year}`
+            : 'Entire leaderboard reset',
+      recordsDeleted: result.count,
+    });
+  } catch (error) {
+    logger.error('Error resetting leaderboard:', error);
+    res.status(500).json({ error: 'Failed to reset leaderboard' });
+  }
+});
+
 export const leaderboardRoutes = router;

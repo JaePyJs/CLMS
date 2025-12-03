@@ -261,13 +261,13 @@ const UserManagement: React.FC = () => {
           <div className="bg-white p-4 rounded-lg border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Admins</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {statistics.byRole.find((r) => r.role === 'ADMIN')?._count ||
-                    0}
+                <p className="text-sm text-gray-600">Librarians</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {statistics.byRole.find((r) => r.role === 'LIBRARIAN')
+                    ?._count || 0}
                 </p>
               </div>
-              <ShieldCheck className="w-8 h-8 text-red-600" />
+              <ShieldCheck className="w-8 h-8 text-blue-600" />
             </div>
           </div>
         </div>
@@ -282,7 +282,7 @@ const UserManagement: React.FC = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="_Search users..."
+                placeholder="Search users..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -297,12 +297,7 @@ const UserManagement: React.FC = () => {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="ALL">All Roles</option>
-            <option value="SUPER_ADMIN">Super Admin</option>
-            <option value="ADMIN">Admin</option>
             <option value="LIBRARIAN">Librarian</option>
-            <option value="ASSISTANT">Assistant</option>
-            <option value="TEACHER">Teacher</option>
-            <option value="VIEWER">Viewer</option>
           </select>
 
           {/* Status Filter */}
