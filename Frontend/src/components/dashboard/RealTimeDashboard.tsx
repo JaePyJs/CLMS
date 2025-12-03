@@ -46,6 +46,7 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
     triggerEmergencyAlert,
     sendChatMessage,
     refreshDashboard,
+    lastMessage,
   } = useWebSocketContext();
 
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -80,15 +81,29 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
 
         if (Array.isArray(data.recentActivities)) {
           setLocalActivities(
-            data.recentActivities.map((a: any) => ({
-              id: a.id,
-              studentName: a.student
-                ? `${a.student.first_name} ${a.student.last_name}`
-                : 'Unknown',
-              activityType: a.activity_type,
-              timestamp: a.start_time,
-              studentId: a.student_id,
-            }))
+            data.recentActivities.map((a: any) => {
+              let gradeDisplay = '';
+              if (
+                a.student?.grade_level !== undefined &&
+                a.student?.grade_level !== null
+              ) {
+                if (a.student.grade_level === 0) {
+                  gradeDisplay = 'Pre-School';
+                } else {
+                  gradeDisplay = `Grade ${a.student.grade_level}`;
+                }
+              }
+              return {
+                id: a.id,
+                studentName: a.student
+                  ? `${a.student.first_name} ${a.student.last_name}`
+                  : 'Unknown',
+                activityType: a.activity_type,
+                timestamp: a.start_time,
+                studentId: a.student_id,
+                gradeLevel: gradeDisplay,
+              };
+            })
           );
         }
       }
@@ -127,6 +142,28 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
       refreshDashboard('equipment');
     }
   }, [isConnected, refreshDashboard]);
+
+  // Listen for real-time events to trigger immediate updates
+  useEffect(() => {
+    if (!lastMessage) return;
+
+    const eventType = lastMessage.type;
+    if (
+      eventType === 'ACTIVITY_LOG' ||
+      eventType === 'DASHBOARD_UPDATE' ||
+      eventType === 'EQUIPMENT_UPDATE' ||
+      eventType === 'STUDENT_SCAN'
+    ) {
+      // Immediate refresh on relevant events
+      if (isConnected) {
+        refreshDashboard('overview');
+        refreshDashboard('activities');
+        refreshDashboard('equipment');
+      } else {
+        fetchDataViaApi();
+      }
+    }
+  }, [lastMessage, isConnected, refreshDashboard]);
 
   // Auto-refresh dashboard data
   useEffect(() => {
@@ -477,6 +514,11 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">
                           {String(activity.studentName)}
+                          {activity.gradeLevel && (
+                            <span className="ml-2 text-xs text-muted-foreground font-normal">
+                              ({String(activity.gradeLevel)})
+                            </span>
+                          )}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {String(activity.activityType)}

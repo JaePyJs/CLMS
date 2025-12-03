@@ -62,6 +62,7 @@ export class ManualLookupService {
               { first_name: { contains: term, mode: 'insensitive' as const } },
               { last_name: { contains: term, mode: 'insensitive' as const } },
               { student_id: { contains: term, mode: 'insensitive' as const } },
+              { barcode: { contains: term, mode: 'insensitive' as const } },
             ],
           })),
           is_active: true,

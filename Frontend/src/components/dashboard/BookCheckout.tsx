@@ -1,11 +1,4 @@
-import {
-  useState,
-  Suspense,
-  useEffect,
-  lazy,
-  useRef,
-  useCallback,
-} from 'react';
+import { useState, Suspense, useEffect, lazy, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -45,7 +38,6 @@ import {
   UserCheck,
   Search,
   Loader2,
-  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorHandling';
@@ -105,7 +97,7 @@ export default function BookCheckout() {
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
 
   // Get active student from global store (set when student scans in at Scan Station)
-  const { activeStudent, clearActiveStudent } = useAppStore();
+  const { activeStudent } = useAppStore();
 
   // Live search state for student
   const [studentSearchInput, setStudentSearchInput] = useState('');
@@ -204,33 +196,6 @@ export default function BookCheckout() {
       });
     }
   }, [activeStudent, checkoutForm.values.checkoutStep]);
-
-  // Use active student button handler
-  const handleUseActiveStudent = () => {
-    if (!activeStudent) {
-      toast.error(
-        'No active student. Please scan a student at the Scan Station first.'
-      );
-      return;
-    }
-
-    const nameParts = activeStudent.name.split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
-
-    const student: Student = {
-      id: activeStudent.id,
-      studentId: activeStudent.barcode || activeStudent.id,
-      firstName,
-      lastName,
-      gradeLevel: activeStudent.gradeLevel || '',
-      section: '',
-    };
-
-    checkoutFormActions.setValue('selectedStudent', student as any);
-    checkoutFormActions.setValue('checkoutStep', 'book');
-    toast.success(`Using active student: ${activeStudent.name}`);
-  };
 
   const computeDueDate = async () => {
     try {
@@ -448,40 +413,21 @@ export default function BookCheckout() {
     const { selectedStudent, selectedBook, dueDate, policyCategory } =
       checkoutForm.values;
 
-    // Debug logging
-    console.log('[BookCheckout] Confirming checkout:', {
-      selectedStudent,
-      selectedBook,
-      dueDate,
-      policyCategory,
-    });
-
     if (!selectedStudent || !selectedBook || !dueDate) {
       toast.error('Missing required information');
-      console.error('[BookCheckout] Missing required info:', {
-        hasStudent: !!selectedStudent,
-        hasBook: !!selectedBook,
-        hasDueDate: !!dueDate,
-      });
       return;
     }
 
     // Validate IDs are not empty
     if (!selectedStudent.id || !selectedBook.id) {
       toast.error('Invalid student or book selection');
-      console.error('[BookCheckout] Invalid IDs:', {
-        studentId: selectedStudent.id,
-        bookId: selectedBook.id,
-      });
       return;
     }
 
-    const materialType = policyCategory || selectedBook.category || 'Fiction';
-    console.log('[BookCheckout] Calling borrowBooks with:', {
-      studentId: selectedStudent.id,
-      bookIds: [selectedBook.id],
-      materialType,
-    });
+    let materialType = policyCategory || selectedBook.category || 'Fiction';
+    if (materialType === '(Uncategorized)' || !materialType) {
+      materialType = 'General';
+    }
 
     loadingActions.confirmCheckout.start();
     try {
@@ -490,7 +436,6 @@ export default function BookCheckout() {
         [selectedBook.id],
         materialType
       );
-      console.log('[BookCheckout] borrowBooks response:', r);
       if (r.success) {
         toast.success('Book checked out successfully!');
 
@@ -502,6 +447,15 @@ export default function BookCheckout() {
           timestamp: new Date(),
         };
         setRecentScans((prev) => [newScan, ...prev].slice(0, 5));
+
+        // Clear active student from global store if it matches the checked out student
+        if (
+          activeStudent &&
+          (activeStudent.id === selectedStudent.id ||
+            activeStudent.barcode === selectedStudent.studentId)
+        ) {
+          useAppStore.getState().clearActiveStudent();
+        }
 
         resetCheckout();
       } else {
@@ -704,30 +658,6 @@ export default function BookCheckout() {
                       Enter or scan the student's ID or barcode
                     </AlertDescription>
                   </Alert>
-
-                  {/* Show active student quick-select if available */}
-                  {activeStudent && (
-                    <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-                      <UserCheck className="h-4 w-4 text-green-600" />
-                      <AlertTitle className="text-green-800 dark:text-green-200">
-                        Active Student Available
-                      </AlertTitle>
-                      <AlertDescription className="flex items-center justify-between">
-                        <span className="text-green-700 dark:text-green-300">
-                          {activeStudent.name} ({activeStudent.gradeLevel})
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="ml-2 border-green-300 hover:bg-green-100 dark:hover:bg-green-900"
-                          onClick={handleUseActiveStudent}
-                        >
-                          <UserCheck className="h-4 w-4 mr-1" />
-                          Use This Student
-                        </Button>
-                      </AlertDescription>
-                    </Alert>
-                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="studentBarcode">

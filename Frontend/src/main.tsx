@@ -7,6 +7,7 @@ import { queryClient } from './lib/query-client';
 import App from './App';
 import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import './index.pcss';
+import { BrowserRouter } from 'react-router-dom';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -14,7 +15,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <AuthProvider>
         <ThemeProvider>
           <GlobalErrorBoundary>
-            <App />
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
           </GlobalErrorBoundary>
         </ThemeProvider>
       </AuthProvider>

@@ -17,6 +17,7 @@ export class FineCalculationService {
       if (policy) {
         return policy.rate_per_day;
       }
+      // Fallback rates (though we use flat 40 now)
       if (gradeLevel <= 3) {
         return 2;
       }
@@ -50,8 +51,11 @@ export class FineCalculationService {
         ? new Date(asOfDate)
         : new Date(checkout.return_date ?? new Date());
       const daysOverdue = Math.max(0, differenceInCalendarDays(ref, due));
-      const rate = await this.getRateForGrade(checkout.student.grade_level);
-      const fine = daysOverdue * rate;
+
+      // New Rule: Flat fine of 40 pesos if overdue, regardless of days
+      const rate = 40.0;
+      const fine = daysOverdue > 0 ? rate : 0;
+
       const policy = await prisma.fine_policies.findFirst({
         where: {
           is_active: true,

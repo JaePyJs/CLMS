@@ -144,7 +144,7 @@ export function CalendarWidget() {
                             variant="secondary"
                             className="text-[10px] h-4 px-1 ml-auto"
                           >
-                            G{notif.grade}
+                            {notif.grade === 0 ? 'PS' : `G${notif.grade}`}
                           </Badge>
                         </div>
                         <p className="mt-1 opacity-80 line-clamp-1">

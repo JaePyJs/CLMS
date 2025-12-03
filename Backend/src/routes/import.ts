@@ -961,20 +961,30 @@ router.post(
             location: bookData.location || null,
             accession_no: bookData.accession_no,
             available_copies: bookData.available_copies
-              ? parseInt(bookData.available_copies)
+              ? isNaN(parseInt(bookData.available_copies))
+                ? 1
+                : parseInt(bookData.available_copies)
               : 1,
             total_copies: bookData.total_copies
-              ? parseInt(bookData.total_copies)
+              ? isNaN(parseInt(bookData.total_copies))
+                ? 1
+                : parseInt(bookData.total_copies)
               : 1,
             cost_price: bookData.cost_price
-              ? parseFloat(bookData.cost_price)
+              ? isNaN(parseFloat(bookData.cost_price))
+                ? null
+                : parseFloat(bookData.cost_price)
               : null,
             edition: bookData.edition || null,
             pages: bookData.pages || null,
             remarks: bookData.remarks || null,
             source_of_fund: bookData.source_of_fund || null,
             volume: bookData.volume || null,
-            year: bookData.year ? parseInt(bookData.year) : null,
+            year: bookData.year
+              ? isNaN(parseInt(bookData.year))
+                ? null
+                : parseInt(bookData.year)
+              : null,
             is_active:
               bookData.is_active !== undefined
                 ? bookData.is_active === true || bookData.is_active === 'true'

@@ -6,13 +6,126 @@
 
 ---
 
-## 🎯 **LATEST SESSION UPDATE (Dec 3, 2025 - Session 5)**
+## 🎯 **LATEST SESSION UPDATE (Dec 3, 2025 - Session 7)**
+
+### **Major Achievement: Business Logic & Data Integrity**
+
+Implemented the required fine and penalty logic (flat 40 pesos fine, "Lost" book penalty) and improved the Book CSV import process to be more robust.
+
+#### **Critical Fixes Applied (Dec 3, 2025 - Session 7):**
+
+1. ✅ **Implemented Fine & Penalty Logic**
+   - **Problem:** Missing logic for flat fines and lost book penalties.
+   - **Solution:** Updated `fineCalculationService.ts` to use a flat 40 pesos rate. Added `POST /return/lost` endpoint to handle lost books with "Cost + 40" penalty.
+   - **Files Modified:** `Backend/src/services/fineCalculationService.ts`, `Backend/src/routes/enhanced-library.ts`
+
+2. ✅ **Improved Book CSV Import**
+   - **Problem:** Need to ensure all rows are imported even with missing data.
+   - **Solution:** Updated `import.ts` to safely parse numeric fields (handling NaN) and ensure placeholders are used for missing required fields.
+   - **Files Modified:** `Backend/src/routes/import.ts`
+
+3. ✅ **Fixed Book Checkout 400 Error**
+   - **Problem:** Checkout failed for books with undefined material types.
+   - **Solution:** Added logic to default to 'General' material type and improved error logging.
+   - **Files Modified:** `Backend/src/routes/enhanced-library.ts`
+
+#### **Files Modified (Dec 3, 2025 - Session 7):**
+
+- `Backend/src/services/fineCalculationService.ts` - Flat fine logic
+- `Backend/src/routes/enhanced-library.ts` - Lost book endpoint & Checkout fix
+- `Backend/src/routes/import.ts` - CSV import improvements
+
+### **Next Steps (Planned)**
+
+- **Import Attendance:** Implement CSV import for historical attendance/activity logs.
+
+---
+
+## 🎯 **PREVIOUS SESSION UPDATE (Dec 3, 2025 - Session 6)**
+
+### **Major Achievement: Real-time Student Status & Database Cleanup**
+
+Fixed the critical issue where student status wasn't updating in real-time on the management screen, and cleaned up database seed data.
+
+#### **Critical Fixes Applied (Dec 3, 2025 - Session 6):**
+
+1. ✅ **Fixed Student Status Synchronization**
+   - **Problem:** "Active" status on Students screen didn't update immediately after check-in/out
+   - **Root Cause:** ID mismatch - Frontend compared readable Student ID ("20230108") with UUID from backend active sessions
+   - **Solution:** Updated comparison logic to use System UUID (`student.id`) which matches backend data
+   - **Files Modified:** `Frontend/src/components/dashboard/StudentManagement.tsx`
+
+2. ✅ **Database Seed Cleanup**
+   - **Problem:** "Library Space" appeared as a room/equipment item in the dashboard
+   - **Solution:** Removed "Library Space" entry from initial seed data to prevent it from being created as equipment
+   - **Files Modified:** `Backend/src/scripts/seed_initial.ts`
+
+#### **Files Modified (Dec 3, 2025 - Session 6):**
+
+- `Frontend/src/components/dashboard/StudentManagement.tsx` - Fixed ID comparison for active status
+- `Backend/src/scripts/seed_initial.ts` - Removed Library Space seed data
+
+---
+
+## 🎯 **PREVIOUS SESSION UPDATE (Dec 3, 2025 - Session 5)**
 
 ### **Major Achievement: Book Borrowing, Equipment UI, and Search Fixes**
 
 Fixed critical book borrowing 400 error, equipment dashboard card UI overflow, and case-insensitive search for SQLite.
 
 #### **Critical Fixes Applied (Dec 3, 2025 - Session 5):**
+
+1. ✅ **Fixed Personnel Identification**
+   - **Problem:** Personnel (PN prefix) were identified as "Kindergarten" (Grade 0)
+   - **Solution:** Updated `selfService.ts` and `kiosk.ts` to explicitly check for PN prefix or grade_category='PERSONNEL' and return "Personnel"
+   - **Files Modified:** `Backend/src/services/selfService.ts`, `Backend/src/routes/kiosk.ts`
+
+2. ✅ **Fixed Dashboard Search Visibility**
+   - **Problem:** Global search bar was hidden on Dashboard
+   - **Solution:** Removed conditional rendering in `App.tsx` to make it always visible
+   - **Files Modified:** `Frontend/src/App.tsx`
+
+3. ✅ **Fixed Quick Service Mode**
+   - **Problem:** Barcode scanning required manual focus/clicking
+   - **Solution:** Added `autoFocus` and global key listener for seamless scanning
+   - **Files Modified:** `Frontend/src/components/dashboard/QuickServicePanel.tsx`
+
+4. ✅ **Fixed "Add Student" Button Redundancy**
+   - **Problem:** Redundant "Add Student" artifacts (dialog/state) remained in Dashboard
+   - **Solution:** Completely removed `AddStudentDialog` import, state, and usage from `DashboardOverview.tsx`
+   - **Files Modified:** `Frontend/src/components/dashboard/DashboardOverview.tsx`
+
+5. ✅ **Fixed Book Borrow API Error**
+   - **Problem:** 400 Bad Request due to missing "General" material type and fine calculation for personnel
+   - **Solution:** Added "General" to `MATERIAL_POLICIES` and handled personnel fine calculation
+   - **Files Modified:** `Backend/src/routes/enhanced-library.ts`
+
+6. ✅ **Implemented State Retention**
+   - **Problem:** Books page tabs reset on refresh
+   - **Solution:** Implemented `useSearchParams` to persist active tab
+   - **Files Modified:** `Frontend/src/pages/BooksPage.tsx`
+
+7. ✅ **Implemented Real-time Student Status**
+   - **Problem:** Student status didn't update immediately after check-in
+   - **Solution:** Added WebSocket event listeners to trigger data refresh
+   - **Files Modified:** `Frontend/src/components/dashboard/StudentManagement.tsx`
+
+8. ✅ **Fixed Linting & Syntax Errors**
+   - **Problem:** `App.tsx` syntax error (missing closing tag), unused variables, and optional chaining suggestions.
+   - **Solution:** Fixed syntax error, removed unused code, and applied optional chaining in backend files.
+   - **Files Modified:** `App.tsx`, `kiosk.ts`, `selfService.ts`, `DashboardOverview.tsx`, `StudentManagement.tsx`
+
+#### **Files Modified (Dec 3, 2025 - Session 5):**
+
+- `Backend/src/services/selfService.ts` - Personnel identification logic
+- `Backend/src/routes/kiosk.ts` - Personnel identification logic
+- `Backend/src/routes/enhanced-library.ts` - Material policies and fine calculation
+- `Frontend/src/App.tsx` - Search visibility
+- `Frontend/src/components/dashboard/QuickServicePanel.tsx` - Barcode scanning improvements
+- `Frontend/src/components/dashboard/DashboardOverview.tsx` - Removed redundant button
+- `Frontend/src/pages/BooksPage.tsx` - State retention
+- `Frontend/src/components/dashboard/StudentManagement.tsx` - Real-time updates & linting
+- `Frontend/src/components/dashboard/DashboardOverview.tsx` - Cleanup unused vars
 
 1. ✅ **Fixed Book Borrow 400 Error**
    - **Problem:** POST `/api/enhanced-library/borrow` returned 400 "Student ID, Book ID, and Material Type are required"

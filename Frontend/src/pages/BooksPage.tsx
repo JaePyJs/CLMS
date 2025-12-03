@@ -1,13 +1,25 @@
-import { Suspense, lazy, useState } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { TableSkeleton, CardSkeleton } from '@/components/LoadingStates';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookOpen, ArrowLeftRight, History } from 'lucide-react';
+import { BookOpen, ArrowLeftRight } from 'lucide-react';
 
 const BookCatalog = lazy(() => import('@/components/dashboard/BookCatalog'));
 const BookCheckout = lazy(() => import('@/components/dashboard/BookCheckout'));
 
 export default function BooksPage() {
-  const [activeTab, setActiveTab] = useState('catalog');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'catalog';
+
+  useEffect(() => {
+    if (!searchParams.get('tab')) {
+      setSearchParams({ tab: 'catalog' }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const setActiveTab = (tab: string) => {
+    setSearchParams({ tab });
+  };
 
   return (
     <div className="space-y-6">

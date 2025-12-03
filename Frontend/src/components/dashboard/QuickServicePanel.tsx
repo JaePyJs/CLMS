@@ -150,6 +150,31 @@ export default function QuickServicePanel({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Global key listener for barcode scanner
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // If user is typing in an input or textarea, don't interfere
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA'
+      ) {
+        return;
+      }
+
+      // If it's a number, it might be a barcode scan starting
+      if (/^\d$/.test(e.key)) {
+        // Focus the quick service input
+        const input = document.getElementById('quick-service-input');
+        if (input) {
+          input.focus();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
   // Handle selecting a student from dropdown
   const handleSelectQuickStudent = (student: Student) => {
     setSelectedQuickStudent(student);
@@ -360,6 +385,8 @@ export default function QuickServicePanel({
                         }
                       }}
                       className="pl-9 pr-8"
+                      id="quick-service-input"
+                      autoFocus
                     />
                     {isQuickSearching && (
                       <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />

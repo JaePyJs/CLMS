@@ -4,7 +4,6 @@ import {
   Check,
   CheckCheck,
   Trash2,
-  X,
   AlertTriangle,
   Info,
   AlertCircle,
@@ -18,7 +17,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
@@ -26,11 +24,11 @@ import notificationApi, {
   type AppNotification,
 } from '../services/notificationApi';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNotificationWebSocket } from '@/hooks/useWebSocket';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { toast } from 'sonner';
 
 const NotificationCenter: React.FC = () => {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -39,77 +37,34 @@ const NotificationCenter: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [showPreferences, setShowPreferences] = useState(false);
 
-  // Real-time WebSocket integration
-  const { isConnected } = useNotificationWebSocket();
+  // Real-time WebSocket integration via Context
+  const { isConnected, notifications: realtimeNotifications } =
+    useWebSocketContext();
 
-  // Handle real-time notifications
-  const handleRealTimeNotification = useCallback(
-    (message: { type: string; payload: AppNotification }) => {
-      if (message.type === 'notification') {
-        const newNotification = message.payload;
+  // Sync real-time notifications from Context to local state
+  useEffect(() => {
+    if (realtimeNotifications.length > 0) {
+      setNotifications((prev) => {
+        // Get new notifications that aren't in our list yet
+        const newItems = realtimeNotifications.filter(
+          (rt) => !prev.some((p) => p.id === rt.id)
+        );
 
-        // Add to notifications list
-        setNotifications((prev) => [newNotification, ...prev.slice(0, 49)]);
+        if (newItems.length === 0) return prev;
+
+        // Convert context notifications to AppNotification type if needed
+        // (Assuming they are compatible or casting is safe for now)
+        const formattedItems = newItems.map(
+          (item) => item as unknown as AppNotification
+        );
 
         // Update unread count
-        setUnreadCount((prev) => prev + 1);
+        setUnreadCount((count) => count + newItems.length);
 
-        // Show toast notification
-        const priority = newNotification.priority;
-        const toastConfig = {
-          duration:
-            priority === 'URGENT' ? 10000 : priority === 'HIGH' ? 5000 : 3000,
-        };
-
-        if (priority === 'URGENT') {
-          toast.error(newNotification.title, {
-            description: newNotification.message,
-            ...toastConfig,
-          });
-        } else if (priority === 'HIGH') {
-          toast.warning(newNotification.title, {
-            description: newNotification.message,
-            ...toastConfig,
-          });
-        } else {
-          toast.info(newNotification.title, {
-            description: newNotification.message,
-            ...toastConfig,
-          });
-        }
-      }
-    },
-    []
-  );
-
-  // Initialize WebSocket listener
-  useEffect(() => {
-    if (isConnected && user) {
-      // Subscribe to real-time notifications
-      const socket = (
-        window as {
-          socket?: {
-            emit: (event: string, ...args: unknown[]) => void;
-            on: (event: string, callback: (data: unknown) => void) => void;
-            off: (event: string, callback: (data: unknown) => void) => void;
-          };
-        }
-      ).socket;
-      if (socket) {
-        socket.emit('notification:subscribe');
-
-        // Listen for real-time notifications
-        socket.on('notification', handleRealTimeNotification);
-
-        return () => {
-          socket.off('notification', handleRealTimeNotification);
-          socket.emit('notification:unsubscribe');
-        };
-      }
+        return [...formattedItems, ...prev].slice(0, 50);
+      });
     }
-    // Return undefined for cases where cleanup is not needed
-    return undefined;
-  }, [isConnected, user, handleRealTimeNotification]);
+  }, [realtimeNotifications]);
 
   const fetchNotifications = useCallback(async () => {
     // Don't fetch if not authenticated

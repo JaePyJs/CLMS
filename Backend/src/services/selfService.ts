@@ -47,13 +47,28 @@ function formatStudentForAPI(student: any) {
       } else if (gradeNum === 11 || gradeNum === 12) {
         formattedGradeLevel = `Grade ${gradeNum}`;
       } else if (gradeNum === 0) {
-        formattedGradeLevel = 'Kindergarten';
+        // Check if it's personnel based on grade_category or barcode
+        if (
+          student.grade_category === 'PERSONNEL' ||
+          student.barcode?.startsWith('PN') ||
+          student.student_id?.startsWith('PN')
+        ) {
+          formattedGradeLevel = 'Personnel';
+        } else {
+          formattedGradeLevel = 'Kindergarten';
+        }
       } else {
         formattedGradeLevel = String(gradeNum);
       }
     } else {
       formattedGradeLevel = String(gradeLevel);
     }
+  } else if (
+    student.grade_category === 'PERSONNEL' ||
+    student.barcode?.startsWith('PN') ||
+    student.student_id?.startsWith('PN')
+  ) {
+    formattedGradeLevel = 'Personnel';
   }
 
   return {

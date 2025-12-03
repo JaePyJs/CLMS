@@ -5,7 +5,6 @@ import {
   useSensor,
   useSensors,
   PointerSensor,
-  TouchSensor,
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
@@ -25,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -43,7 +43,7 @@ import {
 } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { offlineActions } from '@/lib/offline-queue';
-import { enhancedLibraryApi } from '@/lib/api';
+import { enhancedLibraryApi, equipmentApi, settingsApi } from '@/lib/api';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 
 import {
@@ -69,7 +69,7 @@ import {
 import { DraggableStudent } from './equipment/DraggableStudent';
 import { DroppableEquipment } from './equipment/DroppableEquipment';
 import { toast } from 'sonner';
-import { equipmentApi, settingsApi } from '@/lib/api';
+
 import { Label } from '@/components/ui/label';
 import {
   DropdownMenu,
@@ -155,6 +155,18 @@ export function EquipmentDashboard() {
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Edit Equipment State
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingEquipment, setEditingEquipment] = useState<{
+    id: string;
+    name: string;
+    category: string;
+    serial_number: string;
+    notes: string;
+    status: string;
+  } | null>(null);
+  const [isEditingEquipment, setIsEditingEquipment] = useState(false);
+
   // Settings Dialog State
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [sessionLimits, setSessionLimits] = useState({
@@ -236,12 +248,6 @@ export function EquipmentDashboard() {
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 250,
-        tolerance: 5,
       },
     })
   );
@@ -333,8 +339,42 @@ export function EquipmentDashboard() {
       toast.error(
         'Failed to delete equipment. Make sure no active sessions are running.'
       );
-    } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Edit equipment/room
+  const handleEditEquipment = async () => {
+    if (!editingEquipment || !editingEquipment.name.trim()) {
+      toast.error('Please enter a name for the room/equipment');
+      return;
+    }
+
+    setIsEditingEquipment(true);
+    try {
+      const response = await equipmentApi.update(editingEquipment.id, {
+        name: editingEquipment.name,
+        category: editingEquipment.category,
+        serial_number: editingEquipment.serial_number || undefined,
+        notes: editingEquipment.notes || undefined,
+        status: editingEquipment.status,
+      });
+
+      if (response.success) {
+        toast.success(`${editingEquipment.name} updated successfully!`);
+        setShowEditDialog(false);
+        setEditingEquipment(null);
+        // Trigger refresh
+        setIsRefreshing(true);
+        setTimeout(() => setIsRefreshing(false), 1000);
+      } else {
+        toast.error('Failed to update equipment');
+      }
+    } catch (error) {
+      console.error('Error updating equipment:', error);
+      toast.error('Failed to update equipment');
+    } finally {
+      setIsEditingEquipment(false);
     }
   };
 
@@ -961,7 +1001,15 @@ export function EquipmentDashboard() {
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
                                   onClick={() => {
-                                    toast.info(`Editing ${item.name}...`);
+                                    setEditingEquipment({
+                                      id: item.id,
+                                      name: item.name,
+                                      category: item.type || 'computer', // Map type to category
+                                      serial_number: item.specs?.serial || '', // Map specs to serial
+                                      notes: item.notes || '',
+                                      status: item.status,
+                                    });
+                                    setShowEditDialog(true);
                                   }}
                                 >
                                   <Settings className="h-4 w-4 mr-2" />
@@ -1417,6 +1465,9 @@ export function EquipmentDashboard() {
               <Plus className="h-5 w-5" />
               Add New Room/Equipment
             </DialogTitle>
+            <DialogDescription>
+              Enter the details for the new room or equipment station.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -1534,11 +1585,150 @@ export function EquipmentDashboard() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Edit Equipment/Room Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Edit Room/Equipment
+            </DialogTitle>
+            <DialogDescription>
+              Update the details for this room or equipment station.
+            </DialogDescription>
+          </DialogHeader>
+          {editingEquipment && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-name">Name *</Label>
+                <Input
+                  id="edit-name"
+                  placeholder="e.g., Computer Station 1, Discussion Room A"
+                  value={editingEquipment.name}
+                  onChange={(e) =>
+                    setEditingEquipment({
+                      ...editingEquipment,
+                      name: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-category">Type</Label>
+                <Select
+                  value={editingEquipment.category}
+                  onValueChange={(value) =>
+                    setEditingEquipment({
+                      ...editingEquipment,
+                      category: value,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="computer">
+                      <div className="flex items-center gap-2">
+                        <Monitor className="h-4 w-4" />
+                        Computer
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="gaming">
+                      <div className="flex items-center gap-2">
+                        <Gamepad2 className="h-4 w-4" />
+                        Gaming Station
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="avr">
+                      <div className="flex items-center gap-2">
+                        <Cpu className="h-4 w-4" />
+                        AVR/Equipment
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="room">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Discussion Room
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <Select
+                  value={editingEquipment.status}
+                  onValueChange={(value) =>
+                    setEditingEquipment({
+                      ...editingEquipment,
+                      status: value,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">Available</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                    <SelectItem value="offline">Offline</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-serial">Serial Number (Optional)</Label>
+                <Input
+                  id="edit-serial"
+                  placeholder="e.g., SN-12345"
+                  value={editingEquipment.serial_number}
+                  onChange={(e) =>
+                    setEditingEquipment({
+                      ...editingEquipment,
+                      serial_number: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-notes">Notes (Optional)</Label>
+                <Input
+                  id="edit-notes"
+                  placeholder="Any additional notes"
+                  value={editingEquipment.notes}
+                  onChange={(e) =>
+                    setEditingEquipment({
+                      ...editingEquipment,
+                      notes: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowEditDialog(false)}
+              disabled={isEditingEquipment}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleEditEquipment} disabled={isEditingEquipment}>
+              {isEditingEquipment ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Settings Dialog */}
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Room Management Settings</DialogTitle>
+            <DialogDescription>
+              Configure session time limits for different grade levels.
+            </DialogDescription>
           </DialogHeader>
           {isLoadingSettings ? (
             <div className="py-8 text-center text-muted-foreground">

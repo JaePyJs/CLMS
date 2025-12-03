@@ -418,15 +418,29 @@ class WebSocketServer {
                 orderBy: { start_time: 'desc' },
                 include: { student: true },
               });
-              responseData = activities.map(a => ({
-                id: a.id,
-                studentName: a.student
-                  ? `${a.student.first_name} ${a.student.last_name}`
-                  : 'Unknown',
-                activityType: a.activity_type,
-                timestamp: a.start_time,
-                studentId: a.student_id,
-              }));
+              responseData = activities.map(a => {
+                let gradeDisplay = '';
+                if (
+                  a.student?.grade_level !== undefined &&
+                  a.student?.grade_level !== null
+                ) {
+                  if (a.student.grade_level === 0) {
+                    gradeDisplay = 'Pre-School';
+                  } else {
+                    gradeDisplay = `Grade ${a.student.grade_level}`;
+                  }
+                }
+                return {
+                  id: a.id,
+                  studentName: a.student
+                    ? `${a.student.first_name} ${a.student.last_name}`
+                    : 'Unknown',
+                  activityType: a.activity_type,
+                  timestamp: a.start_time,
+                  studentId: a.student_id,
+                  gradeLevel: gradeDisplay,
+                };
+              });
             } else if (data.dataType === 'equipment') {
               const equipment = await prisma.equipment.findMany({
                 where: { status: 'IN_USE' },
@@ -485,6 +499,7 @@ class WebSocketServer {
     activityId: string;
     studentId: string;
     studentName: string;
+    gradeLevel?: string;
     gender?: string;
     checkinTime: string;
     autoLogoutAt: string;
@@ -539,6 +554,7 @@ class WebSocketServer {
     activityId: string;
     studentId: string;
     studentName: string;
+    gradeLevel?: string;
     gender?: string;
     checkoutTime: string;
     reason: 'manual' | 'auto';

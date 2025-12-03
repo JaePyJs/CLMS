@@ -1,20 +1,35 @@
 # CLMS Testing Checklist
 
 **Date Started:** December 2, 2025  
-**Last Updated:** December 3, 2025 (Session 5 - Book Borrowing & Search Fixes)  
+**Last Updated:** December 3, 2025 (Session 6 - Student Status & Seed Cleanup)  
 **Tester:** Pia / Copilot Automated Testing  
 **Login:** `librarian` / `librarian123`
 
 ---
 
+| #    | Change Made                               | Status | Component Modified      |
+| ---- | ----------------------------------------- | ------ | ----------------------- |
+| U.48 | Fixed Student Status Sync (UUID mismatch) | ✅     | `StudentManagement.tsx` |
+| U.49 | Removed Library Space from seeds          | ✅     | `seed_initial.ts`       |
+
+---
+
 ## 🔧 Recent Updates (Dec 3, 2025 - Session 5)
 
-| #    | Change Made                                            | Status | Component Modified       |
-| ---- | ------------------------------------------------------ | ------ | ------------------------ |
-| U.36 | Fixed Book Borrow 400 error (param name mismatch)      | ✅     | `enhanced-library.ts`    |
-| U.37 | Fixed Equipment card UI overflow (buttons overlapping) | ✅     | `EquipmentDashboard.tsx` |
-| U.38 | Fixed centralized search case-sensitivity (SQLite)     | ✅     | `search.ts` (Backend)    |
-| U.39 | Fixed students search case-sensitivity (SQLite)        | ✅     | `students.ts` (Backend)  |
+| #    | Change Made                                            | Status | Component Modified           |
+| ---- | ------------------------------------------------------ | ------ | ---------------------------- |
+| U.36 | Fixed Book Borrow 400 error (param name mismatch)      | ✅     | `enhanced-library.ts`        |
+| U.37 | Fixed Equipment card UI overflow (buttons overlapping) | ✅     | `EquipmentDashboard.tsx`     |
+| U.38 | Fixed centralized search case-sensitivity (SQLite)     | ✅     | `search.ts` (Backend)        |
+| U.39 | Fixed students search case-sensitivity (SQLite)        | ✅     | `students.ts` (Backend)      |
+| U.40 | Fixed Personnel Identification (PN prefix)             | ✅     | `selfService.ts`, `kiosk.ts` |
+| U.41 | Fixed Dashboard Search Visibility                      | ✅     | `App.tsx`                    |
+| U.42 | Fixed Quick Service Mode (AutoFocus/Key Listener)      | ✅     | `QuickServicePanel.tsx`      |
+| U.43 | Removed redundant "Add Student" button                 | ✅     | `DashboardOverview.tsx`      |
+| U.44 | Fixed Book Borrow API Error (Material Type/Fines)      | ✅     | `enhanced-library.ts`        |
+| U.45 | Implemented State Retention for Books Tabs             | ✅     | `BooksPage.tsx`              |
+| U.46 | Implemented Real-time Student Status Updates           | ✅     | `StudentManagement.tsx`      |
+| U.47 | Fixed Linting & Syntax Errors (App.tsx, etc.)          | ✅     | Multiple files               |
 
 ---
 

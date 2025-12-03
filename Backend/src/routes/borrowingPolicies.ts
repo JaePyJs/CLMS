@@ -103,6 +103,7 @@ router.post(
         'general collection': { loan_days: 3, overnight: false },
         fiction: { loan_days: 7, overnight: false },
         'easy books': { loan_days: 1, overnight: true },
+        '(uncategorized)': { loan_days: 3, overnight: false },
       };
       const fb = fallback[mapCategory];
       if (!fb) {

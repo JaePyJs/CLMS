@@ -365,7 +365,47 @@ router.put(
     });
 
     try {
-      const book = await BookService.updateBook(req.params['id'], req.body);
+      const {
+        isbn,
+        title,
+        author,
+        publisher,
+        category,
+        subcategory,
+        location,
+        available_copies,
+        total_copies,
+        cost_price,
+        edition,
+        pages,
+        remarks,
+        source_of_fund,
+        volume,
+        year,
+        is_active,
+      } = req.body;
+
+      const updateData = {
+        isbn,
+        title,
+        author,
+        publisher,
+        category,
+        subcategory,
+        location,
+        available_copies,
+        total_copies,
+        cost_price,
+        edition,
+        pages,
+        remarks,
+        source_of_fund,
+        volume,
+        year,
+        is_active,
+      };
+
+      const book = await BookService.updateBook(req.params['id'], updateData);
 
       res.json({
         success: true,

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { apiClient } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,6 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getErrorMessage } from '@/utils/errorHandling';
 
 interface Student {
   id: string;
@@ -112,117 +112,119 @@ export default function CheckoutHistory() {
 
   // Fetch checkouts
   const fetchCheckouts = useCallback(
-    async (_status?: string) => {
-      void _status;
+    async (status?: string) => {
       setLoading(true);
       try {
-        const data: Checkout[] = [
-          {
-            id: 'CHK-DEV-1',
-            bookId: 'BOOK-DEV-1',
-            studentId: 'S-0001',
-            checkoutDate: new Date(Date.now() - 5 * 86400000).toISOString(),
-            dueDate: new Date(Date.now() - 2 * 86400000).toISOString(),
-            returnDate: undefined,
-            status: 'ACTIVE',
-            overdueDays: 2,
-            fineAmount: '10',
+        // Build query params
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+
+        const response = await apiClient.get(
+          `/api/enhanced-library/history?${params.toString()}`
+        );
+
+        if (response.success && Array.isArray(response.data)) {
+          // Transform API data to Checkout interface
+          const data: Checkout[] = response.data.map((item: any) => ({
+            id: item.id,
+            bookId: item.bookId || item.book?.id,
+            studentId: item.studentId || item.student?.id,
+            checkoutDate: item.checkoutDate || item.borrowedAt,
+            dueDate: item.dueDate,
+            returnDate: item.returnDate || item.returnedAt,
+            status: item.status,
+            overdueDays: item.overdueDays || 0,
+            fineAmount: String(item.fineAmount || '0'),
             book: {
-              id: 'BOOK-DEV-1',
-              accessionNo: 'ACC-0001',
-              title: 'Sample Book',
-              author: 'John Doe',
-              category: 'Fiction',
+              id: item.book?.id || '',
+              accessionNo:
+                item.book?.accessionNo || item.book?.accession_no || '',
+              title: item.book?.title || 'Unknown Title',
+              author: item.book?.author || 'Unknown Author',
+              category: item.book?.category || 'General',
             },
             student: {
-              id: 'S-0001',
-              studentId: 'S-0001',
-              firstName: 'Alice',
-              lastName: 'Example',
-              gradeLevel: 'Grade 5',
-              section: 'A',
+              id: item.student?.id || '',
+              studentId:
+                item.student?.studentId || item.student?.student_id || '',
+              firstName:
+                item.student?.firstName || item.student?.first_name || '',
+              lastName: item.student?.lastName || item.student?.last_name || '',
+              gradeLevel:
+                item.student?.gradeLevel || item.student?.grade_level || '',
+              section: item.student?.section || '',
             },
-          },
-          {
-            id: 'CHK-DEV-2',
-            bookId: 'BOOK-DEV-2',
-            studentId: 'S-0002',
-            checkoutDate: new Date(Date.now() - 10 * 86400000).toISOString(),
-            dueDate: new Date(Date.now() - 7 * 86400000).toISOString(),
-            returnDate: new Date(Date.now() - 1 * 86400000).toISOString(),
-            status: 'RETURNED',
-            overdueDays: 0,
-            fineAmount: '0',
-            book: {
-              id: 'BOOK-DEV-2',
-              accessionNo: 'ACC-0002',
-              title: 'Another Sample',
-              author: 'Jane Roe',
-              category: 'Filipiniana',
-            },
-            student: {
-              id: 'S-0002',
-              studentId: 'S-0002',
-              firstName: 'Bob',
-              lastName: 'Tester',
-              gradeLevel: 'Grade 6',
-              section: 'B',
-            },
-          },
-        ];
-        setCheckouts(data);
-        setFilteredCheckouts(data);
-        calculateStats(data);
+          }));
+
+          setCheckouts(data);
+          setFilteredCheckouts(data);
+          calculateStats(data);
+        } else {
+          setCheckouts([]);
+          setFilteredCheckouts([]);
+          calculateStats([]);
+        }
       } catch (error: unknown) {
-        toast.error(getErrorMessage(error, 'Failed to fetch checkouts'));
+        console.error('Failed to fetch checkout history:', error);
+        toast.error('Failed to load checkout history');
+        setCheckouts([]);
       } finally {
         setLoading(false);
       }
     },
     [calculateStats]
-  ); // toast doesn't need to be in deps - it's stable from useToast hook
+  );
 
   // Fetch overdue books
   const fetchOverdueBooks = useCallback(async () => {
     setLoading(true);
     try {
-      const dev: Checkout[] = [
-        {
-          id: 'CHK-DEV-1',
-          bookId: 'BOOK-DEV-1',
-          studentId: 'S-0001',
-          checkoutDate: new Date(Date.now() - 5 * 86400000).toISOString(),
-          dueDate: new Date(Date.now() - 2 * 86400000).toISOString(),
+      const response = await apiClient.get('/api/enhanced-library/overdue');
+
+      if (
+        response.success &&
+        response.data &&
+        Array.isArray(response.data.items)
+      ) {
+        // Transform API data
+        const data: Checkout[] = response.data.items.map((item: any) => ({
+          id: item.id,
+          bookId: item.book?.id,
+          studentId: item.student?.id,
+          checkoutDate: item.borrowedAt,
+          dueDate: item.due_date,
           returnDate: undefined,
-          status: 'ACTIVE',
-          overdueDays: 2,
-          fineAmount: '10',
+          status: 'OVERDUE', // Force status for display
+          overdueDays: item.overdueDays,
+          fineAmount: String(item.fineAmount || '0'),
           book: {
-            id: 'BOOK-DEV-1',
-            accessionNo: 'ACC-0001',
-            title: 'Sample Book',
-            author: 'John Doe',
-            category: 'Fiction',
+            id: item.book?.id || '',
+            accessionNo: item.book?.accessionNo || item.book?.isbn || '', // Fallback
+            title: item.book?.title || '',
+            author: item.book?.author || '',
+            category: item.material_type || 'General',
           },
           student: {
-            id: 'S-0001',
-            studentId: 'S-0001',
-            firstName: 'Alice',
-            lastName: 'Example',
-            gradeLevel: 'Grade 5',
-            section: 'A',
+            id: item.student?.id || '',
+            studentId: item.student?.student_id || '',
+            firstName: item.student?.name?.split(' ')[0] || '',
+            lastName: item.student?.name?.split(' ').slice(1).join(' ') || '',
+            gradeLevel: item.student?.grade_level || '',
+            section: item.student?.section || '',
           },
-        },
-      ];
-      setCheckouts(dev);
-      setFilteredCheckouts(dev);
-      calculateStats(dev);
+        }));
+
+        setCheckouts(data);
+        setFilteredCheckouts(data);
+        calculateStats(data);
+      }
     } catch (error: unknown) {
-      toast.error(getErrorMessage(error, 'Failed to fetch overdue books'));
+      console.error('Failed to fetch overdue books:', error);
+      toast.error('Failed to load overdue books');
     } finally {
       setLoading(false);
     }
-  }, [calculateStats]); // toast doesn't need to be in deps - it's stable from useToast hook
+  }, [calculateStats]);
 
   // _Search and filter
   useEffect(() => {

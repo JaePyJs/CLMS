@@ -320,10 +320,11 @@ export function BookCatalog() {
 
     setIsUpdatingBook(true);
     try {
-      const response = await apiClient.put(
-        `/api/books/${selectedBook.id}`,
-        selectedBook
-      );
+      const response = await apiClient.put(`/api/books/${selectedBook.id}`, {
+        ...selectedBook,
+        available_copies: selectedBook.availableCopies,
+        total_copies: selectedBook.totalCopies,
+      });
 
       if (response.success) {
         toast.success('Book updated successfully!');
@@ -565,8 +566,8 @@ export function BookCatalog() {
                 <Input
                   placeholder={
                     isMobile
-                      ? '_Search books...'
-                      : '_Search by title, author, ISBN, or accession number...'
+                      ? 'Search books...'
+                      : 'Search by title, author, ISBN, or accession number...'
                   }
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -1164,6 +1165,9 @@ export function BookCatalog() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Book Details</DialogTitle>
+            <DialogDescription>
+              Detailed information about the selected book.
+            </DialogDescription>
           </DialogHeader>
           {selectedBook && (
             <div className="space-y-4 py-4">

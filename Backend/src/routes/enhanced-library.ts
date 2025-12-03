@@ -22,6 +22,8 @@ const MATERIAL_POLICIES = {
   Reference: { days: 1, finePerDay: 5 }, // Library use only
   Textbook: { days: 7, finePerDay: 3 },
   Periodical: { days: 3, finePerDay: 2 },
+  General: { days: 3, finePerDay: 2 }, // Added General material type
+  '(Uncategorized)': { days: 3, finePerDay: 2 }, // Handle uncategorized books
 };
 
 // Grade-based fine rates (as specified in requirements)
@@ -53,6 +55,8 @@ function calculateFine(grade_level: string, overdueDays: number): number {
     rate = GRADE_FINE_RATES['Junior High'];
   } else if (grade_level.includes('Senior High')) {
     rate = GRADE_FINE_RATES['Senior High'];
+  } else if (grade_level.includes('Personnel')) {
+    rate = 0; // Personnel are exempt from fines (or set a specific rate if needed)
   }
 
   return overdueDays * rate;
@@ -111,7 +115,7 @@ router.get(
             orderBy: {
               start_time: 'desc',
             },
-            take: 1,
+            take: 10,
           },
           checkouts: {
             where: {
@@ -124,16 +128,33 @@ router.get(
         },
       });
 
-      // Filter to only show currently active patrons (last activity was check-in)
+      // Filter to only show currently active patrons (last presence activity was check-in)
       const activePatrons = currentPatrons.filter(student => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const lastActivity = (student as any).activities[0];
-        return (
-          lastActivity?.activity_type === 'CHECK_IN' ||
-          lastActivity?.activity_type === 'SELF_SERVICE_CHECK_IN' ||
-          lastActivity?.activity_type === 'KIOSK_CHECK_IN' ||
-          lastActivity?.activity_type === 'LIBRARY_VISIT'
+        const activities = (student as any).activities;
+
+        // Find the latest activity that is related to presence (Check-in or Check-out)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const lastPresenceActivity = activities.find((a: any) =>
+          [
+            'CHECK_IN',
+            'SELF_SERVICE_CHECK_IN',
+            'KIOSK_CHECK_IN',
+            'LIBRARY_VISIT',
+            'CHECK_OUT',
+          ].includes(a.activity_type),
         );
+
+        // If no presence activity found (shouldn't happen due to where clause), or last was CHECK_OUT, exclude
+        if (
+          !lastPresenceActivity ||
+          lastPresenceActivity.activity_type === 'CHECK_OUT'
+        ) {
+          return false;
+        }
+
+        // Otherwise, they are checked in
+        return true;
       });
 
       res.json({
@@ -194,7 +215,7 @@ router.post(
       // Accept both camelCase (frontend) and snake_case (legacy) parameter names
       const student_id = req.body.student_id || req.body.studentId;
       const bookId = req.body.bookId || req.body.book_id;
-      const material_type = req.body.material_type || req.body.materialType;
+      let material_type = req.body.material_type || req.body.materialType;
 
       logger.info('Parsed borrow params', {
         student_id,
@@ -216,12 +237,14 @@ router.post(
         });
       }
 
-      // Check if material type is valid
+      // Check if material type is valid, otherwise default to General
       if (!MATERIAL_POLICIES[material_type as keyof typeof MATERIAL_POLICIES]) {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid material type',
+        logger.warn('Invalid material type, defaulting to General', {
+          provided: material_type,
+          student_id,
+          bookId,
         });
+        material_type = 'General';
       }
 
       // Check if student exists and is active
@@ -243,6 +266,10 @@ router.post(
 
       // Check borrowing limits (max 3 books)
       if (student.checkouts.length >= 3) {
+        logger.warn('Student reached borrowing limit', {
+          student_id,
+          current_checkouts: student.checkouts.length,
+        });
         return res.status(400).json({
           success: false,
           error: 'Student has reached maximum borrowing limit (3 books)',
@@ -265,9 +292,15 @@ router.post(
         (book.available_copies ?? 0) <= 0 ||
         book.is_active === false
       ) {
+        logger.warn('Book not available for borrowing', {
+          bookId,
+          available_copies: book?.available_copies,
+          is_active: book?.is_active,
+          exists: !!book,
+        });
         return res.status(400).json({
           success: false,
-          error: 'Book is not available for borrowing',
+          error: `Book is not available (Copies: ${book?.available_copies ?? 0}, Active: ${book?.is_active ?? false})`,
         });
       }
 
@@ -408,7 +441,7 @@ router.post(
       // Update book status
       await prisma.books.update({
         where: { id: checkout.book.id },
-        data: { is_active: true },
+        data: { available_copies: { increment: 1 }, is_active: true },
       });
 
       // Create activity record
@@ -459,6 +492,160 @@ router.post(
       res.status(500).json({
         success: false,
         error: 'Failed to process return request',
+      });
+    }
+  },
+);
+
+// Mark book as lost
+router.post(
+  '/return/lost',
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { checkoutId } = req.body;
+
+      if (!checkoutId) {
+        return res.status(400).json({
+          success: false,
+          error: 'Checkout ID is required',
+        });
+      }
+
+      // Find active checkout
+      const checkout = await prisma.book_checkouts.findUnique({
+        where: { id: checkoutId },
+        include: {
+          student: true,
+          book: true,
+        },
+      });
+
+      if (!checkout || checkout.status !== 'ACTIVE') {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid or already returned checkout',
+        });
+      }
+
+      // Calculate fine: Cost of book + 40 pesos
+      const bookCost = checkout.book.cost_price || 0;
+      const penalty = 40.0;
+      const fineAmount = bookCost + penalty;
+
+      // Update checkout record
+      const updatedCheckout = await prisma.book_checkouts.update({
+        where: { id: checkoutId },
+        data: {
+          status: 'LOST',
+          return_date: new Date(),
+          fine_amount: fineAmount,
+          notes: 'Book reported lost',
+        },
+      });
+
+      // Create activity record
+      await prisma.student_activities.create({
+        data: {
+          student_id: checkout.student.id,
+          activity_type: 'BOOK_LOST',
+          description: `Reported lost "${checkout.book.title}" (Fine: ₱${fineAmount})`,
+          status: 'COMPLETED',
+        },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          checkout: updatedCheckout,
+          fineAmount,
+          message: `Book marked as lost. Penalty applied: ₱${fineAmount} (Cost: ₱${bookCost} + Penalty: ₱${penalty})`,
+        },
+      });
+    } catch (error) {
+      logger.error('Mark lost error', { error });
+      res.status(500).json({
+        success: false,
+        error: 'Failed to mark book as lost',
+      });
+    }
+  },
+);
+
+// Get checkout history
+router.get(
+  '/history',
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { status, limit = 50, offset = 0 } = req.query;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const where: any = {};
+
+      if (status && status !== 'ALL') {
+        where.status = status;
+      }
+
+      const history = await prisma.book_checkouts.findMany({
+        where,
+        include: {
+          book: true,
+          student: true,
+        },
+        orderBy: {
+          checkout_date: 'desc',
+        },
+        take: Number(limit),
+        skip: Number(offset),
+      });
+
+      // Map to frontend expected format
+      const mappedHistory = history.map(item => ({
+        id: item.id,
+        bookId: item.book_id,
+        studentId: item.student_id,
+        checkoutDate: item.checkout_date,
+        dueDate: item.due_date,
+        returnDate: item.return_date,
+        status: item.status,
+        overdueDays:
+          item.status === 'ACTIVE'
+            ? Math.max(
+                0,
+                Math.ceil(
+                  (new Date().getTime() - new Date(item.due_date).getTime()) /
+                    (1000 * 60 * 60 * 24),
+                ),
+              )
+            : 0,
+        fineAmount: item.fine_amount || 0,
+        book: {
+          id: item.book.id,
+          accessionNo: item.book.accession_no,
+          title: item.book.title,
+          author: item.book.author,
+          category: item.book.category,
+        },
+        student: {
+          id: item.student.id,
+          studentId: item.student.student_id,
+          firstName: item.student.first_name,
+          lastName: item.student.last_name,
+          gradeLevel: item.student.grade_level,
+          section: item.student.section,
+        },
+      }));
+
+      res.json({
+        success: true,
+        data: mappedHistory,
+      });
+    } catch (error) {
+      logger.error('History error', { error });
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve checkout history',
       });
     }
   },
@@ -763,7 +950,6 @@ router.get(
     }
   },
 );
-
 // Search books with material type filtering
 router.get(
   '/books/search',

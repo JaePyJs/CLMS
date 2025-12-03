@@ -22,7 +22,6 @@ import { useAppStore } from '@/store/useAppStore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { CalendarWidget } from './CalendarWidget';
-import { AddStudentDialog } from './AddStudentDialog';
 import { RealTimeDashboard } from './RealTimeDashboard';
 import { utilitiesApi, studentsApi, apiClient } from '@/lib/api';
 import api from '@/services/api';
@@ -55,7 +54,6 @@ import {
 } from 'lucide-react';
 
 interface DashboardOverviewProps {
-  // eslint-disable-next-line no-unused-vars
   onTabChange?: (_tab: string) => void;
 }
 
@@ -136,7 +134,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   useEffect(() => {
     localStorage.setItem('clms_attendance_filter', String(attendanceFilter));
   }, [attendanceFilter]);
-  const [showRealTime, setShowRealTime] = useState(true);
+  const [showRealTime] = useState(true);
   useEffect(() => {
     if (!attendanceAutoScroll) return;
     try {
@@ -196,7 +194,6 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Quick Actions loading states
-  const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
 
   // Quick Actions loading states
   const [isStartingSession] = useState(false);
@@ -218,9 +215,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   }, []);
 
   // Quick Actions handlers
-  const handleAddStudent = () => {
-    setIsAddStudentDialogOpen(true);
-  };
+  // handleAddStudent removed as per requirements
 
   const handleStartSession = async () => {
     // For demo purposes, we'll show a message that this requires student/equipment selection
@@ -2533,13 +2528,6 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                 <CardContent className="p-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                     <Button
-                      className="h-16 flex-col bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg hover:shadow-xl transition-all"
-                      onClick={handleAddStudent}
-                    >
-                      <Users className="h-5 w-5 mb-1" />
-                      <span className="text-xs font-medium">Add Student</span>
-                    </Button>
-                    <Button
                       className="h-16 flex-col bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg hover:shadow-xl transition-all"
                       onClick={handleStartSession}
                       disabled={isStartingSession}
@@ -2624,12 +2612,6 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
           </div>
         </>
       )}
-
-      {/* Add Student Dialog */}
-      <AddStudentDialog
-        open={isAddStudentDialogOpen}
-        onOpenChange={setIsAddStudentDialogOpen}
-      />
     </div>
   );
 }

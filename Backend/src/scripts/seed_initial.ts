@@ -133,12 +133,6 @@ async function seedEquipment(): Promise<void> {
       notes: 'Audio Visual Room for presentations and video viewing',
     },
     {
-      name: 'Library Space',
-      category: 'ROOM',
-      status: 'AVAILABLE',
-      notes: 'General library area for reading and studying',
-    },
-    {
       name: 'Borrow Materials',
       category: 'SERVICE',
       status: 'AVAILABLE',

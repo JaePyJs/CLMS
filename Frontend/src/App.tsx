@@ -30,6 +30,7 @@ import NotificationCenter from '@/components/NotificationCenter';
 import SessionTimeoutWarning from '@/components/SessionTimeoutWarning';
 import WebSocketProvider from '@/contexts/WebSocketContext';
 import { ResponsiveDrawer } from '@/components/layout/ResponsiveDrawer';
+import { FooterStats } from '@/components/layout/FooterStats';
 import {
   useMobileOptimization,
   usePerformanceOptimization,
@@ -59,15 +60,11 @@ import {
   Menu,
   X,
   ChevronDown,
-  Globe,
-  Clock,
   Activity,
   Users,
   BookOpen,
-  Zap,
   LayoutDashboard,
   Camera,
-  BarChart,
   FileText,
   Sliders,
   Printer,
@@ -150,7 +147,7 @@ const SettingsSkeleton = () => (
 export default function App() {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const devBypass = import.meta.env.DEV;
-  const { activities, activeStudent, clearActiveStudent } = useAppStore();
+  const { activeStudent, clearActiveStudent } = useAppStore();
 
   // Mobile optimization - hooks MUST be called before any conditional returns
   const { isMobile, isTablet } = useMobileOptimization();
@@ -264,40 +261,10 @@ export default function App() {
 
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
   const [settingsInitialTab, setSettingsInitialTab] = useState<
     string | undefined
   >(undefined);
-  const [activeSessionCount, setActiveSessionCount] = useState(0);
-  const appStartTimeRef = useRef(Date.now());
   const dashboardSearchCentered = activeTab === 'dashboard';
-
-  // Fetch active session count for footer (only when authenticated)
-  useEffect(() => {
-    // Skip if not authenticated - API requires authentication token
-    if (!isAuthenticated) {
-      return;
-    }
-
-    const fetchActiveCount = async () => {
-      try {
-        const response = await apiClient.get('/api/students/active-sessions');
-        const data = (response as any)?.data || response;
-        const count =
-          data?.count || (Array.isArray(data?.data) ? data.data.length : 0);
-        setActiveSessionCount(count);
-      } catch {
-        // Ignore errors silently
-      }
-    };
-
-    // Initial fetch
-    fetchActiveCount();
-
-    // Poll every 30 seconds
-    const interval = setInterval(fetchActiveCount, 30000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
 
   // Health check to test backend connection
   useHealthCheck();
@@ -318,20 +285,6 @@ export default function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
-
-  // Update current time (skip kiosk/attendance routes to avoid re-rendering them)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const path = window.location.pathname;
-      if (path === '/kiosk' || path === '/attendance-display') {
-        return;
-      }
-    }
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
   }, []);
 
   // Enhanced navigation handlers
@@ -679,112 +632,110 @@ export default function App() {
                 </div>
 
                 {/* Desktop Search - Hidden on Mobile */}
-                {!dashboardSearchCentered && (
+                <div
+                  className={
+                    'flex flex-1 max-w-md w-full lg:w-auto order-last lg:order-none lg:mx-4'
+                  }
+                >
                   <div
                     className={
-                      'hidden lg:flex flex-1 max-w-md w-full lg:w-auto order-last lg:order-none lg:mx-4'
+                      dashboardSearchCentered
+                        ? 'relative w-full max-w-2xl'
+                        : 'relative'
                     }
                   >
-                    <div
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      id="global-search"
+                      type="text"
+                      placeholder="Search students, books, rooms... (Ctrl+K)"
+                      value={searchQuery}
+                      onChange={(e) => handleSearch(e.target.value)}
                       className={
                         dashboardSearchCentered
-                          ? 'relative w-full max-w-2xl'
-                          : 'relative'
+                          ? 'pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all w-full'
+                          : 'pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all'
                       }
-                    >
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                      <Input
-                        id="global-search"
-                        type="text"
-                        placeholder="Search students, books, rooms... (Ctrl+K)"
-                        value={searchQuery}
-                        onChange={(e) => handleSearch(e.target.value)}
-                        className={
-                          dashboardSearchCentered
-                            ? 'pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all w-full'
-                            : 'pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all'
-                        }
-                        aria-label="Global Search"
-                      />
-                      {searchQuery && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSearchQuery('');
-                            setSearchResults([]);
-                          }}
-                          className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
-                          aria-label="Clear Search"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      )}
+                      aria-label="Global Search"
+                    />
+                    {searchQuery && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setSearchResults([]);
+                        }}
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        aria-label="Clear Search"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
 
-                      {/* Search Results Dropdown */}
-                      {(isSearching || searchResults.length > 0) &&
-                        searchQuery.length > 2 && (
-                          <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-lg shadow-lg z-50 max-h-[400px] overflow-y-auto">
-                            {isSearching ? (
-                              <div className="p-4 text-center text-muted-foreground">
-                                <LoadingSpinner
-                                  size="sm"
-                                  className="inline-block mr-2"
-                                />
-                                Searching...
-                              </div>
-                            ) : searchResults.length > 0 ? (
-                              <div className="py-2">
-                                {searchResults.map((result: any) => (
-                                  <button
-                                    key={`${result.type}-${result.id}`}
-                                    className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-3"
-                                    onClick={() => {
-                                      if (result.type === 'student')
-                                        setActiveTab('students');
-                                      if (result.type === 'book')
-                                        setActiveTab('books');
-                                      if (result.type === 'equipment')
-                                        setActiveTab('equipment');
-                                      setSearchQuery('');
-                                      setSearchResults([]);
-                                      toast.success(
-                                        `Navigating to ${result.type}: ${result.title}`
-                                      );
-                                    }}
-                                  >
-                                    <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
-                                      {result.type === 'student' && (
-                                        <User className="h-4 w-4" />
-                                      )}
-                                      {result.type === 'book' && (
-                                        <BookOpen className="h-4 w-4" />
-                                      )}
-                                      {result.type === 'equipment' && (
-                                        <Monitor className="h-4 w-4" />
-                                      )}
+                    {/* Search Results Dropdown */}
+                    {(isSearching || searchResults.length > 0) &&
+                      searchQuery.length > 2 && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-lg shadow-lg z-50 max-h-[400px] overflow-y-auto">
+                          {isSearching ? (
+                            <div className="p-4 text-center text-muted-foreground">
+                              <LoadingSpinner
+                                size="sm"
+                                className="inline-block mr-2"
+                              />
+                              Searching...
+                            </div>
+                          ) : searchResults.length > 0 ? (
+                            <div className="py-2">
+                              {searchResults.map((result: any) => (
+                                <button
+                                  key={`${result.type}-${result.id}`}
+                                  className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-3"
+                                  onClick={() => {
+                                    if (result.type === 'student')
+                                      setActiveTab('students');
+                                    if (result.type === 'book')
+                                      setActiveTab('books');
+                                    if (result.type === 'equipment')
+                                      setActiveTab('equipment');
+                                    setSearchQuery('');
+                                    setSearchResults([]);
+                                    toast.success(
+                                      `Navigating to ${result.type}: ${result.title}`
+                                    );
+                                  }}
+                                >
+                                  <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                                    {result.type === 'student' && (
+                                      <User className="h-4 w-4" />
+                                    )}
+                                    {result.type === 'book' && (
+                                      <BookOpen className="h-4 w-4" />
+                                    )}
+                                    {result.type === 'equipment' && (
+                                      <Monitor className="h-4 w-4" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="font-medium text-sm">
+                                      {result.title}
                                     </div>
-                                    <div>
-                                      <div className="font-medium text-sm">
-                                        {result.title}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        {result.subtitle} • {result.status}
-                                      </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {result.subtitle} • {result.status}
                                     </div>
-                                  </button>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="p-4 text-center text-muted-foreground">
-                                No results found
-                              </div>
-                            )}
-                          </div>
-                        )}
-                    </div>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="p-4 text-center text-muted-foreground">
+                              No results found
+                            </div>
+                          )}
+                        </div>
+                      )}
                   </div>
-                )}
+                </div>
 
                 {/* Desktop Controls - Hidden on Mobile */}
                 <div className="hidden lg:flex items-center gap-2">
@@ -1437,68 +1388,7 @@ export default function App() {
           />
 
           {/* Footer */}
-          <footer className="border-t border-slate-200 dark:border-slate-800 mt-12 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
-            <div className="container mx-auto px-4 lg:px-8 py-6">
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-4 text-xs text-slate-600 dark:text-slate-400">
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
-                  <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50">
-                    <Clock className="h-3 w-3 text-blue-500" />
-                    <span className="font-mono">
-                      {currentTime.toLocaleString()}
-                    </span>
-                  </span>
-                  <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50">
-                    <Globe className="h-3 w-3 text-green-500" />
-                    {navigator.language}
-                  </span>
-                  <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50">
-                    <Zap className="h-3 w-3 text-yellow-500" />
-                    System:{' '}
-                    <span className="text-green-600 dark:text-green-400 font-medium">
-                      Good
-                    </span>
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center justify-center lg:justify-end gap-4">
-                  <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50">
-                    <Users className="h-3 w-3 text-purple-500" />
-                    Active:{' '}
-                    <span className="font-medium">{activeSessionCount}</span>
-                  </span>
-                  <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50">
-                    <Database className="h-3 w-3 text-blue-500" />
-                    DB:{' '}
-                    <span className="text-green-600 dark:text-green-400 font-medium">
-                      Healthy
-                    </span>
-                  </span>
-                  <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 dark:bg-slate-800/50">
-                    <Activity className="h-3 w-3 text-red-500" />
-                    Uptime:{' '}
-                    <span className="font-medium">
-                      {Math.floor(
-                        (Date.now() - appStartTimeRef.current) / 3600000
-                      )}
-                      h
-                    </span>
-                  </span>
-                </div>
-              </div>
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-2 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-                <p className="text-sm text-slate-600 dark:text-slate-400 text-center lg:text-left">
-                  © 2025 Educational Library Management System • All Rights
-                  Reserved
-                </p>
-                <p className="text-sm text-slate-600 dark:text-slate-400 text-center lg:text-right">
-                  CLMS{' '}
-                  <span className="text-blue-600 dark:text-blue-400 font-semibold">
-                    v1.0.0
-                  </span>{' '}
-                  • Built with React & Google Sheets
-                </p>
-              </div>
-            </div>
-          </footer>
+          <FooterStats />
         </div>
       </WebSocketProvider>
     </ProtectedRoute>

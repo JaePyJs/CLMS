@@ -134,8 +134,18 @@ interface BackendStudent {
   barcode?: string;
 }
 
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
+
+// Interface for active session data
+interface ActiveSession {
+  student_id: string;
+  studentId?: string;
+  [key: string]: any;
+}
+
 export function StudentManagement() {
   const queryClient = useQueryClient();
+  const { lastMessage } = useWebSocketContext();
 
   // Mobile optimization
   const mobileState = useMobileOptimization();
@@ -145,8 +155,18 @@ export function StudentManagement() {
   // Data refresh with query
   const [studentsRefreshState, studentsRefreshActions] = useDataRefresh(
     async (): Promise<StudentsApiResponse> => {
-      const response = await studentsApi.getAll();
-      const studentsData = (response?.data || []) as BackendStudent[];
+      const [studentsResponse, activeSessionsResponse] = await Promise.all([
+        studentsApi.getAll(),
+        studentsApi.getActiveSessions(),
+      ]);
+
+      const studentsData = (studentsResponse?.data || []) as BackendStudent[];
+      const activeSessions = (activeSessionsResponse?.data ||
+        []) as ActiveSession[];
+      const activeStudentIds = new Set(
+        activeSessions.map((s) => s.student_id || s.studentId)
+      );
+
       const transformedData: StudentsApiResponse = {
         students: studentsData.map((student) => {
           // Determine type - check if type field exists, or infer from student_id prefix
@@ -174,7 +194,7 @@ export function StudentManagement() {
             gradeCategory: student.grade_category,
             section: student.section,
             gender: student.gender,
-            isActive: student.is_active,
+            isActive: activeStudentIds.has(student.id), // Use real-time presence status
             type: isPersonnel ? 'PERSONNEL' : 'STUDENT',
             email: student.email,
             phone: student.phone,
@@ -195,7 +215,7 @@ export function StudentManagement() {
           };
         }),
         total:
-          (response?.data as unknown as { count?: number })?.count ||
+          (studentsResponse?.data as unknown as { count?: number })?.count ||
           studentsData.length,
         pagination: {},
       };
@@ -205,6 +225,22 @@ export function StudentManagement() {
       interval: 5 * 60 * 1000, // Refresh every 5 minutes
     }
   );
+
+  // Real-time updates from WebSocket
+  useEffect(() => {
+    if (lastMessage) {
+      const type = lastMessage.type;
+      if (
+        type === 'student_checkin' ||
+        type === 'student_checkout' ||
+        type === 'attendance:checkin' ||
+        type === 'attendance:checkout'
+      ) {
+        // Refresh student list to update status
+        studentsRefreshActions.refresh();
+      }
+    }
+  }, [lastMessage, studentsRefreshActions]);
 
   const students = studentsRefreshState.data?.students || [];
   const [isStudentsRefreshing, setIsStudentsRefreshing] = useState(false);
@@ -511,7 +547,7 @@ export function StudentManagement() {
     loadingActions.generatingQRCodes.start();
     try {
       await generateQRCodesMutation.mutateAsync();
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     } finally {
       loadingActions.generatingQRCodes.finish();
@@ -523,7 +559,7 @@ export function StudentManagement() {
     try {
       await generateBarcodesMutation.mutateAsync();
       toast.success('ID cards printed successfully!');
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     } finally {
       loadingActions.printingIDs.finish();
@@ -569,7 +605,7 @@ export function StudentManagement() {
       );
       setSelectedStudents([]);
       setShowBulkActions(false);
-    } catch (error) {
+    } catch {
       toast.error('Failed to send notifications');
     } finally {
       setIsSendingNotifications(false);
@@ -593,7 +629,7 @@ export function StudentManagement() {
       toast.success(`Grade updated for ${selectedStudents.length} students!`);
       setSelectedStudents([]);
       setShowBulkActions(false);
-    } catch (error) {
+    } catch {
       // Error handled by mutation
       toast.error('Failed to update some students');
     }
@@ -613,7 +649,7 @@ export function StudentManagement() {
       toast.success(`Status updated for ${selectedStudents.length} students!`);
       setSelectedStudents([]);
       setShowBulkActions(false);
-    } catch (error) {
+    } catch {
       // Error handled by mutation
     }
   };
@@ -732,7 +768,7 @@ export function StudentManagement() {
           data: { notes },
         });
         toast.success('Notes updated!');
-      } catch (error) {
+      } catch {
         // Error handled by mutation
       }
     }

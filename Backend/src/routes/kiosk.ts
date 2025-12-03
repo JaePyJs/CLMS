@@ -132,7 +132,11 @@ router.post('/tap-in', scanRateLimiter, async (req: Request, res: Response) => {
         gradeLevel:
           student.grade_level !== null && student.grade_level !== undefined
             ? student.grade_level === 0
-              ? 'Kindergarten'
+              ? student.grade_category === 'PERSONNEL' ||
+                student.barcode?.startsWith('PN') ||
+                student.student_id?.startsWith('PN')
+                ? 'Personnel'
+                : 'Kindergarten'
               : `Grade ${student.grade_level}`
             : '',
         section: student.section || '',
@@ -392,6 +396,7 @@ router.post(
             first_name: true,
             last_name: true,
             student_id: true,
+            grade_level: true,
             gender: true,
           },
         });
@@ -436,12 +441,27 @@ router.post(
             });
           }
         }
+
+        // Format grade level display
+        let gradeDisplay = '';
+        if (
+          student?.grade_level !== undefined &&
+          student?.grade_level !== null
+        ) {
+          if (student.grade_level === 0) {
+            gradeDisplay = 'Pre-School';
+          } else {
+            gradeDisplay = `Grade ${student.grade_level}`;
+          }
+        }
+
         webSocketManager.emitStudentCheckIn({
           activityId: String(activity.id),
           studentId: String(studentId),
           studentName:
             `${student?.first_name || ''} ${student?.last_name || ''}`.trim() ||
             'Student',
+          gradeLevel: gradeDisplay,
           gender: student?.gender || undefined,
           checkinTime: new Date(
             activity.start_time || new Date(),
@@ -527,14 +547,31 @@ router.post('/checkout', async (req: Request, res: Response) => {
     });
     const student = await prisma.students.findUnique({
       where: { id: studentId },
-      select: { first_name: true, last_name: true, gender: true },
+      select: {
+        first_name: true,
+        last_name: true,
+        gender: true,
+        grade_level: true,
+      },
     });
+
+    // Format grade level display
+    let gradeDisplay = '';
+    if (student?.grade_level !== undefined && student?.grade_level !== null) {
+      if (student.grade_level === 0) {
+        gradeDisplay = 'Pre-School';
+      } else {
+        gradeDisplay = `Grade ${student.grade_level}`;
+      }
+    }
+
     webSocketManager.emitStudentCheckOut({
       activityId: String(active.id),
       studentId: String(studentId),
       studentName:
         `${student?.first_name || ''} ${student?.last_name || ''}`.trim() ||
         'Student',
+      gradeLevel: gradeDisplay,
       gender: student?.gender || undefined,
       checkoutTime: new Date().toISOString(),
       reason,
@@ -825,9 +862,7 @@ router.post(
           .json({ success: false, message: 'No active session' });
       }
       // Parse existing metadata from string
-      const existingMeta = active.metadata
-        ? JSON.parse(active.metadata as string)
-        : {};
+      const existingMeta = active.metadata ? JSON.parse(active.metadata) : {};
       const fromSections = existingMeta?.sections || [];
       const meta = { ...existingMeta, sections: toSections };
       await prisma.student_activities.update({
