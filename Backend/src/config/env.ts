@@ -43,7 +43,7 @@ export function loadEnv(): EnvConfig {
   const NODE_ENV =
     (process.env.NODE_ENV as EnvConfig['NODE_ENV']) || 'development';
   const PORT = Number(process.env.PORT || 3001);
-  const HOST = process.env.HOST || 'localhost';
+  const HOST = process.env.HOST || '0.0.0.0';
   const DATABASE_URL = process.env.DATABASE_URL || '';
   const JWT_SECRET = process.env.JWT_SECRET || '';
   const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
@@ -155,11 +155,14 @@ export const getDatabaseUrl = (): string => {
 };
 
 export const getAllowedOrigins = (): string[] => {
+  if (env.ALLOWED_ORIGINS === '*') {
+    return ['*'];
+  }
   if (env.ALLOWED_ORIGINS) {
     return env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim());
   }
   if (isDevelopment()) {
-    return ['http://localhost:3000', 'http://localhost:5173'];
+    return ['http://localhost:3000', 'http://localhost:5173', '*'];
   }
   return env.FRONTEND_URL ? [env.FRONTEND_URL] : [];
 };

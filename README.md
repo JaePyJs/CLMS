@@ -13,7 +13,7 @@ A full-stack library management system built with TypeScript, React, and Express
 ✅ **Backend (Express + TypeScript + Prisma)**
 
 - 24 API route modules
-- MySQL database with Prisma ORM
+- SQLite database with Prisma ORM
 - JWT authentication
 - WebSocket support (Socket.IO)
 - File uploads (students, books CSV import)
@@ -53,7 +53,7 @@ A full-stack library management system built with TypeScript, React, and Express
 
 - **Node.js** 20+ with Express 4.21
 - **TypeScript** 5.7
-- **Database**: MySQL with Prisma ORM
+- **Database**: SQLite with Prisma ORM
 - **Auth**: JWT + bcrypt
 - **Queue**: Bull + Redis
 - **Logging**: Winston
@@ -194,7 +194,7 @@ Create `.env` files:
 **Backend/.env**
 
 ```env
-DATABASE_URL="mysql://user:password@localhost:3306/clms"
+DATABASE_URL="file:./dev.db"
 JWT_SECRET="your-secret-key"
 PORT=3001
 NODE_ENV=development
@@ -251,7 +251,6 @@ MIT License - see LICENSE file for details
 
 - **Node.js**: 20.0.0 or higher
 - **NPM**: 10.0.0 or higher
-- **MySQL**: 8.0+
 - **RAM**: 4GB minimum
 - **Storage**: 2GB+ for dependencies
 
