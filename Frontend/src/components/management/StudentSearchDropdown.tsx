@@ -55,13 +55,14 @@ export function StudentSearchDropdown({
     }
   }, [activeOnly]);
 
-  // Search students when query changes
+  // Search students when query changes - Google style (start from 1 char)
   useEffect(() => {
     if (!query.trim()) {
       setSearchResults([]);
       return;
     }
 
+    // Start searching immediately from 1 character
     const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
@@ -76,18 +77,20 @@ export function StudentSearchDropdown({
           });
           setSearchResults(filtered);
         } else {
-          // Search all students via API
-          const res = await apiClient.get<{
-            success: boolean;
-            data: any[];
-            count: number;
-          }>(`/api/students/search?q=${encodeURIComponent(query)}`);
-          if (res.success && res.data) {
-            // Check if data is nested (server response wrapped by apiClient)
-            const students = Array.isArray(res.data)
-              ? res.data
-              : res.data.data || [];
-            setSearchResults(students);
+          // Search all students via API (min 1 char for Google-style)
+          if (query.length >= 1) {
+            const res = await apiClient.get<{
+              success: boolean;
+              data: any[];
+              count: number;
+            }>(`/api/students/search?q=${encodeURIComponent(query)}`);
+            if (res.success && res.data) {
+              // Check if data is nested (server response wrapped by apiClient)
+              const students = Array.isArray(res.data)
+                ? res.data
+                : res.data.data || [];
+              setSearchResults(students);
+            }
           }
         }
       } catch (e) {
@@ -95,10 +98,10 @@ export function StudentSearchDropdown({
       } finally {
         setIsLoading(false);
       }
-    }, 300);
+    }, 150); // Faster debounce for Google-style feel
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, activeOnly, activeStudents]);
 
   // Close dropdown when clicking outside
   useEffect(() => {

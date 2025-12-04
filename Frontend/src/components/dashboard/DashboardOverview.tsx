@@ -1152,21 +1152,13 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                 })}
               </span>
             </div>
-            <div className="mt-6 max-w-3xl mx-auto">
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search students, books, equipment… (Ctrl+K)"
-                  className="pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all w-full"
-                  aria-label="Dashboard Hero Search"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Search across students, books, and equipment. Press Ctrl+K for
-                quick actions.
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Use{' '}
+              <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-mono">
+                Ctrl+K
+              </kbd>{' '}
+              to search anywhere
+            </p>
           </div>
         </div>
       </div>

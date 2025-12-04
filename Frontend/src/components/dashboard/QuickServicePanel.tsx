@@ -85,7 +85,7 @@ export default function QuickServicePanel({
   const [selectedQuickStudent, setSelectedQuickStudent] =
     useState<Student | null>(null);
   const quickDropdownRef = useRef<HTMLDivElement>(null);
-  const debouncedQuickSearch = useDebounce(quickServiceInput, 300);
+  const debouncedQuickSearch = useDebounce(quickServiceInput, 150);
 
   // Manual Lookup state
   const [showManualLookup, setShowManualLookup] = useState(false);
@@ -98,11 +98,11 @@ export default function QuickServicePanel({
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
-  // Live search effect for quick service input
+  // Live search effect for quick service input - Google style instant search
   useEffect(() => {
     const searchStudents = async () => {
-      // Only search if input is 2+ characters and not a pure barcode/ID
-      if (debouncedQuickSearch.length < 2) {
+      // Only search if input is 1+ characters and not a pure barcode/ID
+      if (debouncedQuickSearch.length < 1) {
         setQuickSearchResults([]);
         setShowQuickDropdown(false);
         return;
@@ -364,23 +364,31 @@ export default function QuickServicePanel({
                   </Button>
                 </div>
               ) : (
-                // Show search input
-                <div className="relative">
+                // Show search input with Google-style instant search
+                <div className="relative" ref={quickDropdownRef}>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Type name or scan barcode..."
+                      placeholder="Scan barcode or type name..."
                       value={quickServiceInput}
                       onChange={(e) => {
                         setQuickServiceInput(e.target.value);
-                        setShowQuickDropdown(true);
+                        // Only show dropdown for non-numeric input (names)
+                        if (!/^\d+$/.test(e.target.value)) {
+                          setShowQuickDropdown(true);
+                        }
                       }}
-                      onFocus={() => setShowQuickDropdown(true)}
-                      onKeyDown={(e) => {
+                      onFocus={() => {
                         if (
-                          e.key === 'Enter' &&
-                          quickSearchResults.length === 0
+                          quickServiceInput &&
+                          !/^\d+$/.test(quickServiceInput)
                         ) {
+                          setShowQuickDropdown(true);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
                           handleQuickService();
                         }
                       }}
@@ -393,40 +401,42 @@ export default function QuickServicePanel({
                     )}
                   </div>
 
-                  {/* Dropdown results */}
-                  {showQuickDropdown && quickServiceInput.length >= 2 && (
-                    <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
-                      {isQuickSearching ? (
-                        <div className="p-3 text-center text-sm text-muted-foreground">
-                          <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                          Searching...
-                        </div>
-                      ) : quickSearchResults.length > 0 ? (
-                        quickSearchResults.map((student) => (
-                          <button
-                            key={student.id}
-                            type="button"
-                            className="w-full px-3 py-2 text-left hover:bg-accent flex items-center gap-2 border-b last:border-b-0"
-                            onClick={() => handleSelectQuickStudent(student)}
-                          >
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {student.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {student.studentId} • {student.gradeLevel}
-                              </p>
-                            </div>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="p-3 text-center text-sm text-muted-foreground">
-                          No students found. Press Enter to use as barcode.
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {/* Dropdown results - Google style instant */}
+                  {showQuickDropdown &&
+                    quickServiceInput.length >= 1 &&
+                    !/^\d+$/.test(quickServiceInput) && (
+                      <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {isQuickSearching ? (
+                          <div className="p-3 text-center text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                            Searching...
+                          </div>
+                        ) : quickSearchResults.length > 0 ? (
+                          quickSearchResults.map((student) => (
+                            <button
+                              key={student.id}
+                              type="button"
+                              className="w-full px-3 py-2 text-left hover:bg-accent flex items-center gap-2 border-b last:border-b-0"
+                              onClick={() => handleSelectQuickStudent(student)}
+                            >
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {student.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {student.studentId} • {student.gradeLevel}
+                                </p>
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="p-3 text-center text-sm text-muted-foreground">
+                            No students found
+                          </div>
+                        )}
+                      </div>
+                    )}
                 </div>
               )}
             </div>

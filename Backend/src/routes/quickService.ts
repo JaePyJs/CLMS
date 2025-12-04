@@ -146,6 +146,7 @@ router.get(
 /**
  * GET /api/manual-lookup/search
  * Search for students by name (for forgotten barcode scenarios)
+ * Google-style instant search - works from 1 character
  */
 router.get(
   '/search',
@@ -155,17 +156,17 @@ router.get(
     try {
       const { q, limit } = req.query;
 
-      if (!q || (q as string).trim().length < 2) {
+      if (!q || (q as string).trim().length < 1) {
         res.status(400).json({
           success: false,
-          message: 'Search query must be at least 2 characters',
+          message: 'Search query is required',
         });
         return;
       }
 
       const students = await ManualLookupService.searchByName(
         q as string,
-        limit ? parseInt(limit as string) : 10,
+        limit ? parseInt(limit as string) : 15,
       );
 
       res.json({

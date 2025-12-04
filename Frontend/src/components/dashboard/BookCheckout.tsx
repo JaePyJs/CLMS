@@ -107,7 +107,7 @@ export default function BookCheckout() {
   const [isSearchingStudent, setIsSearchingStudent] = useState(false);
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   const studentDropdownRef = useRef<HTMLDivElement>(null);
-  const debouncedStudentSearch = useDebounce(studentSearchInput, 300);
+  const debouncedStudentSearch = useDebounce(studentSearchInput, 150);
 
   const studentInputRef = useRef<HTMLInputElement>(null);
   const bookInputRef = useRef<HTMLInputElement>(null);
@@ -229,9 +229,9 @@ export default function BookCheckout() {
     }
   }, [checkoutForm.values.checkoutStep, checkoutForm.values.policyCategory]);
 
-  // Live search effect for student input
+  // Live search effect for student input - Google style instant search
   useEffect(() => {
-    if (debouncedStudentSearch.length >= 2) {
+    if (debouncedStudentSearch.length >= 1) {
       setIsSearchingStudent(true);
       apiClient
         .get(

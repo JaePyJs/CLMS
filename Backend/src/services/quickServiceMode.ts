@@ -118,6 +118,46 @@ export class QuickServiceMode {
         },
       });
 
+      // For PRINTING, PHOTOCOPY, or LAMINATION - also create a print job record
+      let printJobId: string | undefined;
+      if (['PRINTING', 'PHOTOCOPY', 'LAMINATION'].includes(serviceType)) {
+        // Get default pricing (SHORT + BW as default for quick service)
+        const defaultPricing = await prisma.printing_pricing.findFirst({
+          where: {
+            paper_size: 'SHORT',
+            color_level: 'BW',
+            is_active: true,
+          },
+        });
+
+        const pricePerPage = defaultPricing?.price || 2; // Default ₱2 if no pricing set
+
+        const printJob = await prisma.printing_jobs.create({
+          data: {
+            student_id: student.id,
+            paper_size: 'SHORT',
+            color_level: 'BW',
+            pages: 1, // Default 1 page for quick service
+            price_per_page: pricePerPage,
+            total_cost: pricePerPage,
+            paid: false,
+            metadata: JSON.stringify({
+              quickService: true,
+              serviceType,
+              activityId: activity.id,
+              notes: notes || undefined,
+            }),
+          },
+        });
+        printJobId = printJob.id;
+
+        logger.info('Print job created for quick service', {
+          printJobId: printJob.id,
+          studentId: student.student_id,
+          serviceType,
+        });
+      }
+
       // Emit event but mark as quick service
       websocketServer.broadcastToRoom('librarian', {
         id: `qs-${activity.id}`,
@@ -128,6 +168,7 @@ export class QuickServiceMode {
           studentName: `${student.first_name} ${student.last_name}`,
           serviceType,
           usedManualLookup,
+          printJobId,
         },
         timestamp: new Date(),
       });
@@ -136,12 +177,13 @@ export class QuickServiceMode {
         studentId: student.student_id,
         serviceType,
         activityId: activity.id,
+        printJobId,
         usedManualLookup,
       });
 
       return {
         success: true,
-        message: `Quick service (${serviceType}) logged successfully`,
+        message: `Quick service (${serviceType}) logged successfully${printJobId ? ' - Print job created' : ''}`,
         serviceId: activity.id,
         student: {
           id: student.id,

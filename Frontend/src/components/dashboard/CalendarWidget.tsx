@@ -83,6 +83,7 @@ export function CalendarWidget() {
   const [customEvents, setCustomEvents] = useState<CalendarEvent[]>([]);
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [eventDate, setEventDate] = useState<Date>(new Date());
   const [eventForm, setEventForm] = useState({
     title: '',
     description: '',
@@ -132,6 +133,7 @@ export function CalendarWidget() {
 
   const openAddEventDialog = () => {
     setEditingEvent(null);
+    setEventDate(selectedDate || new Date());
     setEventForm({
       title: '',
       description: '',
@@ -143,6 +145,7 @@ export function CalendarWidget() {
 
   const openEditEventDialog = (event: CalendarEvent) => {
     setEditingEvent(event);
+    setEventDate(new Date(event.event_date));
     setEventForm({
       title: event.title,
       description: event.description || '',
@@ -158,7 +161,7 @@ export function CalendarWidget() {
       return;
     }
 
-    if (!selectedDate) {
+    if (!eventDate) {
       toast.error('Please select a date');
       return;
     }
@@ -168,7 +171,7 @@ export function CalendarWidget() {
         const response = await api.put(`/calendar-events/${editingEvent.id}`, {
           title: eventForm.title,
           description: eventForm.description || null,
-          eventDate: selectedDate.toISOString(),
+          eventDate: eventDate.toISOString(),
           eventType: eventForm.eventType,
           color: eventForm.color,
         });
@@ -181,7 +184,7 @@ export function CalendarWidget() {
         const response = await api.post('/calendar-events', {
           title: eventForm.title,
           description: eventForm.description || null,
-          eventDate: selectedDate.toISOString(),
+          eventDate: eventDate.toISOString(),
           eventType: eventForm.eventType,
           color: eventForm.color,
         });
@@ -535,10 +538,16 @@ export function CalendarWidget() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Date</label>
-              <p className="text-sm text-muted-foreground">
-                {selectedDate
-                  ? format(selectedDate, 'MMMM d, yyyy')
-                  : 'Select a date on the calendar'}
+              <div className="border rounded-md p-2">
+                <Calendar
+                  mode="single"
+                  selected={eventDate}
+                  onSelect={(date) => date && setEventDate(date)}
+                  className="rounded-md"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Selected: {format(eventDate, 'MMMM d, yyyy')}
               </p>
             </div>
           </div>
