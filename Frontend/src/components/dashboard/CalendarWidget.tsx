@@ -538,7 +538,7 @@ export function CalendarWidget() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Date</label>
-              <div className="border rounded-md p-2">
+              <div className="border rounded-md p-2 flex justify-center">
                 <Calendar
                   mode="single"
                   selected={eventDate}
@@ -546,7 +546,7 @@ export function CalendarWidget() {
                   className="rounded-md"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground text-center">
                 Selected: {format(eventDate, 'MMMM d, yyyy')}
               </p>
             </div>

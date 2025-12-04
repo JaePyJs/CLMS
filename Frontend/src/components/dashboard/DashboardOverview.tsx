@@ -190,7 +190,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     }
   };
 
-  // Real-time clock state (updates every minute for professional appearance)
+  // Real-time clock state (updates every second for live display)
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Quick Actions loading states
@@ -205,11 +205,11 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const [isPrinting, setIsPrinting] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Update time every minute (professional standard)
+  // Update time every second for real-time display
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 60000); // Update every 60 seconds
+    }, 1000); // Update every second
 
     return () => clearInterval(timer);
   }, []);

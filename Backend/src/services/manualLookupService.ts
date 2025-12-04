@@ -47,6 +47,7 @@ export interface ManualLookupStats {
 export class ManualLookupService {
   /**
    * Search for student by name (for manual lookup)
+   * Note: SQLite doesn't support case-insensitive mode, so we search both cases
    */
   static async searchByName(
     query: string,
@@ -55,14 +56,18 @@ export class ManualLookupService {
     try {
       const searchTerms = query.trim().toLowerCase().split(/\s+/);
 
+      // For SQLite, search both lowercase and original case
       const students = await prisma.students.findMany({
         where: {
           AND: searchTerms.map(term => ({
             OR: [
-              { first_name: { contains: term, mode: 'insensitive' as const } },
-              { last_name: { contains: term, mode: 'insensitive' as const } },
-              { student_id: { contains: term, mode: 'insensitive' as const } },
-              { barcode: { contains: term, mode: 'insensitive' as const } },
+              { first_name: { contains: term } },
+              { first_name: { contains: term.charAt(0).toUpperCase() + term.slice(1) } },
+              { last_name: { contains: term } },
+              { last_name: { contains: term.charAt(0).toUpperCase() + term.slice(1) } },
+              { student_id: { contains: term } },
+              { student_id: { contains: term.toUpperCase() } },
+              { barcode: { contains: term } },
             ],
           })),
           is_active: true,
@@ -76,11 +81,14 @@ export class ManualLookupService {
           section: true,
           photo_url: true,
         },
-        take: limit,
+        take: limit * 2, // Fetch more to account for duplicates
         orderBy: [{ last_name: 'asc' }, { first_name: 'asc' }],
       });
 
-      return students.map(s => ({
+      // Deduplicate and limit results
+      const unique = students.filter((s, idx, arr) => arr.findIndex(x => x.id === s.id) === idx).slice(0, limit);
+
+      return unique.map(s => ({
         id: s.id,
         studentId: s.student_id,
         name: `${s.first_name} ${s.last_name}`,

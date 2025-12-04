@@ -67,8 +67,8 @@ export function FooterStats() {
         activeData?.count ||
         (Array.isArray(activeData?.data) ? activeData.data.length : 0);
 
-      // Fetch dashboard stats
-      const dashRes = await apiClient.get('/api/analytics/dashboard-stats');
+      // Fetch dashboard stats (correct endpoint is /api/analytics/dashboard)
+      const dashRes = await apiClient.get('/api/analytics/dashboard');
       const dashData = (dashRes as any)?.data || dashRes;
 
       setStats({

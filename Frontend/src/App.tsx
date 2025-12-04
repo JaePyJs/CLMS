@@ -321,17 +321,10 @@ export default function App() {
     }
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = () => {
     setIsRefreshing(true);
-    try {
-      // Simulate system refresh
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      toast.success('System refreshed successfully!');
-    } catch {
-      toast.error('Failed to refresh system');
-    } finally {
-      setIsRefreshing(false);
-    }
+    // Do actual browser refresh
+    window.location.reload();
   };
 
   const handleSystemHealth = () => {
