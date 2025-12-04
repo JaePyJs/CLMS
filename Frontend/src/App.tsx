@@ -327,34 +327,51 @@ export default function App() {
     window.location.reload();
   };
 
-  const handleSystemHealth = () => {
-    toast.info('Running comprehensive system health check...');
-    // Implement system health check
+  const handleSystemHealth = async () => {
+    toast.info('Running system health check...');
+    try {
+      const response = await fetch('/api/health');
+      const data = await response.json();
+      if (data.status === 'healthy') {
+        toast.success(`System healthy! DB: ${data.database?.responseTime || 0}ms, Uptime: ${Math.floor(data.uptime / 60)}min`);
+      } else {
+        toast.warning(`System degraded: ${data.status}`);
+      }
+    } catch {
+      toast.error('Failed to check system health');
+    }
   };
 
   const handleBackup = () => {
     toast.info('Starting system backup...');
-    // Implement backup functionality
+    // Backup is handled in dashboard Quick Actions
   };
 
   const handleMaintenance = () => {
-    toast.info('Opening maintenance mode controls...');
-    // Implement maintenance controls
+    toast.info('Maintenance mode not implemented');
   };
 
   const handleEmergencyAlert = () => {
-    toast.warning('Emergency alert system activated!');
-    // Implement emergency alert
+    toast.warning('Emergency alert system not implemented');
   };
 
   const handleViewLogs = () => {
-    toast.info('Opening system logs...');
-    // Implement log viewer
+    toast.info('System logs available at /logs endpoint');
   };
 
-  const handleDatabaseStatus = () => {
-    toast.info('Checking database status...');
-    // Implement database status check
+  const handleDatabaseStatus = async () => {
+    toast.info('Checking database...');
+    try {
+      const response = await fetch('/api/health');
+      const data = await response.json();
+      if (data.database?.connected) {
+        toast.success(`Database connected (${data.database.responseTime}ms)`);
+      } else {
+        toast.error('Database disconnected!');
+      }
+    } catch {
+      toast.error('Failed to check database');
+    }
   };
 
   // Touch gesture support for mobile navigation

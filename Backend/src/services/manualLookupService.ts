@@ -62,9 +62,17 @@ export class ManualLookupService {
           AND: searchTerms.map(term => ({
             OR: [
               { first_name: { contains: term } },
-              { first_name: { contains: term.charAt(0).toUpperCase() + term.slice(1) } },
+              {
+                first_name: {
+                  contains: term.charAt(0).toUpperCase() + term.slice(1),
+                },
+              },
               { last_name: { contains: term } },
-              { last_name: { contains: term.charAt(0).toUpperCase() + term.slice(1) } },
+              {
+                last_name: {
+                  contains: term.charAt(0).toUpperCase() + term.slice(1),
+                },
+              },
               { student_id: { contains: term } },
               { student_id: { contains: term.toUpperCase() } },
               { barcode: { contains: term } },
@@ -86,7 +94,9 @@ export class ManualLookupService {
       });
 
       // Deduplicate and limit results
-      const unique = students.filter((s, idx, arr) => arr.findIndex(x => x.id === s.id) === idx).slice(0, limit);
+      const unique = students
+        .filter((s, idx, arr) => arr.findIndex(x => x.id === s.id) === idx)
+        .slice(0, limit);
 
       return unique.map(s => ({
         id: s.id,

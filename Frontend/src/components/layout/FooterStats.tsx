@@ -67,15 +67,22 @@ export function FooterStats() {
         activeData?.count ||
         (Array.isArray(activeData?.data) ? activeData.data.length : 0);
 
-      // Fetch dashboard stats (correct endpoint is /api/analytics/dashboard)
+      // Fetch dashboard stats
       const dashRes = await apiClient.get('/api/analytics/dashboard');
-      const dashData = (dashRes as any)?.data || dashRes;
+      // apiClient wraps response: { success, data: { success, data: {...} } }
+      // Extract the nested data properly
+      const rawData = (dashRes as any)?.data || dashRes;
+      const dashData = rawData?.data || rawData;
+
+      // Get today's checkouts from book_checkouts or activeBorrows
+      const todayCheckouts = dashData?.todayActivities || 0;
+      const activeBorrows = dashData?.activeBorrows || dashData?.overview?.activeBorrows || 0;
 
       setStats({
         activeStudents: activeCount,
-        totalBooks: dashData?.totalBooks || 0,
-        todayCheckouts: dashData?.todayStats?.checkouts || 0,
-        todayReturns: dashData?.todayStats?.returns || 0,
+        totalBooks: dashData?.totalBooks || dashData?.overview?.totalBooks || 0,
+        todayCheckouts: todayCheckouts,
+        todayReturns: activeBorrows,
       });
 
       setDbStatus('healthy');
