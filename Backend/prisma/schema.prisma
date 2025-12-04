@@ -378,3 +378,22 @@ model monthly_rewards {
   @@index([year, month])
   @@index([student_id])
 }
+
+// Custom calendar events for librarian reminders
+model calendar_events {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  event_date  DateTime
+  end_date    DateTime?
+  event_type  String    @default("reminder") // "reminder", "holiday", "deadline", "meeting", "other"
+  color       String    @default("#3b82f6") // Hex color for display
+  all_day     Boolean   @default(true)
+  is_active   Boolean   @default(true)
+  created_by  String?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  @@index([event_date])
+  @@index([is_active])
+}

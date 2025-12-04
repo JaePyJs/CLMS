@@ -33,6 +33,7 @@ import searchRoutes from './search';
 import printingRoutes from './printing';
 import reportsRoutes from './reports';
 import { quickServiceRoutes } from './quickService';
+import calendarEventsRoutes from './calendarEvents';
 
 const router = Router();
 
@@ -67,6 +68,7 @@ router.use('/printing', printingRoutes);
 router.use('/reports', reportsRoutes);
 router.use('/quick-service', quickServiceRoutes);
 router.use('/manual-lookup', quickServiceRoutes); // Same routes, different prefix
+router.use('/calendar-events', calendarEventsRoutes);
 router.use('/version', versionRoutes);
 router.use('/health', healthRoutes);
 
