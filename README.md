@@ -19,7 +19,7 @@ A full-stack library management system built with TypeScript, React, and Express
 
 ✅ **Backend (Express + TypeScript + Prisma)**
 
-- 24 API route modules
+- 32 API route modules
 - SQLite database with Prisma ORM
 - JWT authentication with refresh tokens
 - WebSocket support (Socket.IO) for real-time updates
@@ -29,7 +29,7 @@ A full-stack library management system built with TypeScript, React, and Express
 
 ✅ **Frontend (React 18.3.1 + Vite + TypeScript)**
 
-- 151 React components
+- 192 React components
 - Scrollable tab-based navigation
 - Real-time WebSocket updates
 - Form validation with Zod
@@ -108,7 +108,7 @@ npx tsx src/scripts/create_test_admin.ts
 CLMS/
 ├── Backend/
 │   ├── src/
-│   │   ├── routes/         # 24 API endpoints
+│   │   ├── routes/         # 32 API endpoints
 │   │   ├── services/       # Business logic
 │   │   ├── middleware/     # Auth, validation, error handling
 │   │   ├── utils/          # Helpers
@@ -118,7 +118,7 @@ CLMS/
 │
 ├── Frontend/
 │   ├── src/
-│   │   ├── components/     # 151 React components
+│   │   ├── components/     # 192 React components
 │   │   ├── hooks/          # Custom hooks
 │   │   ├── lib/            # API client, utilities
 │   │   └── main.tsx        # Entry point
@@ -254,7 +254,7 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ## 📊 API Documentation
 
-The backend exposes 24 route modules including:
+The backend exposes 32 route modules including:
 
 - `/api/auth` - Authentication (login, refresh, logout)
 - `/api/students` - Student CRUD and search
