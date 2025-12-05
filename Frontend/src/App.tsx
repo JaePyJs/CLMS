@@ -302,9 +302,9 @@ export default function App() {
           const response = await apiClient.get(
             `/api/search?q=${encodeURIComponent(query)}`
           );
-          const data = (response as any).data;
-          if (data && data.success) {
-            setSearchResults(data.data);
+          // apiClient.get returns the response data directly: {success: true, data: [...]}
+          if (response && (response as any).success) {
+            setSearchResults((response as any).data || []);
           } else {
             setSearchResults([]);
           }

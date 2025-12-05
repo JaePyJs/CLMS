@@ -81,7 +81,10 @@ self.addEventListener('install', (event) => {
             await staticCache.add(asset);
             console.log(`[SW] Cached critical asset: ${asset}`);
           } catch (error) {
-            console.warn(`[SW] Failed to cache critical asset: ${asset}`, error);
+            console.warn(
+              `[SW] Failed to cache critical asset: ${asset}`,
+              error
+            );
           }
         });
 
@@ -142,7 +145,9 @@ self.addEventListener('activate', (event) => {
 });
 
 // Check if we're in development mode
-const isDev = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
+const isDev =
+  self.location.hostname === 'localhost' ||
+  self.location.hostname === '127.0.0.1';
 
 // Fetch event - handle network requests
 self.addEventListener('fetch', (event) => {
@@ -152,8 +157,10 @@ self.addEventListener('fetch', (event) => {
   // In development mode, bypass service worker completely for most requests
   if (isDev) {
     // Only cache static assets in dev, let everything else pass through
-    if (!url.pathname.startsWith('/assets/') && 
-        !url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/i)) {
+    if (
+      !url.pathname.startsWith('/assets/') &&
+      !url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/i)
+    ) {
       return; // Let the browser handle it normally
     }
   }
@@ -164,7 +171,10 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Skip external requests
-  if (url.origin !== self.location.origin && !url.origin.includes('localhost')) {
+  if (
+    url.origin !== self.location.origin &&
+    !url.origin.includes('localhost')
+  ) {
     return;
   }
 
@@ -213,13 +223,17 @@ async function handleAPIRequest(request) {
   const url = new URL(request.url);
 
   // Check if this endpoint should never be cached
-  const shouldNotCache = API_NO_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
+  const shouldNotCache = API_NO_CACHE_PATTERNS.some((pattern) =>
+    pattern.test(url.pathname)
+  );
   if (shouldNotCache) {
     return fetch(request);
   }
 
   // Check if this endpoint should be cached
-  const shouldCache = API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
+  const shouldCache = API_CACHE_PATTERNS.some((pattern) =>
+    pattern.test(url.pathname)
+  );
   if (!shouldCache) {
     return networkFirst(request);
   }
@@ -318,13 +332,20 @@ async function cacheFirst(request, cacheName, config) {
   }
 }
 
-async function networkFirst(request, cacheName = API_CACHE, config = CACHE_CONFIG.api) {
+async function networkFirst(
+  request,
+  cacheName = API_CACHE,
+  config = CACHE_CONFIG.api
+) {
   try {
     console.log(`[SW] Network first: ${request.url}`);
 
     // Create timeout promise
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Network timeout')), config.networkTimeout);
+      setTimeout(
+        () => reject(new Error('Network timeout')),
+        config.networkTimeout
+      );
     });
 
     // Race between network and timeout
@@ -343,7 +364,10 @@ async function networkFirst(request, cacheName = API_CACHE, config = CACHE_CONFI
 
     return networkResponse;
   } catch (error) {
-    console.warn(`[SW] Network failed for ${request.url}, trying cache:`, error);
+    console.warn(
+      `[SW] Network failed for ${request.url}, trying cache:`,
+      error
+    );
 
     // Fallback to cache
     const cache = await caches.open(cacheName);
@@ -364,17 +388,19 @@ async function staleWhileRevalidate(request, cacheName, config) {
     const cachedResponse = await cache.match(request);
 
     // Always try to fetch fresh data in background
-    const networkPromise = fetch(request).then(async (networkResponse) => {
-      if (networkResponse.ok) {
-        // Clean up cache before adding new entry
-        await cleanCache(cacheName, config.maxEntries);
-        await cache.put(request, networkResponse.clone());
-      }
-      return networkResponse;
-    }).catch((error) => {
-      console.warn(`[SW] Background fetch failed for ${request.url}:`, error);
-      return null;
-    });
+    const networkPromise = fetch(request)
+      .then(async (networkResponse) => {
+        if (networkResponse.ok) {
+          // Clean up cache before adding new entry
+          await cleanCache(cacheName, config.maxEntries);
+          await cache.put(request, networkResponse.clone());
+        }
+        return networkResponse;
+      })
+      .catch((error) => {
+        console.warn(`[SW] Background fetch failed for ${request.url}:`, error);
+        return null;
+      });
 
     // Return cached response immediately if available
     if (cachedResponse && !isExpired(cachedResponse, config.maxAge)) {
@@ -396,7 +422,10 @@ async function staleWhileRevalidate(request, cacheName, config) {
 
     throw new Error('No cache or network response available');
   } catch (error) {
-    console.error(`[SW] Stale-while-revalidate failed for ${request.url}:`, error);
+    console.error(
+      `[SW] Stale-while-revalidate failed for ${request.url}:`,
+      error
+    );
     throw error;
   }
 }
@@ -409,7 +438,7 @@ function isExpired(response, maxAge) {
 
   const responseDate = new Date(dateHeader).getTime();
   const now = Date.now();
-  return (now - responseDate) > maxAge;
+  return now - responseDate > maxAge;
 }
 
 async function cleanCache(cacheName, maxEntries) {
@@ -427,9 +456,11 @@ async function cleanCache(cacheName, maxEntries) {
 
       // Delete oldest entries
       const keysToDelete = sortedKeys.slice(0, keys.length - maxEntries);
-      await Promise.all(keysToDelete.map(key => cache.delete(key)));
+      await Promise.all(keysToDelete.map((key) => cache.delete(key)));
 
-      console.log(`[SW] Cleaned ${keysToDelete.length} entries from ${cacheName}`);
+      console.log(
+        `[SW] Cleaned ${keysToDelete.length} entries from ${cacheName}`
+      );
     }
   } catch (error) {
     console.warn(`[SW] Cache cleanup failed for ${cacheName}:`, error);
@@ -446,27 +477,33 @@ self.addEventListener('message', (event) => {
       break;
 
     case 'CACHE_CLEAR':
-      clearAllCaches().then(() => {
-        event.ports[0].postMessage({ success: true });
-      }).catch((error) => {
-        event.ports[0].postMessage({ success: false, error: error.message });
-      });
+      clearAllCaches()
+        .then(() => {
+          event.ports[0].postMessage({ success: true });
+        })
+        .catch((error) => {
+          event.ports[0].postMessage({ success: false, error: error.message });
+        });
       break;
 
     case 'CACHE_CLEAR_PATTERN':
-      clearCacheByPattern(payload.pattern).then(() => {
-        event.ports[0].postMessage({ success: true });
-      }).catch((error) => {
-        event.ports[0].postMessage({ success: false, error: error.message });
-      });
+      clearCacheByPattern(payload.pattern)
+        .then(() => {
+          event.ports[0].postMessage({ success: true });
+        })
+        .catch((error) => {
+          event.ports[0].postMessage({ success: false, error: error.message });
+        });
       break;
 
     case 'CACHE_WARMUP':
-      warmupCache(payload.urls).then(() => {
-        event.ports[0].postMessage({ success: true });
-      }).catch((error) => {
-        event.ports[0].postMessage({ success: false, error: error.message });
-      });
+      warmupCache(payload.urls)
+        .then(() => {
+          event.ports[0].postMessage({ success: true });
+        })
+        .catch((error) => {
+          event.ports[0].postMessage({ success: false, error: error.message });
+        });
       break;
 
     default:
@@ -476,7 +513,7 @@ self.addEventListener('message', (event) => {
 
 async function clearAllCaches() {
   const cacheNames = await caches.keys();
-  await Promise.all(cacheNames.map(name => caches.delete(name)));
+  await Promise.all(cacheNames.map((name) => caches.delete(name)));
   console.log('[SW] All caches cleared');
 }
 
@@ -567,8 +604,11 @@ self.addEventListener('fetch', (event) => {
         const duration = performance.now() - start;
 
         // Log performance metrics
-        if (duration > 1000) { // Log slow requests
-          console.warn(`[SW] Slow request detected: ${event.request.url} (${duration.toFixed(2)}ms)`);
+        if (duration > 1000) {
+          // Log slow requests
+          console.warn(
+            `[SW] Slow request detected: ${event.request.url} (${duration.toFixed(2)}ms)`
+          );
         }
 
         return response;
