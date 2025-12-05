@@ -90,7 +90,7 @@ export default function UserManagement() {
       const response = await settingsApi.getUsers();
       // Map snake_case from API to camelCase for frontend
       const rawUsers = (response.data as any[]) || [];
-      return rawUsers.map(u => ({
+      return rawUsers.map((u) => ({
         id: u.id,
         username: u.username,
         role: u.role,

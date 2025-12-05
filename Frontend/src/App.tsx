@@ -687,64 +687,64 @@ export default function App() {
 
                     {/* Search Results Dropdown */}
                     {searchQuery.length > 2 && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-lg shadow-lg z-50 max-h-[400px] overflow-y-auto">
-                          {isSearching ? (
-                            <div className="p-4 text-center text-muted-foreground">
-                              <LoadingSpinner
-                                size="sm"
-                                className="inline-block mr-2"
-                              />
-                              Searching...
-                            </div>
-                          ) : searchResults.length > 0 ? (
-                            <div className="py-2">
-                              {searchResults.map((result: any) => (
-                                <button
-                                  key={`${result.type}-${result.id}`}
-                                  className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-3"
-                                  onClick={() => {
-                                    if (result.type === 'student')
-                                      setActiveTab('students');
-                                    if (result.type === 'book')
-                                      setActiveTab('books');
-                                    if (result.type === 'equipment')
-                                      setActiveTab('equipment');
-                                    setSearchQuery('');
-                                    setSearchResults([]);
-                                    toast.success(
-                                      `Navigating to ${result.type}: ${result.title}`
-                                    );
-                                  }}
-                                >
-                                  <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
-                                    {result.type === 'student' && (
-                                      <User className="h-4 w-4" />
-                                    )}
-                                    {result.type === 'book' && (
-                                      <BookOpen className="h-4 w-4" />
-                                    )}
-                                    {result.type === 'equipment' && (
-                                      <Monitor className="h-4 w-4" />
-                                    )}
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-lg shadow-lg z-50 max-h-[400px] overflow-y-auto">
+                        {isSearching ? (
+                          <div className="p-4 text-center text-muted-foreground">
+                            <LoadingSpinner
+                              size="sm"
+                              className="inline-block mr-2"
+                            />
+                            Searching...
+                          </div>
+                        ) : searchResults.length > 0 ? (
+                          <div className="py-2">
+                            {searchResults.map((result: any) => (
+                              <button
+                                key={`${result.type}-${result.id}`}
+                                className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-3"
+                                onClick={() => {
+                                  if (result.type === 'student')
+                                    setActiveTab('students');
+                                  if (result.type === 'book')
+                                    setActiveTab('books');
+                                  if (result.type === 'equipment')
+                                    setActiveTab('equipment');
+                                  setSearchQuery('');
+                                  setSearchResults([]);
+                                  toast.success(
+                                    `Navigating to ${result.type}: ${result.title}`
+                                  );
+                                }}
+                              >
+                                <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                                  {result.type === 'student' && (
+                                    <User className="h-4 w-4" />
+                                  )}
+                                  {result.type === 'book' && (
+                                    <BookOpen className="h-4 w-4" />
+                                  )}
+                                  {result.type === 'equipment' && (
+                                    <Monitor className="h-4 w-4" />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="font-medium text-sm">
+                                    {result.title}
                                   </div>
-                                  <div>
-                                    <div className="font-medium text-sm">
-                                      {result.title}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {result.subtitle} • {result.status}
-                                    </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {result.subtitle} • {result.status}
                                   </div>
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="p-4 text-center text-muted-foreground">
-                              No results found
-                            </div>
-                          )}
-                        </div>
-                      )}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-4 text-center text-muted-foreground">
+                            No results found
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 

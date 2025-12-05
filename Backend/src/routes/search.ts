@@ -21,77 +21,44 @@ router.get(
     }
 
     try {
-      // For case-insensitive search in SQLite, we need to use raw SQL with LOWER()
-      // or search for both the lowercase and original case versions
-      const searchLower = query.toLowerCase();
-      const searchOriginal = query;
+      // Use raw SQL with LOWER() for true case-insensitive search in SQLite
+      const searchPattern = `%${query.toLowerCase()}%`;
 
-      // Perform parallel searches with both case variants for SQLite compatibility
-      const [students, books, equipment] = await Promise.all([
-        // Search Students - use OR to match either lowercase or original
-        prisma.students.findMany({
-          where: {
-            OR: [
-              { first_name: { contains: searchLower } },
-              { first_name: { contains: searchOriginal } },
-              { last_name: { contains: searchLower } },
-              { last_name: { contains: searchOriginal } },
-              { student_id: { contains: searchLower } },
-              { student_id: { contains: searchOriginal } },
-              { barcode: { contains: searchLower } },
-              { barcode: { contains: searchOriginal } },
-            ],
-          },
-          take: 10,
-        }),
+      // Search Students using raw SQL for case-insensitive matching
+      const students = await prisma.$queryRaw<any[]>`
+        SELECT id, student_id, first_name, last_name, grade_level, section, is_active
+        FROM students
+        WHERE LOWER(first_name) LIKE ${searchPattern}
+           OR LOWER(last_name) LIKE ${searchPattern}
+           OR LOWER(student_id) LIKE ${searchPattern}
+           OR LOWER(COALESCE(barcode, '')) LIKE ${searchPattern}
+        LIMIT 10
+      `;
 
-        // Search Books
-        prisma.books.findMany({
-          where: {
-            OR: [
-              { title: { contains: searchLower } },
-              { title: { contains: searchOriginal } },
-              { author: { contains: searchLower } },
-              { author: { contains: searchOriginal } },
-              { isbn: { contains: searchLower } },
-              { isbn: { contains: searchOriginal } },
-              { accession_no: { contains: searchLower } },
-              { accession_no: { contains: searchOriginal } },
-            ],
-          },
-          take: 10,
-        }),
+      // Search Books using raw SQL
+      const books = await prisma.$queryRaw<any[]>`
+        SELECT id, title, author, isbn, accession_no, location, available_copies
+        FROM books
+        WHERE LOWER(title) LIKE ${searchPattern}
+           OR LOWER(COALESCE(author, '')) LIKE ${searchPattern}
+           OR LOWER(COALESCE(isbn, '')) LIKE ${searchPattern}
+           OR LOWER(COALESCE(accession_no, '')) LIKE ${searchPattern}
+        LIMIT 10
+      `;
 
-        // Search Equipment
-        prisma.equipment.findMany({
-          where: {
-            OR: [
-              { name: { contains: searchLower } },
-              { name: { contains: searchOriginal } },
-              { serial_number: { contains: searchLower } },
-              { serial_number: { contains: searchOriginal } },
-              { category: { contains: searchLower } },
-              { category: { contains: searchOriginal } },
-            ],
-          },
-          take: 10,
-        }),
-      ]);
+      // Search Equipment using raw SQL
+      const equipment = await prisma.$queryRaw<any[]>`
+        SELECT id, name, serial_number, category, status
+        FROM equipment
+        WHERE LOWER(name) LIKE ${searchPattern}
+           OR LOWER(COALESCE(serial_number, '')) LIKE ${searchPattern}
+           OR LOWER(COALESCE(category, '')) LIKE ${searchPattern}
+        LIMIT 10
+      `;
 
-      // Deduplicate results (in case both lowercase and original matched the same record)
-      const uniqueStudents = students
-        .filter((s, idx, arr) => arr.findIndex(x => x.id === s.id) === idx)
-        .slice(0, 5);
-      const uniqueBooks = books
-        .filter((b, idx, arr) => arr.findIndex(x => x.id === b.id) === idx)
-        .slice(0, 5);
-      const uniqueEquipment = equipment
-        .filter((e, idx, arr) => arr.findIndex(x => x.id === e.id) === idx)
-        .slice(0, 5);
-
-      // Transform results into a unified format (using deduplicated arrays)
+      // Transform results into a unified format
       const results = [
-        ...uniqueStudents.map(s => ({
+        ...students.slice(0, 5).map(s => ({
           type: 'student',
           id: s.id,
           title: `${s.first_name} ${s.last_name}`,
@@ -102,18 +69,18 @@ router.get(
             section: s.section,
           },
         })),
-        ...uniqueBooks.map(b => ({
+        ...books.slice(0, 5).map(b => ({
           type: 'book',
           id: b.id,
           title: b.title,
-          subtitle: b.author,
+          subtitle: b.author || 'Unknown Author',
           status: b.available_copies > 0 ? 'Available' : 'Out of Stock',
           metadata: {
             isbn: b.isbn,
             location: b.location,
           },
         })),
-        ...uniqueEquipment.map(e => ({
+        ...equipment.slice(0, 5).map(e => ({
           type: 'equipment',
           id: e.id,
           title: e.name,
