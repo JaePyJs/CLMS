@@ -141,10 +141,22 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Check if we're in development mode
+const isDev = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
+
 // Fetch event - handle network requests
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // In development mode, bypass service worker completely for most requests
+  if (isDev) {
+    // Only cache static assets in dev, let everything else pass through
+    if (!url.pathname.startsWith('/assets/') && 
+        !url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/i)) {
+      return; // Let the browser handle it normally
+    }
+  }
 
   // Skip non-GET requests
   if (request.method !== 'GET') {
