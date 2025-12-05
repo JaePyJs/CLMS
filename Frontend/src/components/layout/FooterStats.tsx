@@ -76,7 +76,8 @@ export function FooterStats() {
 
       // Get today's checkouts from book_checkouts or activeBorrows
       const todayCheckouts = dashData?.todayActivities || 0;
-      const activeBorrows = dashData?.activeBorrows || dashData?.overview?.activeBorrows || 0;
+      const activeBorrows =
+        dashData?.activeBorrows || dashData?.overview?.activeBorrows || 0;
 
       setStats({
         activeStudents: activeCount,
@@ -91,10 +92,10 @@ export function FooterStats() {
     }
   };
 
-  // Initial fetch and polling
+  // Initial fetch and polling (every 15 seconds for real-time feel)
   useEffect(() => {
     fetchStats();
-    const interval = setInterval(fetchStats, 60000); // Update every minute
+    const interval = setInterval(fetchStats, 15000); // Update every 15 seconds
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 

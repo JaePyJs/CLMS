@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '@/lib/api';
 import { toUserMessage } from '@/utils/error-utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -73,6 +74,7 @@ interface Job {
 
 export default function PrintingTracker() {
   const { token } = useAuth();
+  const { lastMessage } = useWebSocketContext();
   const [pricing, setPricing] = useState<Pricing[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [paperSize, setPaperSize] = useState<PaperSize>('SHORT');
@@ -121,6 +123,21 @@ export default function PrintingTracker() {
     loadPricing();
     loadJobs();
   }, []);
+
+  // Real-time updates from WebSocket
+  useEffect(() => {
+    if (lastMessage) {
+      const type = lastMessage.type;
+      if (
+        type === 'printing_job' ||
+        type === 'PRINTING_JOB' ||
+        type === 'quick_service' ||
+        type === 'QUICK_SERVICE'
+      ) {
+        loadJobs();
+      }
+    }
+  }, [lastMessage]);
 
   const activePrice = useMemo(() => {
     const p = pricing.find(
@@ -260,7 +277,7 @@ export default function PrintingTracker() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (e) {
+    } catch {
       toast.error('Failed to download report');
     }
   };

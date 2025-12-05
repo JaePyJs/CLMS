@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
 import { useMobileOptimization } from '@/hooks/useMobileOptimization';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import {
   Dialog,
   DialogContent,
@@ -98,6 +99,9 @@ interface BookStats {
 export function BookCatalog() {
   // Mobile optimization
   const { isMobile } = useMobileOptimization();
+  
+  // Real-time WebSocket updates
+  const { lastMessage } = useWebSocketContext();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -261,6 +265,23 @@ export function BookCatalog() {
   useEffect(() => {
     fetchBooks();
   }, [fetchBooks]);
+
+  // Real-time updates from WebSocket - refresh when book-related events occur
+  useEffect(() => {
+    if (lastMessage) {
+      const type = lastMessage.type;
+      if (
+        type === 'book_checkout' ||
+        type === 'book_return' ||
+        type === 'book_update' ||
+        type === 'BOOK_CHECKOUT' ||
+        type === 'BOOK_RETURN'
+      ) {
+        fetchBooks();
+        fetchStats();
+      }
+    }
+  }, [lastMessage, fetchBooks, fetchStats]);
 
   // Reset to page 1 when filters change
   useEffect(() => {

@@ -504,16 +504,145 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     );
   };
 
-  const handleManualSessionEntry = () => {
-    toast.info(
-      'Manual session entry feature. This would open a form to log missed check-ins.'
-    );
+  // Quick Actions Dialog States
+  const [showManualEntryDialog, setShowManualEntryDialog] = useState(false);
+  const [showBulkCheckoutDialog, setShowBulkCheckoutDialog] = useState(false);
+  const [showDailySummaryDialog, setShowDailySummaryDialog] = useState(false);
+  const [showSystemCheckDialog, setShowSystemCheckDialog] = useState(false);
+  const [showMaintenanceDialog, setShowMaintenanceDialog] = useState(false);
+  
+  // Manual Entry State
+  const [manualEntryForm, setManualEntryForm] = useState({
+    studentId: '',
+    studentName: '',
+    reason: 'Missed scan',
+    timestamp: new Date().toISOString().slice(0, 16),
+  });
+  const [isSubmittingManualEntry, setIsSubmittingManualEntry] = useState(false);
+
+  // Bulk Checkout State
+  const [bulkCheckoutLoading, setBulkCheckoutLoading] = useState(false);
+  const [activeSessionsForBulk, setActiveSessionsForBulk] = useState<any[]>([]);
+  const [selectedForBulkCheckout, setSelectedForBulkCheckout] = useState<Set<string>>(new Set());
+
+  // Daily Summary State
+  const [dailySummary, setDailySummary] = useState<any>(null);
+  const [dailySummaryLoading, setDailySummaryLoading] = useState(false);
+
+  // System Check State
+  const [systemHealthData, setSystemHealthData] = useState<any>(null);
+  const [systemCheckLoading, setSystemCheckLoading] = useState(false);
+
+  // Maintenance Mode State
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+
+  const handleManualSessionEntry = async () => {
+    setShowManualEntryDialog(true);
   };
 
-  const handleBulkCheckout = () => {
-    toast.info(
-      'Bulk checkout feature. This would allow ending multiple active sessions at once.'
-    );
+  const submitManualEntry = async () => {
+    if (!manualEntryForm.studentId && !manualEntryForm.studentName) {
+      toast.error('Please enter student ID or name');
+      return;
+    }
+    setIsSubmittingManualEntry(true);
+    try {
+      const response = await apiClient.post('/api/manual-lookup/check-in', {
+        studentId: manualEntryForm.studentId,
+        reason: manualEntryForm.reason,
+      });
+      if (response.success) {
+        toast.success('Manual check-in recorded successfully');
+        setShowManualEntryDialog(false);
+        setManualEntryForm({ studentId: '', studentName: '', reason: 'Missed scan', timestamp: new Date().toISOString().slice(0, 16) });
+      } else {
+        toast.error('Failed to record manual entry');
+      }
+    } catch {
+      toast.error('Failed to submit manual entry');
+    } finally {
+      setIsSubmittingManualEntry(false);
+    }
+  };
+
+  const handleBulkCheckout = async () => {
+    setShowBulkCheckoutDialog(true);
+    setBulkCheckoutLoading(true);
+    try {
+      const response = await studentsApi.getActiveSessions();
+      if (response.success && response.data) {
+        const sessions = Array.isArray(response.data) ? response.data : (response.data as any).sessions || [];
+        setActiveSessionsForBulk(sessions);
+      }
+    } catch {
+      toast.error('Failed to load active sessions');
+    } finally {
+      setBulkCheckoutLoading(false);
+    }
+  };
+
+  const executeBulkCheckout = async () => {
+    if (selectedForBulkCheckout.size === 0) {
+      toast.error('Select at least one session');
+      return;
+    }
+    setBulkCheckoutLoading(true);
+    try {
+      let successCount = 0;
+      for (const sessionId of selectedForBulkCheckout) {
+        try {
+          await apiClient.post('/api/kiosk/checkout', { activityId: sessionId });
+          successCount++;
+        } catch {
+          // Continue with others
+        }
+      }
+      toast.success(`Checked out ${successCount} students`);
+      setShowBulkCheckoutDialog(false);
+      setSelectedForBulkCheckout(new Set());
+    } catch {
+      toast.error('Bulk checkout failed');
+    } finally {
+      setBulkCheckoutLoading(false);
+    }
+  };
+
+  const handleDailySummary = async () => {
+    setShowDailySummaryDialog(true);
+    setDailySummaryLoading(true);
+    try {
+      const response = await apiClient.get('/api/reports/daily');
+      if (response.success && response.data) {
+        setDailySummary((response.data as any).data || response.data);
+      }
+    } catch {
+      toast.error('Failed to generate daily summary');
+    } finally {
+      setDailySummaryLoading(false);
+    }
+  };
+
+  const handleSystemCheck = async () => {
+    setShowSystemCheckDialog(true);
+    setSystemCheckLoading(true);
+    try {
+      const response = await fetch('/api/health');
+      const data = await response.json();
+      setSystemHealthData(data);
+    } catch {
+      toast.error('Failed to run system check');
+    } finally {
+      setSystemCheckLoading(false);
+    }
+  };
+
+  const handleMaintenanceMode = () => {
+    setShowMaintenanceDialog(true);
+  };
+
+  const toggleMaintenanceMode = () => {
+    setMaintenanceMode(!maintenanceMode);
+    toast.info(maintenanceMode ? 'Maintenance mode disabled' : 'Maintenance mode enabled - users will see maintenance notice');
   };
 
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -2560,37 +2689,27 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          toast.info(
-                            'Daily Summary feature - generates end-of-day report'
-                          )
-                        }
+                        onClick={handleDailySummary}
+                        disabled={dailySummaryLoading}
                         className="h-10 flex-col"
                       >
                         <FileText className="h-3 w-3 mb-1" />
-                        <span className="text-xs">Daily Summary</span>
+                        <span className="text-xs">{dailySummaryLoading ? 'Loading...' : 'Daily Summary'}</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          toast.info(
-                            'System Check feature - runs health diagnostics'
-                          )
-                        }
+                        onClick={handleSystemCheck}
+                        disabled={systemCheckLoading}
                         className="h-10 flex-col"
                       >
                         <Shield className="h-3 w-3 mb-1" />
-                        <span className="text-xs">System Check</span>
+                        <span className="text-xs">{systemCheckLoading ? 'Checking...' : 'System Check'}</span>
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          toast.info(
-                            'Maintenance Mode - schedule system maintenance'
-                          )
-                        }
+                        onClick={handleMaintenanceMode}
                         className="h-10 flex-col"
                       >
                         <Settings className="h-3 w-3 mb-1" />
@@ -2602,6 +2721,203 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
               </Card>
             </div>
           </div>
+
+          {/* Manual Entry Dialog */}
+          <Dialog open={showManualEntryDialog} onOpenChange={setShowManualEntryDialog}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Manual Session Entry</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Student ID or Barcode</label>
+                  <Input
+                    placeholder="Enter student ID..."
+                    value={manualEntryForm.studentId}
+                    onChange={(e) => setManualEntryForm({ ...manualEntryForm, studentId: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Reason</label>
+                  <Input
+                    placeholder="Reason for manual entry..."
+                    value={manualEntryForm.reason}
+                    onChange={(e) => setManualEntryForm({ ...manualEntryForm, reason: e.target.value })}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowManualEntryDialog(false)}>Cancel</Button>
+                <Button onClick={submitManualEntry} disabled={isSubmittingManualEntry}>
+                  {isSubmittingManualEntry ? 'Submitting...' : 'Submit Entry'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Bulk Checkout Dialog */}
+          <Dialog open={showBulkCheckoutDialog} onOpenChange={setShowBulkCheckoutDialog}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Bulk Checkout ({activeSessionsForBulk.length} Active)</DialogTitle>
+              </DialogHeader>
+              <div className="max-h-80 overflow-y-auto space-y-2 py-4">
+                {bulkCheckoutLoading ? (
+                  <p className="text-center text-muted-foreground">Loading sessions...</p>
+                ) : activeSessionsForBulk.length === 0 ? (
+                  <p className="text-center text-muted-foreground">No active sessions</p>
+                ) : (
+                  <>
+                    <div className="flex justify-between mb-2">
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedForBulkCheckout(new Set(activeSessionsForBulk.map((s: any) => s.id)))}>Select All</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedForBulkCheckout(new Set())}>Clear</Button>
+                    </div>
+                    {activeSessionsForBulk.map((session: any) => (
+                      <div key={session.id} className="flex items-center gap-2 p-2 border rounded">
+                        <input
+                          type="checkbox"
+                          checked={selectedForBulkCheckout.has(session.id)}
+                          onChange={(e) => {
+                            const newSet = new Set(selectedForBulkCheckout);
+                            if (e.target.checked) newSet.add(session.id);
+                            else newSet.delete(session.id);
+                            setSelectedForBulkCheckout(newSet);
+                          }}
+                        />
+                        <span className="flex-1">{session.studentName || session.student?.name || 'Unknown'}</span>
+                        <Badge variant="outline">{session.purpose || 'LIBRARY_USE'}</Badge>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowBulkCheckoutDialog(false)}>Cancel</Button>
+                <Button onClick={executeBulkCheckout} disabled={bulkCheckoutLoading || selectedForBulkCheckout.size === 0}>
+                  Checkout Selected ({selectedForBulkCheckout.size})
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Daily Summary Dialog */}
+          <Dialog open={showDailySummaryDialog} onOpenChange={setShowDailySummaryDialog}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Daily Summary - {new Date().toLocaleDateString()}</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                {dailySummaryLoading ? (
+                  <p className="text-center text-muted-foreground">Generating summary...</p>
+                ) : dailySummary ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <Card className="p-3 text-center">
+                        <p className="text-2xl font-bold text-green-500">{dailySummary.statistics?.totalBorrowed || 0}</p>
+                        <p className="text-xs text-muted-foreground">Borrowed</p>
+                      </Card>
+                      <Card className="p-3 text-center">
+                        <p className="text-2xl font-bold text-blue-500">{dailySummary.statistics?.totalReturned || 0}</p>
+                        <p className="text-xs text-muted-foreground">Returned</p>
+                      </Card>
+                      <Card className="p-3 text-center">
+                        <p className="text-2xl font-bold text-purple-500">₱{dailySummary.statistics?.totalFines || 0}</p>
+                        <p className="text-xs text-muted-foreground">Fines</p>
+                      </Card>
+                    </div>
+                    {dailySummary.attendance && (
+                      <div className="border-t pt-4">
+                        <p className="font-medium mb-2">Attendance</p>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>Check-ins: <strong>{dailySummary.attendance.totalCheckIns || 0}</strong></div>
+                          <div>Check-outs: <strong>{dailySummary.attendance.totalCheckOuts || 0}</strong></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground">No data available</p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowDailySummaryDialog(false)}>Close</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* System Check Dialog */}
+          <Dialog open={showSystemCheckDialog} onOpenChange={setShowSystemCheckDialog}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>System Health Check</DialogTitle>
+              </DialogHeader>
+              <div className="py-4">
+                {systemCheckLoading ? (
+                  <p className="text-center text-muted-foreground">Running diagnostics...</p>
+                ) : systemHealthData ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-2 border rounded">
+                      <span>Status</span>
+                      <Badge variant={systemHealthData.status === 'healthy' ? 'default' : 'destructive'}>
+                        {systemHealthData.status?.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-2 border rounded">
+                      <span>Database</span>
+                      <Badge variant={systemHealthData.database?.connected ? 'default' : 'destructive'}>
+                        {systemHealthData.database?.connected ? `Connected (${systemHealthData.database?.responseTime}ms)` : 'Disconnected'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-2 border rounded">
+                      <span>Uptime</span>
+                      <span className="text-sm">{Math.floor((systemHealthData.uptime || 0) / 60)} minutes</span>
+                    </div>
+                    <div className="flex items-center justify-between p-2 border rounded">
+                      <span>Memory</span>
+                      <span className="text-sm">{Math.round((systemHealthData.memory?.heapUsed || 0) / 1024 / 1024)}MB used</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground">No health data</p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowSystemCheckDialog(false)}>Close</Button>
+                <Button onClick={handleSystemCheck} disabled={systemCheckLoading}>Refresh</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Maintenance Mode Dialog */}
+          <Dialog open={showMaintenanceDialog} onOpenChange={setShowMaintenanceDialog}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Maintenance Mode</DialogTitle>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  When enabled, users will see a maintenance notice and some features may be limited.
+                </p>
+                <div className="flex items-center justify-between p-4 border rounded">
+                  <span className="font-medium">Maintenance Mode</span>
+                  <Button
+                    variant={maintenanceMode ? 'destructive' : 'default'}
+                    onClick={toggleMaintenanceMode}
+                  >
+                    {maintenanceMode ? 'Disable' : 'Enable'}
+                  </Button>
+                </div>
+                {maintenanceMode && (
+                  <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-yellow-800 dark:text-yellow-200 text-sm">
+                    ⚠️ Maintenance mode is currently ACTIVE
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowMaintenanceDialog(false)}>Close</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

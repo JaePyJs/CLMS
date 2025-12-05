@@ -333,7 +333,9 @@ export default function App() {
       const response = await fetch('/api/health');
       const data = await response.json();
       if (data.status === 'healthy') {
-        toast.success(`System healthy! DB: ${data.database?.responseTime || 0}ms, Uptime: ${Math.floor(data.uptime / 60)}min`);
+        toast.success(
+          `System healthy! DB: ${data.database?.responseTime || 0}ms, Uptime: ${Math.floor(data.uptime / 60)}min`
+        );
       } else {
         toast.warning(`System degraded: ${data.status}`);
       }
