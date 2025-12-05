@@ -88,7 +88,16 @@ export default function UserManagement() {
     queryKey: ['users'],
     queryFn: async () => {
       const response = await settingsApi.getUsers();
-      return (response.data as User[]) || [];
+      // Map snake_case from API to camelCase for frontend
+      const rawUsers = (response.data as any[]) || [];
+      return rawUsers.map(u => ({
+        id: u.id,
+        username: u.username,
+        role: u.role,
+        isActive: u.is_active ?? u.isActive ?? true,
+        lastLoginAt: u.last_login_at ?? u.lastLoginAt ?? null,
+        createdAt: u.created_at ?? u.createdAt ?? new Date(),
+      })) as User[];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   });

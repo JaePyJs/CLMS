@@ -686,8 +686,7 @@ export default function App() {
                     )}
 
                     {/* Search Results Dropdown */}
-                    {(isSearching || searchResults.length > 0) &&
-                      searchQuery.length > 2 && (
+                    {searchQuery.length > 2 && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-card border border-slate-200 dark:border-border rounded-lg shadow-lg z-50 max-h-[400px] overflow-y-auto">
                           {isSearching ? (
                             <div className="p-4 text-center text-muted-foreground">
