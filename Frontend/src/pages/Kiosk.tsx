@@ -4,9 +4,6 @@ import { useEffect, useState, useRef } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAttendanceWebSocket } from '@/hooks/useAttendanceWebSocket';
-import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
-import api from '@/services/api';
-import { toast } from 'sonner';
 
 // Import new Kiosk components
 import { ReminderScreen } from '@/components/kiosk/new/ReminderScreen';
@@ -37,9 +34,10 @@ export default function Kiosk() {
     setTheme('dark');
   }, []);
 
-  // WebSocket for real-time updates from scan station
-  const { events: wsEvents, isConnected: wsConnected } =
-    useAttendanceWebSocket();
+  // WebSocket for real-time updates from scan station (kiosk mode for unauthenticated access)
+  const { events: wsEvents, isConnected: wsConnected } = useAttendanceWebSocket(
+    { kioskMode: true }
+  );
 
   // Debug: log connection state
   useEffect(() => {
@@ -62,44 +60,8 @@ export default function Kiosk() {
   // Timeout ref for resetting to reminder screen
   const resetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Handle barcode scan
-  const handleScan = async (barcode: string) => {
-    console.info('[Kiosk] Scanned barcode:', barcode);
-    try {
-      const response = await api.post('/kiosk/tap-in', { scanData: barcode });
-
-      if (response.data.success) {
-        // If successful, the backend will emit a WebSocket event which we handle below
-        // But we can also show a toast or optimistically update if needed
-        console.info('[Kiosk] Scan processed successfully');
-
-        // If the student is already checked in and we need to confirm check-in (e.g. for purpose),
-        // the backend might return canCheckIn: true/false.
-        // For simple tap-in/tap-out, the backend logic handles it.
-        // If it returns "You are already checked in", we might need to handle checkout?
-        // Based on backend logic:
-        // - If active session < 15 mins: Cooldown active
-        // - If active session > 15 mins: "You are already checked in" (but doesn't auto-checkout?)
-
-        // Let's rely on the WebSocket event for UI updates to keep it consistent
-      } else {
-        toast.error(response.data.message || 'Scan failed');
-      }
-    } catch (error: any) {
-      console.error('[Kiosk] Scan error:', error);
-      // Handle specific error cases
-      if (error.response?.status === 429) {
-        toast.warning(error.response.data.message);
-      } else {
-        toast.error('Failed to process scan. Please try again.');
-      }
-    }
-  };
-
-  useBarcodeScanner({
-    onScan: handleScan,
-    minLength: 3,
-  });
+  // Note: This display page receives WebSocket events from scan stations (SelfServiceMode, ScanWorkspace)
+  // It does NOT have a barcode scanner - scanning happens on a separate PC/terminal
 
   // Handle WebSocket events from scan station
   useEffect(() => {
@@ -110,7 +72,11 @@ export default function Kiosk() {
         wsEvents.length,
         'events'
       );
-      console.info('[Kiosk] Latest event:', wsEvents[wsEvents.length - 1]);
+      const latestEvent = wsEvents[wsEvents.length - 1];
+      console.info(
+        '[Kiosk] Latest event:',
+        JSON.stringify(latestEvent, null, 2)
+      );
     }
 
     if (!wsEvents || wsEvents.length === 0) return;
@@ -122,7 +88,9 @@ export default function Kiosk() {
       '[Kiosk] Processing event:',
       latestEvent.type,
       'activityId:',
-      eventId
+      eventId,
+      'studentName:',
+      latestEvent?.data?.studentName
     );
 
     // Skip if we already processed this event

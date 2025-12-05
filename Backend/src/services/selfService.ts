@@ -286,6 +286,19 @@ export class SelfService {
       }
 
       // Emit WebSocket event
+      const isPersonnel =
+        student.grade_category === 'PERSONNEL' ||
+        student.barcode?.startsWith('PN') ||
+        student.student_id?.startsWith('PN');
+
+      logger.info('Emitting check-in WebSocket event', {
+        activityId: activity.id,
+        studentId: student.id,
+        studentName: `${student.first_name} ${student.last_name}`,
+        isPersonnel,
+        gradeCategory: student.grade_category,
+      });
+
       websocketServer.emitStudentCheckIn({
         activityId: activity.id,
         studentId: student.id,

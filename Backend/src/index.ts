@@ -25,9 +25,13 @@ process.on('unhandledRejection', (reason, promise) => {
 import { httpServer } from './server.js';
 import { env } from './config/env';
 import { AutomationService } from './services/automationService';
+import { AutoCheckoutService } from './services/autoCheckoutService';
 
 // Initialize automation jobs
 AutomationService.initialize();
+
+// Start auto-checkout service (checks out students after 15 minutes)
+AutoCheckoutService.start();
 
 // Start the server
 httpServer.listen(env.PORT, env.HOST, () => {
@@ -40,6 +44,7 @@ httpServer.listen(env.PORT, env.HOST, () => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received, shutting down gracefully');
+  AutoCheckoutService.stop();
   httpServer.close(() => {
     logger.info('Process terminated');
     process.exit(0);
@@ -48,6 +53,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
   logger.info('SIGINT received, shutting down gracefully');
+  AutoCheckoutService.stop();
   httpServer.close(() => {
     logger.info('Process terminated');
     process.exit(0);

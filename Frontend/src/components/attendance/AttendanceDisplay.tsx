@@ -54,8 +54,8 @@ export const AttendanceDisplay: React.FC = () => {
   const [recentEvent, setRecentEvent] = useState<AttendanceEvent | null>(null);
   const [activeStudents, setActiveStudents] = useState<ActiveStudent[]>([]);
 
-  // WebSocket connection for real-time updates
-  const { events, isConnected } = useAttendanceWebSocket();
+  // WebSocket connection for real-time updates (kiosk mode for public displays)
+  const { events, isConnected } = useAttendanceWebSocket({ kioskMode: true });
 
   // Update current time every second
   useEffect(() => {

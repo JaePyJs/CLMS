@@ -72,6 +72,7 @@ import {
   Trophy,
   ClipboardList,
   History,
+  DoorOpen,
 } from 'lucide-react';
 
 // Import page components for code splitting
@@ -694,6 +695,10 @@ export default function App() {
                                     setActiveTab('books');
                                   if (result.type === 'equipment')
                                     setActiveTab('equipment');
+                                  if (result.type === 'room')
+                                    setActiveTab('settings');
+                                  if (result.type === 'setting')
+                                    setActiveTab('settings');
                                   setSearchQuery('');
                                   setSearchResults([]);
                                   toast.success(
@@ -703,7 +708,7 @@ export default function App() {
                               >
                                 <div className="p-2 rounded-full bg-slate-100 dark:bg-slate-800">
                                   {result.type === 'student' && (
-                                    <User className="h-4 w-4" />
+                                    <Users className="h-4 w-4" />
                                   )}
                                   {result.type === 'book' && (
                                     <BookOpen className="h-4 w-4" />
@@ -711,13 +716,22 @@ export default function App() {
                                   {result.type === 'equipment' && (
                                     <Monitor className="h-4 w-4" />
                                   )}
+                                  {result.type === 'room' && (
+                                    <DoorOpen className="h-4 w-4" />
+                                  )}
+                                  {result.type === 'setting' && (
+                                    <Settings className="h-4 w-4" />
+                                  )}
                                 </div>
-                                <div>
-                                  <div className="font-medium text-sm">
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm truncate">
                                     {result.title}
                                   </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {result.subtitle} • {result.status}
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    <span className="capitalize">
+                                      {result.type}
+                                    </span>{' '}
+                                    • {result.subtitle} • {result.status}
                                   </div>
                                 </div>
                               </button>

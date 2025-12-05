@@ -43,6 +43,42 @@ router.post(
   }),
 );
 
+// PUT /api/printing/pricing/:id - Update pricing
+router.put(
+  '/pricing/:id',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { price, is_active } = req.body;
+
+    const updated = await PrintingService.updatePricing(id, {
+      price,
+      is_active,
+    });
+    if (updated) {
+      res.json({ success: true, data: updated });
+    } else {
+      res.status(404).json({ success: false, message: 'Pricing not found' });
+    }
+  }),
+);
+
+// DELETE /api/printing/pricing/:id - Delete/deactivate pricing
+router.delete(
+  '/pricing/:id',
+  authenticate,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const deleted = await PrintingService.deletePricing(id);
+    if (deleted) {
+      res.json({ success: true, message: 'Pricing removed' });
+    } else {
+      res.status(404).json({ success: false, message: 'Pricing not found' });
+    }
+  }),
+);
+
 // POST /api/printing/jobs
 router.post(
   '/jobs',

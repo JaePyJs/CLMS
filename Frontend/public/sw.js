@@ -593,28 +593,7 @@ async function removeSyncRequest(id) {
   console.log(`[SW] Removed sync request: ${id}`);
 }
 
-// Performance monitoring
-self.addEventListener('fetch', (event) => {
-  if (event.request.url.startsWith('http')) {
-    const start = performance.now();
-
-    event.respondWith(
-      (async () => {
-        const response = await fetch(event.request);
-        const duration = performance.now() - start;
-
-        // Log performance metrics
-        if (duration > 1000) {
-          // Log slow requests
-          console.warn(
-            `[SW] Slow request detected: ${event.request.url} (${duration.toFixed(2)}ms)`
-          );
-        }
-
-        return response;
-      })()
-    );
-  }
-});
+// Note: Performance monitoring is handled within the main fetch handler above.
+// Having a second fetch listener causes duplicate handling issues.
 
 console.log('[SW] Service worker loaded successfully');

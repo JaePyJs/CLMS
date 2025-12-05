@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useWebSocketSubscription } from './useWebSocket';
 
 interface StudentReminder {
@@ -77,6 +77,10 @@ type AttendanceWebSocketEvent =
   | AttendanceOccupancyEvent
   | AnnouncementConfigEvent;
 
+interface UseAttendanceWebSocketOptions {
+  kioskMode?: boolean;
+}
+
 interface UseAttendanceWebSocketReturn {
   events: AttendanceWebSocketEvent[];
   isConnected: boolean;
@@ -87,9 +91,19 @@ interface UseAttendanceWebSocketReturn {
  * useAttendanceWebSocket - Hook for real-time attendance updates
  *
  * Subscribes to student check-in and check-out WebSocket events.
+ *
+ * @param options.kioskMode - Enable kiosk mode for unauthenticated public displays
  */
-export const useAttendanceWebSocket = (): UseAttendanceWebSocketReturn => {
-  const ws = useWebSocketSubscription('attendance');
+export const useAttendanceWebSocket = (
+  options?: UseAttendanceWebSocketOptions
+): UseAttendanceWebSocketReturn => {
+  // Memoize options to prevent reconnection loops
+  const wsOptions = useMemo(
+    () => ({ kioskMode: options?.kioskMode }),
+    [options?.kioskMode]
+  );
+
+  const ws = useWebSocketSubscription('attendance', wsOptions);
 
   // Debug: log all messages
   if (ws.messages.length > 0) {

@@ -179,8 +179,13 @@ class WebSocketServer {
     const isDevBypass =
       isDevelopment() && (env.WS_DEV_BYPASS || clientDevBypass);
 
+    // Check if this is a kiosk/public display connection (allows unauthenticated access to attendance room only)
+    const isKioskMode =
+      socket.handshake.auth?.kioskMode === true ||
+      socket.handshake.query?.kioskMode === 'true';
+
     logger.debug(
-      `[WebSocket Auth] Socket ${socket.id}: token=${!!token}, clientDevBypass=${clientDevBypass}, isDevBypass=${isDevBypass}`,
+      `[WebSocket Auth] Socket ${socket.id}: token=${!!token}, clientDevBypass=${clientDevBypass}, isDevBypass=${isDevBypass}, kioskMode=${isKioskMode}`,
     );
 
     if (token) {
@@ -201,7 +206,7 @@ class WebSocketServer {
           );
         }
       } catch (error) {
-        if (!isDevBypass) {
+        if (!isDevBypass && !isKioskMode) {
           logger.error(
             `WebSocket authentication failed for socket ${socket.id}:`,
             error,
@@ -211,7 +216,7 @@ class WebSocketServer {
           return;
         }
         logger.warn(
-          `Token verification failed, falling back to dev bypass for ${socket.id}`,
+          `Token verification failed, falling back to dev bypass or kiosk mode for ${socket.id}`,
         );
       }
     }
@@ -220,6 +225,16 @@ class WebSocketServer {
       socket.userId = `dev-user-${socket.id}`;
       socket.userRole = 'developer';
       logger.warn(`WebSocket dev bypass: ${socket.id} connected (fallback)`);
+      return;
+    }
+
+    // Allow kiosk mode connections without authentication (limited to attendance room)
+    if (isKioskMode) {
+      socket.userId = `kiosk-${socket.id}`;
+      socket.userRole = 'kiosk';
+      logger.info(
+        `WebSocket kiosk mode: ${socket.id} connected (public display)`,
+      );
       return;
     }
 

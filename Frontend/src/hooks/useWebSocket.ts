@@ -31,6 +31,7 @@ export interface WebSocketOptions {
   maxReconnectAttempts?: number;
   heartbeatInterval?: number;
   subscriptions?: string[];
+  kioskMode?: boolean; // Allow unauthenticated connection for kiosk displays
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: string) => void;
@@ -44,6 +45,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     maxReconnectAttempts = 5,
     heartbeatInterval = 30000,
     subscriptions = [],
+    kioskMode = false,
     onConnect,
     onDisconnect,
     onError,
@@ -99,7 +101,8 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     const devBypass =
       String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true';
 
-    if (!token && !devBypass) {
+    // Allow connection in kioskMode without authentication
+    if (!token && !devBypass && !kioskMode) {
       setState((prev) => ({
         ...prev,
         error: 'Authentication token required for WebSocket connection',
@@ -109,10 +112,27 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
     try {
       const socketUrl = getWebSocketUrl();
-      console.debug('[useWebSocket] Creating socket to:', socketUrl);
+      console.debug('[useWebSocket] Creating socket to:', socketUrl, {
+        kioskMode,
+      });
+
+      // Determine auth payload
+      // In kioskMode, explicitly use kioskMode auth (don't use user token even if available)
+      // This prevents kiosk connections from disconnecting user sessions
+      let authPayload:
+        | { token?: string; devBypass?: boolean; kioskMode?: boolean }
+        | undefined;
+      if (kioskMode) {
+        authPayload = { kioskMode: true };
+      } else if (token) {
+        authPayload = { token };
+      } else if (devBypass) {
+        authPayload = { devBypass: true };
+      }
+
       const socket = io(socketUrl, {
         path: '/socket.io',
-        auth: token ? { token } : devBypass ? { devBypass: true } : undefined,
+        auth: authPayload,
         transports: ['websocket', 'polling'], // Try websocket first for faster connection
         reconnection: true,
         reconnectionDelay: reconnectInterval,
@@ -135,7 +155,13 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
       }
       return null;
     }
-  }, [token, getWebSocketUrl, reconnectInterval, maxReconnectAttempts]);
+  }, [
+    token,
+    getWebSocketUrl,
+    reconnectInterval,
+    maxReconnectAttempts,
+    kioskMode,
+  ]);
 
   const setupHeartbeat = useCallback(() => {
     if (heartbeatRef.current) {
@@ -171,7 +197,8 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
     const devBypass =
       String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true';
-    if (!token && !devBypass) {
+    // Allow connection in kioskMode without authentication
+    if (!token && !devBypass && !kioskMode) {
       setState((prev) => ({
         ...prev,
         error: 'Authentication required for WebSocket connection',
@@ -522,7 +549,8 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     isMountedRef.current = true;
     const devBypass =
       String(import.meta.env.VITE_WS_DEV_BYPASS || '').toLowerCase() === 'true';
-    if (autoConnect && (token || devBypass)) {
+    // Allow auto-connect in kioskMode without authentication
+    if (autoConnect && (token || devBypass || kioskMode)) {
       // Small delay to handle StrictMode double-mount
       const timeoutId = setTimeout(() => {
         if (isMountedRef.current && !wsRef.current?.connected) {
@@ -534,7 +562,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
         clearTimeout(timeoutId);
       };
     }
-  }, [autoConnect, token, connect]);
+  }, [autoConnect, token, kioskMode, connect]);
 
   // Cleanup on unmount - but with a delay to handle StrictMode
   useEffect(() => {
@@ -573,6 +601,13 @@ export const useWebSocketSubscription = (
 ) => {
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
 
+  // Extract primitive values from options to use as stable dependencies
+  const kioskMode = options?.kioskMode;
+  const autoConnect = options?.autoConnect;
+  const reconnectInterval = options?.reconnectInterval;
+  const maxReconnectAttempts = options?.maxReconnectAttempts;
+  const heartbeatInterval = options?.heartbeatInterval;
+
   const handleNewMessage = useCallback(
     (message: WebSocketMessage) => {
       console.info(
@@ -587,11 +622,23 @@ export const useWebSocketSubscription = (
 
   const wsOptions = useMemo(
     () => ({
-      ...(options || {}),
+      kioskMode,
+      autoConnect,
+      reconnectInterval,
+      maxReconnectAttempts,
+      heartbeatInterval,
       subscriptions: [subscription],
       onMessage: handleNewMessage,
     }),
-    [subscription, handleNewMessage, options]
+    [
+      subscription,
+      handleNewMessage,
+      kioskMode,
+      autoConnect,
+      reconnectInterval,
+      maxReconnectAttempts,
+      heartbeatInterval,
+    ]
   );
 
   const ws = useWebSocket(wsOptions);

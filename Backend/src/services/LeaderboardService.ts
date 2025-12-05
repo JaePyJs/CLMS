@@ -1,12 +1,30 @@
 import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
 
+/**
+ * Helper function to check if a student is personnel
+ */
+async function isPersonnel(studentId: string): Promise<boolean> {
+  const student = await prisma.students.findUnique({
+    where: { id: studentId },
+    select: { grade_category: true, student_id: true },
+  });
+
+  if (!student) return false;
+
+  return (
+    student.grade_category === 'PERSONNEL' ||
+    student.student_id?.startsWith('PN') === true
+  );
+}
+
 export class LeaderboardService {
   /**
    * Record a scan for a student
    * @param studentId - The student's database ID
    * @param duration - Duration in minutes (for checkout)
    * @param excludeFromLeaderboard - If true, don't count this scan (e.g., manual lookup, quick service)
+   * NOTE: Personnel scans are automatically excluded from leaderboard
    */
   static async recordScan(
     studentId: string,
@@ -22,6 +40,12 @@ export class LeaderboardService {
           duration,
         },
       );
+      return;
+    }
+
+    // Skip recording for personnel - they shouldn't appear on student leaderboard
+    if (await isPersonnel(studentId)) {
+      logger.info('Skipping leaderboard recording (personnel)', { studentId });
       return;
     }
 
@@ -57,12 +81,23 @@ export class LeaderboardService {
 
   /**
    * Get monthly leaderboard
+   * NOTE: Only includes students, excludes personnel (grade_category = 'PERSONNEL')
    */
   static async getMonthlyLeaderboard(year: number, month: number, limit = 10) {
     try {
       // eslint-disable-next-line
       const stats = await (prisma as any).student_scan_stats.findMany({
-        where: { year, month },
+        where: {
+          year,
+          month,
+          // Exclude personnel from leaderboard
+          student: {
+            AND: [
+              { grade_category: { not: 'PERSONNEL' } },
+              { student_id: { not: { startsWith: 'PN' } } },
+            ],
+          },
+        },
         include: {
           student: {
             select: {
@@ -103,14 +138,30 @@ export class LeaderboardService {
 
   /**
    * Get yearly leaderboard
+   * NOTE: Only includes students, excludes personnel (grade_category = 'PERSONNEL')
    */
   static async getYearlyLeaderboard(year: number, limit = 10) {
     try {
-      // Aggregate stats by student for the year
+      // First, get IDs of non-personnel students
+      const validStudents = await prisma.students.findMany({
+        where: {
+          AND: [
+            { grade_category: { not: 'PERSONNEL' } },
+            { student_id: { not: { startsWith: 'PN' } } },
+          ],
+        },
+        select: { id: true },
+      });
+      const validStudentIds = validStudents.map(s => s.id);
+
+      // Aggregate stats by student for the year (only non-personnel)
       // eslint-disable-next-line
       const stats = await (prisma as any).student_scan_stats.groupBy({
         by: ['student_id'],
-        where: { year },
+        where: {
+          year,
+          student_id: { in: validStudentIds },
+        },
         _sum: {
           total_scans: true,
           total_minutes: true,

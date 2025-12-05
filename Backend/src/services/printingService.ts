@@ -105,6 +105,63 @@ export class PrintingService {
     }
   }
 
+  public static async updatePricing(
+    id: string,
+    data: { price?: number; is_active?: boolean },
+  ): Promise<any | null> {
+    try {
+      const existing = await prisma.printing_pricing.findUnique({
+        where: { id },
+      });
+      if (!existing) {
+        return null;
+      }
+
+      const updated = await prisma.printing_pricing.update({
+        where: { id },
+        data: {
+          ...(data.price !== undefined && { price: data.price }),
+          ...(data.is_active !== undefined && { is_active: data.is_active }),
+        },
+      });
+
+      logger.info('Updated printing pricing', { id, ...data });
+      return updated;
+    } catch (error) {
+      logger.error('Update pricing failed', {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
+  public static async deletePricing(id: string): Promise<boolean> {
+    try {
+      const existing = await prisma.printing_pricing.findUnique({
+        where: { id },
+      });
+      if (!existing) {
+        return false;
+      }
+
+      // Soft delete by setting is_active to false
+      await prisma.printing_pricing.update({
+        where: { id },
+        data: { is_active: false },
+      });
+
+      logger.info('Deleted (deactivated) printing pricing', { id });
+      return true;
+    } catch (error) {
+      logger.error('Delete pricing failed', {
+        id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw error;
+    }
+  }
+
   public static async getActivePrice(
     paper_size: PaperSize,
     color_level: ColorLevel,
