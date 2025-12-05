@@ -1,68 +1,160 @@
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-logs/
-backend-dev.log
-frontend-dev.log
-build.log
-
-
-# Temporary files
-*.tmp
-*.temp
-
-# Test results
-test_results*.txt
-test-results/**
-playwright-report/
-playwright-report-smoke/
-coverage/
-
-# Environment variables
-.env
-.env.local
-.env.production
-.env.*.local
-*.env
-!*.env.example
-
+# ========================
 # Dependencies
+# ========================
 node_modules/
+.pnp/
+.pnp.js
+
+# ========================
+# Build Output
+# ========================
 dist/
 build/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Prisma
-prisma/.env
-Backend/prisma/*.db
-
-# Uploads
-uploads/*
-!uploads/.gitkeep
-
-# Generated
-barcodes/
-qr-codes/
-generated/
 *.tsbuildinfo
 
-# Credentials
-google-credentials.json
+# ========================
+# Environment Variables
+# ========================
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+# Keep examples
+!.env.example
+
+# ========================
+# Credentials & Secrets
+# ========================
 credentials/
 *.pem
 *.key
 *.crt
+*.p12
+*.pfx
+google-credentials.json
+service-account*.json
 
-# Development artifacts
+# ========================
+# Logs
+# ========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+backend-dev.log
+frontend-dev.log
+build.log
+
+# ========================
+# Database
+# ========================
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+Backend/prisma/*.db
+Backend/prisma/*.db-journal
+
+# ========================
+# Test & Coverage
+# ========================
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+playwright-report-smoke/
+playwright/.cache/
+test_results*.txt
+*.lcov
+
+# ========================
+# IDE & Editors
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.settings/
+
+# ========================
+# OS Files
+# ========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ========================
+# Generated Files
+# ========================
+barcodes/
+qr-codes/
+generated/
+Backend/barcodes/
+Backend/qr-codes/
+
+# ========================
+# Uploads (keep structure)
+# ========================
+uploads/*
+!uploads/.gitkeep
+Backend/uploads/*
+!Backend/uploads/.gitkeep
+
+# ========================
+# Backups
+# ========================
+backups/
+Backend/backups/
+*.sql
+*.bak
+
+# ========================
+# Temporary Files
+# ========================
+*.tmp
+*.temp
+*.cache
+.cache/
+tmp/
+temp/
+
+# ========================
+# Docker
+# ========================
+docker/mysql/data/
+docker/redis/data/
+docker/koha-mysql/data/
+
+# ========================
+# AI/Dev Tools
+# ========================
 .gemini/
+.copilot/
+.cursor/
+.aitk/
+
+# ========================
+# Misc
+# ========================
+*.pid
+*.seed
+*.pid.lock
+.npm/
+.eslintcache
+.node_repl_history
+*.tgz
+.yarn-integrity
