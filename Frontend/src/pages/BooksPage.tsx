@@ -1,5 +1,4 @@
-import { Suspense, lazy, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Suspense, lazy, useState } from 'react';
 import { TableSkeleton, CardSkeleton } from '@/components/LoadingStates';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BookOpen, ArrowLeftRight } from 'lucide-react';
@@ -8,18 +7,8 @@ const BookCatalog = lazy(() => import('@/components/dashboard/BookCatalog'));
 const BookCheckout = lazy(() => import('@/components/dashboard/BookCheckout'));
 
 export default function BooksPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'catalog';
-
-  useEffect(() => {
-    if (!searchParams.get('tab')) {
-      setSearchParams({ tab: 'catalog' }, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
-
-  const setActiveTab = (tab: string) => {
-    setSearchParams({ tab });
-  };
+  // Use local state instead of URL params to avoid conflict with main App's tab param
+  const [activeTab, setActiveTab] = useState('catalog');
 
   return (
     <div className="space-y-6">

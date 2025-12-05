@@ -264,7 +264,6 @@ export default function App() {
   const [settingsInitialTab, setSettingsInitialTab] = useState<
     string | undefined
   >(undefined);
-  const dashboardSearchCentered = activeTab === 'dashboard';
 
   // Health check to test backend connection
   useHealthCheck();
@@ -643,19 +642,9 @@ export default function App() {
                   </Button>
                 </div>
 
-                {/* Desktop Search - Hidden on Mobile */}
-                <div
-                  className={
-                    'flex flex-1 max-w-md w-full lg:w-auto order-last lg:order-none lg:mx-4'
-                  }
-                >
-                  <div
-                    className={
-                      dashboardSearchCentered
-                        ? 'relative w-full max-w-2xl'
-                        : 'relative'
-                    }
-                  >
+                {/* Desktop Search - Centered and consistent across all tabs */}
+                <div className="hidden lg:flex flex-1 justify-center lg:mx-4">
+                  <div className="relative w-full max-w-xl">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
                       id="global-search"
@@ -663,11 +652,7 @@ export default function App() {
                       placeholder="Search students, books, rooms... (Ctrl+K)"
                       value={searchQuery}
                       onChange={(e) => handleSearch(e.target.value)}
-                      className={
-                        dashboardSearchCentered
-                          ? 'pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all w-full'
-                          : 'pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all'
-                      }
+                      className="pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all w-full"
                       aria-label="Global Search"
                     />
                     {searchQuery && (
