@@ -99,7 +99,7 @@ interface BookStats {
 export function BookCatalog() {
   // Mobile optimization
   const { isMobile } = useMobileOptimization();
-  
+
   // Real-time WebSocket updates
   const { lastMessage } = useWebSocketContext();
 

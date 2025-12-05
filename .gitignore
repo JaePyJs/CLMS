@@ -59,6 +59,10 @@ generated/
 
 # Credentials
 google-credentials.json
+credentials/
+*.pem
+*.key
+*.crt
 
 # Development artifacts
 .gemini/
