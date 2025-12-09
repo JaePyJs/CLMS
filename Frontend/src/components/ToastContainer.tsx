@@ -11,15 +11,15 @@ interface ToastData {
 
 interface ToastContextType {
   showToast: (
-    type: ToastType,
-    title: string,
-    message: string,
-    duration?: number
+    _type: ToastType,
+    _title: string,
+    _message: string,
+    _duration?: number
   ) => void;
-  success: (title: string, message: string, duration?: number) => void;
-  error: (title: string, message: string, duration?: number) => void;
-  warning: (title: string, message: string, duration?: number) => void;
-  info: (title: string, message: string, duration?: number) => void;
+  success: (_title: string, _message: string, _duration?: number) => void;
+  error: (_title: string, _message: string, _duration?: number) => void;
+  warning: (_title: string, _message: string, _duration?: number) => void;
+  info: (_title: string, _message: string, _duration?: number) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);

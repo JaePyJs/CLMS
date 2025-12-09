@@ -231,7 +231,7 @@ const getCommonAliases = (field: string): string[] => {
 
 interface StudentImportDialogProps {
   open: boolean;
-  // eslint-disable-next-line no-unused-vars
+   
   onOpenChange: (_open: boolean) => void;
 }
 
@@ -248,7 +248,7 @@ export function StudentImportDialog({
     'upload' | 'mapping' | 'preview' | 'importing' | 'complete'
   >('upload');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [rawData, setRawData] = useState<any[]>([]);
+  const [rawData, setRawData] = useState<Record<string, unknown>[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
   const [importedStudents, setImportedStudents] = useState<ImportedStudent[]>(
@@ -535,12 +535,13 @@ export function StudentImportDialog({
 
         setImportedStudents(processed);
         setImportPreview({
-          totalRows: (result as any).totalRows || processed.length,
+          totalRows:
+            (result as { totalRows?: number }).totalRows || processed.length,
           validRows:
-            (result as any).validRows ??
+            (result as { validRows?: number }).validRows ??
             processed.filter((s) => s.isValid).length,
           invalidRows:
-            (result as any).invalidRows ??
+            (result as { invalidRows?: number }).invalidRows ??
             processed.length - processed.filter((s) => s.isValid).length,
           duplicateRows: result.duplicateRecords || 0,
           samples: processed, // Store ALL records

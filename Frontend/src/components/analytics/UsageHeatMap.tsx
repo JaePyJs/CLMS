@@ -27,7 +27,7 @@ interface UsageHeatMapProps {
   data: HeatMapData[];
   title?: string;
   description?: string;
-  onCellClick?: (data: HeatMapData) => void;
+  onCellClick?: (_data: HeatMapData) => void;
   filterType?: 'all' | 'activity' | 'grade';
   timeframe?: string;
 }

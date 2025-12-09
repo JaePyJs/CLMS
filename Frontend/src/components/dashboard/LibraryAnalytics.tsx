@@ -17,7 +17,7 @@ import {
   Award,
   Star,
   Calendar,
-  Filter,
+  Filter as _Filter,
   Download,
   RefreshCw,
 } from 'lucide-react';
@@ -55,7 +55,7 @@ interface PopularBook {
   coverImage?: string;
 }
 
-interface LibraryAnalytics {
+interface LibraryAnalyticsData {
   topUsers: TopUser[];
   popularBooks: PopularBook[];
   totalPatrons: number;
@@ -67,7 +67,7 @@ interface LibraryAnalytics {
 }
 
 export function LibraryAnalytics() {
-  const [analytics, setAnalytics] = useState<LibraryAnalytics | null>(null);
+  const [analytics, setAnalytics] = useState<LibraryAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>(
     'month'
@@ -84,7 +84,7 @@ export function LibraryAnalytics() {
       const response = await enhancedLibraryApi.getLibraryAnalytics(timeRange);
 
       if (response.success && response.data) {
-        setAnalytics(response.data);
+        setAnalytics(response.data as LibraryAnalyticsData);
       } else {
         toast.error('Failed to fetch analytics data');
       }
@@ -161,8 +161,7 @@ export function LibraryAnalytics() {
   };
 
   useEffect(() => {
-    let timeout: number | undefined;
-    timeout = window.setTimeout(() => {
+    const timeout: number | undefined = window.setTimeout(() => {
       void fetchAnalytics();
     }, 250);
     return () => {

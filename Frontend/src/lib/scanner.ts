@@ -308,8 +308,12 @@ export const useUsbScanner = () => {
 // Play scan sound effect
 const playScanSound = (type: 'success' | 'error' = 'success') => {
   try {
+    // Extend window type for webkit prefix
+    interface WindowWithWebkit extends Window {
+      webkitAudioContext?: typeof AudioContext;
+    }
     const audioContext = new (window.AudioContext ||
-      (window as any).webkitAudioContext)();
+      (window as WindowWithWebkit).webkitAudioContext!)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 

@@ -7,7 +7,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -29,8 +28,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Users,
-  Filter,
-  Download,
 } from 'lucide-react';
 
 interface RawCategoryData {
@@ -148,7 +145,7 @@ export function BookCirculationAnalytics({
           count: cat.count,
           percentage: calculatePercentage(
             cat.count,
-            analyticsData.totalCirculation
+            analyticsData.totalCirculation ?? 0
           ),
           color: COLORS[index % COLORS.length],
         })
@@ -194,7 +191,7 @@ export function BookCirculationAnalytics({
               {data?.totalCirculation || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {data?.trends?.growthRate > 0 ? '+' : ''}
+              {(data?.trends?.growthRate ?? 0) > 0 ? '+' : ''}
               {data?.trends?.growthRate?.toFixed(1) || 0}% from last period
             </p>
           </CardContent>
@@ -573,7 +570,9 @@ export function BookCirculationAnalytics({
       {/* Analytics Tabs */}
       <Tabs
         value={selectedView}
-        onValueChange={(value) => setSelectedView(value as typeof selectedView)}
+        onValueChange={(value: string) =>
+          setSelectedView(value as typeof selectedView)
+        }
         className="space-y-4"
       >
         <TabsList className="grid w-full grid-cols-4">

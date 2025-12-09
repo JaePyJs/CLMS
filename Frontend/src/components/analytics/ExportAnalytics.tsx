@@ -28,8 +28,8 @@ import {
 interface ExportAnalyticsProps {
   timeframe: 'day' | 'week' | 'month';
   onExport: (
-    format: 'csv' | 'json' | 'pdf',
-    sections: string[]
+    _format: 'csv' | 'json' | 'pdf',
+    _sections: string[]
   ) => Promise<void>;
   isExporting?: boolean;
 }

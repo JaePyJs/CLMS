@@ -48,7 +48,9 @@ export default function FineManagement() {
 
   const calculateFine = async (id: string) => {
     try {
-      const res = await apiClient.post<any>(`/api/fines/calculate/${id}`);
+      const res = await apiClient.post<{ fine_amount: number }>(
+        `/api/fines/calculate/${id}`
+      );
       if (res.success && res.data) {
         toast.success('Fine calculated');
         setItems((prev) =>

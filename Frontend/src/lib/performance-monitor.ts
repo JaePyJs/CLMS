@@ -134,8 +134,18 @@ class PerformanceMonitor {
               unit: 'ms',
               tags: {
                 element:
-                  (lastEntry as any).element?.tagName ||
-                  (lastEntry as any).url ||
+                  (
+                    lastEntry as PerformanceEntry & {
+                      element?: { tagName?: string };
+                      url?: string;
+                    }
+                  ).element?.tagName ||
+                  (
+                    lastEntry as PerformanceEntry & {
+                      element?: { tagName?: string };
+                      url?: string;
+                    }
+                  ).url ||
                   'unknown',
               },
             });
@@ -152,7 +162,8 @@ class PerformanceMonitor {
           for (const entry of list.getEntries()) {
             this.recordMetric(
               'first_input_delay',
-              (entry as any).processingStart - entry.startTime,
+              (entry as PerformanceEntry & { processingStart: number })
+                .processingStart - entry.startTime,
               {
                 type: 'duration',
                 unit: 'ms',

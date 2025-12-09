@@ -187,7 +187,7 @@ const PerformanceImage: ComponentType<ImageProps> = forwardRef<
 
           // Log performance in development
           if (process.env.NODE_ENV === 'development') {
-            console.debug(`Image loaded: ${alt} in ${loadTime.toFixed(2)}ms`);
+            console.info(`Image loaded: ${alt} in ${loadTime.toFixed(2)}ms`);
           }
         };
 

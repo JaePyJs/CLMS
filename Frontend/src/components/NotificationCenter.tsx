@@ -134,7 +134,7 @@ const NotificationCenter: React.FC = () => {
       // Mark via WebSocket if available
       const socket = (
         window as {
-          socket?: { emit: (event: string, ...args: unknown[]) => void };
+          socket?: { emit: (_event: string, ..._args: unknown[]) => void };
         }
       ).socket;
       if (socket && isConnected) {
@@ -182,12 +182,12 @@ const NotificationCenter: React.FC = () => {
   ) => {
     const iconClass = `w-5 h-5 ${
       priority === 'URGENT'
-        ? 'text-red-600'
+        ? 'text-red-400'
         : priority === 'HIGH'
-          ? 'text-orange-600'
+          ? 'text-orange-400'
           : priority === 'NORMAL'
-            ? 'text-blue-600'
-            : 'text-gray-600'
+            ? 'text-blue-400'
+            : 'text-muted-foreground'
     }`;
 
     switch (type) {
@@ -211,15 +211,15 @@ const NotificationCenter: React.FC = () => {
   const getPriorityColor = (priority: AppNotification['priority']) => {
     switch (priority) {
       case 'URGENT':
-        return 'border-l-red-600 bg-red-50';
+        return 'border-l-red-500 bg-red-500/10';
       case 'HIGH':
-        return 'border-l-orange-600 bg-orange-50';
+        return 'border-l-orange-500 bg-orange-500/10';
       case 'NORMAL':
-        return 'border-l-blue-600 bg-blue-50';
+        return 'border-l-blue-500 bg-blue-500/10';
       case 'LOW':
-        return 'border-l-gray-600 bg-gray-50';
+        return 'border-l-muted-foreground bg-muted';
       default:
-        return 'border-l-gray-600 bg-gray-50';
+        return 'border-l-muted-foreground bg-muted';
     }
   };
 
@@ -272,9 +272,9 @@ const NotificationCenter: React.FC = () => {
         className="w-96 p-0 max-h-[600px] flex flex-col"
       >
         {/* Header */}
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
               Notifications
               <div
                 className={`w-2 h-2 rounded-full ${
@@ -291,7 +291,7 @@ const NotificationCenter: React.FC = () => {
                   e.preventDefault();
                   fetchNotifications();
                 }}
-                className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
                 title="Refresh notifications"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -301,7 +301,7 @@ const NotificationCenter: React.FC = () => {
                   e.preventDefault();
                   setShowPreferences(!showPreferences);
                 }}
-                className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
                 title="Notification preferences"
               >
                 <Settings className="w-4 h-4" />
@@ -318,8 +318,8 @@ const NotificationCenter: React.FC = () => {
               }}
               className={`px-3 py-1 text-sm rounded-md transition-colors ${
                 filter === 'all'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-primary text-white'
+                  : 'bg-muted text-foreground hover:bg-muted/80'
               }`}
             >
               All
@@ -331,8 +331,8 @@ const NotificationCenter: React.FC = () => {
               }}
               className={`px-3 py-1 text-sm rounded-md transition-colors ${
                 filter === 'unread'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-primary text-white'
+                  : 'bg-muted text-foreground hover:bg-muted/80'
               }`}
             >
               Unread ({unreadCount})
@@ -341,12 +341,12 @@ const NotificationCenter: React.FC = () => {
 
           {/* Type Filter */}
           <div className="flex items-center gap-2 mb-3">
-            <Filter className="w-4 h-4 text-gray-500" />
+            <Filter className="w-4 h-4 text-muted-foreground" />
             <select
               value={typeFilter}
               onClick={(e) => e.stopPropagation()}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="text-sm border border-border bg-card text-foreground rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="all">All Types</option>
               <option value="OVERDUE_BOOK">Overdue Books</option>
@@ -370,7 +370,7 @@ const NotificationCenter: React.FC = () => {
                     e.preventDefault();
                     handleMarkAllAsRead();
                   }}
-                  className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors"
                 >
                   <CheckCheck className="w-3 h-3" />
                   Mark all read
@@ -381,7 +381,7 @@ const NotificationCenter: React.FC = () => {
                   e.preventDefault();
                   handleDeleteRead();
                 }}
-                className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition-colors"
+                className="flex items-center gap-1 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded transition-colors"
               >
                 <Trash2 className="w-3 h-3" />
                 Clear read
@@ -397,16 +397,16 @@ const NotificationCenter: React.FC = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-8 text-gray-500">
-              <Bell className="w-12 h-12 mb-2 text-gray-400" />
+            <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
+              <Bell className="w-12 h-12 mb-2 text-muted-foreground/50" />
               <p className="text-sm">No notifications</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-border">
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 hover:bg-gray-50 transition-colors border-l-4 ${
+                  className={`p-4 hover:bg-muted/50 transition-colors border-l-4 ${
                     notification.read ? 'opacity-75' : ''
                   } ${getPriorityColor(notification.priority)}`}
                 >
@@ -422,15 +422,15 @@ const NotificationCenter: React.FC = () => {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-sm font-semibold text-gray-900">
+                        <h4 className="text-sm font-semibold text-foreground">
                           {notification.title}
                         </h4>
-                        <span className="text-xs text-gray-500 whitespace-nowrap">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
                           {formatTime(notification.createdAt)}
                         </span>
                       </div>
 
-                      <p className="mt-1 text-sm text-gray-600 line-clamp-2">
+                      <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
                         {notification.message}
                       </p>
 
@@ -442,7 +442,7 @@ const NotificationCenter: React.FC = () => {
                               e.preventDefault();
                               handleMarkAsRead(notification.id);
                             }}
-                            className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors"
                             title="Mark as read"
                           >
                             <Check className="w-3 h-3" />
@@ -452,7 +452,7 @@ const NotificationCenter: React.FC = () => {
                         {notification.actionUrl && (
                           <a
                             href={notification.actionUrl}
-                            className="flex items-center gap-1 px-2 py-1 text-xs text-green-600 hover:bg-green-100 rounded transition-colors"
+                            className="flex items-center gap-1 px-2 py-1 text-xs text-green-400 hover:bg-green-500/10 rounded transition-colors"
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
@@ -466,7 +466,7 @@ const NotificationCenter: React.FC = () => {
                             e.preventDefault();
                             handleDelete(notification.id);
                           }}
-                          className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:bg-red-100 rounded transition-colors ml-auto"
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded transition-colors ml-auto"
                           title="Delete"
                         >
                           <Trash2 className="w-3 h-3" />

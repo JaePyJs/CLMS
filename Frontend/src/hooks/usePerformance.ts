@@ -27,7 +27,7 @@ interface HookPerformanceEntry {
   startTime: number;
   duration: number;
   type: 'render' | 'api' | 'interaction' | 'navigation';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface PerformanceConfig {
@@ -54,6 +54,29 @@ const PERFORMANCE_CONFIG: PerformanceConfig = {
   reportingEndpoint: import.meta.env.VITE_PERFORMANCE_ENDPOINT,
 };
 
+// Extended performance types for browser APIs
+interface PerformanceMemory {
+  usedJSHeapSize: number;
+  totalJSHeapSize: number;
+  jsHeapSizeLimit: number;
+}
+
+interface PerformanceWithMemory extends Performance {
+  memory?: PerformanceMemory;
+}
+
+interface NavigationTimingEntry extends PerformanceEntry {
+  domContentLoadedEventEnd: number;
+  domContentLoadedEventStart: number;
+  loadEventEnd: number;
+  loadEventStart: number;
+}
+
+interface ResourceTimingEntry extends PerformanceEntry {
+  transferSize: number;
+  initiatorType: string;
+}
+
 // Global performance store
 class PerformanceStore {
   private entries: HookPerformanceEntry[] = [];
@@ -74,17 +97,17 @@ class PerformanceStore {
         const entries = list.getEntries();
         entries.forEach((entry) => {
           if (entry.entryType === 'navigation') {
+            const navEntry = entry as NavigationTimingEntry;
             this.addEntry({
               name: 'page-navigation',
-              startTime: entry.startTime,
-              duration: entry.duration,
+              startTime: navEntry.startTime,
+              duration: navEntry.duration,
               type: 'navigation',
               metadata: {
                 domContentLoaded:
-                  (entry as any).domContentLoadedEventEnd -
-                  (entry as any).domContentLoadedEventStart,
-                loadComplete:
-                  (entry as any).loadEventEnd - (entry as any).loadEventStart,
+                  navEntry.domContentLoadedEventEnd -
+                  navEntry.domContentLoadedEventStart,
+                loadComplete: navEntry.loadEventEnd - navEntry.loadEventStart,
               },
             });
           }
@@ -98,14 +121,15 @@ class PerformanceStore {
         const entries = list.getEntries();
         entries.forEach((entry) => {
           if (entry.entryType === 'resource') {
+            const resourceEntry = entry as ResourceTimingEntry;
             this.addEntry({
               name: entry.name,
               startTime: entry.startTime,
               duration: entry.duration,
               type: 'api',
               metadata: {
-                size: (entry as any).transferSize,
-                type: (entry as any).initiatorType,
+                size: resourceEntry.transferSize,
+                type: resourceEntry.initiatorType,
               },
             });
           }
@@ -224,8 +248,9 @@ class PerformanceStore {
   }
 
   private getMemoryUsage(): number {
-    if ('memory' in performance) {
-      return (performance as any).memory.usedJSHeapSize / 1024 / 1024; // MB
+    const perfWithMemory = performance as PerformanceWithMemory;
+    if (perfWithMemory.memory) {
+      return perfWithMemory.memory.usedJSHeapSize / 1024 / 1024; // MB
     }
     return 0;
   }
@@ -395,7 +420,16 @@ export const useTrackedQuery = <T>(
 // Enhanced mutation hook with performance tracking
 export const useTrackedMutation = <T, V>(
   mutationFn: (variables: V) => Promise<T>,
-  options?: any
+  options?: {
+    onMutate?: (variables: V) => void | Promise<unknown>;
+    onSuccess?: (data: T, variables: V) => void;
+    onError?: (error: Error, variables: V) => void;
+    onSettled?: (
+      data: T | undefined,
+      error: Error | null,
+      variables: V
+    ) => void;
+  }
 ) => {
   const startTime = useRef<number>(0);
 

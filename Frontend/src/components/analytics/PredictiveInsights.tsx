@@ -39,8 +39,8 @@ export interface PredictiveInsight {
 interface PredictiveInsightsProps {
   insights: PredictiveInsight[];
   timeframe: 'day' | 'week' | 'month';
-  onTimeframeChange: (timeframe: 'day' | 'week' | 'month') => void;
-  onInsightAction?: (insight: PredictiveInsight, action: string) => void;
+  onTimeframeChange: (_timeframe: 'day' | 'week' | 'month') => void;
+  onInsightAction?: (_insight: PredictiveInsight, _action: string) => void;
 }
 
 export function PredictiveInsights({

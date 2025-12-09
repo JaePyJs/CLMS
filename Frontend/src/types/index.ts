@@ -416,6 +416,60 @@ interface AppEvent<T = unknown> {
   sessionId?: string;
 }
 
+// WebSocket event types for real-time updates
+interface WebSocketMessageData {
+  activityId?: string;
+  studentId?: string;
+  studentName?: string;
+  equipmentId?: string;
+  equipmentName?: string;
+  dataType?: string;
+  data?: unknown;
+  gradeLevel?: string | number;
+  purpose?: string;
+  [key: string]: unknown;
+}
+
+interface ActivityUpdate {
+  id: string;
+  studentId?: string;
+  studentName?: string;
+  activityType: string;
+  gradeLevel?: string;
+  timestamp: string | number;
+  equipmentName?: string;
+  [key: string]: unknown;
+}
+
+interface DashboardStats {
+  totalStudents?: number;
+  activeStudents?: number;
+  totalBooks?: number;
+  todayActivities?: number;
+  activeEquipment?: number;
+  activeConnections?: number;
+  systemLoad?: number;
+  total_students?: number;
+  active_students?: number;
+  total_books?: number;
+  today_activities?: number;
+  total_equipment?: number;
+  active_connections?: number;
+  system_load?: number;
+  students?: { total?: number; active?: number };
+  books?: { total?: number };
+  equipment?: { total?: number };
+}
+
+interface EquipmentStatusData {
+  equipmentId: string;
+  equipmentName?: string;
+  equipmentType?: string;
+  status: string;
+  userId?: string;
+  [key: string]: unknown;
+}
+
 // State management types
 interface AppState {
   user: User | null;
@@ -489,4 +543,10 @@ export type {
   // Event and state types
   AppEvent,
   AppState,
+
+  // WebSocket types
+  WebSocketMessageData,
+  ActivityUpdate,
+  DashboardStats,
+  EquipmentStatusData,
 };

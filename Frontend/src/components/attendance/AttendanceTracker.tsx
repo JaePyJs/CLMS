@@ -106,30 +106,59 @@ export default function AttendanceTracker() {
 
       if (dataRes.success && dataRes.data) {
         // Map the data to our interface
-        const mappedRecords = (dataRes.data as any[]).map((record: any) => ({
-          id: record.id,
-          studentId: record.student_id || record.studentId,
-          studentName:
-            record.student_name ||
-            record.studentName ||
-            `${record.student?.first_name || ''} ${record.student?.last_name || ''}`.trim(),
-          gradeLevel:
-            record.grade_level ||
-            record.gradeLevel ||
-            record.student?.grade_level ||
-            0,
-          section: record.section || record.student?.section,
-          checkInTime:
-            record.start_time || record.checkInTime || record.check_in_time,
-          checkOutTime:
-            record.end_time || record.checkOutTime || record.check_out_time,
-          duration: record.duration_minutes || record.duration,
-          status: (record.status === 'ACTIVE' || !record.end_time
-            ? 'ACTIVE'
-            : 'COMPLETED') as 'ACTIVE' | 'COMPLETED',
-          activityType:
-            record.activity_type || record.activityType || 'LIBRARY_VISIT',
-        }));
+        interface RawAttendanceRecord {
+          id: string;
+          student_id?: string;
+          studentId?: string;
+          student_name?: string;
+          studentName?: string;
+          student?: {
+            first_name?: string;
+            last_name?: string;
+            grade_level?: number;
+            section?: string;
+          };
+          grade_level?: number;
+          gradeLevel?: number;
+          section?: string;
+          start_time?: string;
+          checkInTime?: string;
+          check_in_time?: string;
+          end_time?: string;
+          checkOutTime?: string;
+          check_out_time?: string;
+          duration_minutes?: number;
+          duration?: number;
+          status?: string;
+          activity_type?: string;
+          activityType?: string;
+        }
+        const mappedRecords = (dataRes.data as RawAttendanceRecord[]).map(
+          (record) => ({
+            id: record.id,
+            studentId: record.student_id || record.studentId,
+            studentName:
+              record.student_name ||
+              record.studentName ||
+              `${record.student?.first_name || ''} ${record.student?.last_name || ''}`.trim(),
+            gradeLevel:
+              record.grade_level ||
+              record.gradeLevel ||
+              record.student?.grade_level ||
+              0,
+            section: record.section || record.student?.section,
+            checkInTime:
+              record.start_time || record.checkInTime || record.check_in_time,
+            checkOutTime:
+              record.end_time || record.checkOutTime || record.check_out_time,
+            duration: record.duration_minutes || record.duration,
+            status: (record.status === 'ACTIVE' || !record.end_time
+              ? 'ACTIVE'
+              : 'COMPLETED') as 'ACTIVE' | 'COMPLETED',
+            activityType:
+              record.activity_type || record.activityType || 'LIBRARY_VISIT',
+          })
+        );
         setRecords(mappedRecords);
       }
 

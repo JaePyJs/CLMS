@@ -298,7 +298,9 @@ export const withImageOptimization = <P extends object>(
   });
 
   OptimizedComponent.displayName = `withImageOptimization(${Component.displayName || Component.name})`;
-  return OptimizedComponent as any;
+  return OptimizedComponent as unknown as ComponentType<
+    P & OptimizedImageProps
+  >;
 };
 
 // Utility function to preload images

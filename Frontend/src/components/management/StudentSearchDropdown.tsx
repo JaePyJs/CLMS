@@ -4,8 +4,23 @@ import { Search, Clock, User, X, Briefcase, CheckCircle } from 'lucide-react';
 import { apiClient, enhancedLibraryApi } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 
+interface StudentRecord {
+  id: string;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  student_id?: string;
+  studentId?: string;
+  studentName?: string;
+  gradeLevel?: string;
+  grade_level?: number;
+  grade_category?: string;
+  purpose?: string;
+  type?: string;
+}
+
 interface StudentSearchDropdownProps {
-  onSelect: (student: { id: string; name: string; studentId: string }) => void;
+  onSelect: (_student: { id: string; name: string; studentId: string }) => void;
   selectedStudentId?: string;
   /** If true, only shows currently checked-in (active) students */
   activeOnly?: boolean;
@@ -13,14 +28,14 @@ interface StudentSearchDropdownProps {
 
 export function StudentSearchDropdown({
   onSelect,
-  selectedStudentId,
+  selectedStudentId: _selectedStudentId,
   activeOnly = false,
 }: StudentSearchDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [recentScans, setRecentScans] = useState<any[]>([]);
-  const [activeStudents, setActiveStudents] = useState<any[]>([]);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [recentScans, setRecentScans] = useState<StudentRecord[]>([]);
+  const [activeStudents, setActiveStudents] = useState<StudentRecord[]>([]);
+  const [searchResults, setSearchResults] = useState<StudentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -32,12 +47,15 @@ export function StudentSearchDropdown({
           // Fetch currently checked-in students
           const res = await enhancedLibraryApi.getCurrentPatrons();
           if (res.success && res.data) {
-            const patrons = (res.data as any).patrons || [];
+            const patrons =
+              (res.data as { patrons?: StudentRecord[] }).patrons || [];
             setActiveStudents(patrons);
           }
         } else {
           // Fetch recent scans
-          const res = await apiClient.get<any[]>('/api/kiosk/recent-scans');
+          const res = await apiClient.get<StudentRecord[]>(
+            '/api/kiosk/recent-scans'
+          );
           if (res.success && res.data) {
             setRecentScans(res.data);
           }
@@ -81,7 +99,7 @@ export function StudentSearchDropdown({
           if (query.length >= 1) {
             const res = await apiClient.get<{
               success: boolean;
-              data: any[];
+              data: StudentRecord[];
               count: number;
             }>(`/api/students/search?q=${encodeURIComponent(query)}`);
             if (res.success && res.data) {
@@ -117,10 +135,10 @@ export function StudentSearchDropdown({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSelect = (student: any) => {
+  const handleSelect = (student: StudentRecord) => {
     const normalized = {
       id: student.id,
-      studentId: student.student_id || student.studentId,
+      studentId: student.student_id || student.studentId || '',
       name: student.name || `${student.first_name} ${student.last_name}`,
     };
     onSelect(normalized);
@@ -272,10 +290,9 @@ export function StudentSearchDropdown({
                     className="flex items-center gap-2 px-2 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm transition-colors duration-200"
                     onClick={() =>
                       handleSelect({
-                        id: student.id,
+                        ...student,
                         studentId: studentId,
                         name: displayName,
-                        ...student,
                       })
                     }
                   >
@@ -300,7 +317,7 @@ export function StudentSearchDropdown({
                         ? student.purpose
                         : isPersonnel
                           ? 'Personnel'
-                          : student.grade_level > 0
+                          : (student.grade_level ?? 0) > 0
                             ? `Grade ${student.grade_level}`
                             : student.gradeLevel || student.grade_category}
                     </Badge>

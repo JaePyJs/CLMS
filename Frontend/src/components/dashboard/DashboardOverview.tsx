@@ -53,6 +53,124 @@ import {
   FileText,
 } from 'lucide-react';
 
+// Local interface for attendance events - expanded to include all WebSocket event properties
+interface AttendanceEvent {
+  type?: string;
+  data?: {
+    message?: string;
+    userId?: string;
+    userName?: string;
+    // Student checkin/checkout properties
+    activityId?: string;
+    studentId?: string;
+    studentName?: string;
+    checkinTime?: string;
+    checkoutTime?: string;
+    autoLogoutAt?: string;
+    at?: string | number;
+    reminders?: unknown[];
+    customMessage?: string;
+  };
+  timestamp?: string | number;
+  [key: string]: unknown;
+}
+
+// Session data interface - expanded with all accessed properties
+interface SessionData {
+  id: string;
+  activity_id?: string;
+  studentId?: string;
+  studentName?: string;
+  student_name?: string;
+  first_name?: string;
+  last_name?: string;
+  grade_level?: number | string;
+  section?: string;
+  start_time?: string | number;
+  purpose?: string;
+  student?: {
+    name?: string;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+// API response data interfaces
+interface KioskApiResponse {
+  data?: KioskUser[] | unknown;
+  accessToken?: string;
+}
+
+interface KioskUser {
+  id?: string;
+  deviceName?: string;
+  [key: string]: unknown;
+}
+
+interface ApiDataResponse<T = unknown> {
+  data?: T;
+  success?: boolean;
+  message?: string;
+}
+
+interface SessionsResponse {
+  sessions?: SessionData[];
+  data?: SessionData[];
+  [key: string]: unknown;
+}
+
+interface ActivityEvent {
+  id?: string | number;
+  type?: string;
+  activity_type?: string;
+  activityType?: string;
+  status?: string;
+  description?: string;
+  student_id?: string;
+  studentId?: string;
+  studentName?: string;
+  equipmentId?: string;
+  student?: { first_name?: string; last_name?: string };
+  user?: { username?: string };
+  timestamp?: string | number;
+  created_at?: string;
+  start_time?: string;
+  end_time?: string;
+  startTime?: string | Date;
+  endTime?: string | Date;
+  [key: string]: unknown;
+}
+
+interface HealthCheckData {
+  timestamp?: string | number;
+  status?: string;
+  uptime?: number;
+  database?: {
+    connected?: boolean;
+    responseTime?: number;
+  };
+  memory?: {
+    heapUsed?: number;
+    heapTotal?: number;
+  };
+  [key: string]: unknown;
+}
+
+// Daily summary data interface
+interface DailySummary {
+  date?: string;
+  statistics?: {
+    totalBorrowed?: number;
+    totalReturned?: number;
+    totalFines?: number;
+  };
+  attendance?: {
+    totalCheckIns?: number;
+    totalCheckOuts?: number;
+  };
+  [key: string]: unknown;
+}
+
 interface DashboardOverviewProps {
   onTabChange?: (_tab: string) => void;
 }
@@ -65,7 +183,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const { events: attendanceEvents } = useAttendanceWebSocket();
   const lastAnnouncement = (() => {
     for (let i = attendanceEvents.length - 1; i >= 0; i--) {
-      const ev: any = attendanceEvents[i];
+      const ev = attendanceEvents[i] as AttendanceEvent;
       if (
         ev &&
         ev.type === 'announcement' &&
@@ -83,14 +201,20 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     return null;
   })();
   const recentAnnouncements = attendanceEvents
-    .filter((ev: any) => ev?.type === 'announcement' && ev?.data?.message)
+    .filter((ev) => {
+      const e = ev as AttendanceEvent;
+      return e?.type === 'announcement' && e?.data?.message;
+    })
     .slice(-3)
-    .map((ev: any) => ({
-      message: String(ev.data.message),
-      at: ev.timestamp ? String(ev.timestamp) : new Date().toISOString(),
-      userId: ev.data?.userId ? String(ev.data.userId) : undefined,
-      userName: ev.data?.userName ? String(ev.data.userName) : undefined,
-    }));
+    .map((ev) => {
+      const e = ev as AttendanceEvent;
+      return {
+        message: String(e.data?.message || ''),
+        at: e.timestamp ? String(e.timestamp) : new Date().toISOString(),
+        userId: e.data?.userId ? String(e.data.userId) : undefined,
+        userName: e.data?.userName ? String(e.data.userName) : undefined,
+      };
+    });
   const [attendanceExpanded, setAttendanceExpanded] = useState<boolean>(() => {
     const saved = localStorage.getItem('clms_attendance_expanded');
     return saved === 'true';
@@ -110,8 +234,10 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const [attendanceFilter, setAttendanceFilter] = useState<
     'all' | 'in' | 'out' | 'msg'
   >(() => {
-    const saved = localStorage.getItem('clms_attendance_filter') as any;
-    return saved && ['all', 'in', 'out', 'msg'].includes(saved) ? saved : 'all';
+    const saved = localStorage.getItem('clms_attendance_filter');
+    return saved && ['all', 'in', 'out', 'msg'].includes(saved)
+      ? (saved as 'all' | 'in' | 'out' | 'msg')
+      : 'all';
   });
   useEffect(() => {
     localStorage.setItem(
@@ -342,7 +468,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       try {
         setKioskLoading(true);
         const resp = await apiClient.get('/api/auth/kiosk-users');
-        const data = (resp as any)?.data as any[];
+        const data = (resp as KioskApiResponse)?.data;
         setKioskUsers(Array.isArray(data) ? data : []);
       } catch {
         // Ignore error
@@ -378,10 +504,13 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                 const resp = await apiClient.post('/api/auth/kiosk-token', {
                   deviceName: kioskDeviceName,
                 });
-                const data = (resp as any)?.data;
+                const data = (resp as KioskApiResponse)?.data as
+                  | { accessToken?: string }
+                  | undefined;
                 setKioskToken(String(data?.accessToken || ''));
                 const list = await apiClient.get('/api/auth/kiosk-users');
-                setKioskUsers(((list as any)?.data as any[]) || []);
+                const listData = (list as KioskApiResponse)?.data;
+                setKioskUsers(Array.isArray(listData) ? listData : []);
                 toast.success('Kiosk token generated');
               } catch {
                 toast.error('Failed to generate kiosk token');
@@ -432,7 +561,10 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                           const list = await apiClient.get(
                             '/api/auth/kiosk-users'
                           );
-                          setKioskUsers(((list as any)?.data as any[]) || []);
+                          const listData = (list as KioskApiResponse)?.data;
+                          setKioskUsers(
+                            Array.isArray(listData) ? listData : []
+                          );
                           toast.success('Kiosk user revoked');
                         } catch {
                           toast.error('Failed to revoke');
@@ -522,17 +654,20 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
 
   // Bulk Checkout State
   const [bulkCheckoutLoading, setBulkCheckoutLoading] = useState(false);
-  const [activeSessionsForBulk, setActiveSessionsForBulk] = useState<any[]>([]);
+  const [activeSessionsForBulk, setActiveSessionsForBulk] = useState<
+    SessionData[]
+  >([]);
   const [selectedForBulkCheckout, setSelectedForBulkCheckout] = useState<
     Set<string>
   >(new Set());
 
   // Daily Summary State
-  const [dailySummary, setDailySummary] = useState<any>(null);
+  const [dailySummary, setDailySummary] = useState<DailySummary | null>(null);
   const [dailySummaryLoading, setDailySummaryLoading] = useState(false);
 
   // System Check State
-  const [systemHealthData, setSystemHealthData] = useState<any>(null);
+  const [systemHealthData, setSystemHealthData] =
+    useState<HealthCheckData | null>(null);
   const [systemCheckLoading, setSystemCheckLoading] = useState(false);
 
   // Maintenance Mode State
@@ -580,8 +715,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       if (response.success && response.data) {
         const sessions = Array.isArray(response.data)
           ? response.data
-          : (response.data as any).sessions || [];
-        setActiveSessionsForBulk(sessions);
+          : (response.data as SessionsResponse).sessions || [];
+        setActiveSessionsForBulk(sessions as SessionData[]);
       }
     } catch {
       toast.error('Failed to load active sessions');
@@ -624,7 +759,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     try {
       const response = await apiClient.get('/api/reports/daily');
       if (response.success && response.data) {
-        setDailySummary((response.data as any).data || response.data);
+        const respData = response.data as ApiDataResponse<DailySummary>;
+        setDailySummary((respData.data || response.data) as DailySummary);
       }
     } catch {
       toast.error('Failed to generate daily summary');
@@ -681,7 +817,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const [importBusy, setImportBusy] = useState<boolean>(false);
   const onTemplateDownload = async () => {
     const response = await studentsApi.downloadTemplate();
-    const content = (response?.data as any) ?? '';
+    const content = (response?.data as ApiDataResponse)?.data ?? '';
     const blob = new Blob(
       [typeof content === 'string' ? content : JSON.stringify(content)],
       { type: 'text/csv' }
@@ -701,8 +837,16 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     setImportProgress(10);
     try {
       const res = await studentsApi.previewImport(file, 'students', 10);
-      const data = res?.data as any;
-      const records = Array.isArray(data?.records) ? data.records : [];
+      const data = res?.data as ApiDataResponse<{
+        records?: Array<{
+          firstName?: string;
+          lastName?: string;
+          isValid?: boolean;
+        }>;
+      }>;
+      const records = Array.isArray(data?.data?.records)
+        ? data.data.records
+        : [];
       setPreviewRecords(records);
       setImportProgress(40);
       toast.success('Preview ready');
@@ -730,13 +874,22 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     setImportProgress(60);
     try {
       const res = await studentsApi.importStudents(importFile, [], false);
-      const data = res?.data as any;
-      const gen = Array.isArray(data?.generated) ? data.generated : [];
+      interface ImportResult {
+        generated?: Array<{ row: number; barcode: string }>;
+        importedRecords?: number;
+        skippedRecords?: number;
+        errorRecords?: number;
+      }
+      const data = res?.data as ApiDataResponse<ImportResult>;
+      const resultData = data?.data || {};
+      const gen = Array.isArray(resultData.generated)
+        ? resultData.generated
+        : [];
       setGeneratedBarcodes(gen);
       setImportProgress(100);
-      const imported = data?.importedRecords ?? 0;
-      const skipped = data?.skippedRecords ?? 0;
-      const errors = data?.errorRecords ?? 0;
+      const imported = resultData.importedRecords ?? 0;
+      const skipped = resultData.skippedRecords ?? 0;
+      const errors = resultData.errorRecords ?? 0;
       toast.success(
         `Imported ${imported} • Skipped ${skipped} • Errors ${errors}`
       );
@@ -777,17 +930,19 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   // Fetch active sessions with polling and WebSocket-triggered refresh
   const [activeSessionsData, setActiveSessionsData] = useState<{
     count: number;
-    sessions: any[];
+    sessions: SessionData[];
     lastFetch: number;
   }>({ count: 0, sessions: [], lastFetch: 0 });
 
   const fetchActiveSessions = async () => {
     try {
       const response = await studentsApi.getActiveSessions();
-      const data = (response as any)?.data || response;
-      const sessions = Array.isArray(data?.data) ? data.data : [];
+      const respData = response as ApiDataResponse<{ data?: SessionData[] }>;
+      const sessions = Array.isArray(respData?.data?.data)
+        ? respData.data.data
+        : [];
       setActiveSessionsData({
-        count: data?.count || sessions.length,
+        count: respData?.data?.data?.length || sessions.length,
         sessions,
         lastFetch: Date.now(),
       });
@@ -825,8 +980,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
     const fetchVersion = async () => {
       try {
         const resp = await apiClient.get('/api/version');
-        const data = (resp as any)?.data || resp;
-        const ver = String(data?.version ?? '');
+        const respData = resp as ApiDataResponse<{ version?: string }>;
+        const ver = String(respData?.data?.version ?? '');
         if (mounted) {
           setBackendVersion(ver || null);
           setVersionCheckedAt(Date.now());
@@ -858,9 +1013,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
         'Start Time',
         'End Time',
       ],
-      ...arr.map((activity: any) => [
+      ...(arr as unknown as ActivityEvent[]).map((activity: ActivityEvent) => [
         String(activity.id ?? ''),
-        String(activity.activityType ?? activity.type ?? ''),
+        String(activity.activity_type ?? activity.type ?? ''),
         String(activity.status ?? ''),
         String(activity.studentName ?? activity.user?.username ?? ''),
         String(activity.description ?? ''),
@@ -1092,9 +1247,14 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
       setAnnouncementCooldownUntil(
         Date.now() + Math.max(10, announcementInterval) * 1000
       );
-    } catch (err: any) {
-      const waitSeconds = err?.response?.data?.waitSeconds;
-      const msg = err?.response?.data?.message || 'Failed to send announcement';
+    } catch (err: unknown) {
+      interface ErrorResponse {
+        response?: { data?: { waitSeconds?: number; message?: string } };
+      }
+      const axiosErr = err as ErrorResponse;
+      const waitSeconds = axiosErr?.response?.data?.waitSeconds;
+      const msg =
+        axiosErr?.response?.data?.message || 'Failed to send announcement';
       if (typeof waitSeconds === 'number') {
         toast.error(`${msg} (${waitSeconds}s)`);
         setAnnouncementCooldownUntil(Date.now() + waitSeconds * 1000);
@@ -1381,7 +1541,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                       className="text-sm bg-card border rounded px-2 py-1"
                       value={attendanceFilter}
                       onChange={(e) =>
-                        setAttendanceFilter(e.target.value as any)
+                        setAttendanceFilter(
+                          e.target.value as 'all' | 'in' | 'out' | 'msg'
+                        )
                       }
                       aria-label="event-filter"
                     >
@@ -1699,8 +1861,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                     className="space-y-3 overflow-y-auto max-h-[360px]"
                     id="attendance-scroll"
                   >
-                    {attendanceEvents
-                      .filter((ev: any) =>
+                    {(attendanceEvents as unknown as AttendanceEvent[])
+                      .filter((ev: AttendanceEvent) =>
                         attendanceFilter === 'all'
                           ? true
                           : attendanceFilter === 'in'
@@ -1711,7 +1873,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                       )
                       .slice(-attendanceShowCount)
                       .reverse()
-                      .map((ev: any, idx: number) => (
+                      .map((ev: AttendanceEvent, idx: number) => (
                         <div
                           key={idx}
                           className="flex items-center justify-between p-3 rounded bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800"
@@ -2194,7 +2356,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                         className="text-sm bg-card border rounded px-2 py-1"
                         value={attendanceFilter}
                         onChange={(e) =>
-                          setAttendanceFilter(e.target.value as any)
+                          setAttendanceFilter(
+                            e.target.value as 'all' | 'in' | 'out' | 'msg'
+                          )
                         }
                         aria-label="event-filter"
                       >
@@ -2210,8 +2374,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                       className="space-y-3 overflow-y-auto max-h-[360px]"
                       id="attendance-scroll"
                     >
-                      {attendanceEvents
-                        .filter((ev: any) =>
+                      {(attendanceEvents as unknown as AttendanceEvent[])
+                        .filter((ev: AttendanceEvent) =>
                           attendanceFilter === 'all'
                             ? true
                             : attendanceFilter === 'in'
@@ -2222,7 +2386,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                         )
                         .slice(-attendanceShowCount)
                         .reverse()
-                        .map((ev: any, idx: number) => (
+                        .map((ev: AttendanceEvent, idx: number) => (
                           <div
                             key={idx}
                             className="flex items-center justify-between p-3 rounded bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800"
@@ -2362,43 +2526,45 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                 <CardContent className="p-6">
                   {activeSessionsData.sessions.length > 0 ? (
                     <div className="space-y-4">
-                      {activeSessionsData.sessions.map((session: any) => (
-                        <div
-                          key={session.id || session.activity_id}
-                          className="flex items-start space-x-4 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50/30 dark:from-gray-800/50 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 shadow-sm"
-                        >
-                          <div className="flex-shrink-0 mt-1">
-                            <div className="h-3 w-3 rounded-full shadow-sm bg-green-500 shadow-green-500/50"></div>
+                      {activeSessionsData.sessions.map(
+                        (session: SessionData) => (
+                          <div
+                            key={session.id || session.activity_id}
+                            className="flex items-start space-x-4 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50/30 dark:from-gray-800/50 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 shadow-sm"
+                          >
+                            <div className="flex-shrink-0 mt-1">
+                              <div className="h-3 w-3 rounded-full shadow-sm bg-green-500 shadow-green-500/50"></div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-foreground dark:text-foreground">
+                                <Badge
+                                  variant="default"
+                                  className="mr-2 bg-green-600"
+                                >
+                                  Active
+                                </Badge>
+                                {session.student_name ||
+                                  `${session.first_name || ''} ${session.last_name || ''}`.trim() ||
+                                  'Unknown Student'}
+                              </p>
+                              <p className="text-sm text-muted-foreground mt-1 truncate">
+                                {session.grade_level
+                                  ? `Grade ${session.grade_level}`
+                                  : ''}
+                                {session.section ? ` - ${session.section}` : ''}
+                                {' • Library visit'}
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0 text-xs text-muted-foreground bg-white dark:bg-gray-800 px-2 py-1 rounded-full">
+                              {session.start_time
+                                ? new Date(
+                                    session.start_time
+                                  ).toLocaleTimeString()
+                                : 'Now'}
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground dark:text-foreground">
-                              <Badge
-                                variant="default"
-                                className="mr-2 bg-green-600"
-                              >
-                                Active
-                              </Badge>
-                              {session.student_name ||
-                                `${session.first_name || ''} ${session.last_name || ''}`.trim() ||
-                                'Unknown Student'}
-                            </p>
-                            <p className="text-sm text-muted-foreground mt-1 truncate">
-                              {session.grade_level
-                                ? `Grade ${session.grade_level}`
-                                : ''}
-                              {session.section ? ` - ${session.section}` : ''}
-                              {' • Library visit'}
-                            </p>
-                          </div>
-                          <div className="flex-shrink-0 text-xs text-muted-foreground bg-white dark:bg-gray-800 px-2 py-1 rounded-full">
-                            {session.start_time
-                              ? new Date(
-                                  session.start_time
-                                ).toLocaleTimeString()
-                              : 'Now'}
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
                   ) : timelineLoading ? (
                     <div className="text-center py-12">
@@ -2412,44 +2578,48 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                     timeline.length > 0 ? (
                     <div className="space-y-4">
                       {/* @ts-ignore - Activity type is complex */}
-                      {timeline.map((activity: any) => (
-                        <div
-                          key={activity.id}
-                          className="flex items-start space-x-4 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50/30 dark:from-gray-800/50 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 shadow-sm"
-                        >
-                          <div className="flex-shrink-0 mt-1">
-                            <div
-                              className={`h-3 w-3 rounded-full shadow-sm ${activity.status === 'active' ? 'bg-green-500 shadow-green-500/50' : activity.status === 'completed' ? 'bg-blue-500 shadow-blue-500/50' : activity.status === 'expired' ? 'bg-yellow-500 shadow-yellow-500/50' : 'bg-gray-500 shadow-gray-500/50'}`}
-                            ></div>
+                      {(timeline as ActivityEvent[]).map(
+                        (activity: ActivityEvent) => (
+                          <div
+                            key={activity.id}
+                            className="flex items-start space-x-4 p-4 rounded-lg bg-gradient-to-r from-gray-50 to-blue-50/30 dark:from-gray-800/50 dark:to-blue-900/20 border border-gray-200 dark:border-gray-700 shadow-sm"
+                          >
+                            <div className="flex-shrink-0 mt-1">
+                              <div
+                                className={`h-3 w-3 rounded-full shadow-sm ${activity.status === 'active' ? 'bg-green-500 shadow-green-500/50' : activity.status === 'completed' ? 'bg-blue-500 shadow-blue-500/50' : activity.status === 'expired' ? 'bg-yellow-500 shadow-yellow-500/50' : 'bg-gray-500 shadow-gray-500/50'}`}
+                              ></div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-foreground dark:text-foreground">
+                                <Badge
+                                  variant={
+                                    activity.status === 'active'
+                                      ? 'default'
+                                      : activity.status === 'completed'
+                                        ? 'secondary'
+                                        : 'outline'
+                                  }
+                                  className="mr-2"
+                                >
+                                  {String(
+                                    activity.status || 'unknown'
+                                  ).toUpperCase()}
+                                </Badge>
+                                {activity.studentName}
+                              </p>
+                              <p className="text-sm text-muted-foreground dark:text-muted-foreground/80">
+                                {activity.activityType} •{' '}
+                                {activity.equipmentId || 'No equipment'}
+                              </p>
+                            </div>
+                            <div className="flex-shrink-0 text-xs text-muted-foreground bg-white dark:bg-gray-800 px-2 py-1 rounded-full">
+                              {new Date(
+                                activity.startTime
+                              ).toLocaleTimeString()}
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground dark:text-foreground">
-                              <Badge
-                                variant={
-                                  activity.status === 'active'
-                                    ? 'default'
-                                    : activity.status === 'completed'
-                                      ? 'secondary'
-                                      : 'outline'
-                                }
-                                className="mr-2"
-                              >
-                                {String(
-                                  activity.status || 'unknown'
-                                ).toUpperCase()}
-                              </Badge>
-                              {activity.studentName}
-                            </p>
-                            <p className="text-sm text-muted-foreground dark:text-muted-foreground/80">
-                              {activity.activityType} •{' '}
-                              {activity.equipmentId || 'No equipment'}
-                            </p>
-                          </div>
-                          <div className="flex-shrink-0 text-xs text-muted-foreground bg-white dark:bg-gray-800 px-2 py-1 rounded-full">
-                            {new Date(activity.startTime).toLocaleTimeString()}
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-12">
@@ -2530,10 +2700,11 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                         Last check:{' '}
                         {new Date(
                           (versionCheckedAt ||
-                            (typeof (healthData as any).timestamp ===
-                              'string' ||
-                            typeof (healthData as any).timestamp === 'number'
-                              ? (healthData as any).timestamp
+                            (typeof (healthData as HealthCheckData)
+                              .timestamp === 'string' ||
+                            typeof (healthData as HealthCheckData).timestamp ===
+                              'number'
+                              ? (healthData as HealthCheckData).timestamp
                               : Date.now())) as number
                         ).toLocaleTimeString()}
                       </div>
@@ -2825,7 +2996,11 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                         size="sm"
                         onClick={() =>
                           setSelectedForBulkCheckout(
-                            new Set(activeSessionsForBulk.map((s: any) => s.id))
+                            new Set(
+                              activeSessionsForBulk.map(
+                                (s: SessionData) => s.id
+                              )
+                            )
                           )
                         }
                       >
@@ -2839,7 +3014,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                         Clear
                       </Button>
                     </div>
-                    {activeSessionsForBulk.map((session: any) => (
+                    {activeSessionsForBulk.map((session: SessionData) => (
                       <div
                         key={session.id}
                         className="flex items-center gap-2 p-2 border rounded"

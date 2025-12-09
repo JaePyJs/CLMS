@@ -46,6 +46,8 @@ const baseIgnores = [
   'test-*.js',
   'register-paths.prod.js',
   'vitest.*.config.ts',
+  'vitest.config.mts',
+  '*.ts', // Root-level utility scripts (create-librarian.ts, etc.)
   'sandbox/**/*',
   // From .eslintignore
   'node_modules/',

@@ -33,7 +33,7 @@ export default function LibrarySectionsManager() {
     try {
       const res = await apiClient.get<Section[]>('/api/sections');
       if (res.success && res.data) setSections(res.data);
-    } catch (e) {
+    } catch {
       toast.error('Failed to load sections');
     } finally {
       setLoading(false);

@@ -142,10 +142,10 @@ export function useActions<T>(store: EnhancedStateStore<T>) {
   const actions = useMemo(() => store.actions, [store]);
 
   const stableActions = useMemo(() => {
-    const boundActions: Record<string, (...args: any[]) => void> = {};
+    const boundActions: Record<string, (...args: unknown[]) => void> = {};
 
     Object.entries(actions).forEach(([name, action]) => {
-      boundActions[name] = (...args: any[]) => {
+      boundActions[name] = (...args: unknown[]) => {
         action(...args);
       };
     });
@@ -163,10 +163,13 @@ export function useAsyncActions<T>(store: EnhancedStateStore<T>) {
   const asyncActions = useMemo(() => store.asyncActions, [store]);
 
   const stableAsyncActions = useMemo(() => {
-    const boundActions: Record<string, (...args: any[]) => Promise<any>> = {};
+    const boundActions: Record<
+      string,
+      (...args: unknown[]) => Promise<unknown>
+    > = {};
 
     Object.entries(asyncActions).forEach(([name, action]) => {
-      boundActions[name] = (...args: any[]) => {
+      boundActions[name] = (...args: unknown[]) => {
         return action(...args);
       };
     });

@@ -1,6 +1,27 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { performanceMonitor } from '@/lib/performance-monitor';
 
+// Extended performance entry types
+interface PerformanceEventTiming extends PerformanceEntry {
+  processingStart: number;
+  processingEnd: number;
+  duration: number;
+}
+
+interface LayoutShiftEntry extends PerformanceEntry {
+  hadRecentInput: boolean;
+  value: number;
+}
+
+interface PerformanceMemory {
+  usedJSHeapSize: number;
+  totalJSHeapSize: number;
+  jsHeapSizeLimit: number;
+}
+
+interface PerformanceWithMemory extends Performance {
+  memory?: PerformanceMemory;
+}
 /**
  * Hook for performance monitoring with automatic cleanup
  */
@@ -334,10 +355,9 @@ export function useCoreWebVitals() {
       try {
         const fidObserver = new PerformanceObserver((list) => {
           const entries = list.getEntries();
-          const firstInput = entries[0];
+          const firstInput = entries[0] as PerformanceEventTiming | undefined;
           if (firstInput) {
-            const fid =
-              (firstInput as any).processingStart - firstInput.startTime;
+            const fid = firstInput.processingStart - firstInput.startTime;
             setVitals((prev) => ({ ...prev, fid }));
           }
         });
@@ -351,8 +371,9 @@ export function useCoreWebVitals() {
         let clsValue = 0;
         const clsObserver = new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
-            if (!(entry as any).hadRecentInput) {
-              clsValue += (entry as any).value;
+            const layoutEntry = entry as LayoutShiftEntry;
+            if (!layoutEntry.hadRecentInput) {
+              clsValue += layoutEntry.value;
             }
           }
           setVitals((prev) => ({ ...prev, cls: clsValue }));
@@ -398,8 +419,9 @@ export function useMemoryMonitoring() {
 
   useEffect(() => {
     const updateMemoryInfo = () => {
-      if ('memory' in performance) {
-        const memory = (performance as any).memory;
+      const perfWithMemory = performance as PerformanceWithMemory;
+      if (perfWithMemory.memory) {
+        const memory = perfWithMemory.memory;
         const used = memory.usedJSHeapSize;
         const total = memory.totalJSHeapSize;
         const limit = memory.jsHeapSizeLimit;

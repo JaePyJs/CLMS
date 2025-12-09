@@ -47,6 +47,19 @@ import {
   CardSkeleton,
   TableSkeleton,
 } from '@/components/LoadingStates';
+
+interface SearchResult {
+  id: string;
+  type: 'student' | 'book' | 'equipment' | 'room' | 'setting';
+  title: string;
+  subtitle?: string;
+  status?: string;
+}
+
+interface ApiSearchResponse {
+  success: boolean;
+  data?: SearchResult[];
+}
 import {
   LogOut,
   User,
@@ -256,7 +269,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handler);
   }, []);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -303,8 +316,8 @@ export default function App() {
             `/api/search?q=${encodeURIComponent(query)}`
           );
           // apiClient.get returns the response data directly: {success: true, data: [...]}
-          if (response && (response as any).success) {
-            setSearchResults((response as any).data || []);
+          if (response && (response as ApiSearchResponse).success) {
+            setSearchResults((response as ApiSearchResponse).data || []);
           } else {
             setSearchResults([]);
           }
@@ -684,7 +697,7 @@ export default function App() {
                           </div>
                         ) : searchResults.length > 0 ? (
                           <div className="py-2">
-                            {searchResults.map((result: any) => (
+                            {searchResults.map((result) => (
                               <button
                                 key={`${result.type}-${result.id}`}
                                 className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-3"

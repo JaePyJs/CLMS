@@ -31,10 +31,10 @@ api.interceptors.request.use(
       if (headersAny && typeof headersAny.set === 'function') {
         headersAny.set('Authorization', authHeader);
       } else {
-        config.headers = {
-          ...(config.headers || {}),
-          Authorization: authHeader,
-        } as any;
+        // Axios AxiosHeaders type requires method-based setting when not using set()
+        // Using indexing approach which works at runtime
+        (config.headers as Record<string, string>)['Authorization'] =
+          authHeader;
       }
     }
     return config;

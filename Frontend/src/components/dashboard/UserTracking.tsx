@@ -25,6 +25,20 @@ import {
 import { toast } from 'sonner';
 import { enhancedLibraryApi } from '@/lib/api';
 
+interface PatronsResponse {
+  patrons: PatronActivity[];
+  stats: {
+    totalPatrons?: number;
+    activePatrons?: number;
+    avgDuration?: string;
+    topPurpose?: string;
+  };
+}
+
+interface ApiErrorResponse {
+  error?: string | { message?: string };
+}
+
 interface PatronActivity {
   id: string;
   studentId: string;
@@ -81,13 +95,13 @@ export function UserTracking() {
       const response = await enhancedLibraryApi.getCurrentPatrons();
 
       if (response.success && response.data) {
-        const dd: any = response.data || {};
+        const dd = (response.data || {}) as PatronsResponse;
         const patrons = dd.patrons || [];
 
         // Use real data only - no mock data
         setPatrons(patrons);
 
-        const ds: any = dd.stats || {};
+        const ds = dd.stats || {};
         setStats({
           totalPatrons: Number(ds.totalPatrons || 0),
           activePatrons: Number(ds.activePatrons || 0),
@@ -97,10 +111,10 @@ export function UserTracking() {
       } else {
         // Show error if API fails
         const errMsg =
-          typeof (response as any)?.error === 'string'
-            ? (response as any).error
-            : (response as any)?.error?.message ||
-              'Failed to fetch patron data';
+          typeof (response as ApiErrorResponse)?.error === 'string'
+            ? (response as ApiErrorResponse).error
+            : ((response as ApiErrorResponse)?.error as { message?: string })
+                ?.message || 'Failed to fetch patron data';
         toast.error(String(errMsg));
 
         // Set empty data on error
@@ -114,7 +128,7 @@ export function UserTracking() {
       }
     } catch (error) {
       console.error('Error fetching patrons:', error);
-      const msg = (error as any)?.message || 'Error loading patron data';
+      const msg = (error as Error)?.message || 'Error loading patron data';
       toast.error(String(msg));
 
       // Set empty data on error
@@ -145,14 +159,15 @@ export function UserTracking() {
         await fetchPatrons();
       } else {
         const errMsg =
-          typeof (response as any)?.error === 'string'
-            ? (response as any).error
-            : (response as any)?.error?.message || 'Failed to checkout patron';
+          typeof (response as ApiErrorResponse)?.error === 'string'
+            ? (response as ApiErrorResponse).error
+            : ((response as ApiErrorResponse)?.error as { message?: string })
+                ?.message || 'Failed to checkout patron';
         toast.error(String(errMsg));
       }
     } catch (error) {
       console.error('Error checking out patron:', error);
-      const msg = (error as any)?.message || 'Error checking out patron';
+      const msg = (error as Error)?.message || 'Error checking out patron';
       toast.error(String(msg));
     }
   };

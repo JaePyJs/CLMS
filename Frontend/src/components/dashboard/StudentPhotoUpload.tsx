@@ -37,7 +37,7 @@ interface StudentPhotoUploadProps {
   studentId: string;
   studentName: string;
   currentPhotoUrl?: string;
-  // eslint-disable-next-line no-unused-vars
+   
   onUploadComplete?: (_photoUrl: string) => void;
 }
 

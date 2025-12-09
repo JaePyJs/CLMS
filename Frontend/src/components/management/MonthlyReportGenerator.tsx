@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { apiClient, analyticsApi } from '@/lib/api';
 import { toUserMessage } from '@/utils/error-utils';
 import { Button } from '@/components/ui/button';
@@ -24,12 +24,44 @@ interface ReportSummary {
   finesCollected: number;
 }
 
+interface Student {
+  id: string;
+  first_name: string;
+  last_name: string;
+}
+
+interface Book {
+  id: string;
+  title: string;
+}
+
+interface OverdueRecord {
+  id: string;
+  student: Student;
+  book: Book;
+  // Add other properties if known
+}
+
+interface PrintingJob {
+  id: string;
+  student_id: string;
+  total_cost: number;
+  // Add other properties if known
+}
+
+interface MetricsData {
+  visits: number;
+  uniqueStudents: number;
+  booksBorrowed: number;
+  booksReturned: number;
+}
+
 export default function MonthlyReportGenerator() {
   const [month, setMonth] = useState<string>('');
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [busy, setBusy] = useState(false);
-  const [overdue, setOverdue] = useState<any[]>([]);
-  const [printing, setPrinting] = useState<any[]>([]);
+  const [overdue, setOverdue] = useState<OverdueRecord[]>([]);
+  const [printing, setPrinting] = useState<PrintingJob[]>([]);
 
   const loadData = async () => {
     if (!month) {
@@ -39,15 +71,17 @@ export default function MonthlyReportGenerator() {
     setBusy(true);
     try {
       const metrics = await analyticsApi.getMetrics();
-      const overdueRes = await apiClient.get<any[]>('/api/fines/overdue');
-      const printRes = await apiClient.get<any[]>('/api/printing/jobs');
+      const overdueRes =
+        await apiClient.get<OverdueRecord[]>('/api/fines/overdue');
+      const printRes = await apiClient.get<PrintingJob[]>('/api/printing/jobs');
+      const metricsData = metrics.data as MetricsData | undefined;
       const s: ReportSummary = {
-        totalVisits: (metrics.data as any)?.visits || 0,
-        uniqueStudents: (metrics.data as any)?.uniqueStudents || 0,
-        booksBorrowed: (metrics.data as any)?.booksBorrowed || 0,
-        booksReturned: (metrics.data as any)?.booksReturned || 0,
+        totalVisits: metricsData?.visits || 0,
+        uniqueStudents: metricsData?.uniqueStudents || 0,
+        booksBorrowed: metricsData?.booksBorrowed || 0,
+        booksReturned: metricsData?.booksReturned || 0,
         printingTotal: (printRes.data || []).reduce(
-          (sum: number, j: any) => sum + (j.total_cost || 0),
+          (sum: number, j: PrintingJob) => sum + (j.total_cost || 0),
           0
         ),
         finesCollected: 0,
@@ -164,7 +198,7 @@ export default function MonthlyReportGenerator() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {overdue.map((o: any) => (
+                {overdue.map((o: OverdueRecord) => (
                   <TableRow key={o.id}>
                     <TableCell>
                       {`${o.student?.first_name || ''} ${o.student?.last_name || ''}`.trim()}
@@ -184,7 +218,7 @@ export default function MonthlyReportGenerator() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {printing.map((p: any) => (
+                {printing.map((p: PrintingJob) => (
                   <TableRow key={p.id}>
                     <TableCell>{p.student_id}</TableCell>
                     <TableCell>{p.total_cost}</TableCell>

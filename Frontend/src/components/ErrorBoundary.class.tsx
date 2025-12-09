@@ -17,7 +17,7 @@ import { Card } from '@/components/ui/card';
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  onError?: (_error: Error, _errorInfo: ErrorInfo) => void;
   enableRetry?: boolean;
   maxRetries?: number;
 }

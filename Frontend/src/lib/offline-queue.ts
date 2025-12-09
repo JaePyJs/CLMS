@@ -7,10 +7,17 @@ interface QueueItem {
   type: 'api-call' | 'activity-log' | 'session-action';
   endpoint?: string;
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-  data?: any;
+  data?: unknown;
   timestamp: number;
   retries: number;
   maxRetries: number;
+}
+
+interface CachedItem {
+  id: string;
+  _cached: boolean;
+  _cacheTime: number;
+  [key: string]: unknown;
 }
 
 // IndexedDB setup
@@ -167,15 +174,16 @@ class OfflineQueue {
   }
 
   // Cache data locally
-  async cacheData(store: string, data: any) {
+  async cacheData(store: string, data: unknown) {
     const db = await this.init();
+    const dataWithMeta = { _cached: true, _cacheTime: Date.now() };
 
     if (Array.isArray(data)) {
       for (const item of data) {
-        await db.put(store, { ...item, _cached: true, _cacheTime: Date.now() });
+        await db.put(store, { ...item, ...dataWithMeta });
       }
-    } else {
-      await db.put(store, { ...data, _cached: true, _cacheTime: Date.now() });
+    } else if (data && typeof data === 'object') {
+      await db.put(store, { ...data, ...dataWithMeta });
     }
   }
 
@@ -183,9 +191,9 @@ class OfflineQueue {
   async getCachedData(
     store: string,
     maxAge: number = 5 * 60 * 1000
-  ): Promise<any[]> {
+  ): Promise<CachedItem[]> {
     const db = await this.init();
-    const allData = await db.getAll(store);
+    const allData = (await db.getAll(store)) as CachedItem[];
     const now = Date.now();
 
     return allData.filter(
@@ -246,7 +254,7 @@ export const initializeOfflineQueue = () => {
 // Helper functions for common offline operations
 export const offlineActions = {
   // Log activity when offline
-  logActivity: (activityData: any) => {
+  logActivity: (activityData: unknown) => {
     return offlineQueue.addToQueue({
       type: 'activity-log',
       data: activityData,
@@ -279,7 +287,7 @@ export const offlineActions = {
   apiCall: (
     endpoint: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-    data?: any
+    data?: unknown
   ) => {
     return offlineQueue.addToQueue({
       type: 'api-call',

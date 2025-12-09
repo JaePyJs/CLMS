@@ -91,6 +91,53 @@ interface RecentScan {
   timestamp: Date;
 }
 
+// API response interface for student search
+interface StudentApiResult {
+  id: string;
+  student_id: string;
+  first_name: string;
+  last_name: string;
+  grade_level: number | string;
+  section?: string;
+}
+
+// API response interface for book search
+interface BookApiResult {
+  id: string;
+  accessionNo?: string;
+  accession_no?: string;
+  title: string;
+  author: string;
+  category: string;
+  availableCopies?: number;
+  available_copies?: number;
+  totalCopies?: number;
+  total_copies?: number;
+}
+
+// Form value interfaces for type-safe access
+interface CheckoutFormValues {
+  studentBarcode: string;
+  bookBarcode: string;
+  selectedStudent: Student | null;
+  selectedBook: Book | null;
+  dueDate: string;
+  policyCategory: string;
+  checkoutStep: 'student' | 'book' | 'confirm';
+}
+
+interface ReturnFormValues {
+  returnBarcode: string;
+  activeCheckout: Checkout | null;
+}
+
+// Type-safe form value accessor
+const getCheckoutValues = (
+  values: Record<string, unknown>
+): CheckoutFormValues => values as unknown as CheckoutFormValues;
+const getReturnValues = (values: Record<string, unknown>): ReturnFormValues =>
+  values as unknown as ReturnFormValues;
+
 export default function BookCheckout() {
   // Tab management (keeping simple useState for UI state)
   const [activeTab, setActiveTab] = useState('checkout');
@@ -155,6 +202,10 @@ export default function BookCheckout() {
     },
   });
 
+  // Typed form value access
+  const checkoutValues = getCheckoutValues(checkoutForm.values);
+  const returnValues = getReturnValues(returnForm.values);
+
   // Calculate default due date (7 days from now)
   const getDefaultDueDate = (): string => {
     const date = new Date();
@@ -171,8 +222,8 @@ export default function BookCheckout() {
   useEffect(() => {
     if (
       activeStudent &&
-      checkoutForm.values.checkoutStep === 'student' &&
-      !checkoutForm.values.selectedStudent
+      checkoutValues.checkoutStep === 'student' &&
+      !checkoutValues.selectedStudent
     ) {
       // Parse name into first/last
       const nameParts = activeStudent.name.split(' ');
@@ -188,20 +239,20 @@ export default function BookCheckout() {
         section: '',
       };
 
-      checkoutFormActions.setValue('selectedStudent', student as any);
+      checkoutFormActions.setValue('selectedStudent', student as unknown);
       checkoutFormActions.setValue('checkoutStep', 'book');
       toast.success(`Active student loaded: ${activeStudent.name}`, {
         description: 'Student was scanned at Scan Station',
         icon: <UserCheck className="h-4 w-4" />,
       });
     }
-  }, [activeStudent, checkoutForm.values.checkoutStep]);
+  }, [activeStudent, checkoutValues.checkoutStep]);
 
   const computeDueDate = async () => {
     try {
       const category =
-        checkoutForm.values.policyCategory ||
-        checkoutForm.values.selectedBook?.category ||
+        checkoutValues.policyCategory ||
+        checkoutValues.selectedBook?.category ||
         'Fiction';
       const resp = await apiClient.post<{ dueDate: string }>(
         '/api/policies/compute-due-date',
@@ -210,7 +261,8 @@ export default function BookCheckout() {
           category,
         }
       );
-      const iso = (resp?.data as any)?.dueDate || (resp as any)?.data?.dueDate;
+      const iso =
+        (resp?.data as unknown)?.dueDate || (resp as unknown)?.data?.dueDate;
       if (iso && typeof iso === 'string') {
         const dateOnly = iso.split('T')[0];
         checkoutFormActions.setValue('dueDate', dateOnly);
@@ -222,12 +274,12 @@ export default function BookCheckout() {
 
   useEffect(() => {
     if (
-      checkoutForm.values.checkoutStep === 'confirm' &&
-      checkoutForm.values.policyCategory
+      checkoutValues.checkoutStep === 'confirm' &&
+      checkoutValues.policyCategory
     ) {
       void computeDueDate();
     }
-  }, [checkoutForm.values.checkoutStep, checkoutForm.values.policyCategory]);
+  }, [checkoutValues.checkoutStep, checkoutValues.policyCategory]);
 
   // Live search effect for student input - Google style instant search
   useEffect(() => {
@@ -280,7 +332,7 @@ export default function BookCheckout() {
       section: student.section,
     };
 
-    checkoutFormActions.setValue('selectedStudent', selectedStudent as any);
+    checkoutFormActions.setValue('selectedStudent', selectedStudent as unknown);
     checkoutFormActions.setValue('checkoutStep', 'book');
     setStudentSearchInput('');
     setStudentSearchResults([]);
@@ -291,18 +343,18 @@ export default function BookCheckout() {
   // Auto-focus management
   useEffect(() => {
     if (activeTab === 'checkout') {
-      if (checkoutForm.values.checkoutStep === 'student') {
+      if (checkoutValues.checkoutStep === 'student') {
         // Small timeout to ensure element is mounted and ready
         setTimeout(() => studentInputRef.current?.focus(), 50);
-      } else if (checkoutForm.values.checkoutStep === 'book') {
+      } else if (checkoutValues.checkoutStep === 'book') {
         setTimeout(() => bookInputRef.current?.focus(), 50);
       }
     }
-  }, [checkoutForm.values.checkoutStep, activeTab]);
+  }, [checkoutValues.checkoutStep, activeTab]);
 
   // Scan student
   const handleScanStudent = async () => {
-    const studentBarcode = checkoutForm.values.studentBarcode;
+    const studentBarcode = checkoutValues.studentBarcode;
     if (!studentBarcode.trim()) {
       toast.error('Please enter a student ID or barcode');
       return;
@@ -315,7 +367,7 @@ export default function BookCheckout() {
         1,
         0
       );
-      const list = (resp?.data as any[]) || [];
+      const list = (resp?.data as StudentApiResult[]) || [];
       const s = list[0] || null;
       const student: Student = s
         ? {
@@ -337,7 +389,7 @@ export default function BookCheckout() {
             gradeLevel: 'Grade 5',
             section: 'A',
           };
-      checkoutFormActions.setValue('selectedStudent', student as any);
+      checkoutFormActions.setValue('selectedStudent', student as unknown);
       checkoutFormActions.setValue('checkoutStep', 'book');
       toast.success(`Student found: ${student.firstName} ${student.lastName}`);
     } catch (error: unknown) {
@@ -351,7 +403,7 @@ export default function BookCheckout() {
 
   // Scan book
   const handleScanBook = async () => {
-    const bookBarcode = checkoutForm.values.bookBarcode;
+    const bookBarcode = checkoutValues.bookBarcode;
     if (!bookBarcode.trim()) {
       toast.error('Please enter a book accession number or barcode');
       return;
@@ -360,7 +412,9 @@ export default function BookCheckout() {
     loadingActions.scanBook.start();
     try {
       const search = await enhancedLibraryApi.searchBooks(bookBarcode.trim());
-      const arr = Array.isArray(search?.data) ? (search.data as any[]) : [];
+      const arr = Array.isArray(search?.data)
+        ? (search.data as BookApiResult[])
+        : [];
       const b = arr[0] || null;
 
       if (!b) {
@@ -393,7 +447,7 @@ export default function BookCheckout() {
         return;
       }
 
-      checkoutFormActions.setValue('selectedBook', book as any);
+      checkoutFormActions.setValue('selectedBook', book as unknown);
       checkoutFormActions.setValue(
         'policyCategory',
         book.category || 'Fiction'
@@ -411,7 +465,7 @@ export default function BookCheckout() {
   // Confirm checkout
   const handleConfirmCheckout = async () => {
     const { selectedStudent, selectedBook, dueDate, policyCategory } =
-      checkoutForm.values;
+      checkoutValues;
 
     if (!selectedStudent || !selectedBook || !dueDate) {
       toast.error('Missing required information');
@@ -482,7 +536,7 @@ export default function BookCheckout() {
 
   // Scan book for return
   const handleScanReturn = async () => {
-    const returnBarcode = returnForm.values.returnBarcode;
+    const returnBarcode = returnValues.returnBarcode;
     if (!returnBarcode.trim()) {
       toast.error('Please enter a book accession number or barcode');
       return;
@@ -495,7 +549,7 @@ export default function BookCheckout() {
         '/api/enhanced-library/borrowed/by-accession/' +
           encodeURIComponent(returnBarcode.trim())
       );
-      const match = (direct?.data as any) || null;
+      const match = (direct?.data as unknown) || null;
       if (!match) {
         toast.error('No active checkout found for this accession number');
         return;
@@ -522,7 +576,7 @@ export default function BookCheckout() {
           availableCopies: Number(match.book?.available_copies ?? 1),
           totalCopies: Number(match.book?.total_copies ?? 1),
         },
-        student: checkoutForm.values.selectedStudent || {
+        student: checkoutValues.selectedStudent || {
           id: String(match.student?.id || ''),
           studentId: String(match.student?.student_id || ''),
           firstName: String(match.student?.first_name || ''),
@@ -534,7 +588,7 @@ export default function BookCheckout() {
           section: String(match.student?.section || ''),
         },
       };
-      returnFormActions.setValue('activeCheckout', checkout as any);
+      returnFormActions.setValue('activeCheckout', checkout as unknown);
       modalActions.returnConfirm.open();
     } catch (error: unknown) {
       toast.error(getErrorMessage(error, 'Failed to find checkout'));
@@ -545,7 +599,7 @@ export default function BookCheckout() {
 
   // Confirm return
   const handleConfirmReturn = async () => {
-    const { activeCheckout } = returnForm.values;
+    const { activeCheckout } = returnValues;
     if (!activeCheckout) {
       return;
     }
@@ -554,7 +608,11 @@ export default function BookCheckout() {
     try {
       const r = await enhancedLibraryApi.returnBooks([activeCheckout.id]);
       if (r.success) {
-        const items = (r.data as any[]) || [];
+        interface ReturnedItem {
+          data?: { fineAmount?: number | string };
+          fineAmount?: number | string;
+        }
+        const items = (r.data as ReturnedItem[]) || [];
         const fine = items[0]?.data?.fineAmount ?? items[0]?.fineAmount ?? 0;
         const fineNum =
           typeof fine === 'number' ? fine : parseFloat(String(fine || 0));
@@ -615,10 +673,10 @@ export default function BookCheckout() {
               {/* Step Indicator */}
               <div className="flex items-center justify-between">
                 <div
-                  className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'student' ? 'text-primary' : 'text-muted-foreground'}`}
+                  className={`flex items-center gap-2 ${checkoutValues.checkoutStep === 'student' ? 'text-primary' : 'text-muted-foreground'}`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'student' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutValues.checkoutStep === 'student' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
                   >
                     1
                   </div>
@@ -626,10 +684,10 @@ export default function BookCheckout() {
                 </div>
                 <div className="flex-1 h-0.5 bg-border mx-4" />
                 <div
-                  className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'book' ? 'text-primary' : 'text-muted-foreground'}`}
+                  className={`flex items-center gap-2 ${checkoutValues.checkoutStep === 'book' ? 'text-primary' : 'text-muted-foreground'}`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'book' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutValues.checkoutStep === 'book' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
                   >
                     2
                   </div>
@@ -637,10 +695,10 @@ export default function BookCheckout() {
                 </div>
                 <div className="flex-1 h-0.5 bg-border mx-4" />
                 <div
-                  className={`flex items-center gap-2 ${checkoutForm.values.checkoutStep === 'confirm' ? 'text-primary' : 'text-muted-foreground'}`}
+                  className={`flex items-center gap-2 ${checkoutValues.checkoutStep === 'confirm' ? 'text-primary' : 'text-muted-foreground'}`}
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutForm.values.checkoutStep === 'confirm' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutValues.checkoutStep === 'confirm' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
                   >
                     3
                   </div>
@@ -649,7 +707,7 @@ export default function BookCheckout() {
               </div>
 
               {/* Step 1: Scan Student */}
-              {checkoutForm.values.checkoutStep === 'student' && (
+              {checkoutValues.checkoutStep === 'student' && (
                 <div className="space-y-4">
                   <Alert>
                     <User className="h-4 w-4" />
@@ -671,8 +729,7 @@ export default function BookCheckout() {
                           ref={studentInputRef}
                           placeholder="Type name or scan barcode..."
                           value={
-                            studentSearchInput ||
-                            checkoutForm.values.studentBarcode
+                            studentSearchInput || checkoutValues.studentBarcode
                           }
                           onChange={(e) => {
                             setStudentSearchInput(e.target.value);
@@ -701,10 +758,8 @@ export default function BookCheckout() {
 
                       {/* Dropdown results */}
                       {showStudentDropdown &&
-                        (
-                          studentSearchInput ||
-                          checkoutForm.values.studentBarcode
-                        ).length >= 2 && (
+                        (studentSearchInput || checkoutValues.studentBarcode)
+                          .length >= 2 && (
                           <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
                             {isSearchingStudent ? (
                               <div className="p-3 text-center text-sm text-muted-foreground">
@@ -763,17 +818,17 @@ export default function BookCheckout() {
               )}
 
               {/* Step 2: Scan Book */}
-              {checkoutForm.values.checkoutStep === 'book' &&
-                checkoutForm.values.selectedStudent && (
+              {checkoutValues.checkoutStep === 'book' &&
+                checkoutValues.selectedStudent && (
                   <div className="space-y-4">
                     <Alert>
                       <CheckCircle className="h-4 w-4" />
                       <AlertTitle>Student Selected</AlertTitle>
                       <AlertDescription>
-                        {checkoutForm.values.selectedStudent.firstName}{' '}
-                        {checkoutForm.values.selectedStudent.lastName} -{' '}
-                        {checkoutForm.values.selectedStudent.gradeLevel}{' '}
-                        {checkoutForm.values.selectedStudent.section}
+                        {checkoutValues.selectedStudent.firstName}{' '}
+                        {checkoutValues.selectedStudent.lastName} -{' '}
+                        {checkoutValues.selectedStudent.gradeLevel}{' '}
+                        {checkoutValues.selectedStudent.section}
                       </AlertDescription>
                     </Alert>
 
@@ -792,7 +847,7 @@ export default function BookCheckout() {
                           id="bookBarcode"
                           ref={bookInputRef}
                           placeholder="Enter accession number or scan barcode..."
-                          value={checkoutForm.values.bookBarcode}
+                          value={checkoutValues.bookBarcode}
                           onChange={(e) =>
                             checkoutFormActions.setValue(
                               'bookBarcode',
@@ -832,9 +887,9 @@ export default function BookCheckout() {
                 )}
 
               {/* Step 3: Confirm */}
-              {checkoutForm.values.checkoutStep === 'confirm' &&
-                checkoutForm.values.selectedStudent &&
-                checkoutForm.values.selectedBook && (
+              {checkoutValues.checkoutStep === 'confirm' &&
+                checkoutValues.selectedStudent &&
+                checkoutValues.selectedBook && (
                   <div className="space-y-4">
                     <Alert>
                       <CheckCircle className="h-4 w-4" />
@@ -855,17 +910,17 @@ export default function BookCheckout() {
                         <CardContent className="text-sm space-y-1">
                           <div>
                             <strong>Name:</strong>{' '}
-                            {checkoutForm.values.selectedStudent.firstName}{' '}
-                            {checkoutForm.values.selectedStudent.lastName}
+                            {checkoutValues.selectedStudent.firstName}{' '}
+                            {checkoutValues.selectedStudent.lastName}
                           </div>
                           <div>
                             <strong>ID:</strong>{' '}
-                            {checkoutForm.values.selectedStudent.studentId}
+                            {checkoutValues.selectedStudent.studentId}
                           </div>
                           <div>
                             <strong>Grade:</strong>{' '}
-                            {checkoutForm.values.selectedStudent.gradeLevel}{' '}
-                            {checkoutForm.values.selectedStudent.section}
+                            {checkoutValues.selectedStudent.gradeLevel}{' '}
+                            {checkoutValues.selectedStudent.section}
                           </div>
                         </CardContent>
                       </Card>
@@ -880,27 +935,26 @@ export default function BookCheckout() {
                         <CardContent className="text-sm space-y-1">
                           <div>
                             <strong>Title:</strong>{' '}
-                            {checkoutForm.values.selectedBook.title}
+                            {checkoutValues.selectedBook.title}
                           </div>
                           <div>
                             <strong>Author:</strong>{' '}
-                            {checkoutForm.values.selectedBook.author}
+                            {checkoutValues.selectedBook.author}
                           </div>
                           <div>
                             <strong>Accession No:</strong>{' '}
-                            {checkoutForm.values.selectedBook.accessionNo}
+                            {checkoutValues.selectedBook.accessionNo}
                           </div>
                           <div>
                             <Badge
                               variant={
-                                checkoutForm.values.selectedBook
-                                  .availableCopies > 0
+                                checkoutValues.selectedBook.availableCopies > 0
                                   ? 'default'
                                   : 'destructive'
                               }
                             >
-                              {checkoutForm.values.selectedBook.availableCopies}{' '}
-                              / {checkoutForm.values.selectedBook.totalCopies}{' '}
+                              {checkoutValues.selectedBook.availableCopies} /{' '}
+                              {checkoutValues.selectedBook.totalCopies}{' '}
                               Available
                             </Badge>
                           </div>
@@ -912,7 +966,7 @@ export default function BookCheckout() {
                         <Input
                           id="dueDate"
                           type="date"
-                          value={checkoutForm.values.dueDate}
+                          value={checkoutValues.dueDate}
                           onChange={(e) =>
                             checkoutFormActions.setValue(
                               'dueDate',
@@ -936,7 +990,7 @@ export default function BookCheckout() {
                         <select
                           id="policyCategory"
                           className="border rounded h-9 px-2 text-sm"
-                          value={checkoutForm.values.policyCategory}
+                          value={checkoutValues.policyCategory}
                           onChange={(e) =>
                             checkoutFormActions.setValue(
                               'policyCategory',
@@ -1044,7 +1098,7 @@ export default function BookCheckout() {
                   <Input
                     id="returnBarcode"
                     placeholder="Enter accession number or scan barcode..."
-                    value={returnForm.values.returnBarcode}
+                    value={returnValues.returnBarcode}
                     onChange={(e) =>
                       returnFormActions.setValue(
                         'returnBarcode',
@@ -1088,7 +1142,7 @@ export default function BookCheckout() {
       </Tabs>
 
       {/* Return Confirmation Dialog */}
-      {modalStates.returnConfirm && returnForm.values.activeCheckout && (
+      {modalStates.returnConfirm && returnValues.activeCheckout && (
         <Dialog
           open
           onOpenChange={(open) => {
@@ -1105,44 +1159,44 @@ export default function BookCheckout() {
               </DialogDescription>
             </DialogHeader>
 
-            {returnForm.values.activeCheckout && (
+            {returnValues.activeCheckout && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <div>
                     <strong>Book:</strong>{' '}
-                    {returnForm.values.activeCheckout.book.title}
+                    {returnValues.activeCheckout.book.title}
                   </div>
                   <div>
                     <strong>Student:</strong>{' '}
-                    {returnForm.values.activeCheckout.student.firstName}{' '}
-                    {returnForm.values.activeCheckout.student.lastName}
+                    {returnValues.activeCheckout.student.firstName}{' '}
+                    {returnValues.activeCheckout.student.lastName}
                   </div>
                   <div>
                     <strong>Checkout Date:</strong>{' '}
                     {new Date(
-                      returnForm.values.activeCheckout.checkoutDate
+                      returnValues.activeCheckout.checkoutDate
                     ).toLocaleDateString()}
                   </div>
                   <div>
                     <strong>Due Date:</strong>{' '}
                     {new Date(
-                      returnForm.values.activeCheckout.dueDate
+                      returnValues.activeCheckout.dueDate
                     ).toLocaleDateString()}
                   </div>
 
-                  {returnForm.values.activeCheckout.overdueDays > 0 && (
+                  {returnValues.activeCheckout.overdueDays > 0 && (
                     <Alert variant="destructive">
                       <AlertCircle className="h-4 w-4" />
                       <AlertTitle>Overdue</AlertTitle>
                       <AlertDescription>
                         <div>
-                          {returnForm.values.activeCheckout.overdueDays} day(s)
+                          {returnValues.activeCheckout.overdueDays} day(s)
                           overdue
                         </div>
                         <div className="font-bold">
                           Fine: ₱
                           {parseFloat(
-                            returnForm.values.activeCheckout.fineAmount
+                            returnValues.activeCheckout.fineAmount
                           ).toFixed(2)}
                         </div>
                       </AlertDescription>

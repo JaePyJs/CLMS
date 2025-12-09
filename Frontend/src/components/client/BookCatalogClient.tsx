@@ -231,7 +231,7 @@ export function BookCatalogClient({
   const handleViewDetails = useCallback((book: Book) => {
     // This would typically open a dialog or navigate to a detail page
     toast.info(`Viewing details for "${book.title}"`);
-    console.debug('Book details:', book);
+    console.info('Book details:', book);
   }, []);
 
   // Reset filters

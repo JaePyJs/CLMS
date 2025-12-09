@@ -133,7 +133,7 @@ export function EquipmentUtilizationAnalytics({
         { type: 'Computers', total: 10, inUse: 6, utilizationRate: 60 },
         { type: 'AVR', total: 4, inUse: 2, utilizationRate: 50 },
         { type: 'VR', total: 2, inUse: 1, utilizationRate: 50 },
-      ] as any);
+      ] as UtilizationData[]);
       setPeakUsageTimes([
         { hour: 9, sessions: 12, timeRange: '9:00–10:00', utilizationRate: 70 },
         { hour: 13, sessions: 9, timeRange: '1:00–2:00', utilizationRate: 55 },

@@ -383,26 +383,26 @@ const AuditLogViewer: React.FC = () => {
       case 'EXPORT':
         return <Download className="h-4 w-4 text-purple-500" />;
       case '_SEARCH':
-        return <Search className="h-4 w-4 text-gray-500" />;
+        return <Search className="h-4 w-4 text-muted-foreground" />;
       default:
-        return <Activity className="h-4 w-4 text-gray-500" />;
+        return <Activity className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getAccessLevelColor = (level: string) => {
     switch (level) {
       case 'PUBLIC':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-500/20 text-green-400';
       case 'LIMITED':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-500/20 text-blue-400';
       case 'SENSITIVE':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-500/20 text-yellow-400';
       case 'RESTRICTED':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-500/20 text-orange-400';
       case 'CONFIDENTIAL':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-500/20 text-red-400';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -1066,7 +1066,7 @@ const AuditLogViewer: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="flex items-center gap-2">
                       <AlertTriangle
-                        className={`h-4 w-4 ${selectedLog.securityFlags.suspiciousActivity ? 'text-red-500' : 'text-gray-400'}`}
+                        className={`h-4 w-4 ${selectedLog.securityFlags.suspiciousActivity ? 'text-red-400' : 'text-muted-foreground/50'}`}
                       />
                       <Label>Suspicious Activity</Label>
                       <span>
@@ -1077,7 +1077,7 @@ const AuditLogViewer: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <AlertTriangle
-                        className={`h-4 w-4 ${selectedLog.securityFlags.unusualAccessPattern ? 'text-orange-500' : 'text-gray-400'}`}
+                        className={`h-4 w-4 ${selectedLog.securityFlags.unusualAccessPattern ? 'text-orange-400' : 'text-muted-foreground/50'}`}
                       />
                       <Label>Unusual Access Pattern</Label>
                       <span>
@@ -1088,7 +1088,7 @@ const AuditLogViewer: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <AlertTriangle
-                        className={`h-4 w-4 ${selectedLog.securityFlags.dataExfiltrationRisk ? 'text-red-500' : 'text-gray-400'}`}
+                        className={`h-4 w-4 ${selectedLog.securityFlags.dataExfiltrationRisk ? 'text-red-400' : 'text-muted-foreground/50'}`}
                       />
                       <Label>Data Exfiltration Risk</Label>
                       <span>
@@ -1099,7 +1099,7 @@ const AuditLogViewer: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <AlertTriangle
-                        className={`h-4 w-4 ${selectedLog.securityFlags.privilegeEscalationAttempt ? 'text-red-500' : 'text-gray-400'}`}
+                        className={`h-4 w-4 ${selectedLog.securityFlags.privilegeEscalationAttempt ? 'text-red-400' : 'text-muted-foreground/50'}`}
                       />
                       <Label>Privilege Escalation Attempt</Label>
                       <span>

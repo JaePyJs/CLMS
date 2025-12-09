@@ -28,11 +28,11 @@ import {
 
 interface CSVImportDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (_open: boolean) => void;
   title?: string;
   description?: string;
   templateColumns: string[];
-  onImport: (data: Record<string, unknown>[]) => Promise<void>;
+  onImport: (_data: Record<string, unknown>[]) => Promise<void>;
   entityName?: string;
 }
 

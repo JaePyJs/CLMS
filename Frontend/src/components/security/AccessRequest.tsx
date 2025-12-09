@@ -353,28 +353,28 @@ const AccessRequestManager: React.FC = () => {
       case 'pending':
         return <Clock className="h-4 w-4 text-yellow-500" />;
       case 'expired':
-        return <AlertTriangle className="h-4 w-4 text-gray-500" />;
+        return <AlertTriangle className="h-4 w-4 text-muted-foreground" />;
       case 'revoked':
         return <XCircle className="h-4 w-4 text-orange-500" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-500/20 text-green-400';
       case 'denied':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-500/20 text-red-400';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-500/20 text-yellow-400';
       case 'expired':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground';
       case 'revoked':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-500/20 text-orange-400';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-muted text-muted-foreground';
     }
   };
 

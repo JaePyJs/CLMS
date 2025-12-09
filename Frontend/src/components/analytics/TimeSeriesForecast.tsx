@@ -53,9 +53,9 @@ interface TimeSeriesForecastProps {
   metric?: 'student_visits' | 'equipment_usage' | 'book_circulation';
   timeframe?: 'day' | 'week' | 'month';
   onMetricChange?: (
-    metric: 'student_visits' | 'equipment_usage' | 'book_circulation'
+    _metric: 'student_visits' | 'equipment_usage' | 'book_circulation'
   ) => void;
-  onTimeframeChange?: (timeframe: 'day' | 'week' | 'month') => void;
+  onTimeframeChange?: (_timeframe: 'day' | 'week' | 'month') => void;
   showConfidence?: boolean;
   showPredictions?: boolean;
 }

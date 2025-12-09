@@ -3,7 +3,7 @@ import axios from 'axios';
 import { setupInterceptors } from './api/interceptors';
 
 // API response interface
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -26,6 +26,38 @@ export interface LoginResponse {
     username: string;
     role: string;
   };
+}
+
+// Export data interface for analytics
+export interface ExportData {
+  content: string;
+  mimeType: string;
+  filename: string;
+}
+
+// Analytics user/book data interfaces
+export interface AnalyticsUserData {
+  id?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
+export interface AnalyticsBookData {
+  id?: string;
+  title?: string;
+  totalBorrowings?: number;
+  [key: string]: unknown;
+}
+
+export interface LibraryAnalytics {
+  topUsers: AnalyticsUserData[];
+  popularBooks: AnalyticsBookData[];
+  totalPatrons: number;
+  totalBooksBorrowed: number;
+  averageBooksPerPatron: number;
+  mostPopularPurpose: string;
+  busiestDay: string;
+  averageLibraryTime: string;
 }
 
 // API client class
@@ -58,7 +90,10 @@ class ApiClient {
   }
 
   // Generic GET request
-  async get<T>(url: string, config?: any): Promise<ApiResponse<T>> {
+  async get<T>(
+    url: string,
+    config?: Record<string, unknown>
+  ): Promise<ApiResponse<T>> {
     const finalConfig = (() => {
       if (!config) return {};
       if (typeof config === 'object') {
@@ -74,21 +109,21 @@ class ApiClient {
   // Generic POST request
   async post<T>(
     url: string,
-    data?: any,
-    config?: any
+    data?: unknown,
+    config?: Record<string, unknown>
   ): Promise<ApiResponse<T>> {
     const response = await this.client.post<ApiResponse<T>>(url, data, config);
     return response.data;
   }
 
   // Generic PUT request
-  async put<T>(url: string, data?: any): Promise<ApiResponse<T>> {
+  async put<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
     const response = await this.client.put<ApiResponse<T>>(url, data);
     return response.data;
   }
 
   // Generic PATCH request
-  async patch<T>(url: string, data?: any): Promise<ApiResponse<T>> {
+  async patch<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
     const response = await this.client.patch<ApiResponse<T>>(url, data);
     return response.data;
   }
@@ -114,10 +149,10 @@ class ApiClient {
     }
   }
 
-  private static normalizeResponse(input: any, keyHint?: string): any {
-    const isPlainObject = (val: any) =>
+  private static normalizeResponse(input: unknown, keyHint?: string): unknown {
+    const isPlainObject = (val: unknown): val is Record<string, unknown> =>
       Object.prototype.toString.call(val) === '[object Object]';
-    const isNumericString = (val: any) =>
+    const isNumericString = (val: unknown): val is string =>
       typeof val === 'string' && /^-?\d+(?:\.\d+)?$/.test(val);
     const isExcludedKey = (key?: string) =>
       !!key && /(id|code|barcode|isbn|accession)/i.test(key);
@@ -126,15 +161,15 @@ class ApiClient {
       return input.map((v) => ApiClient.normalizeResponse(v));
     }
     if (isPlainObject(input)) {
-      const out: Record<string, any> = {};
+      const out: Record<string, unknown> = {};
       for (const k of Object.keys(input)) {
-        const v = (input as any)[k];
+        const v = input[k];
         if (!isExcludedKey(k) && isNumericString(v)) {
           out[k] = Number(v);
         } else if (
           v &&
           typeof v === 'object' &&
-          typeof (v as any).toString === 'function'
+          typeof (v as { toString?: unknown }).toString === 'function'
         ) {
           const s = String(v);
           out[k] = isNumericString(s)
@@ -265,7 +300,7 @@ export const studentsApi = {
   createStudent: (data: unknown) => apiClient.post('/api/students', data),
 
   // Update student
-  updateStudent: (id: string, data: any) =>
+  updateStudent: (id: string, data: unknown) =>
     apiClient.put(`/api/students/${id}`, data),
 
   // Delete student
@@ -278,7 +313,7 @@ export const studentsApi = {
   // Import students (enhanced with field mapping)
   importStudents: (
     file: File,
-    fieldMappings?: any[],
+    fieldMappings?: Array<{ source: string; target: string }>,
     dryRun: boolean = false
   ) => {
     const formData = new FormData();
@@ -301,7 +336,7 @@ export const studentsApi = {
     file: File,
     importType: string = 'students',
     maxPreviewRows: number = 10,
-    fieldMappings?: any[],
+    fieldMappings?: Array<{ source: string; target: string }>,
     skipHeaderRow: boolean = true
   ) => {
     const formData = new FormData();
@@ -650,11 +685,11 @@ export const utilitiesApi = {
 
   // Quick Actions Methods
   // Quick add student
-  quickAddStudent: (studentData: any) =>
+  quickAddStudent: (studentData: Record<string, unknown>) =>
     apiClient.post('/api/utilities/quick-add-student', studentData),
 
   // Quick start session
-  quickStartSession: (sessionData: any) =>
+  quickStartSession: (sessionData: Record<string, unknown>) =>
     apiClient.post('/api/utilities/quick-start-session', sessionData),
 
   // Get quick report
@@ -680,7 +715,7 @@ export const booksApi = {
   getBook: (id: string) => apiClient.get(`/api/books/${id}`),
 
   // Search books
-  searchBooks: (query: string, filters?: any) =>
+  searchBooks: (query: string, filters?: Record<string, unknown>) =>
     apiClient.get('/api/books/search', { q: query, ...filters }),
 
   // Get book stats
@@ -697,10 +732,11 @@ export const booksApi = {
   getDuplicateTitles: () => apiClient.get('/api/books/titles/duplicates'),
 
   // Create book
-  createBook: (data: any) => apiClient.post('/api/books', data),
+  createBook: (data: Record<string, unknown>) =>
+    apiClient.post('/api/books', data),
 
   // Update book
-  updateBook: (id: string, data: any) =>
+  updateBook: (id: string, data: Record<string, unknown>) =>
     apiClient.put(`/api/books/${id}`, data),
 
   // Delete book
@@ -708,9 +744,9 @@ export const booksApi = {
 
   // Preview import (dry run) - accepts File or parsed data array
   previewImport: (
-    fileOrData: File | any[],
+    fileOrData: File | Record<string, unknown>[],
     maxRows?: number,
-    fieldMapping?: any[],
+    fieldMapping?: Array<{ source: string; target: string }>,
     skipHeaderRow: boolean = true
   ) => {
     if (fileOrData instanceof File) {
@@ -740,9 +776,9 @@ export const booksApi = {
 
   // Import books - accepts File or parsed data array
   importBooks: (
-    fileOrData: File | any[],
-    fieldMapping?: any[],
-    options?: any
+    fileOrData: File | Record<string, unknown>[],
+    fieldMapping?: Array<{ source: string; target: string }>,
+    options?: Record<string, unknown>
   ) => {
     if (fileOrData instanceof File) {
       const formData = new FormData();
@@ -849,7 +885,7 @@ export const finesApi = {
 export const settingsApi = {
   // System settings
   getSystemSettings: () => apiClient.get('/api/settings/system'),
-  updateSystemSettings: (settings: any) =>
+  updateSystemSettings: (settings: Record<string, unknown>) =>
     apiClient.put('/api/settings/system', settings),
   resetSystemSettings: () => apiClient.post('/api/settings/system/reset'),
 
@@ -867,7 +903,7 @@ export const settingsApi = {
 
   // Google Sheets configuration
   getGoogleSheetsConfig: () => apiClient.get('/api/settings/google-sheets'),
-  updateGoogleSheetsSchedule: (config: any) =>
+  updateGoogleSheetsSchedule: (config: Record<string, unknown>) =>
     apiClient.put('/api/settings/google-sheets/schedule', config),
   testGoogleSheetsConnection: (spreadsheetId: string) =>
     apiClient.post('/api/settings/google-sheets/test', { spreadsheetId }),
@@ -888,8 +924,9 @@ export const settingsApi = {
 
   // User management
   getUsers: () => apiClient.get('/api/users'),
-  createUser: (userData: any) => apiClient.post('/api/users', userData),
-  updateUser: (id: string, userData: any) =>
+  createUser: (userData: Record<string, unknown>) =>
+    apiClient.post('/api/users', userData),
+  updateUser: (id: string, userData: Record<string, unknown>) =>
     apiClient.put(`/api/users/${id}`, userData),
   deleteUser: (id: string) => apiClient.delete(`/api/users/${id}`),
   changePassword: (id: string, password: string) =>
@@ -932,12 +969,6 @@ export const enhancedLibraryApi = {
     bookIds: string[],
     materialType: string
   ) => {
-    console.log('[enhancedLibraryApi.borrowBooks] Called with:', {
-      studentId,
-      bookIds,
-      materialType,
-    });
-
     if (!studentId || !bookIds.length || !materialType) {
       console.error(
         '[enhancedLibraryApi.borrowBooks] Missing required params:',
@@ -950,22 +981,22 @@ export const enhancedLibraryApi = {
       return {
         success: false,
         error: 'Missing required parameters',
-      } as ApiResponse<any>;
+      } as ApiResponse<unknown>;
     }
 
-    const results = [] as any[];
+    const results: ApiResponse<unknown>[] = [];
     for (const bookId of bookIds) {
       const payload = {
         studentId,
         bookId,
         materialType,
       };
-      console.log('[enhancedLibraryApi.borrowBooks] Sending request:', payload);
       const r = await apiClient.post('/api/enhanced-library/borrow', payload);
-      console.log('[enhancedLibraryApi.borrowBooks] Response:', r);
       results.push(r);
     }
-    return { success: true, data: results } as ApiResponse<any>;
+    return { success: true, data: results } as ApiResponse<
+      ApiResponse<unknown>[]
+    >;
   },
 
   // Returning Flow
@@ -973,18 +1004,20 @@ export const enhancedLibraryApi = {
     apiClient.get(`/api/enhanced-library/borrowed/${studentId}`),
 
   returnBooks: async (checkoutIds: string[]) => {
-    const results = [] as any[];
+    const results: ApiResponse<unknown>[] = [];
     for (const checkoutId of checkoutIds) {
       const r = await apiClient.post('/api/enhanced-library/return', {
         checkoutId,
       });
       results.push(r);
     }
-    return { success: true, data: results } as ApiResponse<any>;
+    return { success: true, data: results } as ApiResponse<
+      ApiResponse<unknown>[]
+    >;
   },
 
   // Overdue Management
-  getOverdueLoans: (config?: any) =>
+  getOverdueLoans: (config?: Record<string, unknown>) =>
     apiClient.get('/api/enhanced-library/overdue', config),
 
   getStudentOverdue: (studentId: string) =>
@@ -1015,8 +1048,10 @@ export const enhancedLibraryApi = {
   // Material Policies
   getMaterialPolicies: () => apiClient.get('/api/enhanced-library/policies'),
 
-  updateMaterialPolicy: (materialType: string, policy: any) =>
-    apiClient.put(`/api/enhanced-library/policies/${materialType}`, policy),
+  updateMaterialPolicy: (
+    materialType: string,
+    policy: Record<string, unknown>
+  ) => apiClient.put(`/api/enhanced-library/policies/${materialType}`, policy),
 
   // Grade-based Fine Management
   getGradeFines: () => apiClient.get('/api/enhanced-library/grade-fines'),
@@ -1039,10 +1074,10 @@ export const enhancedLibraryApi = {
   // Inventory Management
   getInventory: () => apiClient.get('/api/enhanced-library/inventory'),
 
-  addInventoryItem: (item: any) =>
+  addInventoryItem: (item: Record<string, unknown>) =>
     apiClient.post('/api/enhanced-library/inventory', item),
 
-  updateInventoryItem: (itemId: string, updates: any) =>
+  updateInventoryItem: (itemId: string, updates: Record<string, unknown>) =>
     apiClient.put(`/api/enhanced-library/inventory/${itemId}`, updates),
 
   scanBarcode: (barcode: string) =>
@@ -1068,7 +1103,7 @@ export const enhancedLibraryApi = {
   getPrintPricing: () =>
     apiClient.get('/api/enhanced-library/printing/pricing'),
 
-  updatePrintPricing: (pricing: any) =>
+  updatePrintPricing: (pricing: Record<string, unknown>) =>
     apiClient.put('/api/enhanced-library/printing/pricing', pricing),
 
   // Aggregated Library Analytics for UI
@@ -1079,16 +1114,16 @@ export const enhancedLibraryApi = {
         enhancedLibraryApi.getPopularBooks(10),
       ]);
 
-      const topUsers = Array.isArray(usersRes.data)
-        ? (usersRes.data as any[])
+      const topUsers: AnalyticsUserData[] = Array.isArray(usersRes.data)
+        ? (usersRes.data as AnalyticsUserData[])
         : [];
-      const popularBooks = Array.isArray(booksRes.data)
-        ? (booksRes.data as any[])
+      const popularBooks: AnalyticsBookData[] = Array.isArray(booksRes.data)
+        ? (booksRes.data as AnalyticsBookData[])
         : [];
 
       const totalPatrons = topUsers.length;
       const totalBooksBorrowed = popularBooks.reduce(
-        (sum, b: any) => sum + Number(b?.totalBorrowings || 0),
+        (sum, b) => sum + Number(b?.totalBorrowings || 0),
         0
       );
       const averageBooksPerPatron =
@@ -1109,12 +1144,12 @@ export const enhancedLibraryApi = {
           busiestDay,
           averageLibraryTime,
         },
-      } as ApiResponse<any>;
-    } catch (e) {
+      } as ApiResponse<LibraryAnalytics>;
+    } catch {
       return {
         success: false,
         error: 'Failed to aggregate analytics',
-      } as ApiResponse<any>;
+      } as ApiResponse<unknown>;
     }
   },
 
@@ -1131,7 +1166,7 @@ export const enhancedLibraryApi = {
         mimeType: 'application/json',
         filename: `library-analytics-${period}.json`,
       },
-    } as ApiResponse<any>;
+    } as ApiResponse<ExportData>;
   },
 };
 

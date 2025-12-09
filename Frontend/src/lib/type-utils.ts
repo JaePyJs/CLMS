@@ -60,7 +60,7 @@ export type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
  */
 export type DeepUnwrapPromise<T> =
   T extends Promise<infer U>
-    ? U extends Promise<any>
+    ? U extends Promise<unknown>
       ? DeepUnwrapPromise<U>
       : U
     : T;
@@ -568,8 +568,8 @@ export const Validators = {
         if (result.success) {
           validItems.push(result.data);
         } else {
-          const resultAny = result as any;
-          errors.push(`Item at index ${i}: ${resultAny.errors.join(', ')}`);
+          const failedResult = result as { success: false; errors: string[] };
+          errors.push(`Item at index ${i}: ${failedResult.errors.join(', ')}`);
         }
       }
 

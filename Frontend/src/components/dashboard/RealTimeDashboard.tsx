@@ -30,6 +30,47 @@ import {
 } from 'lucide-react';
 import { ActiveStudentsManager } from './ActiveStudentsManager';
 
+// Local interfaces for dashboard data
+interface LocalActivity {
+  id?: string;
+  studentName?: string;
+  activityType?: string;
+  timestamp?: string | number;
+  studentId?: string;
+  gradeLevel?: string;
+  equipmentName?: string;
+  student?: {
+    first_name?: string;
+    last_name?: string;
+    grade_level?: number;
+  };
+  [key: string]: unknown;
+}
+
+interface LocalEquipmentStatus {
+  equipmentName?: string;
+  equipmentType?: string;
+  status: string;
+  userId?: string;
+  [key: string]: unknown;
+}
+
+interface DashboardApiData {
+  overview?: Record<string, unknown>;
+  stats?: Record<string, unknown>;
+  recentActivities?: LocalActivity[];
+  [key: string]: unknown;
+}
+
+interface EquipmentApiItem {
+  id: string;
+  name?: string;
+  type?: string;
+  status?: string;
+  current_user_id?: string;
+  [key: string]: unknown;
+}
+
 interface RealTimeDashboardProps {
   className?: string;
 }
@@ -50,11 +91,13 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
   } = useWebSocketContext();
 
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [localActivities, setLocalActivities] = useState<any[]>([]);
-  const [localEquipment, setLocalEquipment] = useState<Record<string, any>>({});
+  const [localActivities, setLocalActivities] = useState<LocalActivity[]>([]);
+  const [localEquipment, setLocalEquipment] = useState<
+    Record<string, LocalEquipmentStatus>
+  >({});
   const [localOverview, setLocalOverview] = useState<Record<
     string,
-    any
+    unknown
   > | null>(null);
 
   // Fetch data via HTTP API as fallback
@@ -63,7 +106,7 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
       // Fetch dashboard data including recent activities
       const dashboardResp = await apiClient.get('/api/analytics/dashboard');
       if (dashboardResp.success && dashboardResp.data) {
-        const data = dashboardResp.data as any;
+        const data = dashboardResp.data as DashboardApiData;
 
         // Store overview stats from API
         if (data.overview || data.stats) {
@@ -81,7 +124,7 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
 
         if (Array.isArray(data.recentActivities)) {
           setLocalActivities(
-            data.recentActivities.map((a: any) => {
+            data.recentActivities.map((a: LocalActivity) => {
               let gradeDisplay = '';
               if (
                 a.student?.grade_level !== undefined &&
@@ -98,11 +141,11 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                 studentName: a.student
                   ? `${a.student.first_name} ${a.student.last_name}`
                   : 'Unknown',
-                activityType: a.activity_type,
-                timestamp: a.start_time,
-                studentId: a.student_id,
+                activityType: String(a.activityType || a.activity_type || ''),
+                timestamp: a.timestamp || a.start_time,
+                studentId: a.studentId || a.student_id,
                 gradeLevel: gradeDisplay,
-              };
+              } as LocalActivity;
             })
           );
         }
@@ -111,18 +154,17 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
       // Fetch equipment status
       const equipmentResp = await apiClient.get('/api/equipment');
       if (equipmentResp.success && Array.isArray(equipmentResp.data)) {
-        const equipmentMap = (equipmentResp.data as any[]).reduce(
-          (acc: any, eq: any) => {
-            acc[eq.id] = {
-              equipmentName: eq.name,
-              equipmentType: eq.type,
-              status: eq.status,
-              userId: eq.current_user_id,
-            };
-            return acc;
-          },
-          {}
-        );
+        const equipmentMap = (equipmentResp.data as EquipmentApiItem[]).reduce<
+          Record<string, LocalEquipmentStatus>
+        >((acc, eq) => {
+          acc[eq.id] = {
+            equipmentName: eq.name,
+            equipmentType: eq.type,
+            status: eq.status || 'UNKNOWN',
+            userId: eq.current_user_id,
+          };
+          return acc;
+        }, {});
         setLocalEquipment(equipmentMap);
       }
     } catch (error) {
@@ -185,9 +227,29 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
   }, [isConnected, autoRefresh, refreshDashboard]);
 
   // Calculate statistics from real-time data (prefer WebSocket, fallback to API)
-  const overview =
-    (dashboardData?.overview as Record<string, unknown> | undefined) ||
-    localOverview;
+  // Type for overview with all possible property patterns from different API responses
+  type OverviewData = {
+    totalStudents?: number;
+    activeStudents?: number;
+    totalBooks?: number;
+    todayActivities?: number;
+    activeEquipment?: number;
+    activeConnections?: number;
+    systemLoad?: number;
+    total_students?: number;
+    active_students?: number;
+    total_books?: number;
+    today_activities?: number;
+    total_equipment?: number;
+    active_connections?: number;
+    system_load?: number;
+    students?: { total?: number; active?: number };
+    books?: { total?: number };
+    equipment?: { total?: number };
+  } | null;
+
+  const overview: OverviewData =
+    (dashboardData?.overview as OverviewData) || localOverview;
 
   const stats = {
     totalStudents:
@@ -497,9 +559,10 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                 ? recentActivities
                 : localActivities
               ).length > 0 ? (
-                (recentActivities.length > 0
-                  ? recentActivities
-                  : localActivities
+                (
+                  (recentActivities.length > 0
+                    ? recentActivities
+                    : localActivities) as LocalActivity[]
                 )
                   .slice(0, 10)
                   .map((activity, index) => (
@@ -513,20 +576,23 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                       {getActivityIcon(activity)}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm">
-                          {String(activity.studentName)}
-                          {activity.gradeLevel && (
+                          {String(activity.studentName ?? '')}
+                          {activity.gradeLevel ? (
                             <span className="ml-2 text-xs text-muted-foreground font-normal">
                               ({String(activity.gradeLevel)})
                             </span>
-                          )}
+                          ) : null}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {String(activity.activityType)}
-                          {activity.equipmentName &&
-                            ` • ${String(activity.equipmentName)}`}
+                          {String(activity.activityType ?? '')}
+                          {activity.equipmentName
+                            ? ` • ${String(activity.equipmentName)}`
+                            : null}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(activity.timestamp).toLocaleTimeString()}
+                          {activity.timestamp
+                            ? new Date(activity.timestamp).toLocaleTimeString()
+                            : 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -562,45 +628,45 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                     ? equipmentStatus
                     : localEquipment;
                 return Object.keys(combinedEquipment).length > 0 ? (
-                  Object.entries(combinedEquipment).map(
-                    ([equipmentId, status]: [string, any]) => (
-                      <div
-                        key={equipmentId}
-                        className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Monitor
-                            className={`h-4 w-4 ${getEquipmentStatusColor(status.status)}`}
-                          />
-                          <div>
-                            <p className="font-medium text-sm">
-                              {status.equipmentName || equipmentId}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {status.equipmentType}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <Badge
-                            variant={
-                              status.status === 'AVAILABLE'
-                                ? 'default'
-                                : 'secondary'
-                            }
-                            className="text-xs"
-                          >
-                            {status.status?.replace('_', ' ') || 'Unknown'}
-                          </Badge>
-                          {status.userId && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              In use
-                            </p>
-                          )}
+                  Object.entries(
+                    combinedEquipment as Record<string, LocalEquipmentStatus>
+                  ).map(([equipmentId, status]) => (
+                    <div
+                      key={equipmentId}
+                      className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Monitor
+                          className={`h-4 w-4 ${getEquipmentStatusColor(status.status)}`}
+                        />
+                        <div>
+                          <p className="font-medium text-sm">
+                            {status.equipmentName || equipmentId}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {status.equipmentType}
+                          </p>
                         </div>
                       </div>
-                    )
-                  )
+                      <div className="text-right">
+                        <Badge
+                          variant={
+                            status.status === 'AVAILABLE'
+                              ? 'default'
+                              : 'secondary'
+                          }
+                          className="text-xs"
+                        >
+                          {status.status?.replace('_', ' ') || 'Unknown'}
+                        </Badge>
+                        {status.userId && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            In use
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))
                 ) : (
                   <div className="text-center py-8">
                     <Monitor className="h-12 w-12 mx-auto text-muted-foreground mb-3" />

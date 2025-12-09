@@ -34,18 +34,18 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import api from '@/services/api';
 
-// Add ErrorCategory enum definition
-enum ErrorCategory {
-  AUTHENTICATION = 'AUTHENTICATION',
-  AUTHORIZATION = 'AUTHORIZATION',
-  VALIDATION = 'VALIDATION',
-  DATABASE = 'DATABASE',
-  NETWORK = 'NETWORK',
-  EXTERNAL_SERVICE = 'EXTERNAL_SERVICE',
-  BUSINESS_LOGIC = 'BUSINESS_LOGIC',
-  SYSTEM = 'SYSTEM',
-  PERFORMANCE = 'PERFORMANCE',
-}
+// ErrorCategory values for filter dropdown
+const ErrorCategory = [
+  'AUTHENTICATION',
+  'AUTHORIZATION',
+  'VALIDATION',
+  'DATABASE',
+  'NETWORK',
+  'EXTERNAL_SERVICE',
+  'BUSINESS_LOGIC',
+  'SYSTEM',
+  'PERFORMANCE',
+] as const;
 
 interface ErrorReport {
   id: string;
@@ -286,7 +286,9 @@ export const ErrorReportingDashboard: React.FC = () => {
         <div className="flex gap-2">
           <select
             value={timeframe}
-            onChange={(e) => setTimeframe(e.target.value as any)}
+            onChange={(e) =>
+              setTimeframe(e.target.value as '1h' | '24h' | '7d' | '30d')
+            }
             className="px-3 py-2 border rounded-md"
           >
             <option value="1h">Last Hour</option>
@@ -566,7 +568,7 @@ export const ErrorReportingDashboard: React.FC = () => {
                   className="px-3 py-2 border rounded-md"
                 >
                   <option value="all">All Categories</option>
-                  {Object.values(ErrorCategory).map((category) => (
+                  {ErrorCategory.map((category) => (
                     <option key={category} value={category}>
                       {category}
                     </option>

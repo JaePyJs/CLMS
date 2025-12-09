@@ -14,10 +14,11 @@ echo   [3] RESTART (Stop + Start)
 echo   [4] CHECK STATUS
 echo   [5] SEED ROOMS/EQUIPMENT
 echo   [6] OPEN BROWSER
-echo   [7] EXIT
+echo   [7] START BARCODE SCANNER
+echo   [8] EXIT
 echo.
 echo  ========================================================
-set /p choice="  Select an option (1-7): "
+set /p choice="  Select an option (1-8): "
 
 if "%choice%"=="1" goto START
 if "%choice%"=="2" goto STOP
@@ -25,7 +26,8 @@ if "%choice%"=="3" goto RESTART
 if "%choice%"=="4" goto STATUS
 if "%choice%"=="5" goto SEED
 if "%choice%"=="6" goto BROWSER
-if "%choice%"=="7" exit
+if "%choice%"=="7" goto SCANNER
+if "%choice%"=="8" exit
 goto MENU
 
 :START
@@ -38,6 +40,7 @@ goto MENU
 echo.
 echo [STOP] Stopping all CLMS processes...
 taskkill /F /IM node.exe >nul 2>&1
+taskkill /F /IM electron.exe >nul 2>&1
 echo Done. All servers stopped.
 timeout /t 2 >nul
 goto MENU
@@ -46,6 +49,7 @@ goto MENU
 echo.
 echo [RESTART] Restarting CLMS...
 taskkill /F /IM node.exe >nul 2>&1
+taskkill /F /IM electron.exe >nul 2>&1
 timeout /t 1 >nul
 call START_CLMS.bat
 goto MENU
@@ -54,9 +58,11 @@ goto MENU
 echo.
 echo [STATUS] Checking running processes...
 tasklist /FI "IMAGENAME eq node.exe"
+tasklist /FI "IMAGENAME eq electron.exe"
 echo.
 echo If you see 'node.exe' listed above, the server is RUNNING.
-echo If you see 'INFO: No tasks...', the server is STOPPED.
+echo If you see 'electron.exe' listed, the BarcodeScanner is RUNNING.
+echo If you see 'INFO: No tasks...', the process is STOPPED.
 echo.
 pause
 goto MENU
@@ -68,6 +74,21 @@ cd /d "%~dp0Backend"
 call npx tsx src/scripts/seed_equipment.ts
 echo.
 echo Done! Rooms have been added to the database.
+pause
+goto MENU
+
+:SCANNER
+echo.
+echo [SCANNER] Starting Barcode Scanner...
+cd /d "%~dp0BarcodeScanner"
+if not exist "node_modules" (
+    echo Installing BarcodeScanner dependencies first...
+    call npm install
+)
+start "CLMS BarcodeScanner" cmd /k "npm start"
+echo.
+echo BarcodeScanner started! It will run in the background.
+echo Login with your CLMS credentials in the scanner window.
 pause
 goto MENU
 
@@ -103,3 +124,4 @@ if "%browser%"=="8" start http://localhost:3000/?tab=settings-admin
 if "%browser%"=="9" start http://localhost:3000/kiosk
 if "%browser%"=="0" goto MENU
 goto BROWSER
+

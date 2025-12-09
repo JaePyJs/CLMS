@@ -63,8 +63,8 @@ export default function DataManagement() {
   const resetDailyMutation = useMutation({
     mutationFn: (deleteToday?: boolean) =>
       settingsApi.resetDailyData(deleteToday),
-    onSuccess: (response) => {
-      const data = (response as any)?.data || {};
+    onSuccess: (response: { data?: ResetResult }) => {
+      const data = response?.data || {};
       setLastResetResult(data);
       // Refresh dashboard data so UI updates
       try {
@@ -86,8 +86,8 @@ export default function DataManagement() {
   const resetAllMutation = useMutation({
     mutationFn: (confirmationCode: string) =>
       settingsApi.resetAllData(confirmationCode),
-    onSuccess: (response) => {
-      const data = (response as any)?.data || {};
+    onSuccess: (response: { data?: ResetResult }) => {
+      const data = response?.data || {};
       setLastResetResult(data);
       setShowResetAllDialog(false);
       setConfirmationInput('');
@@ -111,8 +111,8 @@ export default function DataManagement() {
   const nuclearResetMutation = useMutation({
     mutationFn: (confirmationCode: string) =>
       settingsApi.nuclearReset(confirmationCode),
-    onSuccess: (response) => {
-      const data = (response as any)?.data || {};
+    onSuccess: (response: { data?: ResetResult }) => {
+      const data = response?.data || {};
       setLastResetResult(data);
       setShowNuclearDialog(false);
       setNuclearConfirmationInput('');

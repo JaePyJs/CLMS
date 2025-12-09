@@ -8,22 +8,22 @@ import React, { type ReactNode, type ComponentType } from 'react';
  * Basic render prop interface
  */
 export interface RenderProps<T = unknown> {
-  children: ((data: T) => ReactNode) | ReactNode;
+  children: ((_data: T) => ReactNode) | ReactNode;
 }
 
 /**
  * State render prop interface
  */
 export interface StateRenderProps<T, S = unknown> {
-  children: ((state: S, actions: T) => ReactNode) | ReactNode;
+  children: ((_state: S, _actions: T) => ReactNode) | ReactNode;
 }
 
 /**
  * Enhanced render prop with multiple render functions
  */
 export interface MultiRenderProps<T = unknown> {
-  render?: (data: T) => ReactNode;
-  children?: ((data: T) => ReactNode) | ReactNode;
+  render?: (_data: T) => ReactNode;
+  children?: ((_data: T) => ReactNode) | ReactNode;
   component?: ComponentType<T>;
 }
 
@@ -32,8 +32,8 @@ export interface MultiRenderProps<T = unknown> {
  */
 export interface DataProviderProps<T> {
   data: T;
-  children: ((data: T) => ReactNode) | ReactNode;
-  render?: (data: T) => ReactNode;
+  children: ((_data: T) => ReactNode) | ReactNode;
+  render?: (_data: T) => ReactNode;
   component?: ComponentType<T>;
 }
 
@@ -73,13 +73,13 @@ export function DataProvider<T>({
 export interface AsyncDataProviderProps<T> {
   fetcher: () => Promise<T>;
   initialData?: T;
-  children: (data: {
+  children: (_data: {
     data: T | undefined;
     loading: boolean;
     error: Error | null;
     refetch: () => void;
   }) => ReactNode;
-  render?: (data: {
+  render?: (_data: {
     data: T | undefined;
     loading: boolean;
     error: Error | null;
@@ -133,16 +133,16 @@ export function AsyncDataProvider<T>({
  */
 export interface ToggleProviderProps {
   initialOn?: boolean;
-  children: (data: {
+  children: (_data: {
     on: boolean;
     toggle: () => void;
-    setOn: (on: boolean) => void;
+    setOn: (_on: boolean) => void;
     setOff: () => void;
   }) => ReactNode;
-  render?: (data: {
+  render?: (_data: {
     on: boolean;
     toggle: () => void;
-    setOn: (on: boolean) => void;
+    setOn: (_on: boolean) => void;
     setOff: () => void;
   }) => ReactNode;
 }
@@ -185,20 +185,20 @@ export interface CounterProviderProps {
   step?: number;
   min?: number;
   max?: number;
-  children: (data: {
+  children: (_data: {
     count: number;
     increment: () => void;
     decrement: () => void;
-    setCount: (count: number) => void;
+    setCount: (_count: number) => void;
     reset: () => void;
     canIncrement: boolean;
     canDecrement: boolean;
   }) => ReactNode;
-  render?: (data: {
+  render?: (_data: {
     count: number;
     increment: () => void;
     decrement: () => void;
-    setCount: (count: number) => void;
+    setCount: (_count: number) => void;
     reset: () => void;
     canIncrement: boolean;
     canDecrement: boolean;
@@ -269,33 +269,33 @@ export function CounterProvider({
  */
 export interface ListProviderProps<T> {
   items: T[];
-  children: (data: {
+  children: (_data: {
     items: T[];
-    map: <U>(callback: (item: T, index: number) => U) => U[];
-    filter: (predicate: (item: T, index: number) => boolean) => T[];
+    map: <U>(_callback: (_item: T, _index: number) => U) => U[];
+    filter: (_predicate: (_item: T, _index: number) => boolean) => T[];
     reduce: <U>(
-      callback: (accumulator: U, item: T, index: number) => U,
-      initialValue: U
+      _callback: (_accumulator: U, _item: T, _index: number) => U,
+      _initialValue: U
     ) => U;
-    find: (predicate: (item: T, index: number) => boolean) => T | undefined;
-    some: (predicate: (item: T, index: number) => boolean) => boolean;
-    every: (predicate: (item: T, index: number) => boolean) => boolean;
+    find: (_predicate: (_item: T, _index: number) => boolean) => T | undefined;
+    some: (_predicate: (_item: T, _index: number) => boolean) => boolean;
+    every: (_predicate: (_item: T, _index: number) => boolean) => boolean;
     length: number;
     isEmpty: boolean;
     first: T | undefined;
     last: T | undefined;
   }) => ReactNode;
-  render?: (data: {
+  render?: (_data: {
     items: T[];
-    map: <U>(callback: (item: T, index: number) => U) => U[];
-    filter: (predicate: (item: T, index: number) => boolean) => T[];
+    map: <U>(_callback: (_item: T, _index: number) => U) => U[];
+    filter: (_predicate: (_item: T, _index: number) => boolean) => T[];
     reduce: <U>(
-      callback: (accumulator: U, item: T, index: number) => U,
-      initialValue: U
+      _callback: (_accumulator: U, _item: T, _index: number) => U,
+      _initialValue: U
     ) => U;
-    find: (predicate: (item: T, index: number) => boolean) => T | undefined;
-    some: (predicate: (item: T, index: number) => boolean) => boolean;
-    every: (predicate: (item: T, index: number) => boolean) => boolean;
+    find: (_predicate: (_item: T, _index: number) => boolean) => T | undefined;
+    some: (_predicate: (_item: T, _index: number) => boolean) => boolean;
+    every: (_predicate: (_item: T, _index: number) => boolean) => boolean;
     length: number;
     isEmpty: boolean;
     first: T | undefined;
@@ -309,39 +309,40 @@ export function ListProvider<T>({
   render,
 }: ListProviderProps<T>) {
   const mapCallback = React.useCallback(
-    <U>(callback: (item: T, index: number) => U): U[] => items.map(callback),
+    <U>(_callback: (_item: T, _index: number) => U): U[] =>
+      items.map(_callback),
     [items]
   );
 
   const filterCallback = React.useCallback(
-    (predicate: (item: T, index: number) => boolean): T[] =>
-      items.filter(predicate),
+    (_predicate: (_item: T, _index: number) => boolean): T[] =>
+      items.filter(_predicate),
     [items]
   );
 
   const reduceCallback = React.useCallback(
     <U>(
-      callback: (accumulator: U, item: T, index: number) => U,
-      initialValue: U
-    ): U => items.reduce(callback, initialValue),
+      _callback: (_accumulator: U, _item: T, _index: number) => U,
+      _initialValue: U
+    ): U => items.reduce(_callback, _initialValue),
     [items]
   );
 
   const findCallback = React.useCallback(
-    (predicate: (item: T, index: number) => boolean): T | undefined =>
-      items.find(predicate),
+    (_predicate: (_item: T, _index: number) => boolean): T | undefined =>
+      items.find(_predicate),
     [items]
   );
 
   const someCallback = React.useCallback(
-    (predicate: (item: T, index: number) => boolean): boolean =>
-      items.some(predicate),
+    (_predicate: (_item: T, _index: number) => boolean): boolean =>
+      items.some(_predicate),
     [items]
   );
 
   const everyCallback = React.useCallback(
-    (predicate: (item: T, index: number) => boolean): boolean =>
-      items.every(predicate),
+    (_predicate: (_item: T, _index: number) => boolean): boolean =>
+      items.every(_predicate),
     [items]
   );
 
@@ -368,37 +369,37 @@ export function ListProvider<T>({
  */
 export interface FormProviderProps<T> {
   initialValues: T;
-  children: (data: {
+  children: (_data: {
     values: T;
     errors: Partial<Record<keyof T, string>>;
     touched: Partial<Record<keyof T, boolean>>;
     isValid: boolean;
     isDirty: boolean;
-    setValue: <K extends keyof T>(field: K, value: T[K]) => void;
-    setError: <K extends keyof T>(field: K, error: string) => void;
-    setTouched: <K extends keyof T>(field: K, touched?: boolean) => void;
+    setValue: <K extends keyof T>(_field: K, _value: T[K]) => void;
+    setError: <K extends keyof T>(_field: K, _error: string) => void;
+    setTouched: <K extends keyof T>(_field: K, _touched?: boolean) => void;
     validate: () => boolean;
     reset: () => void;
     handleSubmit: (
-      onSubmit: (values: T) => void
-    ) => (e: React.FormEvent) => void;
+      _onSubmit: (_values: T) => void
+    ) => (_e: React.FormEvent) => void;
   }) => ReactNode;
-  render?: (data: {
+  render?: (_data: {
     values: T;
     errors: Partial<Record<keyof T, string>>;
     touched: Partial<Record<keyof T, boolean>>;
     isValid: boolean;
     isDirty: boolean;
-    setValue: <K extends keyof T>(field: K, value: T[K]) => void;
-    setError: <K extends keyof T>(field: K, error: string) => void;
-    setTouched: <K extends keyof T>(field: K, touched?: boolean) => void;
+    setValue: <K extends keyof T>(_field: K, _value: T[K]) => void;
+    setError: <K extends keyof T>(_field: K, _error: string) => void;
+    setTouched: <K extends keyof T>(_field: K, _touched?: boolean) => void;
     validate: () => boolean;
     reset: () => void;
     handleSubmit: (
-      onSubmit: (values: T) => void
-    ) => (e: React.FormEvent) => void;
+      _onSubmit: (_values: T) => void
+    ) => (_e: React.FormEvent) => void;
   }) => ReactNode;
-  validate?: (values: T) => Partial<Record<keyof T, string>>;
+  validate?: (_values: T) => Partial<Record<keyof T, string>>;
 }
 
 export function FormProvider<T extends Record<string, any>>({
@@ -450,11 +451,11 @@ export function FormProvider<T extends Record<string, any>>({
   }, [initialValues]);
 
   const handleSubmitCallback = React.useCallback(
-    (onSubmit: (values: T) => void) => {
+    (_onSubmit: (_values: T) => void) => {
       return (e: React.FormEvent) => {
         e.preventDefault();
         if (validateFormCallback()) {
-          onSubmit(values);
+          _onSubmit(values);
         }
       };
     },
@@ -485,14 +486,14 @@ export function FormProvider<T extends Record<string, any>>({
 /**
  * Higher-order component that converts a component to use render props
  */
-export function withRenderProps<T extends Record<string, any>>(
+export function withRenderProps<T extends Record<string, unknown>>(
   Component: ComponentType<T>,
-  propName: string = 'children'
+  _propName: string = 'children'
 ) {
   return function WithRenderProps(
-    props: Omit<T, typeof propName> & { [key: string]: any }
+    props: Omit<T, typeof _propName> & { [key: string]: unknown }
   ) {
-    const { [propName]: children, ...rest } = props;
+    const { [_propName]: children, ...rest } = props;
 
     if (typeof children === 'function') {
       return React.createElement(React.Fragment, null, children(rest as T));
@@ -505,7 +506,9 @@ export function withRenderProps<T extends Record<string, any>>(
 /**
  * Utility to determine if a prop is a render function
  */
-export function isRenderFunction(prop: any): prop is (...args: any[]) => any {
+export function isRenderFunction(
+  prop: unknown
+): prop is (..._args: unknown[]) => unknown {
   return typeof prop === 'function';
 }
 
@@ -514,7 +517,7 @@ export function isRenderFunction(prop: any): prop is (...args: any[]) => any {
  */
 export function getRenderFunction<T = unknown>(
   props: RenderProps<T> | MultiRenderProps<T>
-): ((data: T) => ReactNode) | null {
+): ((_data: T) => ReactNode) | null {
   if ('render' in props && typeof props.render === 'function') {
     return props.render;
   }

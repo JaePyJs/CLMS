@@ -282,17 +282,26 @@ export function clearStoredErrorReports(): void {
  */
 export function toUserMessage(err: unknown): string {
   if (typeof err === 'string') return err;
-  const anyErr = err as any;
-  if (anyErr?.message && typeof anyErr.message === 'string')
-    return anyErr.message;
-  if (anyErr?.error) {
-    if (typeof anyErr.error === 'string') return anyErr.error;
-    if (typeof anyErr.error?.message === 'string') return anyErr.error.message;
-  }
-  if (anyErr?.response?.data?.error) {
-    const e = anyErr.response.data.error;
-    if (typeof e === 'string') return e;
-    if (typeof e?.message === 'string') return e.message;
+  if (err && typeof err === 'object') {
+    const record = err as Record<string, unknown>;
+    if (typeof record.message === 'string') return record.message;
+    if (record.error) {
+      if (typeof record.error === 'string') return record.error;
+      if (typeof record.error === 'object' && record.error !== null) {
+        const errorObj = record.error as Record<string, unknown>;
+        if (typeof errorObj.message === 'string') return errorObj.message;
+      }
+    }
+    const response = record.response as Record<string, unknown> | undefined;
+    if (response?.data && typeof response.data === 'object') {
+      const data = response.data as Record<string, unknown>;
+      const e = data.error;
+      if (typeof e === 'string') return e;
+      if (e && typeof e === 'object') {
+        const errorObj = e as Record<string, unknown>;
+        if (typeof errorObj.message === 'string') return errorObj.message;
+      }
+    }
   }
   return 'An unexpected error occurred';
 }

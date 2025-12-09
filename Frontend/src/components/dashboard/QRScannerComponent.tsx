@@ -47,9 +47,9 @@ interface ScanStatistics {
   lastScanTime: Date | null;
 }
 
-// eslint-disable-next-line no-unused-vars
+ 
 type ScanSuccessCallback = (_result: QRScanResult) => void;
-// eslint-disable-next-line no-unused-vars
+ 
 type ScanErrorCallback = (_error: string) => void;
 
 interface QRScannerProps {

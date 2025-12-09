@@ -20,7 +20,7 @@ export interface AppNotification {
   read: boolean;
   readAt?: string;
   actionUrl?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   createdAt: string;
   expiresAt?: string;
 }
@@ -89,7 +89,7 @@ export const notificationApi = {
   // Create multiple notifications
   async createBulkNotifications(
     notifications: Partial<AppNotification>[]
-  ): Promise<{ success: boolean; data: any }> {
+  ): Promise<{ success: boolean; data: { count: number } }> {
     const response = await api.post('/notifications/bulk', { notifications });
     return response.data;
   },
@@ -105,7 +105,7 @@ export const notificationApi = {
   // Mark all notifications as read
   async markAllAsRead(
     userId?: string
-  ): Promise<{ success: boolean; data: any }> {
+  ): Promise<{ success: boolean; data: { count: number } }> {
     const response = await api.patch('/notifications/read-all', { userId });
     return response.data;
   },
@@ -121,7 +121,7 @@ export const notificationApi = {
   // Delete all read notifications
   async deleteReadNotifications(
     userId?: string
-  ): Promise<{ success: boolean; data: any; message: string }> {
+  ): Promise<{ success: boolean; data: { count: number }; message: string }> {
     const response = await api.delete('/notifications/read/all', {
       params: { userId },
     });
@@ -131,7 +131,7 @@ export const notificationApi = {
   // Clean up expired notifications
   async cleanupExpired(): Promise<{
     success: boolean;
-    data: any;
+    data: { count: number };
     message: string;
   }> {
     const response = await api.post('/notifications/cleanup');

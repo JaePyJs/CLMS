@@ -6,7 +6,7 @@ type ResolvedTheme = 'light' | 'dark';
 interface ThemeContextType {
   theme: Theme;
   resolvedTheme: ResolvedTheme;
-  setTheme: (theme: Theme) => void;
+  setTheme: (_theme: Theme) => void;
   toggleTheme: () => void;
 }
 

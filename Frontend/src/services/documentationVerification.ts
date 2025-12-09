@@ -10,7 +10,7 @@ export interface VerificationRule {
   type: 'content' | 'structure' | 'links' | 'metadata' | 'consistency';
   severity: 'error' | 'warning' | 'info';
   enabled: boolean;
-  config?: Record<string, any>;
+  config?: Record<string, unknown>;
 }
 
 export interface VerificationResult {
@@ -622,7 +622,7 @@ export class DocumentationVerificationService {
     }, this.config.verificationInterval);
   }
 
-  public async onDocumentationUpdate(_updateInfo: any): Promise<void> {
+  public async onDocumentationUpdate(_updateInfo: unknown): Promise<void> {
     // Update info parameter intentionally unused for now
     void _updateInfo;
     if (this.config.enableRealTimeVerification) {

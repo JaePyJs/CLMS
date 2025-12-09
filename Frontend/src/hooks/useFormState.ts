@@ -4,8 +4,10 @@ interface FormErrors {
   [key: string]: string | string[] | null | undefined;
 }
 
+type FormValues = Record<string, unknown>;
+
 interface FormState {
-  values: Record<string, any>;
+  values: FormValues;
   errors: FormErrors;
   touched: Record<string, boolean>;
   isSubmitting: boolean;
@@ -14,15 +16,19 @@ interface FormState {
 }
 
 interface FormActions {
-  setValue: (name: string, value: any, shouldValidate?: boolean) => void;
-  setFieldValue: (name: string, value: any, shouldValidate?: boolean) => void;
-  setValues: (values: Record<string, any>, shouldValidate?: boolean) => void;
+  setValue: (name: string, value: unknown, shouldValidate?: boolean) => void;
+  setFieldValue: (
+    name: string,
+    value: unknown,
+    shouldValidate?: boolean
+  ) => void;
+  setValues: (values: FormValues, shouldValidate?: boolean) => void;
   setError: (name: string, error: string | string[]) => void;
   setErrors: (errors: FormErrors) => void;
   clearError: (name: string) => void;
   clearErrors: () => void;
   setTouched: (name: string, touched?: boolean) => void;
-  reset: (values?: Record<string, any>) => void;
+  reset: (values?: FormValues) => void;
   validate: () => boolean;
   validateField: (name: string) => boolean;
   submit: () => Promise<void>;
@@ -57,7 +63,7 @@ interface FormActions {
  */
 export function useForm(
   options: {
-    initialValues?: Record<string, any>;
+    initialValues?: FormValues;
     validationSchema?: Record<
       string,
       {
@@ -65,10 +71,10 @@ export function useForm(
         minLength?: number;
         maxLength?: number;
         pattern?: RegExp;
-        custom?: (value: any, values: Record<string, any>) => string | null;
+        custom?: (value: unknown, values: FormValues) => string | null;
       }
     >;
-    onSubmit?: (values: Record<string, any>) => Promise<void> | void;
+    onSubmit?: (values: FormValues) => Promise<void> | void;
     validateOnChange?: boolean;
     validateOnBlur?: boolean;
     resetOnSubmit?: boolean;
@@ -98,8 +104,8 @@ export function useForm(
   const validateField = useCallback(
     (
       name: string,
-      value: any,
-      values: Record<string, any> = state.values
+      value: unknown,
+      values: FormValues = state.values
     ): string | null => {
       const rules = validationSchema[name];
       if (!rules) {
@@ -157,7 +163,7 @@ export function useForm(
   );
 
   const validateForm = useCallback(
-    (values: Record<string, any> = state.values): boolean => {
+    (values: FormValues = state.values): boolean => {
       const errors: FormErrors = {};
       let isValid = true;
 
@@ -183,7 +189,11 @@ export function useForm(
 
   // State update functions
   const setValue = useCallback(
-    (name: string, value: any, shouldValidate: boolean = validateOnChange) => {
+    (
+      name: string,
+      value: unknown,
+      shouldValidate: boolean = validateOnChange
+    ) => {
       setState((prev) => ({
         ...prev,
         values: {
@@ -214,10 +224,7 @@ export function useForm(
   const setFieldValue = setValue;
 
   const setValues = useCallback(
-    (
-      values: Record<string, any>,
-      shouldValidate: boolean = validateOnChange
-    ) => {
+    (values: FormValues, shouldValidate: boolean = validateOnChange) => {
       const newValues = { ...state.values, ...values };
 
       setState((prev) => ({
@@ -293,7 +300,7 @@ export function useForm(
   );
 
   const reset = useCallback(
-    (values?: Record<string, any>) => {
+    (values?: FormValues) => {
       const resetValues = values || initialValues;
 
       setState((prev) => ({
@@ -428,7 +435,7 @@ export function useForm(
 export function useMultiStepForm(
   steps: Array<{
     title: string;
-    validation?: (values: Record<string, any>) => Record<string, string | null>;
+    validation?: (values: FormValues) => Record<string, string | null>;
     isOptional?: boolean;
   }>
 ) {

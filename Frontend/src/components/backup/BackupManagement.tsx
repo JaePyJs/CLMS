@@ -490,7 +490,7 @@ const BackupManagement: React.FC = () => {
 // Create Backup Modal
 const CreateBackupModal: React.FC<{
   onClose: () => void;
-  onCreate: (type: 'FULL' | 'INCREMENTAL', description?: string) => void;
+  onCreate: (_type: 'FULL' | 'INCREMENTAL', _description?: string) => void;
   creating: boolean;
 }> = ({ onClose, onCreate, creating }) => {
   const [type, setType] = useState<'FULL' | 'INCREMENTAL'>('FULL');
@@ -598,7 +598,7 @@ const CreateBackupModal: React.FC<{
 const RestoreBackupModal: React.FC<{
   backup: BackupMetadata;
   onClose: () => void;
-  onRestore: (backup: BackupMetadata, dryRun: boolean) => void;
+  onRestore: (_backup: BackupMetadata, _dryRun: boolean) => void;
 }> = ({ backup, onClose, onRestore }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ErrorBoundary } from 'react-error-boundary';
+import { ErrorBoundary as _ErrorBoundary } from 'react-error-boundary';
 import {
   Card,
   CardContent,
@@ -42,7 +42,7 @@ interface AutomationJob {
   progress?: number;
 }
 
-function AutomationFallback({ error }: { error: Error }) {
+function _AutomationFallback({ error }: { error: Error }) {
   return (
     <div className="space-y-4 p-4 border rounded">
       <Alert variant="destructive">
@@ -59,10 +59,15 @@ export function AutomationDashboard() {
   const [selectedTab, setSelectedTab] = useState('jobs');
 
   const store = useAppStore();
+  // Type-safe access to automationJobs from store
+  interface StoreWithJobs {
+    automationJobs?: AutomationJob[];
+  }
+  const storeWithJobs = store as unknown as StoreWithJobs;
   const automationJobs: AutomationJob[] = Array.isArray(
-    (store as any)?.automationJobs
+    storeWithJobs?.automationJobs
   )
-    ? ((store as any).automationJobs as AutomationJob[])
+    ? storeWithJobs.automationJobs
     : [];
   const { mutate: triggerJob } = useTriggerJob();
   const { data: googleSheetsStatus } = useGoogleSheetsTest();

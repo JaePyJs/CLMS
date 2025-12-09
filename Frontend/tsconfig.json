@@ -34,14 +34,14 @@
     "declarationMap": true,
     "sourceMap": true,
 
-    /* Additional Type Checking - Disabled for noise reduction */
-    "noImplicitAny": false,
-    "strictNullChecks": false,
-    "strictFunctionTypes": false,
-    "strictBindCallApply": false,
-    "strictPropertyInitialization": false,
-    "alwaysStrict": false,
-    "noImplicitThis": false,
+    /* Additional Type Checking - Enabled for improved type safety */
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "alwaysStrict": true,
+    "noImplicitThis": true,
 
     /* Path mapping */
     "baseUrl": ".",

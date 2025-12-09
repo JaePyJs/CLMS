@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 
 interface AddStudentDialogProps {
   open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  onOpenChange?: (_open: boolean) => void;
   trigger?: React.ReactNode;
 }
 

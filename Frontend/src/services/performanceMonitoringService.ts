@@ -61,6 +61,39 @@ interface ComponentPerformance {
   mountTime: number;
 }
 
+// Extended PerformanceEntry interfaces for specific entry types
+interface PerformanceEntryWithProcessingStart extends PerformanceEntry {
+  processingStart: number;
+}
+
+interface LayoutShiftEntry extends PerformanceEntry {
+  hadRecentInput: boolean;
+  value: number;
+}
+
+interface PerformanceNavigationTimingExtended
+  extends PerformanceNavigationTiming {
+  navigationStart?: number;
+}
+
+interface PerformanceResourceTimingWithDecodedSize {
+  decodedBodySize?: number;
+  transferSize: number;
+}
+
+interface PerformanceWithMemory extends Performance {
+  memory?: {
+    usedJSHeapSize: number;
+    totalJSHeapSize: number;
+    jsHeapSizeLimit: number;
+  };
+}
+
+interface NavigatorWithConnection extends Navigator {
+  connection?: { effectiveType?: string };
+  deviceMemory?: number;
+}
+
 class PerformanceMonitoringService {
   private static instance: PerformanceMonitoringService;
   private metrics: PerformanceMetrics;
@@ -129,7 +162,8 @@ class PerformanceMonitoringService {
         const entries = list.getEntries();
         entries.forEach((entry) => {
           if (entry.name === 'first-input') {
-            this.metrics.fid = (entry as any).processingStart - entry.startTime;
+            const fidEntry = entry as PerformanceEntryWithProcessingStart;
+            this.metrics.fid = fidEntry.processingStart - entry.startTime;
           }
         });
       });
@@ -141,8 +175,9 @@ class PerformanceMonitoringService {
       const clsObserver = new PerformanceObserver((list) => {
         const entries = list.getEntries();
         entries.forEach((entry) => {
-          if (!(entry as any).hadRecentInput) {
-            clsValue += (entry as any).value;
+          const lsEntry = entry as LayoutShiftEntry;
+          if (!lsEntry.hadRecentInput) {
+            clsValue += lsEntry.value;
             this.metrics.cls = clsValue;
           }
         });
@@ -166,15 +201,15 @@ class PerformanceMonitoringService {
       // Observer for navigation timing
       const navObserver = new PerformanceObserver((list) => {
         const entries = list.getEntries();
-        const navEntry = entries[0] as PerformanceNavigationTiming;
+        const navEntry = entries[0] as PerformanceNavigationTimingExtended;
         if (navEntry) {
           this.metrics.ttfb = navEntry.responseStart - navEntry.requestStart;
           this.metrics.domContentLoaded =
             navEntry.domContentLoadedEventEnd -
-            ((navEntry as any).navigationStart || navEntry.startTime);
+            (navEntry.navigationStart || navEntry.startTime);
           this.metrics.loadComplete =
             navEntry.loadEventEnd -
-            ((navEntry as any).navigationStart || navEntry.startTime);
+            (navEntry.navigationStart || navEntry.startTime);
         }
       });
       navObserver.observe({ entryTypes: ['navigation'] });
@@ -186,9 +221,9 @@ class PerformanceMonitoringService {
         this.metrics.resourceCount = entries.length;
 
         entries.forEach((entry) => {
-          const resource = entry as PerformanceResourceTiming;
-          this.metrics.totalResourceSize +=
-            (resource as any).decodedBodySize || 0;
+          const resource = entry as PerformanceResourceTiming &
+            PerformanceResourceTimingWithDecodedSize;
+          this.metrics.totalResourceSize += resource.decodedBodySize || 0;
           this.metrics.totalTransferSize += resource.transferSize;
         });
       });
@@ -238,13 +273,16 @@ class PerformanceMonitoringService {
   }
 
   private startMemoryMonitoring(): void {
-    if (!window.performance || !(window.performance as any).memory) {
+    const perf = window.performance as PerformanceWithMemory;
+    if (!window.performance || !perf.memory) {
       return;
     }
 
     const updateMemoryUsage = () => {
-      const memory = (window.performance as any).memory;
-      this.metrics.memoryUsage = memory.usedJSHeapSize / 1024 / 1024; // MB
+      const memory = perf.memory;
+      if (memory) {
+        this.metrics.memoryUsage = memory.usedJSHeapSize / 1024 / 1024; // MB
+      }
     };
 
     // Update memory usage every 5 seconds
@@ -395,13 +433,14 @@ class PerformanceMonitoringService {
 
   public generateReport(): PerformanceReport {
     const now = Date.now();
+    const nav = navigator as NavigatorWithConnection;
 
     const report: PerformanceReport = {
       timestamp: now,
       url: window.location.href,
       userAgent: navigator.userAgent,
-      connectionType: (navigator as any).connection?.effectiveType || 'unknown',
-      deviceMemory: (navigator as any).deviceMemory || 0,
+      connectionType: nav.connection?.effectiveType || 'unknown',
+      deviceMemory: nav.deviceMemory || 0,
       hardwareConcurrency: navigator.hardwareConcurrency || 0,
       metrics: { ...this.metrics },
       grade: this.calculateGrade(),
@@ -578,13 +617,16 @@ class PerformanceMonitoringService {
     return JSON.stringify(exportData, null, 2);
   }
 
-  public async runLighthouseAudit(): Promise<any> {
-    if (!(window as any).lighthouse) {
+  public async runLighthouseAudit(): Promise<unknown> {
+    const win = window as Window & {
+      lighthouse?: (url: string, options: object) => Promise<unknown>;
+    };
+    if (!win.lighthouse) {
       throw new Error('Lighthouse is not available');
     }
 
     try {
-      const result = await (window as any).lighthouse(window.location.href, {
+      const result = await win.lighthouse(window.location.href, {
         only: ['performance', 'accessibility', 'best-practices', 'seo'],
         port: 8080,
       });

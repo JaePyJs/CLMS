@@ -69,7 +69,8 @@ function BarcodeManager() {
         throw new Error(
           typeof response.error === 'string'
             ? response.error
-            : (response as any).error?.message || 'Generation failed'
+            : ((response.error as Record<string, unknown> | undefined)
+                ?.message as string) || 'Generation failed'
         );
       }
     } catch (error) {

@@ -10,11 +10,47 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { io, type Socket } from 'socket.io-client';
 
-export interface WebSocketMessage {
+export interface WebSocketMessage<T = unknown> {
   id: string;
   type: string;
-  data: any;
+  data: T;
   timestamp: string;
+}
+
+// Typed message data payloads
+interface ErrorMessageData {
+  error: string;
+  code?: string;
+}
+
+interface SubscriptionMessageData {
+  subscription: string;
+}
+
+interface StudentActivityMessageData {
+  studentId: string;
+  studentName: string;
+  activityType: string;
+  timestamp?: string;
+}
+
+interface EquipmentStatusMessageData {
+  equipmentId: string;
+  equipmentName: string;
+  status: string;
+  studentId?: string;
+}
+
+interface SystemNotificationMessageData {
+  notificationType?: string;
+  title: string | { message: string };
+  message?: string;
+}
+
+interface EmergencyAlertMessageData {
+  message: string;
+  severity?: string;
+  location?: string;
 }
 
 export interface WebSocketState {
@@ -277,12 +313,12 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     });
 
     // Listen for subscription confirmations
-    ws.on('subscription_confirmed', (data: any) => {
+    ws.on('subscription_confirmed', (data: { subscription: string }) => {
       console.info('[useWebSocket] Subscription confirmed:', data);
     });
 
     // Listen for errors
-    ws.on('error', (data: any) => {
+    ws.on('error', (data: { message?: string; error?: string }) => {
       console.error('[useWebSocket] Error event:', data);
     });
 
@@ -310,14 +346,16 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
         // Handle errors
         if (message.type === 'error') {
-          console.error('WebSocket error:', message.data.error);
-          onError?.(message.data.error);
+          const errorData = message.data as ErrorMessageData;
+          console.error('WebSocket error:', errorData.error);
+          onError?.(errorData.error);
           return;
         }
 
         // Handle subscription confirmations
         if (message.type === 'subscription_confirmed') {
-          console.debug('Subscribed to:', message.data.subscription);
+          const subData = message.data as SubscriptionMessageData;
+          console.debug('Subscribed to:', subData.subscription);
           return;
         }
 
@@ -326,23 +364,29 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
 
         // Handle different message types
         switch (message.type) {
-          case 'student_activity_update':
+          case 'student_activity_update': {
+            const activityData = message.data as StudentActivityMessageData;
             toast.info(
-              `Student activity: ${message.data.studentName} - ${message.data.activityType}`
+              `Student activity: ${activityData.studentName} - ${activityData.activityType}`
             );
             break;
-          case 'equipment_status_update':
+          }
+          case 'equipment_status_update': {
+            const equipmentData = message.data as EquipmentStatusMessageData;
             toast.warning(
-              `Equipment update: ${message.data.equipmentName} - ${message.data.status}`
+              `Equipment update: ${equipmentData.equipmentName} - ${equipmentData.status}`
             );
             break;
+          }
           case 'system_notification': {
-            const notificationType = message.data
-              .notificationType as keyof typeof toast;
+            const notificationData =
+              message.data as SystemNotificationMessageData;
+            const notificationType =
+              notificationData.notificationType as keyof typeof toast;
             const title =
-              typeof message.data.title === 'string'
-                ? message.data.title
-                : message.data.title?.message || 'Notification';
+              typeof notificationData.title === 'string'
+                ? notificationData.title
+                : notificationData.title?.message || 'Notification';
             if (
               notificationType &&
               typeof toast[notificationType] === 'function'
@@ -353,9 +397,11 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
             }
             break;
           }
-          case 'emergency_alert':
-            toast.error(`🚨 EMERGENCY: ${message.data.message}`);
+          case 'emergency_alert': {
+            const alertData = message.data as EmergencyAlertMessageData;
+            toast.error(`🚨 EMERGENCY: ${alertData.message}`);
             break;
+          }
           default:
             console.debug('WebSocket message:', message);
         }
@@ -423,7 +469,10 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
         reconnectInterval * 16
       );
       try {
-        (ws as any).io.opts.reconnectionDelay = nextDelay;
+        const socketIO = ws as unknown as {
+          io: { opts: { reconnectionDelay: number } };
+        };
+        socketIO.io.opts.reconnectionDelay = nextDelay;
       } catch {}
     });
 
@@ -473,7 +522,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
     });
   }, [clearHeartbeat, clearReconnectTimeout]);
 
-  const sendMessage = useCallback((message: any) => {
+  const sendMessage = useCallback((message: Record<string, unknown>) => {
     if (wsRef.current?.connected) {
       wsRef.current.emit('message', message);
       return true;
@@ -500,7 +549,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
   }, []);
 
   const requestDashboardData = useCallback(
-    (dataType: string, filters?: any) => {
+    (dataType: string, filters?: Record<string, unknown>) => {
       if (wsRef.current?.connected) {
         wsRef.current.emit('dashboard_request', { dataType, filters });
         return true;
@@ -663,13 +712,16 @@ export const useWebSocketSubscription = (
 
 // Hook for real-time dashboard updates
 export const useDashboardWebSocket = () => {
-  const [dashboardData, setDashboardData] = useState<any>({});
+  const [dashboardData, setDashboardData] = useState<Record<string, unknown>>(
+    {}
+  );
 
   const handleDashboardMessage = useCallback((message: WebSocketMessage) => {
     if (message.type === 'dashboard_data') {
-      setDashboardData((prev: any) => ({
+      const data = message.data as { dataType: string; data: unknown };
+      setDashboardData((prev: Record<string, unknown>) => ({
         ...prev,
-        [message.data.dataType]: message.data.data,
+        [data.dataType]: data.data,
       }));
     }
   }, []);
@@ -679,7 +731,7 @@ export const useDashboardWebSocket = () => {
   });
 
   const refreshDashboard = useCallback(
-    (dataType: string, filters?: any) => {
+    (dataType: string, filters?: Record<string, unknown>) => {
       ws.requestDashboardData(dataType, filters);
     },
     [ws]
@@ -692,13 +744,24 @@ export const useDashboardWebSocket = () => {
   };
 };
 
+interface ActivityData {
+  id?: string;
+  studentId: string;
+  studentName: string;
+  activityType: string;
+  timestamp?: string;
+}
+
 // Hook for activity updates
 export const useActivityWebSocket = () => {
-  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [recentActivities, setRecentActivities] = useState<ActivityData[]>([]);
 
   const handleActivityMessage = useCallback((message: WebSocketMessage) => {
     if (message.type === 'student_activity_update') {
-      setRecentActivities((prev) => [message.data, ...prev.slice(0, 49)]); // Keep last 50
+      setRecentActivities((prev) => [
+        message.data as ActivityData,
+        ...prev.slice(0, 49),
+      ]); // Keep last 50
     }
   }, []);
 
@@ -712,15 +775,26 @@ export const useActivityWebSocket = () => {
   };
 };
 
+interface EquipmentStatusData {
+  equipmentId: string;
+  status: string;
+  equipmentName?: string;
+  studentId?: string;
+  timestamp?: string;
+}
+
 // Hook for equipment status updates
 export const useEquipmentWebSocket = () => {
-  const [equipmentStatus, setEquipmentStatus] = useState<any>({});
+  const [equipmentStatus, setEquipmentStatus] = useState<
+    Record<string, EquipmentStatusData>
+  >({});
 
   const handleEquipmentMessage = useCallback((message: WebSocketMessage) => {
     if (message.type === 'equipment_status_update') {
-      setEquipmentStatus((prev: any) => ({
+      const data = message.data as EquipmentStatusData;
+      setEquipmentStatus((prev: Record<string, EquipmentStatusData>) => ({
         ...prev,
-        [message.data.equipmentId]: message.data,
+        [data.equipmentId]: data,
       }));
     }
   }, []);
@@ -735,13 +809,24 @@ export const useEquipmentWebSocket = () => {
   };
 };
 
+interface NotificationData {
+  id?: string;
+  title: string;
+  message?: string;
+  type?: string;
+  timestamp?: string;
+}
+
 // Hook for notifications
 export const useNotificationWebSocket = () => {
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<NotificationData[]>([]);
 
   const handleNotificationMessage = useCallback((message: WebSocketMessage) => {
     if (message.type === 'system_notification') {
-      setNotifications((prev) => [message.data, ...prev.slice(0, 49)]); // Keep last 50
+      setNotifications((prev) => [
+        message.data as NotificationData,
+        ...prev.slice(0, 49),
+      ]); // Keep last 50
     }
   }, []);
 

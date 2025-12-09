@@ -140,7 +140,7 @@ import { useWebSocketContext } from '@/contexts/WebSocketContext';
 interface ActiveSession {
   student_id: string;
   studentId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function StudentManagement() {
@@ -355,7 +355,25 @@ export function StudentManagement() {
     },
   });
 
-  const newStudent = formState.values;
+  // Type-safe accessor for form values
+  interface StudentFormValues {
+    studentId: string;
+    barcode: string;
+    firstName: string;
+    lastName: string;
+    gradeLevel: string;
+    section: string;
+    gender: string;
+    email: string;
+    phone: string;
+    parentName: string;
+    parentPhone: string;
+    parentEmail: string;
+    emergencyContact: string;
+    address: string;
+    notes: string;
+  }
+  const newStudent = formState.values as unknown as StudentFormValues;
 
   // Loading states for different operations
   const [, loadingActions] = useMultipleLoadingStates({
@@ -412,7 +430,7 @@ export function StudentManagement() {
 
   const updateStudentMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Student> }) => {
-      const payload: any = {};
+      const payload: Record<string, unknown> = {};
       if (data.firstName !== undefined) payload.first_name = data.firstName;
       if (data.lastName !== undefined) payload.last_name = data.lastName;
       if (data.gradeLevel !== undefined) {
@@ -424,6 +442,9 @@ export function StudentManagement() {
       if (data.notes !== undefined) payload.notes = data.notes;
       if (data.email !== undefined) payload.email = data.email;
       if (data.phone !== undefined) payload.phone = data.phone;
+      // Allow updating barcode and student_id
+      if (data.barcode !== undefined) payload.barcode = data.barcode;
+      if (data.studentId !== undefined) payload.student_id = data.studentId;
       return studentsApi.updateStudent(id, payload);
     },
     onSuccess: () => {
@@ -485,7 +506,7 @@ export function StudentManagement() {
       return;
     }
 
-    const apiPayload: any = {
+    const apiPayload: Record<string, unknown> = {
       student_id: newStudent.studentId,
       barcode: newStudent.barcode || newStudent.studentId, // Use barcode if provided, otherwise use student ID
       first_name: newStudent.firstName,
@@ -1908,6 +1929,37 @@ export function StudentManagement() {
           </DialogHeader>
           {selectedStudent && (
             <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Student ID *</label>
+                  <Input
+                    value={selectedStudent.studentId}
+                    onChange={(e) =>
+                      setSelectedStudent({
+                        ...selectedStudent,
+                        studentId: e.target.value,
+                      })
+                    }
+                    placeholder="Student ID"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Barcode</label>
+                  <Input
+                    value={selectedStudent.barcode || ''}
+                    onChange={(e) =>
+                      setSelectedStudent({
+                        ...selectedStudent,
+                        barcode: e.target.value,
+                      })
+                    }
+                    placeholder="Barcode (auto-generated if empty)"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Leave empty to use Student ID as barcode
+                  </p>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium">First Name *</label>

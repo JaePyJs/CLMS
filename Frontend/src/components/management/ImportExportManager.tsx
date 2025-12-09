@@ -34,15 +34,25 @@ import {
   FileSpreadsheet,
   CheckCircle,
   AlertTriangle,
-  XCircle,
   FileText,
   Table as TableIcon,
   Cloud,
 } from 'lucide-react';
 
+interface ImportRow {
+  [key: string]: string;
+}
+
+interface ImportResultData {
+  imported: number;
+  updated?: number;
+  flagged?: number;
+  errors?: number;
+}
+
 interface ImportPreview {
   headers: string[];
-  data: any[];
+  data: ImportRow[];
   totalRows: number;
   validRows: number;
   errors: Array<{ row: number; message: string }>;
@@ -57,7 +67,9 @@ export default function ImportExportManager() {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [importResult, setImportResult] = useState<any>(null);
+  const [importResult, setImportResult] = useState<ImportResultData | null>(
+    null
+  );
 
   // Drag and drop handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -118,7 +130,7 @@ export default function ImportExportManager() {
         const values = line
           .split(',')
           .map((v) => v.trim().replace(/^"|"$/g, ''));
-        const row: any = {};
+        const row: ImportRow = {};
         headers.forEach((h, i) => {
           row[h] = values[i] || '';
         });
@@ -191,9 +203,9 @@ export default function ImportExportManager() {
       setUploadProgress(100);
 
       if (response.success) {
-        setImportResult(response.data);
+        setImportResult(response.data as ImportResultData);
         toast.success(
-          `Successfully imported ${(response.data as any).imported} ${importType}`
+          `Successfully imported ${(response.data as ImportResultData).imported} ${importType}`
         );
       } else {
         toast.error('Import failed');
@@ -262,7 +274,7 @@ export default function ImportExportManager() {
                 <Label>Data Type</Label>
                 <Select
                   value={importType}
-                  onValueChange={(v: any) => setImportType(v)}
+                  onValueChange={(v: 'books' | 'students') => setImportType(v)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -423,16 +435,16 @@ export default function ImportExportManager() {
                         </p>
                         <div className="text-sm text-green-700 dark:text-green-300">
                           <p>✅ {importResult.imported} records imported</p>
-                          {importResult.updated > 0 && (
+                          {(importResult.updated ?? 0) > 0 && (
                             <p>🔄 {importResult.updated} records updated</p>
                           )}
-                          {importResult.flagged > 0 && (
+                          {(importResult.flagged ?? 0) > 0 && (
                             <p>
                               ⚠️ {importResult.flagged} records flagged for
                               review
                             </p>
                           )}
-                          {importResult.errors > 0 && (
+                          {(importResult.errors ?? 0) > 0 && (
                             <p>❌ {importResult.errors} records failed</p>
                           )}
                         </div>
@@ -460,7 +472,7 @@ export default function ImportExportManager() {
                 <Label>Data to Export</Label>
                 <Select
                   value={exportType}
-                  onValueChange={(v: any) => setExportType(v)}
+                  onValueChange={(v: 'books' | 'students') => setExportType(v)}
                 >
                   <SelectTrigger>
                     <SelectValue />

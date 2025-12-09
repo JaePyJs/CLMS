@@ -214,7 +214,8 @@ export default function QuickServicePanel({
 
       if (response.success) {
         toast.success(
-          (response.data as any)?.message || 'Quick service logged'
+          (response.data as { message?: string })?.message ||
+            'Quick service logged'
         );
         setQuickServiceInput('');
         setQuickServiceNotes('');
@@ -281,13 +282,13 @@ export default function QuickServicePanel({
 
       if (response.success) {
         toast.success(
-          (response.data as any)?.message ||
+          (response.data as { message?: string })?.message ||
             `${selectedStudent.name} checked in manually`
         );
 
         // Show warning if student frequently forgets barcode
-        if ((response as any).warning) {
-          setWarningMessage((response as any).warning);
+        if ((response as { warning?: string }).warning) {
+          setWarningMessage((response as { warning?: string }).warning || null);
         } else {
           setShowManualLookup(false);
           setSelectedStudent(null);

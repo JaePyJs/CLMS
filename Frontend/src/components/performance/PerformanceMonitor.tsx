@@ -160,6 +160,24 @@ const PerformanceGrade: React.FC<PerformanceGradeProps> = ({
   );
 };
 
+interface PerformanceInsights {
+  trends: Array<{
+    timestamp: number;
+    score: number;
+    lcp: number;
+    fid?: number;
+    cls?: number;
+  }>;
+  summary?: {
+    averageScore: number;
+    averageLcp: number;
+    averageFid: number;
+    averageCls: number;
+    improvementAreas: string[];
+    strongAreas: string[];
+  };
+}
+
 const PerformanceMonitor: React.FC = () => {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [currentReport, setCurrentReport] = useState<PerformanceReport | null>(
@@ -168,7 +186,7 @@ const PerformanceMonitor: React.FC = () => {
   const [componentMetrics, setComponentMetrics] = useState<
     ComponentPerformance[]
   >([]);
-  const [insights, setInsights] = useState<any>(null);
+  const [insights, setInsights] = useState<PerformanceInsights | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -218,7 +236,7 @@ const PerformanceMonitor: React.FC = () => {
     try {
       // This would require Lighthouse to be available
       // For now, we'll simulate it
-      console.debug('Running Lighthouse audit...');
+      console.info('Running Lighthouse audit...');
       // const result = await performanceMonitoringService.runLighthouseAudit();
     } catch (error) {
       console.error('Lighthouse audit failed:', error);

@@ -6,6 +6,25 @@ import { useState, useEffect } from 'react';
  * Browser-compatible performance API for React components
  */
 
+// Extended performance types for browser APIs
+interface PerformanceMemory {
+  usedJSHeapSize: number;
+  totalJSHeapSize: number;
+  jsHeapSizeLimit: number;
+}
+
+interface PerformanceWithMemory extends Performance {
+  memory?: PerformanceMemory;
+}
+
+interface ExtendedResourceTiming {
+  decodedBodySize?: number;
+  transferSize?: number;
+  responseEnd: number;
+  requestStart: number;
+  name: string;
+}
+
 // Performance API with fallbacks
 export const performance = {
   now: (): number => {
@@ -61,10 +80,15 @@ export class PerformanceObserver {
 
   observe(options: PerformanceObserverInit): void {
     if (typeof window !== 'undefined' && window.PerformanceObserver) {
-      this.observer = new (window as any).PerformanceObserver(
-        this.callback
-      ) as PerformanceObserver;
-      this.observer?.observe(options);
+      const NativeObserver = window.PerformanceObserver;
+      // Use native PerformanceObserver directly
+      const nativeObserver = new NativeObserver(
+        (entries: PerformanceObserverEntryList) => {
+          this.callback(entries, this);
+        }
+      );
+      this.observer = nativeObserver as unknown as PerformanceObserver;
+      nativeObserver.observe(options);
     }
   }
 
@@ -99,10 +123,11 @@ export function usePerformanceMonitor(componentName: string) {
 
     return () => {
       // Type cast to access non-standard performance methods
-      const perf = performance as any;
-      perf.clearMarks(`${componentName}_render_start`);
-      perf.clearMarks(`${componentName}_render_end`);
-      perf.clearMeasures(`${componentName}_render`);
+      if (typeof window !== 'undefined' && window.performance) {
+        window.performance.clearMarks?.(`${componentName}_render_start`);
+        window.performance.clearMarks?.(`${componentName}_render_end`);
+        window.performance.clearMeasures?.(`${componentName}_render`);
+      }
     };
   }, [componentName]);
 
@@ -172,13 +197,17 @@ export const memory = {
 };
 
 // Update memory stats if available
-if (typeof window !== 'undefined' && (window as any).performance?.memory) {
-  const perfMemory = (window as any).performance.memory;
-  Object.assign(memory, {
-    usedJSHeapSize: perfMemory.usedJSHeapSize || 0,
-    totalJSHeapSize: perfMemory.totalJSHeapSize || 0,
-    jsHeapSizeLimit: perfMemory.jsHeapSizeLimit || 0,
-  });
+if (typeof window !== 'undefined') {
+  const perfWithMemory = window.performance as
+    | PerformanceWithMemory
+    | undefined;
+  if (perfWithMemory?.memory) {
+    Object.assign(memory, {
+      usedJSHeapSize: perfWithMemory.memory.usedJSHeapSize || 0,
+      totalJSHeapSize: perfWithMemory.memory.totalJSHeapSize || 0,
+      jsHeapSizeLimit: perfWithMemory.memory.jsHeapSizeLimit || 0,
+    });
+  }
 }
 
 // Timing API with fallbacks
@@ -220,10 +249,8 @@ export const calculateMetrics = {
   pageLoadTime: (): number => {
     const navTiming = getNavigationTiming();
     if (navTiming) {
-      return (
-        navTiming.loadEventEnd - (navTiming as any).navigationStart ||
-        navTiming.loadEventEnd - navTiming.startTime
-      );
+      // Use startTime as the baseline (navigationStart is deprecated)
+      return navTiming.loadEventEnd - navTiming.startTime;
     }
     return timing.loadEventEnd - timing.navigationStart;
   },
@@ -232,11 +259,8 @@ export const calculateMetrics = {
   domContentLoadedTime: (): number => {
     const navTiming = getNavigationTiming();
     if (navTiming) {
-      return (
-        navTiming.domContentLoadedEventEnd -
-          (navTiming as any).navigationStart ||
-        navTiming.domContentLoadedEventEnd - navTiming.startTime
-      );
+      // Use startTime as the baseline (navigationStart is deprecated)
+      return navTiming.domContentLoadedEventEnd - navTiming.startTime;
     }
     return timing.domContentLoadedEventEnd - timing.navigationStart;
   },
@@ -331,7 +355,8 @@ export const performanceUtils = {
 
     resources.forEach((resource) => {
       const loadTime = resource.responseEnd - resource.requestStart;
-      totalSize += (resource as any).decodedBodySize || 0;
+      const extResource = resource as ExtendedResourceTiming;
+      totalSize += extResource.decodedBodySize || 0;
       totalTransferSize += resource.transferSize || 0;
       totalTime += loadTime;
 

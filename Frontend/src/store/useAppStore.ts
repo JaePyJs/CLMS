@@ -1,52 +1,9 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
+import { devtools } from 'zustand/middleware';
 
 // Storage keys
 const ACTIVE_STUDENT_KEY = 'clms-active-student';
 const ACTIVE_STUDENT_EXPIRY_KEY = 'clms-active-student-expiry';
-
-// Helper to get stored active student
-const getStoredActiveStudent = (): {
-  student: any | null;
-  expiry: number | null;
-} => {
-  try {
-    const studentStr = localStorage.getItem(ACTIVE_STUDENT_KEY);
-    const expiryStr = localStorage.getItem(ACTIVE_STUDENT_EXPIRY_KEY);
-
-    if (!studentStr || !expiryStr) {
-      return { student: null, expiry: null };
-    }
-
-    const expiry = parseInt(expiryStr, 10);
-
-    // Check if expired
-    if (Date.now() > expiry) {
-      localStorage.removeItem(ACTIVE_STUDENT_KEY);
-      localStorage.removeItem(ACTIVE_STUDENT_EXPIRY_KEY);
-      return { student: null, expiry: null };
-    }
-
-    return { student: JSON.parse(studentStr), expiry };
-  } catch {
-    return { student: null, expiry: null };
-  }
-};
-
-// Helper to store active student
-const storeActiveStudent = (student: any | null, expiry: number | null) => {
-  try {
-    if (student && expiry) {
-      localStorage.setItem(ACTIVE_STUDENT_KEY, JSON.stringify(student));
-      localStorage.setItem(ACTIVE_STUDENT_EXPIRY_KEY, String(expiry));
-    } else {
-      localStorage.removeItem(ACTIVE_STUDENT_KEY);
-      localStorage.removeItem(ACTIVE_STUDENT_EXPIRY_KEY);
-    }
-  } catch {
-    // Ignore storage errors
-  }
-};
 
 // Types for our application state
 export interface Student {
@@ -112,6 +69,14 @@ export interface AutomationJob {
   progress?: number;
 }
 
+export interface ScanQueueItem {
+  id: string;
+  barcode: string;
+  type: 'student' | 'book' | 'equipment';
+  timestamp: number;
+  processed: boolean;
+}
+
 export interface AppNotification {
   id: string;
   userId?: string;
@@ -132,10 +97,53 @@ export interface AppNotification {
   read: boolean;
   readAt?: string;
   actionUrl?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   createdAt: string;
   expiresAt?: string;
 }
+
+// Helper to get stored active student
+const getStoredActiveStudent = (): {
+  student: Student | null;
+  expiry: number | null;
+} => {
+  try {
+    const studentStr = localStorage.getItem(ACTIVE_STUDENT_KEY);
+    const expiryStr = localStorage.getItem(ACTIVE_STUDENT_EXPIRY_KEY);
+
+    if (!studentStr || !expiryStr) {
+      return { student: null, expiry: null };
+    }
+
+    const expiry = parseInt(expiryStr, 10);
+
+    // Check if expired
+    if (Date.now() > expiry) {
+      localStorage.removeItem(ACTIVE_STUDENT_KEY);
+      localStorage.removeItem(ACTIVE_STUDENT_EXPIRY_KEY);
+      return { student: null, expiry: null };
+    }
+
+    return { student: JSON.parse(studentStr), expiry };
+  } catch {
+    return { student: null, expiry: null };
+  }
+};
+
+// Helper to store active student
+const storeActiveStudent = (student: Student | null, expiry: number | null) => {
+  try {
+    if (student && expiry) {
+      localStorage.setItem(ACTIVE_STUDENT_KEY, JSON.stringify(student));
+      localStorage.setItem(ACTIVE_STUDENT_EXPIRY_KEY, String(expiry));
+    } else {
+      localStorage.removeItem(ACTIVE_STUDENT_KEY);
+      localStorage.removeItem(ACTIVE_STUDENT_EXPIRY_KEY);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+};
 
 // App store interface
 interface AppStore {
@@ -159,7 +167,7 @@ interface AppStore {
   // Scanning State
   isScanning: boolean;
   lastScanResult: string;
-  scanQueue: any[];
+  scanQueue: ScanQueueItem[];
 
   // Active Student State
   activeStudent: Student | null;
@@ -181,7 +189,7 @@ interface AppStore {
   setNotifications: (notifications: AppNotification[]) => void;
   setScanning: (scanning: boolean) => void;
   setLastScanResult: (result: string) => void;
-  addToScanQueue: (item: any) => void;
+  addToScanQueue: (item: ScanQueueItem) => void;
   clearScanQueue: () => void;
   setActiveStudent: (student: Student | null, durationMs?: number) => void;
   clearActiveStudent: () => void;

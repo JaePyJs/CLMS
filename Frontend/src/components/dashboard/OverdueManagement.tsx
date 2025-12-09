@@ -24,6 +24,39 @@ import { toast } from 'sonner';
 import { enhancedLibraryApi } from '@/lib/api';
 import { Checkbox } from '@/components/ui/checkbox';
 
+interface RawOverdueLoan {
+  id: string;
+  studentId?: string;
+  student?: {
+    studentId?: string;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
+    gradeLevel?: string;
+  };
+  book?: {
+    id?: string;
+    title?: string;
+  };
+  bookTitle?: string;
+  bookId?: string;
+  materialType?: string;
+  borrowedAt?: string;
+  borrowedDate?: string;
+  dueDate?: string;
+  overdueDays?: number;
+  fineAmount?: number;
+  finePerDay?: number;
+}
+
+interface OverdueDataResponse {
+  items: RawOverdueLoan[];
+}
+
+interface ApiErrorResponse {
+  error?: string | { message?: string };
+}
+
 interface OverdueLoan {
   id: string;
   studentId: string;
@@ -100,8 +133,8 @@ export function OverdueManagement() {
       const response = await enhancedLibraryApi.getOverdueLoans({ signal });
 
       if (response.success && response.data) {
-        const dd: any = response.data || {};
-        const rawItems = (dd.items as any[]) || [];
+        const dd = (response.data || {}) as OverdueDataResponse;
+        const rawItems = dd.items || [];
         const items: OverdueLoan[] = rawItems.map((r) => ({
           id: String(r.id),
           studentId: String(r.student?.studentId || r.studentId || ''),
@@ -236,9 +269,10 @@ export function OverdueManagement() {
         await fetchOverdueLoans();
       } else {
         const errMsg =
-          typeof (response as any)?.error === 'string'
-            ? (response as any).error
-            : (response as any)?.error?.message || 'Failed to return book';
+          typeof (response as ApiErrorResponse)?.error === 'string'
+            ? (response as ApiErrorResponse).error
+            : ((response as ApiErrorResponse)?.error as { message?: string })
+                ?.message || 'Failed to return book';
         toast.error(String(errMsg));
       }
     } catch (error) {
@@ -268,14 +302,15 @@ export function OverdueManagement() {
         await fetchOverdueLoans();
       } else {
         const errMsg =
-          typeof (response as any)?.error === 'string'
-            ? (response as any).error
-            : (response as any)?.error?.message || 'Failed to process payment';
+          typeof (response as ApiErrorResponse)?.error === 'string'
+            ? (response as ApiErrorResponse).error
+            : ((response as ApiErrorResponse)?.error as { message?: string })
+                ?.message || 'Failed to process payment';
         toast.error(String(errMsg));
       }
     } catch (error) {
       console.error('Error processing payment:', error);
-      const msg = (error as any)?.message || 'Error processing payment';
+      const msg = (error as Error)?.message || 'Error processing payment';
       toast.error(String(msg));
     } finally {
       setIsProcessingPayment(null);
@@ -325,7 +360,9 @@ export function OverdueManagement() {
         setSelected({});
         await fetchOverdueLoans();
       } else {
-        toast.error((res as any)?.error || 'Batch return failed');
+        toast.error(
+          (res as ApiErrorResponse)?.error?.toString() || 'Batch return failed'
+        );
       }
     } catch {
       toast.error('Batch return failed');

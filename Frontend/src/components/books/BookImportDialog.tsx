@@ -88,6 +88,15 @@ interface ImportPreview {
   samples: ImportedBook[];
 }
 
+// Result type for import mutations
+interface ImportPreviewResult {
+  records?: ImportedBook[];
+  totalRows?: number;
+  validRows?: number;
+  invalidRows?: number;
+  duplicateRecords?: number;
+}
+
 // Available fields for mapping
 const AVAILABLE_FIELDS: FieldMapping[] = [
   { sourceField: 'title', targetField: 'title', required: true },
@@ -144,7 +153,6 @@ const getCommonAliases = (field: string): string[] => {
 
 interface BookImportDialogProps {
   open: boolean;
-  // eslint-disable-next-line no-unused-vars
   onOpenChange: (_open: boolean) => void;
   onSuccess?: () => void;
 }
@@ -380,7 +388,7 @@ export function BookImportDialog({
       file: File;
       fieldMappings: FieldMapping[];
       skipHeaderRow: boolean;
-    }): Promise<any> => {
+    }): Promise<ImportPreviewResult> => {
       try {
         const result = await booksApi.previewImport(
           data.file,
@@ -389,17 +397,13 @@ export function BookImportDialog({
           data.skipHeaderRow
         );
         // The API returns { success, records, totalRows, ... } directly
-        // Return the full result, not result.data (which doesn't exist)
-        console.log('API preview result:', result);
         return result;
       } catch (error: unknown) {
         const message = getErrorMessage(error, 'Preview failed');
         throw new Error(message);
       }
     },
-    onSuccess: (result: any) => {
-      console.log('Preview result:', result);
-
+    onSuccess: (result: ImportPreviewResult) => {
       // Handle the records array - check both result.records and result directly if it's an array
       const records =
         result?.records || (Array.isArray(result) ? result : null);

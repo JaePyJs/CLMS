@@ -43,6 +43,18 @@ import {
 import { settingsApi } from '@/lib/api';
 import { getErrorMessage } from '@/utils/errorHandling';
 
+interface RawUser {
+  id: string;
+  username: string;
+  role: 'LIBRARIAN';
+  is_active?: boolean;
+  isActive?: boolean;
+  last_login_at?: Date | string | null;
+  lastLoginAt?: Date | null;
+  created_at?: Date | string;
+  createdAt?: Date;
+}
+
 interface User {
   id: string;
   username: string;
@@ -89,7 +101,7 @@ export default function UserManagement() {
     queryFn: async () => {
       const response = await settingsApi.getUsers();
       // Map snake_case from API to camelCase for frontend
-      const rawUsers = (response.data as any[]) || [];
+      const rawUsers = (response.data as RawUser[]) || [];
       return rawUsers.map((u) => ({
         id: u.id,
         username: u.username,
@@ -157,7 +169,7 @@ export default function UserManagement() {
         adminUsername,
         adminPassword,
       }),
-    onSuccess: (response: any) => {
+    onSuccess: (response: { data?: { defaultPassword?: string } }) => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       const defaultPassword = response?.data?.defaultPassword || 'lib123';
       toast.success(

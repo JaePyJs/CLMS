@@ -15,10 +15,23 @@ export const authKeys = {
   current: () => [...authKeys.all, 'current'] as const,
 };
 
+interface AuthApiResponse {
+  success: boolean;
+  data?: {
+    id: string;
+    username: string;
+    role: string;
+    is_active?: boolean;
+    last_login_at?: string | Date | null;
+  };
+  error?: string | { message: string };
+  message?: string;
+}
+
 export async function fetchCurrentUser(): Promise<AuthUser> {
   const response = (await apiClient.get<{ user: AuthUser }>(
     '/api/auth/me'
-  )) as any;
+  )) as unknown as AuthApiResponse;
 
   // Backend returns user data directly in response.data, not response.data.user
   if (response.success && response.data) {

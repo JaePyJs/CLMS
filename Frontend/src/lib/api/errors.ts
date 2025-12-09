@@ -6,7 +6,7 @@ export interface ValidationErrorDetail {
 
 export interface ApiErrorPayload {
   success?: boolean;
-  error?: string | { message: string; [key: string]: any };
+  error?: string | { message: string; [key: string]: unknown };
   message?: string;
   code?: string;
   timestamp?: string;
@@ -39,10 +39,13 @@ export function normalizeApiError(
       message = payload.error;
     } else if (typeof payload.error === 'object' && payload.error !== null) {
       // Handle nested error object from backend
-      const errObj = payload.error as any;
-      if (errObj.message) message = errObj.message;
-      if (errObj.code) code = errObj.code;
-      if (errObj.timestamp) timestamp = errObj.timestamp;
+      const errObj = payload.error;
+      if (errObj.message && typeof errObj.message === 'string')
+        message = errObj.message;
+      if ('code' in errObj && typeof errObj.code === 'string')
+        code = errObj.code;
+      if ('timestamp' in errObj && typeof errObj.timestamp === 'string')
+        timestamp = errObj.timestamp;
     }
   } else if (payload?.message) {
     message = payload.message;

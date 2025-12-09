@@ -5,9 +5,39 @@ import {
   equipmentApi,
   analyticsApi,
 } from '@/lib/api';
-import { useAppStore } from '@/store/useAppStore';
+import {
+  useAppStore,
+  type AutomationJob,
+  type Student,
+  type Equipment,
+  type Activity,
+} from '@/store/useAppStore';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorHandling';
+
+// Local type definitions (not in store)
+interface DateRange {
+  start: Date;
+  end: Date;
+}
+
+interface HealthData {
+  timestamp?: string;
+  status?: string;
+}
+
+interface AxiosErrorResponse {
+  response?: {
+    data?: {
+      message?: string;
+      debug?: unknown;
+    };
+  };
+}
+
+interface TimelineResponse {
+  timeline?: Activity[];
+}
 
 // Health check hook
 export const useHealthCheck = () => {
@@ -24,9 +54,9 @@ export const useHealthCheck = () => {
 
         // Ensure we return a safe object with timestamp
         if (result.success && result.data) {
+          const healthData = result.data as HealthData;
           return {
-            timestamp:
-              (result.data as any).timestamp || new Date().toISOString(),
+            timestamp: healthData.timestamp || new Date().toISOString(),
             connected: true,
           };
         }
@@ -60,7 +90,7 @@ export const useAutomationJobs = () => {
     queryKey: ['automation-jobs'],
     queryFn: async () => {
       const response = await automationApi.getJobs();
-      const jobs = (response.data || []) as any[];
+      const jobs = (response.data || []) as AutomationJob[];
       setAutomationJobs(jobs);
       return jobs;
     },
@@ -101,7 +131,7 @@ export const useStudents = () => {
     queryKey: ['students'],
     queryFn: async () => {
       const response = await studentsApi.getStudents();
-      const students = (response.data || []) as any[];
+      const students = (response.data || []) as Student[];
       setStudents(students);
       return students;
     },
@@ -140,7 +170,7 @@ export const useEquipment = () => {
     queryKey: ['equipment'],
     queryFn: async () => {
       const response = await equipmentApi.getEquipment();
-      const equipment = (response.data || []) as any[];
+      const equipment = (response.data || []) as Equipment[];
       setEquipment(equipment);
       return equipment;
     },
@@ -168,7 +198,7 @@ export const useStartSession = () => {
       return equipmentApi.startSession(
         equipmentId,
         studentId,
-        timeLimitMinutes
+        timeLimitMinutes ?? 30
       );
     },
     onSuccess: (response) => {
@@ -180,7 +210,8 @@ export const useStartSession = () => {
     onError: (error: unknown) => {
       console.error('❌ Failed to start session:', error);
       // Extract detailed error message from response
-      const errorResponse = (error as any)?.response?.data;
+      const axiosError = error as AxiosErrorResponse;
+      const errorResponse = axiosError?.response?.data;
       console.error('📋 Error response:', errorResponse);
 
       let errorMessage = 'Failed to start session';
@@ -209,19 +240,22 @@ export const useEndSession = () => {
       const previousEquipment = queryClient.getQueryData(['equipment']);
 
       // Optimistically update equipment status
-      queryClient.setQueryData(['equipment'], (old: any) => {
-        if (!Array.isArray(old)) return old;
-        return old.map((item: any) => {
-          if (item.currentSession?.id === sessionId) {
-            return {
-              ...item,
-              status: 'available',
-              currentSession: null,
-            };
-          }
-          return item;
-        });
-      });
+      queryClient.setQueryData(
+        ['equipment'],
+        (old: Equipment[] | undefined) => {
+          if (!Array.isArray(old)) return old;
+          return old.map((item: Equipment) => {
+            if (item.currentSession?.id === sessionId) {
+              return {
+                ...item,
+                status: 'available' as const,
+                currentSession: null,
+              };
+            }
+            return item;
+          });
+        }
+      );
 
       return { previousEquipment };
     },
@@ -325,17 +359,19 @@ export const useActivityTimeline = (limit?: number) => {
     queryFn: async () => {
       try {
         const response = await analyticsApi.getTimeline(limit);
-        const rawTimeline = response.data as any;
-        const activities = Array.isArray(rawTimeline?.timeline)
-          ? rawTimeline.timeline
+        const rawTimeline = response.data as TimelineResponse | Activity[];
+        const activities: Activity[] = Array.isArray(
+          (rawTimeline as TimelineResponse)?.timeline
+        )
+          ? (rawTimeline as TimelineResponse).timeline!
           : Array.isArray(rawTimeline)
-            ? rawTimeline
+            ? (rawTimeline as Activity[])
             : [];
         setActivities(activities);
         return activities;
-      } catch (error) {
+      } catch {
         // Return real data structure initialized to empty array
-        const fallbackActivities: any[] = [];
+        const fallbackActivities: Activity[] = [];
         setActivities(fallbackActivities);
         return fallbackActivities;
       }
@@ -372,7 +408,7 @@ export const useExportData = () => {
       dateRange,
     }: {
       format: 'csv' | 'json';
-      dateRange?: any;
+      dateRange?: DateRange;
     }) => analyticsApi.exportData(format, dateRange),
     onSuccess: (response, variables) => {
       toast.success('Data exported successfully');

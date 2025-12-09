@@ -18,7 +18,7 @@ interface PerformanceContextType {
   logs: LogEntry[];
   sessionId: string;
   userId: string | null;
-  setUserId: (userId: string) => void;
+  setUserId: (_userId: string) => void;
   clearUserId: () => void;
   flush: () => void;
   getSummary: () => {

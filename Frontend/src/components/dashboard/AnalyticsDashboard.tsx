@@ -74,9 +74,56 @@ export function AnalyticsDashboard() {
   const [activityDistribution, setActivityDistribution] = useState<
     Array<{ name: string; value: number }>
   >([]);
-  const [circulationData, setCirculationData] = useState<any>(null);
-  const [equipmentData, setEquipmentData] = useState<any>(null);
-  const [finesData, setFinesData] = useState<any>(null);
+  const [circulationData, setCirculationData] = useState<{
+    circulationByCategory?: Array<{
+      category: string;
+      count: number;
+      percentage: number;
+      color: string;
+    }>;
+    mostBorrowedBooks?: Array<{
+      id: string;
+      title: string;
+      author: string;
+      category: string;
+      circulationCount: number;
+      popularity: number;
+      availableCopies: number;
+      totalCopies: number;
+    }>;
+    totalCirculation?: number;
+    trends?: { growthRate: number };
+    circulation?: {
+      circulationRate: number;
+      returnRate: number;
+      overdueRate: number;
+    };
+    overdueAnalysis?: {
+      overdueByCategory: Array<{ category: string; count: number }>;
+      totalOverdue: number;
+      averageOverdueDays: number;
+    };
+  } | null>(null);
+  const [equipmentData, setEquipmentData] = useState<{
+    utilizationByType?: Array<{
+      type: string;
+      total: number;
+      inUse: number;
+      utilizationRate: number;
+    }>;
+    peakUsageTimes?: unknown[];
+    maintenanceInsights?: {
+      maintenanceSchedule: unknown[];
+      averageUptime: number;
+      equipmentNeedingMaintenance: number;
+    };
+    overallUtilization?: number;
+    recommendations?: string[];
+    equipment?: { totalSessions: number; averageSessionDuration: number };
+  } | null>(null);
+  const [finesData, setFinesData] = useState<Record<string, unknown> | null>(
+    null
+  );
   const [topUsers, setTopUsers] = useState<
     Array<{ name: string; borrows: number }>
   >([]);
@@ -232,7 +279,14 @@ export function AnalyticsDashboard() {
               const borrowsRes = await api.get('/borrows?limit=100', {
                 signal: cancelRef.current?.signal,
               });
-              const rows: any[] = Array.isArray(borrowsRes.data?.data)
+              interface BorrowRow {
+                student?: {
+                  first_name?: string;
+                  last_name?: string;
+                  student_id?: string;
+                };
+              }
+              const rows: BorrowRow[] = Array.isArray(borrowsRes.data?.data)
                 ? borrowsRes.data.data
                 : [];
               const counts: Record<string, number> = {};
@@ -259,36 +313,55 @@ export function AnalyticsDashboard() {
             { signal: cancelRef.current?.signal }
           );
           const booksData = booksAnalytics.data?.data || {};
-          const circByCategory = (booksData.books_by_category || []).map(
-            (c: any, idx: number) => ({
-              category: c.category || 'Unknown',
-              count: Number(c._count?.id || 0),
-              percentage: 0,
-              color: [
-                '#0088FE',
-                '#00C49F',
-                '#FFBB28',
-                '#FF8042',
-                '#8884D8',
-                '#82CA9D',
-                '#FFC658',
-                '#FF7C7C',
-              ][idx % 8],
-            })
-          );
+          interface BookCategory {
+            category?: string;
+            _count?: { id?: number };
+          }
+          interface CategoryItem {
+            category: string;
+            count: number;
+            percentage: number;
+            color: string;
+          }
+          interface TopBook {
+            id?: string | number;
+            title?: string;
+            author?: string;
+            category?: string;
+            checkout_count?: number;
+            available_copies?: number;
+            total_copies?: number;
+          }
+          const circByCategory: CategoryItem[] = (
+            booksData.books_by_category || []
+          ).map((c: BookCategory, idx: number) => ({
+            category: c.category || 'Unknown',
+            count: Number(c._count?.id || 0),
+            percentage: 0,
+            color: [
+              '#0088FE',
+              '#00C49F',
+              '#FFBB28',
+              '#FF8042',
+              '#8884D8',
+              '#82CA9D',
+              '#FFC658',
+              '#FF7C7C',
+            ][idx % 8],
+          }));
           const total = circByCategory.reduce(
-            (s: number, it: any) => s + it.count,
+            (s: number, it: CategoryItem) => s + it.count,
             0
           );
-          const withPct = circByCategory.map((it: any) => ({
+          const withPct = circByCategory.map((it: CategoryItem) => ({
             ...it,
             percentage: total > 0 ? Math.round((it.count / total) * 100) : 0,
           }));
-          const topBooks = (booksData.top_books || []).map((b: any) => ({
+          const topBooks = (booksData.top_books || []).map((b: TopBook) => ({
             id: String(b.id),
-            title: b.title,
-            author: b.author,
-            category: b.category,
+            title: b.title || '',
+            author: b.author || '',
+            category: b.category || 'Unknown',
             circulationCount: Number(b.checkout_count || 0),
             popularity: Math.min(
               100,
@@ -324,14 +397,24 @@ export function AnalyticsDashboard() {
             { signal: cancelRef.current?.signal }
           );
           const eq = equipmentAnalytics.data?.data || {};
-          const byCat = (eq.equipment_by_category || []).map((c: any) => ({
-            type: c.category || 'Unknown',
-            total: Number(c._count?.id || 0),
-            inUse: 0,
-            utilizationRate: 0,
-          }));
+          interface EquipmentCategory {
+            category?: string;
+            _count?: { id?: number };
+          }
+          interface EquipmentStatus {
+            status?: string;
+            _count?: { id?: number };
+          }
+          const byCat = (eq.equipment_by_category || []).map(
+            (c: EquipmentCategory) => ({
+              type: c.category || 'Unknown',
+              total: Number(c._count?.id || 0),
+              inUse: 0,
+              utilizationRate: 0,
+            })
+          );
           const statusCounts = Object.fromEntries(
-            ((eq.equipment_by_status || []) as any[]).map((s: any) => [
+            (eq.equipment_by_status || []).map((s: EquipmentStatus) => [
               s.status || 'UNKNOWN',
               Number(s._count?.id || 0),
             ])
@@ -469,7 +552,7 @@ export function AnalyticsDashboard() {
       circulationData?.circulationByCategory &&
       Array.isArray(circulationData.circulationByCategory)
     ) {
-      circulationData.circulationByCategory.forEach((cat: any) => {
+      circulationData.circulationByCategory.forEach((cat) => {
         rows.push([
           'Categories',
           String(cat.category || 'Unknown'),
@@ -574,7 +657,7 @@ export function AnalyticsDashboard() {
           </Button>
           <ExportAnalytics
             timeframe={selectedPeriod}
-            onExport={handleExport as any}
+            onExport={(format: 'csv' | 'json' | 'pdf') => handleExport(format)}
             isExporting={false}
           />
         </div>
@@ -630,7 +713,7 @@ export function AnalyticsDashboard() {
               circulationData!.mostBorrowedBooks!.length > 0
                 ? circulationData!.mostBorrowedBooks!
                 : []
-              ).map((b: any, idx: number) => (
+              ).map((b, idx: number) => (
                 <div key={`popular-${idx}`} className="flex justify-between">
                   <span>
                     {String(b.category || 'Category')} •{' '}
@@ -722,12 +805,17 @@ export function AnalyticsDashboard() {
                 <div className="space-y-2 text-sm">
                   {(circulationData?.circulationByCategory || [])
                     .slice(0, 3)
-                    .map((cat: any, idx: number) => (
-                      <div key={idx} className="flex justify-between">
-                        <span>{cat.category}</span>
-                        <Badge variant="outline">{cat.percentage}%</Badge>
-                      </div>
-                    ))}
+                    .map(
+                      (
+                        cat: { category: string; percentage: number },
+                        idx: number
+                      ) => (
+                        <div key={idx} className="flex justify-between">
+                          <span>{cat.category}</span>
+                          <Badge variant="outline">{cat.percentage}%</Badge>
+                        </div>
+                      )
+                    )}
                   {(!circulationData?.circulationByCategory ||
                     circulationData.circulationByCategory.length === 0) && (
                     <div className="text-muted-foreground text-center">
@@ -746,14 +834,21 @@ export function AnalyticsDashboard() {
                 <div className="space-y-2 text-sm">
                   {(circulationData?.mostBorrowedBooks || [])
                     .slice(0, 3)
-                    .map((book: any, idx: number) => (
-                      <div key={idx} className="flex justify-between">
-                        <span className="truncate max-w-[150px]">
-                          {book.title}
-                        </span>
-                        <Badge variant="outline">{book.circulationCount}</Badge>
-                      </div>
-                    ))}
+                    .map(
+                      (
+                        book: { title: string; circulationCount: number },
+                        idx: number
+                      ) => (
+                        <div key={idx} className="flex justify-between">
+                          <span className="truncate max-w-[150px]">
+                            {book.title}
+                          </span>
+                          <Badge variant="outline">
+                            {book.circulationCount}
+                          </Badge>
+                        </div>
+                      )
+                    )}
                   {(!circulationData?.mostBorrowedBooks ||
                     circulationData.mostBorrowedBooks.length === 0) && (
                     <div className="text-muted-foreground text-center">
@@ -823,7 +918,11 @@ export function AnalyticsDashboard() {
                           ? activityDistribution
                           : categoryDistribution.length
                             ? categoryDistribution
-                            : []) as any
+                            : []) as {
+                          name: string;
+                          value: number;
+                          color?: string;
+                        }[]
                       }
                       cx="50%"
                       cy="50%"
@@ -837,12 +936,21 @@ export function AnalyticsDashboard() {
                         : categoryDistribution.length
                           ? categoryDistribution
                           : []
-                      ).map((entry: any, index: number) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.color || 'hsl(var(--primary))'}
-                        />
-                      ))}
+                      ).map(
+                        (
+                          entry: {
+                            name: string;
+                            value: number;
+                            color?: string;
+                          },
+                          index: number
+                        ) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={entry.color || 'hsl(var(--primary))'}
+                          />
+                        )
+                      )}
                     </Pie>
                     <Tooltip />
                   </PieChart>
@@ -853,26 +961,31 @@ export function AnalyticsDashboard() {
                     : categoryDistribution.length
                       ? categoryDistribution
                       : []
-                  ).map((entry: any, idx: number) => (
-                    <div
-                      key={`legend-${idx}`}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="inline-block w-3 h-3 rounded"
-                          style={{
-                            backgroundColor:
-                              entry.color || 'hsl(var(--primary))',
-                          }}
-                        />
-                        <span>{entry.name}</span>
+                  ).map(
+                    (
+                      entry: { name: string; value: number; color?: string },
+                      idx: number
+                    ) => (
+                      <div
+                        key={`legend-${idx}`}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="inline-block w-3 h-3 rounded"
+                            style={{
+                              backgroundColor:
+                                entry.color || 'hsl(var(--primary))',
+                            }}
+                          />
+                          <span>{entry.name}</span>
+                        </div>
+                        <span className="text-muted-foreground">
+                          {entry.value}
+                        </span>
                       </div>
-                      <span className="text-muted-foreground">
-                        {entry.value}
-                      </span>
-                    </div>
-                  ))}
+                    )
+                  )}
                 </div>
               </CardContent>
             </Card>

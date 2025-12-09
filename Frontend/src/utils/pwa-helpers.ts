@@ -26,12 +26,51 @@ export interface CacheStats {
   types: Record<string, number>;
 }
 
+// Browser-specific type extensions
+interface NavigatorStandalone extends Navigator {
+  standalone?: boolean;
+}
+
+interface NetworkInformation {
+  type?: string;
+  effectiveType?: string;
+  downlink?: number;
+  rtt?: number;
+  saveData?: boolean;
+  addEventListener?(type: string, listener: EventListener): void;
+  removeEventListener?(type: string, listener: EventListener): void;
+}
+
+interface NavigatorWithConnection extends Navigator {
+  connection?: NetworkInformation;
+  mozConnection?: NetworkInformation;
+  webkitConnection?: NetworkInformation;
+}
+
+interface PerformanceMemory {
+  usedJSHeapSize: number;
+  totalJSHeapSize: number;
+  jsHeapSizeLimit: number;
+}
+
+interface PerformanceWithMemory extends Performance {
+  memory?: PerformanceMemory;
+}
+
+interface NetworkInfo {
+  type: string;
+  effectiveType: string;
+  downlink: number;
+  rtt: number;
+  saveData: boolean;
+}
+
 // Get PWA installation and device information
 export const getPWAInfo = async (): Promise<PWAInfo> => {
   // Check if running in standalone mode
   const isStandalone =
     window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true ||
+    (window.navigator as NavigatorStandalone).standalone === true ||
     document.referrer.includes('android-app://');
 
   // Check if app is installed
@@ -346,10 +385,9 @@ export const notificationUtils = {
 export const networkUtils = {
   // Check network quality
   getConnectionType(): string {
+    const nav = navigator as NavigatorWithConnection;
     const connection =
-      (navigator as any).connection ||
-      (navigator as any).mozConnection ||
-      (navigator as any).webkitConnection;
+      nav.connection || nav.mozConnection || nav.webkitConnection;
 
     if (!connection) {
       return 'unknown';
@@ -365,11 +403,10 @@ export const networkUtils = {
   },
 
   // Get network information
-  getInfo() {
+  getInfo(): NetworkInfo {
+    const nav = navigator as NavigatorWithConnection;
     const connection =
-      (navigator as any).connection ||
-      (navigator as any).mozConnection ||
-      (navigator as any).webkitConnection;
+      nav.connection || nav.mozConnection || nav.webkitConnection;
 
     if (!connection) {
       return {
@@ -391,7 +428,7 @@ export const networkUtils = {
   },
 
   // Monitor network changes
-  onChange(callback: (online: boolean, info: any) => void): () => void {
+  onChange(callback: (online: boolean, info: NetworkInfo) => void): () => void {
     const handleOnline = () => callback(true, this.getInfo());
     const handleOffline = () => callback(false, this.getInfo());
     const handleConnectionChange = () =>
@@ -400,13 +437,12 @@ export const networkUtils = {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    const nav = navigator as NavigatorWithConnection;
     const connection =
-      (navigator as any).connection ||
-      (navigator as any).mozConnection ||
-      (navigator as any).webkitConnection;
+      nav.connection || nav.mozConnection || nav.webkitConnection;
 
     if (connection) {
-      connection.addEventListener('change', handleConnectionChange);
+      connection.addEventListener?.('change', handleConnectionChange);
     }
 
     // Return cleanup function
@@ -414,7 +450,7 @@ export const networkUtils = {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       if (connection) {
-        connection.removeEventListener('change', handleConnectionChange);
+        connection.removeEventListener?.('change', handleConnectionChange);
       }
     };
   },
@@ -432,9 +468,10 @@ export const performanceUtils = {
   },
 
   // Get memory usage (if available)
-  getMemoryUsage(): any {
-    if ('performance' in window && (performance as any).memory) {
-      const memory = (performance as any).memory;
+  getMemoryUsage(): { used: number; total: number; limit: number } | null {
+    const perf = performance as PerformanceWithMemory;
+    if ('performance' in window && perf.memory) {
+      const memory = perf.memory;
       return {
         used: Math.round(memory.usedJSHeapSize / 1048576), // MB
         total: Math.round(memory.totalJSHeapSize / 1048576), // MB

@@ -320,9 +320,9 @@ export function AdvancedReporting() {
     },
   ];
 
-  const mockReports: GeneratedReport[] = [];
+  const _mockReports: GeneratedReport[] = [];
 
-  const mockAlerts: AlertConfig[] = [];
+  const _mockAlerts: AlertConfig[] = [];
 
   useEffect(() => {
     setGeneratedReports([]);

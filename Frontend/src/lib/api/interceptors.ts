@@ -1,6 +1,7 @@
 import type {
   AxiosError,
   AxiosInstance,
+  AxiosResponse,
   InternalAxiosRequestConfig,
 } from 'axios';
 import { toast } from 'sonner';
@@ -9,6 +10,14 @@ import { normalizeApiError, type ApiErrorPayload } from '@/lib/api/errors';
 
 type AccessTokenProvider = () => string | null;
 type UnauthorizedHandler = (error: AxiosError) => Promise<void> | void;
+
+interface ConfigWithCredentials extends InternalAxiosRequestConfig {
+  withCredentials?: boolean;
+}
+
+interface ExtendedAxiosError extends AxiosError {
+  appError?: ReturnType<typeof normalizeApiError>;
+}
 
 let accessTokenProvider: AccessTokenProvider = () =>
   localStorage.getItem('clms_token');
@@ -60,9 +69,6 @@ export function setupInterceptors(client: AxiosInstance) {
       const token = accessTokenProvider?.();
 
       if (token) {
-        if (!config.headers) {
-          config.headers = {} as any;
-        }
         if (!config.headers.Authorization) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -83,18 +89,18 @@ export function setupInterceptors(client: AxiosInstance) {
       }
 
       // Always send credentials for cookie-based flows
-      (config as any).withCredentials = true;
+      (config as ConfigWithCredentials).withCredentials = true;
 
       const existingCid =
-        (config.headers as any)?.['x-correlation-id'] ||
-        (config.headers as any)?.['x-request-id'];
+        config.headers?.['x-correlation-id'] ||
+        config.headers?.['x-request-id'];
       if (!existingCid) {
         const cid =
           typeof crypto !== 'undefined' &&
-          typeof (crypto as any).randomUUID === 'function'
-            ? (crypto as any).randomUUID()
+          typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
             : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-        (config.headers as any)['x-correlation-id'] = cid;
+        config.headers['x-correlation-id'] = cid;
       }
 
       return config;
@@ -102,7 +108,7 @@ export function setupInterceptors(client: AxiosInstance) {
   );
 
   client.interceptors.response.use(
-    (response) => {
+    (response: AxiosResponse) => {
       // Treat 304 for auth/me as a success using cached user
       try {
         const url = response?.config?.url || '';
@@ -113,18 +119,18 @@ export function setupInterceptors(client: AxiosInstance) {
           if (cached) {
             const user = JSON.parse(cached);
             // Normalize to ApiResponse shape expected by callers
-            (response as any).data = {
+            response.data = {
               success: true,
               data: user,
             };
           } else {
-            (response as any).data = {
+            response.data = {
               success: false,
               message: 'Not modified and no cached user',
             };
           }
         }
-      } catch (e) {
+      } catch {
         // Non-fatal; fall through
       }
       return response;
@@ -144,7 +150,8 @@ export function setupInterceptors(client: AxiosInstance) {
         'An unexpected error occurred'
       );
 
-      (error as any).appError = normalizedError;
+      const extendedError = error as ExtendedAxiosError;
+      extendedError.appError = normalizedError;
 
       const showValidationToast =
         normalizedError.code === 'VALIDATION_ERROR' ||

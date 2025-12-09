@@ -72,6 +72,45 @@ interface Stats {
   returnedToday: number;
 }
 
+// Raw API response type
+interface RawCheckoutItem {
+  id: string;
+  bookId?: string;
+  studentId?: string;
+  checkoutDate?: string;
+  borrowedAt?: string;
+  dueDate?: string;
+  due_date?: string;
+  returnDate?: string;
+  returnedAt?: string;
+  status?: string;
+  overdueDays?: number;
+  fineAmount?: string | number;
+  material_type?: string;
+  book?: {
+    id?: string;
+    accessionNo?: string;
+    accession_no?: string;
+    isbn?: string;
+    title?: string;
+    author?: string;
+    category?: string;
+  };
+  student?: {
+    id?: string;
+    studentId?: string;
+    student_id?: string;
+    firstName?: string;
+    first_name?: string;
+    lastName?: string;
+    last_name?: string;
+    gradeLevel?: string;
+    grade_level?: string;
+    section?: string;
+    name?: string;
+  };
+}
+
 export default function CheckoutHistory() {
   const [checkouts, setCheckouts] = useState<Checkout[]>([]);
   const [filteredCheckouts, setFilteredCheckouts] = useState<Checkout[]>([]);
@@ -125,36 +164,39 @@ export default function CheckoutHistory() {
 
         if (response.success && Array.isArray(response.data)) {
           // Transform API data to Checkout interface
-          const data: Checkout[] = response.data.map((item: any) => ({
-            id: item.id,
-            bookId: item.bookId || item.book?.id,
-            studentId: item.studentId || item.student?.id,
-            checkoutDate: item.checkoutDate || item.borrowedAt,
-            dueDate: item.dueDate,
-            returnDate: item.returnDate || item.returnedAt,
-            status: item.status,
-            overdueDays: item.overdueDays || 0,
-            fineAmount: String(item.fineAmount || '0'),
-            book: {
-              id: item.book?.id || '',
-              accessionNo:
-                item.book?.accessionNo || item.book?.accession_no || '',
-              title: item.book?.title || 'Unknown Title',
-              author: item.book?.author || 'Unknown Author',
-              category: item.book?.category || 'General',
-            },
-            student: {
-              id: item.student?.id || '',
-              studentId:
-                item.student?.studentId || item.student?.student_id || '',
-              firstName:
-                item.student?.firstName || item.student?.first_name || '',
-              lastName: item.student?.lastName || item.student?.last_name || '',
-              gradeLevel:
-                item.student?.gradeLevel || item.student?.grade_level || '',
-              section: item.student?.section || '',
-            },
-          }));
+          const data: Checkout[] = response.data.map(
+            (item: RawCheckoutItem) => ({
+              id: item.id,
+              bookId: item.bookId || item.book?.id,
+              studentId: item.studentId || item.student?.id,
+              checkoutDate: item.checkoutDate || item.borrowedAt,
+              dueDate: item.dueDate,
+              returnDate: item.returnDate || item.returnedAt,
+              status: item.status,
+              overdueDays: item.overdueDays || 0,
+              fineAmount: String(item.fineAmount || '0'),
+              book: {
+                id: item.book?.id || '',
+                accessionNo:
+                  item.book?.accessionNo || item.book?.accession_no || '',
+                title: item.book?.title || 'Unknown Title',
+                author: item.book?.author || 'Unknown Author',
+                category: item.book?.category || 'General',
+              },
+              student: {
+                id: item.student?.id || '',
+                studentId:
+                  item.student?.studentId || item.student?.student_id || '',
+                firstName:
+                  item.student?.firstName || item.student?.first_name || '',
+                lastName:
+                  item.student?.lastName || item.student?.last_name || '',
+                gradeLevel:
+                  item.student?.gradeLevel || item.student?.grade_level || '',
+                section: item.student?.section || '',
+              },
+            })
+          );
 
           setCheckouts(data);
           setFilteredCheckouts(data);
@@ -181,38 +223,38 @@ export default function CheckoutHistory() {
     try {
       const response = await apiClient.get('/api/enhanced-library/overdue');
 
-      if (
-        response.success &&
-        response.data &&
-        Array.isArray(response.data.items)
-      ) {
+      // Type assertion for overdue response
+      const overdueData = response.data as { items?: unknown[] } | null;
+      if (response.success && overdueData && Array.isArray(overdueData.items)) {
         // Transform API data
-        const data: Checkout[] = response.data.items.map((item: any) => ({
-          id: item.id,
-          bookId: item.book?.id,
-          studentId: item.student?.id,
-          checkoutDate: item.borrowedAt,
-          dueDate: item.due_date,
-          returnDate: undefined,
-          status: 'OVERDUE', // Force status for display
-          overdueDays: item.overdueDays,
-          fineAmount: String(item.fineAmount || '0'),
-          book: {
-            id: item.book?.id || '',
-            accessionNo: item.book?.accessionNo || item.book?.isbn || '', // Fallback
-            title: item.book?.title || '',
-            author: item.book?.author || '',
-            category: item.material_type || 'General',
-          },
-          student: {
-            id: item.student?.id || '',
-            studentId: item.student?.student_id || '',
-            firstName: item.student?.name?.split(' ')[0] || '',
-            lastName: item.student?.name?.split(' ').slice(1).join(' ') || '',
-            gradeLevel: item.student?.grade_level || '',
-            section: item.student?.section || '',
-          },
-        }));
+        const data: Checkout[] = (overdueData.items as RawCheckoutItem[]).map(
+          (item: RawCheckoutItem) => ({
+            id: item.id,
+            bookId: item.book?.id,
+            studentId: item.student?.id,
+            checkoutDate: item.borrowedAt,
+            dueDate: item.due_date,
+            returnDate: undefined,
+            status: 'OVERDUE', // Force status for display
+            overdueDays: item.overdueDays,
+            fineAmount: String(item.fineAmount || '0'),
+            book: {
+              id: item.book?.id || '',
+              accessionNo: item.book?.accessionNo || item.book?.isbn || '', // Fallback
+              title: item.book?.title || '',
+              author: item.book?.author || '',
+              category: item.material_type || 'General',
+            },
+            student: {
+              id: item.student?.id || '',
+              studentId: item.student?.student_id || '',
+              firstName: item.student?.name?.split(' ')[0] || '',
+              lastName: item.student?.name?.split(' ').slice(1).join(' ') || '',
+              gradeLevel: item.student?.grade_level || '',
+              section: item.student?.section || '',
+            },
+          })
+        );
 
         setCheckouts(data);
         setFilteredCheckouts(data);

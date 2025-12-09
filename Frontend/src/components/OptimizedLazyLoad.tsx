@@ -356,8 +356,8 @@ export function useBundleSizeMonitor() {
 
     try {
       observer.observe({ entryTypes: ['resource'] });
-    } catch (error) {
-      console.debug('Performance observer not supported');
+    } catch {
+      console.info('Performance observer not supported');
     }
 
     return () => observer.disconnect();

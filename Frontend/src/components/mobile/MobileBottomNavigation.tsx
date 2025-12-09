@@ -105,7 +105,7 @@ const moreNavigationItems: NavigationItem[] = [
 
 interface MobileBottomNavigationProps {
   activeTab: string;
-  onTabChange: (tabId: string) => void;
+  onTabChange: (_tabId: string) => void;
 }
 
 export const MobileBottomNavigation: React.FC<MobileBottomNavigationProps> = ({

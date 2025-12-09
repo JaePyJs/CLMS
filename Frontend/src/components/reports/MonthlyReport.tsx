@@ -12,10 +12,20 @@ import { Download } from 'lucide-react';
 import { reportsApi } from '@/lib/api';
 import { exportReportToCSV } from '@/lib/export-utils';
 
+interface ReportStats {
+  monthName?: string;
+  year?: number;
+  summary?: {
+    totalVisits: number;
+    booksBorrowed: number;
+    uniqueStudents: number;
+  };
+}
+
 export default function MonthlyReport() {
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<ReportStats | null>(null);
 
   const fetchMonthlyReport = useCallback(async () => {
     try {

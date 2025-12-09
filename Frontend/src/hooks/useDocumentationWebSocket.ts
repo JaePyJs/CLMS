@@ -17,15 +17,37 @@ export interface DocumentationWebSocketConfig {
   conflictResolution: 'auto' | 'manual' | 'disabled';
 }
 
+export interface ConflictDetails {
+  file?: string;
+  localVersion?: string;
+  remoteVersion?: string;
+  [key: string]: unknown;
+}
+
+export interface ValidationError {
+  file?: string;
+  line?: number;
+  message?: string;
+  severity?: string;
+}
+
+export interface DocumentSnapshot {
+  id?: string;
+  name?: string;
+  description?: string;
+  createdAt?: string;
+  version?: string;
+}
+
 export interface DocumentationWebSocketHandlers {
   onUpdate?: (update: DocumentationUpdate) => void;
   onVersionChange?: (version: string) => void;
-  onConflict?: (conflictId: string, details: any) => void;
+  onConflict?: (conflictId: string, details: ConflictDetails) => void;
   onSyncStatusChange?: (
     status: 'synced' | 'syncing' | 'error' | 'offline'
   ) => void;
-  onValidationError?: (errors: any[]) => void;
-  onSnapshotCreated?: (snapshot: any) => void;
+  onValidationError?: (errors: ValidationError[]) => void;
+  onSnapshotCreated?: (snapshot: DocumentSnapshot | null) => void;
 }
 
 const DEFAULT_CONFIG: DocumentationWebSocketConfig = {
@@ -57,7 +79,11 @@ export const useDocumentationWebSocket = (
   }, [handlers]);
 
   // Handle incoming WebSocket messages
-  const handleWebSocketMessage = useCallback((message: any) => {
+  interface WebSocketMessage {
+    type?: string;
+    data?: unknown;
+  }
+  const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
     if (!message.type?.startsWith('documentation_')) {
       return;
     }
@@ -98,23 +124,36 @@ export const useDocumentationWebSocket = (
 
       const update: DocumentationUpdate = {
         id: hasProperty(data, 'id') ? (data.id as string) : '',
-        type: hasProperty(data, 'type') ? (data.type as any) : 'content_change',
+        type: hasProperty(data, 'type')
+          ? (data.type as
+              | 'content_change'
+              | 'structure_change'
+              | 'metadata_update'
+              | 'version_update')
+          : 'content_change',
         timestamp: hasProperty(data, 'timestamp')
           ? (data.timestamp as string)
           : new Date().toISOString(),
         source: hasProperty(data, 'source')
           ? (data.source as string)
           : 'websocket',
-        changes: hasProperty(data, 'changes') ? (data.changes as any[]) : [],
+        changes: hasProperty(data, 'changes')
+          ? (data.changes as DocumentationUpdate['changes'])
+          : [],
         version: hasProperty(data, 'version')
-          ? (data.version as any)
-          : ({} as any),
+          ? (data.version as DocumentationUpdate['version'])
+          : { major: 0, minor: 0, patch: 0, hash: '' },
         author: hasProperty(data, 'author')
-          ? (data.author as any)
-          : ({} as any),
+          ? (data.author as DocumentationUpdate['author'])
+          : { id: '', name: '', role: '' },
         metadata: hasProperty(data, 'metadata')
-          ? (data.metadata as any)
-          : ({} as any),
+          ? (data.metadata as DocumentationUpdate['metadata'])
+          : {
+              affectedFiles: [],
+              impactLevel: 'low',
+              requiresReview: false,
+              autoApproved: false,
+            },
       };
 
       // Filter by configuration
@@ -135,7 +174,7 @@ export const useDocumentationWebSocket = (
       if (finalConfig.targetFiles && finalConfig.targetFiles.length > 0) {
         const hasTargetFile = update.changes.some((change) =>
           // targetFiles is validated as non-null by the if condition above
-          finalConfig.targetFiles.includes(change.file)
+          finalConfig.targetFiles!.includes(change.file)
         );
         if (!hasTargetFile) {
           return;
@@ -197,7 +236,9 @@ export const useDocumentationWebSocket = (
       const conflictId = hasProperty(data, 'conflictId')
         ? String(data.conflictId)
         : 'unknown';
-      const details = hasProperty(data, 'details') ? data.details : {};
+      const details: ConflictDetails = hasProperty(data, 'details')
+        ? (data.details as ConflictDetails)
+        : {};
 
       if (finalConfig.enableNotifications) {
         toast.warning('Documentation Conflict Detected', {
@@ -262,7 +303,7 @@ export const useDocumentationWebSocket = (
         });
       }
 
-      handlersRef.current.onValidationError?.(errors);
+      handlersRef.current.onValidationError?.(errors as ValidationError[]);
     },
     [finalConfig.enableNotifications]
   );
@@ -274,8 +315,8 @@ export const useDocumentationWebSocket = (
         return;
       }
 
-      const snapshot = hasProperty(data, 'snapshot')
-        ? (data.snapshot as any)
+      const snapshot: DocumentSnapshot | null = hasProperty(data, 'snapshot')
+        ? (data.snapshot as DocumentSnapshot)
         : null;
 
       if (finalConfig.enableNotifications && snapshot) {
@@ -365,8 +406,12 @@ export const useDocumentationWebSocket = (
 
       const response = await utilitiesApi.subscribeToUpdates(subscriptionData);
 
-      if (response.success && (response.data as any)?.subscriptionId) {
-        subscriptionIdRef.current = (response.data as any).subscriptionId;
+      interface SubscriptionResponse {
+        subscriptionId?: string;
+      }
+      const responseData = response.data as SubscriptionResponse | undefined;
+      if (response.success && responseData?.subscriptionId) {
+        subscriptionIdRef.current = responseData.subscriptionId;
       }
 
       isSubscribedRef.current = true;
@@ -411,10 +456,14 @@ export const useDocumentationWebSocket = (
       return;
     }
 
-    const originalOnMessage = (webSocketContext as any).onMessage;
+    interface WebSocketContextExtended {
+      onMessage?: (message: WebSocketMessage) => void;
+    }
+    const contextExt = webSocketContext as unknown as WebSocketContextExtended;
+    const originalOnMessage = contextExt.onMessage;
 
     // Enhance the existing onMessage handler
-    (webSocketContext as any).onMessage = (message: any) => {
+    contextExt.onMessage = (message: WebSocketMessage) => {
       handleWebSocketMessage(message);
 
       // Call original handler if it exists
@@ -430,7 +479,7 @@ export const useDocumentationWebSocket = (
 
     // Cleanup function
     return () => {
-      (webSocketContext as any).onMessage = originalOnMessage;
+      contextExt.onMessage = originalOnMessage;
     };
   }, [
     webSocketContext.isConnected,

@@ -26,10 +26,10 @@ interface ErrorBoundaryWrapperProps {
   /** Custom fallback component (defaults to ErrorBoundaryFallback) */
   fallback?: React.ComponentType<FallbackProps>;
   /** Custom error handler callback */
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  onError?: (_error: Error, _errorInfo: React.ErrorInfo) => void;
   /** Custom reset handler callback */
   onReset?: (
-    details:
+    _details:
       | { reason: 'imperative-api' }
       | {
           reason: 'keys';
@@ -73,7 +73,7 @@ export function ErrorBoundaryWrapper({
       reportApplicationError(error, info, errorId, errorType, 0);
 
       // Log error details for debugging
-      console.group(`🚨 ErrorBoundary: ${errorType}`);
+      console.info(`🚨 ErrorBoundary: ${errorType}`);
       console.error('Error:', error);
       console.error('Error ID:', errorId);
       console.error(
@@ -81,7 +81,7 @@ export function ErrorBoundaryWrapper({
         info.componentStack || 'No component stack available'
       );
       console.error('Error Type:', errorType);
-      console.groupEnd();
+      console.info(`🔄 Error details - ID: ${errorId}, Type: ${errorType}`);
 
       // Call custom error handler if provided
       if (onError) {
@@ -108,7 +108,7 @@ export function ErrorBoundaryWrapper({
             next: unknown[] | undefined;
           }
     ) => {
-      console.debug(`🔄 ErrorBoundary Reset: ${details.reason}`, details);
+      console.info(`🔄 ErrorBoundary Reset: ${details.reason}`, details);
 
       // Call custom reset handler if provided
       if (onReset) {

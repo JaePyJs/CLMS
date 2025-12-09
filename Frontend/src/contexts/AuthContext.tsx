@@ -30,9 +30,9 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (
-    username: string,
-    password: string,
-    rememberMe?: boolean
+    _username: string,
+    _password: string,
+    _rememberMe?: boolean
   ) => Promise<boolean>;
   logout: () => void;
   checkAuth: () => Promise<boolean>;
@@ -218,13 +218,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const currentUser: AuthUser = await primeAuthState(queryClient);
       queryClient.setQueryData(authKeys.current(), currentUser);
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Only fall back to cache if it's a network error (offline), NOT if it's an auth error (401/403)
+      const errRecord = error as Record<string, unknown> | null;
+      const responseStatus = (errRecord?.response as Record<string, unknown>)
+        ?.status;
+      const directStatus = errRecord?.status;
       const isAuthError =
-        error?.response?.status === 401 ||
-        error?.response?.status === 403 ||
-        error?.status === 401 ||
-        error?.status === 403;
+        responseStatus === 401 ||
+        responseStatus === 403 ||
+        directStatus === 401 ||
+        directStatus === 403;
 
       // Don't log 401/403 errors - they're expected when not logged in
       if (!isAuthError) {

@@ -40,13 +40,13 @@ export interface EnhancedStateStore<T> {
   batch: (updates: Array<() => void>) => void;
 
   // Computed values
-  computed: Record<string, any>;
+  computed: Record<string, unknown>;
 
   // Actions
-  actions: Record<string, (...args: any[]) => void>;
+  actions: Record<string, (...args: unknown[]) => void>;
 
   // Async actions
-  asyncActions: Record<string, (...args: any[]) => Promise<any>>;
+  asyncActions: Record<string, (...args: unknown[]) => Promise<unknown>>;
 }
 
 /**
@@ -66,13 +66,16 @@ export interface StateStoreConfig<T> {
   effects?: StateEffect<T>[];
   actions?: Record<
     string,
-    (state: T, setState: StateUpdater<T>) => (...args: any[]) => void
+    (state: T, setState: StateUpdater<T>) => (...args: unknown[]) => void
   >;
   asyncActions?: Record<
     string,
-    (state: T, setState: StateUpdater<T>) => (...args: any[]) => Promise<any>
+    (
+      state: T,
+      setState: StateUpdater<T>
+    ) => (...args: unknown[]) => Promise<unknown>
   >;
-  computed?: Record<string, (state: T) => any>;
+  computed?: Record<string, (state: T) => unknown>;
 }
 
 /**
@@ -93,6 +96,7 @@ export function createStateStore<T>(
   } = config;
 
   // Create Zustand store with middleware
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const createStore = (set: any, get: any, api: any) => ({
     state: initialState,
 
@@ -100,7 +104,7 @@ export function createStateStore<T>(
       set((prev: { state: T }) => ({
         state:
           typeof updater === 'function'
-            ? (updater as (state: any) => any)(prev.state)
+            ? (updater as (state: T) => T)(prev.state)
             : updater,
       }));
     },
@@ -125,13 +129,16 @@ export function createStateStore<T>(
     },
 
     // Actions
-    actions: {} as Record<string, (...args: any[]) => void>,
+    actions: {} as Record<string, (...args: unknown[]) => void>,
 
     // Async actions
-    asyncActions: {} as Record<string, (...args: any[]) => Promise<any>>,
+    asyncActions: {} as Record<
+      string,
+      (...args: unknown[]) => Promise<unknown>
+    >,
 
     // Computed values
-    computed: {} as Record<string, any>,
+    computed: {} as Record<string, unknown>,
   });
 
   // Apply persistence middleware
@@ -214,7 +221,7 @@ export function createStateStore<T>(
       useStore.getState().batch(updates);
     },
 
-    computed: {} as Record<string, any>,
+    computed: {} as Record<string, unknown>,
 
     actions: {},
 
@@ -223,7 +230,7 @@ export function createStateStore<T>(
 
   // Initialize actions
   Object.entries(actionDefinitions).forEach(([name, action]) => {
-    enhancedStore.actions[name] = (...args: any[]) => {
+    enhancedStore.actions[name] = (...args: unknown[]) => {
       const currentStore = useStore.getState();
       return action(currentStore.getState(), currentStore.setState)(...args);
     };
@@ -231,7 +238,7 @@ export function createStateStore<T>(
 
   // Initialize async actions
   Object.entries(asyncActionDefinitions).forEach(([name, action]) => {
-    enhancedStore.asyncActions[name] = async (...args: any[]) => {
+    enhancedStore.asyncActions[name] = async (...args: unknown[]) => {
       const currentStore = useStore.getState();
       return await action(
         currentStore.getState(),
@@ -323,7 +330,7 @@ export function useStateStoreComputed<T, R>(
     return unsubscribe;
   }, [store, computedKey]);
 
-  return computedValue;
+  return computedValue as R;
 }
 
 /**
@@ -345,7 +352,7 @@ export function useStateStoreAsyncActions<T>(store: EnhancedStateStore<T>) {
  */
 export class StoreRegistry {
   private static instance: StoreRegistry;
-  private stores: Map<string, EnhancedStateStore<any>> = new Map();
+  private stores: Map<string, EnhancedStateStore<unknown>> = new Map();
 
   static getInstance(): StoreRegistry {
     if (!StoreRegistry.instance) {
@@ -355,18 +362,18 @@ export class StoreRegistry {
   }
 
   register<T>(name: string, store: EnhancedStateStore<T>): void {
-    this.stores.set(name, store);
+    this.stores.set(name, store as EnhancedStateStore<unknown>);
   }
 
   get<T>(name: string): EnhancedStateStore<T> | undefined {
-    return this.stores.get(name);
+    return this.stores.get(name) as EnhancedStateStore<T> | undefined;
   }
 
   unregister(name: string): boolean {
     return this.stores.delete(name);
   }
 
-  getAll(): Map<string, EnhancedStateStore<any>> {
+  getAll(): Map<string, EnhancedStateStore<unknown>> {
     return new Map(this.stores);
   }
 
@@ -383,11 +390,12 @@ export const StoreUtils = {
    * Create a deep selector for nested state
    */
   deepSelect:
-    <T extends Record<string, any>, R>(path: Array<string | number>) =>
+    <T extends Record<string, unknown>, R>(path: Array<string | number>) =>
     (state: T): R => {
       return path.reduce(
-        (current: any, key) => current?.[key],
-        state as any
+        (current: unknown, key) =>
+          (current as Record<string | number, unknown>)?.[key],
+        state as unknown
       ) as R;
     },
 

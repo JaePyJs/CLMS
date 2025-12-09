@@ -1,0 +1,25 @@
+
+> clms-frontend@1.0.0 lint
+> eslint . --max-warnings 0
+
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\ErrorBoundaryWrapper.tsx
+  32:5  warning  'details' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\management\ImportExportManager.tsx
+  37:3  warning  'XCircle' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\performance\ReactPerformanceOptimizer.tsx
+  249:11  warning  'args' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+  261:11  warning  'args' is defined but never used. Allowed unused args must match /^_/u  no-unused-vars
+
+Γ£û 4 problems (0 errors, 4 warnings)
+
+ESLint found too many warnings (maximum: 0).
+npm error Lifecycle script `lint` failed with error:
+npm error code 1
+npm error path C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend
+npm error workspace clms-frontend@1.0.0
+npm error location C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c eslint . --max-warnings 0

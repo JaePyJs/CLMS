@@ -239,7 +239,9 @@ export function ReportsBuilder() {
 
       if (response) {
         // Create a blob from the response
-        const blob = new Blob([response as any], { type: 'text/csv' });
+        const blob = new Blob([response as unknown as string], {
+          type: 'text/csv',
+        });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;

@@ -220,7 +220,7 @@ export const useOptimizedCalculation = <T>(
 };
 
 // Hook for stable callbacks
-export const useStableCallback = <T extends (...args: any[]) => any>(
+export const useStableCallback = <T extends (...args: unknown[]) => unknown>(
   callback: T,
   dependencies: React.DependencyList = []
 ): T => {

@@ -14,6 +14,34 @@ import { Book, Search, User, CheckCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { enhancedLibraryApi, studentsApi } from '@/lib/api';
 
+interface RawStudent {
+  id?: string;
+  student_id?: string;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  grade_level?: number | string;
+  current_loans?: number;
+  max_loans?: number;
+  can_borrow?: boolean;
+}
+
+interface RawBook {
+  id: string;
+  title?: string;
+  author?: string;
+  isbn?: string;
+  category?: string;
+  materialType?: string;
+  available_copies?: number;
+  is_active?: boolean;
+  location?: string;
+}
+
+interface ApiErrorResponse {
+  error?: string | { message?: string };
+}
+
 interface Book {
   id: string;
   title: string;
@@ -66,7 +94,7 @@ export function EnhancedBorrowing() {
     try {
       const response = await studentsApi.getStudents();
       if (response.success && response.data) {
-        const mapped = (response.data as any[]).map((s: any) => ({
+        const mapped = (response.data as RawStudent[]).map((s: RawStudent) => ({
           id: s.id || s.student_id || `S-${Date.now()}`,
           studentId: s.student_id || s.id || 'UNKNOWN',
           name:
@@ -96,7 +124,7 @@ export function EnhancedBorrowing() {
     try {
       const response = await enhancedLibraryApi.getAvailableBooks();
       if (response.success && response.data) {
-        const raw = response.data as any[];
+        const raw = response.data as RawBook[];
         const toMaterialType = (v: unknown): Book['materialType'] => {
           const s = String(v || '').trim();
           if (
@@ -110,7 +138,7 @@ export function EnhancedBorrowing() {
           }
           return 'Fiction';
         };
-        const data: Book[] = (raw || []).map((b: any) => ({
+        const data: Book[] = (raw || []).map((b: RawBook) => ({
           id: String(b.id),
           title: String(b.title || ''),
           author: String(b.author || ''),
@@ -206,11 +234,12 @@ export function EnhancedBorrowing() {
     }
   }, [students, books]);
 
-  const getStudentDisplayName = (s: any) => {
+  const getStudentDisplayName = (s: Student | RawStudent) => {
     const base =
-      typeof s?.name === 'string' && s.name.trim().length > 0
-        ? s.name
-        : `${s?.firstName ?? ''} ${s?.lastName ?? ''}`.trim();
+      typeof (s as RawStudent)?.name === 'string' &&
+      (s as RawStudent).name!.trim().length > 0
+        ? (s as RawStudent).name
+        : `${(s as RawStudent)?.first_name ?? ''} ${(s as RawStudent)?.last_name ?? ''}`.trim();
     return base || '';
   };
 
@@ -306,9 +335,10 @@ export function EnhancedBorrowing() {
           setNotes('');
         } else {
           const errMsg =
-            typeof (response as any)?.error === 'string'
-              ? (response as any).error
-              : (response as any)?.error?.message || 'Failed to borrow books';
+            typeof (response as ApiErrorResponse)?.error === 'string'
+              ? (response as ApiErrorResponse).error
+              : ((response as ApiErrorResponse)?.error as { message?: string })
+                  ?.message || 'Failed to borrow books';
           toast.error(String(errMsg));
         }
       }
@@ -326,7 +356,7 @@ export function EnhancedBorrowing() {
         setSelectedBooks([]);
         setNotes('');
       } else {
-        const msg = (error as any)?.message || 'Error processing borrowing';
+        const msg = (error as Error)?.message || 'Error processing borrowing';
         toast.error(String(msg));
       }
     } finally {

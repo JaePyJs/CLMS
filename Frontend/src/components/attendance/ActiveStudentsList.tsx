@@ -14,7 +14,7 @@ export interface ActiveStudent {
 export interface ActiveStudentsListProps {
   students: ActiveStudent[];
   viewMode?: 'grid' | 'list';
-  onViewModeChange?: (mode: 'grid' | 'list') => void;
+  onViewModeChange?: (_mode: 'grid' | 'list') => void;
   className?: string;
 }
 

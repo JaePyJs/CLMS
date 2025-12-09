@@ -8,35 +8,45 @@ echo   CLMS - Centralized Library Management System
 echo  ========================================================
 echo.
 
-echo [0/4] Cleaning up old processes...
+echo [0/5] Cleaning up old processes...
 taskkill /F /IM node.exe >nul 2>&1
+taskkill /F /IM electron.exe >nul 2>&1
 echo       Done.
 
 REM Check if node_modules exists
 if not exist "Backend\node_modules" (
-    echo [1/4] Installing Backend dependencies...
+    echo [1/5] Installing Backend dependencies...
     cd Backend
     call npm install
     cd ..
 ) else (
-    echo [1/4] Backend dependencies OK
+    echo [1/5] Backend dependencies OK
 )
 
 if not exist "Frontend\node_modules" (
-    echo [2/4] Installing Frontend dependencies...
+    echo [2/5] Installing Frontend dependencies...
     cd Frontend
     call npm install
     cd ..
 ) else (
-    echo [2/4] Frontend dependencies OK
+    echo [2/5] Frontend dependencies OK
 )
 
-echo [3/4] Starting Backend Server (Port 3001)...
+if not exist "BarcodeScanner\node_modules" (
+    echo [3/5] Installing BarcodeScanner dependencies...
+    cd BarcodeScanner
+    call npm install
+    cd ..
+) else (
+    echo [3/5] BarcodeScanner dependencies OK
+)
+
+echo [4/5] Starting Backend Server (Port 3001)...
 start /min "CLMS Backend" cmd /k "cd Backend && npm run dev"
 
 timeout /t 3 /nobreak >nul
 
-echo [4/4] Starting Frontend Server (Port 3000)...
+echo [5/5] Starting Frontend Server (Port 3000)...
 start /min "CLMS Frontend" cmd /k "cd Frontend && npm run dev"
 
 echo.
@@ -59,9 +69,16 @@ echo  SPECIAL SCREENS:
 echo  ----------------
 echo    Kiosk Display: http://localhost:3000/kiosk
 echo.
+echo  BARCODE SCANNER:
+echo  ----------------
+echo    To start background barcode scanning, run:
+echo    cd BarcodeScanner && npm start
+echo    Or use CLMS_MANAGER.bat option [8]
+echo.
 echo  NOTE: Server windows are MINIMIZED in your taskbar.
 echo        To stop the app, close those windows or use CLMS_MANAGER.bat
 echo.
 timeout /t 5
 start http://localhost:3000
 exit
+

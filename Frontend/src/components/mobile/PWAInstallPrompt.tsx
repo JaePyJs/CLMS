@@ -36,9 +36,13 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
   // Check if app is already installed
   const checkIfInstalled = useCallback(() => {
     // Check if running in standalone mode
+    // iOS standalone mode check
+    interface NavigatorWithStandalone extends Navigator {
+      standalone?: boolean;
+    }
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true ||
+      (window.navigator as NavigatorWithStandalone).standalone === true ||
       document.referrer.includes('android-app://');
 
     // Check if app is installed (different methods for different platforms)
@@ -71,7 +75,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
 
   // Handle app installed event
   const handleAppInstalled = useCallback(() => {
-    console.debug('[PWAInstall] App was installed');
+    console.info('[PWAInstall] App was installed');
     setIsInstalled(true);
     localStorage.setItem('pwa-installed', 'true');
     setShowPrompt(false);
@@ -105,7 +109,7 @@ export const PWAInstallPrompt: React.FC<PWAInstallPromptProps> = ({
       // Wait for the user to respond to the prompt
       const { outcome } = await deferredPrompt.userChoice;
 
-      console.debug(`[PWAInstall] User ${outcome} the install prompt`);
+      console.info(`[PWAInstall] User ${outcome} the install prompt`);
 
       if (outcome === 'accepted') {
         setInstallStatus('success');

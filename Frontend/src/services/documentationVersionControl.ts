@@ -236,7 +236,10 @@ class DocumentationVersionControl {
   }
 
   private async simulateVersionCreation(
-    versionData: any
+    versionData: Omit<
+      VersionInfo,
+      'timestamp' | 'author' | 'description' | 'tags'
+    > & { description?: string; tags: string[]; timestamp: string }
   ): Promise<{ success: boolean; data: VersionInfo }> {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -292,7 +295,7 @@ class DocumentationVersionControl {
     return `change_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
   }
 
-  private calculateLineNumbers(change: any): {
+  private calculateLineNumbers(change: DocumentationUpdate['changes'][0]): {
     old: { start: number; end: number };
     new: { start: number; end: number };
   } {
@@ -307,7 +310,9 @@ class DocumentationVersionControl {
     };
   }
 
-  private calculateComplexity(change: any): 'low' | 'medium' | 'high' {
+  private calculateComplexity(
+    change: DocumentationUpdate['changes'][0]
+  ): 'low' | 'medium' | 'high' {
     const contentLength = (change.newContent || change.oldContent || '').length;
 
     if (contentLength < 100) {
@@ -319,7 +324,9 @@ class DocumentationVersionControl {
     return 'high';
   }
 
-  private calculateStatistics(changes: any[]): ChangeRecord['statistics'] {
+  private calculateStatistics(
+    changes: DocumentationUpdate['changes']
+  ): ChangeRecord['statistics'] {
     let linesAdded = 0;
     let linesRemoved = 0;
     let linesModified = 0;

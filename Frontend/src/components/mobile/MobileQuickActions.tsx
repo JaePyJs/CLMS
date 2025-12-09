@@ -36,7 +36,7 @@ interface QuickAction {
 }
 
 interface MobileQuickActionsProps {
-  onActionClick?: (actionId: string) => void;
+  onActionClick?: (_actionId: string) => void;
   customActions?: QuickAction[];
 }
 

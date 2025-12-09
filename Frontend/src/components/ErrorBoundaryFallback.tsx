@@ -41,7 +41,7 @@ interface ErrorBoundaryFallbackProps extends FallbackProps {
   /** Enable/disable retry functionality */
   enableRetry?: boolean;
   /** Custom error handler callback */
-  onError?: (error: Error, errorId: string, errorType: ErrorType) => void;
+  onError?: (_error: Error, _errorId: string, _errorType: ErrorType) => void;
 }
 
 /**
@@ -336,7 +336,7 @@ export function ErrorBoundaryFallback({
       const delay = Math.min(2000 * Math.pow(1.5, retryCount), 10000); // Progressive delay
 
       const timer = setTimeout(() => {
-        console.debug(
+        console.info(
           `Auto-recovery attempt ${retryCount + 1}/${maxRetries}: ${suggestion.title}`
         );
         setIsRecovering(true);

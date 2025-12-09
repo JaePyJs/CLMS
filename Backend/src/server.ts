@@ -45,10 +45,11 @@ app.use(
   }),
 );
 
-// CORS configuration
+// CORS configuration - allow all origins in development for multi-PC setup
+const allowedOrigins = getAllowedOrigins();
 app.use(
   cors({
-    origin: getAllowedOrigins(),
+    origin: allowedOrigins.includes('*') ? true : allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [

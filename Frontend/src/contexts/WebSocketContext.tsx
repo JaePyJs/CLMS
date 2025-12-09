@@ -20,6 +20,14 @@ interface DashboardFilters {
   [key: string]: unknown;
 }
 
+// Message data type for attendance events
+interface AttendanceMessageData {
+  activityId?: string;
+  studentId?: string;
+  studentName?: string;
+  [key: string]: unknown;
+}
+
 interface RecentActivity {
   id: string;
   type: string;
@@ -48,30 +56,30 @@ export interface WebSocketContextType extends WebSocketState {
   disconnect: () => void;
 
   // Message methods
-  sendMessage: (message: WebSocketMessage) => boolean;
+  sendMessage: (_message: Record<string, unknown>) => boolean;
 
   // Subscription methods
-  subscribe: (subscription: string) => boolean;
-  unsubscribe: (subscription: string) => boolean;
+  subscribe: (_subscription: string) => boolean;
+  unsubscribe: (_subscription: string) => boolean;
 
   // Dashboard methods
   requestDashboardData: (
-    dataType: string,
-    filters?: DashboardFilters
+    _dataType: string,
+    _filters?: DashboardFilters
   ) => boolean;
 
   // Communication methods
   sendChatMessage: (
-    message: string,
-    targetRole?: string,
-    targetUserId?: string
+    _message: string,
+    _targetRole?: string,
+    _targetUserId?: string
   ) => boolean;
 
   // Emergency methods
   triggerEmergencyAlert: (
-    alertType: string,
-    message: string,
-    location?: string
+    _alertType: string,
+    _message: string,
+    _location?: string
   ) => boolean;
 
   // Real-time data
@@ -82,7 +90,7 @@ export interface WebSocketContextType extends WebSocketState {
 
   // Utility methods
   clearNotifications: () => void;
-  refreshDashboard: (dataType: string, filters?: DashboardFilters) => void;
+  refreshDashboard: (_dataType: string, _filters?: DashboardFilters) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(
@@ -110,13 +118,15 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       case 'attendance:checkin':
         setRecentActivities((prev: RecentActivity[]) => {
           const activityId =
-            (message.data as any).activityId || `checkin-${Date.now()}`;
+            (message.data as AttendanceMessageData).activityId ||
+            `checkin-${Date.now()}`;
           // Deduplicate: check if activity with same ID or same student+type within 5 seconds already exists
           const isDuplicate = prev.some((a) => {
             if (a.id === activityId) return true;
             const timeDiff = Math.abs(Date.now() - (a.timestamp || 0));
             return (
-              a.studentId === (message.data as any).studentId &&
+              a.studentId ===
+                (message.data as AttendanceMessageData).studentId &&
               a.type === 'CHECK_IN' &&
               timeDiff < 5000
             );
@@ -126,11 +136,11 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
           const activity: RecentActivity = {
             id: activityId,
             type: 'CHECK_IN',
-            studentId: (message.data as any).studentId,
-            studentName: (message.data as any).studentName,
+            studentId: (message.data as AttendanceMessageData).studentId,
+            studentName: (message.data as AttendanceMessageData).studentName,
             timestamp: Date.now(),
             activityType: 'CHECK_IN',
-            ...message.data,
+            ...(message.data as Record<string, unknown>),
           };
           return [activity, ...prev.slice(0, 49)];
         });
@@ -141,13 +151,15 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       case 'attendance:checkout':
         setRecentActivities((prev: RecentActivity[]) => {
           const activityId =
-            (message.data as any).activityId || `checkout-${Date.now()}`;
+            (message.data as AttendanceMessageData).activityId ||
+            `checkout-${Date.now()}`;
           // Deduplicate: check if activity with same ID or same student+type within 5 seconds already exists
           const isDuplicate = prev.some((a) => {
             if (a.id === activityId) return true;
             const timeDiff = Math.abs(Date.now() - (a.timestamp || 0));
             return (
-              a.studentId === (message.data as any).studentId &&
+              a.studentId ===
+                (message.data as AttendanceMessageData).studentId &&
               a.type === 'CHECK_OUT' &&
               timeDiff < 5000
             );
@@ -157,11 +169,11 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
           const activity: RecentActivity = {
             id: activityId,
             type: 'CHECK_OUT',
-            studentId: (message.data as any).studentId,
-            studentName: (message.data as any).studentName,
+            studentId: (message.data as AttendanceMessageData).studentId,
+            studentName: (message.data as AttendanceMessageData).studentName,
             timestamp: Date.now(),
             activityType: 'CHECK_OUT',
-            ...message.data,
+            ...(message.data as Record<string, unknown>),
           };
           return [activity, ...prev.slice(0, 49)];
         });
@@ -190,7 +202,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
       case 'dashboard_data': {
         const { dataType, data } = message.data as {
           dataType: string;
-          data: any;
+          data: unknown;
         };
         setDashboardData((prev: DashboardData) => ({
           ...prev,
@@ -199,8 +211,12 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
 
         if (dataType === 'activities' && Array.isArray(data)) {
           setRecentActivities(data);
-        } else if (dataType === 'equipment' && typeof data === 'object') {
-          setEquipmentStatus(data);
+        } else if (
+          dataType === 'equipment' &&
+          typeof data === 'object' &&
+          data !== null
+        ) {
+          setEquipmentStatus(data as EquipmentStatus);
         }
         break;
       }
@@ -212,11 +228,11 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   }, []);
 
   const handleDisconnect = useCallback(() => {
-    console.debug('WebSocket disconnected');
+    console.info('WebSocket disconnected');
   }, []);
 
   const handleConnect = useCallback(() => {
-    console.debug('WebSocket connected');
+    console.info('WebSocket connected');
   }, []);
 
   const wsOptions = useMemo(
@@ -283,7 +299,7 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
   };
 
   const DevWsBanner = ({
-    isConnected,
+    isConnected: _isConnected,
     error,
     attempts,
   }: {

@@ -1,14 +1,14 @@
 import { useState, useCallback } from 'react';
 
-interface LoadingState {
+interface LoadingState<T = unknown> {
   isLoading: boolean;
   error: string | null;
-  data: any;
+  data: T | null;
 }
 
-interface LoadingActions {
+interface LoadingActions<T = unknown> {
   start: () => void;
-  finish: (data?: any) => void;
+  finish: (data?: T) => void;
   error: (error: string) => void;
   reset: () => void;
 }
@@ -31,8 +31,10 @@ interface LoadingActions {
  *   actions.error('Failed to fetch data');
  * }
  */
-export function useLoadingState(initialState: Partial<LoadingState> = {}) {
-  const [state, setState] = useState<LoadingState>({
+export function useLoadingState<T = unknown>(
+  initialState: Partial<LoadingState<T>> = {}
+) {
+  const [state, setState] = useState<LoadingState<T>>({
     isLoading: false,
     error: null,
     data: null,
@@ -47,7 +49,7 @@ export function useLoadingState(initialState: Partial<LoadingState> = {}) {
     }));
   }, []);
 
-  const finish = useCallback((data?: any) => {
+  const finish = useCallback((data?: T) => {
     setState((prev) => ({
       ...prev,
       isLoading: false,
@@ -72,7 +74,7 @@ export function useLoadingState(initialState: Partial<LoadingState> = {}) {
     });
   }, []);
 
-  const actions: LoadingActions = { start, finish, error, reset };
+  const actions: LoadingActions<T> = { start, finish, error, reset };
 
   return [state, actions] as const;
 }
@@ -124,7 +126,7 @@ export function useMultipleLoadingStates<
           },
         }));
       },
-      finish: (data?: any) => {
+      finish: (data?: unknown) => {
         setLoadingStates((prev) => ({
           ...prev,
           [stateKey]: {
@@ -160,10 +162,13 @@ export function useMultipleLoadingStates<
   );
 
   // Create actions object with all state keys
-  const actions = Object.keys(states).reduce((acc, key) => {
-    acc[key as keyof T] = createActions(key as keyof T);
-    return acc;
-  }, {} as any);
+  const actions = Object.keys(states).reduce(
+    (acc, key) => {
+      acc[key as keyof T] = createActions(key as keyof T);
+      return acc;
+    },
+    {} as Record<keyof T, LoadingActions>
+  );
 
   return [loadingStates, actions] as const;
 }

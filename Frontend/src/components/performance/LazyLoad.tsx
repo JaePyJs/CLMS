@@ -19,7 +19,7 @@ interface LazyLoadProps {
   maxRetries?: number;
   retryDelay?: number;
   onRetry?: () => void;
-  onError?: (error: Error) => void;
+  onError?: (_error: Error) => void;
   onLoad?: () => void;
   prefetch?: boolean;
   threshold?: number;
@@ -144,7 +144,7 @@ const NetworkStatus = memo(() => {
           signal: AbortSignal.timeout(3000),
         });
         setHasConnection(response.ok);
-      } catch (error) {
+      } catch {
         setHasConnection(false);
       }
     };
@@ -476,7 +476,7 @@ export const withPerformanceMonitoring = <P extends object>(
 
       // Log performance metrics in development
       if (process.env.NODE_ENV === 'development') {
-        console.debug(`Component ${Component.displayName} rendered:`, {
+        console.info(`Component ${Component.displayName} rendered:`, {
           renderCount: renderCount + 1,
           timeSinceLastRender: `${timeSinceLastRender}ms`,
           props: Object.keys(props).slice(0, 3),
@@ -500,7 +500,7 @@ interface VirtualListProps<T> {
   items: T[];
   itemHeight: number;
   containerHeight: number;
-  renderItem: (item: T, index: number) => ReactNode;
+  renderItem: (_item: T, _index: number) => ReactNode;
   overscan?: number;
   className?: string;
 }

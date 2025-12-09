@@ -7,7 +7,7 @@ interface OfflineAction {
   id: string;
   type: 'create' | 'update' | 'delete';
   endpoint: string;
-  data: any;
+  data: unknown;
   timestamp: number;
   retryCount: number;
   maxRetries: number;
@@ -295,11 +295,14 @@ class OfflineSyncService {
       const transaction = this.db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
 
-      const action = await store.get(id);
-      if (action) {
-        (action as any).retryCount = retryCount;
-        await store.put(action);
-      }
+      const request = store.get(id);
+      request.onsuccess = () => {
+        const action = request.result as OfflineAction | undefined;
+        if (action) {
+          action.retryCount = retryCount;
+          store.put(action);
+        }
+      };
     } catch (error) {
       console.error('[OfflineSync] Failed to update action retry:', error);
     }
@@ -433,21 +436,21 @@ export const useOfflineSync = () => {
 // Utility functions for common offline operations
 export const offlineAPI = {
   // Queue API calls
-  queueCreate: (endpoint: string, data: any, maxRetries = 3) => ({
+  queueCreate: (endpoint: string, data: unknown, maxRetries = 3) => ({
     type: 'create' as const,
     endpoint,
     data,
     maxRetries,
   }),
 
-  queueUpdate: (endpoint: string, data: any, maxRetries = 3) => ({
+  queueUpdate: (endpoint: string, data: unknown, maxRetries = 3) => ({
     type: 'update' as const,
     endpoint,
     data,
     maxRetries,
   }),
 
-  queueDelete: (endpoint: string, data: any, maxRetries = 3) => ({
+  queueDelete: (endpoint: string, data: unknown, maxRetries = 3) => ({
     type: 'delete' as const,
     endpoint,
     data,

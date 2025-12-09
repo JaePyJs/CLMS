@@ -20,14 +20,18 @@ interface OptimizedListProps<T> {
   itemHeight: number;
   height: number;
   width?: number | string;
-  renderItem: (item: T, index: number, style: React.CSSProperties) => ReactNode;
-  itemKey?: (item: T, index: number) => Key;
+  renderItem: (
+    _item: T,
+    _index: number,
+    _style: React.CSSProperties
+  ) => ReactNode;
+  itemKey?: (_item: T, _index: number) => Key;
   className?: string;
   overscanCount?: number;
   estimatedItemSize?: number;
   variableSize?: boolean;
-  getItemSize?: (index: number) => number;
-  onScroll?: (scrollInfo: {
+  getItemSize?: (_index: number) => number;
+  onScroll?: (_scrollInfo: {
     scrollOffset: number;
     scrollDirection: 'forward' | 'backward';
   }) => void;
@@ -60,9 +64,9 @@ interface ListRowProps<T> {
   data: {
     items: T[];
     renderItem: (
-      item: T,
-      index: number,
-      style: React.CSSProperties
+      _item: T,
+      _index: number,
+      _style: React.CSSProperties
     ) => ReactNode;
   };
 }
@@ -101,9 +105,9 @@ interface SearchFilterProps<T> {
         options: Array<{ value: unknown; label: string }>;
       }>
     | undefined;
-  onSearch: (query: string) => void;
-  onSort: (key: keyof T, direction: 'asc' | 'desc') => void;
-  onFilter: (key: keyof T, value: unknown) => void;
+  onSearch: (_query: string) => void;
+  onSort: (_key: keyof T, _direction: 'asc' | 'desc') => void;
+  onFilter: (_key: keyof T, _value: unknown) => void;
   totalCount: number;
   filteredCount: number;
 }
@@ -299,7 +303,7 @@ export const OptimizedList = <T,>({
     {}
   );
   const listRef = useRef<{
-    scrollToItem?: (index: number) => void;
+    scrollToItem?: (_index: number) => void;
     _outerRef?: {
       scrollHeight: number;
       clientHeight: number;
@@ -450,11 +454,11 @@ export const OptimizedList = <T,>({
     height: number;
     width: number | string;
     itemCount: number;
-    itemSize: number | ((index: number) => number);
+    itemSize: number | ((_index: number) => number);
     itemData: unknown;
-    itemKey?: (index: number, data: unknown) => Key;
+    itemKey?: (_index: number, _data: unknown) => Key;
     overscanCount?: number;
-    onScroll?: (info: {
+    onScroll?: (_info: {
       scrollOffset: number;
       scrollDirection: 'forward' | 'backward';
     }) => void;
@@ -466,7 +470,7 @@ export const OptimizedList = <T,>({
   }
 
   const CustomList = React.forwardRef<
-    { scrollToItem?: (index: number) => void },
+    { scrollToItem?: (_index: number) => void },
     CustomListProps
   >(
     (

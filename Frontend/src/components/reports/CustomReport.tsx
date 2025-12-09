@@ -7,10 +7,19 @@ import { FileText, Download } from 'lucide-react';
 import { reportsApi } from '@/lib/api';
 import { exportReportToCSV } from '@/lib/export-utils';
 
+interface CustomReportStats {
+  summary?: {
+    totalCheckIns: number;
+    uniqueStudents: number;
+    booksBorrowed: number;
+    booksReturned: number;
+  };
+}
+
 export default function CustomReport() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<CustomReportStats | null>(null);
   const [loading, setLoading] = useState(false);
 
   const generateReport = async () => {

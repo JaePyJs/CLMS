@@ -96,6 +96,43 @@ interface BookStats {
   categories: number;
 }
 
+// Raw API response types
+interface RawBook {
+  id: string;
+  isbn?: string;
+  accession_no?: string;
+  title: string;
+  author: string;
+  publisher?: string;
+  year?: number;
+  category: string;
+  subcategory?: string;
+  location?: string;
+  edition?: string;
+  pages?: string;
+  cost_price?: number;
+  total_copies?: number;
+  available_copies?: number;
+  is_active?: boolean;
+  barcode_image?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface BooksApiResponse {
+  success: boolean;
+  data?: RawBook[];
+  pagination?: {
+    total?: number;
+    pages?: number;
+  };
+}
+
+interface StatsApiResponse {
+  success: boolean;
+  data?: BookStats;
+}
+
 export function BookCatalog() {
   // Mobile optimization
   const { isMobile } = useMobileOptimization();
@@ -193,14 +230,14 @@ export function BookCatalog() {
         params.append('available', 'false');
       }
 
-      const response = await apiClient.get<any>(
+      const response = (await apiClient.get<BooksApiResponse>(
         `/api/books?${params.toString()}`
-      );
+      )) as BooksApiResponse;
 
       if (response.success && response.data) {
         const rawBooks = Array.isArray(response.data) ? response.data : [];
         // Transform snake_case to camelCase
-        const booksData = rawBooks.map((book: any) => ({
+        const booksData = rawBooks.map((book: RawBook) => ({
           id: book.id,
           isbn: book.isbn,
           accessionNo: book.accession_no || '',
@@ -252,7 +289,9 @@ export function BookCatalog() {
   // Fetch book statistics
   const fetchStats = useCallback(async () => {
     try {
-      const response = await apiClient.get<any>('/api/books/stats');
+      const response = (await apiClient.get<StatsApiResponse>(
+        '/api/books/stats'
+      )) as StatsApiResponse;
       if (response.success && response.data) {
         setStats(response.data);
       }

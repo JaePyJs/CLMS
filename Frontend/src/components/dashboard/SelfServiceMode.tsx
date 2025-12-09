@@ -101,6 +101,68 @@ export default function SelfServiceMode() {
     };
   }, [resetIdleTimer]);
 
+  // Global barcode scanner listener - works even when input not focused or on different tab
+  const barcodeBufferRef = useRef('');
+  const barcodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handleGlobalKeyPress = (e: KeyboardEvent) => {
+      // Only capture when in IDLE state and not loading
+      if (state !== 'IDLE' || loading || isIdle) return;
+
+      // Ignore if user is typing in an input (except our barcode input)
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' && target !== inputRef.current) {
+        return;
+      }
+
+      // Clear existing timeout
+      if (barcodeTimeoutRef.current) {
+        clearTimeout(barcodeTimeoutRef.current);
+      }
+
+      // If Enter key, process the buffer as a barcode
+      if (e.key === 'Enter' && barcodeBufferRef.current.length >= 3) {
+        e.preventDefault();
+        const barcode = barcodeBufferRef.current.trim();
+        barcodeBufferRef.current = '';
+        if (barcode) {
+          handleScan(barcode);
+        }
+        return;
+      }
+
+      // Add alphanumeric characters to buffer
+      if (e.key.length === 1 && /[a-zA-Z0-9\-_]/.test(e.key)) {
+        barcodeBufferRef.current += e.key;
+      }
+
+      // Auto-clear buffer after 100ms of no input (barcode scanners are fast)
+      barcodeTimeoutRef.current = setTimeout(() => {
+        // If buffer looks like a barcode (6+ chars), process it
+        if (barcodeBufferRef.current.length >= 6) {
+          const barcode = barcodeBufferRef.current.trim();
+          barcodeBufferRef.current = '';
+          if (barcode) {
+            handleScan(barcode);
+          }
+        } else {
+          barcodeBufferRef.current = '';
+        }
+      }, 150);
+    };
+
+    // Add listener to window for global capture
+    window.addEventListener('keydown', handleGlobalKeyPress);
+
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyPress);
+      if (barcodeTimeoutRef.current) {
+        clearTimeout(barcodeTimeoutRef.current);
+      }
+    };
+  }, [state, loading, isIdle]);
+
   // Auto-focus input
   useEffect(() => {
     if (state === 'IDLE' && !isIdle) {
@@ -200,7 +262,7 @@ export default function SelfServiceMode() {
         playSound(false);
         setTimeout(() => resetState(), 3000);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       const msg = getErrorMessage(error, 'Scan failed');
       setMessage(msg);
       setState('ALREADY_LOGGED_IN'); // Error state

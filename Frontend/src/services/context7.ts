@@ -2,6 +2,12 @@ import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { utilitiesApi } from '@/lib/api';
 import { toast } from 'sonner';
 
+// WebSocket context interface for Context7
+interface WebSocketContext {
+  subscribe: (channel: string) => void;
+  onMessage?: (message: { type?: string; data?: unknown }) => void;
+}
+
 export interface DocumentationUpdate {
   id: string;
   type:
@@ -100,7 +106,7 @@ class Context7Service {
     return Context7Service.instance;
   }
 
-  public async initialize(webSocketContext?: any): Promise<void> {
+  public async initialize(webSocketContext?: WebSocketContext): Promise<void> {
     if (this.isInitialized) {
       return;
     }
@@ -134,7 +140,9 @@ class Context7Service {
   private async loadDocumentationState(): Promise<void> {
     try {
       const response = await utilitiesApi.getDocumentation();
-      const docInfo = response.data as any;
+      const docInfo = response.data as
+        | { version?: string; lastUpdated?: string }
+        | undefined;
 
       if (docInfo && typeof docInfo === 'object') {
         this.state.version = docInfo.version || '';
@@ -158,15 +166,20 @@ class Context7Service {
     }
   }
 
-  private setupWebSocketSubscriptions(webSocketContext: any): void {
+  private setupWebSocketSubscriptions(
+    webSocketContext: WebSocketContext
+  ): void {
     // Subscribe to documentation updates
     webSocketContext.subscribe('documentation_updates');
 
     // Handle incoming documentation update messages
     const originalOnMessage = webSocketContext.onMessage;
-    webSocketContext.onMessage = (message: any) => {
+    webSocketContext.onMessage = (message: {
+      type?: string;
+      data?: unknown;
+    }) => {
       if (message.type === 'documentation_update') {
-        this.handleDocumentationUpdate(message.data);
+        this.handleDocumentationUpdate(message.data as Record<string, unknown>);
       }
 
       // Call original message handler
@@ -176,24 +189,29 @@ class Context7Service {
     };
   }
 
-  private handleDocumentationUpdate(updateData: any): void {
+  private handleDocumentationUpdate(updateData: Record<string, unknown>): void {
     const update: DocumentationUpdate = {
-      id: updateData.id || this.generateUpdateId(),
-      type: updateData.type || 'content_change',
-      timestamp: updateData.timestamp || new Date().toISOString(),
-      source: updateData.source || 'external',
-      changes: updateData.changes || [],
-      version: updateData.version || this.incrementVersion(),
-      author: updateData.author || {
+      id: (updateData.id as string) || this.generateUpdateId(),
+      type:
+        (updateData.type as DocumentationUpdate['type']) || 'content_change',
+      timestamp: (updateData.timestamp as string) || new Date().toISOString(),
+      source: (updateData.source as string) || 'external',
+      changes: (updateData.changes as DocumentationUpdate['changes']) || [],
+      version:
+        (updateData.version as DocumentationUpdate['version']) ||
+        this.incrementVersion(),
+      author: (updateData.author as DocumentationUpdate['author']) || {
         id: 'system',
         name: 'System',
         role: 'system',
       },
       metadata: {
-        affectedFiles: updateData.affectedFiles || [],
-        impactLevel: updateData.impactLevel || 'medium',
-        requiresReview: updateData.requiresReview || false,
-        autoApproved: updateData.autoApproved || true,
+        affectedFiles: (updateData.affectedFiles as string[]) || [],
+        impactLevel:
+          (updateData.impactLevel as 'low' | 'medium' | 'high' | 'critical') ||
+          'medium',
+        requiresReview: (updateData.requiresReview as boolean) || false,
+        autoApproved: (updateData.autoApproved as boolean) ?? true,
       },
     };
 

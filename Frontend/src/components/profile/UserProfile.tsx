@@ -106,9 +106,14 @@ export default function UserProfile() {
       } else {
         toast.error(response.message || 'Failed to change password');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to change password:', error);
-      toast.error(error.response?.data?.message || 'Failed to change password');
+      const axiosError = error as {
+        response?: { data?: { message?: string } };
+      };
+      toast.error(
+        axiosError.response?.data?.message || 'Failed to change password'
+      );
     } finally {
       setChangingPassword(false);
     }
@@ -142,9 +147,14 @@ export default function UserProfile() {
       } else {
         toast.error(response.message || 'Failed to update username');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update username:', error);
-      toast.error(error.response?.data?.message || 'Failed to update username');
+      const axiosError = error as {
+        response?: { data?: { message?: string } };
+      };
+      toast.error(
+        axiosError.response?.data?.message || 'Failed to update username'
+      );
     } finally {
       setUpdatingProfile(false);
     }

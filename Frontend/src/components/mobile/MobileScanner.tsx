@@ -33,8 +33,8 @@ interface ScanResult {
 }
 
 interface MobileScannerProps {
-  onScanSuccess: (code: string, type: string, data?: unknown) => void;
-  onScanError: (error: string) => void;
+  onScanSuccess: (_code: string, _type: string, _data?: unknown) => void;
+  onScanError: (_error: string) => void;
   placeholder?: string;
   allowedTypes?: ('barcode' | 'qr' | 'manual')[];
 }

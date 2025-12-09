@@ -211,7 +211,13 @@ export function EquipmentDashboard() {
     try {
       const response = await equipmentApi.getSessionHistory(equipmentId);
       if (response.success && response.data) {
-        const sessions = (response.data as any[]).map((s: any) => ({
+        interface HistorySession {
+          id: string;
+          student?: { first_name: string; last_name: string };
+          start_time: string;
+          end_time?: string;
+        }
+        const sessions = (response.data as HistorySession[]).map((s) => ({
           id: s.id,
           studentName: s.student
             ? `${s.student.first_name} ${s.student.last_name}`
@@ -259,7 +265,10 @@ export function EquipmentDashboard() {
     try {
       const response = await enhancedLibraryApi.getCurrentPatrons();
       if (response.success && response.data) {
-        const patrons = (response.data as any).patrons || [];
+        interface PatronsResponse {
+          patrons?: ActivePatron[];
+        }
+        const patrons = (response.data as PatronsResponse).patrons || [];
         // Filter out patrons who already have an active equipment session
         // This requires checking against the equipment list
         const activeEquipmentStudentIds = equipmentData
@@ -384,7 +393,15 @@ export function EquipmentDashboard() {
     try {
       const response = await settingsApi.getSystemSettings();
       if (response.success && response.data) {
-        const data = response.data as any;
+        interface SettingsData {
+          sessionLimits?: {
+            PRIMARY?: number;
+            GRADE_SCHOOL?: number;
+            JUNIOR_HIGH?: number;
+            SENIOR_HIGH?: number;
+          };
+        }
+        const data = response.data as SettingsData;
         if (data.sessionLimits) {
           setSessionLimits({
             PRIMARY: data.sessionLimits.PRIMARY || 15,
@@ -889,7 +906,7 @@ export function EquipmentDashboard() {
                 <div
                   className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2 lg:grid-cols-3'}`}
                 >
-                  {filteredEquipment.map((item: any) => (
+                  {filteredEquipment.map((item) => (
                     <DroppableEquipment
                       key={item.id}
                       id={item.id}

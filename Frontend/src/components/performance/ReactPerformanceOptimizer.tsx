@@ -159,13 +159,13 @@ export const withPerformanceMonitoring = <P extends object>(
 // Virtualized List Component
 interface VirtualizedListProps<T> {
   items: T[];
-  itemHeight: number | ((index: number) => number);
-  renderItem: (item: T, index: number) => ReactNode;
+  itemHeight: number | ((_index: number) => number);
+  renderItem: (_item: T, _index: number) => ReactNode;
   height: number;
   width?: number;
   overscanCount?: number;
   className?: string;
-  estimateSize?: (index: number) => number;
+  estimateSize?: (_index: number) => number;
 }
 
 export const VirtualizedList = <T,>({
@@ -233,7 +233,7 @@ export const useExpensiveCalculation = <T,>(
 };
 
 // Stable callback hook
-export const useStableCallback = <T extends (...args: never[]) => unknown>(
+export const useStableCallback = <T extends (..._args: never[]) => unknown>(
   callback: T,
   dependencies: React.DependencyList
 ): T => {
@@ -243,26 +243,26 @@ export const useStableCallback = <T extends (...args: never[]) => unknown>(
 // Performance optimization utilities
 export const performanceUtils = {
   // Debounce function for expensive operations
-  debounce: <T extends (...args: never[]) => unknown>(
+  debounce: <T extends (..._args: never[]) => unknown>(
     func: T,
     wait: number
-  ): ((...args: Parameters<T>) => void) => {
+  ): ((..._args: Parameters<T>) => void) => {
     let timeout: NodeJS.Timeout;
-    return (...args: Parameters<T>) => {
+    return (..._args: Parameters<T>) => {
       clearTimeout(timeout);
-      timeout = setTimeout(() => func(...args), wait);
+      timeout = setTimeout(() => func(..._args), wait);
     };
   },
 
   // Throttle function for frequent operations
-  throttle: <T extends (...args: never[]) => unknown>(
+  throttle: <T extends (..._args: never[]) => unknown>(
     func: T,
     limit: number
-  ): ((...args: Parameters<T>) => void) => {
+  ): ((..._args: Parameters<T>) => void) => {
     let inThrottle: boolean;
-    return (...args: Parameters<T>) => {
+    return (..._args: Parameters<T>) => {
       if (!inThrottle) {
-        func(...args);
+        func(..._args);
         inThrottle = true;
         setTimeout(() => (inThrottle = false), limit);
       }
@@ -270,7 +270,7 @@ export const performanceUtils = {
   },
 
   // Memoize expensive computations
-  memoize: <T extends (...args: never[]) => unknown>(func: T): T => {
+  memoize: <T extends (..._args: never[]) => unknown>(func: T): T => {
     const cache = new Map();
     return ((...args: Parameters<T>) => {
       const key = JSON.stringify(args);

@@ -44,12 +44,17 @@ const UserManagement: React.FC = () => {
   const toast = useToast();
 
   const roleColors: Record<UserRole, string> = {
-    SUPER_ADMIN: 'bg-purple-100 text-purple-800 border-purple-300',
-    ADMIN: 'bg-red-100 text-red-800 border-red-300',
-    LIBRARIAN: 'bg-blue-100 text-blue-800 border-blue-300',
-    ASSISTANT: 'bg-green-100 text-green-800 border-green-300',
-    TEACHER: 'bg-orange-100 text-orange-800 border-orange-300',
-    VIEWER: 'bg-gray-100 text-gray-800 border-gray-300',
+    SUPER_ADMIN:
+      'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 border-purple-300 dark:border-purple-700',
+    ADMIN:
+      'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 border-red-300 dark:border-red-700',
+    LIBRARIAN:
+      'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700',
+    ASSISTANT:
+      'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-300 dark:border-green-700',
+    TEACHER:
+      'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 border-orange-300 dark:border-orange-700',
+    VIEWER: 'bg-muted text-muted-foreground border-border',
   };
 
   const roleIcons: Record<UserRole, React.ReactNode> = {
@@ -205,8 +210,10 @@ const UserManagement: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-foreground">
+            User Management
+          </h1>
+          <p className="text-muted-foreground mt-1">
             Manage system users, roles, and permissions
           </p>
         </div>
@@ -222,11 +229,11 @@ const UserManagement: React.FC = () => {
       {/* Statistics Cards */}
       {statistics && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="bg-card p-4 rounded-lg border border-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-muted-foreground">Total Users</p>
+                <p className="text-2xl font-bold text-foreground">
                   {statistics.total}
                 </p>
               </div>
@@ -234,10 +241,10 @@ const UserManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="bg-card p-4 rounded-lg border border-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Active Users</p>
+                <p className="text-sm text-muted-foreground">Active Users</p>
                 <p className="text-2xl font-bold text-green-600">
                   {statistics.active}
                 </p>
@@ -246,22 +253,22 @@ const UserManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="bg-card p-4 rounded-lg border border-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Inactive Users</p>
-                <p className="text-2xl font-bold text-gray-600">
+                <p className="text-sm text-muted-foreground">Inactive Users</p>
+                <p className="text-2xl font-bold text-muted-foreground">
                   {statistics.inactive}
                 </p>
               </div>
-              <XCircle className="w-8 h-8 text-gray-600" />
+              <XCircle className="w-8 h-8 text-muted-foreground" />
             </div>
           </div>
 
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
+          <div className="bg-card p-4 rounded-lg border border-border">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Librarians</p>
+                <p className="text-sm text-muted-foreground">Librarians</p>
                 <p className="text-2xl font-bold text-blue-600">
                   {statistics.byRole.find((r) => r.role === 'LIBRARIAN')
                     ?._count || 0}
@@ -274,18 +281,18 @@ const UserManagement: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
+      <div className="bg-card p-4 rounded-lg border border-border space-y-4">
         <div className="flex items-center gap-4 flex-wrap">
           {/* _Search */}
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search users..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-border bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
               />
             </div>
           </div>
@@ -294,7 +301,7 @@ const UserManagement: React.FC = () => {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value as UserRole | 'ALL')}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="px-4 py-2 border border-border bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           >
             <option value="ALL">All Roles</option>
             <option value="LIBRARIAN">Librarian</option>
@@ -306,7 +313,7 @@ const UserManagement: React.FC = () => {
             onChange={(e) =>
               setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')
             }
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="px-4 py-2 border border-border bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           >
             <option value="ALL">All Status</option>
             <option value="ACTIVE">Active</option>
@@ -317,7 +324,7 @@ const UserManagement: React.FC = () => {
           <button
             onClick={fetchUsers}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-muted transition-colors text-foreground"
           >
             <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -326,56 +333,56 @@ const UserManagement: React.FC = () => {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center p-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
         ) : users.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12">
-            <Users className="w-16 h-16 text-gray-400 mb-4" />
-            <p className="text-gray-600">No users found</p>
+            <Users className="w-16 h-16 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">No users found</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-muted border-b border-border">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     User
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Last Login
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Created
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-card divide-y divide-border">
                 {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
+                  <tr key={user.id} className="hover:bg-muted/50">
                     <td className="px-6 py-4">
                       <div>
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-foreground">
                           {user.username}
                         </div>
                         {user.fullName && (
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted-foreground">
                             {user.fullName}
                           </div>
                         )}
                         {user.email && (
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-muted-foreground">
                             {user.email}
                           </div>
                         )}
@@ -393,23 +400,23 @@ const UserManagement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       {user.isActive ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                           <CheckCircle className="w-3 h-3" />
                           Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
                           <XCircle className="w-3 h-3" />
                           Inactive
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="px-6 py-4 text-sm text-muted-foreground">
                       {user.lastLoginAt
                         ? formatDate(user.lastLoginAt)
                         : 'Never'}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
+                    <td className="px-6 py-4 text-sm text-muted-foreground">
                       {formatDate(user.createdAt)}
                     </td>
                     <td className="px-6 py-4">
@@ -435,7 +442,7 @@ const UserManagement: React.FC = () => {
                           onClick={() => handleToggleUserStatus(user)}
                           className={`p-1.5 rounded transition-colors ${
                             user.isActive
-                              ? 'text-gray-600 hover:bg-gray-50'
+                              ? 'text-muted-foreground hover:bg-muted'
                               : 'text-green-600 hover:bg-green-50'
                           }`}
                           title={user.isActive ? 'Deactivate' : 'Activate'}
@@ -515,11 +522,13 @@ const CreateUserModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Create New User</h2>
+      <div className="bg-card rounded-lg p-6 w-full max-w-md border border-border">
+        <h2 className="text-xl font-bold mb-4 text-foreground">
+          Create New User
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Username *
             </label>
             <input
@@ -529,7 +538,7 @@ const CreateUserModal: React.FC<{
               onChange={(e) =>
                 createFormActions.setValue('username', e.target.value)
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-border bg-background text-foreground rounded-lg focus:ring-2 focus:ring-primary"
             />
           </div>
 
@@ -601,7 +610,7 @@ const CreateUserModal: React.FC<{
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 border border-border rounded-lg hover:bg-muted text-foreground"
             >
               Cancel
             </button>
@@ -646,8 +655,8 @@ const EditUserModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-bold mb-4">Edit User</h2>
+      <div className="bg-card rounded-lg p-6 w-full max-w-md border border-border">
+        <h2 className="text-xl font-bold mb-4 text-foreground">Edit User</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

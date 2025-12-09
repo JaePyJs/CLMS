@@ -1,15 +1,15 @@
 import { useState, useCallback } from 'react';
 
-interface ModalState {
+interface ModalState<T = unknown> {
   isOpen: boolean;
-  data: any;
+  data: T | null;
   isClosing: boolean;
 }
 
-interface ModalActions {
-  open: (data?: any) => void;
+interface ModalActions<T = unknown> {
+  open: (data?: T) => void;
   close: () => void;
-  toggle: (data?: any) => void;
+  toggle: (data?: T) => void;
   reset: () => void;
 }
 
@@ -35,15 +35,15 @@ interface ModalActions {
  * // Open with data
  * actions.open(studentData);
  */
-export function useModalState(initialData: any = null) {
-  const [state, setState] = useState<ModalState>({
+export function useModalState<T = unknown>(initialData: T | null = null) {
+  const [state, setState] = useState<ModalState<T>>({
     isOpen: false,
     data: initialData,
     isClosing: false,
   });
 
   const open = useCallback(
-    (data?: any) => {
+    (data?: T) => {
       setState({
         isOpen: true,
         data: data ?? initialData,
@@ -70,7 +70,7 @@ export function useModalState(initialData: any = null) {
   }, [initialData]);
 
   const toggle = useCallback(
-    (data?: any) => {
+    (data?: T) => {
       setState((prev) => {
         if (prev.isOpen) {
           return {
@@ -108,7 +108,7 @@ export function useModalState(initialData: any = null) {
     });
   }, [initialData]);
 
-  const actions: ModalActions = { open, close, toggle, reset };
+  const actions: ModalActions<T> = { open, close, toggle, reset };
 
   return [state, actions] as const;
 }
@@ -130,24 +130,26 @@ export function useModalState(initialData: any = null) {
  * const studentModal = states.studentForm;
  * actions.studentForm.open(studentData);
  */
-export function useMultipleModals<T extends Record<string, any>>(modals: T) {
-  const [modalStates, setModalStates] = useState<Record<keyof T, ModalState>>(
-    () => {
-      const result = {} as Record<keyof T, ModalState>;
-      Object.entries(modals).forEach(([key, initialData]) => {
-        result[key as keyof T] = {
-          isOpen: false,
-          data: initialData,
-          isClosing: false,
-        };
-      });
-      return result;
-    }
-  );
+export function useMultipleModals<T extends Record<string, unknown>>(
+  modals: T
+) {
+  const [modalStates, setModalStates] = useState<
+    Record<keyof T, ModalState<T[keyof T]>>
+  >(() => {
+    const result = {} as Record<keyof T, ModalState<T[keyof T]>>;
+    Object.entries(modals).forEach(([key, initialData]) => {
+      result[key as keyof T] = {
+        isOpen: false,
+        data: initialData as T[keyof T],
+        isClosing: false,
+      };
+    });
+    return result;
+  });
 
   const createActions = useCallback(
-    (modalKey: keyof T): ModalActions => ({
-      open: (data?: any) => {
+    (modalKey: keyof T): ModalActions<T[keyof T]> => ({
+      open: (data?: T[keyof T]) => {
         setModalStates((prev) => ({
           ...prev,
           [modalKey]: {
@@ -177,7 +179,7 @@ export function useMultipleModals<T extends Record<string, any>>(modals: T) {
           }));
         }, 150);
       },
-      toggle: (data?: any) => {
+      toggle: (data?: T[keyof T]) => {
         setModalStates((prev) => {
           const currentState = prev[modalKey];
           if (currentState.isOpen) {
@@ -232,10 +234,13 @@ export function useMultipleModals<T extends Record<string, any>>(modals: T) {
   );
 
   // Create actions object with all modal keys
-  const actions = Object.keys(modals).reduce((acc, key) => {
-    acc[key as keyof T] = createActions(key as keyof T);
-    return acc;
-  }, {} as any);
+  const actions = Object.keys(modals).reduce(
+    (acc, key) => {
+      acc[key as keyof T] = createActions(key as keyof T);
+      return acc;
+    },
+    {} as Record<keyof T, ModalActions<T[keyof T]>>
+  );
 
   return [modalStates, actions] as const;
 }

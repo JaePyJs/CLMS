@@ -82,7 +82,7 @@ export function useTypedApi<T>(
 
       try {
         const finalConfig = { ...config, ...customConfig };
-        let response: any;
+        let response: { success: boolean; error?: string; data?: unknown };
 
         // Use the appropriate public method based on HTTP method
         switch (finalConfig.method) {
@@ -332,7 +332,11 @@ export function useTypedMutation<TRequest, TResponse>(
           optimisticUpdate(requestData);
         }
 
-        let response: any;
+        let response: {
+          success: boolean;
+          error?: string;
+          data?: TResponse | null;
+        };
 
         // Use the appropriate public method based on HTTP method
         switch (config.method) {

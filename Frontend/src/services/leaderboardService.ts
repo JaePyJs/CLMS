@@ -10,10 +10,18 @@ export interface LeaderboardEntry {
   rank: number;
 }
 
+export interface Reward {
+  id: string;
+  studentId: string;
+  type: string;
+  description: string;
+  issuedAt: string;
+}
+
 export interface RewardsGenerationResult {
   generated: boolean;
   count: number;
-  rewards: any[];
+  rewards: Reward[];
 }
 
 export interface LeaderboardResetResult {

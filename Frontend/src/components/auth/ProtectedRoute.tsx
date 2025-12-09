@@ -12,7 +12,7 @@ export default function ProtectedRoute({
   requiredRole,
 }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const devBypass = import.meta.env.DEV;
+  const _devBypass = import.meta.env.DEV;
 
   // Show loading spinner while checking authentication
   if (isLoading) {

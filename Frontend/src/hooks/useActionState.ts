@@ -1,24 +1,24 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 
-interface ActionState {
+interface ActionState<T = unknown> {
   isLoading: boolean;
   error: string | null;
-  data: any;
+  data: T | null;
   progress: number;
   isCancelled: boolean;
 }
 
-interface ActionActions {
-  start: (data?: any) => void;
+interface ActionActions<T = unknown> {
+  start: (data?: unknown) => void;
   updateProgress: (progress: number) => void;
-  complete: (data?: any) => void;
+  complete: (data?: T) => void;
   error: (error: string) => void;
   cancel: () => void;
   reset: () => void;
 }
 
-const createDefaultActionState = (): ActionState => ({
+const createDefaultActionState = <T = unknown>(): ActionState<T> => ({
   isLoading: false,
   error: null,
   data: null,
@@ -26,8 +26,8 @@ const createDefaultActionState = (): ActionState => ({
   isCancelled: false,
 });
 
-interface MultipleActionConfig<TResult = any> {
-  actionFn: (params: any) => Promise<TResult>;
+interface MultipleActionConfig<TResult = unknown> {
+  actionFn: (params: unknown) => Promise<TResult>;
   onSuccess?: (data: TResult) => void;
   onError?: (error: Error | string) => void;
   onProgress?: (progress: number) => void;
@@ -62,8 +62,8 @@ interface MultipleActionConfig<TResult = any> {
  *   actions.start({ format: 'csv', data: studentData });
  * };
  */
-export function useActionState<T = any>(
-  actionFn: (params: any) => Promise<T>,
+export function useActionState<T = unknown>(
+  actionFn: (params: unknown) => Promise<T>,
   options: {
     onSuccess?: (data: T) => void;
     onError?: (error: Error | string) => void;
@@ -80,7 +80,7 @@ export function useActionState<T = any>(
     resetDelay = 2000,
   } = options;
 
-  const [state, setState] = useState<ActionState>({
+  const [state, setState] = useState<ActionState<T>>({
     isLoading: false,
     error: null,
     data: null,
@@ -91,7 +91,7 @@ export function useActionState<T = any>(
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const start = useCallback(
-    (params?: any) => {
+    (params?: unknown) => {
       // Cancel any ongoing action
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -111,8 +111,10 @@ export function useActionState<T = any>(
       // Execute action
       const executeAction = async () => {
         try {
+          const baseParams =
+            typeof params === 'object' && params !== null ? params : {};
           const result = await actionFn({
-            ...params,
+            ...(baseParams as Record<string, unknown>),
             signal: abortControllerRef.current?.signal,
             onProgress: (progress: number) => {
               setState((prev) => ({ ...prev, progress }));
@@ -227,10 +229,10 @@ export function useActionState<T = any>(
     });
   }, []);
 
-  const actionHandlers: ActionActions = {
+  const actionHandlers: ActionActions<T> = {
     start,
     updateProgress,
-    complete,
+    complete: complete as (data?: unknown) => void,
     error,
     cancel,
     reset,
@@ -262,10 +264,11 @@ export function useActionState<T = any>(
  * });
  */
 export function useMultipleActions<
-  TConfig extends Record<string, MultipleActionConfig<any>>,
+  TConfig extends Record<string, MultipleActionConfig<unknown>>,
 >(actions: TConfig) {
   const actionEntries = useMemo(
-    () => Object.entries(actions) as Array<[string, MultipleActionConfig<any>]>,
+    () =>
+      Object.entries(actions) as Array<[string, MultipleActionConfig<unknown>]>,
     [actions]
   );
 
@@ -384,7 +387,7 @@ export function useMultipleActions<
   );
 
   const completeAction = useCallback(
-    (actionKey: string, data?: any) => {
+    (actionKey: string, data?: unknown) => {
       updateActionState(actionKey, (current) => ({
         ...current,
         isLoading: false,
@@ -435,7 +438,7 @@ export function useMultipleActions<
   );
 
   const startAction = useCallback(
-    (actionKey: string, params?: any) => {
+    (actionKey: string, params?: unknown) => {
       const config = actionsRef.current[actionKey];
       if (!config) {
         console.warn(`Action "${actionKey}" not found in useMultipleActions`);
@@ -464,8 +467,12 @@ export function useMultipleActions<
 
       const execute = async () => {
         try {
+          const paramsObj =
+            typeof params === 'object' && params !== null
+              ? (params as Record<string, unknown>)
+              : {};
           const result = await config.actionFn({
-            ...(params ?? {}),
+            ...paramsObj,
             signal: controller.signal,
             onProgress: (progress: number) => {
               updateProgress(actionKey, progress);
@@ -535,11 +542,11 @@ export function useMultipleActions<
     const registry: Record<string, ActionActions> = {};
     actionKeys.forEach((key) => {
       registry[key] = {
-        start: (params?: any) => startAction(key, params),
+        start: (params?: unknown) => startAction(key, params),
         cancel: () => cancelAction(key),
         reset: () => resetAction(key),
         updateProgress: (progress: number) => updateProgress(key, progress),
-        complete: (data?: any) => completeAction(key, data),
+        complete: (data?: unknown) => completeAction(key, data),
         error: (message: string) => failAction(key, message),
       };
     });
@@ -556,7 +563,7 @@ export function useMultipleActions<
 
   const globalActions = useMemo(
     () => ({
-      startAction: (key: keyof TConfig, params?: any) =>
+      startAction: (key: keyof TConfig, params?: unknown) =>
         startAction(String(key), params),
       cancelAction: (key: keyof TConfig) => cancelAction(String(key)),
       cancelAll,
@@ -598,9 +605,9 @@ export function useMultipleActions<
  *   }
  * );
  */
-export function useBatchOperation<T = any>(
+export function useBatchOperation<T = unknown>(
   batchFn: (params: {
-    items: any[];
+    items: unknown[];
     onProgress: (progress: number) => void;
     signal?: AbortSignal;
   }) => Promise<T[]>,
@@ -608,7 +615,7 @@ export function useBatchOperation<T = any>(
     onSuccess?: (results: T[]) => void;
     onError?: (error: Error) => void;
     onProgress?: (progress: number) => void;
-    onItemComplete?: (item: any, index: number) => void;
+    onItemComplete?: (item: unknown, index: number) => void;
     itemDelay?: number;
   } = {}
 ) {
@@ -626,7 +633,7 @@ export function useBatchOperation<T = any>(
     currentItem: number;
     totalItems: number;
     results: T[];
-    errors: Array<{ item: any; error: string; index: number }>;
+    errors: Array<{ item: unknown; error: string; index: number }>;
     isCancelled: boolean;
   }>({
     isRunning: false,
@@ -642,7 +649,7 @@ export function useBatchOperation<T = any>(
 
   // Helper function to process individual items
   const processItem = useCallback(
-    async (item: any, signal?: AbortSignal): Promise<T> => {
+    async (item: unknown, signal?: AbortSignal): Promise<T> => {
       if (signal?.aborted) {
         throw new Error('Operation cancelled');
       }
@@ -655,7 +662,7 @@ export function useBatchOperation<T = any>(
   );
 
   const start = useCallback(
-    async (items: any[]) => {
+    async (items: unknown[]) => {
       // Cancel any ongoing operation
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -688,7 +695,8 @@ export function useBatchOperation<T = any>(
           signal: abortControllerRef.current?.signal,
         });
 
-        const errors: Array<{ item: any; error: string; index: number }> = [];
+        const errors: Array<{ item: unknown; error: string; index: number }> =
+          [];
 
         setState((prev) => ({
           ...prev,

@@ -9,7 +9,7 @@ import {
 
 interface ResponsiveDrawerProps {
   open: boolean;
-  onOpenChange: (value: boolean) => void;
+  onOpenChange: (_value: boolean) => void;
   title?: string;
   description?: string;
   side?: 'left' | 'right';

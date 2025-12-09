@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 interface CompoundComponentContextValue {
   value?: string;
-  onValueChange?: (value: string) => void;
+  onValueChange?: (_value: string) => void;
   disabled?: boolean;
   error?: string;
   size?: 'sm' | 'md' | 'lg';
@@ -40,7 +40,7 @@ export function useCompoundComponent() {
  */
 export interface CompoundComponentProps {
   value?: string;
-  onValueChange?: (value: string) => void;
+  onValueChange?: (_value: string) => void;
   disabled?: boolean;
   error?: string;
   size?: 'sm' | 'md' | 'lg';

@@ -35,11 +35,7 @@ const reminders = [
   },
 ];
 
-interface ReminderScreenProps {
-  // No props needed - kiosk is display-only
-}
-
-export function ReminderScreen({}: ReminderScreenProps) {
+export function ReminderScreen() {
   const [currentReminderIndex, setCurrentReminderIndex] = useState(0);
 
   useEffect(() => {

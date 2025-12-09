@@ -40,9 +40,9 @@ export function BarcodeDisplay({
   if (!value) {
     return (
       <div
-        className={`flex items-center justify-center h-24 bg-gray-100 border border-gray-300 rounded ${className}`}
+        className={`flex items-center justify-center h-24 bg-muted border border-border rounded ${className}`}
       >
-        <span className="text-gray-500 text-sm">No barcode data</span>
+        <span className="text-muted-foreground text-sm">No barcode data</span>
       </div>
     );
   }

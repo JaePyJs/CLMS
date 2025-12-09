@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 async function createLibrarian() {
   const username = 'librarian';
-  const password = 'lib123';
+  const password = 'librarian123';
   const rounds = parseInt(process.env.BCRYPT_ROUNDS || '12');
 
   const existing = await prisma.users.findUnique({ where: { username } });
@@ -39,7 +39,7 @@ createLibrarian()
   .then(() => {
     console.log('\n🎉 Success! You can now login with:');
     console.log('   Username: librarian');
-    console.log('   Password: lib123');
+    console.log('   Password: librarian123');
     process.exit(0);
   })
   .catch(err => {

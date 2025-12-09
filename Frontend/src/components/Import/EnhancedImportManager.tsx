@@ -524,7 +524,7 @@ export default function EnhancedImportManager() {
       window.URL.revokeObjectURL(url);
 
       toast.success(`${format.toUpperCase()} template downloaded`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to download template');
     }
   };

@@ -158,3 +158,4 @@ docker/koha-mysql/data/
 .node_repl_history
 *.tgz
 .yarn-integrity
+*.timestamp-*

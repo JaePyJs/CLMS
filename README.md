@@ -5,23 +5,27 @@ A full-stack library management system built with TypeScript, React, and Express
 ## Features
 
 ### Core Features
+
 - **Student & Personnel Management** - Track 880+ students and personnel with barcode generation and activity history
 - **Book Catalog** - Manage 2,900+ books with checkout/return workflow and fine calculation
 - **Equipment & Room Tracking** - Session management with drag-and-drop assignments
 - **Calendar Events** - Custom events for library reminders and scheduling
 
 ### Kiosk & Attendance
+
 - **Self-Service Kiosk** - Barcode scanner check-in/out with real-time welcome display
 - **Auto-Checkout** - Automatic session timeout after 15 minutes of inactivity
 - **Multi-Display Support** - Separate kiosk welcome screen for secondary monitors
 - **Real-time Updates** - WebSocket-powered instant status updates across all clients
 
 ### Analytics & Reports
+
 - **Usage Statistics** - Comprehensive library usage analytics
 - **Leaderboards** - Monthly/yearly visit rankings (students only, excludes personnel)
 - **CSV Exports** - Export reports and data for external analysis
 
 ### Printing Services
+
 - **Print Job Tracking** - Log and manage print requests with automatic cost calculation
 - **Dynamic Pricing** - Configurable prices for paper sizes (Short, Long, A4, custom) and colors (B&W, Half Color, Full Color, custom)
 - **Barcode Integration** - Scan student barcodes to auto-select users for print jobs
@@ -112,18 +116,18 @@ CLMS/
 
 ## API Endpoints
 
-| Endpoint               | Description                  |
-| ---------------------- | ---------------------------- |
-| `/api/auth`            | Authentication               |
-| `/api/students`        | Student CRUD                 |
-| `/api/books`           | Book catalog                 |
-| `/api/borrows`         | Checkout/return              |
-| `/api/equipment`       | Room tracking                |
-| `/api/analytics`       | Statistics                   |
-| `/api/kiosk`           | Self-service                 |
-| `/api/printing`        | Print jobs & pricing         |
-| `/api/calendar-events` | Calendar events              |
-| `/api/settings`        | Configuration                |
+| Endpoint               | Description          |
+| ---------------------- | -------------------- |
+| `/api/auth`            | Authentication       |
+| `/api/students`        | Student CRUD         |
+| `/api/books`           | Book catalog         |
+| `/api/borrows`         | Checkout/return      |
+| `/api/equipment`       | Room tracking        |
+| `/api/analytics`       | Statistics           |
+| `/api/kiosk`           | Self-service         |
+| `/api/printing`        | Print jobs & pricing |
+| `/api/calendar-events` | Calendar events      |
+| `/api/settings`        | Configuration        |
 
 ## Environment Variables
 

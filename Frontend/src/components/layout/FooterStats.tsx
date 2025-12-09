@@ -14,6 +14,26 @@ import { apiClient } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
+interface ApiResponse<T = unknown> {
+  success?: boolean;
+  data?: T;
+}
+
+interface ActiveSessionsData {
+  count?: number;
+  data?: unknown[];
+}
+
+interface DashboardData {
+  todayActivities?: number;
+  activeBorrows?: number;
+  totalBooks?: number;
+  overview?: {
+    activeBorrows?: number;
+    totalBooks?: number;
+  };
+}
+
 interface DashboardStats {
   activeStudents: number;
   totalBooks: number;
@@ -62,17 +82,21 @@ export function FooterStats() {
     try {
       // Fetch active sessions
       const activeRes = await apiClient.get('/api/students/active-sessions');
-      const activeData = (activeRes as any)?.data || activeRes;
+      const activeData =
+        (activeRes as ApiResponse<ActiveSessionsData>)?.data || activeRes;
+      const typedActiveData = activeData as ActiveSessionsData;
       const activeCount =
-        activeData?.count ||
-        (Array.isArray(activeData?.data) ? activeData.data.length : 0);
+        typedActiveData?.count ||
+        (Array.isArray(typedActiveData?.data)
+          ? typedActiveData.data.length
+          : 0);
 
       // Fetch dashboard stats
       const dashRes = await apiClient.get('/api/analytics/dashboard');
       // apiClient wraps response: { success, data: { success, data: {...} } }
       // Extract the nested data properly
-      const rawData = (dashRes as any)?.data || dashRes;
-      const dashData = rawData?.data || rawData;
+      const rawData = (dashRes as ApiResponse<DashboardData>)?.data || dashRes;
+      const dashData = (rawData as ApiResponse<DashboardData>)?.data || rawData;
 
       // Get today's checkouts from book_checkouts or activeBorrows
       const todayCheckouts = dashData?.todayActivities || 0;

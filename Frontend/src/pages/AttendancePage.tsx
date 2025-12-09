@@ -1,15 +1,11 @@
-import { Suspense, lazy, useState } from 'react';
-import { TableSkeleton, CardSkeleton } from '@/components/LoadingStates';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Clock, Download, Calendar } from 'lucide-react';
+import { Suspense, lazy } from 'react';
+import { TableSkeleton } from '@/components/LoadingStates';
 
 const AttendanceTracker = lazy(
   () => import('@/components/attendance/AttendanceTracker')
 );
 
 export default function AttendancePage() {
-  const [activeTab, setActiveTab] = useState('today');
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">

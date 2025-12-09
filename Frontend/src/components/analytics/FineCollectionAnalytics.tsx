@@ -32,7 +32,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Users,
-  Receipt,
   Target,
   Clock,
   ArrowUpRight,
@@ -132,7 +131,10 @@ export function FineCollectionAnalytics({
       analyticsData.fineCategories?.map(
         (cat: RawFineCategory, index: number) => ({
           ...cat,
-          percentage: calculatePercentage(cat.amount, analyticsData.totalFines),
+          percentage: calculatePercentage(
+            cat.amount,
+            analyticsData.totalFines ?? 0
+          ),
           color: FINE_COLORS[index % FINE_COLORS.length],
           trend: 'stable' as 'up' | 'down' | 'stable',
         })
@@ -268,9 +270,9 @@ export function FineCollectionAnalytics({
             </div>
             <Progress value={data?.collectionRate || 0} className="mt-2" />
             <p className="text-xs text-muted-foreground mt-1">
-              {data?.collectionRate > 80
+              {(data?.collectionRate ?? 0) > 80
                 ? 'Excellent'
-                : data?.collectionRate > 60
+                : (data?.collectionRate ?? 0) > 60
                   ? 'Good'
                   : 'Needs Improvement'}
             </p>
@@ -690,16 +692,16 @@ export function FineCollectionAnalytics({
         <div className="flex items-center gap-2">
           <Badge
             variant={
-              data?.collectionRate > 80
+              (data?.collectionRate ?? 0) > 80
                 ? 'default'
-                : data?.collectionRate > 60
+                : (data?.collectionRate ?? 0) > 60
                   ? 'secondary'
                   : 'destructive'
             }
           >
-            {data?.collectionRate > 80
+            {(data?.collectionRate ?? 0) > 80
               ? 'Excellent'
-              : data?.collectionRate > 60
+              : (data?.collectionRate ?? 0) > 60
                 ? 'Good'
                 : 'Needs Attention'}
           </Badge>

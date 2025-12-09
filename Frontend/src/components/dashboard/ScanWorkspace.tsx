@@ -29,27 +29,21 @@ import {
   Camera,
   Keyboard,
   Edit3,
-  Users,
   BookOpen,
   Monitor,
   Gamepad2,
-  Clock,
   AlertCircle,
   Play,
   Square,
   RefreshCw,
-  Plus,
   Timer,
   UserPlus,
   FileText,
   Eye,
-  AlertTriangle,
-  Filter,
   Printer,
   ExternalLink,
   BarChart3,
   Activity,
-  Download,
   Loader2,
   Wifi,
   WifiOff,
@@ -118,23 +112,35 @@ export function ScanWorkspace() {
   const [showActiveSessions, setShowActiveSessions] = useState(false);
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [selectedSessions, setSelectedSessions] = useState<string[]>([]);
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [isExporting, setIsExporting] = useState(false);
-  const [isPrintingSessions, setIsPrintingSessions] = useState(false);
+  const [filterStatus, _setFilterStatus] = useState<string>('all');
+  const [_isExporting, setIsExporting] = useState(false);
+  const [_isPrintingSessions, setIsPrintingSessions] = useState(false);
 
   // Self-service enhancements
   const [cooldownInfo, setCooldownInfo] = useState<{
     studentId: string;
     remainingSeconds: number;
   } | null>(null);
-  const [statistics, setStatistics] = useState<any>(null);
-  const [activeSessions, setActiveSessions] = useState<any[]>([]);
-  const [isLoadingActiveSessions, setIsLoadingActiveSessions] = useState(false);
+  const [_statistics, setStatistics] = useState<unknown>(null);
+  const [activeSessions, setActiveSessions] = useState<
+    Array<{
+      id: string;
+      studentId?: string;
+      studentName?: string;
+      gradeLevel?: string;
+      checkInTime?: Date;
+      status?: string;
+      duration?: number;
+      activity?: string;
+    }>
+  >([]);
+  const [_isLoadingActiveSessions, setIsLoadingActiveSessions] =
+    useState(false);
 
   // Real-time WebSocket for scan events from all stations
   const { events: wsEvents, isConnected: wsConnected } =
     useAttendanceWebSocket();
-  const [realtimeFeed, setRealtimeFeed] = useState<
+  const [_realtimeFeed, setRealtimeFeed] = useState<
     Array<{
       id: string;
       type: 'checkin' | 'checkout';
@@ -217,7 +223,7 @@ export function ScanWorkspace() {
       if (latestEvent.type === 'student_checkin') {
         playSound(successSound);
       }
-    } catch (e) {
+    } catch {
       // Ignore sound errors
     }
   }, [wsEvents]);
@@ -276,7 +282,8 @@ export function ScanWorkspace() {
     } catch (error) {
       console.error('Failed to load statistics:', error);
       setStatistics(null);
-      const msg = (error as any)?.message || 'Failed to load statistics';
+      const errorObj = error as { message?: string };
+      const msg = errorObj?.message || 'Failed to load statistics';
       toast.error(String(msg));
     }
   };
@@ -287,23 +294,49 @@ export function ScanWorkspace() {
       const result = await studentsApi.getActiveSessions();
       if (result && result.success && result.data) {
         // Transform the data to match expected format
+        interface RawSession {
+          activityId?: string;
+          id?: string;
+          studentId?: string;
+          studentName?: string;
+          firstName?: string;
+          lastName?: string;
+          gradeLevel?: string;
+          checkinTime?: string;
+          checkInTime?: string;
+          startTime?: string;
+          isOverdue?: boolean;
+          duration?: number;
+        }
         const dataArray = Array.isArray(result.data) ? result.data : [];
-        const sessions = dataArray.map((session: any) => ({
-          id: session.activityId || session.id, // Backend returns activityId
+        const sessions = dataArray.map((session: RawSession) => ({
+          id: session.activityId || session.id || '',
           studentId: session.studentId,
           studentName:
             session.studentName ||
             `${session.firstName || ''} ${session.lastName || ''}`.trim(),
           gradeLevel: session.gradeLevel,
           checkInTime: new Date(
-            session.checkinTime || session.checkInTime || session.startTime
+            session.checkinTime ||
+              session.checkInTime ||
+              session.startTime ||
+              Date.now()
           ),
           status: session.isOverdue ? 'overdue' : 'active',
           duration: session.duration || 0,
         }));
         // Deduplicate sessions by id to prevent duplicate key errors
+        interface SessionItem {
+          id: string;
+          studentId?: string;
+          studentName?: string;
+          gradeLevel?: string;
+          checkInTime?: Date;
+          status?: string;
+          duration?: number;
+        }
         const uniqueSessions = sessions.filter(
-          (session: any, index: number, self: any[]) =>
+          (session: SessionItem, index: number, self: SessionItem[]) =>
             index === self.findIndex((s) => s.id === session.id)
         );
         setActiveSessions(uniqueSessions);
@@ -331,8 +364,12 @@ export function ScanWorkspace() {
 
     try {
       const previewResponse = await scanApi.detect(barcode);
-      if (previewResponse.success && (previewResponse as any).book) {
-        setBookPreview((previewResponse as any).book as BookPreview);
+      const previewData = previewResponse as {
+        success: boolean;
+        book?: BookPreview;
+      };
+      if (previewData.success && previewData.book) {
+        setBookPreview(previewData.book);
       } else {
         toast.warning(previewResponse.message || 'Book not found for scan');
       }
@@ -465,7 +502,12 @@ export function ScanWorkspace() {
             id: normalizedStudent.id,
             name: `${normalizedStudent.firstName} ${normalizedStudent.lastName}`.trim(),
             gradeLevel: normalizedStudent.gradeLevel,
-            gradeCategory: normalizedStudent.gradeCategory as any,
+            gradeCategory:
+              (normalizedStudent.gradeCategory as
+                | 'primary'
+                | 'gradeSchool'
+                | 'juniorHigh'
+                | 'seniorHigh') || undefined,
             barcode: result.student?.studentId,
           });
 
@@ -619,7 +661,7 @@ export function ScanWorkspace() {
     }
   };
 
-  const handleExportSessions = async () => {
+  const _handleExportSessions = async () => {
     try {
       setIsExporting(true);
       // Mock export functionality
@@ -647,7 +689,7 @@ export function ScanWorkspace() {
     }
   };
 
-  const handlePrintSessions = () => {
+  const _handlePrintSessions = () => {
     try {
       setIsPrintingSessions(true);
       window.print();
@@ -1060,8 +1102,16 @@ export function ScanWorkspace() {
                       <div>
                         <div className="font-medium">{session.studentName}</div>
                         <div className="text-sm text-muted-foreground">
-                          {session.activity} • {session.equipment} •{' '}
-                          {session.startTime}
+                          {session.activity ?? 'N/A'} •{' '}
+                          {(session as { equipment?: string }).equipment ??
+                            'N/A'}{' '}
+                          •{' '}
+                          {(session as { startTime?: string | Date }).startTime
+                            ? String(
+                                (session as { startTime?: string | Date })
+                                  .startTime
+                              )
+                            : 'N/A'}
                         </div>
                       </div>
                     </div>
@@ -1074,7 +1124,7 @@ export function ScanWorkspace() {
                         }
                         className="text-xs"
                       >
-                        {session.status.toUpperCase()}
+                        {(session.status ?? 'active').toUpperCase()}
                       </Badge>
                       <Button
                         variant="ghost"

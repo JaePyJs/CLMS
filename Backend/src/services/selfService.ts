@@ -229,42 +229,59 @@ export class SelfService {
         };
       }
 
-      // Check if student already has an active session
-      const existingActivity = await prisma.student_activities.findFirst({
-        where: {
-          student_id: studentId,
-          status: 'ACTIVE',
-        },
+      // Use transaction to prevent race conditions with rapid scanning
+      const result = await prisma.$transaction(async tx => {
+        // Check if student already has an active session (inside transaction for atomicity)
+        const existingActivity = await tx.student_activities.findFirst({
+          where: {
+            student_id: studentId,
+            status: 'ACTIVE',
+          },
+        });
+
+        if (existingActivity) {
+          return {
+            success: false,
+            message: 'Student is already checked in',
+            existingActivity,
+          };
+        }
+
+        // Check cooldown period
+        const cooldownRemaining = await this.getCooldownRemaining(studentId);
+        if (cooldownRemaining > 0 && !bypassCooldown) {
+          return {
+            success: false,
+            message: `Please wait ${Math.ceil(cooldownRemaining / 60)} more minute(s) before checking in again`,
+            cooldownRemaining,
+          };
+        }
+
+        // Create new activity (inside transaction)
+        const activity = await tx.student_activities.create({
+          data: {
+            student_id: studentId,
+            activity_type: 'LIBRARY_VISIT',
+            description: 'Library check-in',
+            status: 'ACTIVE',
+          },
+        });
+
+        return { success: true, activity };
       });
 
-      if (existingActivity) {
+      // If check-in failed (already checked in or cooldown), return early
+      if (!result.success) {
         return {
           success: false,
-          message: 'Student is already checked in',
+          message: result.message || 'Check-in failed',
+          cooldownRemaining: result.cooldownRemaining,
         };
       }
 
-      // Check cooldown period
-      const cooldownRemaining = await this.getCooldownRemaining(studentId);
-      if (cooldownRemaining > 0 && !bypassCooldown) {
-        return {
-          success: false,
-          message: `Please wait ${Math.ceil(cooldownRemaining / 60)} more minute(s) before checking in again`,
-          cooldownRemaining,
-        };
-      }
+      const activity = result.activity!;
 
-      // Create new activity
-      const activity = await prisma.student_activities.create({
-        data: {
-          student_id: studentId,
-          activity_type: 'LIBRARY_VISIT',
-          description: 'Library check-in',
-          status: 'ACTIVE',
-        },
-      });
-
-      // Auto-assign to Library Space section
+      // Auto-assign to Library Space section (outside transaction, non-critical)
       const librarySection = await prisma.library_sections.findFirst({
         where: {
           OR: [

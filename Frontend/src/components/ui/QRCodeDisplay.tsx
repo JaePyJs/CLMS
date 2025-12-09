@@ -54,9 +54,11 @@ export function QRCodeDisplay({
   if (!value) {
     return (
       <div
-        className={`flex items-center justify-center h-36 w-36 bg-gray-100 border border-gray-300 rounded ${className}`}
+        className={`flex items-center justify-center h-36 w-36 bg-muted border border-border rounded ${className}`}
       >
-        <span className="text-gray-500 text-xs text-center">No QR data</span>
+        <span className="text-muted-foreground text-xs text-center">
+          No QR data
+        </span>
       </div>
     );
   }
@@ -64,9 +66,9 @@ export function QRCodeDisplay({
   if (error) {
     return (
       <div
-        className={`flex items-center justify-center h-36 w-36 bg-red-50 border border-red-200 rounded ${className}`}
+        className={`flex items-center justify-center h-36 w-36 bg-red-500/10 border border-red-500/30 rounded ${className}`}
       >
-        <span className="text-red-500 text-xs text-center">
+        <span className="text-red-400 text-xs text-center">
           {typeof error === 'string' ? error : String(error)}
         </span>
       </div>
@@ -78,11 +80,11 @@ export function QRCodeDisplay({
       <img
         src={qrCodeUrl}
         alt="QR Code"
-        className="border border-gray-200 rounded"
+        className="border border-border rounded"
         style={{ width: size, height: size }}
       />
       {value && (
-        <span className="text-xs text-gray-600 mt-2 text-center max-w-[150px] truncate">
+        <span className="text-xs text-muted-foreground mt-2 text-center max-w-[150px] truncate">
           {value}
         </span>
       )}
