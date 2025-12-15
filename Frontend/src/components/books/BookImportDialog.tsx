@@ -55,6 +55,7 @@ interface ImportedBook {
   title: string;
   author: string;
   isbn?: string;
+  publication?: string;
   publisher?: string;
   category?: string;
   subcategory?: string;
@@ -97,12 +98,120 @@ interface ImportPreviewResult {
   duplicateRecords?: number;
 }
 
+// Component for expandable preview row (extracted to follow React hooks rules)
+function ExpandableBookRow({ book }: { book: ImportedBook; index?: number }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <React.Fragment>
+      <tr
+        className={`border-t hover:bg-muted/50 transition-colors text-xs cursor-pointer ${isExpanded ? 'bg-muted/30' : ''}`}
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <td className="px-3 py-2 font-mono">{book.rowNumber}</td>
+        <td className="px-3 py-2 text-muted-foreground font-mono">
+          {book.accession_no || (
+            <span className="italic text-[10px]">Auto</span>
+          )}
+        </td>
+        <td className="px-3 py-2 max-w-[200px] truncate" title={book.title}>
+          {book.title || '-'}
+        </td>
+        <td className="px-3 py-2 max-w-[150px] truncate" title={book.author}>
+          {book.author || '-'}
+        </td>
+        <td className="px-3 py-2 font-mono">{book.year || '-'}</td>
+        <td className="px-3 py-2">{book.category || '-'}</td>
+        <td className="px-3 py-2">
+          {book.isValid ? (
+            <Badge
+              variant="outline"
+              className="bg-green-50 text-green-700 border-green-200 text-[10px] px-1.5"
+            >
+              Valid
+            </Badge>
+          ) : (
+            <Badge variant="destructive" className="text-[10px] px-1.5">
+              Invalid
+            </Badge>
+          )}
+        </td>
+      </tr>
+      {isExpanded && (
+        <tr className="bg-muted/20 border-t">
+          <td colSpan={7} className="px-4 py-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+              <div>
+                <span className="font-medium text-muted-foreground">ISBN:</span>{' '}
+                <span className="ml-1">{book.isbn || '-'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">
+                  Edition:
+                </span>{' '}
+                <span className="ml-1">{book.edition || '-'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">
+                  Publication:
+                </span>{' '}
+                <span className="ml-1">{book.publication || '-'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">
+                  Publisher:
+                </span>{' '}
+                <span className="ml-1">{book.publisher || '-'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">
+                  Call Number:
+                </span>{' '}
+                <span className="ml-1 font-mono">{book.location || '-'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">
+                  Pages:
+                </span>{' '}
+                <span className="ml-1">{book.pages || '-'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">
+                  Price:
+                </span>{' '}
+                <span className="ml-1">{book.cost_price || '-'}</span>
+              </div>
+              <div>
+                <span className="font-medium text-muted-foreground">
+                  Remarks:
+                </span>{' '}
+                <span className="ml-1">{book.remarks || '-'}</span>
+              </div>
+            </div>
+            {book.warnings && book.warnings.length > 0 && (
+              <div className="mt-2 text-xs text-amber-600">
+                ⚠️ {book.warnings.join(', ')}
+              </div>
+            )}
+            {book.errors && book.errors.length > 0 && (
+              <div className="mt-2 text-xs text-red-600">
+                ❌ {book.errors.join(', ')}
+              </div>
+            )}
+          </td>
+        </tr>
+      )}
+    </React.Fragment>
+  );
+}
+
 // Available fields for mapping
 const AVAILABLE_FIELDS: FieldMapping[] = [
   { sourceField: 'title', targetField: 'title', required: true },
   { sourceField: 'author', targetField: 'author', required: true },
   { sourceField: 'accessionNo', targetField: 'accession_no', required: false },
   { sourceField: 'isbn', targetField: 'isbn', required: false },
+  { sourceField: 'publication', targetField: 'publication', required: false },
   { sourceField: 'publisher', targetField: 'publisher', required: false },
   { sourceField: 'category', targetField: 'category', required: false },
   { sourceField: 'subcategory', targetField: 'subcategory', required: false },
@@ -134,6 +243,7 @@ const getCommonAliases = (field: string): string[] => {
     accessionNo: ['accession', 'accession number', 'barcode', 'book id'],
     isbn: ['isbn10', 'isbn13'],
     publisher: ['publishing house', 'press'],
+    publication: ['publication city', 'place of publication'],
     category: ['genre', 'subject', 'collection code'],
     subcategory: ['sub-category', 'sub genre'],
     location: ['shelf', 'rack', 'call number'],
@@ -357,11 +467,18 @@ export function BookImportDialog({
           ...getCommonAliases(field.sourceField),
         ];
 
+        // Use stricter matching:
+        // 1. Exact match
+        // 2. Header is a complete word at the start of the alias (e.g., 'year' matches 'year published')
+        // 3. Alias is a complete word at the start of the header
+        // But NOT loose substring contains (e.g., 'publication' should NOT match 'publication year')
         const isMatch = fieldNames.some(
           (name) =>
             normalizedHeader === name ||
-            normalizedHeader.includes(name) ||
-            name.includes(normalizedHeader)
+            // Header matches the beginning of alias followed by space (stricter than includes)
+            name.startsWith(normalizedHeader + ' ') ||
+            // Alias matches the beginning of header followed by space
+            normalizedHeader.startsWith(name + ' ')
         );
 
         if (isMatch) {
@@ -390,14 +507,19 @@ export function BookImportDialog({
       skipHeaderRow: boolean;
     }): Promise<ImportPreviewResult> => {
       try {
+        // Convert FieldMapping to API expected format
+        const apiMappings = data.fieldMappings.map((m) => ({
+          source: m.sourceField,
+          target: m.targetField,
+        }));
         const result = await booksApi.previewImport(
           data.file,
           1000,
-          data.fieldMappings,
+          apiMappings,
           data.skipHeaderRow
         );
         // The API returns { success, records, totalRows, ... } directly
-        return result;
+        return result as ImportPreviewResult;
       } catch (error: unknown) {
         const message = getErrorMessage(error, 'Preview failed');
         throw new Error(message);
@@ -415,6 +537,7 @@ export function BookImportDialog({
             title: record.title || '',
             author: record.author || '',
             isbn: record.isbn || '',
+            publication: record.publication || '',
             publisher: record.publisher || '',
             category: record.category || '',
             subcategory: record.subcategory || '',
@@ -470,14 +593,26 @@ export function BookImportDialog({
 
   // Import books mutation
   const importBooksMutation = useMutation({
-    mutationFn: async (data: { file: File; fieldMappings: FieldMapping[] }) => {
+    mutationFn: async (data: {
+      file: File;
+      fieldMappings: FieldMapping[];
+    }): Promise<{
+      importedRecords?: number;
+      errorRecords?: number;
+      errors?: string[];
+    }> => {
       try {
-        const result = await booksApi.importBooks(
-          data.file,
-          data.fieldMappings,
-          false
-        );
-        return result.data;
+        // Convert FieldMapping to API expected format
+        const apiMappings = data.fieldMappings.map((m) => ({
+          source: m.sourceField,
+          target: m.targetField,
+        }));
+        const result = await booksApi.importBooks(data.file, apiMappings);
+        return result.data as {
+          importedRecords?: number;
+          errorRecords?: number;
+          errors?: string[];
+        };
       } catch (error: unknown) {
         const message = getErrorMessage(error, 'Import failed');
         throw new Error(message);
@@ -501,11 +636,11 @@ export function BookImportDialog({
         onSuccess();
       }
 
-      if (result.importedRecords > 0) {
+      if ((result.importedRecords ?? 0) > 0) {
         toast.success(`Successfully imported ${result.importedRecords} books`);
       }
 
-      if (result.errorRecords > 0) {
+      if ((result.errorRecords ?? 0) > 0) {
         toast.error(`Failed to import ${result.errorRecords} books`);
       }
     },
@@ -900,75 +1035,47 @@ export function BookImportDialog({
                 </div>
 
                 <div>
-                  <h4 className="font-semibold mb-3">Sample Data</h4>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold">Preview Data</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Click any row to see all details
+                    </p>
+                  </div>
                   <div className="border rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted/50">
+                    <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                      <table className="w-full text-sm min-w-[700px]">
+                        <thead className="bg-muted/50 sticky top-0 z-10">
                           <tr>
-                            <th className="px-4 py-3 text-left font-medium">
-                              Row
+                            <th className="px-3 py-2 text-left font-medium text-xs w-12">
+                              #
                             </th>
-                            <th className="px-4 py-3 text-left font-medium">
-                              Accession No
+                            <th className="px-3 py-2 text-left font-medium text-xs">
+                              Accession
                             </th>
-                            <th className="px-4 py-3 text-left font-medium">
+                            <th className="px-3 py-2 text-left font-medium text-xs">
                               Title
                             </th>
-                            <th className="px-4 py-3 text-left font-medium">
+                            <th className="px-3 py-2 text-left font-medium text-xs">
                               Author
                             </th>
-                            <th className="px-4 py-3 text-left font-medium">
+                            <th className="px-3 py-2 text-left font-medium text-xs w-16">
+                              Year
+                            </th>
+                            <th className="px-3 py-2 text-left font-medium text-xs">
                               Category
                             </th>
-                            <th className="px-4 py-3 text-left font-medium">
-                              Location
-                            </th>
-                            <th className="px-4 py-3 text-left font-medium">
+                            <th className="px-3 py-2 text-left font-medium text-xs w-20">
                               Status
                             </th>
                           </tr>
                         </thead>
                         <tbody>
                           {paginatedSamples.map((book, index) => (
-                            <tr
+                            <ExpandableBookRow
                               key={index}
-                              className="border-t hover:bg-muted/50 transition-colors"
-                            >
-                              <td className="px-4 py-3">{book.rowNumber}</td>
-                              <td className="px-4 py-3 text-muted-foreground">
-                                {book.accession_no || (
-                                  <span className="italic text-xs">
-                                    Will be generated
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3">{book.title}</td>
-                              <td className="px-4 py-3">{book.author}</td>
-                              <td className="px-4 py-3">
-                                {book.category || '-'}
-                              </td>
-                              <td className="px-4 py-3">
-                                {book.location || '-'}
-                              </td>
-                              <td className="px-4 py-3">
-                                {book.isValid ? (
-                                  <Badge
-                                    variant="outline"
-                                    className="bg-green-50 text-green-700 border-green-200"
-                                  >
-                                    Valid
-                                  </Badge>
-                                ) : (
-                                  <Badge
-                                    variant="destructive"
-                                    className="hover:bg-destructive/90"
-                                  >
-                                    Invalid
-                                  </Badge>
-                                )}
-                              </td>
-                            </tr>
+                              book={book}
+                              index={index}
+                            />
                           ))}
                         </tbody>
                       </table>

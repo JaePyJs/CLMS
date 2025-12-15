@@ -1,5 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { TableSkeleton } from '@/components/LoadingStates';
+import { GoogleSheetsIntegration } from '@/components/attendance/GoogleSheetsIntegration';
 
 const AttendanceTracker = lazy(
   () => import('@/components/attendance/AttendanceTracker')
@@ -15,6 +16,7 @@ export default function AttendancePage() {
             View and export student check-in/check-out records
           </p>
         </div>
+        <GoogleSheetsIntegration />
       </div>
 
       <Suspense fallback={<TableSkeleton rows={10} columns={6} />}>

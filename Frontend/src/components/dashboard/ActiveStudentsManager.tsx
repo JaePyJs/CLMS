@@ -67,7 +67,7 @@ export function ActiveStudentsManager() {
     return () => clearInterval(interval);
   }, [fetchSessions]);
 
-  // Refresh sessions immediately when a check-in/check-out happens via WebSocket
+  // Refresh sessions when a check-in/check-out happens via WebSocket
   useEffect(() => {
     if (recentActivities.length > 0) {
       const latestActivity = recentActivities[0];
@@ -76,9 +76,15 @@ export function ActiveStudentsManager() {
         latestActivity.type === 'CHECK_IN' ||
         latestActivity.type === 'CHECK_OUT'
       ) {
-        fetchSessions();
+        // Add small delay for checkout to ensure backend commit completes
+        const delay = latestActivity.type === 'CHECK_OUT' ? 500 : 0;
+        const timeoutId = setTimeout(() => {
+          fetchSessions();
+        }, delay);
+        return () => clearTimeout(timeoutId);
       }
     }
+    return undefined;
   }, [recentActivities, fetchSessions]);
 
   const handleMoveStudent = async (activityId: string, newSection: string) => {

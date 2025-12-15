@@ -40,6 +40,7 @@ import { StudentImportDialog } from './StudentImportDialog';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorHandling';
+import { StudentDetailModal } from './StudentDetailModal';
 import {
   Users,
   UserPlus,
@@ -2087,203 +2088,16 @@ export function StudentManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Student Details Dialog */}
-      <Dialog open={showStudentDetails} onOpenChange={setShowStudentDetails}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Student Details</DialogTitle>
-            <DialogDescription>
-              Complete information and activity history for this student.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedStudent && (
-            <div className="space-y-6">
-              {/* Basic Information */}
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">Basic Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Student ID:
-                      </span>
-                      <span className="font-medium">
-                        {selectedStudent.studentId}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Name:
-                      </span>
-                      <span className="font-medium">
-                        {selectedStudent.firstName} {selectedStudent.lastName}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Grade:
-                      </span>
-                      <span className="font-medium">
-                        {selectedStudent.gradeLevel}{' '}
-                        {selectedStudent.section &&
-                          `- Section ${selectedStudent.section}`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Status:
-                      </span>
-                      <Badge
-                        variant={
-                          selectedStudent.isActive ? 'default' : 'secondary'
-                        }
-                      >
-                        {selectedStudent.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Join Date:
-                      </span>
-                      <span className="font-medium">
-                        {selectedStudent.joinDate}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-lg">
-                      Contact Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Email:
-                      </span>
-                      <span className="font-medium">
-                        {selectedStudent.email || 'Not provided'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Phone:
-                      </span>
-                      <span className="font-medium">
-                        {selectedStudent.phone || 'Not provided'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Parent:
-                      </span>
-                      <span className="font-medium">
-                        {selectedStudent.parentName || 'Not provided'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Parent Phone:
-                      </span>
-                      <span className="font-medium">
-                        {selectedStudent.parentPhone || 'Not provided'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Emergency Contact:
-                      </span>
-                      <span className="font-medium">
-                        {selectedStudent.emergencyContact || 'Not provided'}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Activity Summary */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Activity Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="text-center p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                      <Activity className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                      <div className="text-2xl font-bold text-blue-700">
-                        {selectedStudent.totalSessions}
-                      </div>
-                      <p className="text-sm text-blue-600">Total Sessions</p>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-green-50 dark:bg-green-950/20">
-                      <Calendar className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                      <div className="text-2xl font-bold text-green-700">
-                        Last Active
-                      </div>
-                      <p className="text-sm text-green-600">
-                        {selectedStudent.lastActivity || 'Never'}
-                      </p>
-                    </div>
-                    <div className="text-center p-4 rounded-lg bg-purple-50 dark:bg-purple-950/20">
-                      <TrendingUp className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                      <div className="text-2xl font-bold text-purple-700">
-                        Regular
-                      </div>
-                      <p className="text-sm text-purple-600">Usage Pattern</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Actions */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-2 md:grid-cols-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => handlePrintSchedule(selectedStudent)}
-                    >
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Print Schedule
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleSendParentMessage(selectedStudent)}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Contact Parent
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleAwardStudent(selectedStudent)}
-                    >
-                      <Award className="h-4 w-4 mr-2" />
-                      Add Award
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleAddNotes(selectedStudent)}
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Add Notes
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button onClick={() => setShowStudentDetails(false)}>Close</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Student Details Modal with Borrowing and Activity History */}
+      <StudentDetailModal
+        student={selectedStudent}
+        open={showStudentDetails}
+        onClose={() => {
+          setShowStudentDetails(false);
+          setSelectedStudent(null);
+        }}
+        onStudentUpdated={() => studentsRefreshActions.refresh()}
+      />
 
       {/* Student Import Dialog */}
       <StudentImportDialog

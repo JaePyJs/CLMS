@@ -11,7 +11,12 @@ import {
   BarChart2,
   Award,
   RotateCcw,
+  RefreshCw,
+  GraduationCap,
+  Users,
+  Download,
 } from 'lucide-react';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
 
 const LeaderboardDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'monthly' | 'yearly'>('monthly');
@@ -24,14 +29,54 @@ const LeaderboardDashboard: React.FC = () => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetting, setResetting] = useState(false);
 
+  // Filter states
+  const [gradeFilter, setGradeFilter] = useState<number | undefined>(undefined);
+  const [sectionFilter, setSectionFilter] = useState<string>('');
+  const [allSections, setAllSections] = useState<string[]>([]);
+
+  // WebSocket for real-time updates
+  const { recentActivities } = useWebSocketContext();
+
+  // Fetch all sections once on initial load (without filters)
+  useEffect(() => {
+    const fetchAllSections = async () => {
+      try {
+        // Get unfiltered data to extract all sections
+        let data;
+        if (activeTab === 'monthly') {
+          data = await LeaderboardService.getMonthlyLeaderboard(year, month);
+        } else {
+          data = await LeaderboardService.getYearlyLeaderboard(year);
+        }
+        const sections = new Set<string>();
+        data.forEach((entry) => {
+          if (entry.section) sections.add(entry.section);
+        });
+        setAllSections(Array.from(sections).sort());
+      } catch (error) {
+        console.error('Failed to fetch sections:', error);
+      }
+    };
+    fetchAllSections();
+  }, [activeTab, year, month]);
+
   const fetchLeaderboard = async () => {
     setLoading(true);
     try {
       let data;
       if (activeTab === 'monthly') {
-        data = await LeaderboardService.getMonthlyLeaderboard(year, month);
+        data = await LeaderboardService.getMonthlyLeaderboard(
+          year,
+          month,
+          gradeFilter,
+          sectionFilter || undefined
+        );
       } else {
-        data = await LeaderboardService.getYearlyLeaderboard(year);
+        data = await LeaderboardService.getYearlyLeaderboard(
+          year,
+          gradeFilter,
+          sectionFilter || undefined
+        );
       }
       setLeaderboardData(data);
     } catch (error) {
@@ -43,7 +88,28 @@ const LeaderboardDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchLeaderboard();
-  }, [activeTab, year, month]);
+  }, [activeTab, year, month, gradeFilter, sectionFilter]);
+
+  // Auto-refresh when new attendance activity comes in
+  useEffect(() => {
+    if (recentActivities.length > 0) {
+      const latestActivity = recentActivities[0];
+      const activityTypes = [
+        'CHECK_IN',
+        'CHECK_OUT',
+        'ACTIVITY_LOG',
+        'LIBRARY_VISIT',
+        'KIOSK_CHECK_IN',
+      ];
+      if (activityTypes.includes(latestActivity.type)) {
+        // Debounce refresh to avoid too many calls
+        const timer = setTimeout(() => {
+          fetchLeaderboard();
+        }, 2000); // 2 second debounce
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [recentActivities]);
 
   const handleResetLeaderboard = async () => {
     setResetting(true);
@@ -60,6 +126,62 @@ const LeaderboardDashboard: React.FC = () => {
     } finally {
       setResetting(false);
     }
+  };
+
+  const exportToCSV = () => {
+    if (leaderboardData.length === 0) {
+      alert('No data to export');
+      return;
+    }
+
+    // Create CSV headers
+    const headers = [
+      'Rank',
+      'Student ID',
+      'Name',
+      'Grade Level',
+      'Section',
+      'Visits',
+      'Time Spent (minutes)',
+    ];
+
+    // Create CSV rows
+    const rows = leaderboardData.map((entry) => [
+      entry.rank,
+      entry.studentId,
+      entry.name,
+      entry.gradeLevel || 'N/A',
+      entry.section || 'N/A',
+      entry.scanCount,
+      entry.totalMinutes,
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    // Create filename with date and filters
+    const monthName = new Date(0, month - 1).toLocaleString('default', {
+      month: 'long',
+    });
+    const gradeText = gradeFilter !== undefined ? `_Grade${gradeFilter}` : '';
+    const sectionText = sectionFilter
+      ? `_${sectionFilter.replace(/\s+/g, '-')}`
+      : '';
+    const filename =
+      activeTab === 'monthly'
+        ? `Leaderboard_${monthName}_${year}${gradeText}${sectionText}.csv`
+        : `Leaderboard_Yearly_${year}${gradeText}${sectionText}.csv`;
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
   };
 
   const getRankIcon = (rank: number) => {
@@ -165,6 +287,72 @@ const LeaderboardDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* Grade Level Filter */}
+        <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-700 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-600">
+          <GraduationCap className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <select
+            value={gradeFilter ?? ''}
+            onChange={(e) =>
+              setGradeFilter(
+                e.target.value ? Number(e.target.value) : undefined
+              )
+            }
+            className="bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 font-medium"
+          >
+            <option value="" className="dark:bg-slate-800">
+              All Grades
+            </option>
+            {[...Array(13)].map((_, i) => (
+              <option key={i} value={i} className="dark:bg-slate-800">
+                {i === 0 ? 'Kindergarten' : `Grade ${i}`}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Section Filter */}
+        <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-700 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-600">
+          <Users className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <select
+            value={sectionFilter}
+            onChange={(e) => setSectionFilter(e.target.value)}
+            className="bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 font-medium min-w-[120px]"
+          >
+            <option value="" className="dark:bg-slate-800">
+              All Sections
+            </option>
+            {allSections.map((section) => (
+              <option
+                key={section}
+                value={section}
+                className="dark:bg-slate-800"
+              >
+                {section}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={() => fetchLeaderboard()}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50"
+          title="Refresh leaderboard"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+
+        <button
+          onClick={exportToCSV}
+          disabled={loading || leaderboardData.length === 0}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-50"
+          title="Export to CSV"
+        >
+          <Download className="w-4 h-4" />
+          Export
+        </button>
+
         <button
           onClick={() => setShowResetConfirm(true)}
           className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
@@ -236,7 +424,7 @@ const LeaderboardDashboard: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto rounded-lg">
           <table className="w-full">
             <thead>
               <tr className="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-200 dark:border-slate-700">

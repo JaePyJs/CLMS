@@ -19,10 +19,8 @@ import {
   CheckCircle,
   Clock,
   Zap,
-  MessageSquare,
   Bell,
   RefreshCw,
-  Settings,
   TrendingUp,
   Users,
   Book,
@@ -84,8 +82,6 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
     equipmentStatus,
     notifications,
     dashboardData,
-    triggerEmergencyAlert,
-    sendChatMessage,
     refreshDashboard,
     lastMessage,
   } = useWebSocketContext();
@@ -287,20 +283,6 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
     criticalAlerts: notifications.filter(
       (n) => (n as { priority?: string }).priority === 'critical'
     ).length,
-  };
-
-  const handleEmergencyAlert = () => {
-    const message = prompt('Enter emergency alert message:');
-    if (message) {
-      triggerEmergencyAlert('system_emergency', message, 'Main Library');
-    }
-  };
-
-  const handleSendMessage = () => {
-    const message = prompt('Enter message to broadcast to all staff:');
-    if (message) {
-      sendChatMessage(message, 'staff');
-    }
   };
 
   const getActivityIcon = (activity: Record<string, unknown>) => {
@@ -555,15 +537,19 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {(recentActivities.length > 0
-                ? recentActivities
-                : localActivities
-              ).length > 0 ? (
-                (
-                  (recentActivities.length > 0
-                    ? recentActivities
-                    : localActivities) as LocalActivity[]
-                )
+              {(() => {
+                // Filter to only show activities from the last 24 hours
+                const now = new Date();
+                const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                const activities = (recentActivities.length > 0 ? recentActivities : localActivities) as LocalActivity[];
+                const filteredActivities = activities.filter(activity => {
+                  if (!activity.timestamp) return false;
+                  const activityTime = new Date(activity.timestamp);
+                  return activityTime >= twentyFourHoursAgo;
+                });
+                
+                return filteredActivities.length > 0 ? (
+                  filteredActivities
                   .slice(0, 10)
                   .map((activity, index) => (
                     <div
@@ -597,12 +583,13 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
                       </div>
                     </div>
                   ))
-              ) : (
-                <div className="text-center py-8">
-                  <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="text-muted-foreground">No recent activity</p>
-                </div>
-              )}
+                ) : (
+                  <div className="text-center py-8">
+                    <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-muted-foreground">No recent activity in the last 24 hours</p>
+                  </div>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -730,54 +717,6 @@ export function RealTimeDashboard({ className }: RealTimeDashboardProps) {
           </CardContent>
         </Card>
       )}
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Real-time Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button
-              variant="outline"
-              onClick={handleSendMessage}
-              className="h-16 flex-col"
-              disabled={!isConnected}
-            >
-              <MessageSquare className="h-5 w-5 mb-2" />
-              <span className="text-sm">Broadcast Message</span>
-              <span className="text-xs text-gray-500">Send to all staff</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={handleEmergencyAlert}
-              className="h-16 flex-col border-red-200 text-red-600 hover:bg-red-50"
-              disabled={!isConnected}
-            >
-              <AlertTriangle className="h-5 w-5 mb-2" />
-              <span className="text-sm">Emergency Alert</span>
-              <span className="text-xs text-red-500">
-                Critical notification
-              </span>
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => refreshDashboard('all')}
-              className="h-16 flex-col"
-              disabled={!isConnected}
-            >
-              <RefreshCw className="h-5 w-5 mb-2" />
-              <span className="text-sm">Force Refresh</span>
-              <span className="text-xs text-gray-500">Update all data</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Active Students Management */}
       <ActiveStudentsManager />

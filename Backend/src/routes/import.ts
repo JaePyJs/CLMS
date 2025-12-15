@@ -91,7 +91,13 @@ const BOOK_FIELD_ALIASES: Record<string, string[]> = {
   title: ['title', 'book title', 'name', 'book name'],
   author: ['author', 'writer', 'by', 'authors'],
   isbn: ['isbn', 'isbn10', 'isbn13', 'isbn-10', 'isbn-13'],
-  publisher: ['publisher', 'publishing house', 'press', 'publication'],
+  publisher: ['publisher', 'publishing house', 'press'],
+  publication: [
+    'publication',
+    'publication city',
+    'place of publication',
+    'city',
+  ],
   category: [
     'category',
     'genre',
@@ -158,6 +164,7 @@ function normalizeBookRow(row: Record<string, string>): Record<string, string> {
     'category',
     'subcategory',
     'location',
+    'publication',
     'year',
     'edition',
     'pages',
@@ -637,19 +644,42 @@ router.post(
           Edition: 'edition',
           ISBN: 'isbn',
           Publisher: 'publisher',
-          Publication: 'publisher',
+          Publication: 'publication',
           'Collection Code': 'category',
           'Physical Description': 'pages',
           'Note Area': 'remarks',
           Price: 'cost_price',
         };
 
+        // Apply auto-mapping on top of normalized data (case-insensitive)
+        // Only set if not already set by normalizeBookRow
         Object.keys(obj).forEach(key => {
-          const mappedKey = autoMapping[key];
+          // First try exact match, then case-insensitive
+          let mappedKey = autoMapping[key];
+          if (!mappedKey) {
+            // Try case-insensitive match
+            const lowerKey = key.toLowerCase();
+            const matchingAutoKey = Object.keys(autoMapping).find(
+              k => k.toLowerCase() === lowerKey,
+            );
+            if (matchingAutoKey) {
+              mappedKey = autoMapping[matchingAutoKey];
+            }
+          }
+          // Only set if mappedKey found, value exists, AND not already set
           if (mappedKey && obj[key] && !normalized[mappedKey]) {
             normalized[mappedKey] = obj[key];
           }
         });
+
+        // Debug: log what we have for first row
+        if (i === 0) {
+          logger.debug('First row auto-mapping debug', {
+            year: normalized.year,
+            publisher: normalized.publisher,
+            location: normalized.location,
+          });
+        }
       }
 
       // Validate the record - use warnings instead of errors for missing fields
@@ -888,17 +918,30 @@ router.post(
               Edition: 'edition',
               ISBN: 'isbn',
               Publisher: 'publisher',
-              Publication: 'publisher',
+              Publication: 'publication',
               'Collection Code': 'category',
               'Physical Description': 'pages',
               'Note Area': 'remarks',
               Price: 'cost_price',
             };
 
-            // Apply auto-mapping on top of normalized data
+            // Apply auto-mapping on top of normalized data (case-insensitive)
             Object.keys(row).forEach(key => {
-              const mappedKey =
-                autoMapping[key] || key.toLowerCase().replace(/\s+/g, '_');
+              // First try exact match, then case-insensitive
+              let mappedKey = autoMapping[key];
+              if (!mappedKey) {
+                // Try case-insensitive match
+                const lowerKey = key.toLowerCase();
+                const matchingAutoKey = Object.keys(autoMapping).find(
+                  k => k.toLowerCase() === lowerKey,
+                );
+                if (matchingAutoKey) {
+                  mappedKey = autoMapping[matchingAutoKey];
+                } else {
+                  // Fallback to snake_case conversion
+                  mappedKey = key.toLowerCase().replace(/\s+/g, '_');
+                }
+              }
               if (row[key]) {
                 bookData[mappedKey] = row[key];
               }
@@ -956,6 +999,7 @@ router.post(
             author: bookData.author,
             isbn: bookData.isbn || null,
             publisher: bookData.publisher || null,
+            publication: bookData.publication || null,
             category: bookData.category,
             subcategory: bookData.subcategory || null,
             location: bookData.location || null,
@@ -2087,7 +2131,9 @@ router.post(
                 }
                 return num;
               })(),
+              section: mapped.section || null, // FIX: This was missing!
               email: mapped.email || null,
+              phone: mapped.phone || null,
               gender: mapped.gender || null,
               barcode,
               grade_category: mapped.grade_category || null,
@@ -2286,6 +2332,7 @@ router.post(
           author: String(mapped.author),
           isbn: mapped.isbn || null,
           publisher: mapped.publisher || null,
+          publication: mapped.publication || null,
           category: String(mapped.category),
           subcategory: mapped.subcategory || null,
           location: mapped.location || null,

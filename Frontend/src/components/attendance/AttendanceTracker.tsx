@@ -18,14 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar } from '@/components/ui/calendar';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { attendanceApi } from '@/lib/api';
+import { attendanceApi, apiClient } from '@/lib/api';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 import { toast } from 'sonner';
 import {
@@ -49,19 +51,30 @@ import {
   TrendingUp,
   UserCheck,
   UserX,
+  Trash2,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 
 interface AttendanceRecord {
   id: string;
   studentId: string;
   studentName: string;
-  gradeLevel: number;
+  gradeLevel: string; // Now a string to support "GRADE 3", "Personnel", etc.
   section?: string;
   checkInTime: string;
   checkOutTime?: string;
   duration?: number;
   status: 'ACTIVE' | 'COMPLETED';
   activityType: string;
+  // Metadata fields from import
+  designation?: string;
+  bookTitle?: string;
+  bookAuthor?: string;
 }
 
 interface AttendanceSummary {
@@ -81,6 +94,7 @@ export default function AttendanceTracker() {
   const [searchQuery, setSearchQuery] = useState('');
   const [gradeFilter, setGradeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [activityTypeFilter, setActivityTypeFilter] = useState<string>('all');
   const [dateRange, setDateRange] = useState<{
     from: Date;
     to: Date;
@@ -88,7 +102,17 @@ export default function AttendanceTracker() {
     from: startOfDay(new Date()),
     to: endOfDay(new Date()),
   });
-  const [customDateOpen, setCustomDateOpen] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetPeriod, setResetPeriod] = useState<string>('today');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  // Sorting state
+  const [sortColumn, setSortColumn] = useState<string>('checkInTime');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const { recentActivities } = useWebSocketContext();
 
@@ -118,8 +142,8 @@ export default function AttendanceTracker() {
             grade_level?: number;
             section?: string;
           };
-          grade_level?: number;
-          gradeLevel?: number;
+          grade_level?: number | string;
+          gradeLevel?: number | string;
           section?: string;
           start_time?: string;
           checkInTime?: string;
@@ -132,32 +156,61 @@ export default function AttendanceTracker() {
           status?: string;
           activity_type?: string;
           activityType?: string;
+          // Metadata fields from import
+          designation?: string;
+          bookTitle?: string;
+          bookAuthor?: string;
         }
         const mappedRecords = (dataRes.data as RawAttendanceRecord[]).map(
-          (record) => ({
-            id: record.id,
-            studentId: record.student_id || record.studentId,
-            studentName:
-              record.student_name ||
-              record.studentName ||
-              `${record.student?.first_name || ''} ${record.student?.last_name || ''}`.trim(),
-            gradeLevel:
-              record.grade_level ||
-              record.gradeLevel ||
-              record.student?.grade_level ||
-              0,
-            section: record.section || record.student?.section,
-            checkInTime:
-              record.start_time || record.checkInTime || record.check_in_time,
-            checkOutTime:
-              record.end_time || record.checkOutTime || record.check_out_time,
-            duration: record.duration_minutes || record.duration,
-            status: (record.status === 'ACTIVE' || !record.end_time
-              ? 'ACTIVE'
-              : 'COMPLETED') as 'ACTIVE' | 'COMPLETED',
-            activityType:
-              record.activity_type || record.activityType || 'LIBRARY_VISIT',
-          })
+          (record) => {
+            // Handle gradeLevel - can be string from import or number from DB
+            let gradeLevel = record.gradeLevel || record.grade_level || '';
+            if (typeof gradeLevel === 'number') {
+              gradeLevel =
+                gradeLevel === 0 ? 'Pre-School' : `Grade ${gradeLevel}`;
+            }
+            // For Personnel, gradeLevel should be blank/N/A, NOT 'Personnel'
+            // Personnel don't have a grade level - that goes in Section instead
+            const isPersonnel =
+              record.designation === 'Personnel' ||
+              record.designation?.toLowerCase() === 'personnel';
+
+            // Section display logic:
+            // - For Personnel with no section: show 'Personnel'
+            // - For others: show their actual section
+            let section = record.section || record.student?.section;
+            if (isPersonnel && !section) {
+              section = 'Personnel';
+            }
+
+            return {
+              id: record.id,
+              studentId: record.student_id || record.studentId || 'unknown',
+              studentName:
+                record.student_name ||
+                record.studentName ||
+                `${record.student?.first_name || ''} ${record.student?.last_name || ''}`.trim() ||
+                'Unknown',
+              gradeLevel: gradeLevel || (isPersonnel ? 'N/A' : 'Unknown'),
+              section: section,
+              checkInTime:
+                record.start_time ||
+                record.checkInTime ||
+                record.check_in_time ||
+                new Date().toISOString(),
+              checkOutTime:
+                record.end_time || record.checkOutTime || record.check_out_time,
+              duration: record.duration_minutes || record.duration,
+              status: (record.status === 'ACTIVE' || !record.end_time
+                ? 'ACTIVE'
+                : 'COMPLETED') as 'ACTIVE' | 'COMPLETED',
+              activityType:
+                record.activity_type || record.activityType || 'LIBRARY_VISIT',
+              designation: record.designation,
+              bookTitle: record.bookTitle,
+              bookAuthor: record.bookAuthor,
+            };
+          }
         );
         setRecords(mappedRecords);
       }
@@ -204,14 +257,26 @@ export default function AttendanceTracker() {
     fetchAttendance();
   }, [fetchAttendance]);
 
-  // Refresh when WebSocket activity comes in
+  // Refresh when WebSocket activity comes in (detect scan, print, room, equipment, etc.)
   useEffect(() => {
     if (recentActivities.length > 0 && activeTab === 'today') {
       const latestActivity = recentActivities[0];
-      if (
-        latestActivity.type === 'CHECK_IN' ||
-        latestActivity.type === 'CHECK_OUT'
-      ) {
+      // Listen for all activity types to refresh the list
+      const activityTypes = [
+        'CHECK_IN',
+        'CHECK_OUT',
+        'ACTIVITY_LOG',
+        'LIBRARY_VISIT',
+        'KIOSK_CHECK_IN',
+        'BOOK_CHECKOUT',
+        'BOOK_RETURN',
+        'EQUIPMENT_USE',
+        'ROOM_ENTRY',
+        'ROOM_EXIT',
+        'PRINTING',
+        'RECREATION',
+      ];
+      if (activityTypes.includes(latestActivity.type)) {
         fetchAttendance();
       }
     }
@@ -243,8 +308,55 @@ export default function AttendanceTracker() {
     }
   };
 
+  // Reset history with period filter
+  const handleResetHistory = async () => {
+    setResetting(true);
+    try {
+      const response = await apiClient.delete(
+        `/api/analytics/activities/reset?period=${resetPeriod}`
+      );
+      if (response.success) {
+        const periodLabel =
+          resetPeriod === 'today'
+            ? "Today's"
+            : resetPeriod === 'week'
+              ? "This week's"
+              : resetPeriod === 'month'
+                ? "This month's"
+                : 'All';
+        toast.success(`${periodLabel} attendance history has been reset`);
+        setShowResetDialog(false);
+        fetchAttendance();
+      } else {
+        toast.error('Failed to reset history');
+      }
+    } catch (error) {
+      console.error('Reset error:', error);
+      toast.error('Failed to reset attendance history');
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  // Get period label for display
+  const getPeriodLabel = (period: string) => {
+    switch (period) {
+      case 'today':
+        return "today's";
+      case 'week':
+        return "this week's";
+      case 'month':
+        return "this month's";
+      default:
+        return 'all';
+    }
+  };
+
   // Filter records
   const filteredRecords = useMemo(() => {
+    // Reset to first page when filters change
+    setCurrentPage(1);
+
     return records.filter((record) => {
       // Search filter
       if (searchQuery) {
@@ -258,11 +370,22 @@ export default function AttendanceTracker() {
       }
 
       // Grade filter
-      if (
-        gradeFilter !== 'all' &&
-        record.gradeLevel !== parseInt(gradeFilter)
-      ) {
-        return false;
+      if (gradeFilter !== 'all') {
+        // Match by grade filter (handle "Grade X", "Personnel", etc.)
+        const gradeNum = parseInt(gradeFilter);
+        if (!isNaN(gradeNum)) {
+          // Filter by grade number
+          if (
+            !record.gradeLevel.includes(`Grade ${gradeNum}`) &&
+            !(gradeNum === 0 && record.gradeLevel.includes('Pre-School'))
+          ) {
+            return false;
+          }
+        } else if (
+          gradeFilter.toLowerCase() !== record.gradeLevel.toLowerCase()
+        ) {
+          return false;
+        }
       }
 
       // Status filter
@@ -270,9 +393,88 @@ export default function AttendanceTracker() {
         return false;
       }
 
+      // Activity type filter
+      if (activityTypeFilter !== 'all') {
+        // Normalize both values for comparison
+        const normalizeType = (type: string) =>
+          type?.toLowerCase().replace(/[_\s-]+/g, '') || '';
+
+        const actType = normalizeType(record.activityType);
+        const filterType = normalizeType(activityTypeFilter);
+
+        // Handle special cases: 'checkin' matches 'library_visit' too if looking for check-ins
+        if (filterType === 'checkin') {
+          if (actType !== 'checkin' && actType !== 'libraryvisit') {
+            return false;
+          }
+        } else if (!actType.includes(filterType)) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [records, searchQuery, gradeFilter, statusFilter]);
+  }, [records, searchQuery, gradeFilter, statusFilter, activityTypeFilter]);
+
+  // Sort handler
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+    setCurrentPage(1); // Reset to first page on sort change
+  };
+
+  // Sorted records
+  const sortedRecords = useMemo(() => {
+    return [...filteredRecords].sort((a, b) => {
+      let aValue: string | number | Date = '';
+      let bValue: string | number | Date = '';
+
+      switch (sortColumn) {
+        case 'studentName':
+          aValue = a.studentName.toLowerCase();
+          bValue = b.studentName.toLowerCase();
+          break;
+        case 'gradeLevel':
+          aValue = a.gradeLevel.toLowerCase();
+          bValue = b.gradeLevel.toLowerCase();
+          break;
+        case 'section':
+          aValue = (a.section || '').toLowerCase();
+          bValue = (b.section || '').toLowerCase();
+          break;
+        case 'checkInTime':
+          aValue = new Date(a.checkInTime).getTime();
+          bValue = new Date(b.checkInTime).getTime();
+          break;
+        case 'checkOutTime':
+          aValue = a.checkOutTime ? new Date(a.checkOutTime).getTime() : 0;
+          bValue = b.checkOutTime ? new Date(b.checkOutTime).getTime() : 0;
+          break;
+        case 'duration':
+          aValue = a.duration || 0;
+          bValue = b.duration || 0;
+          break;
+        default:
+          aValue = new Date(a.checkInTime).getTime();
+          bValue = new Date(b.checkInTime).getTime();
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredRecords, sortColumn, sortDirection]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(sortedRecords.length / pageSize);
+  const paginatedRecords = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return sortedRecords.slice(startIndex, startIndex + pageSize);
+  }, [sortedRecords, currentPage, pageSize]);
 
   // Format duration
   const formatDuration = (minutes?: number) => {
@@ -285,10 +487,9 @@ export default function AttendanceTracker() {
     return `${mins}m`;
   };
 
-  // Format grade level
-  const formatGrade = (grade: number) => {
-    if (grade === 0) return 'Kindergarten';
-    return `Grade ${grade}`;
+  // Format grade level (now a string)
+  const formatGrade = (grade: string) => {
+    return grade || 'Unknown';
   };
 
   return (
@@ -328,9 +529,7 @@ export default function AttendanceTracker() {
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-purple-500" />
               <div>
-                <p className="text-sm text-muted-foreground">
-                  Currently Active
-                </p>
+                <p className="text-sm text-muted-foreground">Active Today</p>
                 <p className="text-2xl font-bold">
                   {summary?.currentlyActive || 0}
                 </p>
@@ -404,6 +603,15 @@ export default function AttendanceTracker() {
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
               </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowResetDialog(true)}
+                disabled={loading}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Reset History
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -422,35 +630,58 @@ export default function AttendanceTracker() {
               </TabsList>
 
               {activeTab === 'custom' && (
-                <div className="flex items-center gap-2">
-                  <DropdownMenu
-                    open={customDateOpen}
-                    onOpenChange={setCustomDateOpen}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">From:</span>
+                    <Input
+                      type="date"
+                      value={format(dateRange.from, 'yyyy-MM-dd')}
+                      onChange={(e) => {
+                        const newDate = new Date(e.target.value);
+                        if (!isNaN(newDate.getTime())) {
+                          setDateRange((prev) => ({
+                            from: startOfDay(newDate),
+                            to: prev.to < newDate ? endOfDay(newDate) : prev.to,
+                          }));
+                        }
+                      }}
+                      className="w-[140px] h-8"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-muted-foreground">To:</span>
+                    <Input
+                      type="date"
+                      value={format(dateRange.to, 'yyyy-MM-dd')}
+                      onChange={(e) => {
+                        const newDate = new Date(e.target.value);
+                        if (!isNaN(newDate.getTime())) {
+                          setDateRange((prev) => ({
+                            from:
+                              prev.from > newDate
+                                ? startOfDay(newDate)
+                                : prev.from,
+                            to: endOfDay(newDate),
+                          }));
+                        }
+                      }}
+                      className="w-[140px] h-8"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      const today = new Date();
+                      setDateRange({
+                        from: startOfDay(today),
+                        to: endOfDay(today),
+                      });
+                    }}
                   >
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <CalendarIcon className="h-4 w-4 mr-2" />
-                        {format(dateRange.from, 'MMM d')} -{' '}
-                        {format(dateRange.to, 'MMM d, yyyy')}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-auto p-0" align="end">
-                      <Calendar
-                        mode="range"
-                        selected={{ from: dateRange.from, to: dateRange.to }}
-                        onSelect={(range) => {
-                          if (range?.from && range?.to) {
-                            setDateRange({
-                              from: startOfDay(range.from),
-                              to: endOfDay(range.to),
-                            });
-                            setCustomDateOpen(false);
-                          }
-                        }}
-                        numberOfMonths={2}
-                      />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    Today
+                  </Button>
                 </div>
               )}
             </div>
@@ -478,52 +709,182 @@ export default function AttendanceTracker() {
                       Grade {grade}
                     </SelectItem>
                   ))}
+                  <SelectItem value="personnel">Personnel</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-[130px]">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="ACTIVE">Currently In</SelectItem>
-                  <SelectItem value="COMPLETED">Checked Out</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={activityTypeFilter}
+                onValueChange={setActivityTypeFilter}
+              >
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Activity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="CHECK_IN">Check In</SelectItem>
+                  <SelectItem value="CHECK_OUT">Check Out</SelectItem>
+                  <SelectItem value="BORROWED">Borrowed</SelectItem>
+                  <SelectItem value="ROOM_USE">Room Use</SelectItem>
+                  <SelectItem value="RECREATION">Recreation</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={pageSize.toString()}
+                onValueChange={(v) => setPageSize(parseInt(v))}
+              >
+                <SelectTrigger className="w-[100px]">
+                  <SelectValue placeholder="Per page" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10/page</SelectItem>
+                  <SelectItem value="25">25/page</SelectItem>
+                  <SelectItem value="50">50/page</SelectItem>
+                  <SelectItem value="100">100/page</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Records Table */}
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Grade</TableHead>
-                    <TableHead>Check-in Time</TableHead>
-                    <TableHead>Check-out Time</TableHead>
-                    <TableHead>Duration</TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('studentName')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Student
+                        {sortColumn === 'studentName' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('gradeLevel')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Grade
+                        {sortColumn === 'gradeLevel' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('section')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Section
+                        {sortColumn === 'section' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('checkInTime')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Date
+                        {sortColumn === 'checkInTime' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead>Check-in</TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('checkOutTime')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Check-out
+                        {sortColumn === 'checkOutTime' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('duration')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Duration
+                        {sortColumn === 'duration' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead>Book Info</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={9} className="text-center py-8">
                         <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
                         Loading attendance records...
                       </TableCell>
                     </TableRow>
-                  ) : filteredRecords.length === 0 ? (
+                  ) : paginatedRecords.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={9}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No attendance records found for this period
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredRecords.map((record) => (
+                    paginatedRecords.map((record) => (
                       <TableRow key={record.id}>
                         <TableCell>
                           <div>
@@ -535,22 +896,60 @@ export default function AttendanceTracker() {
                         </TableCell>
                         <TableCell>{formatGrade(record.gradeLevel)}</TableCell>
                         <TableCell>
+                          <span className="text-sm">
+                            {record.section || '-'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm font-medium">
+                            {format(
+                              new Date(record.checkInTime),
+                              'MMM d, yyyy'
+                            )}
+                          </span>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-1">
                             <LogIn className="h-4 w-4 text-green-500" />
-                            {format(new Date(record.checkInTime), 'h:mm a')}
+                            {format(new Date(record.checkInTime), 'h:mm:ss a')}
                           </div>
                         </TableCell>
                         <TableCell>
                           {record.checkOutTime ? (
                             <div className="flex items-center gap-1">
                               <LogOut className="h-4 w-4 text-blue-500" />
-                              {format(new Date(record.checkOutTime), 'h:mm a')}
+                              {format(
+                                new Date(record.checkOutTime),
+                                'h:mm:ss a'
+                              )}
                             </div>
                           ) : (
                             <span className="text-muted-foreground">-</span>
                           )}
                         </TableCell>
                         <TableCell>{formatDuration(record.duration)}</TableCell>
+                        <TableCell>
+                          {record.bookTitle ? (
+                            <div className="text-sm">
+                              <p
+                                className="font-medium truncate max-w-[150px]"
+                                title={record.bookTitle}
+                              >
+                                {record.bookTitle}
+                              </p>
+                              {record.bookAuthor && (
+                                <p
+                                  className="text-muted-foreground truncate max-w-[150px]"
+                                  title={record.bookAuthor}
+                                >
+                                  by {record.bookAuthor}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge
                             variant={
@@ -576,19 +975,116 @@ export default function AttendanceTracker() {
               </Table>
             </div>
 
-            {/* Footer with count */}
-            <div className="flex justify-between items-center text-sm text-muted-foreground">
-              <span>
-                Showing {filteredRecords.length} of {records.length} records
+            {/* Footer with count and pagination */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm">
+              <span className="text-muted-foreground">
+                Showing {(currentPage - 1) * pageSize + 1}-
+                {Math.min(currentPage * pageSize, filteredRecords.length)} of{' '}
+                {filteredRecords.length} records
+                {records.length !== filteredRecords.length &&
+                  ` (filtered from ${records.length})`}
               </span>
-              <span>
-                {format(dateRange.from, 'MMM d, yyyy')} -{' '}
-                {format(dateRange.to, 'MMM d, yyyy')}
-              </span>
+
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground text-xs">
+                  {format(dateRange.from, 'MMM d, yyyy')} -{' '}
+                  {format(dateRange.to, 'MMM d, yyyy')}
+                </span>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Reset Confirmation Dialog */}
+      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Reset Attendance History
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete attendance records. This action
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <label className="text-sm font-medium mb-2 block">
+              Select time period to delete:
+            </label>
+            <Select value={resetPeriod} onValueChange={setResetPeriod}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today's Records</SelectItem>
+                <SelectItem value="week">This Week's Records</SelectItem>
+                <SelectItem value="month">This Month's Records</SelectItem>
+                <SelectItem value="all">All Records</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground mt-2">
+              You are about to delete {getPeriodLabel(resetPeriod)} attendance
+              records.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowResetDialog(false)}
+              disabled={resetting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleResetHistory}
+              disabled={resetting}
+            >
+              {resetting ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Resetting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Reset Records
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

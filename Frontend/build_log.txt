@@ -1,0 +1,110 @@
+
+> clms-frontend@1.0.0 build
+> vite build
+
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+src/components/ui/dropdown-menu.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/calendar.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/scroll-area.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+[32mΓ£ô[39m 2233 modules transformed.
+
+Γ£¿ [vite-plugin-imagemin]- compressed image resource successfully: 
+
+
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+Γ£¿ [vite-plugin-compression]:algorithm=gzip - compressed file successfully: 
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/AttendanceDisplay-CjKE36if.js.gz       15.04kb / gzip: 3.33kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/ActivityHistory-BMAHuhND.js.gz         23.39kb / gzip: 4.36kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/AutomationSettings-CYF74ca-.js.gz      15.65kb / gzip: 3.15kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/BackupRestore-DkYbaZ_g.js.gz           15.00kb / gzip: 3.17kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/AttendanceTracker-D-IOwTWa.js.gz       22.29kb / gzip: 4.18kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/DataManagement-BkqOJKrU.js.gz          28.51kb / gzip: 4.10kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/AttendanceSettings-BU0K6aZC.js.gz      22.37kb / gzip: 4.28kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/GoogleSheetsConfig-D0UKU11P.js.gz      19.62kb / gzip: 3.98kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/CheckoutHistory-Bpn5gAQl.js.gz         28.31kb / gzip: 4.94kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/leaderboardService-DqfTHsI8.js.gz      1.50kb / gzip: 0.52kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/LeaderboardDashboard--xGvPk0A.js.gz    16.55kb / gzip: 3.20kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/offline-queue-DqTpkYrn.js.gz           17.76kb / gzip: 4.55kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/BookCatalog-Bgb9xO7Q.js.gz             92.68kb / gzip: 14.14kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/qr-scanner-worker.min-Bu8FMiXO.js.gz   43.00kb / gzip: 10.06kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/PrintingTracker-DyTXoIZg.js.gz         45.80kb / gzip: 8.15kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/QuickServicePanel-lVbTTRqI.js.gz       24.38kb / gzip: 4.69kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/StudentSearchDropdown-BTbnNsNB.js.gz   13.56kb / gzip: 2.95kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/SettingsPage-B8Bh86sv.js.gz            10.75kb / gzip: 1.61kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/switch-SyleQuHS.js.gz                  7.60kb / gzip: 2.31kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/scroll-area-DiEkivcv.js.gz             33.60kb / gzip: 6.54kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/SystemLogs-B6LEdLJQ.js.gz              11.74kb / gzip: 2.73kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/manifest.json.gz                              2.90kb / gzip: 0.79kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/index.html.gz                                 1.85kb / gzip: 0.73kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/SystemSettings-Cb2xk9UA.js.gz          23.09kb / gzip: 3.77kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/UserManagement-BubxmtyZ.js.gz          21.05kb / gzip: 4.36kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/sw.js.gz                                      16.43kb / gzip: 4.01kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/useDataRefresh-B2yJLuyY.js.gz          27.02kb / gzip: 4.95kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/offline.html.gz                               21.88kb / gzip: 4.59kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/index-DLQGjPhu.css.gz                  131.60kb / gzip: 19.02kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/EquipmentDashboard-CD9feaaT.js.gz      201.04kb / gzip: 33.06kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/BookCheckout-Een6olM_.js.gz            215.33kb / gzip: 40.59kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/StudentManagement-CgJ46ejM.js.gz       359.63kb / gzip: 55.16kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/ScanWorkspace-BH_S3Ct4.js.gz           944.24kb / gzip: 154.32kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/xlsx-DXgua1tX.js.gz                    859.71kb / gzip: 192.71kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/stats.html.gz                                 1823.91kb / gzip: 181.66kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/index-DRkOR2D8.js.gz                   4288.65kb / gzip: 796.74kb
+
+
+
+Γ£¿ [vite-plugin-compression]:algorithm=brotliCompress - compressed file successfully: 
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/AttendanceDisplay-CjKE36if.js.br       15.04kb / brotliCompress: 2.95kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/ActivityHistory-BMAHuhND.js.br         23.39kb / brotliCompress: 3.77kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/AttendanceSettings-BU0K6aZC.js.br      22.37kb / brotliCompress: 3.70kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/BackupRestore-DkYbaZ_g.js.br           15.00kb / brotliCompress: 2.71kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/AutomationSettings-CYF74ca-.js.br      15.65kb / brotliCompress: 2.73kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/AttendanceTracker-D-IOwTWa.js.br       22.29kb / brotliCompress: 3.65kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/CheckoutHistory-Bpn5gAQl.js.br         28.31kb / brotliCompress: 4.30kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/DataManagement-BkqOJKrU.js.br          28.51kb / brotliCompress: 3.53kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/GoogleSheetsConfig-D0UKU11P.js.br      19.62kb / brotliCompress: 3.49kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/BookCatalog-Bgb9xO7Q.js.br             92.68kb / brotliCompress: 12.01kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/LeaderboardDashboard--xGvPk0A.js.br    16.55kb / brotliCompress: 2.83kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/leaderboardService-DqfTHsI8.js.br      1.50kb / brotliCompress: 0.47kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/qr-scanner-worker.min-Bu8FMiXO.js.br   43.00kb / brotliCompress: 8.51kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/offline-queue-DqTpkYrn.js.br           17.76kb / brotliCompress: 4.05kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/QuickServicePanel-lVbTTRqI.js.br       24.38kb / brotliCompress: 4.09kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/scroll-area-DiEkivcv.js.br             33.60kb / brotliCompress: 5.75kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/PrintingTracker-DyTXoIZg.js.br         45.80kb / brotliCompress: 7.01kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/SystemLogs-B6LEdLJQ.js.br              11.74kb / brotliCompress: 2.36kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/SettingsPage-B8Bh86sv.js.br            10.75kb / brotliCompress: 1.40kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/switch-SyleQuHS.js.br                  7.60kb / brotliCompress: 2.01kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/index.html.br                                 1.85kb / brotliCompress: 0.51kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/useDataRefresh-B2yJLuyY.js.br          27.02kb / brotliCompress: 4.36kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/StudentSearchDropdown-BTbnNsNB.js.br   13.56kb / brotliCompress: 2.55kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/SystemSettings-Cb2xk9UA.js.br          23.09kb / brotliCompress: 3.22kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/manifest.json.br                              2.90kb / brotliCompress: 0.61kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/sw.js.br                                      16.43kb / brotliCompress: 3.43kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/offline.html.br                               21.88kb / brotliCompress: 3.81kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/UserManagement-BubxmtyZ.js.br          21.05kb / brotliCompress: 3.78kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/index-DLQGjPhu.css.br                  131.60kb / brotliCompress: 14.75kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/EquipmentDashboard-CD9feaaT.js.br      201.04kb / brotliCompress: 28.29kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/BookCheckout-Een6olM_.js.br            215.33kb / brotliCompress: 34.98kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/StudentManagement-CgJ46ejM.js.br       359.63kb / brotliCompress: 45.29kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/ScanWorkspace-BH_S3Ct4.js.br           944.24kb / brotliCompress: 111.30kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/xlsx-DXgua1tX.js.br                    859.71kb / brotliCompress: 154.96kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/stats.html.br                                 1823.91kb / brotliCompress: 126.62kb
+dist/C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/assets/index-DRkOR2D8.js.br                   4288.65kb / brotliCompress: 609.57kb
+
+
+x Build failed in 15.00s
+error during build:
+Could not resolve "../components/ui/use-toast" from "src/hooks/useAttendanceSync.tsx"
+file: C:/Users/jmbar/Desktop/ALL REPOS/Pia_REPOS/CLMS/Frontend/src/hooks/useAttendanceSync.tsx
+    at getRollupError (file:///C:/Users/jmbar/Desktop/ALL%20REPOS/Pia_REPOS/CLMS/node_modules/rollup/dist/es/shared/parseAst.js:401:41)
+    at error (file:///C:/Users/jmbar/Desktop/ALL%20REPOS/Pia_REPOS/CLMS/node_modules/rollup/dist/es/shared/parseAst.js:397:42)
+    at ModuleLoader.handleInvalidResolvedId (file:///C:/Users/jmbar/Desktop/ALL%20REPOS/Pia_REPOS/CLMS/node_modules/rollup/dist/es/shared/node-entry.js:21590:24)
+    at file:///C:/Users/jmbar/Desktop/ALL%20REPOS/Pia_REPOS/CLMS/node_modules/rollup/dist/es/shared/node-entry.js:21550:26
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend
+npm error workspace clms-frontend@1.0.0
+npm error location C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c vite build

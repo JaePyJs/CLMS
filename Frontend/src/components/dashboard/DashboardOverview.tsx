@@ -1453,6 +1453,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                 {currentTime.toLocaleTimeString([], {
                   hour: '2-digit',
                   minute: '2-digit',
+                  second: '2-digit',
                 })}
               </span>
             </div>
@@ -1903,9 +1904,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                                 size="sm"
                                 onClick={() => {
                                   setChangeSectionTarget({
-                                    studentId: ev.data.studentId,
+                                    studentId: ev.data?.studentId || '',
                                     studentName:
-                                      ev.data.studentName || 'Student',
+                                      ev.data?.studentName || 'Student',
                                   });
                                 }}
                                 aria-label="change-section"
@@ -2413,9 +2414,9 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                                   size="sm"
                                   onClick={() => {
                                     setChangeSectionTarget({
-                                      studentId: ev.data.studentId,
+                                      studentId: ev.data?.studentId || '',
                                       studentName:
-                                        ev.data.studentName || 'Student',
+                                        ev.data?.studentName || 'Student',
                                     });
                                   }}
                                   aria-label="change-section"
@@ -2613,9 +2614,11 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                               </p>
                             </div>
                             <div className="flex-shrink-0 text-xs text-muted-foreground bg-white dark:bg-gray-800 px-2 py-1 rounded-full">
-                              {new Date(
-                                activity.startTime
-                              ).toLocaleTimeString()}
+                              {activity.startTime
+                                ? new Date(
+                                    activity.startTime
+                                  ).toLocaleTimeString()
+                                : 'Now'}
                             </div>
                           </div>
                         )

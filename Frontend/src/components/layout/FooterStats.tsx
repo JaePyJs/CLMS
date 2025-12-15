@@ -96,16 +96,17 @@ export function FooterStats() {
       // apiClient wraps response: { success, data: { success, data: {...} } }
       // Extract the nested data properly
       const rawData = (dashRes as ApiResponse<DashboardData>)?.data || dashRes;
-      const dashData = (rawData as ApiResponse<DashboardData>)?.data || rawData;
+      const dashData = ((rawData as ApiResponse<DashboardData>)?.data ||
+        rawData) as DashboardData;
 
       // Get today's checkouts from book_checkouts or activeBorrows
-      const todayCheckouts = dashData?.todayActivities || 0;
+      const todayCheckouts = dashData?.todayActivities ?? 0;
       const activeBorrows =
-        dashData?.activeBorrows || dashData?.overview?.activeBorrows || 0;
+        dashData?.activeBorrows ?? dashData?.overview?.activeBorrows ?? 0;
 
       setStats({
         activeStudents: activeCount,
-        totalBooks: dashData?.totalBooks || dashData?.overview?.totalBooks || 0,
+        totalBooks: dashData?.totalBooks ?? dashData?.overview?.totalBooks ?? 0,
         todayCheckouts: todayCheckouts,
         todayReturns: activeBorrows,
       });

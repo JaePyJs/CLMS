@@ -1,0 +1,20 @@
+
+> clms-backend@2.0.0 build
+> tsc
+
+src/repositories/attendanceRepository.ts(1,10): error TS2305: Module '"../index"' has no exported member 'prisma'.
+src/repositories/attendanceRepository.ts(3,1): error TS6133: 'Prisma' is declared but its value is never read.
+src/repositories/attendanceRepository.ts(36,39): error TS7006: Parameter 'tx' implicitly has an 'any' type.
+src/repositories/attendanceRepository.ts(110,27): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/services/automationService.ts(204,42): error TS2339: Property 'syncAll' does not exist on type 'typeof GoogleSheetsService'.
+src/services/automationService.ts(205,39): error TS2339: Property 'syncAll' does not exist on type 'typeof GoogleSheetsService'.
+src/services/enhancedSelfService.ts(143,35): error TS2339: Property 'appendRow' does not exist on type 'typeof GoogleSheetsService'.
+src/services/enhancedSelfService.ts(232,35): error TS2339: Property 'appendRow' does not exist on type 'typeof GoogleSheetsService'.
+src/services/scanExportService.ts(134,33): error TS2339: Property 'appendRow' does not exist on type 'typeof GoogleSheetsService'.
+npm error Lifecycle script `build` failed with error:
+npm error code 2
+npm error path C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Backend
+npm error workspace clms-backend@2.0.0
+npm error location C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Backend
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c tsc

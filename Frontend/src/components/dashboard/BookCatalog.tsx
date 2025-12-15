@@ -56,6 +56,9 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Book,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import {
   TableSkeleton,
@@ -65,6 +68,7 @@ import {
 import { apiClient } from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
 import { BookImportDialog } from '@/components/books/BookImportDialog';
+import { BookDetailModal } from '@/components/books/BookDetailModal';
 
 interface Book {
   id: string;
@@ -79,6 +83,7 @@ interface Book {
   location?: string;
   edition?: string;
   pages?: string;
+  remarks?: string;
   costPrice?: number;
   totalCopies: number;
   availableCopies: number;
@@ -110,6 +115,7 @@ interface RawBook {
   location?: string;
   edition?: string;
   pages?: string;
+  remarks?: string;
   cost_price?: number;
   total_copies?: number;
   available_copies?: number;
@@ -151,6 +157,8 @@ export function BookCatalog() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [sortColumn, setSortColumn] = useState<string>('title');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [stats, setStats] = useState<BookStats>({
     total: 0,
@@ -214,6 +222,8 @@ export function BookCatalog() {
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: pageSize.toString(),
+        sortBy: sortColumn,
+        sortOrder: sortDirection,
       });
 
       if (debouncedSearchTerm) {
@@ -250,13 +260,14 @@ export function BookCatalog() {
           location: book.location,
           edition: book.edition,
           pages: book.pages,
+          remarks: book.remarks,
           costPrice: book.cost_price,
           totalCopies: book.total_copies ?? 1,
           availableCopies: book.available_copies ?? 1,
           isActive: book.is_active ?? true,
           barcodeImage: book.barcode_image,
-          createdAt: book.created_at,
-          updatedAt: book.updated_at,
+          createdAt: book.created_at || new Date().toISOString(),
+          updatedAt: book.updated_at || new Date().toISOString(),
         }));
         setBooks(booksData);
 
@@ -284,6 +295,8 @@ export function BookCatalog() {
     debouncedSearchTerm,
     filterCategory,
     filterStatus,
+    sortColumn,
+    sortDirection,
   ]);
 
   // Fetch book statistics
@@ -431,7 +444,7 @@ export function BookCatalog() {
     setIsExporting(true);
     try {
       const csvContent = [
-        'Accession No,ISBN,Title,Author,Publisher,Category,Location,Total Copies,Available Copies,Status',
+        'Accession No,ISBN,Title,Author,Publisher,Category,Call Number,Total Copies,Available Copies,Status',
         ...books.map(
           (b) =>
             `${b.accessionNo},${b.isbn || ''},${b.title},${b.author},${b.publisher || ''},${b.category},${b.location || ''},${b.totalCopies},${b.availableCopies},${b.isActive ? 'Active' : 'Inactive'}`
@@ -486,6 +499,42 @@ export function BookCatalog() {
       );
     }
   };
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const SortableHeader = ({
+    column,
+    children,
+  }: {
+    column: string;
+    children: React.ReactNode;
+  }) => (
+    <TableHead
+      className="cursor-pointer hover:bg-muted/50 select-none"
+      onClick={() => handleSort(column)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {sortColumn === column ? (
+          sortDirection === 'asc' ? (
+            <ArrowUp className="h-3 w-3" />
+          ) : (
+            <ArrowDown className="h-3 w-3" />
+          )
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-40" />
+        )}
+      </div>
+    </TableHead>
+  );
 
   return (
     <div className="space-y-6">
@@ -636,9 +685,9 @@ export function BookCatalog() {
               </div>
             </div>
 
-            <div className={isMobile ? 'grid grid-cols-2 gap-2' : ''}>
+            <div className={isMobile ? 'grid grid-cols-2 gap-2' : 'flex gap-4'}>
               <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger>
+                <SelectTrigger className={isMobile ? '' : 'w-[180px]'}>
                   <SelectValue
                     placeholder={isMobile ? 'Category' : 'All Categories'}
                   />
@@ -654,7 +703,7 @@ export function BookCatalog() {
               </Select>
 
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger>
+                <SelectTrigger className={isMobile ? '' : 'w-[150px]'}>
                   <SelectValue
                     placeholder={isMobile ? 'Status' : 'All Status'}
                   />
@@ -705,20 +754,52 @@ export function BookCatalog() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Accession No</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead className="hidden sm:table-cell">
-                      Author
+                    <SortableHeader column="accession_no">
+                      Accession No
+                    </SortableHeader>
+                    <SortableHeader column="title">Title</SortableHeader>
+                    <TableHead
+                      className="hidden sm:table-cell cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('author')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Author
+                        {sortColumn === 'author' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-40" />
+                        )}
+                      </div>
                     </TableHead>
                     <TableHead className="hidden md:table-cell">
                       Publisher
                     </TableHead>
-                    <TableHead className="hidden lg:table-cell">Year</TableHead>
+                    <TableHead
+                      className="hidden lg:table-cell cursor-pointer hover:bg-muted/50 select-none"
+                      onClick={() => handleSort('year')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Year
+                        {sortColumn === 'year' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-40" />
+                        )}
+                      </div>
+                    </TableHead>
                     <TableHead className="hidden sm:table-cell">
                       Category
                     </TableHead>
                     <TableHead className="hidden xl:table-cell">
-                      Location
+                      Call Number
                     </TableHead>
                     <TableHead>Availability</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -1000,7 +1081,7 @@ export function BookCatalog() {
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium">Location</label>
+                <label className="text-sm font-medium">Call Number</label>
                 <Input
                   value={newBook.location}
                   onChange={(e) =>
@@ -1129,7 +1210,7 @@ export function BookCatalog() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Location</label>
+                  <label className="text-sm font-medium">Call Number</label>
                   <Input
                     value={selectedBook.location || ''}
                     onChange={(e) =>
@@ -1172,6 +1253,91 @@ export function BookCatalog() {
                         availableCopies: parseInt(e.target.value) || 0,
                       })
                     }
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Year</label>
+                  <Input
+                    type="number"
+                    min="1800"
+                    max="2100"
+                    value={selectedBook.year || ''}
+                    onChange={(e) =>
+                      setSelectedBook({
+                        ...selectedBook,
+                        year: e.target.value
+                          ? parseInt(e.target.value)
+                          : undefined,
+                      })
+                    }
+                    placeholder="e.g. 2020"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Edition</label>
+                  <Input
+                    value={selectedBook.edition || ''}
+                    onChange={(e) =>
+                      setSelectedBook({
+                        ...selectedBook,
+                        edition: e.target.value,
+                      })
+                    }
+                    placeholder="e.g. 2nd Edition"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Cost Price</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={selectedBook.costPrice || ''}
+                    onChange={(e) =>
+                      setSelectedBook({
+                        ...selectedBook,
+                        costPrice: e.target.value
+                          ? parseFloat(e.target.value)
+                          : undefined,
+                      })
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">
+                    Pages (Physical Description)
+                  </label>
+                  <Input
+                    value={selectedBook.pages || ''}
+                    onChange={(e) =>
+                      setSelectedBook({
+                        ...selectedBook,
+                        pages: e.target.value,
+                      })
+                    }
+                    placeholder="e.g. 256p: ill."
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">
+                    Remarks (Note Area)
+                  </label>
+                  <Input
+                    value={selectedBook.remarks || ''}
+                    onChange={(e) =>
+                      setSelectedBook({
+                        ...selectedBook,
+                        remarks: e.target.value,
+                      })
+                    }
+                    placeholder="e.g. w/ index"
                   />
                 </div>
               </div>
@@ -1220,113 +1386,15 @@ export function BookCatalog() {
         </DialogContent>
       </Dialog>
 
-      {/* Book Details Dialog */}
-      <Dialog open={showBookDetails} onOpenChange={setShowBookDetails}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Book Details</DialogTitle>
-            <DialogDescription>
-              Detailed information about the selected book.
-            </DialogDescription>
-          </DialogHeader>
-          {selectedBook && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Accession Number
-                  </label>
-                  <p className="font-mono">{selectedBook.accessionNo}</p>
-                </div>
-                {selectedBook.isbn && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      ISBN
-                    </label>
-                    <p className="font-mono">{selectedBook.isbn}</p>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Title
-                </label>
-                <p className="text-lg font-semibold">{selectedBook.title}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Author
-                  </label>
-                  <p>{selectedBook.author}</p>
-                </div>
-                {selectedBook.publisher && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Publisher
-                    </label>
-                    <p>{selectedBook.publisher}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Category
-                  </label>
-                  <p>{selectedBook.category}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Location
-                  </label>
-                  <p>{selectedBook.location || 'Not specified'}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Total Copies
-                  </label>
-                  <p className="text-2xl font-bold">
-                    {selectedBook.totalCopies}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Available
-                  </label>
-                  <p className="text-2xl font-bold text-green-600">
-                    {selectedBook.availableCopies}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Checked Out
-                  </label>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {selectedBook.totalCopies - selectedBook.availableCopies}
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t">
-                <p className="text-sm text-muted-foreground">
-                  Added on{' '}
-                  {new Date(selectedBook.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button onClick={() => setShowBookDetails(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Book Details Modal with Checkout History */}
+      <BookDetailModal
+        book={selectedBook}
+        open={showBookDetails}
+        onClose={() => {
+          setShowBookDetails(false);
+          setSelectedBook(null);
+        }}
+      />
     </div>
   );
 }

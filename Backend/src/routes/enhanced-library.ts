@@ -578,13 +578,23 @@ router.get(
   authenticateToken,
   async (req: Request, res: Response) => {
     try {
-      const { status, limit = 50, offset = 0 } = req.query;
+      const { status, limit = 50, offset = 0, studentId, bookId } = req.query;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const where: any = {};
 
       if (status && status !== 'ALL') {
         where.status = status;
+      }
+
+      // Filter by studentId if provided
+      if (studentId) {
+        where.student_id = studentId as string;
+      }
+
+      // Filter by bookId if provided
+      if (bookId) {
+        where.book_id = bookId as string;
       }
 
       const history = await prisma.book_checkouts.findMany({
@@ -620,6 +630,9 @@ router.get(
               )
             : 0,
         fineAmount: item.fine_amount || 0,
+        finePaid: item.fine_paid,
+        finePaidAt: item.fine_paid_at,
+        notes: item.notes,
         book: {
           id: item.book.id,
           accessionNo: item.book.accession_no,
@@ -651,6 +664,101 @@ router.get(
   },
 );
 
+// Get all student activities - for Activity tab (check-ins, borrows, prints, etc.)
+router.get(
+  '/student-activities',
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { studentId, limit = 50, offset = 0 } = req.query;
+
+      if (!studentId) {
+        return res.status(400).json({
+          success: false,
+          error: 'studentId is required',
+        });
+      }
+
+      const activities = await prisma.student_activities.findMany({
+        where: {
+          student_id: studentId as string,
+        },
+        orderBy: {
+          start_time: 'desc',
+        },
+        take: Number(limit),
+        skip: Number(offset),
+      });
+
+      // Map to frontend expected format
+      const mappedActivities = activities.map(item => {
+        // Parse metadata if present
+        let metadata = null;
+        if (item.metadata) {
+          try {
+            metadata = JSON.parse(item.metadata);
+          } catch {
+            metadata = null;
+          }
+        }
+
+        // Format activity description based on type
+        let description = item.description || '';
+        if (!description) {
+          switch (item.activity_type) {
+            case 'CHECK_IN':
+            case 'SELF_SERVICE_CHECK_IN':
+            case 'KIOSK_CHECK_IN':
+              description = 'Checked in to library';
+              break;
+            case 'CHECK_OUT':
+              description = 'Checked out of library';
+              break;
+            case 'LIBRARY_VISIT':
+              description = 'Library visit';
+              break;
+            case 'BOOK_BORROWED':
+              description = metadata?.bookTitle
+                ? `Borrowed: ${metadata.bookTitle}`
+                : 'Borrowed a book';
+              break;
+            case 'BOOK_RETURNED':
+              description = 'Returned a book';
+              break;
+            case 'ATTENDANCE_IMPORT':
+              description = metadata?.bookTitle
+                ? `Read: ${metadata.bookTitle}`
+                : 'Library activity';
+              break;
+            default:
+              description = item.activity_type;
+          }
+        }
+
+        return {
+          id: item.id,
+          activityType: item.activity_type,
+          description,
+          timestamp: item.start_time,
+          endTime: item.end_time,
+          status: item.status,
+          metadata,
+        };
+      });
+
+      res.json({
+        success: true,
+        data: mappedActivities,
+      });
+    } catch (error) {
+      logger.error('Student activities error', { error });
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve student activities',
+      });
+    }
+  },
+);
 // Overdue management - get all overdue books
 router.get(
   '/overdue',

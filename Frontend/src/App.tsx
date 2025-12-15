@@ -47,6 +47,7 @@ import {
   CardSkeleton,
   TableSkeleton,
 } from '@/components/LoadingStates';
+import { StudentDetailModal } from '@/components/dashboard/StudentDetailModal';
 
 interface SearchResult {
   id: string;
@@ -54,6 +55,15 @@ interface SearchResult {
   title: string;
   subtitle?: string;
   status?: string;
+  // Additional student fields for modal
+  firstName?: string;
+  lastName?: string;
+  studentId?: string;
+  gradeLevel?: string;
+  section?: string;
+  email?: string;
+  phone?: string;
+  isActive?: boolean;
 }
 
 interface ApiSearchResponse {
@@ -84,7 +94,6 @@ import {
   Monitor,
   Trophy,
   ClipboardList,
-  History,
   DoorOpen,
 } from 'lucide-react';
 
@@ -105,13 +114,11 @@ const LeaderboardDashboard = React.lazy(
   () => import('@/components/dashboard/LeaderboardDashboard')
 );
 
-const ActivityHistory = React.lazy(
-  () => import('@/components/dashboard/ActivityHistory')
-);
-
 const AttendanceDisplay = React.lazy(
   () => import('@/components/attendance/AttendanceDisplay')
 );
+
+const KioskLeaderboard = React.lazy(() => import('@/pages/KioskLeaderboard'));
 
 // Enhanced loading fallbacks with skeleton screens
 const LoadingSpinnerFallback = () => (
@@ -185,6 +192,22 @@ export default function App() {
     );
   }
 
+  // Check for Kiosk Leaderboard
+  if (
+    typeof window !== 'undefined' &&
+    window.location.pathname === '/kiosk/leaderboard'
+  ) {
+    return (
+      <WebSocketProvider>
+        <Suspense fallback={<LoadingSpinnerFallback />}>
+          <RouteErrorBoundary>
+            <KioskLeaderboard />
+          </RouteErrorBoundary>
+        </Suspense>
+      </WebSocketProvider>
+    );
+  }
+
   // Enhanced navigation state - 7-tab structure with backward compatibility
   const normalizeTab = (t: string | null): string => {
     const m = (t || '').toLowerCase();
@@ -230,9 +253,6 @@ export default function App() {
     // Leaderboard (Tab 8)
     if (m === 'leaderboard') return 'leaderboard';
 
-    // Activity History (Tab 9)
-    if (m === 'activity-history' || m === 'history') return 'activity-history';
-
     return m || 'dashboard';
   };
   const initialTab =
@@ -272,6 +292,11 @@ export default function App() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // State for student detail modal from global search
+  const [searchSelectedStudent, setSearchSelectedStudent] =
+    useState<SearchResult | null>(null);
+  const [showSearchStudentModal, setShowSearchStudentModal] = useState(false);
 
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -589,7 +614,7 @@ export default function App() {
         />
 
         <div
-          className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-300 relative"
+          className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-slate-50 to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-all duration-300 relative"
           onTouchStart={handleTouchStart}
           onTouchEnd={(e) => {
             const gesture = handleTouchEnd(e);
@@ -702,8 +727,14 @@ export default function App() {
                                 key={`${result.type}-${result.id}`}
                                 className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-3"
                                 onClick={() => {
-                                  if (result.type === 'student')
-                                    setActiveTab('students');
+                                  if (result.type === 'student') {
+                                    // Open StudentDetailModal directly instead of navigating
+                                    setSearchSelectedStudent(result);
+                                    setShowSearchStudentModal(true);
+                                    setSearchQuery('');
+                                    setSearchResults([]);
+                                    return;
+                                  }
                                   if (result.type === 'book')
                                     setActiveTab('books');
                                   if (result.type === 'equipment')
@@ -1148,7 +1179,7 @@ export default function App() {
           {/* Main Content */}
           <main
             role="main"
-            className="px-3 sm:px-4 lg:px-8 py-4 sm:py-6 max-w-[1920px] mx-auto relative z-10"
+            className="flex-1 px-3 sm:px-4 lg:px-8 py-4 sm:py-6 max-w-[1920px] mx-auto relative z-10 w-full"
             data-testid="dashboard"
           >
             <Tabs
@@ -1219,13 +1250,7 @@ export default function App() {
                       <Trophy className="h-4 w-4 mr-1.5" />
                       <span>Leaderboard</span>
                     </TabsTrigger>
-                    <TabsTrigger
-                      value="activity-history"
-                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
-                    >
-                      <History className="h-4 w-4 mr-1.5" />
-                      <span>History</span>
-                    </TabsTrigger>
+
                     <TabsTrigger
                       value="settings-admin"
                       className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
@@ -1365,22 +1390,6 @@ export default function App() {
                 </RouteErrorBoundary>
               </TabsContent>
 
-              {/* Activity History Tab */}
-              <TabsContent
-                value="activity-history"
-                className="space-y-6"
-                id="tabpanel-activity-history"
-                role="tabpanel"
-                aria-labelledby="tab-activity-history"
-                tabIndex={0}
-              >
-                <RouteErrorBoundary>
-                  <Suspense fallback={<TableSkeletonFallback />}>
-                    <ActivityHistory />
-                  </Suspense>
-                </RouteErrorBoundary>
-              </TabsContent>
-
               {/* Settings Tab - available to all authenticated users */}
               <TabsContent
                 value="settings-admin"
@@ -1408,6 +1417,41 @@ export default function App() {
           <MobileBottomNavigation
             activeTab={activeTab}
             onTabChange={setActiveTab}
+          />
+
+          {/* Student Detail Modal from Global Search */}
+          <StudentDetailModal
+            student={
+              searchSelectedStudent
+                ? {
+                    id: searchSelectedStudent.id,
+                    studentId:
+                      searchSelectedStudent.studentId ||
+                      searchSelectedStudent.id,
+                    firstName:
+                      searchSelectedStudent.firstName ||
+                      searchSelectedStudent.title.split(' ')[0] ||
+                      '',
+                    lastName:
+                      searchSelectedStudent.lastName ||
+                      searchSelectedStudent.title
+                        .split(' ')
+                        .slice(1)
+                        .join(' ') ||
+                      '',
+                    gradeLevel: searchSelectedStudent.gradeLevel || undefined, // Don't use subtitle as fallback
+                    section: searchSelectedStudent.section,
+                    email: searchSelectedStudent.email,
+                    phone: searchSelectedStudent.phone,
+                    isActive: searchSelectedStudent.isActive ?? true,
+                  }
+                : null
+            }
+            open={showSearchStudentModal}
+            onClose={() => {
+              setShowSearchStudentModal(false);
+              setSearchSelectedStudent(null);
+            }}
           />
 
           {/* Footer */}

@@ -77,8 +77,8 @@ export const checkStudentScanRate = (
   barcode: string,
 ): { allowed: boolean; waitSeconds?: number } => {
   const now = Date.now();
-  const windowMs = 3000; // 3 second window (stricter to prevent duplicates)
-  const maxScans = 1; // Only 1 scan per 3 seconds for same barcode
+  const windowMs = 30000; // 30 second window - prevents duplicate check-ins from rapid scanning
+  const maxScans = 1; // Only 1 scan per 30 seconds for same barcode
 
   const tracker = studentScanTracker.get(barcode);
 

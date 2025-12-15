@@ -6,79 +6,80 @@ echo.
 echo  ========================================================
 echo   CLMS - Centralized Library Management System
 echo  ========================================================
+echo  
+echo   ONE-CLICK STARTUP - All services will start automatically
 echo.
 
-echo [0/5] Cleaning up old processes...
+REM Get directory where batch file is located
+cd /d "%~dp0"
+
+echo [1/4] Stopping any existing CLMS processes...
 taskkill /F /IM node.exe >nul 2>&1
-taskkill /F /IM electron.exe >nul 2>&1
 echo       Done.
 
-REM Check if node_modules exists
+echo [2/4] Checking dependencies...
+
+REM Check Backend
 if not exist "Backend\node_modules" (
-    echo [1/5] Installing Backend dependencies...
+    echo       Installing Backend dependencies...
     cd Backend
     call npm install
     cd ..
+    echo       Backend ready!
 ) else (
-    echo [1/5] Backend dependencies OK
+    echo       Backend OK
 )
 
+REM Check Frontend
 if not exist "Frontend\node_modules" (
-    echo [2/5] Installing Frontend dependencies...
+    echo       Installing Frontend dependencies...
     cd Frontend
     call npm install
     cd ..
+    echo       Frontend ready!
 ) else (
-    echo [2/5] Frontend dependencies OK
+    echo       Frontend OK
 )
 
-if not exist "BarcodeScanner\node_modules" (
-    echo [3/5] Installing BarcodeScanner dependencies...
-    cd BarcodeScanner
-    call npm install
-    cd ..
-) else (
-    echo [3/5] BarcodeScanner dependencies OK
-)
+echo [3/4] Starting Backend Server (Port 3001)...
+start /min "CLMS Backend" cmd /k "cd /d "%~dp0Backend" && npm run dev"
 
-echo [4/5] Starting Backend Server (Port 3001)...
-start /min "CLMS Backend" cmd /k "cd Backend && npm run dev"
+REM Wait for backend to be ready
+timeout /t 4 /nobreak >nul
 
-timeout /t 3 /nobreak >nul
-
-echo [5/5] Starting Frontend Server (Port 3000)...
-start /min "CLMS Frontend" cmd /k "cd Frontend && npm run dev"
+echo [4/4] Starting Frontend Server (Port 3000)...
+start /min "CLMS Frontend" cmd /k "cd /d "%~dp0Frontend" && npm run dev"
 
 echo.
 echo  ========================================================
 echo   CLMS Started Successfully!
 echo  ========================================================
 echo.
-echo  MAIN SCREENS:
-echo  -------------
-echo    Dashboard:    http://localhost:3000/?tab=dashboard
-echo    Scan Station: http://localhost:3000/?tab=scan-station
-echo    Students:     http://localhost:3000/?tab=students
-echo    Leaderboard:  http://localhost:3000/?tab=leaderboard
-echo    Books/Borrow: http://localhost:3000/?tab=books
-echo    Rooms:        http://localhost:3000/?tab=equipment
-echo    Printing:     http://localhost:3000/?tab=printing
-echo    Settings:     http://localhost:3000/?tab=settings-admin
+echo  ACCESSING THE SYSTEM:
+echo  ----------------------
+echo    Main Dashboard:  http://localhost:3000
+echo    Kiosk Mode:      http://localhost:3000/kiosk
 echo.
-echo  SPECIAL SCREENS:
+echo  MULTI-PC SETUP:
 echo  ----------------
-echo    Kiosk Display: http://localhost:3000/kiosk
+echo    From other PCs on the network, use THIS PC's IP:
+echo    Example: http://192.168.x.x:3000/kiosk
 echo.
-echo  BARCODE SCANNER:
-echo  ----------------
-echo    To start background barcode scanning, run:
-echo    cd BarcodeScanner && npm start
-echo    Or use CLMS_MANAGER.bat option [8]
+echo    The Kiosk automatically connects to the server!
+echo.
+echo  TABS (Alt+Number for shortcuts):
+echo  ---------------------------------
+echo    Alt+1: Dashboard      Alt+5: Rooms/Equipment
+echo    Alt+2: Scan Station   Alt+6: Printing
+echo    Alt+3: Students       Alt+7: Settings
+echo    Alt+4: Books/Borrow   Alt+8: Leaderboard
 echo.
 echo  NOTE: Server windows are MINIMIZED in your taskbar.
-echo        To stop the app, close those windows or use CLMS_MANAGER.bat
+echo        Close them to stop CLMS, or press Ctrl+C.
 echo.
-timeout /t 5
+echo  Opening browser in 5 seconds...
+timeout /t 5 /nobreak >nul
 start http://localhost:3000
-exit
-
+echo.
+echo  Press any key to close this window (servers keep running)...
+pause >nul

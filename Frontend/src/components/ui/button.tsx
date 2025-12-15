@@ -5,20 +5,24 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-95',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]',
   {
     variants: {
       variant: {
+        // Solid buttons: use brightness for hover (works in both light/dark mode)
         default:
-          'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md',
+          'bg-primary text-primary-foreground shadow-sm hover:shadow-md hover:brightness-110',
         destructive:
-          'bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:shadow-md',
-        outline:
-          'border border-input bg-card text-foreground hover:bg-primary/5 dark:hover:bg-primary/10 hover:border-primary/30 hover:shadow-sm',
+          'bg-destructive text-destructive-foreground shadow-sm hover:shadow-md hover:brightness-110',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:shadow-sm',
+          'bg-secondary text-secondary-foreground shadow-sm hover:shadow hover:brightness-105',
+        // Outline: subtle blue tint on hover (adds color, doesn't reduce it)
+        outline:
+          'border border-input bg-transparent text-foreground hover:bg-blue-500/10 dark:hover:bg-blue-400/15 hover:border-blue-500/60 hover:text-blue-600 dark:hover:text-blue-400',
+        // Ghost: very subtle background on hover
         ghost:
-          'hover:bg-primary/5 dark:hover:bg-primary/10 hover:text-foreground',
+          'text-foreground hover:bg-accent/50 dark:hover:bg-accent/30 hover:text-accent-foreground',
+        // Link: simple underline
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {

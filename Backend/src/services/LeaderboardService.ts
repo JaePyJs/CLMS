@@ -10,7 +10,9 @@ async function isPersonnel(studentId: string): Promise<boolean> {
     select: { grade_category: true, student_id: true },
   });
 
-  if (!student) return false;
+  if (!student) {
+    return false;
+  }
 
   return (
     student.grade_category === 'PERSONNEL' ||
@@ -30,6 +32,7 @@ export class LeaderboardService {
     studentId: string,
     duration: number = 0,
     excludeFromLeaderboard: boolean = false,
+    scanDate?: Date, // Optional: use this date for year/month instead of now (for imports)
   ) {
     // Skip recording if excluded (manual lookup, quick service, etc.)
     if (excludeFromLeaderboard) {
@@ -50,9 +53,10 @@ export class LeaderboardService {
     }
 
     try {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
+      // Use provided scanDate for historical imports, or current date for live scans
+      const recordDate = scanDate || new Date();
+      const year = recordDate.getFullYear();
+      const month = recordDate.getMonth() + 1;
 
       // eslint-disable-next-line
       await (prisma as any).student_scan_stats.upsert({
@@ -62,7 +66,7 @@ export class LeaderboardService {
         update: {
           total_scans: { increment: 1 },
           total_minutes: { increment: duration },
-          last_scan_date: now,
+          last_scan_date: recordDate,
         },
         create: {
           student_id: studentId,
@@ -70,7 +74,7 @@ export class LeaderboardService {
           month,
           total_scans: 1,
           total_minutes: duration,
-          last_scan_date: now,
+          last_scan_date: recordDate,
         },
       });
     } catch (error) {
@@ -83,20 +87,44 @@ export class LeaderboardService {
    * Get monthly leaderboard
    * NOTE: Only includes students, excludes personnel (grade_category = 'PERSONNEL')
    */
-  static async getMonthlyLeaderboard(year: number, month: number, limit = 10) {
+  static async getMonthlyLeaderboard(
+    year: number,
+    month: number,
+    limit = 100,
+    gradeLevel?: number,
+    section?: string,
+  ) {
     try {
+      // Build student filter
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const studentFilter: any = {
+        AND: [
+          {
+            OR: [
+              { grade_category: null },
+              { grade_category: { not: 'PERSONNEL' } },
+            ],
+          },
+          { student_id: { not: { startsWith: 'PN' } } },
+        ],
+      };
+
+      // Add grade level filter if provided
+      if (gradeLevel !== undefined && gradeLevel !== null) {
+        studentFilter.AND.push({ grade_level: gradeLevel });
+      }
+
+      // Add section filter if provided
+      if (section) {
+        studentFilter.AND.push({ section: { contains: section } });
+      }
+
       // eslint-disable-next-line
       const stats = await (prisma as any).student_scan_stats.findMany({
         where: {
           year,
           month,
-          // Exclude personnel from leaderboard
-          student: {
-            AND: [
-              { grade_category: { not: 'PERSONNEL' } },
-              { student_id: { not: { startsWith: 'PN' } } },
-            ],
-          },
+          student: studentFilter,
         },
         include: {
           student: {
@@ -140,21 +168,45 @@ export class LeaderboardService {
    * Get yearly leaderboard
    * NOTE: Only includes students, excludes personnel (grade_category = 'PERSONNEL')
    */
-  static async getYearlyLeaderboard(year: number, limit = 10) {
+  static async getYearlyLeaderboard(
+    year: number,
+    limit = 100,
+    gradeLevel?: number,
+    section?: string,
+  ) {
     try {
-      // First, get IDs of non-personnel students
+      // Build student filter
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const studentFilter: any = {
+        AND: [
+          {
+            OR: [
+              { grade_category: null },
+              { grade_category: { not: 'PERSONNEL' } },
+            ],
+          },
+          { student_id: { not: { startsWith: 'PN' } } },
+        ],
+      };
+
+      // Add grade level filter if provided
+      if (gradeLevel !== undefined && gradeLevel !== null) {
+        studentFilter.AND.push({ grade_level: gradeLevel });
+      }
+
+      // Add section filter if provided
+      if (section) {
+        studentFilter.AND.push({ section: { contains: section } });
+      }
+
+      // First, get IDs of filtered students
       const validStudents = await prisma.students.findMany({
-        where: {
-          AND: [
-            { grade_category: { not: 'PERSONNEL' } },
-            { student_id: { not: { startsWith: 'PN' } } },
-          ],
-        },
+        where: studentFilter,
         select: { id: true },
       });
       const validStudentIds = validStudents.map(s => s.id);
 
-      // Aggregate stats by student for the year (only non-personnel)
+      // Aggregate stats by student for the year
       // eslint-disable-next-line
       const stats = await (prisma as any).student_scan_stats.groupBy({
         by: ['student_id'],

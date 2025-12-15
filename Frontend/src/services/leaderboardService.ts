@@ -33,16 +33,34 @@ export interface LeaderboardResetResult {
 export const LeaderboardService = {
   getMonthlyLeaderboard: async (
     year: number,
-    month: number
+    month: number,
+    gradeLevel?: number,
+    section?: string
   ): Promise<LeaderboardEntry[]> => {
-    const response = await api.get(
-      `/leaderboard/monthly?year=${year}&month=${month}`
-    );
+    let url = `/leaderboard/monthly?year=${year}&month=${month}&limit=1000`;
+    if (gradeLevel !== undefined && gradeLevel !== null) {
+      url += `&gradeLevel=${gradeLevel}`;
+    }
+    if (section) {
+      url += `&section=${encodeURIComponent(section)}`;
+    }
+    const response = await api.get(url);
     return response.data;
   },
 
-  getYearlyLeaderboard: async (year: number): Promise<LeaderboardEntry[]> => {
-    const response = await api.get(`/leaderboard/yearly?year=${year}`);
+  getYearlyLeaderboard: async (
+    year: number,
+    gradeLevel?: number,
+    section?: string
+  ): Promise<LeaderboardEntry[]> => {
+    let url = `/leaderboard/yearly?year=${year}&limit=1000`;
+    if (gradeLevel !== undefined && gradeLevel !== null) {
+      url += `&gradeLevel=${gradeLevel}`;
+    }
+    if (section) {
+      url += `&section=${encodeURIComponent(section)}`;
+    }
+    const response = await api.get(url);
     return response.data;
   },
 

@@ -63,8 +63,24 @@ export interface LibraryAnalytics {
 // API client class
 class ApiClient {
   private client: ReturnType<typeof axios.create>;
-  private DEFAULT_API_URL =
-    import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  // Auto-detect API URL: Use current page origin with port 3001 for multi-PC support
+  // This allows Kiosk on PC2/PC3 to automatically connect to whatever server served the page
+  private DEFAULT_API_URL = (() => {
+    // If explicitly set in env and not localhost, use it
+    const envUrl = import.meta.env.VITE_API_URL;
+    if (envUrl && !envUrl.includes('localhost')) {
+      // For Kiosk mode from other PCs: use current page's host with backend port
+      if (
+        typeof window !== 'undefined' &&
+        window.location.pathname === '/kiosk'
+      ) {
+        return `http://${window.location.hostname}:3001`;
+      }
+      return envUrl;
+    }
+    // Default fallback
+    return 'http://localhost:3001';
+  })();
 
   constructor(baseURL: string = this.DEFAULT_API_URL) {
     this.client = axios.create({
@@ -270,6 +286,38 @@ export const attendanceApi = {
 
   // Get active check-ins (students currently in library)
   getActiveSessions: () => apiClient.get('/api/students/active-sessions'),
+
+  // Google Sheets Integration
+  importGoogleSheets: (data: { spreadsheetId: string; sheetName: string }) =>
+    apiClient.post('/api/attendance-export/import/google-sheets', data),
+
+  exportGoogleSheets: (data: {
+    spreadsheetId: string;
+    sheetName: string;
+    startDate: string;
+    endDate: string;
+    overwrite?: boolean;
+  }) => apiClient.post('/api/attendance-export/export/google-sheets', data),
+
+  validateGoogleSheet: (params: { spreadsheetId: string; sheetName: string }) =>
+    apiClient.get('/api/attendance-export/validate-sheet', params),
+};
+
+export const borrowingApi = {
+  // Google Sheets Integration for Borrowing History
+  importGoogleSheets: (data: { spreadsheetId: string; sheetName: string }) =>
+    apiClient.post('/api/borrowing-export/import/google-sheets', data),
+
+  exportGoogleSheets: (data: {
+    spreadsheetId: string;
+    sheetName: string;
+    startDate: string;
+    endDate: string;
+    overwrite?: boolean;
+  }) => apiClient.post('/api/borrowing-export/export/google-sheets', data),
+
+  validateGoogleSheet: (params: { spreadsheetId: string; sheetName: string }) =>
+    apiClient.get('/api/borrowing-export/validate-sheet', params),
 };
 
 export const studentsApi = {

@@ -224,34 +224,43 @@ export default function SelfServiceMode() {
       // Step 1: Tap In
       const response = await kioskApi.tapIn(scannedValue);
 
+      // Guard against undefined response
+      if (!response) {
+        setMessage('No response received');
+        setState('ALREADY_LOGGED_IN');
+        playSound(false);
+        setTimeout(() => resetState(), 3000);
+        return;
+      }
+
       if (response.success && response.canCheckIn && response.student) {
         setStudent(response.student);
         setState('IDENTIFIED');
         playSound(true);
       } else if (
         !response.success &&
-        response.message.includes('already checked in')
+        response.message?.includes('already checked in')
       ) {
         // Already logged in (within 15 mins)
-        setMessage(response.message);
+        setMessage(response.message || 'Already checked in');
         setState('ALREADY_LOGGED_IN');
         playSound(false);
         setTimeout(() => resetState(), 3000);
-      } else if (!response.success && response.message.includes('wait')) {
+      } else if (!response.success && response.message?.includes('wait')) {
         // Cooldown
-        setMessage(response.message);
+        setMessage(response.message || 'Please wait');
         setState('ALREADY_LOGGED_IN'); // Re-use this state for error display
         playSound(false);
         setTimeout(() => resetState(), 3000);
       } else if (!response.success && response.student) {
-        if (response.message.includes('Checked out')) {
+        if (response.message?.includes('Checked out')) {
           setStudent(response.student);
-          setMessage(response.message);
+          setMessage(response.message || 'Checked out');
           setState('CHECKED_OUT');
           playSound(true);
           setTimeout(() => resetState(), 3000);
         } else {
-          setMessage(response.message);
+          setMessage(response.message || 'Error');
           setState('ALREADY_LOGGED_IN');
           playSound(false);
           setTimeout(() => resetState(), 3000);
@@ -297,12 +306,17 @@ export default function SelfServiceMode() {
         scanData
       );
 
+      if (!response) {
+        toast.error('No response received');
+        return;
+      }
+
       if (response.success) {
         setState('WELCOME');
         playSound(true);
         setTimeout(() => resetState(), 3000);
       } else {
-        setMessage(response.message);
+        setMessage(response.message || 'Check-in failed');
         setState('ALREADY_LOGGED_IN');
         playSound(false);
         setTimeout(() => resetState(), 3000);

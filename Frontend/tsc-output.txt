@@ -1,0 +1,258 @@
+src/components/analytics/EquipmentUtilizationAnalytics.tsx(299,16): error TS18048: 'data.overallUtilization' is possibly 'undefined'.
+src/components/analytics/EquipmentUtilizationAnalytics.tsx(301,19): error TS18048: 'data.overallUtilization' is possibly 'undefined'.
+src/components/analytics/EquipmentUtilizationAnalytics.tsx(777,15): error TS18048: 'data.overallUtilization' is possibly 'undefined'.
+src/components/analytics/EquipmentUtilizationAnalytics.tsx(779,19): error TS18048: 'data.overallUtilization' is possibly 'undefined'.
+src/components/analytics/EquipmentUtilizationAnalytics.tsx(784,14): error TS18048: 'data.overallUtilization' is possibly 'undefined'.
+src/components/analytics/EquipmentUtilizationAnalytics.tsx(786,17): error TS18048: 'data.overallUtilization' is possibly 'undefined'.
+src/components/analytics/TimeSeriesForecast.tsx(188,11): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/attendance/AttendanceTracker.tsx(162,20): error TS2345: Argument of type '{ id: string; studentId: string | undefined; studentName: string; gradeLevel: number; section: string | undefined; checkInTime: string | undefined; checkOutTime: string | undefined; duration: number | undefined; status: "ACTIVE" | "COMPLETED"; activityType: string; }[]' is not assignable to parameter of type 'SetStateAction<AttendanceRecord[]>'.
+  Type '{ id: string; studentId: string | undefined; studentName: string; gradeLevel: number; section: string | undefined; checkInTime: string | undefined; checkOutTime: string | undefined; duration: number | undefined; status: "ACTIVE" | "COMPLETED"; activityType: string; }[]' is not assignable to type 'AttendanceRecord[]'.
+    Type '{ id: string; studentId: string | undefined; studentName: string; gradeLevel: number; section: string | undefined; checkInTime: string | undefined; checkOutTime: string | undefined; duration: number | undefined; status: "ACTIVE" | "COMPLETED"; activityType: string; }' is not assignable to type 'AttendanceRecord'.
+      Types of property 'studentId' are incompatible.
+        Type 'string | undefined' is not assignable to type 'string'.
+          Type 'undefined' is not assignable to type 'string'.
+src/components/attendance/GoogleSheetsIntegration.tsx(40,8): error TS2307: Cannot find module '@/components/ui/collapsible' or its corresponding type declarations.
+src/components/books/BookImportDialog.tsx(396,11): error TS2345: Argument of type 'FieldMapping[]' is not assignable to parameter of type '{ source: string; target: string; }[]'.
+  Type 'FieldMapping' is missing the following properties from type '{ source: string; target: string; }': source, target
+src/components/books/BookImportDialog.tsx(400,9): error TS2559: Type 'ApiResponse<unknown>' has no properties in common with type 'ImportPreviewResult'.
+src/components/books/BookImportDialog.tsx(473,5): error TS2322: Type '(data: { file: File; fieldMappings: FieldMapping[]; }) => Promise<unknown>' is not assignable to type 'MutationFunction<{ importedRecords?: number | undefined; errorRecords?: number | undefined; errors?: string[] | undefined; }, { file: File; fieldMappings: FieldMapping[]; }>'.
+  Type 'Promise<unknown>' is not assignable to type 'Promise<{ importedRecords?: number | undefined; errorRecords?: number | undefined; errors?: string[] | undefined; }>'.
+    Type 'unknown' is not assignable to type '{ importedRecords?: number | undefined; errorRecords?: number | undefined; errors?: string[] | undefined; }'.
+src/components/books/BookImportDialog.tsx(477,11): error TS2345: Argument of type 'FieldMapping[]' is not assignable to parameter of type '{ source: string; target: string; }[]'.
+  Type 'FieldMapping' is missing the following properties from type '{ source: string; target: string; }': source, target
+src/components/books/BookImportDialog.tsx(504,11): error TS18048: 'result.importedRecords' is possibly 'undefined'.
+src/components/books/BookImportDialog.tsx(508,11): error TS18048: 'result.errorRecords' is possibly 'undefined'.
+src/components/dashboard/AnalyticsDashboard.tsx(871,13): error TS2322: Type '{ utilizationByType?: { type: string; total: number; inUse: number; utilizationRate: number; }[] | undefined; peakUsageTimes?: { hour?: number | undefined; sessions?: number | undefined; timeRange?: string | undefined; }[] | undefined; maintenanceInsights?: { ...; } | undefined; overallUtilization?: number | undefin...' is not assignable to type 'EquipmentAnalyticsData | undefined'.
+  Type '{ utilizationByType?: { type: string; total: number; inUse: number; utilizationRate: number; }[] | undefined; peakUsageTimes?: { hour?: number | undefined; sessions?: number | undefined; timeRange?: string | undefined; }[] | undefined; maintenanceInsights?: { ...; } | undefined; overallUtilization?: number | undefin...' is not assignable to type 'EquipmentAnalyticsData'.
+    Types of property 'maintenanceInsights' are incompatible.
+      Type '{ maintenanceSchedule: unknown[]; averageUptime: number; equipmentNeedingMaintenance: number; } | undefined' is not assignable to type '{ maintenanceSchedule?: RawMaintenanceItem[] | undefined; averageUptime?: number | undefined; equipmentNeedingMaintenance?: number | undefined; } | undefined'.
+        Type '{ maintenanceSchedule: unknown[]; averageUptime: number; equipmentNeedingMaintenance: number; }' is not assignable to type '{ maintenanceSchedule?: RawMaintenanceItem[] | undefined; averageUptime?: number | undefined; equipmentNeedingMaintenance?: number | undefined; }'.
+          Types of property 'maintenanceSchedule' are incompatible.
+            Type 'unknown[]' is not assignable to type 'RawMaintenanceItem[]'.
+              Type 'unknown' is not assignable to type 'RawMaintenanceItem'.
+src/components/dashboard/BookCheckout.tsx(265,34): error TS2339: Property 'dueDate' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(265,64): error TS2339: Property 'data' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(558,26): error TS2339: Property 'id' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(559,30): error TS2339: Property 'book' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(560,33): error TS2339: Property 'student' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(562,17): error TS2339: Property 'checkout_date' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(562,40): error TS2339: Property 'borrowedAt' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(565,17): error TS2339: Property 'due_date' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(565,35): error TS2339: Property 'dueDate' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(567,30): error TS2339: Property 'status' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(568,35): error TS2339: Property 'overdueDays' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(569,34): error TS2339: Property 'fineAmount' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(571,28): error TS2339: Property 'book' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(572,37): error TS2339: Property 'book' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(573,31): error TS2339: Property 'book' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(574,32): error TS2339: Property 'book' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(575,34): error TS2339: Property 'book' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(576,41): error TS2339: Property 'book' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(577,37): error TS2339: Property 'book' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(580,28): error TS2339: Property 'student' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(581,35): error TS2339: Property 'student' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(582,35): error TS2339: Property 'student' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(583,34): error TS2339: Property 'student' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(585,26): error TS2339: Property 'student' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(586,32): error TS2339: Property 'student' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(587,30): error TS2339: Property 'student' does not exist on type '{}'.
+src/components/dashboard/BookCheckout.tsx(588,33): error TS2339: Property 'student' does not exist on type '{}'.
+src/components/dashboard/DashboardOverview.tsx(1906,37): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/components/dashboard/DashboardOverview.tsx(1906,48): error TS18048: 'ev.data' is possibly 'undefined'.
+src/components/dashboard/DashboardOverview.tsx(1908,39): error TS18048: 'ev.data' is possibly 'undefined'.
+src/components/dashboard/DashboardOverview.tsx(2416,39): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/components/dashboard/DashboardOverview.tsx(2416,50): error TS18048: 'ev.data' is possibly 'undefined'.
+src/components/dashboard/DashboardOverview.tsx(2418,41): error TS18048: 'ev.data' is possibly 'undefined'.
+src/components/dashboard/DashboardOverview.tsx(2617,33): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | Date | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | Date | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
+src/components/dashboard/DocumentationDashboard.tsx(171,11): error TS2353: Object literal may only specify known properties, and 'enableRealTime' does not exist in type 'WebSocketContext'.
+src/components/dashboard/EquipmentDashboard.tsx(1025,59): error TS2339: Property 'specs' does not exist on type 'Equipment'.
+src/components/dashboard/EquipmentDashboard.tsx(1026,51): error TS2339: Property 'notes' does not exist on type 'Equipment'.
+src/components/dashboard/EquipmentDashboard.tsx(1067,39): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+src/components/dashboard/EquipmentDashboard.tsx(1090,37): error TS2345: Argument of type 'EquipmentSession' is not assignable to parameter of type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'EquipmentSession'.
+src/components/dashboard/EquipmentDashboard.tsx(1101,54): error TS18048: 'item.currentSession' is possibly 'undefined'.
+src/components/dashboard/EquipmentDashboard.tsx(1227,33): error TS2339: Property 'specs' does not exist on type 'Equipment'.
+src/components/dashboard/EquipmentDashboard.tsx(1230,39): error TS2339: Property 'specs' does not exist on type 'Equipment'.
+src/components/dashboard/EquipmentDashboard.tsx(1231,51): error TS2339: Property 'specs' does not exist on type 'Equipment'.
+src/components/dashboard/EquipmentDashboard.tsx(1233,39): error TS2339: Property 'specs' does not exist on type 'Equipment'.
+src/components/dashboard/EquipmentDashboard.tsx(1234,51): error TS2339: Property 'specs' does not exist on type 'Equipment'.
+src/components/dashboard/EquipmentDashboard.tsx(1236,39): error TS2339: Property 'specs' does not exist on type 'Equipment'.
+src/components/dashboard/EquipmentDashboard.tsx(1237,51): error TS2339: Property 'specs' does not exist on type 'Equipment'.
+src/components/dashboard/RealTimeMonitor.tsx(349,22): error TS2345: Argument of type '(equipment: Record<string, unknown>, index: number) => Element' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => Element'.
+  Types of parameters 'equipment' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type 'Record<string, unknown>'.
+src/components/dashboard/SelfServiceMode.tsx(227,11): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(227,31): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(227,54): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(228,20): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(232,10): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(233,9): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(236,20): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(240,19): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(240,39): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(242,20): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(246,19): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(246,39): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(247,13): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(248,22): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(249,22): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(254,22): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(260,20): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(300,11): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/SelfServiceMode.tsx(305,20): error TS18048: 'response' is possibly 'undefined'.
+src/components/dashboard/StudentImportDialog.tsx(485,5): error TS2322: Type '(data: { file: File; fieldMappings: FieldMapping[]; skipHeaderRow: boolean; }) => Promise<unknown>' is not assignable to type 'MutationFunction<{ records: Partial<ImportedStudent>[]; duplicateRecords?: number | undefined; }, { file: File; fieldMappings: FieldMapping[]; skipHeaderRow: boolean; }>'.
+  Type 'Promise<unknown>' is not assignable to type 'Promise<{ records: Partial<ImportedStudent>[]; duplicateRecords?: number | undefined; }>'.
+    Type 'unknown' is not assignable to type '{ records: Partial<ImportedStudent>[]; duplicateRecords?: number | undefined; }'.
+src/components/dashboard/StudentImportDialog.tsx(495,11): error TS2345: Argument of type 'FieldMapping[]' is not assignable to parameter of type '{ source: string; target: string; }[]'.
+  Type 'FieldMapping' is missing the following properties from type '{ source: string; target: string; }': source, target
+src/components/dashboard/StudentImportDialog.tsx(562,5): error TS2322: Type '(data: { file: File; fieldMappings: FieldMapping[]; }) => Promise<unknown>' is not assignable to type 'MutationFunction<{ importedRecords?: number | undefined; importedStudents?: number | undefined; importedPersonnel?: number | undefined; errorRecords?: number | undefined; errors?: string[] | undefined; generated?: { ...; }[] | undefined; }, { ...; }>'.
+  Type 'Promise<unknown>' is not assignable to type 'Promise<{ importedRecords?: number | undefined; importedStudents?: number | undefined; importedPersonnel?: number | undefined; errorRecords?: number | undefined; errors?: string[] | undefined; generated?: { ...; }[] | undefined; }>'.
+    Type 'unknown' is not assignable to type '{ importedRecords?: number | undefined; importedStudents?: number | undefined; importedPersonnel?: number | undefined; errorRecords?: number | undefined; errors?: string[] | undefined; generated?: { ...; }[] | undefined; }'.
+src/components/dashboard/StudentImportDialog.tsx(566,11): error TS2345: Argument of type 'FieldMapping[]' is not assignable to parameter of type '{ source: string; target: string; }[]'.
+  Type 'FieldMapping' is missing the following properties from type '{ source: string; target: string; }': source, target
+src/components/dashboard/StudentImportDialog.tsx(596,11): error TS18048: 'result.importedRecords' is possibly 'undefined'.
+src/components/dashboard/StudentImportDialog.tsx(610,11): error TS18048: 'result.errorRecords' is possibly 'undefined'.
+src/components/dashboard/StudentImportDialog.tsx(622,5): error TS2322: Type '(file: File) => Promise<unknown>' is not assignable to type 'MutationFunction<{ updated?: number | undefined; notFound?: number | undefined; errors?: string[] | undefined; }, File>'.
+  Type 'Promise<unknown>' is not assignable to type 'Promise<{ updated?: number | undefined; notFound?: number | undefined; errors?: string[] | undefined; }>'.
+    Type 'unknown' is not assignable to type '{ updated?: number | undefined; notFound?: number | undefined; errors?: string[] | undefined; }'.
+src/components/fines/FinesManagement.tsx(177,24): error TS2345: Argument of type 'Fine[]' is not assignable to parameter of type 'FineData[]'.
+  Type 'Fine' is not assignable to type 'FineData'.
+    Types of property 'dueDate' are incompatible.
+      Type 'Date' is not assignable to type 'string'.
+src/components/layout/FooterStats.tsx(102,40): error TS2339: Property 'todayActivities' does not exist on type 'ApiResponse<unknown> | DashboardData'.
+  Property 'todayActivities' does not exist on type 'ApiResponse<unknown>'.
+src/components/layout/FooterStats.tsx(104,19): error TS2339: Property 'activeBorrows' does not exist on type 'ApiResponse<unknown> | DashboardData'.
+  Property 'activeBorrows' does not exist on type 'ApiResponse<unknown>'.
+src/components/layout/FooterStats.tsx(104,46): error TS2339: Property 'overview' does not exist on type 'ApiResponse<unknown> | DashboardData'.
+  Property 'overview' does not exist on type 'ApiResponse<unknown>'.
+src/components/layout/FooterStats.tsx(108,31): error TS2339: Property 'totalBooks' does not exist on type 'ApiResponse<unknown> | DashboardData'.
+  Property 'totalBooks' does not exist on type 'ApiResponse<unknown>'.
+src/components/layout/FooterStats.tsx(108,55): error TS2339: Property 'overview' does not exist on type 'ApiResponse<unknown> | DashboardData'.
+  Property 'overview' does not exist on type 'ApiResponse<unknown>'.
+src/components/management/FineManagement.tsx(58,48): error TS18048: 'res.data' is possibly 'undefined'.
+src/components/performance/OptimizedList.tsx(432,19): error TS2339: Property 'scrollHeight' does not exist on type '{ scrollHeight: number; clientHeight: number; scrollTop: number; } | undefined'.
+src/components/performance/OptimizedList.tsx(432,33): error TS2339: Property 'clientHeight' does not exist on type '{ scrollHeight: number; clientHeight: number; scrollTop: number; } | undefined'.
+src/components/performance/OptimizedList.tsx(432,47): error TS2339: Property 'scrollTop' does not exist on type '{ scrollHeight: number; clientHeight: number; scrollTop: number; } | undefined'.
+src/components/performance/ReactPerformanceOptimizer.tsx(78,10): error TS2352: Conversion of type 'MemoExoticComponent<ComponentType<P>>' to type 'ComponentType<P>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'MemoExoticComponent<ComponentType<P>>' is not comparable to type 'FunctionComponent<P>'.
+    Types of parameters 'props' and 'props' are incompatible.
+      Type 'P' is not comparable to type '(PropsWithoutRef<P> & RefAttributes<Component<P, any, any>>) | PropsWithRef<P>'.
+        Type 'object' is not comparable to type '(PropsWithoutRef<P> & RefAttributes<Component<P, any, any>>) | PropsWithRef<P>'.
+          Type 'P' is not comparable to type 'PropsWithoutRef<P> & RefAttributes<Component<P, any, any>>'.
+            Type 'object' is not comparable to type 'PropsWithoutRef<P> & RefAttributes<Component<P, any, any>>'.
+              Type 'object' is not comparable to type 'PropsWithoutRef<P>'.
+                Type 'P' is not comparable to type 'PropsWithoutRef<P>'.
+                  Type 'object' is not comparable to type 'PropsWithoutRef<P>'.
+src/components/performance/ReactPerformanceOptimizer.tsx(156,10): error TS2352: Conversion of type 'MemoExoticComponent<(props: P) => Element>' to type 'ComponentType<P>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'MemoExoticComponent<(props: P) => Element>' is not comparable to type 'FunctionComponent<P>'.
+    Types of parameters 'props' and 'props' are incompatible.
+      Type 'P' is not comparable to type 'PropsWithRef<P>'.
+        Type 'object' is not comparable to type 'PropsWithRef<P>'.
+src/components/search/SavedSearches.tsx(95,31): error TS2339: Property 'setState' does not exist on type 'ModalActions<boolean>'.
+src/components/search/SavedSearches.tsx(96,64): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'FormValues'.
+src/components/search/SavedSearches.tsx(148,10): error TS18046: 'formData.values.name' is of type 'unknown'.
+src/components/search/SavedSearches.tsx(174,49): error TS18046: 'formData.values.name' is of type 'unknown'.
+src/components/search/SavedSearches.tsx(182,66): error TS2339: Property 'id' does not exist on type '{}'.
+src/components/search/SavedSearches.tsx(325,19): error TS18046: 'searchFilters.values.searchQuery' is of type 'unknown'.
+src/components/search/SavedSearches.tsx(328,19): error TS18046: 'searchFilters.values.searchQuery' is of type 'unknown'.
+src/components/search/SavedSearches.tsx(362,17): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/search/SavedSearches.tsx(374,15): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
+src/components/search/SavedSearches.tsx(397,25): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/components/search/SavedSearches.tsx(681,17): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/search/SavedSearches.tsx(692,17): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/search/SavedSearches.tsx(703,17): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
+src/components/search/SavedSearches.tsx(728,17): error TS2322: Type 'unknown' is not assignable to type 'boolean | undefined'.
+src/components/search/SavedSearches.tsx(745,17): error TS2322: Type 'unknown' is not assignable to type 'boolean | undefined'.
+src/components/security/AccessRequest.tsx(253,12): error TS18046: 'newRequestForm.values.justificationText' is of type 'unknown'.
+src/components/security/AccessRequest.tsx(264,9): error TS2322: Type 'unknown' is not assignable to type '"students" | "student" | "activities" | "activity"'.
+src/components/security/AccessRequest.tsx(265,9): error TS2322: Type 'unknown' is not assignable to type '"VIEW" | "EDIT" | "EXPORT" | "PRINT" | "SHARE" | "ANALYTICS"'.
+src/components/security/AccessRequest.tsx(266,9): error TS2322: Type 'unknown' is not assignable to type '"EDUCATIONAL_PURPOSE" | "LEGAL_REQUIREMENT" | "HEALTH_SAFETY" | "CONSENT" | "DIRECTORY_INFO" | "ADMINISTRATIVE" | "RESEARCH" | "AUDIT"'.
+src/components/security/AccessRequest.tsx(267,9): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/components/security/AccessRequest.tsx(268,9): error TS2322: Type 'unknown' is not assignable to type 'number'.
+src/components/security/AccessRequest.tsx(428,7): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/security/AccessRequest.tsx(431,25): error TS7006: Parameter 'value' implicitly has an 'any' type.
+src/components/security/AccessRequest.tsx(531,63): error TS2339: Property 'setIsOpen' does not exist on type 'ModalActions<boolean>'.
+src/components/security/AccessRequest.tsx(547,19): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
+src/components/security/AccessRequest.tsx(569,19): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
+src/components/security/AccessRequest.tsx(592,17): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
+src/components/security/AccessRequest.tsx(624,17): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/security/AccessRequest.tsx(639,17): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/security/AccessRequest.tsx(689,63): error TS2339: Property 'status' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(700,55): error TS2339: Property 'id' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(706,69): error TS2339: Property 'status' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(709,58): error TS2339: Property 'status' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(712,57): error TS2339: Property 'status' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(722,55): error TS2339: Property 'requesterName' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(723,55): error TS2339: Property 'requesterRole' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(730,56): error TS2339: Property 'createdAt' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(740,55): error TS2339: Property 'targetType' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(746,55): error TS2339: Property 'accessType' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(755,54): error TS2339: Property 'justification' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(763,53): error TS2339: Property 'justificationText' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(770,56): error TS2339: Property 'duration' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(775,55): error TS2339: Property 'expiresAt' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(777,60): error TS2339: Property 'expiresAt' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(784,49): error TS2339: Property 'approvedBy' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(788,58): error TS2339: Property 'approvedBy' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(793,57): error TS2339: Property 'approvedAt' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(795,62): error TS2339: Property 'approvedAt' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(808,55): error TS2339: Property 'metadata' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(812,55): error TS2339: Property 'metadata' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(827,48): error TS2339: Property 'status' does not exist on type '{}'.
+src/components/security/AccessRequest.tsx(832,43): error TS18046: 'uiState.values.selectedRequest' is of type 'unknown'.
+src/components/security/AccessRequest.tsx(840,46): error TS18046: 'uiState.values.selectedRequest' is of type 'unknown'.
+src/components/settings/DataManagement.tsx(64,5): error TS2322: Type '(deleteToday?: boolean) => Promise<ApiResponse<unknown>>' is not assignable to type 'MutationFunction<{ data?: ResetResult | undefined; }, boolean | undefined>'.
+  Type 'Promise<ApiResponse<unknown>>' is not assignable to type 'Promise<{ data?: ResetResult | undefined; }>'.
+    Type 'ApiResponse<unknown>' is not assignable to type '{ data?: ResetResult | undefined; }'.
+      Types of property 'data' are incompatible.
+        Type 'unknown' is not assignable to type 'ResetResult | undefined'.
+src/components/settings/DataManagement.tsx(87,5): error TS2322: Type '(confirmationCode: string) => Promise<ApiResponse<unknown>>' is not assignable to type 'MutationFunction<{ data?: ResetResult | undefined; }, string>'.
+  Type 'Promise<ApiResponse<unknown>>' is not assignable to type 'Promise<{ data?: ResetResult | undefined; }>'.
+    Type 'ApiResponse<unknown>' is not assignable to type '{ data?: ResetResult | undefined; }'.
+      Types of property 'data' are incompatible.
+        Type 'unknown' is not assignable to type 'ResetResult | undefined'.
+src/components/settings/DataManagement.tsx(112,5): error TS2322: Type '(confirmationCode: string) => Promise<ApiResponse<unknown>>' is not assignable to type 'MutationFunction<{ data?: ResetResult | undefined; }, string>'.
+  Type 'Promise<ApiResponse<unknown>>' is not assignable to type 'Promise<{ data?: ResetResult | undefined; }>'.
+    Type 'ApiResponse<unknown>' is not assignable to type '{ data?: ResetResult | undefined; }'.
+      Types of property 'data' are incompatible.
+        Type 'unknown' is not assignable to type 'ResetResult | undefined'.
+src/components/settings/SystemSettings.tsx(89,40): error TS2345: Argument of type 'SystemConfig' is not assignable to parameter of type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'SystemConfig'.
+src/components/settings/UserManagement.tsx(119,68): error TS2345: Argument of type 'UserFormData' is not assignable to parameter of type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'UserFormData'.
+src/components/settings/UserManagement.tsx(159,5): error TS2322: Type '({ id, adminUsername, adminPassword, }: { id: string; adminUsername: string; adminPassword: string; }) => Promise<ApiResponse<unknown>>' is not assignable to type 'MutationFunction<{ data?: { defaultPassword?: string | undefined; } | undefined; }, { id: string; adminUsername: string; adminPassword: string; }>'.
+  Type 'Promise<ApiResponse<unknown>>' is not assignable to type 'Promise<{ data?: { defaultPassword?: string | undefined; } | undefined; }>'.
+    Type 'ApiResponse<unknown>' is not assignable to type '{ data?: { defaultPassword?: string | undefined; } | undefined; }'.
+      Types of property 'data' are incompatible.
+        Type 'unknown' is not assignable to type '{ defaultPassword?: string | undefined; } | undefined'.
+src/components/users/UserManagement.tsx(489,65): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'Partial<CreateUserInput>'.
+src/components/users/UserManagement.tsx(520,14): error TS2352: Conversion of type 'FormValues' to type 'CreateUserInput' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'FormValues' is missing the following properties from type 'CreateUserInput': username, password
+src/components/users/UserManagement.tsx(537,15): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/users/UserManagement.tsx(552,15): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/users/UserManagement.tsx(566,15): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/users/UserManagement.tsx(580,15): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/users/UserManagement.tsx(594,15): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/users/UserManagement.tsx(668,15): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/users/UserManagement.tsx(682,15): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/users/UserManagement.tsx(696,15): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/users/UserManagement.tsx(710,15): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/hooks/useEnhancedState.ts(117,63): error TS2345: Argument of type '() => unknown' is not assignable to parameter of type 'R | (() => R)'.
+  Type '() => unknown' is not assignable to type '() => R'.
+    Type 'unknown' is not assignable to type 'R'.
+      'R' could be instantiated with an arbitrary type which could be unrelated to 'unknown'.
+src/hooks/useEnhancedState.ts(125,26): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<R>'.
+src/hooks/useEnhancedState.ts(130,22): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<R>'.
+src/hooks/usePerformance.ts(201,9): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string | URL'.
+  Type 'undefined' is not assignable to type 'string | URL'.
+src/hooks/useSearchFilters.ts(380,13): error TS2322: Type 'boolean | undefined' is not assignable to type 'boolean'.
+  Type 'undefined' is not assignable to type 'boolean'.

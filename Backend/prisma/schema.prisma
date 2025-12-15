@@ -62,6 +62,7 @@ model books {
   title             String
   author            String
   publisher         String?
+  publication       String? // City of publication (e.g., London, New York)
   year              Int?
   category          String?
   subcategory       String?
@@ -98,12 +99,12 @@ model book_checkouts {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
-  book           books               @relation(fields: [book_id], references: [id])
-  student        students            @relation(fields: [student_id], references: [id])
+  book           books               @relation(fields: [book_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  student        students            @relation(fields: [student_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
   policy_id      String?
-  policy         borrowing_policies? @relation(fields: [policy_id], references: [id])
+  policy         borrowing_policies? @relation(fields: [policy_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
   fine_policy_id String?
-  fine_policy    fine_policies?      @relation(fields: [fine_policy_id], references: [id])
+  fine_policy    fine_policies?      @relation(fields: [fine_policy_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
   fine_paid      Boolean             @default(false)
   fine_paid_at   DateTime?
 }
@@ -130,7 +131,7 @@ model student_activities {
   start_time    DateTime                      @default(now())
   end_time      DateTime?
   status        String                        @default("ACTIVE")
-  student       students                      @relation(fields: [student_id], references: [id])
+  student       students                      @relation(fields: [student_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
   session_id    String?
   metadata      String? // JSON stored as text in SQLite
   sections      student_activities_sections[]
@@ -158,8 +159,8 @@ model student_activities_sections {
   section_id  String
   created_at  DateTime @default(now())
 
-  activity student_activities @relation(fields: [activity_id], references: [id])
-  section  library_sections   @relation(fields: [section_id], references: [id])
+  activity student_activities @relation(fields: [activity_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  section  library_sections   @relation(fields: [section_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([activity_id, section_id])
 }
@@ -194,8 +195,8 @@ model archived_activities_sections {
   section_id  String
   created_at  DateTime @default(now())
 
-  activity student_activities_archive @relation(fields: [activity_id], references: [id])
-  section  library_sections           @relation(fields: [section_id], references: [id])
+  activity student_activities_archive @relation(fields: [activity_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  section  library_sections           @relation(fields: [section_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([activity_id, section_id])
 }
@@ -256,7 +257,7 @@ model printing_jobs {
   paid_at        DateTime?
   metadata       String? // JSON stored as text in SQLite
 
-  student students? @relation(fields: [student_id], references: [id])
+  student students? @relation(fields: [student_id], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([student_id])
   @@index([created_at])
@@ -335,8 +336,8 @@ model equipment_sessions {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
-  equipment equipment @relation(fields: [equipment_id], references: [id])
-  student   students  @relation(fields: [student_id], references: [id])
+  equipment equipment @relation(fields: [equipment_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  student   students  @relation(fields: [student_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([equipment_id])
   @@index([student_id])
@@ -354,7 +355,7 @@ model student_scan_stats {
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
-  student students @relation(fields: [student_id], references: [id])
+  student students @relation(fields: [student_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@unique([student_id, year, month])
   @@index([year, month])
@@ -373,7 +374,7 @@ model monthly_rewards {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  student students @relation(fields: [student_id], references: [id])
+  student students @relation(fields: [student_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@index([year, month])
   @@index([student_id])

@@ -3,6 +3,7 @@
 
 import js from '@eslint/js';
 import tsParser from '@typescript-eslint/parser';
+import tseslint from '@typescript-eslint/eslint-plugin';
 import globals from 'globals';
 
 export default [
@@ -84,6 +85,9 @@ export default [
         EventListener: 'readonly',
       },
     },
+    plugins: {
+      '@typescript-eslint': tseslint,
+    },
     rules: {
       ...js.configs.recommended.rules,
       'no-console': ['warn', { allow: ['warn', 'error', 'info'] }],
@@ -95,6 +99,7 @@ export default [
       'prefer-const': 'warn',
       'no-duplicate-imports': 'warn',
       'no-redeclare': 'off', // TypeScript handles redeclaration properly
+      '@typescript-eslint/no-explicit-any': 'warn', // Allow any with warning
     },
   },
 ];

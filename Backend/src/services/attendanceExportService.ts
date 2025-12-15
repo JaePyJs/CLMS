@@ -12,6 +12,11 @@ export interface AttendanceExportData {
   duration?: number; // in minutes
   status: string;
   activityType: string;
+  // Metadata from imported records
+  designation?: string;
+  sex?: string;
+  bookTitle?: string;
+  bookAuthor?: string;
 }
 
 /**
@@ -42,6 +47,13 @@ export class AttendanceExportService {
               'SELF_SERVICE_CHECK_IN',
               'KIOSK_CHECK_OUT',
               'CHECK_OUT',
+              // Also include imported activity types (different format)
+              'Check In',
+              'Check Out',
+              'Borrowed',
+              'Room Use',
+              'Recreation',
+              'Print',
             ],
           },
         },
@@ -62,38 +74,116 @@ export class AttendanceExportService {
         },
       });
 
-      return activities.map(activity => {
-        // Format grade level properly
-        let gradeLevel = 'Unknown';
-        if (
-          activity.student.grade_level !== null &&
-          activity.student.grade_level !== undefined
-        ) {
-          gradeLevel =
-            activity.student.grade_level === 0
-              ? 'Pre-School'
-              : `Grade ${activity.student.grade_level}`;
+      // Helper to safely parse metadata JSON
+      const parseMetadata = (
+        metadataStr: string | null,
+      ): Record<string, string> => {
+        if (!metadataStr) return {};
+        try {
+          return JSON.parse(metadataStr);
+        } catch {
+          return {};
         }
+      };
 
-        return {
-          id: activity.id,
-          studentId: activity.student.student_id,
-          studentName: `${activity.student.first_name} ${activity.student.last_name}`,
-          gradeLevel,
-          section: activity.student.section || undefined,
-          checkInTime: activity.start_time,
-          checkOutTime: activity.end_time || undefined,
-          duration: activity.end_time
-            ? Math.floor(
-                (activity.end_time.getTime() - activity.start_time.getTime()) /
-                  1000 /
-                  60,
-              )
-            : undefined,
-          status: activity.status,
-          activityType: activity.activity_type,
-        };
-      });
+      // For each activity, look up any book checkouts during that visit
+      const activitiesWithBooks = await Promise.all(
+        activities.map(async activity => {
+          const metadata = parseMetadata(activity.metadata);
+
+          // Use grade level from metadata (imported) if available, else from student record
+          let gradeLevel = metadata.gradeLevel || 'Unknown';
+          if (
+            !metadata.gradeLevel &&
+            activity.student.grade_level !== null &&
+            activity.student.grade_level !== undefined
+          ) {
+            gradeLevel =
+              activity.student.grade_level === 0
+                ? 'Pre-School'
+                : `Grade ${activity.student.grade_level}`;
+          }
+
+          // Use section from metadata if available, else from student record
+          // For Personnel without a section, show 'Personnel' in section column
+          const isPersonnel =
+            metadata.designation?.toLowerCase() === 'personnel';
+          let section =
+            metadata.section || activity.student.section || undefined;
+          if (!section && isPersonnel) {
+            section = 'Personnel';
+          }
+
+          // Get book info from metadata (imported)
+          let bookTitle = metadata.bookTitle || '';
+          let bookAuthor = metadata.bookAuthor || '';
+
+          // Also check for actual library book checkouts during this visit
+          // If no book from metadata, look up from book_checkouts table
+          if (!bookTitle && activity.student?.id) {
+            const visitEnd =
+              activity.end_time ||
+              new Date(activity.start_time.getTime() + 4 * 60 * 60 * 1000); // 4 hour window
+
+            const checkouts = await prisma.book_checkouts.findMany({
+              where: {
+                student_id: activity.student.id,
+                checkout_date: {
+                  gte: activity.start_time,
+                  lte: visitEnd,
+                },
+              },
+              include: {
+                book: {
+                  select: {
+                    title: true,
+                    author: true,
+                  },
+                },
+              },
+              take: 3, // Limit to 3 books max
+            });
+
+            if (checkouts.length > 0) {
+              // Combine multiple book titles
+              bookTitle = checkouts
+                .map(c => c.book?.title || 'Unknown')
+                .join(', ');
+              bookAuthor = checkouts
+                .map(c => c.book?.author || '')
+                .filter(Boolean)
+                .join(', ');
+            }
+          }
+
+          return {
+            id: activity.id,
+            studentId: activity.student.student_id,
+            studentName: `${activity.student.first_name} ${activity.student.last_name}`,
+            gradeLevel,
+            section,
+            checkInTime: activity.start_time,
+            checkOutTime: activity.end_time || undefined,
+            duration: activity.end_time
+              ? Math.floor(
+                  (activity.end_time.getTime() -
+                    activity.start_time.getTime()) /
+                    1000 /
+                    60,
+                )
+              : undefined,
+            status: activity.status,
+            activityType: activity.activity_type,
+            // Include metadata fields
+            designation: metadata.designation,
+            sex: metadata.sex,
+            bookTitle: bookTitle || undefined,
+            bookAuthor: bookAuthor || undefined,
+          };
+        }),
+      );
+
+      return activitiesWithBooks;
     } catch (error) {
       logger.error('Error getting attendance data:', error);
       return [];
@@ -145,8 +235,35 @@ export class AttendanceExportService {
     const totalCheckIns = data.length;
     const uniqueStudents = new Set(data.map(d => d.studentId)).size;
     const totalMinutes = data.reduce((sum, d) => sum + (d.duration || 0), 0);
-    const averageTime =
+    const averageDuration =
       totalCheckIns > 0 ? Math.round(totalMinutes / totalCheckIns) : 0;
+
+    // Count check-outs (records that have an end time)
+    const totalCheckOuts = data.filter(d => d.checkOutTime).length;
+
+    // Count currently active (records without an end time)
+    const currentlyActive = data.filter(
+      d => !d.checkOutTime && d.status === 'ACTIVE',
+    ).length;
+
+    // Calculate peak hour (hour with most check-ins)
+    const hourCounts: Record<number, number> = {};
+    data.forEach(d => {
+      const hour = new Date(d.checkInTime).getHours();
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+    });
+
+    let peakHour = '-';
+    let maxCount = 0;
+    for (const [hour, count] of Object.entries(hourCounts)) {
+      if (count > maxCount) {
+        maxCount = count;
+        const hourNum = parseInt(hour);
+        const period = hourNum >= 12 ? 'PM' : 'AM';
+        const displayHour = hourNum % 12 || 12;
+        peakHour = `${displayHour}:00 ${period}`;
+      }
+    }
 
     // Group by grade level
     const gradeStats = data.reduce(
@@ -168,9 +285,12 @@ export class AttendanceExportService {
         end: endDate.toLocaleDateString(),
       },
       totalCheckIns,
+      totalCheckOuts,
+      currentlyActive,
+      averageDuration,
+      peakHour,
       uniqueStudents,
       totalMinutes,
-      averageTime,
       gradeStats,
     };
   }

@@ -474,7 +474,7 @@ export function EnhancedBorrowing() {
                 </CardTitle>
                 <CardDescription>
                   Choose books for {selectedStudent?.name} (max{' '}
-                  {selectedStudent?.maxLoans -
+                  {(selectedStudent?.maxLoans ?? 3) -
                     (selectedStudent?.currentLoans || 0)}{' '}
                   books)
                 </CardDescription>

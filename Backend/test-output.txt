@@ -1,0 +1,22 @@
+=== Testing Import Logic ===
+
+Testing student ID: "20222416"
+  Γ£ô FOUND via exact match: Dave Halbert H. Empreso
+
+Testing student ID: "20230022"
+  Γ£ô FOUND via exact match: Andrea Micole S. Ling
+
+Testing student ID: "20230008"
+  Γ£ô FOUND via exact match: Angel Mariel A. Abe
+
+=== Sample IDs in Database ===
+"20120670" - Althea B. Villacorta
+"20120712" - James Luther C. Rebosura
+"20120744" - Miguel M. Gumabon
+"20120801" - Almer Ryan G. Purino
+"20120837" - Darius F. Ruano
+"20130843" - Addyson Jade P. Parayno
+"20130884" - Alfonso L. Alba
+"20130886" - Kristella Maureen P. Ramos
+"20130904" - Franchesca Marianne P. Gaston
+"20130916" - Xian Raven Q. Arguelles

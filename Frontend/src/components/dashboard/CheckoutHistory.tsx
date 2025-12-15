@@ -167,12 +167,12 @@ export default function CheckoutHistory() {
           const data: Checkout[] = response.data.map(
             (item: RawCheckoutItem) => ({
               id: item.id,
-              bookId: item.bookId || item.book?.id,
-              studentId: item.studentId || item.student?.id,
-              checkoutDate: item.checkoutDate || item.borrowedAt,
-              dueDate: item.dueDate,
+              bookId: item.bookId || item.book?.id || '',
+              studentId: item.studentId || item.student?.id || '',
+              checkoutDate: item.checkoutDate || item.borrowedAt || '',
+              dueDate: item.dueDate || '',
               returnDate: item.returnDate || item.returnedAt,
-              status: item.status,
+              status: item.status || 'ACTIVE',
               overdueDays: item.overdueDays || 0,
               fineAmount: String(item.fineAmount || '0'),
               book: {
@@ -230,13 +230,13 @@ export default function CheckoutHistory() {
         const data: Checkout[] = (overdueData.items as RawCheckoutItem[]).map(
           (item: RawCheckoutItem) => ({
             id: item.id,
-            bookId: item.book?.id,
-            studentId: item.student?.id,
-            checkoutDate: item.borrowedAt,
-            dueDate: item.due_date,
+            bookId: item.book?.id || '',
+            studentId: item.student?.id || '',
+            checkoutDate: item.borrowedAt || '',
+            dueDate: item.due_date || '',
             returnDate: undefined,
             status: 'OVERDUE', // Force status for display
-            overdueDays: item.overdueDays,
+            overdueDays: item.overdueDays || 0,
             fineAmount: String(item.fineAmount || '0'),
             book: {
               id: item.book?.id || '',
@@ -263,6 +263,61 @@ export default function CheckoutHistory() {
     } catch (error: unknown) {
       console.error('Failed to fetch overdue books:', error);
       toast.error('Failed to load overdue books');
+    } finally {
+      setLoading(false);
+    }
+  }, [calculateStats]);
+
+  // Fetch imported book activities from Google Sheets
+  const fetchImportedBooks = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await apiClient.get(
+        '/api/attendance-export/book-activities'
+      );
+
+      if (response.success && Array.isArray(response.data)) {
+        // Transform imported data to Checkout interface
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: Checkout[] = response.data.map((item: any) => ({
+          id: item.id,
+          bookId: '', // No book ID for imported data
+          studentId: item.student?.id || '',
+          checkoutDate: item.checkoutDate || '',
+          dueDate: '', // Not available in import
+          returnDate: item.returnDate,
+          status: item.status || 'IMPORTED',
+          overdueDays: 0,
+          fineAmount: '0',
+          book: {
+            id: '',
+            accessionNo: '',
+            title: item.bookTitle || 'Unknown Title',
+            author: item.bookAuthor || 'Unknown Author',
+            category: 'Imported',
+          },
+          student: {
+            id: item.student?.id || '',
+            studentId: item.student?.studentId || '',
+            firstName: item.student?.firstName || '',
+            lastName: item.student?.lastName || '',
+            gradeLevel: item.student?.gradeLevel || '',
+            section: item.student?.section || '',
+          },
+        }));
+
+        setCheckouts(data);
+        setFilteredCheckouts(data);
+        calculateStats(data);
+      } else {
+        setCheckouts([]);
+        setFilteredCheckouts([]);
+        calculateStats([]);
+      }
+    } catch (error: unknown) {
+      console.error('Failed to fetch imported books:', error);
+      toast.error('Failed to load imported book activities');
+      setCheckouts([]);
     } finally {
       setLoading(false);
     }
@@ -343,6 +398,8 @@ export default function CheckoutHistory() {
       fetchOverdueBooks();
     } else if (value === 'returned') {
       fetchCheckouts('RETURNED');
+    } else if (value === 'imported') {
+      fetchImportedBooks();
     }
   };
 
@@ -498,11 +555,12 @@ export default function CheckoutHistory() {
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="all">All Checkouts</TabsTrigger>
           <TabsTrigger value="active">Active</TabsTrigger>
           <TabsTrigger value="overdue">Overdue</TabsTrigger>
           <TabsTrigger value="returned">Returned</TabsTrigger>
+          <TabsTrigger value="imported">Imported</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4 mt-6">

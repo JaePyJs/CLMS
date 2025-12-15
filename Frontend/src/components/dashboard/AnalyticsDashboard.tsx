@@ -111,7 +111,11 @@ export function AnalyticsDashboard() {
       inUse: number;
       utilizationRate: number;
     }>;
-    peakUsageTimes?: unknown[];
+    peakUsageTimes?: Array<{
+      hour?: number;
+      sessions?: number;
+      timeRange?: string;
+    }>;
     maintenanceInsights?: {
       maintenanceSchedule: unknown[];
       averageUptime: number;

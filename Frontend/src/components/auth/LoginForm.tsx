@@ -4,8 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { GlowCard } from '@/components/ui/glow-card';
 import {
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
@@ -82,7 +82,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
         style={{ backgroundImage: `url('/Background.png')` }}
       />
 
-      <Card className="w-full max-w-md relative z-10">
+      <GlowCard className="w-full max-w-md relative z-10">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img
@@ -212,7 +212,7 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
             </p>
           </div>
         </CardContent>
-      </Card>
+      </GlowCard>
     </div>
   );
 }

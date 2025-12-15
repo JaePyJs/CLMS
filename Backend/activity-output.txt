@@ -1,0 +1,19 @@
+Total student activities: 1744
+
+Activities by type:
+  Borrowed: 77
+  Check In: 1635
+  Recreation: 30
+  Room Use: 2
+
+Recent 10 activities:
+- PN00018 (Check In) @ Sat Dec 13 2025 11:49:36 GMT+0800 (Philippine Standard Time)
+- PN00018 (Check In) @ Sat Dec 13 2025 11:47:28 GMT+0800 (Philippine Standard Time)
+- PN00018 (Check In) @ Sat Dec 13 2025 11:46:12 GMT+0800 (Philippine Standard Time)
+- 20240136 (Check In) @ Fri Dec 12 2025 11:54:35 GMT+0800 (Philippine Standard Time)
+- 20222536 (Check In) @ Fri Dec 12 2025 09:54:17 GMT+0800 (Philippine Standard Time)
+- 20212219 (Check In) @ Fri Dec 12 2025 09:31:06 GMT+0800 (Philippine Standard Time)
+- 20240161 (Check In) @ Fri Dec 12 2025 09:31:05 GMT+0800 (Philippine Standard Time)
+- 20250099 (Check In) @ Fri Dec 12 2025 09:27:17 GMT+0800 (Philippine Standard Time)
+- 20240147 (Check In) @ Fri Dec 12 2025 07:31:59 GMT+0800 (Philippine Standard Time)
+- 20202136 (Check In) @ Fri Dec 12 2025 07:31:03 GMT+0800 (Philippine Standard Time)

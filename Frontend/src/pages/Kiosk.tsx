@@ -9,6 +9,7 @@ import { useAttendanceWebSocket } from '@/hooks/useAttendanceWebSocket';
 import { ReminderScreen } from '@/components/kiosk/new/ReminderScreen';
 import { WelcomeScreen } from '@/components/kiosk/new/WelcomeScreen';
 import { ThankYouScreen } from '@/components/kiosk/new/ThankYouScreen';
+import KioskLeaderboard from './KioskLeaderboard';
 
 interface StudentInfo {
   id: string;
@@ -45,9 +46,9 @@ export default function Kiosk() {
   }, [wsConnected]);
 
   // State for the current view
-  const [view, setView] = useState<'reminder' | 'welcome' | 'thankyou'>(
-    'reminder'
-  );
+  const [view, setView] = useState<
+    'reminder' | 'welcome' | 'thankyou' | 'leaderboard'
+  >('leaderboard');
 
   // State for the scanned student to display
   const [scannedStudent, setScannedStudent] = useState<StudentInfo | null>(
@@ -64,11 +65,31 @@ export default function Kiosk() {
   // Queue for pending events when display is locked
   const pendingEventRef = useRef<(typeof wsEvents)[0] | null>(null);
 
-  // Timeout ref for resetting to reminder screen
+  // Timeout ref for resetting to default screen
   const resetTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Note: This display page receives WebSocket events from scan stations (SelfServiceMode, ScanWorkspace)
-  // It does NOT have a barcode scanner - scanning happens on a separate PC/terminal
+  // Timeout ref for cycling between idle screens (Reminder <-> Leaderboard)
+  const cycleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cycle logic for idle screens (Leaderboard <-> Reminder)
+  useEffect(() => {
+    // Only cycle if we are in one of the idle views
+    if (view === 'leaderboard' || view === 'reminder') {
+      if (cycleTimeoutRef.current) clearTimeout(cycleTimeoutRef.current);
+
+      const duration = view === 'leaderboard' ? 15000 : 10000; // 15s Leaderboard, 10s Reminder
+
+      cycleTimeoutRef.current = setTimeout(() => {
+        setView((prev) =>
+          prev === 'leaderboard' ? 'reminder' : 'leaderboard'
+        );
+      }, duration);
+    }
+
+    return () => {
+      if (cycleTimeoutRef.current) clearTimeout(cycleTimeoutRef.current);
+    };
+  }, [view]);
 
   // Handle WebSocket events from scan station
   useEffect(() => {
@@ -110,7 +131,11 @@ export default function Kiosk() {
     const now = Date.now();
     const timeSinceLastChange = now - lastDisplayChangeRef.current;
 
-    if (timeSinceLastChange < MIN_DISPLAY_TIME_MS && view !== 'reminder') {
+    if (
+      timeSinceLastChange < MIN_DISPLAY_TIME_MS &&
+      view !== 'reminder' &&
+      view !== 'leaderboard'
+    ) {
       console.info('[Kiosk] Display locked - saving pending event');
       pendingEventRef.current = latestEvent;
       return;
@@ -121,6 +146,9 @@ export default function Kiosk() {
 
     // Helper function to show event
     const showEvent = (event: typeof latestEvent) => {
+      // Clear cycle timeout when showing an event
+      if (cycleTimeoutRef.current) clearTimeout(cycleTimeoutRef.current);
+
       if (
         event.type === 'student_checkin' ||
         event.type === 'attendance:checkin'
@@ -170,7 +198,7 @@ export default function Kiosk() {
   const resetTimer = () => {
     if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
     resetTimeoutRef.current = setTimeout(() => {
-      // Check for pending events before resetting to reminder
+      // Check for pending events before resetting
       if (pendingEventRef.current) {
         const pendingEvent = pendingEventRef.current;
         pendingEventRef.current = null;
@@ -213,19 +241,35 @@ export default function Kiosk() {
         }
       }
 
-      setView('reminder');
+      // Default back to leaderboard after an event (per user request)
+      setView('leaderboard');
       setScannedStudent(null);
-    }, 10000); // 10 seconds idle timeout
+    }, 10000); // 10 seconds display time for event
   };
 
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (resetTimeoutRef.current) {
-        clearTimeout(resetTimeoutRef.current);
-      }
+      if (resetTimeoutRef.current) clearTimeout(resetTimeoutRef.current);
+      if (cycleTimeoutRef.current) clearTimeout(cycleTimeoutRef.current);
     };
   }, []);
+
+  const pageVariants = {
+    initial: { opacity: 0, scale: 0.95, filter: 'blur(10px)' },
+    animate: {
+      opacity: 1,
+      scale: 1,
+      filter: 'blur(0px)',
+      transition: { duration: 0.5, ease: 'easeOut' },
+    },
+    exit: {
+      opacity: 0,
+      scale: 1.05,
+      filter: 'blur(10px)',
+      transition: { duration: 0.5, ease: 'easeIn' },
+    },
+  };
 
   return (
     <div className="w-full h-screen overflow-hidden bg-slate-950 relative">
@@ -240,13 +284,27 @@ export default function Kiosk() {
       </div>
 
       <AnimatePresence mode="wait">
+        {view === 'leaderboard' && (
+          <motion.div
+            key="leaderboard"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="absolute inset-0"
+          >
+            <KioskLeaderboard />
+          </motion.div>
+        )}
+
         {view === 'reminder' && (
           <motion.div
             key="reminder"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="absolute inset-0 z-20"
           >
             <ReminderScreen />
           </motion.div>
@@ -255,10 +313,11 @@ export default function Kiosk() {
         {view === 'welcome' && (
           <motion.div
             key="welcome"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="absolute inset-0 z-30"
           >
             <WelcomeScreen
               studentName={scannedStudent?.name}
@@ -270,10 +329,11 @@ export default function Kiosk() {
         {view === 'thankyou' && (
           <motion.div
             key="thankyou"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="absolute inset-0 z-30"
           >
             <ThankYouScreen
               studentName={scannedStudent?.name}

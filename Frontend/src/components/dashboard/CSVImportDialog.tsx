@@ -222,7 +222,7 @@ export function CSVImportDialog({
         const values = line
           .split(',')
           .map((v) => v.trim().replace(/^"|"$/g, ''));
-        const obj = {};
+        const obj: Record<string, string> = {};
         headers.forEach((header, index) => {
           obj[header] = values[index] || '';
         });

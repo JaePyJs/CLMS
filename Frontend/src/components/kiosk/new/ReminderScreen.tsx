@@ -77,24 +77,6 @@ export function ReminderScreen() {
             >
               REMINDER
             </h1>
-
-            <motion.svg
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="absolute -bottom-2 left-1/2 -translate-x-1/2"
-              width="320"
-              height="25"
-              viewBox="0 0 320 25"
-            >
-              <motion.path
-                d="M 10 12 Q 80 7, 160 12 T 310 12"
-                stroke="#FCD34D"
-                strokeWidth="10"
-                fill="none"
-                strokeLinecap="round"
-              />
-            </motion.svg>
           </motion.div>
 
           <AnimatePresence mode="wait">

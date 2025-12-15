@@ -28,12 +28,18 @@ router.get('/monthly', async (req: Request, res: Response) => {
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
     const month =
       parseInt(req.query.month as string) || new Date().getMonth() + 1;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const limit = parseInt(req.query.limit as string) || 100;
+    const gradeLevel = req.query.gradeLevel
+      ? parseInt(req.query.gradeLevel as string)
+      : undefined;
+    const section = req.query.section as string | undefined;
 
     const leaderboard = await LeaderboardService.getMonthlyLeaderboard(
       year,
       month,
       limit,
+      gradeLevel,
+      section,
     );
     res.json(leaderboard);
   } catch (error) {
@@ -45,11 +51,17 @@ router.get('/monthly', async (req: Request, res: Response) => {
 router.get('/yearly', async (req: Request, res: Response) => {
   try {
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
-    const limit = parseInt(req.query.limit as string) || 10;
+    const limit = parseInt(req.query.limit as string) || 100;
+    const gradeLevel = req.query.gradeLevel
+      ? parseInt(req.query.gradeLevel as string)
+      : undefined;
+    const section = req.query.section as string | undefined;
 
     const leaderboard = await LeaderboardService.getYearlyLeaderboard(
       year,
       limit,
+      gradeLevel,
+      section,
     );
     res.json(leaderboard);
   } catch (error) {

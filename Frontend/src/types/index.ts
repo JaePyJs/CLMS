@@ -162,6 +162,8 @@ interface Equipment extends BaseEntity {
   requiresSupervision: boolean;
   maxCheckoutHours: number;
   barcodeImage?: string;
+  specs?: string; // Equipment specifications
+  notes?: string; // Additional notes
 }
 
 type EquipmentCondition =

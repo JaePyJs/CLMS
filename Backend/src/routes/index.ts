@@ -18,6 +18,7 @@ import notificationsRoutes from './notifications';
 import librarySectionsRoutes from './librarySections';
 import borrowingPoliciesRoutes from './borrowingPolicies';
 import finesRoutes from './fines';
+import borrowingExportRoutes from './borrowingExport';
 
 import announcementsRoutes from './announcements';
 import { leaderboardRoutes } from './leaderboard';
@@ -62,6 +63,7 @@ router.use('/kiosk', kioskRoutes);
 router.use('/enhanced-library', enhancedLibraryRoutes);
 router.use('/scan', scanRoutes);
 router.use('/backups', backupRoutes);
+router.use('/borrowing-export', borrowingExportRoutes);
 router.use('/automation', automationRoutes);
 router.use('/search', searchRoutes);
 router.use('/printing', printingRoutes);

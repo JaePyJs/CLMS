@@ -156,6 +156,13 @@ router.get(
           title: `${s.first_name} ${s.last_name}`,
           subtitle: s.student_id,
           status: s.is_active ? 'Active' : 'Inactive',
+          // These fields are needed by StudentDetailModal
+          studentId: s.student_id,
+          firstName: s.first_name,
+          lastName: s.last_name,
+          gradeLevel: s.grade_level ? `Grade ${s.grade_level}` : undefined,
+          section: s.section,
+          isActive: s.is_active,
           metadata: {
             grade: s.grade_level,
             section: s.section,

@@ -1,0 +1,13 @@
+Activities in December 2025: 693
+
+Sample December activities:
+- PN00018 (Check In) @ Sat Dec 13 2025 13:17:36 GMT+0800 (Philippine Standard Time) [CHECK_IN]
+- PN00018 (Check In) @ Sat Dec 13 2025 11:49:36 GMT+0800 (Philippine Standard Time) [CHECK_IN]
+- PN00018 (Check In) @ Sat Dec 13 2025 11:47:28 GMT+0800 (Philippine Standard Time) [CHECK_IN]
+- PN00018 (Check In) @ Sat Dec 13 2025 11:46:12 GMT+0800 (Philippine Standard Time) [CHECK_IN]
+- 20240136 (Check In) @ Fri Dec 12 2025 11:54:35 GMT+0800 (Philippine Standard Time) [CHECK_IN]
+- 20222536 (Check In) @ Fri Dec 12 2025 09:54:17 GMT+0800 (Philippine Standard Time) [CHECK_IN]
+- 20212219 (Check In) @ Fri Dec 12 2025 09:31:06 GMT+0800 (Philippine Standard Time) [CHECK_IN]
+- 20240161 (Check In) @ Fri Dec 12 2025 09:31:05 GMT+0800 (Philippine Standard Time) [CHECK_IN]
+- 20250099 (Check In) @ Fri Dec 12 2025 09:27:17 GMT+0800 (Philippine Standard Time) [CHECK_IN]
+- 20240147 (Check In) @ Fri Dec 12 2025 07:31:59 GMT+0800 (Philippine Standard Time) [CHECK_IN]

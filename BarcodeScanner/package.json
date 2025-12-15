@@ -15,7 +15,6 @@
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
-    "iohook": "^0.9.3",
     "node-fetch": "^2.7.0"
   },
   "build": {

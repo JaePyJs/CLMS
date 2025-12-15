@@ -15,10 +15,12 @@ const Checkbox = React.forwardRef<
       'transition-all duration-200 ease-in-out',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
       'disabled:cursor-not-allowed disabled:opacity-50',
-      'hover:border-primary/60',
+      // Checked state: solid primary with ring glow on hover
       'data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary',
+      'data-[state=checked]:hover:ring-2 data-[state=checked]:hover:ring-primary/40 data-[state=checked]:hover:ring-offset-1',
+      // Unchecked state: subtle blue tint on hover
       'data-[state=unchecked]:bg-background',
-      'data-[state=unchecked]:hover:bg-accent/30',
+      'data-[state=unchecked]:hover:border-primary data-[state=unchecked]:hover:bg-primary/10',
       className
     )}
     {...props}

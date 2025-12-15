@@ -241,6 +241,9 @@ export default defineConfig({
     // T029: Error handling configuration
     hmr: {
       overlay: false,
+      host: 'localhost',
+      port: 3000,
+      protocol: 'ws',
     },
     // Prevent server crashes on errors
     strictPort: false, // Fallback to next port if busy

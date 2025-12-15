@@ -262,7 +262,8 @@ export default function BookCheckout() {
         }
       );
       const iso =
-        (resp?.data as unknown)?.dueDate || (resp as unknown)?.data?.dueDate;
+        (resp?.data as { dueDate?: string } | undefined)?.dueDate ||
+        (resp as { data?: { dueDate?: string } })?.data?.dueDate;
       if (iso && typeof iso === 'string') {
         const dateOnly = iso.split('T')[0];
         checkoutFormActions.setValue('dueDate', dateOnly);
@@ -549,13 +550,42 @@ export default function BookCheckout() {
         '/api/enhanced-library/borrowed/by-accession/' +
           encodeURIComponent(returnBarcode.trim())
       );
-      const match = (direct?.data as unknown) || null;
-      if (!match) {
+      const matchData = direct?.data;
+      if (!matchData) {
         toast.error('No active checkout found for this accession number');
         return;
       }
+      // Type the match object for property access
+      interface MatchData {
+        id?: string | number;
+        book?: {
+          id?: string | number;
+          accession_no?: string;
+          title?: string;
+          author?: string;
+          category?: string;
+          available_copies?: number;
+          total_copies?: number;
+        };
+        student?: {
+          id?: string | number;
+          student_id?: string;
+          first_name?: string;
+          last_name?: string;
+          grade_level?: number | string;
+          section?: string;
+        };
+        checkout_date?: string;
+        borrowedAt?: string;
+        due_date?: string;
+        dueDate?: string;
+        status?: string;
+        overdueDays?: number;
+        fineAmount?: string | number;
+      }
+      const match = matchData as MatchData;
       const checkout: Checkout = {
-        id: String(match.id),
+        id: String(match.id || ''),
         bookId: String(match.book?.id || ''),
         studentId: String(match.student?.id || ''),
         checkoutDate: String(

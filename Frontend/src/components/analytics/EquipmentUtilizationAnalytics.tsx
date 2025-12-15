@@ -292,13 +292,13 @@ export function EquipmentUtilizationAnalytics({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data?.overallUtilization?.toFixed(1) || 0}%
+              {data?.overallUtilization?.toFixed(1) ?? 0}%
             </div>
-            <Progress value={data?.overallUtilization || 0} className="mt-2" />
+            <Progress value={data?.overallUtilization ?? 0} className="mt-2" />
             <p className="text-xs text-muted-foreground mt-1">
-              {data?.overallUtilization > 80
+              {(data?.overallUtilization ?? 0) > 80
                 ? 'High demand'
-                : data?.overallUtilization > 50
+                : (data?.overallUtilization ?? 0) > 50
                   ? 'Optimal'
                   : 'Underutilized'}
             </p>
@@ -774,16 +774,16 @@ export function EquipmentUtilizationAnalytics({
         <div className="flex items-center gap-2">
           <Badge
             variant={
-              data?.overallUtilization > 80
+              (data?.overallUtilization ?? 0) > 80
                 ? 'destructive'
-                : data?.overallUtilization > 50
+                : (data?.overallUtilization ?? 0) > 50
                   ? 'default'
                   : 'secondary'
             }
           >
-            {data?.overallUtilization > 80
+            {(data?.overallUtilization ?? 0) > 80
               ? 'High Demand'
-              : data?.overallUtilization > 50
+              : (data?.overallUtilization ?? 0) > 50
                 ? 'Optimal'
                 : 'Available'}
           </Badge>

@@ -1583,19 +1583,49 @@ router.delete(
   '/activities/reset',
   authenticate,
   asyncHandler(async (req: Request, res: Response) => {
+    const period = (req.query.period as string) || 'all';
+
     logger.info('Reset activities request', {
       userId: (req as any).user?.id,
+      period,
     });
+
+    // Calculate date range based on period
+    let startDate: Date | null = null;
+    const now = new Date();
+
+    if (period === 'today') {
+      startDate = new Date(now);
+      startDate.setHours(0, 0, 0, 0);
+    } else if (period === 'week') {
+      startDate = new Date(now);
+      startDate.setDate(startDate.getDate() - 7);
+      startDate.setHours(0, 0, 0, 0);
+    } else if (period === 'month') {
+      startDate = new Date(now);
+      startDate.setMonth(startDate.getMonth() - 1);
+      startDate.setHours(0, 0, 0, 0);
+    }
+    // 'all' means no date filter (startDate stays null)
 
     try {
       // Use transaction to safely delete related data in correct order
       // IMPORTANT: Delete child records FIRST to avoid foreign key constraint violations
       const result = await prisma.$transaction(async tx => {
-        // First, get IDs of activities that will be deleted (non-ACTIVE ones)
+        // Build the where clause for activities
+        const activityWhereClause: {
+          status: { not: string };
+          start_time?: { gte: Date };
+        } = {
+          status: { not: 'ACTIVE' },
+        };
+        if (startDate) {
+          activityWhereClause.start_time = { gte: startDate };
+        }
+
+        // First, get IDs of activities that will be deleted (non-ACTIVE ones within date range)
         const activitiesToDelete = await tx.student_activities.findMany({
-          where: {
-            status: { not: 'ACTIVE' },
-          },
+          where: activityWhereClause,
           select: { id: true },
         });
         const activityIds = activitiesToDelete.map(a => a.id);
@@ -1611,23 +1641,39 @@ router.delete(
 
         // Now delete student activities (except ACTIVE ones for safety)
         const deletedActivities = await tx.student_activities.deleteMany({
-          where: {
-            status: { not: 'ACTIVE' },
-          },
+          where: activityWhereClause,
         });
+
+        // Build where clause for print jobs
+        const printJobWhereClause: {
+          paid: boolean;
+          created_at?: { gte: Date };
+        } = {
+          paid: true,
+        };
+        if (startDate) {
+          printJobWhereClause.created_at = { gte: startDate };
+        }
 
         // Delete completed print jobs (keep pending ones)
         const deletedPrintJobs = await tx.printing_jobs.deleteMany({
-          where: {
-            paid: true,
-          },
+          where: printJobWhereClause,
         });
+
+        // Build where clause for book checkouts
+        const checkoutWhereClause: {
+          status: string;
+          checkout_date?: { gte: Date };
+        } = {
+          status: 'RETURNED',
+        };
+        if (startDate) {
+          checkoutWhereClause.checkout_date = { gte: startDate };
+        }
 
         // Delete returned book checkouts (keep active ones)
         const deletedCheckouts = await tx.book_checkouts.deleteMany({
-          where: {
-            status: 'RETURNED',
-          },
+          where: checkoutWhereClause,
         });
 
         return {
@@ -1638,15 +1684,26 @@ router.delete(
         };
       });
 
+      const periodLabel =
+        period === 'today'
+          ? "today's"
+          : period === 'week'
+            ? "this week's"
+            : period === 'month'
+              ? "this month's"
+              : 'all';
+
       logger.info('Activities reset completed', {
+        period,
         deletedCounts: result,
       });
 
       res.json({
         success: true,
-        message: 'Activity history has been reset',
+        message: `${periodLabel} activity history has been reset`,
         deletedCount: result.activities + result.printJobs + result.checkouts,
         details: result,
+        period,
       });
     } catch (error) {
       logger.error('Error resetting activities', {

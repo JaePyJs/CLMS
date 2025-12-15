@@ -131,7 +131,7 @@ export class ScanExportService {
         value === undefined ? '' : String(value),
       );
       const timestamp = when.toISOString();
-      await GoogleSheetsService.appendRow(formatted, sheet, `${sheet}!A:Z`);
+      await GoogleSheetsService.appendRow(formatted);
       logger.debug('Appended row to Google Sheet', { sheet, timestamp });
     } catch (error) {
       logger.error('Failed to append row to Google Sheet', {

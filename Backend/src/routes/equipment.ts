@@ -78,7 +78,7 @@ router.get(
           if (!s.metadata) {
             return false;
           }
-          const meta = JSON.parse(s.metadata as string);
+          const meta = JSON.parse(s.metadata);
           return meta && meta.equipmentId === eq.id;
         });
 
@@ -92,7 +92,7 @@ router.get(
 
         if (session) {
           const meta = session.metadata
-            ? JSON.parse(session.metadata as string)
+            ? JSON.parse(session.metadata)
             : {};
           const startTime = new Date(session.start_time);
           const timeLimit = meta.timeLimitMinutes || 60;
@@ -593,7 +593,7 @@ router.post(
         // Update equipment status
         // Parse metadata from string
         const metadata = session.metadata
-          ? JSON.parse(session.metadata as string)
+          ? JSON.parse(session.metadata)
           : {};
         if (metadata?.equipmentId) {
           await tx.equipment.update({
@@ -650,7 +650,7 @@ router.post(
       }
 
       const existingMeta = session.metadata
-        ? JSON.parse(session.metadata as string)
+        ? JSON.parse(session.metadata)
         : {};
       const currentLimit = existingMeta.timeLimitMinutes || 60;
       const newLimit = currentLimit + (additionalMinutes || 15);
