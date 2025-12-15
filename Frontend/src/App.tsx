@@ -1196,56 +1196,56 @@ export default function App() {
                   >
                     <TabsTrigger
                       value="dashboard"
-                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-2.5"
                     >
                       <LayoutDashboard className="h-4 w-4 mr-1.5" />
                       <span>Dashboard</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="scan-station"
-                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-2.5"
                     >
                       <Camera className="h-4 w-4 mr-1.5" />
                       <span>Scan</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="students"
-                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-2.5"
                     >
                       <Users className="h-4 w-4 mr-1.5" />
                       <span>Students</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="attendance"
-                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-2.5"
                     >
                       <ClipboardList className="h-4 w-4 mr-1.5" />
                       <span>Attendance</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="books"
-                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-2.5"
                     >
                       <BookOpen className="h-4 w-4 mr-1.5" />
                       <span>Books</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="printing"
-                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-2.5"
                     >
                       <Printer className="h-4 w-4 mr-1.5" />
                       <span>Printing</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="equipment"
-                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-2.5"
                     >
                       <Monitor className="h-4 w-4 mr-1.5" />
                       <span>Rooms</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="leaderboard"
-                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-2.5"
                     >
                       <Trophy className="h-4 w-4 mr-1.5" />
                       <span>Leaderboard</span>
@@ -1253,7 +1253,7 @@ export default function App() {
 
                     <TabsTrigger
                       value="settings-admin"
-                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-3"
+                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:shadow-sm transition-all duration-200 px-2.5"
                     >
                       <Settings className="h-4 w-4 mr-1.5" />
                       <span>Settings</span>

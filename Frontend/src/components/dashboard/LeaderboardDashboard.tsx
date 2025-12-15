@@ -249,13 +249,13 @@ const LeaderboardDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex gap-4 mb-6">
-        <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-700 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-600">
-          <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+      <div className="flex gap-2 mb-6 flex-wrap">
+        <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600">
+          <Calendar className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
           <select
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
-            className="bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 font-medium"
+            className="bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 font-medium text-sm py-0"
           >
             {[...Array(5)].map((_, i) => {
               const y = new Date().getFullYear() - i;
@@ -269,12 +269,12 @@ const LeaderboardDashboard: React.FC = () => {
         </div>
 
         {activeTab === 'monthly' && (
-          <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-700 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-600">
-            <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600">
+            <Clock className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
             <select
               value={month}
               onChange={(e) => setMonth(Number(e.target.value))}
-              className="bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 font-medium"
+              className="bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 font-medium text-sm py-0"
             >
               {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                 <option key={m} value={m} className="dark:bg-slate-800">
@@ -288,8 +288,8 @@ const LeaderboardDashboard: React.FC = () => {
         )}
 
         {/* Grade Level Filter */}
-        <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-700 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-600">
-          <GraduationCap className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+        <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600">
+          <GraduationCap className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
           <select
             value={gradeFilter ?? ''}
             onChange={(e) =>
@@ -297,7 +297,7 @@ const LeaderboardDashboard: React.FC = () => {
                 e.target.value ? Number(e.target.value) : undefined
               )
             }
-            className="bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 font-medium"
+            className="bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 font-medium text-sm py-0"
           >
             <option value="" className="dark:bg-slate-800">
               All Grades
@@ -311,12 +311,12 @@ const LeaderboardDashboard: React.FC = () => {
         </div>
 
         {/* Section Filter */}
-        <div className="flex items-center gap-2 bg-gray-50 dark:bg-slate-700 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-600">
-          <Users className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+        <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-slate-700 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600">
+          <Users className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
           <select
             value={sectionFilter}
             onChange={(e) => setSectionFilter(e.target.value)}
-            className="bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 font-medium min-w-[120px]"
+            className="bg-transparent border-none focus:ring-0 text-gray-700 dark:text-gray-200 font-medium text-sm min-w-[100px] py-0"
           >
             <option value="" className="dark:bg-slate-800">
               All Sections
@@ -336,21 +336,23 @@ const LeaderboardDashboard: React.FC = () => {
         <button
           onClick={() => fetchLeaderboard()}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-lg border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50 text-sm font-medium"
           title="Refresh leaderboard"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          <RefreshCw
+            className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`}
+          />
+          <span>Refresh</span>
         </button>
 
         <button
           onClick={exportToCSV}
           disabled={loading || leaderboardData.length === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors disabled:opacity-50 text-sm font-medium whitespace-nowrap"
           title="Export to CSV"
         >
-          <Download className="w-4 h-4" />
-          Export
+          <Download className="w-3.5 h-3.5" />
+          <span>Export</span>
         </button>
 
         <button
