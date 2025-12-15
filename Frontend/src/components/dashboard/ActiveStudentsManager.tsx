@@ -33,6 +33,7 @@ import {
   Search,
   MapPin,
   AlertTriangle,
+  UserX,
 } from 'lucide-react';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 
@@ -43,6 +44,7 @@ interface ActiveSession {
   checkinTime: string;
   autoLogoutAt: string;
   section?: string;
+  status?: 'ACTIVE' | 'COMPLETED';
 }
 
 export function ActiveStudentsManager() {
@@ -134,6 +136,41 @@ export function ActiveStudentsManager() {
     }
   };
 
+  const [bulkCheckoutLoading, setBulkCheckoutLoading] = useState(false);
+
+  const handleBulkCheckout = async () => {
+    if (sessions.length === 0) {
+      toast.info('No students to check out');
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to check out all ${sessions.length} students?`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setBulkCheckoutLoading(true);
+    try {
+      const res = await apiClient.post<{ count: number }>(
+        '/api/kiosk/checkout-all',
+        {}
+      );
+
+      if (res.success) {
+        toast.success(
+          `${res.data?.count || sessions.length} students checked out`
+        );
+        setSessions([]);
+      } else {
+        toast.error('Failed to checkout all students');
+      }
+    } catch {
+      toast.error('Error during bulk checkout');
+    } finally {
+      setBulkCheckoutLoading(false);
+    }
+  };
+
   const getTimeRemaining = (autoLogoutAt: string) => {
     const now = new Date();
     const logout = new Date(autoLogoutAt);
@@ -202,6 +239,20 @@ export function ActiveStudentsManager() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          {sessions.length > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleBulkCheckout}
+              disabled={bulkCheckoutLoading}
+              className="whitespace-nowrap"
+            >
+              <UserX className="h-4 w-4 mr-1.5" />
+              {bulkCheckoutLoading
+                ? 'Checking out...'
+                : `Checkout All (${sessions.length})`}
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="pt-4">

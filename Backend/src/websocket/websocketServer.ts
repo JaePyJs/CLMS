@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { isDevelopment, getAllowedOrigins, env } from '../config/env';
 import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
+import { scannerHandler } from './scannerHandler';
 
 export interface AuthenticatedSocket {
   id: string;
@@ -252,6 +253,7 @@ class WebSocketServer {
       'equipment',
       'notifications',
       'activities',
+      'scanner', // For scanner daemon connections
     ]);
     const canSubscribe = (room: string, role?: string) => {
       if (!allowedRooms.has(room)) {
@@ -354,6 +356,43 @@ class WebSocketServer {
     socket.on('ping', () => {
       socket.emit('pong', { timestamp: new Date() });
     });
+
+    // Handle barcode scans from scanner daemons (PC1, PC2)
+    socket.on(
+      'barcode:scanned',
+      (data: { barcode: string; timestamp: number; pcId: string }) => {
+        void (async () => {
+          try {
+            logger.info('WebSocket: Received barcode:scanned event', {
+              socketId: socket.id,
+              barcode: data.barcode,
+              pcId: data.pcId,
+            });
+
+            const result = await scannerHandler.handleBarcodeScan(data);
+
+            // Send result back to the scanner daemon
+            socket.emit('scan:result', result);
+
+            logger.info('WebSocket: Barcode scan processed', {
+              socketId: socket.id,
+              success: result.success,
+              type: result.type,
+              action: result.action,
+            });
+          } catch (error) {
+            logger.error('WebSocket: Error processing barcode scan', {
+              error: error instanceof Error ? error.message : 'Unknown error',
+            });
+            socket.emit('scan:result', {
+              success: false,
+              type: 'unknown',
+              message: 'Failed to process scan',
+            });
+          }
+        })();
+      },
+    );
 
     // Handle dashboard data requests
     socket.on(
@@ -601,6 +640,39 @@ class WebSocketServer {
     logger.info('Student check-out event emitted', {
       activityId: data.activityId,
       studentId: data.studentId,
+      subscriberCount: this.roomSubscriptions.get('attendance')?.size || 0,
+    });
+  }
+
+  /**
+   * Emit student cooldown event to attendance channel (for Kiosk display feedback)
+   */
+  public emitStudentCooldown(data: {
+    studentId: string;
+    studentName: string;
+    cooldownRemaining: number;
+    message: string;
+  }) {
+    if (!this.io) {
+      logger.warn(
+        'WebSocket server not initialized, cannot emit cooldown event',
+      );
+      return;
+    }
+
+    const now = new Date();
+    const message: WebSocketMessage = {
+      id: `cooldown-${data.studentId}-${Date.now()}`,
+      type: 'student_cooldown',
+      data,
+      timestamp: now,
+    };
+
+    this.io.to('attendance').emit('message', message);
+
+    logger.info('Student cooldown event emitted', {
+      studentId: data.studentId,
+      cooldownRemaining: data.cooldownRemaining,
       subscriberCount: this.roomSubscriptions.get('attendance')?.size || 0,
     });
   }

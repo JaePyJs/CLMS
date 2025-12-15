@@ -274,7 +274,12 @@ export default function AttendanceTracker() {
         'ROOM_ENTRY',
         'ROOM_EXIT',
         'PRINTING',
+        'PRINTING',
         'RECREATION',
+        'AVR',
+        'COMPUTER_LAB',
+        'STUDY_AREA',
+        'DISCUSSION_ROOM',
       ];
       if (activityTypes.includes(latestActivity.type)) {
         fetchAttendance();
@@ -405,6 +410,18 @@ export default function AttendanceTracker() {
         // Handle special cases: 'checkin' matches 'library_visit' too if looking for check-ins
         if (filterType === 'checkin') {
           if (actType !== 'checkin' && actType !== 'libraryvisit') {
+            return false;
+          }
+        } else if (filterType === 'roomuse') {
+          const roomTypes = [
+            'avr',
+            'computer',
+            'study',
+            'discussion',
+            'room',
+            'lab',
+          ];
+          if (!roomTypes.some((t) => actType.includes(t))) {
             return false;
           }
         } else if (!actType.includes(filterType)) {
@@ -800,6 +817,23 @@ export default function AttendanceTracker() {
                       <div className="flex items-center gap-1">
                         Section
                         {sortColumn === 'section' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
+                    </TableHead>
+                    <TableHead
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleSort('activityType')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Location / Activity
+                        {sortColumn === 'activityType' ? (
                           sortDirection === 'asc' ? (
                             <ArrowUp className="h-3 w-3" />
                           ) : (

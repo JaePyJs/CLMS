@@ -153,6 +153,20 @@ export default function Kiosk() {
         event.type === 'student_checkin' ||
         event.type === 'attendance:checkin'
       ) {
+        // SPAM HANDLING: If same student is already on Welcome screen, just reset timer
+        // Don't re-animate - keeps the screen stable during rapid scans
+        if (
+          view === 'welcome' &&
+          scannedStudent?.studentId === event.data.studentId
+        ) {
+          console.info(
+            '[Kiosk] Same student scanned again, resetting timer only:',
+            event.data.studentName
+          );
+          resetTimer();
+          return;
+        }
+
         console.info(
           '[Kiosk] Showing welcome screen for:',
           event.data.studentName
@@ -172,6 +186,19 @@ export default function Kiosk() {
         event.type === 'student_checkout' ||
         event.type === 'attendance:checkout'
       ) {
+        // SPAM HANDLING: If same student is already on ThankYou screen, just reset timer
+        if (
+          view === 'thankyou' &&
+          scannedStudent?.studentId === event.data.studentId
+        ) {
+          console.info(
+            '[Kiosk] Same student checkout again, resetting timer only:',
+            event.data.studentName
+          );
+          resetTimer();
+          return;
+        }
+
         console.info(
           '[Kiosk] Showing thank you screen for:',
           event.data.studentName

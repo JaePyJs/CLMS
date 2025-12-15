@@ -5,27 +5,27 @@ const {
   Menu,
   nativeImage,
   Notification,
-  globalShortcut,
   ipcMain,
 } = require("electron");
 const path = require("path");
-const http = require("http");
-const https = require("https");
+const { io } = require("socket.io-client");
 
-// Configuration
+// Configuration - can be overridden by environment variables
 let CONFIG = {
-  serverUrl: "http://192.168.0.126:3001",
-  apiEndpoint: "/api/v1/self-service/scan",
+  serverUrl: process.env.CLMS_SERVER_URL || "http://localhost:3001",
+  pcId: process.env.CLMS_PC_ID || "PC1",
   enabled: true,
   showNotifications: true,
-  authToken: null, // Will be set after login
 };
 
 let mainWindow = null;
 let tray = null;
 let barcodeBuffer = "";
 let barcodeTimeout = null;
-let isLoggedIn = false;
+let socket = null;
+let connectionState = "disconnected"; // 'disconnected', 'connecting', 'connected', 'error'
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 10;
 
 // Create the main window (hidden by default)
 function createWindow() {
@@ -62,24 +62,20 @@ function createWindow() {
 
 // Create system tray
 function createTray() {
-  // Create a simple icon (green circle for active, red for inactive)
   const iconPath = path.join(__dirname, "icon.png");
   let trayIcon;
 
   try {
     trayIcon = nativeImage.createFromPath(iconPath);
     if (trayIcon.isEmpty()) {
-      // Create a simple colored icon if file doesn't exist
-      trayIcon = createDefaultIcon();
+      trayIcon = createDefaultIcon("green");
     }
   } catch (e) {
-    trayIcon = createDefaultIcon();
+    trayIcon = createDefaultIcon("green");
   }
 
   tray = new Tray(trayIcon.resize({ width: 16, height: 16 }));
-
   updateTrayMenu();
-
   tray.setToolTip("CLMS Barcode Scanner");
 
   tray.on("click", () => {
@@ -90,10 +86,15 @@ function createTray() {
   });
 }
 
-function createDefaultIcon() {
-  // Create a simple 16x16 green icon
+function createDefaultIcon(color = "green") {
   const size = 16;
   const canvas = Buffer.alloc(size * size * 4);
+  const colors = {
+    green: [76, 175, 80], // Connected
+    yellow: [255, 193, 7], // Connecting
+    red: [244, 67, 54], // Disconnected
+  };
+  const rgb = colors[color] || colors.green;
 
   for (let i = 0; i < size * size; i++) {
     const x = i % size;
@@ -103,13 +104,11 @@ function createDefaultIcon() {
     const dist = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
 
     if (dist < size / 2 - 1) {
-      // Green circle
-      canvas[i * 4] = 76; // R
-      canvas[i * 4 + 1] = 175; // G
-      canvas[i * 4 + 2] = 80; // B
+      canvas[i * 4] = rgb[0]; // R
+      canvas[i * 4 + 1] = rgb[1]; // G
+      canvas[i * 4 + 2] = rgb[2]; // B
       canvas[i * 4 + 3] = 255; // A
     } else {
-      // Transparent
       canvas[i * 4] = 0;
       canvas[i * 4 + 1] = 0;
       canvas[i * 4 + 2] = 0;
@@ -120,10 +119,32 @@ function createDefaultIcon() {
   return nativeImage.createFromBuffer(canvas, { width: size, height: size });
 }
 
+function updateTrayIcon() {
+  if (!tray) return;
+
+  let color = "red";
+  if (connectionState === "connected") color = "green";
+  else if (connectionState === "connecting") color = "yellow";
+
+  const icon = createDefaultIcon(color);
+  tray.setImage(icon.resize({ width: 16, height: 16 }));
+}
+
 function updateTrayMenu() {
+  const statusText = {
+    disconnected: "❌ Disconnected",
+    connecting: "🟡 Connecting...",
+    connected: "✅ Connected",
+    error: "⚠️ Error",
+  };
+
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: `CLMS Barcode Scanner ${isLoggedIn ? "(Connected)" : "(Not Connected)"}`,
+      label: `CLMS Scanner - ${CONFIG.pcId}`,
+      enabled: false,
+    },
+    {
+      label: statusText[connectionState] || "Unknown",
       enabled: false,
     },
     { type: "separator" },
@@ -151,6 +172,15 @@ function updateTrayMenu() {
     },
     { type: "separator" },
     {
+      label: "Reconnect",
+      click: () => {
+        if (socket) {
+          socket.disconnect();
+        }
+        connectWebSocket();
+      },
+    },
+    {
       label: "Open Settings",
       click: () => {
         if (mainWindow) {
@@ -164,6 +194,9 @@ function updateTrayMenu() {
       label: "Quit",
       click: () => {
         app.isQuitting = true;
+        if (socket) {
+          socket.disconnect();
+        }
         app.quit();
       },
     },
@@ -174,21 +207,137 @@ function updateTrayMenu() {
   }
 }
 
+// WebSocket connection
+function connectWebSocket() {
+  if (socket && socket.connected) {
+    console.log("WebSocket already connected");
+    return;
+  }
+
+  connectionState = "connecting";
+  updateTrayIcon();
+  updateTrayMenu();
+
+  console.log(`Connecting to WebSocket server: ${CONFIG.serverUrl}`);
+
+  socket = io(CONFIG.serverUrl, {
+    transports: ["websocket"],
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 30000,
+    reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+    auth: {
+      kioskMode: true, // Use kiosk mode for unauthenticated access
+      pcId: CONFIG.pcId,
+    },
+    query: {
+      kioskMode: "true",
+      pcId: CONFIG.pcId,
+    },
+  });
+
+  socket.on("connect", () => {
+    console.log("WebSocket connected:", socket.id);
+    connectionState = "connected";
+    reconnectAttempts = 0;
+    updateTrayIcon();
+    updateTrayMenu();
+    showNotification("Connected", `Scanner connected to server`);
+
+    // Subscribe to scanner room
+    socket.emit("subscribe", { subscription: "scanner" });
+    socket.emit("subscribe", { subscription: "attendance" });
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.log("WebSocket disconnected:", reason);
+    connectionState = "disconnected";
+    updateTrayIcon();
+    updateTrayMenu();
+  });
+
+  socket.on("connect_error", (error) => {
+    console.error("WebSocket connection error:", error.message);
+    connectionState = "error";
+    reconnectAttempts++;
+    updateTrayIcon();
+    updateTrayMenu();
+
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      showNotification(
+        "Connection Failed",
+        `Cannot connect to server at ${CONFIG.serverUrl}`
+      );
+    }
+  });
+
+  socket.on("welcome", (data) => {
+    console.log("Server welcome:", data);
+  });
+
+  socket.on("subscription_confirmed", (data) => {
+    console.log("Subscription confirmed:", data.subscription);
+  });
+
+  // Handle scan results from server
+  socket.on("scan:result", (result) => {
+    console.log("Scan result:", result);
+
+    if (result.success) {
+      const message = result.message || "Scan successful";
+      showNotification(
+        result.action === "checkin" ? "Check In" : "Check Out",
+        message
+      );
+
+      // Flash tray icon
+      flashTrayIcon();
+    } else {
+      showNotification("Scan Info", result.message || "Scan processed");
+    }
+
+    // Send to renderer
+    if (mainWindow) {
+      mainWindow.webContents.send("scan-result", result);
+    }
+  });
+
+  // Handle attendance events (for logging)
+  socket.on("message", (msg) => {
+    if (msg.type === "student_checkin" || msg.type === "attendance:checkin") {
+      console.log("Student checked in:", msg.data?.studentName);
+    } else if (
+      msg.type === "student_checkout" ||
+      msg.type === "attendance:checkout"
+    ) {
+      console.log("Student checked out:", msg.data?.studentName);
+    }
+  });
+}
+
+function flashTrayIcon() {
+  if (!tray) return;
+
+  // Quick flash green -> original state
+  const originalState = connectionState;
+  updateTrayIcon();
+
+  setTimeout(() => {
+    connectionState = originalState;
+    updateTrayIcon();
+  }, 200);
+}
+
 // Global keyboard hook for barcode scanning
 function setupGlobalKeyboardHook() {
-  // Use a raw keyboard hook approach
-  // We'll capture key events globally
-
-  const { uIOhook, UiohookKey } = require("uiohook-napi");
+  const { uIOhook } = require("uiohook-napi");
 
   uIOhook.on("keydown", (e) => {
-    if (!CONFIG.enabled || !isLoggedIn) return;
+    if (!CONFIG.enabled) return;
 
-    // Convert keycode to character
     const char = keycodeToChar(e.keycode, e.shiftKey);
 
     if (char === "ENTER") {
-      // Process barcode
       if (barcodeBuffer.length >= 3) {
         processScan(barcodeBuffer);
       }
@@ -203,12 +352,11 @@ function setupGlobalKeyboardHook() {
     if (char && char.length === 1) {
       barcodeBuffer += char;
 
-      // Clear timeout
       if (barcodeTimeout) {
         clearTimeout(barcodeTimeout);
       }
 
-      // Auto-submit after 150ms of no input
+      // Auto-submit after 150ms of no input (scanner typically sends rapidly)
       barcodeTimeout = setTimeout(() => {
         if (barcodeBuffer.length >= 6) {
           processScan(barcodeBuffer);
@@ -219,20 +367,11 @@ function setupGlobalKeyboardHook() {
   });
 
   uIOhook.start();
-
   console.log("Global keyboard hook started");
-}
-
-// Alternative: Use Electron's globalShortcut for basic detection
-// This is a fallback that works without native modules
-function setupBasicKeyboardCapture() {
-  // This won't work when minimized, but we'll use it as fallback
-  console.log("Using basic keyboard capture (limited functionality)");
 }
 
 // Convert keycode to character
 function keycodeToChar(keycode, shift) {
-  // Common keycodes mapping
   const keycodeMap = {
     // Numbers
     2: "1",
@@ -245,7 +384,7 @@ function keycodeToChar(keycode, shift) {
     9: "8",
     10: "9",
     11: "0",
-    // Letters (lowercase)
+    // Letters
     16: "q",
     17: "w",
     18: "e",
@@ -285,89 +424,23 @@ function keycodeToChar(keycode, shift) {
   return char;
 }
 
-// Process barcode scan
-async function processScan(barcode) {
+// Process barcode scan via WebSocket
+function processScan(barcode) {
   console.log("Processing barcode:", barcode);
 
-  if (!CONFIG.authToken) {
-    showNotification("Not Logged In", "Please login to scan barcodes");
+  if (!socket || !socket.connected) {
+    showNotification("Not Connected", "Please wait for server connection");
     return;
   }
 
-  try {
-    const response = await makeRequest(
-      `${CONFIG.serverUrl}${CONFIG.apiEndpoint}`,
-      "POST",
-      { scanData: barcode },
-      { Authorization: `Bearer ${CONFIG.authToken}` }
-    );
-
-    if (response.success) {
-      const studentName = response.student?.name || "Student";
-      const action = response.message?.includes("Checked out")
-        ? "checked out"
-        : "checked in";
-      showNotification("Scan Successful", `${studentName} ${action}`);
-
-      // Send to renderer
-      if (mainWindow) {
-        mainWindow.webContents.send("scan-result", {
-          success: true,
-          data: response,
-        });
-      }
-    } else {
-      showNotification("Scan Info", response.message || "Action completed");
-      if (mainWindow) {
-        mainWindow.webContents.send("scan-result", {
-          success: false,
-          message: response.message,
-        });
-      }
-    }
-  } catch (error) {
-    console.error("Scan error:", error);
-    showNotification("Scan Error", error.message || "Failed to process scan");
-  }
-}
-
-// HTTP request helper
-function makeRequest(url, method, body, headers = {}) {
-  return new Promise((resolve, reject) => {
-    const urlObj = new URL(url);
-    const isHttps = urlObj.protocol === "https:";
-    const lib = isHttps ? https : http;
-
-    const options = {
-      hostname: urlObj.hostname,
-      port: urlObj.port || (isHttps ? 443 : 80),
-      path: urlObj.pathname,
-      method: method,
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
-    };
-
-    const req = lib.request(options, (res) => {
-      let data = "";
-      res.on("data", (chunk) => (data += chunk));
-      res.on("end", () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch {
-          resolve({ success: false, message: data });
-        }
-      });
-    });
-
-    req.on("error", reject);
-
-    if (body) {
-      req.write(JSON.stringify(body));
-    }
-    req.end();
+  // Emit barcode scan event to server
+  socket.emit("barcode:scanned", {
+    barcode: barcode,
+    timestamp: Date.now(),
+    pcId: CONFIG.pcId,
   });
+
+  console.log("Barcode sent to server:", barcode);
 }
 
 // Show notification
@@ -379,54 +452,41 @@ function showNotification(title, body) {
   }
 }
 
-// IPC handlers
-ipcMain.handle("login", async (event, { username, password, serverUrl }) => {
-  CONFIG.serverUrl = serverUrl || CONFIG.serverUrl;
-
-  try {
-    const response = await makeRequest(
-      `${CONFIG.serverUrl}/api/v1/auth/login`,
-      "POST",
-      { username, password }
-    );
-
-    if (response.success && response.data?.accessToken) {
-      CONFIG.authToken = response.data.accessToken;
-      isLoggedIn = true;
-      updateTrayMenu();
-      return { success: true, user: response.data.user };
-    } else {
-      return { success: false, message: response.message || "Login failed" };
-    }
-  } catch (error) {
-    return { success: false, message: error.message || "Connection failed" };
-  }
-});
-
-ipcMain.handle("logout", async () => {
-  CONFIG.authToken = null;
-  isLoggedIn = false;
-  updateTrayMenu();
-  return { success: true };
-});
-
+// IPC handlers for renderer
 ipcMain.handle("get-config", () => {
-  return { ...CONFIG, isLoggedIn };
+  return {
+    ...CONFIG,
+    connectionState,
+    socketId: socket?.id || null,
+  };
 });
 
 ipcMain.handle("set-config", (event, newConfig) => {
   CONFIG = { ...CONFIG, ...newConfig };
   updateTrayMenu();
+
+  // Reconnect if server URL changed
+  if (newConfig.serverUrl && socket) {
+    socket.disconnect();
+    connectWebSocket();
+  }
+
   return { success: true };
 });
 
-ipcMain.handle("test-connection", async (event, serverUrl) => {
-  try {
-    const response = await makeRequest(`${serverUrl}/health`, "GET");
-    return { success: true, data: response };
-  } catch (error) {
-    return { success: false, message: error.message };
+ipcMain.handle("test-connection", async () => {
+  if (socket && socket.connected) {
+    return { success: true, socketId: socket.id };
   }
+  return { success: false, message: "Not connected" };
+});
+
+ipcMain.handle("reconnect", () => {
+  if (socket) {
+    socket.disconnect();
+  }
+  connectWebSocket();
+  return { success: true };
 });
 
 // App lifecycle
@@ -434,13 +494,18 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
 
-  // Try to setup global keyboard hook
+  // Connect to WebSocket server
+  connectWebSocket();
+
+  // Setup global keyboard hook
   try {
     setupGlobalKeyboardHook();
   } catch (e) {
     console.warn("Failed to setup global keyboard hook:", e.message);
-    console.log("The scanner will work when the app window is focused.");
-    setupBasicKeyboardCapture();
+    showNotification(
+      "Scanner Warning",
+      "Global keyboard hook failed. Scanner may not work when app is minimized."
+    );
   }
 
   // Show window on first launch
@@ -459,4 +524,7 @@ app.on("activate", () => {
 
 app.on("before-quit", () => {
   app.isQuitting = true;
+  if (socket) {
+    socket.disconnect();
+  }
 });

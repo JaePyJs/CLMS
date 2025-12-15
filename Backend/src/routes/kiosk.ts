@@ -1196,4 +1196,78 @@ router.get('/occupancy', async (_req: Request, res: Response) => {
   }
 });
 
+/**
+ * Bulk checkout all active students
+ * "Check Out All" button for end of day
+ */
+router.post(
+  '/checkout-all',
+  authenticate,
+  requireRole(['LIBRARIAN']),
+  async (req: Request, res: Response) => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const librarianId = (req as any).user?.userId || 'UNKNOWN';
+
+      // Import scannerHandler dynamically to avoid circular dependency
+      const { scannerHandler } = await import('../websocket/scannerHandler');
+      const result = await scannerHandler.bulkCheckout(librarianId);
+
+      await broadcastSectionOccupancy();
+
+      return res.status(200).json({
+        success: result.success,
+        message: result.message,
+        count: result.count,
+      });
+    } catch (error) {
+      logger.error('Bulk checkout error:', error);
+      return res
+        .status(500)
+        .json({ success: false, message: 'Failed to bulk checkout' });
+    }
+  },
+);
+
+/**
+ * Manual checkout by librarian (force checkout, removes from dashboard)
+ */
+router.post(
+  '/manual-checkout',
+  authenticate,
+  requireRole(['LIBRARIAN']),
+  async (req: Request, res: Response) => {
+    try {
+      const { studentId } = req.body as { studentId: string };
+
+      if (!studentId) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'Student ID required' });
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const librarianId = (req as any).user?.userId || 'UNKNOWN';
+
+      // Import scannerHandler dynamically to avoid circular dependency
+      const { scannerHandler } = await import('../websocket/scannerHandler');
+      const result = await scannerHandler.manualCheckout(
+        studentId,
+        librarianId,
+      );
+
+      if (result.success) {
+        await broadcastSectionOccupancy();
+      }
+
+      return res.status(result.success ? 200 : 400).json(result);
+    } catch (error) {
+      logger.error('Manual checkout error:', error);
+      return res
+        .status(500)
+        .json({ success: false, message: 'Failed to checkout' });
+    }
+  },
+);
+
 export { router as kioskRoutes };

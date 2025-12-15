@@ -15,14 +15,18 @@
     "electron-builder": "^24.9.1"
   },
   "dependencies": {
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "socket.io-client": "^4.7.2"
   },
   "build": {
     "appId": "com.clms.barcode-scanner",
-    "productName": "CLMS Barcode Scanner",
+    "productName": "CLMS Scanner",
+    "asar": true,
     "win": {
-      "target": "portable",
-      "icon": "icon.ico"
+      "target": "portable"
+    },
+    "portable": {
+      "artifactName": "CLMS-Scanner-Portable.${ext}"
     },
     "files": [
       "main.js",
@@ -30,7 +34,9 @@
       "renderer.html",
       "renderer.js",
       "styles.css",
-      "icon.png"
-    ]
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": []
   }
 }

@@ -973,7 +973,7 @@ router.post(
         studentId: result.studentId,
         studentName: result.studentName,
         checkoutTime: result.checkoutTime,
-        reason: result.reason,
+        reason: result.reason as 'manual' | 'auto',
         customMessage: result.customMessage,
       });
 

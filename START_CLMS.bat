@@ -13,11 +13,12 @@ echo.
 REM Get directory where batch file is located
 cd /d "%~dp0"
 
-echo [1/4] Stopping any existing CLMS processes...
+echo [1/5] Stopping any existing CLMS processes...
 taskkill /F /IM node.exe >nul 2>&1
+taskkill /F /IM electron.exe >nul 2>&1
 echo       Done.
 
-echo [2/4] Checking dependencies...
+echo [2/5] Checking dependencies...
 
 REM Check Backend
 if not exist "Backend\node_modules" (
@@ -41,14 +42,33 @@ if not exist "Frontend\node_modules" (
     echo       Frontend OK
 )
 
-echo [3/4] Starting Backend Server (Port 3001)...
+REM Check BarcodeScanner
+if not exist "BarcodeScanner\node_modules" (
+    echo       Installing BarcodeScanner dependencies...
+    cd BarcodeScanner
+    call npm install
+    cd ..
+    echo       BarcodeScanner ready!
+) else (
+    echo       BarcodeScanner OK
+)
+
+echo [3/5] Starting Backend Server (Port 3001)...
 start /min "CLMS Backend" cmd /k "cd /d "%~dp0Backend" && npm run dev"
 
 REM Wait for backend to be ready
 timeout /t 4 /nobreak >nul
 
-echo [4/4] Starting Frontend Server (Port 3000)...
+echo [4/5] Starting Frontend Server (Port 3000)...
 start /min "CLMS Frontend" cmd /k "cd /d "%~dp0Frontend" && npm run dev"
+
+REM Wait for frontend to compile
+timeout /t 3 /nobreak >nul
+
+echo [5/5] Starting Scanner Daemon (PC1)...
+set CLMS_SERVER_URL=http://localhost:3001
+set CLMS_PC_ID=PC1
+start /min "CLMS Scanner" cmd /k "cd /d "%~dp0BarcodeScanner" && npm start"
 
 echo.
 echo  ========================================================
@@ -57,15 +77,26 @@ echo  ========================================================
 echo.
 echo  ACCESSING THE SYSTEM:
 echo  ----------------------
-echo    Main Dashboard:  http://localhost:3000
-echo    Kiosk Mode:      http://localhost:3000/kiosk
+echo    Main Dashboard:    http://localhost:3000
+echo    Kiosk Mode:        http://localhost:3000/kiosk
+echo    Scanner Daemon:    Running in system tray
 echo.
 echo  MULTI-PC SETUP:
 echo  ----------------
-echo    From other PCs on the network, use THIS PC's IP:
-echo    Example: http://192.168.x.x:3000/kiosk
+echo    PC1 (This PC):     Runs all servers + scanner daemon
+echo    PC2 (Kiosk+Scan):  Run BarcodeScanner with different CLMS_PC_ID
+echo    PC3 (Display):     Open browser to http://THIS_PC_IP:3000/kiosk
 echo.
-echo    The Kiosk automatically connects to the server!
+echo    To find this PC's IP: ipconfig
+echo.
+echo  SCANNER INFO:
+echo  --------------
+echo    The scanner daemon runs in the system tray.
+echo    It captures barcodes globally (even when minimized).
+echo    Tray icon colors:
+echo      Green  = Connected to server
+echo      Yellow = Connecting...
+echo      Red    = Disconnected
 echo.
 echo  TABS (Alt+Number for shortcuts):
 echo  ---------------------------------

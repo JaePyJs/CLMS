@@ -84,20 +84,35 @@ router.post(
   '/jobs',
   authenticate,
   asyncHandler(async (req: Request, res: Response) => {
-    const { student_id, guest_name, paper_size, color_level, pages } = req.body;
-    if (
-      (!student_id && !guest_name) ||
-      !paper_size ||
-      !color_level ||
-      pages === undefined
-    ) {
+    const { guest_name, paper_size, color_level, pages } = req.body;
+    let { student_id } = req.body;
+
+    // If no student_id provided, try to get latest scanned student
+    if (!student_id && !guest_name) {
+      // Import scannerHandler dynamically to avoid circular dependency
+      const { scannerHandler } = await import('../websocket/scannerHandler');
+      const latestStudent = scannerHandler.getLatestScannedStudent();
+
+      if (latestStudent) {
+        student_id = latestStudent.studentId;
+      } else {
+        res.status(400).json({
+          success: false,
+          message:
+            'Please scan a student barcode first or provide student_id/guest_name',
+        });
+        return;
+      }
+    }
+
+    if (!paper_size || !color_level || pages === undefined) {
       res.status(400).json({
         success: false,
-        message:
-          'Either student_id or guest_name is required, along with paper_size, color_level, and pages',
+        message: 'paper_size, color_level, and pages are required',
       });
       return;
     }
+
     try {
       const job = await PrintingService.createJob({
         student_id,
@@ -106,6 +121,17 @@ router.post(
         color_level: color_level as ColorLevel,
         pages: parseInt(String(pages), 10),
       });
+
+      // Auto-checkout student when print job is created (if it's a student, not guest)
+      if (job.student_id) {
+        const { scannerHandler } = await import('../websocket/scannerHandler');
+        await scannerHandler.printJobCheckout(job.student_id, job.id, {
+          pages: job.pages,
+          paper_size: job.paper_size,
+          color_level: job.color_level,
+        });
+      }
+
       res.status(201).json({ success: true, data: job });
     } catch (error) {
       res.status(500).json({

@@ -217,13 +217,13 @@ export class StudentActivityService {
    */
   static async checkOutStudent(
     studentId: string,
-    reason: 'manual' | 'auto' = 'manual',
+    reason: string = 'manual',
   ): Promise<{
     activityId: string;
     studentId: string;
     studentName: string;
     checkoutTime: string;
-    reason: 'manual' | 'auto';
+    reason: string;
     customMessage?: string;
   }> {
     try {
@@ -250,13 +250,24 @@ export class StudentActivityService {
       }
 
       // Update activity to mark as completed
+      const updateData: {
+        end_time: Date;
+        status: string;
+        description: string;
+        activity_type?: string;
+      } = {
+        end_time: new Date(),
+        status: 'COMPLETED',
+        description: `${activity.description} | Checked out (${reason})`,
+      };
+
+      if (reason === 'print_job_completed' || reason.includes('print')) {
+        updateData.activity_type = 'PRINTING';
+      }
+
       const updatedActivity = await prisma.student_activities.update({
         where: { id: activity.id },
-        data: {
-          end_time: new Date(),
-          status: 'COMPLETED',
-          description: `${activity.description} | Checked out (${reason})`,
-        },
+        data: updateData,
       });
 
       // Fetch custom goodbye message

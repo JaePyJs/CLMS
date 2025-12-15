@@ -240,6 +240,19 @@ export class SelfService {
         });
 
         if (existingActivity) {
+          // Emit WebSocket event so Kiosk shows "Welcome" screen again
+          // This allows students to verify they are checked in without changing data
+          websocketServer.emitStudentCheckIn({
+            activityId: existingActivity.id,
+            studentId: student.id,
+            studentName: `${student.first_name} ${student.last_name}`,
+            gender: student.gender || undefined,
+            checkinTime: existingActivity.start_time.toISOString(),
+            autoLogoutAt: new Date(
+              existingActivity.start_time.getTime() + 30 * 60000,
+            ).toISOString(),
+          });
+
           return {
             success: false,
             message: 'Student is already checked in',
@@ -272,6 +285,18 @@ export class SelfService {
 
       // If check-in failed (already checked in or cooldown), return early
       if (!result.success) {
+        // Emit check-in event to Kiosk so it shows Welcome screen
+        // even when cooldown blocks the actual check-in
+        // This gives visual feedback to the student that they're recognized
+        websocketServer.emitStudentCheckIn({
+          activityId: `cooldown-${student.id}-${Date.now()}`,
+          studentId: student.id,
+          studentName: `${student.first_name} ${student.last_name}`,
+          gender: student.gender || undefined,
+          checkinTime: new Date().toISOString(),
+          autoLogoutAt: new Date(Date.now() + 30 * 60000).toISOString(),
+        });
+
         return {
           success: false,
           message: result.message || 'Check-in failed',

@@ -958,8 +958,8 @@ export function ScanWorkspace() {
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
             <span>
-              <strong>Cooldown Active:</strong> Please wait before checking in
-              again
+              <strong>Cooldown Active:</strong> Student {cooldownInfo.studentId}{' '}
+              must wait before checking in again
             </span>
             <div className="flex items-center gap-2">
               <div className="w-32 bg-gray-200 rounded-full h-2">
