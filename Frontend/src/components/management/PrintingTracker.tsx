@@ -43,9 +43,9 @@ import {
   Pencil,
   Trash2,
   Save,
+  X,
 } from 'lucide-react';
 import { StudentSearchDropdown } from './StudentSearchDropdown';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Dynamic types - can be extended via pricing management
 type PaperSize = string;
@@ -56,6 +56,10 @@ const PAPER_SIZE_LABELS: Record<string, string> = {
   SHORT: 'Short (Letter)',
   LONG: 'Long (Legal)',
   A4: 'A4',
+  A5: 'A5',
+  B5: 'B5',
+  EXECUTIVE: 'Executive',
+  FOLIO: 'Folio',
 };
 
 const COLOR_LEVEL_LABELS: Record<string, string> = {
@@ -424,6 +428,20 @@ export default function PrintingTracker() {
       });
       if (res.success && res.data) {
         toast.success('Job created');
+
+        // Auto-checkout student after print job (counts as manual checkout)
+        if ((userType === 'STUDENT' || userType === 'PERSONNEL') && studentId) {
+          try {
+            await apiClient.post(`/api/students/${studentId}/check-out`, {
+              reason: 'print_job_completed',
+            });
+            toast.info('Student checked out after print job');
+          } catch {
+            // Checkout failed but job was created - don't block
+            console.warn('Auto-checkout after print failed');
+          }
+        }
+
         setStudentId('');
         setSelectedStudentName('');
         setGuestName('');
@@ -502,188 +520,172 @@ export default function PrintingTracker() {
   };
 
   return (
-    <Tabs defaultValue="jobs" className="space-y-6">
-      <TabsList>
-        <TabsTrigger value="jobs">
-          <Printer className="h-4 w-4 mr-2" />
-          Print Jobs
-        </TabsTrigger>
-        <TabsTrigger value="settings">
-          <Settings className="h-4 w-4 mr-2" />
-          Price Settings
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="jobs" className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* New Job Card */}
-          <Card className="shadow-md border-slate-200 dark:border-slate-800">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Printer className="h-5 w-5 text-primary" />
-                New Print Job
-              </CardTitle>
-              <CardDescription>
-                Record a new printing transaction
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Paper Size</label>
-                  <Select
-                    value={paperSize}
-                    onValueChange={(v) => setPaperSize(v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select size" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableSizes.map((size) => (
-                        <SelectItem key={size} value={size}>
-                          {PAPER_SIZE_LABELS[size] || size}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Color</label>
-                  <Select
-                    value={colorLevel}
-                    onValueChange={(v) => setColorLevel(v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select color" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableColors.map((color) => (
-                        <SelectItem key={color} value={color}>
-                          {COLOR_LEVEL_LABELS[color] || color}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+    <div className="grid gap-6 lg:grid-cols-3">
+      {/* Left Column: New Job and History */}
+      <div className="lg:col-span-2 space-y-6">
+        {/* New Job Card */}
+        <Card className="shadow-md border-slate-200 dark:border-slate-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5 text-primary" />
+              New Print Job
+            </CardTitle>
+            <CardDescription>Record a new printing transaction</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Pages</label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={pages}
-                  onChange={(e) =>
-                    setPages(parseInt(e.target.value || '0', 10))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">User Type</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    variant={userType === 'STUDENT' ? 'default' : 'outline'}
-                    onClick={() => {
-                      setUserType('STUDENT');
-                      setStudentId('');
-                      setSelectedStudentName('');
-                    }}
-                    className="flex-1 transition-all duration-200"
-                  >
-                    <User className="h-4 w-4 mr-2" /> Student
-                  </Button>
-                  <Button
-                    variant={userType === 'PERSONNEL' ? 'default' : 'outline'}
-                    onClick={() => {
-                      setUserType('PERSONNEL');
-                      setStudentId('');
-                      setSelectedStudentName('');
-                    }}
-                    className="flex-1 transition-all duration-200"
-                  >
-                    <Briefcase className="h-4 w-4 mr-2" /> Personnel
-                  </Button>
-                  <Button
-                    variant={userType === 'GUEST' ? 'default' : 'outline'}
-                    onClick={() => {
-                      setUserType('GUEST');
-                      setStudentId('');
-                      setSelectedStudentName('');
-                    }}
-                    className="flex-1 transition-all duration-200"
-                  >
-                    <Users className="h-4 w-4 mr-2" /> Guest
-                  </Button>
-                </div>
-              </div>
-              {userType === 'STUDENT' || userType === 'PERSONNEL' ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">
-                      {userType === 'PERSONNEL' ? 'Personnel' : 'Student'}{' '}
-                      (Active Only)
-                    </label>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Scan className="h-3 w-3" />
-                      <span>Scan barcode to auto-select</span>
-                    </div>
-                  </div>
-                  {selectedStudentName && studentId ? (
-                    <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
-                      <User className="h-4 w-4 text-green-600" />
-                      <span className="font-medium text-green-700 dark:text-green-300 flex-1">
-                        {selectedStudentName}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setStudentId('');
-                          setSelectedStudentName('');
-                        }}
-                        className="h-6 px-2 text-xs"
-                      >
-                        Clear
-                      </Button>
-                    </div>
-                  ) : (
-                    <StudentSearchDropdown
-                      onSelect={(s) => {
-                        setStudentId(s.id);
-                        setSelectedStudentName(s.name);
-                      }}
-                      selectedStudentId={studentId}
-                      activeOnly={true}
-                    />
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Guest Name</label>
-                  <Input
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    placeholder="Enter Guest Name"
-                  />
-                </div>
-              )}
-              <div className="pt-4 border-t flex items-center justify-between">
-                <div className="text-sm">
-                  <div className="text-muted-foreground">Estimated Cost</div>
-                  <div className="text-2xl font-bold text-primary">
-                    ₱{totalCost.toFixed(2)}
-                  </div>
-                </div>
-                <Button
-                  onClick={createJob}
-                  disabled={totalCost === 0}
-                  className="w-32"
+                <label className="text-sm font-medium">Paper Size</label>
+                <Select
+                  value={paperSize}
+                  onValueChange={(v) => setPaperSize(v as PaperSize)}
                 >
-                  <Plus className="h-4 w-4 mr-2" /> Create
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSizes.map((size) => (
+                      <SelectItem key={size} value={size}>
+                        {PAPER_SIZE_LABELS[size] || size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Color</label>
+                <Select
+                  value={colorLevel}
+                  onValueChange={(v) => setColorLevel(v as ColorLevel)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select color" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableColors.map((color) => (
+                      <SelectItem key={color} value={color}>
+                        {COLOR_LEVEL_LABELS[color] || color}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Pages</label>
+              <Input
+                type="number"
+                min="1"
+                value={pages}
+                onChange={(e) => setPages(parseInt(e.target.value || '0', 10))}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">User Type</label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  variant={userType === 'STUDENT' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setUserType('STUDENT');
+                    setStudentId('');
+                    setSelectedStudentName('');
+                  }}
+                  className="flex-1 transition-all duration-200"
+                >
+                  <User className="h-4 w-4 mr-2" /> Student
+                </Button>
+                <Button
+                  variant={userType === 'PERSONNEL' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setUserType('PERSONNEL');
+                    setStudentId('');
+                    setSelectedStudentName('');
+                  }}
+                  className="flex-1 transition-all duration-200"
+                >
+                  <Briefcase className="h-4 w-4 mr-2" /> Personnel
+                </Button>
+                <Button
+                  variant={userType === 'GUEST' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setUserType('GUEST');
+                    setStudentId('');
+                    setSelectedStudentName('');
+                  }}
+                  className="flex-1 transition-all duration-200"
+                >
+                  <Users className="h-4 w-4 mr-2" /> Guest
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+            {userType === 'STUDENT' || userType === 'PERSONNEL' ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">
+                    {userType === 'PERSONNEL' ? 'Personnel' : 'Student'} (Active
+                    Only)
+                  </label>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Scan className="h-3 w-3" />
+                    <span>Scan barcode to auto-select</span>
+                  </div>
+                </div>
+                {selectedStudentName && studentId ? (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
+                    <User className="h-4 w-4 text-green-600" />
+                    <span className="font-medium text-green-700 dark:text-green-300 flex-1">
+                      {selectedStudentName}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setStudentId('');
+                        setSelectedStudentName('');
+                      }}
+                      className="h-6 px-2 text-xs"
+                    >
+                      Clear
+                    </Button>
+                  </div>
+                ) : (
+                  <StudentSearchDropdown
+                    onSelect={(s) => {
+                      setStudentId(s.id);
+                      setSelectedStudentName(s.name);
+                    }}
+                    selectedStudentId={studentId}
+                    activeOnly={true}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Guest Name</label>
+                <Input
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  placeholder="Enter Guest Name"
+                />
+              </div>
+            )}
+            <div className="pt-4 border-t flex items-center justify-between">
+              <div className="text-sm">
+                <div className="text-muted-foreground">Estimated Cost</div>
+                <div className="text-2xl font-bold text-primary">
+                  ₱{totalCost.toFixed(2)}
+                </div>
+              </div>
+              <Button
+                onClick={createJob}
+                disabled={totalCost === 0}
+                className="w-32"
+              >
+                <Plus className="h-4 w-4 mr-2" /> Create
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Reset Confirmation Modal */}
         {showResetConfirm && (
@@ -729,7 +731,7 @@ export default function PrintingTracker() {
           </div>
         )}
 
-        {/* Jobs History */}
+        {/* Jobs History Card */}
         <Card className="shadow-md border-slate-200 dark:border-slate-800">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
@@ -835,19 +837,17 @@ export default function PrintingTracker() {
             </div>
           </CardContent>
         </Card>
-      </TabsContent>
+      </div>
 
-      {/* Price Settings Tab */}
-      <TabsContent value="settings" className="space-y-6">
+      {/* Right Column: Price Settings */}
+      <div className="space-y-6">
         <Card className="shadow-md border-slate-200 dark:border-slate-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-primary" />
               Price Configuration
             </CardTitle>
-            <CardDescription>
-              Manage printing prices for different paper sizes and colors
-            </CardDescription>
+            <CardDescription>Manage prices by size and color</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Current Pricing Table */}
@@ -855,32 +855,31 @@ export default function PrintingTracker() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead>Paper Size</TableHead>
-                    <TableHead>Color Type</TableHead>
-                    <TableHead className="text-right">Price (₱)</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                    <TableHead className="text-right">Act</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pricing.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={4}
+                        colSpan={3}
                         className="text-center text-muted-foreground py-8"
                       >
-                        No pricing configured. Add your first price below.
+                        No pricing.
                       </TableCell>
                     </TableRow>
                   ) : (
                     pricing.map((p) => (
                       <TableRow key={p.id}>
-                        <TableCell className="font-medium">
-                          {PAPER_SIZE_LABELS[p.paper_size] || p.paper_size}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
+                        <TableCell className="font-medium text-xs">
+                          <div>
+                            {PAPER_SIZE_LABELS[p.paper_size] || p.paper_size}
+                          </div>
+                          <div className="text-muted-foreground font-normal">
                             {COLOR_LEVEL_LABELS[p.color_level] || p.color_level}
-                          </Badge>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           {editingPriceId === p.id ? (
@@ -892,7 +891,7 @@ export default function PrintingTracker() {
                               onChange={(e) =>
                                 setEditingPrice(parseFloat(e.target.value) || 0)
                               }
-                              className="w-24 ml-auto"
+                              className="w-16 ml-auto h-7 text-xs"
                             />
                           ) : (
                             <span className="font-bold">
@@ -907,18 +906,20 @@ export default function PrintingTracker() {
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  className="h-7 w-7 p-0"
                                   onClick={() =>
                                     updatePrice(p.id, editingPrice)
                                   }
                                 >
-                                  <Save className="h-4 w-4" />
+                                  <Save className="h-3 w-3" />
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  className="h-7 w-7 p-0"
                                   onClick={() => setEditingPriceId(null)}
                                 >
-                                  Cancel
+                                  <X className="h-3 w-3" />
                                 </Button>
                               </>
                             ) : (
@@ -926,20 +927,21 @@ export default function PrintingTracker() {
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  className="h-7 w-7 p-0"
                                   onClick={() => {
                                     setEditingPriceId(p.id);
                                     setEditingPrice(p.price);
                                   }}
                                 >
-                                  <Pencil className="h-4 w-4" />
+                                  <Pencil className="h-3 w-3" />
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="text-red-500 hover:text-red-700"
+                                  className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
                                   onClick={() => deletePricing(p.id)}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3 w-3" />
                                 </Button>
                               </>
                             )}
@@ -965,84 +967,54 @@ export default function PrintingTracker() {
                 </Button>
               ) : (
                 <div className="space-y-4 p-4 border rounded-md bg-muted/30">
-                  <h4 className="font-medium">Add New Price</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Paper Size</label>
-                      <Select
-                        value={newPriceEntry.paper_size}
-                        onValueChange={(v) =>
-                          setNewPriceEntry({ ...newPriceEntry, paper_size: v })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select size" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="SHORT">Short (Letter)</SelectItem>
-                          <SelectItem value="LONG">Long (Legal)</SelectItem>
-                          <SelectItem value="A4">A4</SelectItem>
-                          <SelectItem value="CUSTOM">
-                            + Add Custom Size
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {newPriceEntry.paper_size === 'CUSTOM' && (
-                        <Input
-                          placeholder="Enter custom size name"
-                          value={newPriceEntry.customSize}
-                          onChange={(e) =>
-                            setNewPriceEntry({
-                              ...newPriceEntry,
-                              customSize: e.target.value,
-                            })
-                          }
-                        />
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Color Type</label>
-                      <Select
-                        value={newPriceEntry.color_level}
-                        onValueChange={(v) =>
-                          setNewPriceEntry({ ...newPriceEntry, color_level: v })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select color" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="BW">Black & White</SelectItem>
-                          <SelectItem value="HALF_COLOR">Half Color</SelectItem>
-                          <SelectItem value="FULL_COLOR">Full Color</SelectItem>
-                          <SelectItem value="CUSTOM">
-                            + Add Custom Color
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {newPriceEntry.color_level === 'CUSTOM' && (
-                        <Input
-                          placeholder="Enter custom color name"
-                          value={newPriceEntry.customColor}
-                          onChange={(e) =>
-                            setNewPriceEntry({
-                              ...newPriceEntry,
-                              customColor: e.target.value,
-                            })
-                          }
-                        />
-                      )}
-                    </div>
+                  <h4 className="font-medium text-sm">Add New Price</h4>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium">Paper Size</label>
+                    <Select
+                      value={newPriceEntry.paper_size}
+                      onValueChange={(v) =>
+                        setNewPriceEntry({ ...newPriceEntry, paper_size: v })
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SHORT">Short (Letter)</SelectItem>
+                        <SelectItem value="LONG">Long (Legal)</SelectItem>
+                        <SelectItem value="A4">A4</SelectItem>
+                        <SelectItem value="CUSTOM">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">
-                      Price per Page (₱)
-                    </label>
+                    <label className="text-xs font-medium">Color</label>
+                    <Select
+                      value={newPriceEntry.color_level}
+                      onValueChange={(v) =>
+                        setNewPriceEntry({ ...newPriceEntry, color_level: v })
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Color" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="BW">Black & White</SelectItem>
+                        <SelectItem value="HALF_COLOR">Half Color</SelectItem>
+                        <SelectItem value="FULL_COLOR">Full Color</SelectItem>
+                        <SelectItem value="CUSTOM">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium">Price (₱)</label>
                     <Input
                       type="number"
                       min="0"
                       step="0.5"
                       placeholder="0.00"
+                      className="h-8 text-xs"
                       value={newPriceEntry.price || ''}
                       onChange={(e) =>
                         setNewPriceEntry({
@@ -1055,22 +1027,21 @@ export default function PrintingTracker() {
                   <div className="flex gap-2 justify-end">
                     <Button
                       variant="outline"
+                      size="sm"
                       onClick={() => {
                         setShowAddPrice(false);
-                        setNewPriceEntry({
-                          paper_size: '',
-                          color_level: '',
-                          price: 0,
-                          customSize: '',
-                          customColor: '',
-                        });
                       }}
+                      className="h-8 text-xs"
                     >
                       Cancel
                     </Button>
-                    <Button onClick={addPricing}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Price
+                    <Button
+                      onClick={addPricing}
+                      size="sm"
+                      className="h-8 text-xs"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add
                     </Button>
                   </div>
                 </div>
@@ -1078,7 +1049,7 @@ export default function PrintingTracker() {
             </div>
           </CardContent>
         </Card>
-      </TabsContent>
-    </Tabs>
+      </div>
+    </div>
   );
 }

@@ -289,7 +289,9 @@ export const attendanceApi = {
 
   // Google Sheets Integration
   importGoogleSheets: (data: { spreadsheetId: string; sheetName: string }) =>
-    apiClient.post('/api/attendance-export/import/google-sheets', data),
+    apiClient.post('/api/attendance-export/import/google-sheets', data, {
+      timeout: 60000, // 60 second timeout for large imports
+    }),
 
   exportGoogleSheets: (data: {
     spreadsheetId: string;
@@ -297,7 +299,10 @@ export const attendanceApi = {
     startDate: string;
     endDate: string;
     overwrite?: boolean;
-  }) => apiClient.post('/api/attendance-export/export/google-sheets', data),
+  }) =>
+    apiClient.post('/api/attendance-export/export/google-sheets', data, {
+      timeout: 60000, // 60 second timeout for exports
+    }),
 
   validateGoogleSheet: (params: { spreadsheetId: string; sheetName: string }) =>
     apiClient.get('/api/attendance-export/validate-sheet', params),
@@ -306,7 +311,9 @@ export const attendanceApi = {
 export const borrowingApi = {
   // Google Sheets Integration for Borrowing History
   importGoogleSheets: (data: { spreadsheetId: string; sheetName: string }) =>
-    apiClient.post('/api/borrowing-export/import/google-sheets', data),
+    apiClient.post('/api/borrowing-export/import/google-sheets', data, {
+      timeout: 60000, // 60 second timeout for large imports
+    }),
 
   exportGoogleSheets: (data: {
     spreadsheetId: string;
@@ -314,7 +321,10 @@ export const borrowingApi = {
     startDate: string;
     endDate: string;
     overwrite?: boolean;
-  }) => apiClient.post('/api/borrowing-export/export/google-sheets', data),
+  }) =>
+    apiClient.post('/api/borrowing-export/export/google-sheets', data, {
+      timeout: 60000, // 60 second timeout for exports
+    }),
 
   validateGoogleSheet: (params: { spreadsheetId: string; sheetName: string }) =>
     apiClient.get('/api/borrowing-export/validate-sheet', params),

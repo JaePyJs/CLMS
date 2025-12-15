@@ -411,6 +411,22 @@ router.post(
           logger.info('WebSocket broadcast sent for Google Sheets import', {
             insertedCount: result.insertedCount,
           });
+
+          // Also persist notification to database for notification center
+          const { notificationService } = await import(
+            '../services/notification.service'
+          );
+          await notificationService.createNotification({
+            type: 'SUCCESS',
+            title: 'Google Sheets Import Complete',
+            message: `Successfully imported ${result.insertedCount} attendance records from Google Sheets.`,
+            priority: 'NORMAL',
+            metadata: {
+              event: 'ATTENDANCE_IMPORT',
+              importedCount: result.insertedCount,
+              updatedCount: result.updatedCount,
+            },
+          });
         } catch (wsError) {
           logger.warn('Failed to broadcast import notification', { wsError });
         }
@@ -640,9 +656,8 @@ router.get(
       });
 
       // Transform data - parse metadata for book info
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data = activities
-        .map((activity: any) => {
+        .map(activity => {
           let bookTitle = '';
           let bookAuthor = '';
           let dueDate = '';

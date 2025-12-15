@@ -802,7 +802,7 @@ export function BookCatalog() {
                       Call Number
                     </TableHead>
                     <TableHead>Availability</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -868,8 +868,8 @@ export function BookCatalog() {
                           </div>
                         </TableCell>
                         <TableCell>{getAvailabilityBadge(book)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
                             <Button
                               variant="ghost"
                               size="sm"

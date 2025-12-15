@@ -26,7 +26,14 @@ import {
 } from '@/components/ui/select';
 import { apiClient } from '@/lib/api';
 import { toast } from 'sonner';
-import { Users, Clock, LogOut, Search, MapPin } from 'lucide-react';
+import {
+  Users,
+  Clock,
+  LogOut,
+  Search,
+  MapPin,
+  AlertTriangle,
+} from 'lucide-react';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 
 interface ActiveSession {
@@ -150,6 +157,14 @@ export function ActiveStudentsManager() {
     };
   };
 
+  // Check if session has exceeded 15 minutes (attendance expired)
+  const isSessionExpired = (checkinTime: string): boolean => {
+    const now = new Date();
+    const checkin = new Date(checkinTime);
+    const diffMinutes = (now.getTime() - checkin.getTime()) / 60000;
+    return diffMinutes >= 15;
+  };
+
   const filteredSessions = useMemo(() => {
     if (!searchQuery) return sessions;
     const lowerQuery = searchQuery.toLowerCase();
@@ -254,9 +269,20 @@ export function ActiveStudentsManager() {
                     >
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-medium">
-                            {session.studentName}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {session.studentName}
+                            </span>
+                            {isSessionExpired(session.checkinTime) && (
+                              <Badge
+                                variant="destructive"
+                                className="text-[10px] px-1.5 py-0 h-4 animate-pulse"
+                              >
+                                <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                                Expired
+                              </Badge>
+                            )}
+                          </div>
                           <span className="text-xs text-muted-foreground">
                             {session.studentId}
                           </span>

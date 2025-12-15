@@ -91,9 +91,7 @@ router.get(
         };
 
         if (session) {
-          const meta = session.metadata
-            ? JSON.parse(session.metadata)
-            : {};
+          const meta = session.metadata ? JSON.parse(session.metadata) : {};
           const startTime = new Date(session.start_time);
           const timeLimit = meta.timeLimitMinutes || 60;
           const elapsedMinutes = Math.floor(
@@ -592,9 +590,7 @@ router.post(
 
         // Update equipment status
         // Parse metadata from string
-        const metadata = session.metadata
-          ? JSON.parse(session.metadata)
-          : {};
+        const metadata = session.metadata ? JSON.parse(session.metadata) : {};
         if (metadata?.equipmentId) {
           await tx.equipment.update({
             where: { id: metadata.equipmentId },
@@ -649,9 +645,7 @@ router.post(
         return;
       }
 
-      const existingMeta = session.metadata
-        ? JSON.parse(session.metadata)
-        : {};
+      const existingMeta = session.metadata ? JSON.parse(session.metadata) : {};
       const currentLimit = existingMeta.timeLimitMinutes || 60;
       const newLimit = currentLimit + (additionalMinutes || 15);
 

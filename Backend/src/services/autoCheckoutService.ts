@@ -21,7 +21,9 @@ export class AutoCheckoutService {
       return;
     }
 
-    logger.info('Starting auto-checkout service (15 min sessions)');
+    logger.info(
+      'Starting auto-checkout service (15 min attendance sessions only, equipment excluded)',
+    );
 
     // Run immediately on start
     this.processExpiredSessions().catch(err =>
@@ -49,17 +51,28 @@ export class AutoCheckoutService {
 
   /**
    * Process all expired sessions (older than 15 minutes)
+   * Note: Only auto-checkout attendance sessions, NOT equipment/room sessions
    */
   static async processExpiredSessions(): Promise<number> {
     try {
       const cutoffTime = new Date(Date.now() - this.SESSION_DURATION_MS);
 
-      // Find all active sessions that started more than 15 minutes ago
+      // Find all active ATTENDANCE sessions that started more than 15 minutes ago
+      // Exclude EQUIPMENT_USE so room/equipment sessions persist until manual checkout
       const expiredSessions = await prisma.student_activities.findMany({
         where: {
           status: 'ACTIVE',
           end_time: null,
           start_time: { lte: cutoffTime },
+          // Only auto-checkout attendance-related sessions
+          activity_type: {
+            in: [
+              'CHECK_IN',
+              'KIOSK_CHECK_IN',
+              'SELF_SERVICE_CHECK_IN',
+              'LIBRARY_VISIT',
+            ],
+          },
         },
         include: {
           student: {

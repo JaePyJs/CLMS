@@ -39,6 +39,43 @@ interface MetricCard {
   footer?: string;
 }
 
+interface AnalyticsData {
+  overview?: {
+    totalStudents?: number;
+    activeStudents?: number;
+    studentActivationRate?: number;
+    bookAvailabilityRate?: number;
+    availableBooks?: number;
+    totalBooks?: number;
+  };
+  circulation?: {
+    totalCirculation?: number;
+    trends?: {
+      growthRate?: number;
+      trendDirection?: string;
+      forecastNextPeriod?: string;
+    };
+    mostBorrowedBooks?: { title?: string }[];
+    overdueRate?: number;
+    circulationRate?: number;
+  };
+  equipment?: {
+    overallUtilization?: number;
+    totalSessions?: number;
+    recommendations?: string[];
+    averageSessionDuration?: number;
+  };
+  fines?: {
+    collectedFines?: number;
+    collectionRate?: number;
+    outstandingFines?: number;
+  };
+  trends?: {
+    dailyGrowth?: number;
+    peakUsageHours?: { timeRange?: string; count?: number }[];
+  };
+}
+
 export function MetricsCards({
   timeframe,
   data,
@@ -55,15 +92,14 @@ export function MetricsCards({
     ): MetricCard[] => {
       // Complex analytics data structure with deeply nested dynamic properties
       const { overview, circulation, equipment, fines, trends } =
-        // @ts-ignore - Complex analytics data structure
-        analyticsData as any;
+        analyticsData as unknown as AnalyticsData;
 
       return [
         {
           title: 'Total Students',
           value: overview?.totalStudents || 0,
           change: trends?.dailyGrowth || 0,
-          changeType: trends?.dailyGrowth > 0 ? 'increase' : 'decrease',
+          changeType: (trends?.dailyGrowth ?? 0) > 0 ? 'increase' : 'decrease',
           icon: Users,
           description: `${overview?.activeStudents || 0} active students`,
           status: 'success',
@@ -79,22 +115,22 @@ export function MetricsCards({
               : 'decrease',
           icon: BookOpen,
           description: `${circulation?.mostBorrowedBooks?.[0]?.title || 'N/A'} most popular`,
-          status: circulation?.overdueRate > 15 ? 'warning' : 'success',
+          status: (circulation?.overdueRate ?? 0) > 15 ? 'warning' : 'success',
           progress: circulation?.circulationRate || 0,
           footer: `${circulation?.overdueRate?.toFixed(1) || 0}% overdue rate`,
         },
         {
           title: 'Equipment Utilization',
           value: `${equipment?.overallUtilization?.toFixed(1) || 0}%`,
-          change: equipment?.overallUtilization > 80 ? 5 : -2,
+          change: (equipment?.overallUtilization ?? 0) > 80 ? 5 : -2,
           changeType:
-            equipment?.overallUtilization > 80 ? 'increase' : 'decrease',
+            (equipment?.overallUtilization ?? 0) > 80 ? 'increase' : 'decrease',
           icon: Monitor,
           description: `${equipment?.totalSessions || 0} total sessions`,
           status:
-            equipment?.overallUtilization > 85
+            (equipment?.overallUtilization ?? 0) > 85
               ? 'warning'
-              : equipment?.overallUtilization > 60
+              : (equipment?.overallUtilization ?? 0) > 60
                 ? 'success'
                 : 'info',
           progress: equipment?.overallUtilization || 0,
@@ -104,13 +140,14 @@ export function MetricsCards({
           title: 'Fine Collection',
           value: `$${fines?.collectedFines?.toFixed(2) || 0}`,
           change: fines?.collectionRate || 0,
-          changeType: fines?.collectionRate > 70 ? 'increase' : 'decrease',
+          changeType:
+            (fines?.collectionRate ?? 0) > 70 ? 'increase' : 'decrease',
           icon: DollarSign,
           description: `${fines?.collectionRate?.toFixed(1) || 0}% collection rate`,
           status:
-            fines?.collectionRate > 80
+            (fines?.collectionRate ?? 0) > 80
               ? 'success'
-              : fines?.collectionRate > 60
+              : (fines?.collectionRate ?? 0) > 60
                 ? 'warning'
                 : 'error',
           progress: fines?.collectionRate || 0,
@@ -136,15 +173,17 @@ export function MetricsCards({
         {
           title: 'Book Availability',
           value: `${overview?.bookAvailabilityRate?.toFixed(1) || 0}%`,
-          change: overview?.bookAvailabilityRate > 90 ? 2 : -1,
+          change: (overview?.bookAvailabilityRate ?? 0) > 90 ? 2 : -1,
           changeType:
-            overview?.bookAvailabilityRate > 90 ? 'increase' : 'decrease',
+            (overview?.bookAvailabilityRate ?? 0) > 90
+              ? 'increase'
+              : 'decrease',
           icon: Target,
           description: `${overview?.availableBooks || 0} of ${overview?.totalBooks || 0} books available`,
           status:
-            overview?.bookAvailabilityRate > 85
+            (overview?.bookAvailabilityRate ?? 0) > 85
               ? 'success'
-              : overview?.bookAvailabilityRate > 70
+              : (overview?.bookAvailabilityRate ?? 0) > 70
                 ? 'warning'
                 : 'error',
           progress: overview?.bookAvailabilityRate || 0,
@@ -153,13 +192,13 @@ export function MetricsCards({
           title: 'Growth Rate',
           value: `${trends?.dailyGrowth?.toFixed(1) || 0}%`,
           change: trends?.dailyGrowth || 0,
-          changeType: trends?.dailyGrowth > 0 ? 'increase' : 'decrease',
+          changeType: (trends?.dailyGrowth ?? 0) > 0 ? 'increase' : 'decrease',
           icon: TrendingUp,
           description: `${selectedTimeframe === 'day' ? 'Daily' : selectedTimeframe === 'week' ? 'Weekly' : 'Monthly'} growth`,
           status:
-            trends?.dailyGrowth > 5
+            (trends?.dailyGrowth ?? 0) > 5
               ? 'success'
-              : trends?.dailyGrowth > 0
+              : (trends?.dailyGrowth ?? 0) > 0
                 ? 'info'
                 : 'warning',
           footer: `Next period forecast: ${circulation?.trends?.forecastNextPeriod || 'N/A'}`,

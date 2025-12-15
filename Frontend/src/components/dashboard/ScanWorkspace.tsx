@@ -37,13 +37,10 @@ import {
   Square,
   RefreshCw,
   Timer,
-  UserPlus,
   FileText,
   Eye,
   Printer,
   ExternalLink,
-  BarChart3,
-  Activity,
   Loader2,
   Wifi,
   WifiOff,
@@ -1654,68 +1651,6 @@ export function ScanWorkspace() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Enhanced Quick Actions */}
-      <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-indigo-50/30 dark:from-slate-800 dark:to-indigo-950/10">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-indigo-500" />
-            Quick Actions
-          </CardTitle>
-          <CardDescription>Common tasks without scanning</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-4">
-            <Button
-              variant="outline"
-              className="h-16 flex-col hover:bg-blue-50 hover:border-blue-300 transition-colors"
-              onClick={() => {
-                // Navigate to student management or open dialog
-                // For now, just show a toast as we don't have navigation context here easily
-                toast.info(
-                  'Please go to Student Management tab to register new students'
-                );
-              }}
-            >
-              <UserPlus className="h-6 w-6 mb-2 text-blue-600" />
-              <span className="text-sm">Register Student</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-16 flex-col hover:bg-green-50 hover:border-green-300 transition-colors"
-              onClick={() => setShowActiveSessions(!showActiveSessions)}
-            >
-              <Activity className="h-6 w-6 mb-2 text-green-600" />
-              <span className="text-sm">Active Sessions</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-16 flex-col hover:bg-purple-50 hover:border-purple-300 transition-colors"
-              onClick={() => {
-                toast.info('Please go to Reports tab');
-              }}
-            >
-              <BarChart3 className="h-6 w-6 mb-2 text-purple-600" />
-              <span className="text-sm">Reports</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-16 flex-col hover:bg-orange-50 hover:border-orange-300 transition-colors"
-              onClick={async () => {
-                try {
-                  await offlineActions.sync();
-                  toast.success('Offline data synced successfully');
-                } catch {
-                  toast.error('Failed to sync offline data');
-                }
-              }}
-            >
-              <RefreshCw className="h-6 w-6 mb-2 text-orange-600" />
-              <span className="text-sm">Sync Data</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

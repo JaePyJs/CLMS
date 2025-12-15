@@ -77,7 +77,7 @@ interface ReportConfig {
     start: string;
     end: string;
   };
-  filters: Record<string, any>;
+  filters: Record<string, unknown>;
   metrics: string[];
   chartType: string;
   groupBy?: string;

@@ -56,7 +56,9 @@ export function DataProvider<T>({
   if (ChildComponent) {
     // Ensure data is treated as props object
     const props =
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       typeof data === 'object' && data !== null ? data : ({ data } as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return React.createElement(ChildComponent as any, props);
   }
 
@@ -402,7 +404,7 @@ export interface FormProviderProps<T> {
   validate?: (_values: T) => Partial<Record<keyof T, string>>;
 }
 
-export function FormProvider<T extends Record<string, any>>({
+export function FormProvider<T extends Record<string, unknown>>({
   initialValues,
   children,
   render,

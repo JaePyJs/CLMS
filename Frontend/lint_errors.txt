@@ -1,0 +1,55 @@
+
+> clms-frontend@1.0.0 lint
+> eslint . --max-warnings 0
+
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\analytics\MetricsCards.tsx
+  59:26  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\attendance\GoogleSheetsIntegration.tsx
+   97:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   98:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  129:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  135:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  391:58  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\books\BookDetailModal.tsx
+  89:9   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  91:36  warning  Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\books\BookImportDialog.tsx
+  283:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\dashboard\ReportsBuilder.tsx
+  80:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\dashboard\SelfServiceMode.tsx
+  64:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\dashboard\StudentDetailModal.tsx
+  194:9   warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  196:44  warning  Unexpected any. Specify a different type                                                               @typescript-eslint/no-explicit-any
+  197:13  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\dashboard\StudentManagement.tsx
+  66:3  warning  'TrendingUp' is defined but never used. Allowed unused vars must match /^_/u  no-unused-vars
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\patterns\CompoundComponent.tsx
+  233:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend\src\components\patterns\RenderProps.ts
+   59:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   60:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  405:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 19 problems (0 errors, 19 warnings)
+  0 errors and 3 warnings potentially fixable with the `--fix` option.
+
+ESLint found too many warnings (maximum: 0).
+npm error Lifecycle script `lint` failed with error:
+npm error code 1
+npm error path C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend
+npm error workspace clms-frontend@1.0.0
+npm error location C:\Users\jmbar\Desktop\ALL REPOS\Pia_REPOS\CLMS\Frontend
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c eslint . --max-warnings 0

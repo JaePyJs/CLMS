@@ -38,8 +38,26 @@ import { toast } from 'sonner';
 const SERVICE_EMAIL =
   'google-sheer-drive-integration@clms-474510.iam.gserviceaccount.com';
 
+interface SheetRow {
+  studentId?: string;
+  surname?: string;
+  firstName?: string;
+  timestamp?: string;
+  bookTitle?: string;
+  title?: string;
+  action?: string;
+  [key: string]: unknown;
+}
+
+interface ValidationResult {
+  valid: boolean;
+  errors: { row?: number; error: string }[];
+  preview?: SheetRow[];
+  rowCount?: number;
+}
+
 // Helper to get activity type badge
-const getActivityTypeBadge = (row: Record<string, unknown>) => {
+const getActivityTypeBadge = (row: SheetRow) => {
   // Determine type based on available data
   const hasBook = row.bookTitle || row.title;
   const action = String(row.action || '').toLowerCase();
@@ -94,8 +112,9 @@ export const GoogleSheetsIntegration: React.FC = () => {
 
   // Import State
   const [isValidating, setIsValidating] = useState(false);
-  const [validationResult, setValidationResult] = useState<any>(null);
-  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [validationResult, setValidationResult] =
+    useState<ValidationResult | null>(null);
+  const [previewData, setPreviewData] = useState<SheetRow[]>([]);
 
   // Export State
   const [startDate, setStartDate] = useState('');
@@ -126,14 +145,20 @@ export const GoogleSheetsIntegration: React.FC = () => {
     setValidationResult(null);
     setPreviewData([]);
     try {
-      const result: any = await validateAttendance(spreadsheetId, sheetName);
+      const result = (await validateAttendance(
+        spreadsheetId,
+        sheetName
+      )) as ValidationResult;
 
       setValidationResult(result);
-      if (result.valid) {
+      if (result.valid && result.preview) {
         setPreviewData(result.preview);
       }
-    } catch (error: any) {
-      setValidationResult({ valid: false, errors: [{ error: error.message }] });
+    } catch (error: unknown) {
+      setValidationResult({
+        valid: false,
+        errors: [{ error: (error as Error).message }],
+      });
     } finally {
       setIsValidating(false);
     }
@@ -146,13 +171,14 @@ export const GoogleSheetsIntegration: React.FC = () => {
       {
         onSuccess: (response) => {
           console.info('Import successful:', response);
+          const data = (response as { data?: unknown })?.data || response;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const data = (response as any)?.data || response;
-          const imported = data?.imported || 0;
-          const parsed = data?.sheetParsed || 0;
-          const notFound = data?.skippedStudentNotFound || 0;
-          const duplicates = data?.skippedDuplicate || 0;
-          const unmatchedIds = data?.unmatchedStudentIds || [];
+          const typedData = data as any;
+          const imported = typedData?.imported || 0;
+          const parsed = typedData?.sheetParsed || 0;
+          const notFound = typedData?.skippedStudentNotFound || 0;
+          const duplicates = typedData?.skippedDuplicate || 0;
+          const unmatchedIds = typedData?.unmatchedStudentIds || [];
 
           if (imported === 0 && notFound > 0) {
             toast.warning('No records imported', {
@@ -388,7 +414,7 @@ export const GoogleSheetsIntegration: React.FC = () => {
                     <AlertTitle>Errors Found</AlertTitle>
                     <AlertDescription>
                       <ul className="list-disc pl-4 text-sm max-h-32 overflow-y-auto">
-                        {validationResult.errors.map((e: any, i: number) => (
+                        {validationResult.errors.map((e, i) => (
                           <li key={i}>
                             Row {e.row}: {e.error}
                           </li>

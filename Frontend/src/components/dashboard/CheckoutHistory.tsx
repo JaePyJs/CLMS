@@ -149,7 +149,7 @@ export default function CheckoutHistory() {
     });
   }, []);
 
-  // Fetch checkouts
+  // Fetch checkouts - merges library checkouts with attendance book activities
   const fetchCheckouts = useCallback(
     async (status?: string) => {
       setLoading(true);
@@ -158,54 +158,98 @@ export default function CheckoutHistory() {
         const params = new URLSearchParams();
         if (status) params.append('status', status);
 
-        const response = await apiClient.get(
-          `/api/enhanced-library/history?${params.toString()}`
-        );
+        // Fetch both library checkouts and attendance book activities in parallel
+        const [libraryResponse, attendanceResponse] = await Promise.all([
+          apiClient.get(`/api/enhanced-library/history?${params.toString()}`),
+          apiClient.get('/api/attendance-export/book-activities'),
+        ]);
 
-        if (response.success && Array.isArray(response.data)) {
-          // Transform API data to Checkout interface
-          const data: Checkout[] = response.data.map(
-            (item: RawCheckoutItem) => ({
-              id: item.id,
-              bookId: item.bookId || item.book?.id || '',
-              studentId: item.studentId || item.student?.id || '',
-              checkoutDate: item.checkoutDate || item.borrowedAt || '',
-              dueDate: item.dueDate || '',
-              returnDate: item.returnDate || item.returnedAt,
-              status: item.status || 'ACTIVE',
-              overdueDays: item.overdueDays || 0,
-              fineAmount: String(item.fineAmount || '0'),
-              book: {
-                id: item.book?.id || '',
-                accessionNo:
-                  item.book?.accessionNo || item.book?.accession_no || '',
-                title: item.book?.title || 'Unknown Title',
-                author: item.book?.author || 'Unknown Author',
-                category: item.book?.category || 'General',
-              },
-              student: {
-                id: item.student?.id || '',
-                studentId:
-                  item.student?.studentId || item.student?.student_id || '',
-                firstName:
-                  item.student?.firstName || item.student?.first_name || '',
-                lastName:
-                  item.student?.lastName || item.student?.last_name || '',
-                gradeLevel:
-                  item.student?.gradeLevel || item.student?.grade_level || '',
-                section: item.student?.section || '',
-              },
-            })
-          );
+        let libraryData: Checkout[] = [];
+        let attendanceData: Checkout[] = [];
 
-          setCheckouts(data);
-          setFilteredCheckouts(data);
-          calculateStats(data);
-        } else {
-          setCheckouts([]);
-          setFilteredCheckouts([]);
-          calculateStats([]);
+        // Process library checkouts
+        if (libraryResponse.success && Array.isArray(libraryResponse.data)) {
+          libraryData = libraryResponse.data.map((item: RawCheckoutItem) => ({
+            id: item.id,
+            bookId: item.bookId || item.book?.id || '',
+            studentId: item.studentId || item.student?.id || '',
+            checkoutDate: item.checkoutDate || item.borrowedAt || '',
+            dueDate: item.dueDate || '',
+            returnDate: item.returnDate || item.returnedAt,
+            status: item.status || 'ACTIVE',
+            overdueDays: item.overdueDays || 0,
+            fineAmount: String(item.fineAmount || '0'),
+            book: {
+              id: item.book?.id || '',
+              accessionNo:
+                item.book?.accessionNo || item.book?.accession_no || '',
+              title: item.book?.title || 'Unknown Title',
+              author: item.book?.author || 'Unknown Author',
+              category: item.book?.category || 'General',
+            },
+            student: {
+              id: item.student?.id || '',
+              studentId:
+                item.student?.studentId || item.student?.student_id || '',
+              firstName:
+                item.student?.firstName || item.student?.first_name || '',
+              lastName: item.student?.lastName || item.student?.last_name || '',
+              gradeLevel:
+                item.student?.gradeLevel || item.student?.grade_level || '',
+              section: item.student?.section || '',
+            },
+          }));
         }
+
+        // Process attendance book activities
+        if (
+          attendanceResponse.success &&
+          Array.isArray(attendanceResponse.data)
+        ) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          attendanceData = attendanceResponse.data.map((item: any) => ({
+            id: `att-${item.id}`, // Prefix to avoid ID collision
+            bookId: '',
+            studentId: item.student?.id || '',
+            checkoutDate: item.checkoutDate || '',
+            dueDate: item.dueDate || '',
+            returnDate: item.returnDate || null,
+            status: item.returnDate ? 'RETURNED' : 'ACTIVE',
+            overdueDays: 0,
+            fineAmount: String(item.fineAmount || '0'),
+            book: {
+              id: '',
+              accessionNo: '',
+              title: item.bookTitle || 'Unknown Title',
+              author: item.bookAuthor || 'Unknown Author',
+              category: 'Attendance Import',
+            },
+            student: {
+              id: item.student?.id || '',
+              studentId: item.student?.studentId || '',
+              firstName: item.student?.firstName || '',
+              lastName: item.student?.lastName || '',
+              gradeLevel: item.student?.gradeLevel || '',
+              section: item.student?.section || '',
+            },
+          }));
+        }
+
+        // Merge and deduplicate by ID, sort by checkout date
+        const allData = [...libraryData, ...attendanceData].sort((a, b) => {
+          const dateA = new Date(a.checkoutDate).getTime() || 0;
+          const dateB = new Date(b.checkoutDate).getTime() || 0;
+          return dateB - dateA; // Most recent first
+        });
+
+        // Apply status filter if provided
+        const filteredData = status
+          ? allData.filter((c) => c.status === status)
+          : allData;
+
+        setCheckouts(filteredData);
+        setFilteredCheckouts(filteredData);
+        calculateStats(filteredData);
       } catch (error: unknown) {
         console.error('Failed to fetch checkout history:', error);
         toast.error('Failed to load checkout history');

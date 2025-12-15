@@ -280,7 +280,7 @@ export function BookImportDialog({
     'upload' | 'mapping' | 'preview' | 'importing' | 'complete'
   >('upload');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [rawData, setRawData] = useState<any[]>([]);
+  const [rawData, setRawData] = useState<Record<string, unknown>[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
   const [importedBooks, setImportedBooks] = useState<ImportedBook[]>([]);

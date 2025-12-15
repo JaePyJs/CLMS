@@ -86,6 +86,38 @@ interface StudentDetailModalProps {
   student: Student | null;
   open: boolean;
   onClose: () => void;
+  onStudentUpdated?: () => void;
+}
+
+interface RawSystemBorrow {
+  id: string;
+  book?: { title?: string; author?: string };
+  checkoutDate?: string;
+  dueDate?: string;
+  returnDate?: string;
+  status?: string;
+  fineAmount?: number;
+  finePaid?: boolean;
+  overdueDays?: number;
+}
+
+interface RawImportedBorrow {
+  id: string;
+  bookTitle?: string;
+  bookAuthor?: string;
+  checkoutDate?: string;
+  dueDate?: string;
+  returnDate?: string;
+  fineAmount?: number;
+}
+
+interface RawActivity {
+  id: string;
+  activityType?: string;
+  description?: string;
+  timestamp?: string;
+  endTime?: string;
+  status?: string;
 }
 
 export function StudentDetailModal({
@@ -130,8 +162,7 @@ export function StudentDetailModal({
       const importedBorrows: BorrowingRecord[] = [];
 
       if (borrowResponse.success && Array.isArray(borrowResponse.data)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        borrowResponse.data.forEach((item: any) => {
+        (borrowResponse.data as RawSystemBorrow[]).forEach((item) => {
           systemBorrows.push({
             id: item.id,
             bookTitle: item.book?.title || 'Unknown',
@@ -149,8 +180,7 @@ export function StudentDetailModal({
       }
 
       if (importedResponse.success && Array.isArray(importedResponse.data)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        importedResponse.data.forEach((item: any) => {
+        (importedResponse.data as RawImportedBorrow[]).forEach((item) => {
           // Only include entries that have a book title (these are borrowed books)
           // Exclude librarian notes (bookTitle starting with 'Note:' or '*')
           const isNote =
@@ -191,10 +221,8 @@ export function StudentDetailModal({
         `/api/enhanced-library/student-activities?studentId=${studentId}`
       );
       if (activityResponse.success && Array.isArray(activityResponse.data)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setActivityHistory(
-          activityResponse.data.map((item: any) => ({
-            // eslint-disable-line @typescript-eslint/no-explicit-any
+          (activityResponse.data as RawActivity[]).map((item) => ({
             id: item.id,
             activityType: item.activityType || 'ACTIVITY',
             description: item.description || 'Activity',

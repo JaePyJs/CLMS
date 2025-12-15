@@ -43,14 +43,13 @@ import {
 } from '@/hooks/api-hooks';
 import { useAppStore } from '@/store/useAppStore';
 import { offlineActions } from '@/lib/offline-queue';
-import { enhancedLibraryApi, equipmentApi, settingsApi } from '@/lib/api';
+import { enhancedLibraryApi, equipmentApi } from '@/lib/api';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 
 import {
   Monitor,
   Gamepad2,
   Cpu,
-  Play,
   Square,
   RotateCcw,
   AlertCircle,
@@ -65,6 +64,8 @@ import {
   Plus,
   Trash2,
   MoreVertical,
+  Search,
+  ArrowUpDown,
 } from 'lucide-react';
 import { DraggableStudent } from './equipment/DraggableStudent';
 import { DroppableEquipment } from './equipment/DroppableEquipment';
@@ -127,9 +128,6 @@ export function EquipmentDashboard() {
 
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [studentId, setStudentId] = useState<string>('');
-  const [studentName, setStudentName] = useState<string>('');
-  const [gradeLevel, setGradeLevel] = useState<string>('');
 
   // Session History State
   const [sessionHistory, setSessionHistory] = useState<SessionHistoryItem[]>(
@@ -145,6 +143,7 @@ export function EquipmentDashboard() {
     category: 'computer',
     serial_number: '',
     notes: '',
+    capacity: 1,
   });
 
   // Delete Equipment State
@@ -164,19 +163,9 @@ export function EquipmentDashboard() {
     serial_number: string;
     notes: string;
     status: string;
+    capacity: number;
   } | null>(null);
   const [isEditingEquipment, setIsEditingEquipment] = useState(false);
-
-  // Settings Dialog State
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
-  const [sessionLimits, setSessionLimits] = useState({
-    PRIMARY: 15,
-    GRADE_SCHOOL: 30,
-    JUNIOR_HIGH: 45,
-    SENIOR_HIGH: 60,
-  });
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
 
   // Drag and Drop State
   const [activePatrons, setActivePatrons] = useState<ActivePatron[]>([]);
@@ -184,6 +173,10 @@ export function EquipmentDashboard() {
   const [draggedStudent, setDraggedStudent] = useState<
     ActivePatron | AssignedStudent | null
   >(null);
+
+  // Student Search and Sort State
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [studentSortBy, setStudentSortBy] = useState<'name' | 'grade'>('name');
 
   const { equipment: equipmentData, isOnline } = useAppStore();
   const setEquipment = useAppStore((state) => state.setEquipment);
@@ -311,6 +304,7 @@ export function EquipmentDashboard() {
           category: 'computer',
           serial_number: '',
           notes: '',
+          capacity: 1,
         });
         // Trigger refresh
         setIsRefreshing(true);
@@ -387,65 +381,6 @@ export function EquipmentDashboard() {
     }
   };
 
-  // Load session limits settings
-  const loadSessionLimits = async () => {
-    setIsLoadingSettings(true);
-    try {
-      const response = await settingsApi.getSystemSettings();
-      if (response.success && response.data) {
-        interface SettingsData {
-          sessionLimits?: {
-            PRIMARY?: number;
-            GRADE_SCHOOL?: number;
-            JUNIOR_HIGH?: number;
-            SENIOR_HIGH?: number;
-          };
-        }
-        const data = response.data as SettingsData;
-        if (data.sessionLimits) {
-          setSessionLimits({
-            PRIMARY: data.sessionLimits.PRIMARY || 15,
-            GRADE_SCHOOL: data.sessionLimits.GRADE_SCHOOL || 30,
-            JUNIOR_HIGH: data.sessionLimits.JUNIOR_HIGH || 45,
-            SENIOR_HIGH: data.sessionLimits.SENIOR_HIGH || 60,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load session limits:', error);
-    } finally {
-      setIsLoadingSettings(false);
-    }
-  };
-
-  // Save session limits settings
-  const saveSessionLimits = async () => {
-    setIsSavingSettings(true);
-    try {
-      const response = await settingsApi.updateSystemSettings({
-        sessionLimits: sessionLimits,
-      });
-      if (response.success) {
-        toast.success('Session limits saved successfully!');
-        setShowSettingsDialog(false);
-      } else {
-        toast.error('Failed to save session limits');
-      }
-    } catch (error) {
-      console.error('Failed to save session limits:', error);
-      toast.error('Failed to save session limits');
-    } finally {
-      setIsSavingSettings(false);
-    }
-  };
-
-  // Load settings when dialog opens
-  useEffect(() => {
-    if (showSettingsDialog) {
-      loadSessionLimits();
-    }
-  }, [showSettingsDialog]);
-
   useEffect(() => {
     fetchActivePatrons();
     const interval = setInterval(fetchActivePatrons, 30000);
@@ -496,6 +431,44 @@ export function EquipmentDashboard() {
       return true;
     }
   );
+
+  // Filter and sort students based on search query and sort option
+  const filteredPatrons = activePatrons
+    .filter((p) => {
+      if (!studentSearchQuery) return true;
+      const query = studentSearchQuery.toLowerCase();
+      return (
+        p.studentName.toLowerCase().includes(query) ||
+        p.studentId.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      if (studentSortBy === 'name') {
+        return a.studentName.localeCompare(b.studentName);
+      }
+      // Sort by grade level (extract number)
+      const gradeA = parseInt(String(a.gradeLevel).replace(/\D/g, ''), 10) || 0;
+      const gradeB = parseInt(String(b.gradeLevel).replace(/\D/g, ''), 10) || 0;
+      return gradeA - gradeB;
+    });
+
+  const filteredAssignedStudents = assignedStudents
+    .filter((s) => {
+      if (!studentSearchQuery) return true;
+      const query = studentSearchQuery.toLowerCase();
+      return (
+        s.studentName.toLowerCase().includes(query) ||
+        s.studentId.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      if (studentSortBy === 'name') {
+        return a.studentName.localeCompare(b.studentName);
+      }
+      const gradeA = parseInt(String(a.gradeLevel).replace(/\D/g, ''), 10) || 0;
+      const gradeB = parseInt(String(b.gradeLevel).replace(/\D/g, ''), 10) || 0;
+      return gradeA - gradeB;
+    });
 
   const handleEndSession = async (sessionId: string) => {
     if (isOnline) {
@@ -682,12 +655,15 @@ export function EquipmentDashboard() {
     return `${minutes}m remaining`;
   };
 
-  const getSessionProgress = (session: Record<string, unknown> | null) => {
+  const getSessionProgress = (
+    session: { timeLimitMinutes?: number; remainingMinutes?: number } | null
+  ) => {
     if (!session) {
       return 0;
     }
-    const timeLimitMinutes = Number(session.timeLimitMinutes);
-    const remainingMinutes = Number(session.remainingMinutes);
+    const timeLimitMinutes = Number(session.timeLimitMinutes ?? 0);
+    const remainingMinutes = Number(session.remainingMinutes ?? 0);
+    if (timeLimitMinutes === 0) return 0;
     const elapsed = timeLimitMinutes - remainingMinutes;
     return (elapsed / timeLimitMinutes) * 100;
   };
@@ -741,15 +717,6 @@ export function EquipmentDashboard() {
                 className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`}
               />
               {isRefreshing ? 'Refreshing…' : 'Refresh'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={isRefreshing}
-              onClick={() => setShowSettingsDialog(true)}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
             </Button>
           </div>
         </div>
@@ -1021,10 +988,11 @@ export function EquipmentDashboard() {
                                     setEditingEquipment({
                                       id: item.id,
                                       name: item.name,
-                                      category: item.type || 'computer', // Map type to category
-                                      serial_number: item.specs?.serial || '', // Map specs to serial
-                                      notes: item.notes || '',
+                                      category: item.type || 'computer',
+                                      serial_number: '',
+                                      notes: '',
                                       status: item.status,
+                                      capacity: 1, // Default capacity
                                     });
                                     setShowEditDialog(true);
                                   }}
@@ -1064,7 +1032,7 @@ export function EquipmentDashboard() {
                                   </span>
                                   <Badge variant="outline" className="text-xs">
                                     {formatTimeRemaining(
-                                      item.currentSession.remainingMinutes
+                                      item.currentSession?.remainingMinutes ?? 0
                                     )}
                                   </Badge>
                                 </div>
@@ -1086,9 +1054,11 @@ export function EquipmentDashboard() {
                                   </div>
                                 </div>
                                 <Progress
-                                  value={getSessionProgress(
+                                  value={
                                     item.currentSession
-                                  )}
+                                      ? getSessionProgress(item.currentSession)
+                                      : 0
+                                  }
                                   className="mt-2 h-2"
                                 />
                               </div>
@@ -1098,6 +1068,7 @@ export function EquipmentDashboard() {
                                   size="sm"
                                   variant="destructive"
                                   onClick={() =>
+                                    item.currentSession &&
                                     handleEndSession(item.currentSession.id)
                                   }
                                   className="flex-1"
@@ -1154,52 +1125,9 @@ export function EquipmentDashboard() {
                               {item.status === 'available' && (
                                 <div className="text-center py-4">
                                   <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                                  <p className="text-sm text-muted-foreground mb-3">
-                                    Drag student here to start
+                                  <p className="text-sm text-muted-foreground">
+                                    Drag student here to assign
                                   </p>
-                                  <div className="grid grid-cols-2 gap-2 mb-3">
-                                    <Input
-                                      placeholder="Student ID"
-                                      value={studentId}
-                                      onChange={(e) =>
-                                        setStudentId(e.target.value)
-                                      }
-                                      disabled={isRefreshing}
-                                    />
-                                    <Input
-                                      placeholder="Student Name"
-                                      value={studentName}
-                                      onChange={(e) =>
-                                        setStudentName(e.target.value)
-                                      }
-                                      disabled={isRefreshing}
-                                    />
-                                    <Input
-                                      placeholder="Grade Level"
-                                      value={gradeLevel}
-                                      onChange={(e) =>
-                                        setGradeLevel(e.target.value)
-                                      }
-                                      disabled={isRefreshing}
-                                    />
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => {
-                                      if (!studentId) return;
-                                      startSession({
-                                        equipmentId: item.id,
-                                        studentId,
-                                        timeLimitMinutes:
-                                          getTimeLimitByGrade(gradeLevel),
-                                      });
-                                    }}
-                                    className="w-full"
-                                    disabled={isRefreshing}
-                                  >
-                                    <Play className="h-3 w-3 mr-1" />
-                                    Start Session
-                                  </Button>
                                 </div>
                               )}
 
@@ -1222,23 +1150,6 @@ export function EquipmentDashboard() {
                               )}
                             </div>
                           )}
-
-                          {/* Equipment Specs */}
-                          {item.specs && (
-                            <div className="border-t pt-3">
-                              <div className="text-xs text-muted-foreground space-y-1">
-                                {item.specs.cpu && (
-                                  <div>CPU: {item.specs.cpu}</div>
-                                )}
-                                {item.specs.ram && (
-                                  <div>RAM: {item.specs.ram}</div>
-                                )}
-                                {item.specs.gpu && (
-                                  <div>GPU: {item.specs.gpu}</div>
-                                )}
-                              </div>
-                            </div>
-                          )}
                         </CardContent>
                       </Card>
                     </DroppableEquipment>
@@ -1246,143 +1157,65 @@ export function EquipmentDashboard() {
                 </div>
               </TabsContent>
             </Tabs>
-
-            {/* Equipment Stats */}
-            <div
-              className={`grid gap-${isMobile ? '3' : '4'} ${isMobile ? 'grid-cols-1' : 'md:grid-cols-2'}`}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Usage Statistics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {(() => {
-                      // Calculate real utilization from equipment data
-                      const computers = equipment.filter(
-                        (e) => e.type === 'computer'
-                      );
-                      const gaming = equipment.filter(
-                        (e) => e.type === 'gaming'
-                      );
-                      const avr = equipment.filter((e) => e.type === 'avr');
-
-                      const computerInUse = computers.filter(
-                        (e) => e.status === 'in-use'
-                      ).length;
-                      const gamingInUse = gaming.filter(
-                        (e) => e.status === 'in-use'
-                      ).length;
-                      const avrInUse = avr.filter(
-                        (e) => e.status === 'in-use'
-                      ).length;
-
-                      const computerUtil =
-                        computers.length > 0
-                          ? Math.round((computerInUse / computers.length) * 100)
-                          : 0;
-                      const gamingUtil =
-                        gaming.length > 0
-                          ? Math.round((gamingInUse / gaming.length) * 100)
-                          : 0;
-                      const avrUtil =
-                        avr.length > 0
-                          ? Math.round((avrInUse / avr.length) * 100)
-                          : 0;
-
-                      return (
-                        <>
-                          <div className="flex justify-between">
-                            <span>
-                              Computer Utilization ({computerInUse}/
-                              {computers.length})
-                            </span>
-                            <span className="font-medium">{computerUtil}%</span>
-                          </div>
-                          <Progress value={computerUtil} className="h-2" />
-
-                          <div className="flex justify-between">
-                            <span>
-                              Gaming Utilization ({gamingInUse}/{gaming.length})
-                            </span>
-                            <span className="font-medium">{gamingUtil}%</span>
-                          </div>
-                          <Progress value={gamingUtil} className="h-2" />
-
-                          <div className="flex justify-between">
-                            <span>
-                              AVR Utilization ({avrInUse}/{avr.length})
-                            </span>
-                            <span className="font-medium">{avrUtil}%</span>
-                          </div>
-                          <Progress value={avrUtil} className="h-2" />
-                        </>
-                      );
-                    })()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Time Limits by Grade
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Primary (K-3)</span>
-                      <Badge variant="outline">15 minutes</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Grade School (4-6)</span>
-                      <Badge variant="outline">30 minutes</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Junior High (7-10)</span>
-                      <Badge variant="outline">45 minutes</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Senior High (11-12)</span>
-                      <Badge variant="outline">60 minutes</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
 
           {/* Sidebar - Active Students */}
           <div className="lg:col-span-1">
             <Card className="h-full sticky top-4">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Students
-                  <Badge variant="secondary" className="ml-auto text-xs">
-                    {activePatrons.length + assignedStudents.length}
-                  </Badge>
-                </CardTitle>
-                <CardDescription>
+              <CardHeader className="pb-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Students
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {activePatrons.length + assignedStudents.length}
+                    </Badge>
+                  </CardTitle>
+                </div>
+                {/* Search and Sort */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search..."
+                      className="h-8 pl-7 text-sm"
+                      value={studentSearchQuery}
+                      onChange={(e) => setStudentSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2"
+                    onClick={() =>
+                      setStudentSortBy((prev) =>
+                        prev === 'name' ? 'grade' : 'name'
+                      )
+                    }
+                    title={`Sort by ${studentSortBy === 'name' ? 'grade' : 'name'}`}
+                  >
+                    <ArrowUpDown className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <CardDescription className="text-xs">
                   Drag to assign or move between rooms
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <ScrollArea className="h-[calc(100vh-300px)] px-4 pb-4">
+                <ScrollArea className="h-[calc(100vh-380px)] px-4 pb-4">
                   {/* Available Students Section */}
-                  {activePatrons.length > 0 && (
+                  {filteredPatrons.length > 0 && (
                     <div className="pt-2">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                           Available
                         </span>
                         <Badge variant="outline" className="text-xs h-5">
-                          {activePatrons.length}
+                          {filteredPatrons.length}
                         </Badge>
                       </div>
                       <div className="space-y-2">
-                        {activePatrons.map((patron) => (
+                        {filteredPatrons.map((patron) => (
                           <DraggableStudent
                             key={patron.id}
                             id={patron.id}
@@ -1394,10 +1227,12 @@ export function EquipmentDashboard() {
                   )}
 
                   {/* Students in Rooms Section */}
-                  {assignedStudents.length > 0 && (
+                  {filteredAssignedStudents.length > 0 && (
                     <div
                       className={
-                        activePatrons.length > 0 ? 'pt-4 mt-4 border-t' : 'pt-2'
+                        filteredPatrons.length > 0
+                          ? 'pt-4 mt-4 border-t'
+                          : 'pt-2'
                       }
                     >
                       <div className="flex items-center gap-2 mb-2">
@@ -1408,11 +1243,11 @@ export function EquipmentDashboard() {
                           variant="default"
                           className="text-xs h-5 bg-blue-500"
                         >
-                          {assignedStudents.length}
+                          {filteredAssignedStudents.length}
                         </Badge>
                       </div>
                       <div className="space-y-2">
-                        {assignedStudents.map((student) => (
+                        {filteredAssignedStudents.map((student) => (
                           <DraggableStudent
                             key={student.id}
                             id={student.id}
@@ -1427,12 +1262,18 @@ export function EquipmentDashboard() {
                   )}
 
                   {/* Empty State */}
-                  {activePatrons.length === 0 &&
-                    assignedStudents.length === 0 && (
+                  {filteredPatrons.length === 0 &&
+                    filteredAssignedStudents.length === 0 && (
                       <div className="text-center py-8 text-muted-foreground text-sm">
-                        No active students found.
-                        <br />
-                        Scan students at the entrance to see them here.
+                        {studentSearchQuery ? (
+                          'No students match your search.'
+                        ) : (
+                          <>
+                            No active students found.
+                            <br />
+                            Scan students at the entrance to see them here.
+                          </>
+                        )}
                       </div>
                     )}
                 </ScrollArea>
@@ -1561,6 +1402,25 @@ export function EquipmentDashboard() {
                   setNewEquipment({ ...newEquipment, notes: e.target.value })
                 }
               />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="capacity">Student Capacity</Label>
+              <Input
+                id="capacity"
+                type="number"
+                min={1}
+                max={20}
+                value={newEquipment.capacity}
+                onChange={(e) =>
+                  setNewEquipment({
+                    ...newEquipment,
+                    capacity: parseInt(e.target.value) || 1,
+                  })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Maximum students that can be assigned at once
+              </p>
             </div>
           </div>
           <div className="flex justify-end gap-2">
@@ -1721,6 +1581,25 @@ export function EquipmentDashboard() {
                   }
                 />
               </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-capacity">Student Capacity</Label>
+                <Input
+                  id="edit-capacity"
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={editingEquipment.capacity}
+                  onChange={(e) =>
+                    setEditingEquipment({
+                      ...editingEquipment,
+                      capacity: parseInt(e.target.value) || 1,
+                    })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Maximum students that can be assigned at once
+                </p>
+              </div>
             </div>
           )}
           <div className="flex justify-end gap-2">
@@ -1733,130 +1612,6 @@ export function EquipmentDashboard() {
             </Button>
             <Button onClick={handleEditEquipment} disabled={isEditingEquipment}>
               {isEditingEquipment ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Settings Dialog */}
-      <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Room Management Settings</DialogTitle>
-            <DialogDescription>
-              Configure session time limits for different grade levels.
-            </DialogDescription>
-          </DialogHeader>
-          {isLoadingSettings ? (
-            <div className="py-8 text-center text-muted-foreground">
-              Loading settings...
-            </div>
-          ) : (
-            <div className="space-y-4 py-4">
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm">
-                  Session Time Limits by Grade Level (minutes)
-                </h4>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
-                    <Label htmlFor="primary-limit" className="flex-1">
-                      Primary (K-3)
-                    </Label>
-                    <Input
-                      id="primary-limit"
-                      type="number"
-                      min={5}
-                      max={120}
-                      value={sessionLimits.PRIMARY}
-                      onChange={(e) =>
-                        setSessionLimits((prev) => ({
-                          ...prev,
-                          PRIMARY: parseInt(e.target.value) || 15,
-                        }))
-                      }
-                      className="w-20 text-center"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
-                    <Label htmlFor="grade-school-limit" className="flex-1">
-                      Grade School (4-6)
-                    </Label>
-                    <Input
-                      id="grade-school-limit"
-                      type="number"
-                      min={5}
-                      max={120}
-                      value={sessionLimits.GRADE_SCHOOL}
-                      onChange={(e) =>
-                        setSessionLimits((prev) => ({
-                          ...prev,
-                          GRADE_SCHOOL: parseInt(e.target.value) || 30,
-                        }))
-                      }
-                      className="w-20 text-center"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
-                    <Label htmlFor="junior-high-limit" className="flex-1">
-                      Junior High (7-10)
-                    </Label>
-                    <Input
-                      id="junior-high-limit"
-                      type="number"
-                      min={5}
-                      max={120}
-                      value={sessionLimits.JUNIOR_HIGH}
-                      onChange={(e) =>
-                        setSessionLimits((prev) => ({
-                          ...prev,
-                          JUNIOR_HIGH: parseInt(e.target.value) || 45,
-                        }))
-                      }
-                      className="w-20 text-center"
-                    />
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
-                    <Label htmlFor="senior-high-limit" className="flex-1">
-                      Senior High (11-12)
-                    </Label>
-                    <Input
-                      id="senior-high-limit"
-                      type="number"
-                      min={5}
-                      max={120}
-                      value={sessionLimits.SENIOR_HIGH}
-                      onChange={(e) =>
-                        setSessionLimits((prev) => ({
-                          ...prev,
-                          SENIOR_HIGH: parseInt(e.target.value) || 60,
-                        }))
-                      }
-                      className="w-20 text-center"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="border-t pt-4">
-                <p className="text-xs text-muted-foreground">
-                  Time limits are automatically applied based on the student's
-                  grade level when starting a session.
-                </p>
-              </div>
-            </div>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowSettingsDialog(false)}
-              disabled={isSavingSettings}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={saveSessionLimits}
-              disabled={isSavingSettings || isLoadingSettings}
-            >
-              {isSavingSettings ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </DialogContent>

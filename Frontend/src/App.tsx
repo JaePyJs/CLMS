@@ -25,7 +25,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import LoginForm from '@/components/auth/LoginForm';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
-import { toast } from 'sonner';
+import { Toaster, toast } from 'sonner';
+
+// ... (existing imports)
+
+// Inside App component return, near PWAInstallPrompt:
+{
+  /* Toaster for notifications */
+}
+<Toaster richColors position="top-right" closeButton />;
+
+{
+  /* PWA Install Prompt */
+}
+<PWAInstallPrompt onInstall={() => {}} onDismiss={() => {}} />;
 import NotificationCenter from '@/components/NotificationCenter';
 import SessionTimeoutWarning from '@/components/SessionTimeoutWarning';
 import WebSocketProvider from '@/contexts/WebSocketContext';
@@ -72,30 +85,29 @@ interface ApiSearchResponse {
 }
 import {
   LogOut,
-  User,
   Search,
   Settings,
   HelpCircle,
-  AlertTriangle,
   Shield,
   Database,
   RefreshCw,
   Menu,
-  X,
-  ChevronDown,
-  Activity,
-  Users,
-  BookOpen,
-  LayoutDashboard,
-  Camera,
-  FileText,
-  Sliders,
-  Printer,
-  Monitor,
   Trophy,
   ClipboardList,
   DoorOpen,
+  ChevronDown,
+  Camera,
+  Printer,
+  Monitor,
+  Users,
+  LayoutDashboard,
+  BookOpen,
+  X,
 } from 'lucide-react';
+
+// Import Header Components
+import { SystemMenu } from '@/components/layout/SystemMenu';
+import { HelpSupportModal } from '@/components/layout/HelpSupportModal';
 
 // Import page components for code splitting
 import {
@@ -166,7 +178,7 @@ const SettingsSkeleton = () => (
 );
 
 export default function App() {
-  const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { logout, isAuthenticated, isLoading } = useAuth();
   const devBypass = import.meta.env.DEV;
   const { activeStudent, clearActiveStudent } = useAppStore();
 
@@ -387,19 +399,19 @@ export default function App() {
     // Backup is handled in dashboard Quick Actions
   };
 
-  const handleMaintenance = () => {
+  const _handleMaintenance = () => {
     toast.info('Maintenance mode not implemented');
   };
 
-  const handleEmergencyAlert = () => {
+  const _handleEmergencyAlert = () => {
     toast.warning('Emergency alert system not implemented');
   };
 
-  const handleViewLogs = () => {
+  const _handleViewLogs = () => {
     toast.info('System logs available at /logs endpoint');
   };
 
-  const handleDatabaseStatus = async () => {
+  const _handleDatabaseStatus = async () => {
     toast.info('Checking database...');
     try {
       const response = await fetch('/api/health');
@@ -740,9 +752,12 @@ export default function App() {
                                   if (result.type === 'equipment')
                                     setActiveTab('equipment');
                                   if (result.type === 'room')
-                                    setActiveTab('settings');
-                                  if (result.type === 'setting')
-                                    setActiveTab('settings');
+                                    setActiveTab('equipment');
+                                  if (result.type === 'setting') {
+                                    setActiveTab('settings-admin');
+                                    // Map specific settings if possible, for now default
+                                    setSettingsInitialTab('general');
+                                  }
                                   setSearchQuery('');
                                   setSearchResults([]);
                                   toast.success(
@@ -793,7 +808,126 @@ export default function App() {
 
                 {/* Desktop Controls - Hidden on Mobile */}
                 <div className="hidden lg:flex items-center gap-2">
-                  {/* System Refresh */}
+                  {/* Notifications */}
+                  <NotificationCenter />
+
+                  {/* New System Menu */}
+                  <SystemMenu />
+
+                  {/* Help & Support */}
+                  <HelpSupportModal />
+
+                  {/* Logout Button */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      logout();
+                      toast.success('Signed out successfully');
+                    }}
+                    className="h-9 w-9 p-0 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-red-500 hover:text-red-600 dark:text-red-400"
+                    title="Sign Out"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <ResponsiveDrawer
+            open={showMobileMenu}
+            onOpenChange={setShowMobileMenu}
+            title="Navigation"
+            description="Quick access to system areas"
+          >
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    type="text"
+                    placeholder="Search... (Ctrl+K)"
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all w-full"
+                  />
+                  {searchQuery && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  {[
+                    {
+                      value: 'dashboard',
+                      label: 'Dashboard',
+                      icon: LayoutDashboard,
+                    },
+                    {
+                      value: 'scan-station',
+                      label: 'Scan Station',
+                      icon: Camera,
+                    },
+                    {
+                      value: 'students',
+                      label: 'Students',
+                      icon: Users,
+                    },
+                    {
+                      value: 'leaderboard',
+                      label: 'Leaderboard',
+                      icon: Trophy,
+                    },
+                    {
+                      value: 'books',
+                      label: 'Books & Circulation',
+                      icon: BookOpen,
+                    },
+                    {
+                      value: 'equipment',
+                      label: 'Rooms & Stations',
+                      icon: Monitor,
+                    },
+                    {
+                      value: 'printing',
+                      label: 'Printing',
+                      icon: Printer,
+                    },
+                    {
+                      value: 'settings-admin',
+                      label: 'Settings & Admin',
+                      icon: Settings,
+                    },
+                  ].map(({ value, label, icon: Icon }) => (
+                    <Button
+                      key={value}
+                      variant={activeTab === value ? 'default' : 'outline'}
+                      className="flex justify-between items-center"
+                      onClick={() => {
+                        setActiveTab(value);
+                        setShowMobileMenu(false);
+                      }}
+                    >
+                      <span className="flex items-center gap-3">
+                        <Icon className="h-4 w-4" />
+                        {label}
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
                     size="sm"
@@ -808,53 +942,18 @@ export default function App() {
                       <span className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full" />
                     )}
                   </Button>
-
-                  {/* Notifications */}
-                  <NotificationCenter />
-
-                  {/* System Menu, Help Menu, and User Menu - Desktop */}
-                  {/* System Menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuLabel>System Controls</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handleSystemHealth}>
-                        <Shield className="h-4 w-4 mr-2 text-green-500" />
-                        System Health
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleBackup}>
-                        <Database className="h-4 w-4 mr-2 text-blue-500" />
-                        Backup Now
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleMaintenance}>
-                        <Settings className="h-4 w-4 mr-2 text-slate-500" />
-                        Maintenance
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleDatabaseStatus}>
-                        <Database className="h-4 w-4 mr-2 text-purple-500" />
-                        Database Status
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleViewLogs}>
-                        <FileText className="h-4 w-4 mr-2 text-amber-500" />
-                        View Logs
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={handleEmergencyAlert}
-                        className="text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30"
-                      >
-                        <AlertTriangle className="h-4 w-4 mr-2" />
-                        Emergency Alert
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  {/* Help Menu */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSystemHealth}
+                  >
+                    <Shield className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleBackup}>
+                    <Database className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm">
@@ -890,247 +989,22 @@ export default function App() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-
-                  {/* User Menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-1"
-                      >
-                        <User className="h-3 w-3" />
-                        <span className="hidden sm:inline-block max-w-[100px] truncate">
-                          {user?.username}
-                        </span>
-                        <ChevronDown className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-64">
-                      <div className="p-2 bg-muted/50">
-                        <p className="font-semibold text-sm">
-                          {user?.username || 'Administrator'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {user?.role}
-                        </p>
-                      </div>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setSettingsInitialTab('system');
-                          setActiveTab('settings-admin');
-                        }}
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Settings
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setSettingsInitialTab('automation');
-                          setActiveTab('settings-admin');
-                        }}
-                      >
-                        <Sliders className="h-4 w-4 mr-2" />
-                        Options
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setSettingsInitialTab('logs');
-                          setActiveTab('settings-admin');
-                        }}
-                      >
-                        <Activity className="h-4 w-4 mr-2" />
-                        Activity Logs
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={logout}
-                        className="text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30"
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Logout
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={logout}
+                    className="text-red-600 dark:text-red-400"
+                    title="Sign Out"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <NotificationCenter />
                 </div>
               </div>
-
-              <ResponsiveDrawer
-                open={showMobileMenu}
-                onOpenChange={setShowMobileMenu}
-                title="Navigation"
-                description="Quick access to system areas"
-              >
-                <div className="space-y-6">
-                  <div className="space-y-3">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                      <Input
-                        type="text"
-                        placeholder="Search... (Ctrl+K)"
-                        value={searchQuery}
-                        onChange={(e) => handleSearch(e.target.value)}
-                        className="pl-10 pr-10 bg-white dark:bg-input border-slate-300 dark:border-border focus:ring-2 focus:ring-primary/20 transition-all w-full"
-                      />
-                      {searchQuery && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSearchQuery('')}
-                          className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="grid gap-2">
-                      {[
-                        {
-                          value: 'dashboard',
-                          label: 'Dashboard',
-                          icon: LayoutDashboard,
-                        },
-                        {
-                          value: 'scan-station',
-                          label: 'Scan Station',
-                          icon: Camera,
-                        },
-                        {
-                          value: 'students',
-                          label: 'Students',
-                          icon: Users,
-                        },
-                        {
-                          value: 'leaderboard',
-                          label: 'Leaderboard',
-                          icon: Trophy,
-                        },
-                        {
-                          value: 'books',
-                          label: 'Books & Circulation',
-                          icon: BookOpen,
-                        },
-                        {
-                          value: 'equipment',
-                          label: 'Rooms & Stations',
-                          icon: Monitor,
-                        },
-                        {
-                          value: 'printing',
-                          label: 'Printing',
-                          icon: Printer,
-                        },
-                        {
-                          value: 'settings-admin',
-                          label: 'Settings & Admin',
-                          icon: Settings,
-                        },
-                      ].map(({ value, label, icon: Icon }) => (
-                        <Button
-                          key={value}
-                          variant={activeTab === value ? 'default' : 'outline'}
-                          className="flex justify-between items-center"
-                          onClick={() => {
-                            setActiveTab(value);
-                            setShowMobileMenu(false);
-                          }}
-                        >
-                          <span className="flex items-center gap-3">
-                            <Icon className="h-4 w-4" />
-                            {label}
-                          </span>
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleRefresh}
-                        disabled={isRefreshing}
-                        className="relative"
-                      >
-                        <RefreshCw
-                          className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
-                        />
-                        {isRefreshing && (
-                          <span className="absolute -top-1 -right-1 h-2 w-2 bg-green-500 rounded-full" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleSystemHealth}
-                      >
-                        <Shield className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleBackup}
-                      >
-                        <Database className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <HelpCircle className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                          <DropdownMenuLabel>Help & Support</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() =>
-                              toast.info('Opening keyboard shortcuts guide...')
-                            }
-                          >
-                            Keyboard Shortcuts
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => toast.info('Opening user guide...')}
-                          >
-                            User Guide
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() =>
-                              toast.info('Opening API documentation...')
-                            }
-                          >
-                            API Documentation
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => toast.info('Opening support...')}
-                          >
-                            Get Support
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={logout}
-                        className="text-red-600 dark:text-red-400"
-                      >
-                        <LogOut className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <NotificationCenter />
-                    </div>
-                  </div>
-                </div>
-              </ResponsiveDrawer>
             </div>
-          </header>
+          </ResponsiveDrawer>
 
           {/* Mobile Tab Navigation */}
           <div className="lg:hidden bg-white dark:bg-card border-b border-slate-200 dark:border-slate-700 sticky top-16 z-40">
@@ -1409,6 +1283,9 @@ export default function App() {
               {/* ========== Legacy tabs below - kept for backward compatibility ========== */}
             </Tabs>
           </main>
+
+          {/* Toaster for notifications */}
+          <Toaster richColors position="top-right" closeButton theme="dark" />
 
           {/* PWA Install Prompt */}
           <PWAInstallPrompt onInstall={() => {}} onDismiss={() => {}} />

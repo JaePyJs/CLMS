@@ -85,10 +85,27 @@ export function BookDetailModal({ book, open, onClose }: BookDetailModalProps) {
       const response = await apiClient.get(
         `/api/enhanced-library/history?bookId=${bookId}`
       );
+      interface RawCheckoutRecord {
+        id: string;
+        student?: {
+          firstName?: string;
+          first_name?: string;
+          lastName?: string;
+          last_name?: string;
+          studentId?: string;
+          student_id?: string;
+        };
+        checkoutDate?: string;
+        borrowedAt?: string;
+        dueDate?: string;
+        returnDate?: string;
+        returnedAt?: string;
+        status?: string;
+      }
+
       if (response.success && Array.isArray(response.data)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setCheckoutHistory(
-          response.data.map((item: any) => ({
+          response.data.map((item: RawCheckoutRecord) => ({
             id: item.id,
             studentName:
               `${item.student?.firstName || item.student?.first_name || ''} ${item.student?.lastName || item.student?.last_name || ''}`.trim(),

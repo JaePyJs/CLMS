@@ -580,11 +580,15 @@ router.post(
     }
 
     const rawMappings = String(req.body?.fieldMappings || '[]');
-    let fieldMappings: Array<{
-      sourceField: string;
-      targetField: string;
+    // Support both formats: { source, target } and { sourceField, targetField }
+    interface FieldMapping {
+      sourceField?: string;
+      targetField?: string;
+      source?: string;
+      target?: string;
       required?: boolean;
-    }> = [];
+    }
+    let fieldMappings: FieldMapping[] = [];
     try {
       fieldMappings = JSON.parse(rawMappings) as any[];
     } catch (_e) {
@@ -608,19 +612,25 @@ router.post(
       // If mappings exist, use them
       if (fieldMappings.length > 0) {
         fieldMappings.forEach(mapping => {
-          let headerIndex = headers.indexOf(mapping.sourceField);
+          // Handle both 'source'/'target' and 'sourceField'/'targetField' formats
+          const sourceField = mapping.sourceField || mapping.source;
+          const targetField = mapping.targetField || mapping.target;
+
+          if (!sourceField || !targetField) {
+            return;
+          }
+
+          let headerIndex = headers.indexOf(sourceField);
 
           // Fallback: Try loose matching (case-insensitive, trimmed)
           if (headerIndex === -1) {
             headerIndex = headers.findIndex(
-              h =>
-                h.trim().toLowerCase() ===
-                mapping.sourceField.trim().toLowerCase(),
+              h => h?.trim().toLowerCase() === sourceField.trim().toLowerCase(),
             );
           }
 
           if (headerIndex !== -1) {
-            obj[mapping.targetField] = (rowData[headerIndex] ?? '').trim();
+            obj[targetField] = (rowData[headerIndex] ?? '').trim();
           }
         });
       } else {
@@ -828,21 +838,26 @@ router.post(
           data = rows.map((row: any[]) => {
             const obj: Record<string, string> = {};
 
-            // If field mappings exist, use them
             if (fieldMapping.length > 0) {
               fieldMapping.forEach((mapping: any) => {
-                let headerIndex = headers.indexOf(mapping.sourceField);
+                // Handle both 'source'/'target' and 'sourceField'/'targetField' formats
+                const sourceField = mapping.sourceField || mapping.source;
+                const targetField = mapping.targetField || mapping.target;
+
+                if (!sourceField || !targetField) {
+                  return;
+                }
+
+                let headerIndex = headers.indexOf(sourceField);
                 if (headerIndex === -1) {
                   headerIndex = headers.findIndex(
                     (h: string) =>
-                      h.trim().toLowerCase() ===
-                      mapping.sourceField.trim().toLowerCase(),
+                      h?.trim().toLowerCase() ===
+                      sourceField.trim().toLowerCase(),
                   );
                 }
                 if (headerIndex !== -1) {
-                  obj[mapping.targetField] = String(
-                    row[headerIndex] ?? '',
-                  ).trim();
+                  obj[targetField] = String(row[headerIndex] ?? '').trim();
                 }
               });
             } else {

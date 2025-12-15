@@ -63,7 +63,6 @@ import {
   MessageSquare,
   CreditCard,
   ExternalLink,
-  TrendingUp,
   Activity,
   ChevronLeft,
   ChevronRight,

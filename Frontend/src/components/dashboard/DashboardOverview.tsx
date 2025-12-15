@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { GlowCard } from '@/components/ui/glow-card';
 import {
   Dialog,
   DialogContent,
@@ -1269,7 +1270,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const fetchAnnouncementLog = async () => {
     try {
       setAnnouncementLogLoading(true);
-      const params: Record<string, any> = {
+      const params: Record<string, unknown> = {
         page: announcementPage,
         limit: announcementLimit,
       };
@@ -1351,10 +1352,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
   const availableComputers = 3; // Total computers in library
 
   return (
-    <div
-      data-testid="dashboard-root"
-      className={`space-y-8 ${isFullscreen ? 'fixed inset-0 z-50 bg-white dark:bg-gray-900 p-6 overflow-auto' : ''}`}
-    >
+    <div data-testid="dashboard-root" className="space-y-8">
       {/* Enhanced Welcome Header - Clean & Professional */}
       <div className="space-y-4">
         {/* Real-time Dashboard Header */}
@@ -2115,7 +2113,8 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
               {/* Enhanced Interactive Status Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <>
-                  <Card
+                  <GlowCard
+                    glowColor="#22c55e"
                     className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800 hover:shadow-lg transition-all cursor-pointer group"
                     onClick={() => {
                       if (onTabChange) {
@@ -2149,9 +2148,10 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                         Click for details
                       </div>
                     </CardContent>
-                  </Card>
+                  </GlowCard>
 
-                  <Card
+                  <GlowCard
+                    glowColor="#3b82f6"
                     className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 border-blue-200 dark:border-blue-800 hover:shadow-lg transition-all cursor-pointer group"
                     onClick={() => {
                       if (onTabChange) {
@@ -2185,9 +2185,10 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                         Click to manage
                       </div>
                     </CardContent>
-                  </Card>
+                  </GlowCard>
 
-                  <Card
+                  <GlowCard
+                    glowColor="#a855f7"
                     className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-200 dark:border-purple-800 hover:shadow-lg transition-all cursor-pointer group"
                     onClick={() => {
                       if (onTabChange) {
@@ -2221,9 +2222,10 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                         Click for status
                       </div>
                     </CardContent>
-                  </Card>
+                  </GlowCard>
 
-                  <Card
+                  <GlowCard
+                    glowColor="#f59e0b"
                     className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800 hover:shadow-lg transition-all cursor-pointer group"
                     onClick={() => {
                       toast.info(
@@ -2261,7 +2263,7 @@ export function DashboardOverview({ onTabChange }: DashboardOverviewProps) {
                         Click for status
                       </div>
                     </CardContent>
-                  </Card>
+                  </GlowCard>
                 </>
               </div>
 

@@ -230,6 +230,7 @@ export function createContentSubComponent<T extends ContentSubComponentProps>(
  * Utility to build compound components
  */
 export function createCompoundComponent<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   T extends Record<string, ComponentType<any>>,
 >(
   name: string,

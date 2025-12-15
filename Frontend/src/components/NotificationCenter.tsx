@@ -10,7 +10,6 @@ import {
   CheckCircle,
   Clock,
   ExternalLink,
-  Settings,
   RefreshCw,
   Filter,
 } from 'lucide-react';
@@ -35,7 +34,6 @@ const NotificationCenter: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [showPreferences, setShowPreferences] = useState(false);
 
   // Real-time WebSocket integration via Context
   const { isConnected, notifications: realtimeNotifications } =
@@ -295,16 +293,6 @@ const NotificationCenter: React.FC = () => {
                 title="Refresh notifications"
               >
                 <RefreshCw className="w-4 h-4" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowPreferences(!showPreferences);
-                }}
-                className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition-colors"
-                title="Notification preferences"
-              >
-                <Settings className="w-4 h-4" />
               </button>
             </div>
           </div>

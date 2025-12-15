@@ -277,10 +277,7 @@ export const useUsbScanner = () => {
 
   // Auto-activate on mount
   useEffect(() => {
-    toast.success('🔌 USB Scanner ready - Just scan a barcode!', {
-      duration: 3000,
-      position: 'top-center',
-    });
+    // Silent activation
   }, []);
 
   // Set up keyboard listener

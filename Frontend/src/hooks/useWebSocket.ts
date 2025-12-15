@@ -290,7 +290,7 @@ export const useWebSocket = (options: WebSocketOptions = {}) => {
       });
 
       onConnect?.();
-      toast.success('Real-time connection established');
+      // toast.success('Real-time connection established');
     });
 
     ws.on('welcome', () => {

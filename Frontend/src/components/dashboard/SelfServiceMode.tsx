@@ -59,9 +59,14 @@ export default function SelfServiceMode() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
+  interface Announcement {
+    title: string;
+    content: string;
+  }
+
   // Idle Timer State
   const [isIdle, setIsIdle] = useState(false);
-  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
